@@ -12,23 +12,18 @@ export default defineConfig({
       exclude: [
         'packages/*/src/**/*.d.ts',
         'packages/*/dist/**',
-        // ⚠️ TEMPORARY WORKAROUND: Exclude CLI commands from coverage (testing deferred to Phase 3.3)
-        // TODO: REMOVE THIS EXCLUSION when implementing CLI tests! See TODO.md Phase 3.3
-        // This is a workaround to maintain 80%+ coverage while CLI commands remain untested.
-        'packages/cli/src/commands/**',
-        'packages/cli/src/bin.ts',
         // Exclude index files (re-exports only)
         'packages/*/src/index.ts',
         // Exclude type definition files
         'packages/*/src/types.ts',
       ],
       thresholds: {
-        // Current: 65% statements, 87% branches, 73% functions, 65% lines
-        // Goal: Reach 80% across all metrics
-        statements: 65,
-        branches: 80,
-        functions: 73,
-        lines: 65,
+        // Updated after adding CLI command/bin.ts coverage (2025-10-16)
+        // Current coverage: 75.76% statements, 87.79% branches, 80.72% functions, 75.76% lines
+        statements: 75,
+        branches: 87,
+        functions: 80,
+        lines: 75,
       },
     },
   },
