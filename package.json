@@ -1,0 +1,55 @@
+{
+  "name": "vibe-validate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development)",
+  "keywords": [
+    "validation",
+    "git",
+    "cache",
+    "llm",
+    "ai",
+    "agent",
+    "typescript",
+    "testing",
+    "ci",
+    "pre-commit"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jdutton/vibe-validate/issues"
+  },
+  "homepage": "https://github.com/jdutton/vibe-validate#readme",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "dev": "pnpm -r --parallel dev",
+    "validate": "npx tsx ./packages/core/src/cli.ts",
+    "validate:force": "rm -f .vibe-validate-state.yaml && npm run validate",
+    "pre-commit": "npm run validate"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "@vitest/coverage-v8": "^2.1.8",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

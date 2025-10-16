@@ -1,0 +1,38 @@
+{
+  "name": "@vibe-validate/formatters",
+  "version": "0.1.0",
+  "description": "LLM-optimized error formatters for validation output",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "validation",
+    "error-formatting",
+    "llm-friendly",
+    "typescript",
+    "eslint",
+    "vitest",
+    "openapi"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeffdutton/vibe-validate.git",
+    "directory": "packages/formatters"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

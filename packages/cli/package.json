@@ -1,0 +1,57 @@
+{
+  "name": "@vibe-validate/cli",
+  "version": "0.1.0",
+  "description": "Command-line interface for vibe-validate validation framework",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "vibe-validate": "./dist/bin.js",
+    "vv": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "validation",
+    "testing",
+    "ci-cd",
+    "git",
+    "agent-friendly",
+    "llm",
+    "cli"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@vibe-validate/core": "workspace:*",
+    "@vibe-validate/git": "workspace:*",
+    "@vibe-validate/config": "workspace:*",
+    "commander": "^12.1.0",
+    "chalk": "^5.3.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.8",
+    "typescript": "^5.5.2",
+    "vitest": "^2.0.5"
+  }
+}
