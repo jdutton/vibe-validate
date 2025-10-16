@@ -79,6 +79,16 @@ export function preCommitCommand(program: Command): void {
         } else {
           console.error(chalk.red('\n❌ Pre-commit checks failed'));
           console.error(chalk.yellow('   Fix errors before committing.'));
+
+          // Show agent-friendly error details
+          console.error(chalk.blue('\n📋 Error details:'), chalk.white(runnerConfig.stateFilePath || '.vibe-validate-state.yaml'));
+          if (result.rerunCommand) {
+            console.error(chalk.blue('🔄 To retry:'), chalk.white(result.rerunCommand));
+          }
+          if (result.fullLogFile) {
+            console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
+          }
+
           process.exit(1);
         }
       } catch (error) {

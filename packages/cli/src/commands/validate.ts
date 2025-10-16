@@ -44,6 +44,17 @@ export function validateCommand(program: Command): void {
         // Run validation
         const result = await runValidation(runnerConfig);
 
+        // If validation failed, show agent-friendly error details
+        if (!result.passed) {
+          console.error(chalk.blue('\n📋 Error details:'), chalk.white(runnerConfig.stateFilePath || '.vibe-validate-state.yaml'));
+          if (result.rerunCommand) {
+            console.error(chalk.blue('🔄 To retry:'), chalk.white(result.rerunCommand));
+          }
+          if (result.fullLogFile) {
+            console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
+          }
+        }
+
         // Exit with appropriate code
         process.exit(result.passed ? 0 : 1);
       } catch (error) {
