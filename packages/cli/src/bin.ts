@@ -17,18 +17,27 @@ import { syncCheckCommand } from './commands/sync-check.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
 
-// Read version from package.json
+// Read version from package.json at runtime
+// This approach works with ESM and survives TypeScript compilation
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const packageJsonPath = join(__dirname, '../package.json');
-const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+
+let version = '0.9.2'; // Fallback version
+try {
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+  version = packageJson.version;
+} catch (_error) {
+  // If package.json can't be read (shouldn't happen in production), use fallback
+  console.warn('Warning: Could not read package.json version, using fallback');
+}
 
 const program = new Command();
 
 program
   .name('vibe-validate')
   .description('Agent-friendly validation framework with git tree hash caching')
-  .version(packageJson.version);
+  .version(version);
 
 // Register commands
 validateCommand(program);       // vibe-validate validate

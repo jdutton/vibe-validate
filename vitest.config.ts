@@ -12,7 +12,9 @@ export default defineConfig({
       exclude: [
         'packages/*/src/**/*.d.ts',
         'packages/*/dist/**',
-        // Exclude CLI commands from coverage (testing deferred to Phase 3.3)
+        // ⚠️ TEMPORARY WORKAROUND: Exclude CLI commands from coverage (testing deferred to Phase 3.3)
+        // TODO: REMOVE THIS EXCLUSION when implementing CLI tests! See TODO.md Phase 3.3
+        // This is a workaround to maintain 80%+ coverage while CLI commands remain untested.
         'packages/cli/src/commands/**',
         'packages/cli/src/bin.ts',
         // Exclude index files (re-exports only)
