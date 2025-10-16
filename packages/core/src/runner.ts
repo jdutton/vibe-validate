@@ -10,7 +10,7 @@
  * @packageDocumentation
  */
 
-import { spawn, execSync } from 'child_process';
+import { spawn, execSync, type ChildProcess } from 'child_process';
 import { writeFileSync, appendFileSync, existsSync, readFileSync } from 'fs';
 import { stopProcessGroup } from './process-utils.js';
 import type {
@@ -56,7 +56,7 @@ export function getWorkingTreeHash(): string {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'ignore']
     }).trim();
-  } catch (error) {
+  } catch (_error) {
     // Fallback for non-git repos or git command failures
     return `nogit-${Date.now()}`;
   }
@@ -84,7 +84,7 @@ export function checkExistingValidation(
     }
 
     return { alreadyPassed: false, previousState: state };
-  } catch (error) {
+  } catch (_error) {
     return { alreadyPassed: false };
   }
 }
@@ -144,7 +144,7 @@ export async function runStepsInParallel(
 
   const outputs = new Map<string, string>();
   const stepResults: StepResult[] = [];
-  const processes: Array<{ proc: any; step: ValidationStep }> = [];
+  const processes: Array<{ proc: ChildProcess; step: ValidationStep }> = [];
   let firstFailure: { step: ValidationStep; output: string } | null = null;
 
   const results = await Promise.allSettled(
@@ -254,7 +254,6 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   // Initialize log file
   writeFileSync(logPath, `Validation started at ${new Date().toISOString()}\n\n`);
 
-  let fullOutput = '';
   let failedStep: ValidationStep | null = null;
   const phaseResults: PhaseResult[] = [];
 
@@ -279,7 +278,6 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       appendFileSync(logPath, `${stepName}${result.failedStep?.name === stepName ? ' - FAILED' : ''}\n`);
       appendFileSync(logPath, `${'='.repeat(60)}\n`);
       appendFileSync(logPath, output);
-      fullOutput += output;
     }
 
     // Record phase result
@@ -347,7 +345,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
  *
  * Ensures all child processes are killed when validation runner is interrupted
  */
-export function setupSignalHandlers(activeProcesses: Set<any>): void {
+export function setupSignalHandlers(activeProcesses: Set<ChildProcess>): void {
   const cleanup = async (signal: string) => {
     console.log(`\n⚠️  Received ${signal}, cleaning up ${activeProcesses.size} active processes...`);
 

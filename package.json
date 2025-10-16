@@ -38,7 +38,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "pnpm -r lint",
+    "lint": "eslint packages/*/src --max-warnings 0",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "dev": "pnpm -r --parallel dev",
@@ -58,7 +58,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.17.6",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
     "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.37.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

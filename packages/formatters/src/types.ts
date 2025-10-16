@@ -59,8 +59,8 @@ export interface ErrorFormatter {
   /**
    * Format tool-specific error output into structured result
    *
-   * @param output - Raw command output (may include ANSI codes, noise)
+   * @param _output - Raw command output (may include ANSI codes, noise)
    * @returns Structured error information optimized for LLM consumption
    */
-  format(output: string): ErrorFormatterResult;
+  format(_output: string): ErrorFormatterResult;
 }

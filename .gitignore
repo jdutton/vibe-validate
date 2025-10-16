@@ -35,7 +35,6 @@ pnpm-debug.log*
 
 # Validation state (user-specific)
 .vibe-validate-state.yaml
-.validation-state
 
 # Development/extraction tracking (git-ignored, local only)
 TODO.md

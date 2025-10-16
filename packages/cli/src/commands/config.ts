@@ -6,6 +6,7 @@
 
 import type { Command } from 'commander';
 import { loadConfig, findConfigPath } from '../utils/config-loader.js';
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 
 export function configCommand(program: Command): void {
@@ -63,7 +64,7 @@ export function configCommand(program: Command): void {
 /**
  * Display configuration in human-friendly format
  */
-function displayHumanConfig(config: any, configPath: string): void {
+function displayHumanConfig(config: VibeValidateConfig, configPath: string): void {
   console.log(chalk.blue('⚙️  Vibe-Validate Configuration'));
   console.log(chalk.gray('─'.repeat(50)));
   console.log(chalk.gray(`Config file: ${configPath}`));
@@ -75,7 +76,7 @@ function displayHumanConfig(config: any, configPath: string): void {
 
     if (config.validation.phases) {
       console.log(chalk.gray(`  Phases: ${config.validation.phases.length}`));
-      config.validation.phases.forEach((phase: any, index: number) => {
+      config.validation.phases.forEach((phase, index: number) => {
         const parallelIcon = phase.parallel ? '⚡' : '→';
         console.log(chalk.gray(`    ${index + 1}. ${parallelIcon} ${phase.name} (${phase.steps?.length || 0} steps)`));
       });
@@ -83,10 +84,6 @@ function displayHumanConfig(config: any, configPath: string): void {
 
     if (config.validation.caching) {
       console.log(chalk.gray(`  Caching: ${config.validation.caching.strategy} (${config.validation.caching.enabled ? 'enabled' : 'disabled'})`));
-    }
-
-    if (config.validation.failFast !== undefined) {
-      console.log(chalk.gray(`  Fail Fast: ${config.validation.failFast ? 'enabled' : 'disabled'}`));
     }
 
     console.log();
@@ -121,13 +118,13 @@ function displayHumanConfig(config: any, configPath: string): void {
 /**
  * Display configuration in YAML format (simplified)
  */
-function displayYamlConfig(config: any): void {
+function displayYamlConfig(config: VibeValidateConfig): void {
   // Simple YAML-like output
   console.log('validation:');
 
   if (config.validation?.phases) {
     console.log('  phases:');
-    config.validation.phases.forEach((phase: any) => {
+    config.validation.phases.forEach((phase) => {
       console.log(`    - name: ${phase.name}`);
       console.log(`      parallel: ${phase.parallel}`);
       console.log(`      steps: ${phase.steps?.length || 0}`);
@@ -138,10 +135,6 @@ function displayYamlConfig(config: any): void {
     console.log('  caching:');
     console.log(`    strategy: ${config.validation.caching.strategy}`);
     console.log(`    enabled: ${config.validation.caching.enabled}`);
-  }
-
-  if (config.validation?.failFast !== undefined) {
-    console.log(`  failFast: ${config.validation.failFast}`);
   }
 
   if (config.git) {

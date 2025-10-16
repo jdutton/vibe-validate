@@ -133,16 +133,16 @@ export interface ValidationConfig {
   env?: Record<string, string>;
 
   /** Callback when phase starts */
-  onPhaseStart?: (phase: ValidationPhase) => void;
+  onPhaseStart?: (_phase: ValidationPhase) => void;
 
   /** Callback when phase completes */
-  onPhaseComplete?: (phase: ValidationPhase, result: PhaseResult) => void;
+  onPhaseComplete?: (_phase: ValidationPhase, _result: PhaseResult) => void;
 
   /** Callback when step starts */
-  onStepStart?: (step: ValidationStep) => void;
+  onStepStart?: (_step: ValidationStep) => void;
 
   /** Callback when step completes */
-  onStepComplete?: (step: ValidationStep, result: StepResult) => void;
+  onStepComplete?: (_step: ValidationStep, _result: StepResult) => void;
 
   /** Caching configuration */
   caching?: {

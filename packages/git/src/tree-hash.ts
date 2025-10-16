@@ -110,7 +110,7 @@ export async function hasWorkingTreeChanges(): Promise<boolean> {
     const workingTreeHash = await getGitTreeHash();
     const headTreeHash = await getHeadTreeHash();
     return workingTreeHash !== headTreeHash;
-  } catch (error) {
+  } catch (_error) {
     // If we can't determine, assume there are changes (safe default)
     return true;
   }

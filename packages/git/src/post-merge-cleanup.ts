@@ -185,7 +185,7 @@ export class PostPRMergeCleanup {
               stdio: ['pipe', 'pipe', 'pipe']
             });
             deletedBranches.push(branch);
-          } catch (deleteError) {
+          } catch (_deleteError) {
             // Try force delete if regular delete fails
             try {
               execSync(`git branch -D "${branch}"`, {
@@ -194,7 +194,7 @@ export class PostPRMergeCleanup {
                 stdio: ['pipe', 'pipe', 'pipe']
               });
               deletedBranches.push(branch);
-            } catch (forceDeleteError) {
+            } catch (_forceDeleteError) {
               // Couldn't delete - skip this branch
             }
           }
@@ -203,7 +203,7 @@ export class PostPRMergeCleanup {
 
       return deletedBranches;
 
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }
@@ -220,7 +220,7 @@ export class PostPRMergeCleanup {
 
       return mergedBranches.includes(branch);
 
-    } catch (error) {
+    } catch (_error) {
       // If we can't determine merge status, don't delete the branch
       return false;
     }
@@ -236,7 +236,7 @@ export class PostPRMergeCleanup {
         timeout: TIMEOUT,
         stdio: ['pipe', 'pipe', 'pipe']
       });
-    } catch (error) {
+    } catch (_error) {
       // Non-critical operation - don't fail on error
     }
   }

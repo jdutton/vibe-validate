@@ -20,7 +20,11 @@ export default {
             command: 'pnpm -r typecheck',
             description: 'Type-check all packages in parallel',
           },
-          // Note: ESLint not configured yet
+          {
+            name: 'ESLint Code Quality',
+            command: 'pnpm lint',
+            description: 'Lint all source files (0 errors, 0 warnings enforced)',
+          },
         ],
       },
 
@@ -30,9 +34,9 @@ export default {
         parallel: false,
         steps: [
           {
-            name: 'Unit Tests',
-            command: 'pnpm test',
-            description: 'Run all unit tests (243 tests)',
+            name: 'Unit Tests with Coverage',
+            command: 'pnpm test:coverage',
+            description: 'Run all unit tests (243 tests) with coverage thresholds (65% min)',
           },
         ],
       },

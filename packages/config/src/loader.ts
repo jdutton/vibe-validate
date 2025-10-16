@@ -84,7 +84,7 @@ export async function findAndLoadConfig(
 
     try {
       return await loadConfigFromFile(configPath);
-    } catch (err) {
+    } catch (_err) {
       // File doesn't exist or can't be loaded - try next
       continue;
     }

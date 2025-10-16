@@ -6,7 +6,7 @@
  * @package @vibe-validate/formatters
  */
 
-import type { ErrorFormatterResult, FormattedError } from './types.js';
+import type { ErrorFormatterResult } from './types.js';
 
 interface TestFailure {
   file: string;

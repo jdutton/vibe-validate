@@ -6,6 +6,9 @@
  */
 
 import { Command } from 'commander';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { validateCommand } from './commands/validate.js';
 import { initCommand } from './commands/init.js';
 import { preCommitCommand } from './commands/pre-commit.js';
@@ -14,12 +17,18 @@ import { syncCheckCommand } from './commands/sync-check.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
 
+// Read version from package.json
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = join(__dirname, '../package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+
 const program = new Command();
 
 program
   .name('vibe-validate')
   .description('Agent-friendly validation framework with git tree hash caching')
-  .version('0.1.0');
+  .version(packageJson.version);
 
 // Register commands
 validateCommand(program);       // vibe-validate validate

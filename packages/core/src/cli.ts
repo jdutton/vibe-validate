@@ -8,14 +8,14 @@
 import { join, resolve } from 'path';
 import { existsSync } from 'fs';
 import { runValidation } from './runner.js';
-import type { ValidationConfig } from './types.js';
+import type { ValidationConfig, ValidationPhase } from './types.js';
 
 /**
  * Find and load vibe-validate.config.ts
  *
  * @returns A config object with validation, git, and output settings
  */
-async function loadConfig(): Promise<any> {
+async function loadConfig(): Promise<{ validation?: { phases?: ValidationPhase[]; failFast?: boolean } }> {
   const cwd = process.cwd();
   const configPaths = [
     'vibe-validate.config.ts',

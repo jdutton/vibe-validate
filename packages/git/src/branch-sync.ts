@@ -30,7 +30,7 @@ export interface SyncCheckResult {
 }
 
 // Type for the exec function (allows dependency injection for testing)
-export type ExecAsyncFunction = (command: string, options: typeof GIT_OPTIONS) => Promise<{ stdout: string; stderr: string }>;
+export type ExecAsyncFunction = (_command: string, _options: typeof GIT_OPTIONS) => Promise<{ stdout: string; stderr: string }>;
 
 export interface SyncCheckOptions {
   remoteBranch?: string;  // Default: 'origin/main'
@@ -112,7 +112,7 @@ export class BranchSyncChecker {
     try {
       await this.execAsync(`git rev-parse --verify ${this.remoteBranch}`, GIT_OPTIONS);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
