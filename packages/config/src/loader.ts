@@ -43,7 +43,24 @@ export async function loadConfigFromFile(
     return await resolveConfig(raw, dirname(absolutePath));
   }
 
-  // TypeScript/JavaScript files (ES modules)
+  // TypeScript files - use tsx for loading
+  if (absolutePath.endsWith('.ts') || absolutePath.endsWith('.mts')) {
+    // Use tsx to load TypeScript files
+    const { register } = await import('tsx/esm/api');
+    const unregister = register();
+
+    try {
+      // Add cache-busting timestamp to force fresh load
+      const fileUrl = pathToFileURL(absolutePath).href + '?t=' + Date.now();
+      const module = await import(fileUrl);
+      const raw = module.default || module;
+      return await resolveConfig(raw, dirname(absolutePath));
+    } finally {
+      unregister();
+    }
+  }
+
+  // JavaScript files (ES modules)
   const fileUrl = pathToFileURL(absolutePath).href;
   const module = await import(fileUrl);
   const raw = module.default || module;
@@ -105,11 +122,22 @@ async function resolveConfig(
 
   // Step 2: Resolve extends if specified
   if (config.extends) {
-    const extendsPath = resolve(basePath, config.extends);
-    const extendedConfig = await loadConfigFromFile(extendsPath);
-    baseConfig = baseConfig
-      ? mergeConfig(baseConfig, extendedConfig)
-      : extendedConfig;
+    // Check if extends is a preset name or a file path
+    const extendedConfig = getPreset(config.extends);
+
+    if (extendedConfig) {
+      // It's a preset name
+      baseConfig = baseConfig
+        ? mergeConfig(baseConfig, extendedConfig)
+        : extendedConfig;
+    } else {
+      // It's a file path - resolve relative to basePath
+      const extendsPath = resolve(basePath, config.extends);
+      const fileConfig = await loadConfigFromFile(extendsPath);
+      baseConfig = baseConfig
+        ? mergeConfig(baseConfig, fileConfig)
+        : fileConfig;
+    }
   }
 
   // Step 3: Merge user config with base

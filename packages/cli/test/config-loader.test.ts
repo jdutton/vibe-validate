@@ -152,14 +152,15 @@ describe('config-loader', () => {
       expect(config).toBeNull();
     });
 
-    it('should return null and log error if config is invalid', async () => {
+    it('should return null if config is invalid', async () => {
       const configPath = join(testDir, 'vibe-validate.config.js');
       writeFileSync(configPath, 'this is not valid javascript!@#$');
 
       const config = await loadConfig(testDir);
 
       expect(config).toBeNull();
-      expect(console.error).toHaveBeenCalled();
+      // Note: findAndLoadConfig returns null for invalid configs without logging
+      // Error logging happens at the command level, not the loader level
     });
 
     it('should use process.cwd() if no directory provided', async () => {

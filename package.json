@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development)",
   "keywords": [
@@ -42,9 +42,19 @@
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "dev": "pnpm -r --parallel dev",
-    "validate": "npx tsx ./packages/core/src/cli.ts",
+    "validate": "node packages/cli/dist/bin.js validate",
     "validate:force": "rm -f .vibe-validate-state.yaml && npm run validate",
-    "pre-commit": "npm run validate"
+    "pre-commit": "node packages/cli/dist/bin.js pre-commit",
+    "publish:dry-run": "pnpm -r --filter='@vibe-validate/*' exec npm publish --dry-run",
+    "publish:formatters": "cd packages/formatters && npm publish",
+    "publish:git": "cd packages/git && npm publish",
+    "publish:config": "cd packages/config && npm publish",
+    "publish:core": "cd packages/core && npm publish",
+    "publish:cli": "cd packages/cli && npm publish",
+    "publish:all": "npm run publish:formatters && npm run publish:git && npm run publish:config && npm run publish:core && npm run publish:cli",
+    "version:patch": "pnpm -r exec npm version patch",
+    "version:minor": "pnpm -r exec npm version minor",
+    "version:major": "pnpm -r exec npm version major"
   },
   "devDependencies": {
     "@types/node": "^20.17.6",

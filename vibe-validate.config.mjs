@@ -1,0 +1,87 @@
+/**
+ * Vibe-Validate Self-Hosting Configuration
+ *
+ * This configuration validates vibe-validate itself using vibe-validate.
+ * We're eating our own dog food! 🐕
+ *
+ * This config file demonstrates the EXACT same workflow that end users
+ * will follow - it uses the built packages, not the source code.
+ */
+export default {
+  validation: {
+    phases: [
+      // Phase 1: Fast Pre-Qualification (parallel)
+      {
+        name: 'Pre-Qualification',
+        parallel: true,
+        steps: [
+          {
+            name: 'TypeScript Type Check',
+            command: 'pnpm -r typecheck',
+            description: 'Type-check all packages in parallel',
+          },
+          // Note: ESLint not configured yet
+        ],
+      },
+
+      // Phase 2: Unit Tests with Coverage
+      {
+        name: 'Testing',
+        parallel: false,
+        steps: [
+          {
+            name: 'Unit Tests',
+            command: 'pnpm test',
+            description: 'Run all unit tests (243 tests)',
+          },
+        ],
+      },
+
+      // Phase 3: Build Verification
+      {
+        name: 'Clean',
+        parallel: false,
+        steps: [
+          {
+            name: 'Clean Previous Build',
+            command: 'pnpm -r exec rm -rf dist',
+            description: 'Clean all dist/ directories',
+          },
+        ],
+      },
+
+      // Phase 4: Build
+      {
+        name: 'Build',
+        parallel: false,
+        steps: [
+          {
+            name: 'Build All Packages',
+            command: 'pnpm -r build',
+            description: 'Build all packages in dependency order',
+          },
+        ],
+      },
+    ],
+
+    // Use git tree hash caching for maximum performance
+    caching: {
+      strategy: 'git-tree-hash',
+      enabled: true,
+    },
+
+    // Fail fast on first error
+    failFast: true,
+  },
+
+  // Git integration settings
+  git: {
+    mainBranch: 'main',
+    autoSync: false, // Never auto-merge - safety first
+  },
+
+  // Output configuration
+  output: {
+    format: 'auto', // Auto-detect agent vs human context
+  },
+};

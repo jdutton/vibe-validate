@@ -49,7 +49,12 @@ export function configCommand(program: Command): void {
 
         process.exit(0);
       } catch (error) {
-        console.error(chalk.red('❌ Failed to load configuration:'), error);
+        console.error(chalk.red('❌ Failed to load configuration:'), error instanceof Error ? error.message : error);
+        if (error instanceof Error && error.stack) {
+          console.error(chalk.gray('Stack trace:'));
+          console.error(chalk.gray(error.stack));
+        }
+        console.error(chalk.red('❌ Configuration is invalid'));
         process.exit(1);
       }
     });

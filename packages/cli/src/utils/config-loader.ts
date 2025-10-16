@@ -6,7 +6,7 @@
 
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { loadConfigFromFile } from '@vibe-validate/config';
+import { findAndLoadConfig } from '@vibe-validate/config';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 
@@ -28,9 +28,9 @@ export async function loadConfig(cwd?: string): Promise<VibeValidateConfig | nul
   const searchDir = cwd ?? process.cwd();
 
   try {
-    // Use the config package's loader which handles all the complexity
-    const config = await loadConfigFromFile(searchDir);
-    return config;
+    // Use the config package's finder which searches for config files in the directory
+    const config = await findAndLoadConfig(searchDir);
+    return config ?? null;
   } catch (error) {
     if (error instanceof Error) {
       console.error(chalk.red(`❌ Failed to load configuration: ${error.message}`));

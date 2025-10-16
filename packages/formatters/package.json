@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/formatters",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "LLM-optimized error formatters for validation output",
   "type": "module",
   "exports": {
@@ -29,10 +29,16 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jeffdutton/vibe-validate.git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git",
     "directory": "packages/formatters"
   },
   "devDependencies": {
     "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
