@@ -26,15 +26,15 @@ import type {
 /**
  * Git tree hash calculator
  *
- * IMPORTANT: Current implementation uses `git stash create` which includes timestamps.
- * This makes hashes non-deterministic - identical code produces different hashes.
+ * NOTE: This is a simplified fallback implementation.
+ * For production use, prefer @vibe-validate/git package which provides
+ * deterministic git tree hashing using git write-tree instead of git stash create.
  *
- * TODO: Replace with deterministic git write-tree approach:
- *   git add --intent-to-add .  # Mark untracked (no staging)
- *   git write-tree              # Content-based hash (no timestamps)
- *   git reset                   # Restore index
+ * This implementation uses git stash create, which includes timestamps and is
+ * non-deterministic (same code content may produce different hashes).
  *
- * @returns SHA-1 hash representing working tree state (currently non-deterministic)
+ * @returns SHA-1 hash representing working tree state (non-deterministic)
+ * @internal
  */
 export function getWorkingTreeHash(): string {
   try {

@@ -24,7 +24,7 @@ Thank you for your interest in contributing to vibe-validate! This document prov
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/vibe-validate.git
+git clone https://github.com/jdutton/vibe-validate.git
 cd vibe-validate
 
 # Install dependencies
@@ -375,8 +375,8 @@ chore: update dependencies
 
 ## Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/your-org/vibe-validate/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/vibe-validate/discussions)
+- **Issues**: [GitHub Issues](https://github.com/jdutton/vibe-validate/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jdutton/vibe-validate/discussions)
 - **Documentation**: [docs/](docs/)
 
 ## License

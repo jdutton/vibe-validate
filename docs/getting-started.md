@@ -356,7 +356,7 @@ npx vibe-validate cleanup
 
 ## Getting Help
 
-- **GitHub Issues**: [github.com/jdutton-vercel/vibe-validate/issues](https://github.com/jdutton-vercel/vibe-validate/issues)
+- **GitHub Issues**: [github.com/jdutton/vibe-validate/issues](https://github.com/jdutton/vibe-validate/issues)
 - **Documentation**: [docs/](.)
 - **Examples**: [examples/](../examples/)
 
