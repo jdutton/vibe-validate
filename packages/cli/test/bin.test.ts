@@ -280,6 +280,52 @@ export default {
       expect(stateResult.code).toBe(0);
       expect(stateResult.stdout).toContain('FAILED');
     }, 30000); // Increase timeout for full workflow
+
+    it('should bypass cache when --force flag is used', async () => {
+      // Create a config with passing step
+      const configContent = `
+export default {
+  extends: 'typescript-nodejs',
+  validation: {
+    phases: [
+      {
+        name: 'Test Phase',
+        parallel: true,
+        steps: [
+          { name: 'Pass Test', command: 'echo "test passed"' }
+        ]
+      }
+    ]
+  }
+};
+`;
+      writeFileSync(join(testDir, 'vibe-validate.config.js'), configContent);
+
+      // Initialize git
+      const { execSync } = await import('child_process');
+      execSync('git init', { cwd: testDir });
+      execSync('git config user.email "test@example.com"', { cwd: testDir });
+      execSync('git config user.name "Test User"', { cwd: testDir });
+      execSync('git add .', { cwd: testDir });
+      execSync('git commit -m "Initial commit"', { cwd: testDir });
+
+      // 1. First run - should execute validation
+      const firstRun = await executeCLI(['validate']);
+      expect(firstRun.code).toBe(0);
+      expect(firstRun.stdout).toContain('Running phase');
+
+      // 2. Second run without --force - should use cache
+      const cachedRun = await executeCLI(['validate']);
+      expect(cachedRun.code).toBe(0);
+      expect(cachedRun.stdout).toContain('already passed');
+      expect(cachedRun.stdout).not.toContain('Running phase'); // Should NOT run phases
+
+      // 3. Third run with --force - should bypass cache and run validation
+      const forcedRun = await executeCLI(['validate', '--force']);
+      expect(forcedRun.code).toBe(0);
+      expect(forcedRun.stdout).toContain('Running phase'); // Should run phases again
+      expect(forcedRun.stdout).not.toContain('already passed'); // Should NOT show cache message
+    }, 30000); // Increase timeout for full workflow
   });
 
   describe('process lifecycle', () => {

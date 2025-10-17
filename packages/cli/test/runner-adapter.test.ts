@@ -81,7 +81,7 @@ describe('runner-adapter', () => {
       expect(runnerConfig.env?.TEST_VAR).toBe('test-value');
     });
 
-    it('should add VIBE_VALIDATE_FORCE env var when force is true', () => {
+    it('should set forceRun when force is true', () => {
       const config: VibeValidateConfig = {
         validation: {
           phases: []
@@ -100,10 +100,10 @@ describe('runner-adapter', () => {
         context
       });
 
-      expect(runnerConfig.env?.VIBE_VALIDATE_FORCE).toBe('1');
+      expect(runnerConfig.forceRun).toBe(true);
     });
 
-    it('should not add VIBE_VALIDATE_FORCE when force is false', () => {
+    it('should not set forceRun when force is false', () => {
       const config: VibeValidateConfig = {
         validation: {
           phases: []
@@ -122,7 +122,7 @@ describe('runner-adapter', () => {
         context
       });
 
-      expect(runnerConfig.env?.VIBE_VALIDATE_FORCE).toBeUndefined();
+      expect(runnerConfig.forceRun).toBe(false);
     });
 
     it('should filter out undefined environment variables', () => {

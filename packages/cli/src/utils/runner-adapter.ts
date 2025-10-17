@@ -34,11 +34,6 @@ export function createRunnerConfig(
     }
   }
 
-  // Add force flag to environment if set
-  if (options.force) {
-    envVars.VIBE_VALIDATE_FORCE = '1';
-  }
-
   // Choose callbacks based on output format
   const callbacks = options.format === 'human'
     ? createHumanCallbacks()
@@ -47,6 +42,7 @@ export function createRunnerConfig(
   return {
     phases: config.validation?.phases || [],
     enableFailFast: true, // Default to fail-fast (individual phases can override)
+    forceRun: options.force, // Pass force flag to runner
     env: envVars,
     stateFilePath: '.vibe-validate-state.yaml',
     ...callbacks,
