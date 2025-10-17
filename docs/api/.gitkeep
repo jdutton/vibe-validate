@@ -1,0 +1,44 @@
+# API Reference (Auto-Generated)
+
+This directory contains auto-generated API documentation created by TypeDoc.
+
+## Generating Documentation
+
+To regenerate the API documentation:
+
+```bash
+pnpm docs:build
+```
+
+This will parse all TypeScript source files and JSDoc comments to create comprehensive HTML documentation.
+
+## Viewing Documentation
+
+### Option 1: Local HTTP Server
+
+```bash
+pnpm docs:serve
+```
+
+Then open http://localhost:8000 in your browser.
+
+### Option 2: Open Directly
+
+Open `docs/api/index.html` in your web browser.
+
+## Notes
+
+- This directory is git-ignored (see `.gitignore`)
+- API documentation should be regenerated whenever public APIs change
+- Consider adding `pnpm docs:build` to the pre-publish workflow
+
+## Source
+
+Documentation is generated from:
+- `packages/cli/src/**/*.ts`
+- `packages/config/src/**/*.ts`
+- `packages/core/src/**/*.ts`
+- `packages/formatters/src/**/*.ts`
+- `packages/git/src/**/*.ts`
+
+Test files and internal implementations are excluded.

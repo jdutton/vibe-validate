@@ -12,6 +12,9 @@ build/
 coverage/
 .vitest/
 
+# Documentation (generated)
+docs/api/
+
 # Environment
 .env
 .env.local
