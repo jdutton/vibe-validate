@@ -1,0 +1,112 @@
+# Validation Pipeline for vibe-validate
+#
+# This workflow uses vibe-validate's own validation framework to validate itself.
+# It demonstrates the dogfooding principle and serves as a reference implementation.
+#
+name: Validation Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Run vibe-validate validation
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22, 24]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Run validation with vibe-validate
+        run: pnpm validate
+        env:
+          # Use LLM_OUTPUT=1 for concise, agent-friendly output
+          LLM_OUTPUT: '1'
+
+      - name: Upload validation state on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-state-${{ matrix.os }}-node${{ matrix.node }}
+          path: .vibe-validate-state.yaml
+          retention-days: 7
+
+  validate-coverage:
+    name: Run validation with coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+        env:
+          LLM_OUTPUT: '1'
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/coverage-final.json
+          fail_ci_if_error: false
+
+  all-validation-passed:
+    name: All Validation Passed
+    runs-on: ubuntu-latest
+    needs: [validate, validate-coverage]
+    if: always()
+
+    steps:
+      - name: Check all validation jobs
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ] || \
+             [ "${{ needs.validate-coverage.result }}" != "success" ]; then
+            echo "❌ Some validation checks failed"
+            exit 1
+          fi
+          echo "✅ All validation checks passed!"

@@ -2,28 +2,29 @@
  * Tests for BranchSyncChecker
  *
  * Tests the safe branch sync checking functionality that never auto-merges.
+ * Updated to test command injection prevention via spawn-based execution.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BranchSyncChecker, checkBranchSync, type SyncCheckResult, type ExecAsyncFunction } from '../src/branch-sync.js';
+import { BranchSyncChecker, checkBranchSync, type SyncCheckResult, type GitExecutor } from '../src/branch-sync.js';
 
 describe('BranchSyncChecker', () => {
-  let mockExecAsync: ReturnType<typeof vi.fn>;
+  let mockGitExecutor: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockExecAsync = vi.fn();
+    mockGitExecutor = vi.fn();
   });
 
   describe('checkSync', () => {
     it('should return up-to-date status when branch is synced', async () => {
-      // Mock git commands to return promises
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })  // git rev-parse --abbrev-ref HEAD
-        .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })         // git rev-parse --verify origin/main
-        .mockResolvedValueOnce({ stdout: '', stderr: '' })                 // git fetch
-        .mockResolvedValueOnce({ stdout: '0\n', stderr: '' });             // git rev-list --count
+      // Mock git commands using array-based arguments (prevents injection)
+      mockGitExecutor
+        .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })  // ['rev-parse', '--abbrev-ref', 'HEAD']
+        .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })         // ['rev-parse', '--verify', 'origin/main']
+        .mockResolvedValueOnce({ stdout: '', stderr: '' })                 // ['fetch', '--quiet', 'origin', 'main']
+        .mockResolvedValueOnce({ stdout: '0\n', stderr: '' });             // ['rev-list', '--count', 'HEAD..origin/main']
 
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result = await checker.checkSync();
 
       expect(result.isUpToDate).toBe(true);
@@ -34,13 +35,13 @@ describe('BranchSyncChecker', () => {
     });
 
     it('should return behind status when branch needs merge', async () => {
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: '', stderr: '' })
         .mockResolvedValueOnce({ stdout: '5\n', stderr: '' });  // 5 commits behind
 
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result = await checker.checkSync();
 
       expect(result.isUpToDate).toBe(false);
@@ -50,12 +51,11 @@ describe('BranchSyncChecker', () => {
     });
 
     it('should handle missing remote branch gracefully', async () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
-
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })
         .mockRejectedValueOnce(new Error('fatal: Needed a single revision'));  // Remote branch doesn't exist
 
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result = await checker.checkSync();
 
       expect(result.isUpToDate).toBe(true);
@@ -65,10 +65,9 @@ describe('BranchSyncChecker', () => {
     });
 
     it('should handle git errors gracefully', async () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
+      mockGitExecutor.mockRejectedValueOnce(new Error('fatal: not a git repository'));
 
-      mockExecAsync.mockRejectedValueOnce(new Error('fatal: not a git repository'));
-
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result = await checker.checkSync();
 
       expect(result.isUpToDate).toBe(false);
@@ -79,7 +78,7 @@ describe('BranchSyncChecker', () => {
     });
 
     it('should support custom remote branch', async () => {
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: '', stderr: '' })
@@ -87,63 +86,84 @@ describe('BranchSyncChecker', () => {
 
       const checker = new BranchSyncChecker({
         remoteBranch: 'origin/develop',
-        execAsync: mockExecAsync as ExecAsyncFunction
+        gitExecutor: mockGitExecutor as GitExecutor
       });
       const result = await checker.checkSync();
 
       expect(result.isUpToDate).toBe(true);
-      // Verify origin/develop was used
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining('origin/develop'),
-        expect.any(Object)
-      );
+      // Verify origin/develop was used (via array arguments)
+      expect(mockGitExecutor).toHaveBeenCalledWith(['rev-parse', '--verify', 'origin/develop']);
     });
 
     it('should trim whitespace from branch names', async () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
-
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: '  feature/test  \n\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: '', stderr: '' })
         .mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
 
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result = await checker.checkSync();
 
       expect(result.currentBranch).toBe('feature/test');
     });
 
     it('should handle non-numeric commit counts', async () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
-
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: '', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'invalid\n', stderr: '' });  // Invalid count
 
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result = await checker.checkSync();
 
       expect(result.behindBy).toBe(0);
     });
 
     it('should handle fetch failures', async () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
-
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
         .mockRejectedValueOnce(new Error('network error'));  // git fetch fails
 
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result = await checker.checkSync();
 
       expect(result.error).toContain('Failed to fetch');
+    });
+
+    it('should prevent command injection via array-based arguments', async () => {
+      // This test verifies that malicious branch names cannot inject commands
+      const maliciousBranch = 'origin/main; rm -rf /';
+
+      mockGitExecutor
+        .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })
+        .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
+        .mockResolvedValueOnce({ stdout: '', stderr: '' })
+        .mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
+
+      const checker = new BranchSyncChecker({
+        remoteBranch: maliciousBranch,
+        gitExecutor: mockGitExecutor as GitExecutor
+      });
+      await checker.checkSync();
+
+      // Verify that the branch name is passed as an array argument (safe)
+      // NOT as a shell string (vulnerable)
+      // The key is that each argument is separate - the shell cannot interpret "; rm -rf /"
+      expect(mockGitExecutor).toHaveBeenCalledWith(['rev-parse', '--verify', maliciousBranch]);
+
+      // When the branch is split by '/', both parts are still separate arguments
+      // The shell will receive: ['fetch', '--quiet', 'origin', 'main; rm -rf ']
+      // NOT: 'fetch --quiet origin main; rm -rf /' (which would execute rm -rf)
+      expect(mockGitExecutor).toHaveBeenCalledWith(['fetch', '--quiet', 'origin', 'main; rm -rf ']);
     });
   });
 
   describe('getExitCode', () => {
     it('should return 0 when up to date', () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result: SyncCheckResult = {
         isUpToDate: true,
         behindBy: 0,
@@ -155,7 +175,7 @@ describe('BranchSyncChecker', () => {
     });
 
     it('should return 1 when behind', () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result: SyncCheckResult = {
         isUpToDate: false,
         behindBy: 5,
@@ -167,7 +187,7 @@ describe('BranchSyncChecker', () => {
     });
 
     it('should return 0 when no remote exists', () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result: SyncCheckResult = {
         isUpToDate: false,
         behindBy: 0,
@@ -179,7 +199,7 @@ describe('BranchSyncChecker', () => {
     });
 
     it('should return 2 on error', () => {
-      const checker = new BranchSyncChecker({ execAsync: mockExecAsync as ExecAsyncFunction });
+      const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });
       const result: SyncCheckResult = {
         isUpToDate: false,
         behindBy: -1,
@@ -194,20 +214,20 @@ describe('BranchSyncChecker', () => {
 
   describe('checkBranchSync', () => {
     it('should provide convenience function for sync checking', async () => {
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: '', stderr: '' })
         .mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
 
-      const result = await checkBranchSync({ execAsync: mockExecAsync as ExecAsyncFunction });
+      const result = await checkBranchSync({ gitExecutor: mockGitExecutor as GitExecutor });
 
       expect(result.isUpToDate).toBe(true);
       expect(result.currentBranch).toBe('main');
     });
 
     it('should support custom options', async () => {
-      mockExecAsync
+      mockGitExecutor
         .mockResolvedValueOnce({ stdout: 'feature/test\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' })
         .mockResolvedValueOnce({ stdout: '', stderr: '' })
@@ -215,14 +235,11 @@ describe('BranchSyncChecker', () => {
 
       const result = await checkBranchSync({
         remoteBranch: 'origin/develop',
-        execAsync: mockExecAsync as ExecAsyncFunction
+        gitExecutor: mockGitExecutor as GitExecutor
       });
 
       expect(result.isUpToDate).toBe(true);
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining('origin/develop'),
-        expect.any(Object)
-      );
+      expect(mockGitExecutor).toHaveBeenCalledWith(['rev-parse', '--verify', 'origin/develop']);
     });
   });
 });

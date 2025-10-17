@@ -11,15 +11,9 @@
  * - Cross-platform compatibility
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 
 const GIT_TIMEOUT = 10000; // 10 seconds timeout for git operations
-const GIT_OPTIONS = {
-  timeout: GIT_TIMEOUT,
-  encoding: 'utf8' as const,
-  maxBuffer: 1024 * 1024 // 1MB buffer
-};
 
 export interface SyncCheckResult {
   isUpToDate: boolean;
@@ -29,12 +23,53 @@ export interface SyncCheckResult {
   error?: string;
 }
 
-// Type for the exec function (allows dependency injection for testing)
-export type ExecAsyncFunction = (_command: string, _options: typeof GIT_OPTIONS) => Promise<{ stdout: string; stderr: string }>;
+// Type for git command executor (allows dependency injection for testing)
+export type GitExecutor = (_args: string[]) => Promise<{ stdout: string; stderr: string }>;
 
 export interface SyncCheckOptions {
   remoteBranch?: string;  // Default: 'origin/main'
-  execAsync?: ExecAsyncFunction;  // Inject custom exec for testing
+  gitExecutor?: GitExecutor;  // Inject custom executor for testing
+}
+
+/**
+ * Execute git command safely using spawn (prevents command injection)
+ *
+ * @param args - Git command arguments (e.g., ['rev-parse', '--abbrev-ref', 'HEAD'])
+ * @returns Promise resolving to stdout and stderr
+ */
+function execGit(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('git', args, {
+      timeout: GIT_TIMEOUT
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    if (child.stdout) {
+      child.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+    }
+
+    if (child.stderr) {
+      child.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+    }
+
+    child.on('error', (error: Error) => {
+      reject(error);
+    });
+
+    child.on('close', (code: number | null) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(`git exited with code ${code}: ${stderr}`));
+      }
+    });
+  });
 }
 
 /**
@@ -44,11 +79,11 @@ export interface SyncCheckOptions {
  */
 export class BranchSyncChecker {
   private readonly remoteBranch: string;
-  private readonly execAsync: ExecAsyncFunction;
+  private readonly gitExecutor: GitExecutor;
 
   constructor(options: SyncCheckOptions = {}) {
     this.remoteBranch = options.remoteBranch || 'origin/main';
-    this.execAsync = options.execAsync || promisify(exec);
+    this.gitExecutor = options.gitExecutor || execGit;
   }
 
   /**
@@ -100,7 +135,7 @@ export class BranchSyncChecker {
 
   private async getCurrentBranch(): Promise<string> {
     try {
-      const { stdout } = await this.execAsync('git rev-parse --abbrev-ref HEAD', GIT_OPTIONS);
+      const { stdout } = await this.gitExecutor(['rev-parse', '--abbrev-ref', 'HEAD']);
       return stdout.trim();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -110,7 +145,7 @@ export class BranchSyncChecker {
 
   private async hasRemoteBranch(): Promise<boolean> {
     try {
-      await this.execAsync(`git rev-parse --verify ${this.remoteBranch}`, GIT_OPTIONS);
+      await this.gitExecutor(['rev-parse', '--verify', this.remoteBranch]);
       return true;
     } catch (_error) {
       return false;
@@ -120,7 +155,7 @@ export class BranchSyncChecker {
   private async fetchRemote(): Promise<void> {
     try {
       const [remote, branch] = this.remoteBranch.split('/');
-      await this.execAsync(`git fetch --quiet ${remote} ${branch}`, GIT_OPTIONS);
+      await this.gitExecutor(['fetch', '--quiet', remote, branch]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to fetch from ${this.remoteBranch}: ${errorMessage}`);
@@ -129,7 +164,7 @@ export class BranchSyncChecker {
 
   private async getCommitsBehind(): Promise<number> {
     try {
-      const { stdout } = await this.execAsync(`git rev-list --count HEAD..${this.remoteBranch}`, GIT_OPTIONS);
+      const { stdout } = await this.gitExecutor(['rev-list', '--count', `HEAD..${this.remoteBranch}`]);
       const count = parseInt(stdout.trim(), 10);
       return isNaN(count) ? 0 : count;
     } catch (error) {

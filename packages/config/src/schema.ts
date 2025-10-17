@@ -91,7 +91,11 @@ export const ValidationConfigSchema = z.object({
 
     /** State file path (default: .vibe-validate-state.yaml) */
     statePath: z.string().default('.vibe-validate-state.yaml'),
-  }).default({}),
+  }).optional().default({
+    strategy: 'git-tree-hash',
+    enabled: true,
+    statePath: '.vibe-validate-state.yaml',
+  }),
 });
 
 export type ValidationConfig = z.infer<typeof ValidationConfigSchema>;
@@ -153,10 +157,19 @@ export const VibeValidateConfigSchema = z.object({
   validation: ValidationConfigSchema,
 
   /** Git integration configuration */
-  git: GitConfigSchema.default({}),
+  git: GitConfigSchema.optional().default({
+    mainBranch: 'main',
+    autoSync: false,
+    warnIfBehind: true,
+  }),
 
   /** Output formatting configuration */
-  output: OutputConfigSchema.default({}),
+  output: OutputConfigSchema.optional().default({
+    format: 'auto',
+    showProgress: true,
+    verbose: false,
+    noColor: false,
+  }),
 
   /** Optional: Preset name (typescript-library, typescript-nodejs, etc.) */
   preset: z.string().optional(),
@@ -196,8 +209,8 @@ export function safeValidateConfig(config: unknown): {
   }
 
   // Format Zod errors into readable messages
-  const errors = result.error.errors.map(err => {
-    const path = err.path.join('.');
+  const errors = result.error.issues.map(err => {
+    const path = err.path.map(String).join('.');
     return `${path}: ${err.message}`;
   });
 
