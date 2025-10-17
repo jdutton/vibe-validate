@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "private": true,
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development)",
   "keywords": [

@@ -344,14 +344,19 @@ When you identify an opportunity:
 
 ## Current Focus
 
-**Active Work**: Phase 5.4.1 - CRITICAL Fixes (Open Source Governance Files)
+**Active Work**: Preparing for v0.9.5 release with generate-workflow command
+
+**Recent Additions**:
+- ✅ `generate-workflow` command for GitHub Actions workflow generation
+- ✅ Auto-detection of Node.js version from package.json
+- ✅ Matrix and non-matrix mode support
+- ✅ CLI flags for customization (--node-versions, --os, --fail-fast, --coverage)
+- ✅ Workflow sync checking (--check flag)
 
 **Next Tasks** (see TODO.md for details):
-1. Create CODE_OF_CONDUCT.md
-2. Create SECURITY.md
-3. Create GitHub issue templates
-4. Create PR template
-5. Create git release tags
+1. Clean up documentation references (in progress)
+2. Bump version to 0.9.5
+3. Publish to npm
 
 ## Reference
 

@@ -1,6 +1,9 @@
-# Publishing Guide - vibe-validate v0.9.0
+# Publishing Guide - vibe-validate
 
 This guide walks through publishing vibe-validate packages to npm.
+
+**Current Version**: v0.9.5 (in development)
+**Previous Version**: v0.9.1 (latest published)
 
 ## 📋 Pre-Publishing Checklist (Phase A) ✅ COMPLETE
 

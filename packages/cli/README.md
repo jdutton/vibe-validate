@@ -227,6 +227,85 @@ npx vibe-validate cleanup
 
 ---
 
+### `generate-workflow`
+
+Generate GitHub Actions workflow from vibe-validate configuration.
+
+```bash
+npx vibe-validate generate-workflow [options]
+```
+
+**Options:**
+- `--node-versions <versions>` - Node.js versions to test (comma-separated, default: `"20,22"`)
+- `--os <systems>` - Operating systems to test (comma-separated, default: `"ubuntu-latest"`)
+- `--fail-fast` - Fail fast in matrix strategy (default: `false`)
+- `--coverage` - Enable coverage reporting with Codecov
+- `--dry-run` - Show generated workflow without writing to file
+- `--check` - Check if workflow is in sync with config (exit 0 if in sync, 1 if not)
+
+**Examples:**
+
+```bash
+# Generate workflow with defaults (Node 20,22 on ubuntu-latest)
+npx vibe-validate generate-workflow
+
+# Generate workflow with full matrix
+npx vibe-validate generate-workflow \
+  --node-versions "20,22,24" \
+  --os "ubuntu-latest,macos-latest,windows-latest"
+
+# Enable coverage reporting
+npx vibe-validate generate-workflow --coverage
+
+# Enable fail-fast (stop on first failure)
+npx vibe-validate generate-workflow --fail-fast
+
+# Preview without writing
+npx vibe-validate generate-workflow --dry-run
+
+# Check if workflow is in sync
+npx vibe-validate generate-workflow --check
+```
+
+**What it generates:**
+
+Creates `.github/workflows/validate.yml` with:
+- Matrix strategy for multi-OS and multi-Node.js testing
+- Automatic pnpm/npm detection
+- Validation state artifact upload on failure
+- Separate coverage job (if `--coverage` is enabled)
+- All-validation-passed gate job
+
+**Matrix mode** (default when multiple versions/OSes):
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    os: [ubuntu-latest, macos-latest, windows-latest]
+    node: [20, 22, 24]
+```
+
+**Non-matrix mode** (single version/OS or `--no-matrix`):
+- Creates individual jobs per validation step
+- Preserves phase dependencies
+
+**Workflow sync checking:**
+
+Use `--check` in CI to ensure workflow stays in sync with config:
+
+```yaml
+# .github/workflows/validate.yml
+- name: Check workflow sync
+  run: npx vibe-validate generate-workflow --check
+```
+
+**Exit codes:**
+- `0` - Workflow generated successfully or in sync
+- `1` - Workflow out of sync (when using `--check`)
+- `2` - Configuration or runtime error
+
+---
+
 ### `doctor`
 
 Check repository health and best practices.

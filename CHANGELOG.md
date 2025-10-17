@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2025-10-17
+
+### ✨ Added
+
+- **@vibe-validate/cli**: New `generate-workflow` command for GitHub Actions workflow generation
+  - Generates `.github/workflows/validate.yml` from `vibe-validate.config.mjs`
+  - Auto-detects Node.js version from `package.json` engines field
+  - Supports matrix strategies (multi-OS, multi-Node versions) via CLI flags
+  - Non-matrix mode by default for single Node version (individual jobs per step)
+  - Matrix mode automatically enabled when multiple versions/OSes specified
+  - CLI flags: `--node-versions`, `--os`, `--fail-fast`, `--coverage`, `--dry-run`, `--check`
+  - Ensures perfect sync between local validation and CI validation
+  - Includes validation state artifact upload on failure
+  - Package manager auto-detection (npm/pnpm)
+
+### 📚 Documentation
+
+- Updated README.md with comprehensive `generate-workflow` command documentation
+- Updated CLI README with detailed examples and options
+- Updated CLAUDE.md to reflect current development status
+- Updated PUBLISHING.md with version information
+
 ## [0.9.1] - 2025-10-16
 
 ### 🐛 Fixed
@@ -162,7 +184,11 @@ This is the first public release. No migration required.
 ## Version History
 
 - **v0.9.0** (2025-10-16) - Initial beta release
+- **v0.9.1** (2025-10-16) - Fixed workspace dependencies
+- **v0.9.5** (2025-10-17) - Added generate-workflow command
 - **v1.0.0** (TBD) - Stable release with API freeze
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.9.5...HEAD
+[0.9.5]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.5
+[0.9.1]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.1
 [0.9.0]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.0

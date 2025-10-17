@@ -182,6 +182,78 @@ npx vibe-validate cleanup
 
 **Safety**: Only deletes branches confirmed merged via git log inspection.
 
+### `vibe-validate generate-workflow`
+
+Generate GitHub Actions workflow from vibe-validate configuration.
+
+```bash
+# Generate workflow file
+npx vibe-validate generate-workflow
+
+# Check if workflow is in sync with config
+npx vibe-validate generate-workflow --check
+
+# Show generated workflow without writing
+npx vibe-validate generate-workflow --dry-run
+
+# Customize matrix strategy
+npx vibe-validate generate-workflow --node-versions=20,22,24 --os=ubuntu-latest,macos-latest
+
+# Enable coverage reporting
+npx vibe-validate generate-workflow --coverage
+
+# Fail fast in matrix mode
+npx vibe-validate generate-workflow --fail-fast
+```
+
+**Options**:
+- `--node-versions <versions>` - Comma-separated Node.js versions (default: auto-detected from package.json)
+- `--os <systems>` - Comma-separated OS values (default: ubuntu-latest)
+- `--fail-fast` - Fail fast in matrix strategy (default: false)
+- `--coverage` - Enable coverage reporting with Codecov
+- `--dry-run` - Show generated workflow without writing to file
+- `--check` - Check if workflow is in sync with config (exit 0 if in sync, 1 if not)
+
+**Matrix Mode**:
+- Automatically enabled when multiple Node versions or OSes specified
+- Runs single `validate` job with matrix strategy
+- Includes validation state artifact upload on failure
+
+**Non-Matrix Mode** (default for single Node version):
+- Creates individual GitHub Actions jobs for each validation step
+- Respects phase dependencies from config
+- Better visualization in GitHub Actions UI
+
+**Example Generated Workflow**:
+```yaml
+name: Validation Pipeline
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node: ["22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm run validate
+```
+
+**Exit Codes**:
+- `0` - Success (workflow generated or in sync)
+- `1` - Failure (generation failed or workflow out of sync)
+
 ## Configuration
 
 ### Quick Start with Presets

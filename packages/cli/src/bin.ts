@@ -16,6 +16,7 @@ import { stateCommand } from './commands/state.js';
 import { syncCheckCommand } from './commands/sync-check.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
+import { generateWorkflowCommand } from './commands/generate-workflow.js';
 
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation
@@ -40,13 +41,14 @@ program
   .version(version);
 
 // Register commands
-validateCommand(program);       // vibe-validate validate
-initCommand(program);            // vibe-validate init
-preCommitCommand(program);       // vibe-validate pre-commit
-stateCommand(program);           // vibe-validate state
-syncCheckCommand(program);       // vibe-validate sync-check
-cleanupCommand(program);         // vibe-validate cleanup
-configCommand(program);          // vibe-validate config
+validateCommand(program);            // vibe-validate validate
+initCommand(program);                 // vibe-validate init
+preCommitCommand(program);            // vibe-validate pre-commit
+stateCommand(program);                // vibe-validate state
+syncCheckCommand(program);            // vibe-validate sync-check
+cleanupCommand(program);              // vibe-validate cleanup
+configCommand(program);               // vibe-validate config
+generateWorkflowCommand(program);     // vibe-validate generate-workflow
 
 // Parse command line arguments
 program.parse();
