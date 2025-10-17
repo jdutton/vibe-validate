@@ -34,7 +34,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "find packages -name '*.tsbuildinfo' -delete && pnpm -r build",
+    "build:clean": "pnpm -r clean && pnpm build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

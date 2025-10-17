@@ -36,25 +36,12 @@ export default {
           {
             name: 'Unit Tests with Coverage',
             command: 'pnpm test:coverage',
-            description: 'Run all unit tests (243 tests) with coverage thresholds (65% min)',
+            description: 'Run all unit tests (301 tests) with coverage thresholds (75% min)',
           },
         ],
       },
 
-      // Phase 3: Build Verification
-      {
-        name: 'Clean',
-        parallel: false,
-        steps: [
-          {
-            name: 'Clean Previous Build',
-            command: 'pnpm -r exec rm -rf dist',
-            description: 'Clean all dist/ directories',
-          },
-        ],
-      },
-
-      // Phase 4: Build
+      // Phase 3: Build Verification (ensures packages can build)
       {
         name: 'Build',
         parallel: false,
@@ -62,7 +49,7 @@ export default {
           {
             name: 'Build All Packages',
             command: 'pnpm -r build',
-            description: 'Build all packages in dependency order',
+            description: 'Build all packages in dependency order (incremental, preserves existing builds)',
           },
         ],
       },
