@@ -449,13 +449,15 @@ pnpm install
 pnpm -r build
 ```
 
-## Example: mcp-typescript-simple Integration
+## Real-World Example: External Project Integration
+
+This example shows how vibe-validate was integrated into an existing TypeScript project.
 
 ### Initial Setup (Pre-Publish)
 
 ```bash
-# mcp-typescript-simple project
-cd /Users/jeff/Workspaces/mcp-typescript-simple
+# Example project directory
+cd /path/to/your-project
 
 # Link to local vibe-validate (development mode)
 pnpm add -D file:../vibe-validate/packages/cli

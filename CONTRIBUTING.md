@@ -199,7 +199,7 @@ When developing vibe-validate features, you'll want to test them with real proje
 #### Option 1: Using `file:` Protocol (Recommended for Active Development)
 
 ```bash
-# In your test project (e.g., mcp-typescript-simple)
+# In your test project
 cd /path/to/test-project
 
 # Install vibe-validate from local workspace

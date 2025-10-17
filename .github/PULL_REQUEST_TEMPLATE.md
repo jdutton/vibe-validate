@@ -119,7 +119,6 @@ Relates to #
 - [ ] New and existing unit tests pass locally with my changes
 - [ ] Any dependent changes have been merged and published
 - [ ] I have run `pnpm validate` and all checks pass
-- [ ] I have updated TODO.md if this relates to planned work
 
 ## Screenshots/Recordings
 

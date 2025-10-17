@@ -10,10 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Project Status
 
-🚧 **IN ACTIVE DEVELOPMENT** - Extraction from mcp-typescript-simple in progress
+✅ **PUBLISHED TO NPM** - v0.9.6 released and ready for production use
 
-**Current Phase**: Phase 1 - Core Extraction
-**See**: TODO.md for detailed extraction plan and current status
+**Latest Version**: 0.9.6
+**npm**: `npm install -D @vibe-validate/cli`
 
 ## Repository Structure
 
@@ -25,10 +25,8 @@ vibe-validate/
 │   ├── formatters/    # Error parsing & LLM optimization
 │   ├── config/        # Configuration system with presets
 │   └── cli/           # Command-line interface
-├── examples/          # Example projects (future)
-├── docs/              # Documentation (future)
-├── TODO.md           # Extraction plan (git-ignored, local tracking)
-└── package.json      # Monorepo root
+├── docs/              # Comprehensive documentation
+└── package.json       # Monorepo root
 ```
 
 ## Development Commands
@@ -50,8 +48,9 @@ pnpm dev
 pnpm lint              # ESLint checking
 pnpm typecheck         # TypeScript type checking
 
-# Validation (when implemented)
+# Validation
 pnpm validate          # Full validation pipeline
+pnpm pre-commit        # Pre-commit workflow (sync check + validation)
 ```
 
 ## Package Management
@@ -88,9 +87,9 @@ pnpm build
 - Embed errors directly in state file (no log hunting)
 
 ### 3. Git Tree Hash Caching
-- **CRITICAL FIX NEEDED**: Current source uses non-deterministic `git stash create`
-- Must implement deterministic `git write-tree` approach
-- See TODO.md Phase 1.3 for details
+- Uses deterministic `git write-tree` approach for content-based hashing
+- Same code content always produces same hash (no timestamps)
+- Provides 312x speedup on unchanged code (validated in production)
 
 ### 4. Fail-Safe Philosophy
 - Validation always proceeds (never block the user)
@@ -153,13 +152,6 @@ Single source of truth: `.vibe-validate-state.yaml`
 - Provides agent-friendly prompt
 
 ## Common Tasks
-
-### Extract Code from mcp-typescript-simple
-1. Read source file from `/Users/jeff/Workspaces/mcp-typescript-simple/tools/`
-2. Remove MCP-specific logic
-3. Generalize for any project
-4. Add to appropriate package in `packages/`
-5. Update TODO.md checklist
 
 ### Add a New Package
 1. Create `packages/<name>/` directory
@@ -225,13 +217,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 git push origin <branch-name>
 ```
 
-### Git History Cleanup
-**Before Publishing to GitHub:**
-- **DO NOT COMMIT TODO.md** (it's git-ignored)
-- Review entire commit history
-- Squash/reorder commits for clarity
-- Remove any "WIP" or "fix typo" commits
-- Present clean, professional history
+### Git History Management
+**Best Practices:**
+- Review commit messages for clarity
+- Squash related commits when appropriate
+- Use conventional commit format (feat:, fix:, docs:, etc.)
+- Keep commits focused and atomic
 
 ### Pull Request Workflow
 - **No direct pushes to main** - ALL changes must go through pull requests
@@ -313,7 +304,7 @@ Every time you run tests, validation, or encounter errors, ask yourself:
 1. **Capture the experience** - Note exactly what was confusing or verbose
 2. **Identify the root cause** - Which package/command caused the issue?
 3. **Suggest a fix** - How would you make it more LLM-friendly?
-4. **Raise as improvement opportunity** - Add to TODO.md or create GitHub issue
+4. **Raise as improvement opportunity** - Create GitHub issue or discuss with user
 
 ### Example Scenarios
 
@@ -345,36 +336,31 @@ When you identify an opportunity:
 1. **Document it** - Write down the specific issue
 2. **Propose solution** - How would you fix it?
 3. **Estimate impact** - Is this CRITICAL, HIGH, MEDIUM, or LOW priority?
-4. **Add to backlog** - Update TODO.md or raise with user
+4. **Create issue or discuss** - Raise with user or create GitHub issue
 
 **Remember**: Your experience as an AI agent IS the product validation. Every friction point you encounter is a bug to fix.
 
 ## Current Focus
 
-**Active Work**: Preparing for v0.9.5 release with generate-workflow command
+**Latest Release**: v0.9.6 (2025-10-17)
 
-**Recent Additions**:
+**Key Features**:
 - ✅ `generate-workflow` command for GitHub Actions workflow generation
-- ✅ Auto-detection of Node.js version from package.json
-- ✅ Matrix and non-matrix mode support
-- ✅ CLI flags for customization (--node-versions, --os, --fail-fast, --coverage)
-- ✅ Workflow sync checking (--check flag)
+- ✅ `doctor` command for repository health diagnostics
+- ✅ Git tree hash-based validation caching (312x speedup)
+- ✅ Agent-friendly error formatting
+- ✅ Pre-commit workflow integration
+- ✅ Multi-OS and multi-Node.js testing support
 
-**Next Tasks** (see TODO.md for details):
-1. Clean up documentation references (in progress)
-2. Bump version to 0.9.5
-3. Publish to npm
-
-## Reference
-
-**Source Project**: `/Users/jeff/Workspaces/mcp-typescript-simple`
-**Extraction Plan**: `TODO.md` (git-ignored, local only)
-**Issue #82**: Original extraction proposal in source project
+**Next Release** (v0.9.7 roadmap):
+1. CI configuration schema support
+2. Enhanced doctor checks
+3. Interactive workflow generator
 
 ## Questions?
 
-This is a new project being actively developed. If Claude Code encounters ambiguity:
-1. Check TODO.md for current status
-2. Refer to source files in mcp-typescript-simple
+If Claude Code encounters ambiguity:
+1. Refer to comprehensive documentation in `docs/` directory
+2. Check existing test files for examples
 3. Follow the design principles above
 4. Ask the user if unclear

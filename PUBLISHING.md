@@ -2,18 +2,20 @@
 
 This guide walks through publishing vibe-validate packages to npm.
 
-**Current Version**: v0.9.5 (in development)
-**Previous Version**: v0.9.1 (latest published)
+**Current Version**: v0.9.6 (published 2025-10-17)
+**Next Version**: v0.9.7 (in development)
 
-## 📋 Pre-Publishing Checklist (Phase A) ✅ COMPLETE
+## 📋 Pre-Publishing Checklist
 
-- [x] **All package.json versions updated to 0.9.0**
-  - Root package.json: 0.9.0
-  - @vibe-validate/core: 0.9.0
-  - @vibe-validate/git: 0.9.0
-  - @vibe-validate/formatters: 0.9.0
-  - @vibe-validate/config: 0.9.0
-  - @vibe-validate/cli: 0.9.0
+Before publishing any new version, ensure:
+
+- [ ] **All package.json versions updated to target version**
+  - Root package.json
+  - @vibe-validate/core
+  - @vibe-validate/git
+  - @vibe-validate/formatters
+  - @vibe-validate/config
+  - @vibe-validate/cli
 
 - [x] **PublishConfig added to all packages**
   - `"publishConfig": { "access": "public" }` configured
@@ -28,18 +30,23 @@ This guide walks through publishing vibe-validate packages to npm.
   - `npm run publish:all` - Publish all packages in dependency order
   - Individual publish scripts for each package
 
-- [x] **CHANGELOG.md created**
-  - Comprehensive v0.9.0 release notes
-  - Feature list, performance metrics, test coverage
-  - Migration notes and known limitations
+- [ ] **CHANGELOG.md updated**
+  - Release notes for new version
+  - Feature list, bug fixes, breaking changes
+  - Migration notes if applicable
 
-- [x] **Build verification**
+- [ ] **Build verification**
   - `pnpm -r build` completed successfully
   - All 5 packages build without errors
   - Dist artifacts generated correctly
 
+- [ ] **Full validation passes**
+  - Run `pnpm validate` or `pnpm pre-commit`
+  - All tests passing
+  - No linter or type errors
+
 - [x] **Dependency verification**
-  - CLI uses `workspace:*` for internal deps (will resolve to ^0.9.0)
+  - CLI uses `workspace:*` for internal deps (resolves to published versions)
   - External dependencies correctly specified
 
 ## 🔐 Step 1: npm Login (USER ACTION REQUIRED)
@@ -73,7 +80,7 @@ npm org create vibe-validate
 npm org ls vibe-validate
 ```
 
-## 🧪 Step 3: Dry-Run Testing (Phase B)
+## 🧪 Step 3: Dry-Run Testing
 
 Test publishing without actually uploading to npm:
 
@@ -120,7 +127,7 @@ npx vibe-validate --help
 # Should show all commands
 ```
 
-## 🚀 Step 5: Publish to npm (Phase C)
+## 🚀 Step 5: Publish to npm
 
 **IMPORTANT**: Publish in dependency order to avoid "dependency not found" errors.
 
@@ -190,18 +197,15 @@ npm ls @vibe-validate/cli
 # Should show full dependency tree with all @vibe-validate packages
 ```
 
-## 📋 Step 8: Update mcp-typescript-simple (Phase D)
+## 📋 Step 8: Test in External Project
 
-Once published, switch mcp-typescript-simple to use published version:
+Once published, test installation in an external project:
 
 ```bash
-cd /Users/jeff/Workspaces/mcp-typescript-simple
+cd /path/to/test-project
 
-# Remove file: protocol dependency
-pnpm remove @vibe-validate/cli
-
-# Install from npm
-pnpm add -D @vibe-validate/cli@^0.9.0
+# Install published version
+npm install -D @vibe-validate/cli@^X.Y.Z
 
 # Test full workflow
 npx vibe-validate config
@@ -217,10 +221,10 @@ Tag the release in git:
 cd /Users/jeff/Workspaces/vibe-validate
 
 # Create tag
-git tag -a v0.9.0 -m "Release v0.9.0 - Initial beta release"
+git tag -a vX.Y.Z -m "Release vX.Y.Z - Description"
 
-# Push tag (after GitHub repo is set up in Phase 5.3)
-git push origin v0.9.0
+# Push tag to GitHub
+git push origin vX.Y.Z
 ```
 
 ## 📊 Post-Publishing Checklist
@@ -231,9 +235,8 @@ After successful publish:
 - [ ] Package pages show correct README.md
 - [ ] Installation from npm works in clean project
 - [ ] CLI commands work after npm install
-- [ ] mcp-typescript-simple switches to published version successfully
-- [ ] Git tag v0.9.0 created
-- [ ] TODO.md updated with completion status
+- [ ] External project testing successful
+- [ ] Git tag created and pushed
 
 ## 🐛 Troubleshooting
 
@@ -296,18 +299,18 @@ v0.9.0 publishing is successful when:
 - ✅ All 5 packages published to npm
 - ✅ Installation works via `npm install @vibe-validate/cli`
 - ✅ CLI commands functional after npm install
-- ✅ mcp-typescript-simple migrated to published version
+- ✅ External projects successfully migrated to published version
 - ✅ No breaking issues discovered in first 48 hours
-- ✅ At least 2-3 projects successfully using v0.9.0
+- ✅ At least 2-3 projects successfully using published version
 
 ## 📞 Support
 
 If you encounter issues during publishing:
 
 - **npm support**: support@npmjs.com
-- **Project issues**: (GitHub Issues after Phase 5.3)
+- **Project issues**: GitHub Issues at https://github.com/jdutton/vibe-validate/issues
 - **Documentation**: docs/ directory in this repo
 
 ---
 
-**Ready to publish?** Start with Step 1 (npm login) and proceed sequentially through each phase.
+**Ready to publish?** Start with Step 1 (npm login) and proceed sequentially through each step.
