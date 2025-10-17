@@ -13,7 +13,7 @@
 
 import { spawn } from 'child_process';
 
-const GIT_TIMEOUT = 10000; // 10 seconds timeout for git operations
+const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
 export interface SyncCheckResult {
   isUpToDate: boolean;

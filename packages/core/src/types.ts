@@ -120,7 +120,7 @@ export interface ValidationConfig {
   /** Path to state file (default: .validate-state.json) */
   stateFilePath?: string;
 
-  /** Path to log file (default: /tmp/validation-{timestamp}.log) */
+  /** Path to log file (default: os.tmpdir()/validation-{timestamp}.log) */
   logPath?: string;
 
   /** Enable fail-fast (stop on first failure) */

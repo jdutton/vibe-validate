@@ -12,6 +12,8 @@
 
 import { spawn, execSync, type ChildProcess } from 'child_process';
 import { writeFileSync, appendFileSync, existsSync, readFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { stopProcessGroup } from './process-utils.js';
 import type {
   ValidationStep,
@@ -64,6 +66,28 @@ export function getWorkingTreeHash(): string {
 
 /**
  * Check if validation has already passed for current working tree state
+ *
+ * Reads the validation state file and compares the git tree hash to determine
+ * if validation can be skipped (cache hit).
+ *
+ * @param currentTreeHash - Current git tree hash of working directory
+ * @param stateFilePath - Path to validation state file
+ * @returns Object with alreadyPassed flag and optional previousState
+ *
+ * @example
+ * ```typescript
+ * const { alreadyPassed, previousState } = checkExistingValidation(
+ *   'abc123...',
+ *   '.validate-state.json'
+ * );
+ *
+ * if (alreadyPassed) {
+ *   console.log('Validation already passed!');
+ *   return previousState;
+ * }
+ * ```
+ *
+ * @public
  */
 export function checkExistingValidation(
   currentTreeHash: string,
@@ -91,7 +115,28 @@ export function checkExistingValidation(
 
 /**
  * Parse test output to extract specific failures
- * This is a basic implementation - formatters package will have more sophisticated parsing
+ *
+ * Extracts failure details from validation step output using pattern matching.
+ * Supports Vitest, TypeScript, and ESLint error formats.
+ *
+ * Note: This is a basic implementation - the formatters package provides
+ * more sophisticated parsing with tool-specific formatters.
+ *
+ * @param output - Raw stdout/stderr output from validation step
+ * @returns Array of extracted failure messages (max 10 per failure type)
+ *
+ * @example
+ * ```typescript
+ * const output = `
+ *   ❌ should validate user input
+ *   src/user.ts(42,10): error TS2345: Argument type mismatch
+ * `;
+ *
+ * const failures = parseFailures(output);
+ * // ['❌ should validate user input', 'src/user.ts(42,10): error TS2345: ...']
+ * ```
+ *
+ * @public
  */
 export function parseFailures(output: string): string[] {
   const failures: string[] = [];
@@ -120,11 +165,34 @@ export function parseFailures(output: string): string[] {
 /**
  * Run validation steps in parallel with smart fail-fast
  *
- * @param steps - Array of validation steps to execute
- * @param phaseName - Name of the current phase (for logging)
- * @param logPath - Path to log file for output capture
+ * Executes multiple validation steps concurrently, capturing output and
+ * providing fail-fast termination if enabled. Each step runs in its own
+ * detached process group for clean termination.
+ *
+ * @param steps - Array of validation steps to execute in parallel
+ * @param phaseName - Human-readable phase name for logging
  * @param enableFailFast - If true, kills remaining processes on first failure
- * @param env - Environment variables to pass to child processes
+ * @param env - Additional environment variables for child processes
+ * @returns Promise resolving to execution results with outputs and step results
+ *
+ * @example
+ * ```typescript
+ * const result = await runStepsInParallel(
+ *   [
+ *     { name: 'TypeScript', command: 'pnpm typecheck' },
+ *     { name: 'ESLint', command: 'pnpm lint' },
+ *   ],
+ *   'Pre-Qualification',
+ *   true,  // Enable fail-fast
+ *   { NODE_ENV: 'test' }
+ * );
+ *
+ * if (!result.success) {
+ *   console.error(`Step ${result.failedStep?.name} failed`);
+ * }
+ * ```
+ *
+ * @public
  */
 export async function runStepsInParallel(
   steps: ValidationStep[],
@@ -188,6 +256,9 @@ export async function runStepsInParallel(
             resolve({ step, output, duration });
           } else {
             // On first failure, kill other processes if fail-fast enabled
+            // RACE CONDITION SAFE: While multiple processes could fail simultaneously,
+            // JavaScript's single-threaded event loop ensures atomic assignment.
+            // Even if multiple failures occur, only one will be firstFailure, which is acceptable.
             if (enableFailFast && !firstFailure) {
               firstFailure = { step, output };
               console.log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
@@ -222,13 +293,53 @@ export async function runStepsInParallel(
 /**
  * Validation runner with state tracking and caching
  *
- * Main entry point for running validation with git tree hash caching
+ * Main entry point for running validation with git tree hash-based caching.
+ * Executes validation phases sequentially, with parallel step execution within
+ * each phase. Supports fail-fast termination and comprehensive state tracking.
+ *
+ * Features:
+ * - Git tree hash-based caching (skip if code unchanged)
+ * - Parallel step execution within phases
+ * - Fail-fast mode (stop on first failure)
+ * - Comprehensive output logging
+ * - State file persistence for cache validation
+ *
+ * @param config - Validation configuration with phases, steps, and options
+ * @returns Promise resolving to validation result with pass/fail status
+ *
+ * @example
+ * ```typescript
+ * const result = await runValidation({
+ *   phases: [
+ *     {
+ *       name: 'Pre-Qualification',
+ *       parallel: true,
+ *       steps: [
+ *         { name: 'TypeScript', command: 'pnpm typecheck' },
+ *         { name: 'ESLint', command: 'pnpm lint' },
+ *       ],
+ *     },
+ *   ],
+ *   stateFilePath: '.vibe-validate-state.yaml',
+ *   enableFailFast: false,
+ *   forceRun: false,
+ * });
+ *
+ * if (result.passed) {
+ *   console.log('✅ Validation passed');
+ * } else {
+ *   console.error(`❌ Failed at step: ${result.failedStep}`);
+ *   console.error(result.failedStepOutput);
+ * }
+ * ```
+ *
+ * @public
  */
 export async function runValidation(config: ValidationConfig): Promise<ValidationResult> {
   const {
     phases,
     stateFilePath = '.validate-state.json',
-    logPath = `/tmp/validation-${new Date().toISOString().replace(/[:.]/g, '-')}.log`,
+    logPath = join(tmpdir(), `validation-${new Date().toISOString().replace(/[:.]/g, '-')}.log`),
     enableFailFast = false,
     forceRun = false,
     env = {},
@@ -343,7 +454,24 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
 /**
  * Setup signal handlers for graceful cleanup
  *
- * Ensures all child processes are killed when validation runner is interrupted
+ * Registers SIGTERM and SIGINT handlers to ensure all active child processes
+ * are properly terminated when the validation runner is interrupted.
+ *
+ * @param activeProcesses - Set of active child processes to track for cleanup
+ *
+ * @example
+ * ```typescript
+ * const activeProcesses = new Set<ChildProcess>();
+ * setupSignalHandlers(activeProcesses);
+ *
+ * // When spawning new processes:
+ * const proc = spawn('npm', ['test']);
+ * activeProcesses.add(proc);
+ *
+ * // Cleanup is automatic on SIGTERM/SIGINT
+ * ```
+ *
+ * @public
  */
 export function setupSignalHandlers(activeProcesses: Set<ChildProcess>): void {
   const cleanup = async (signal: string) => {

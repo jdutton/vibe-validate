@@ -13,7 +13,7 @@
 
 import { execSync } from 'child_process';
 
-const GIT_TIMEOUT = 10000; // 10 seconds
+const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 const GIT_OPTIONS = {
   encoding: 'utf8' as const,
   timeout: GIT_TIMEOUT,

@@ -202,7 +202,7 @@ describe('validate command', () => {
         failedStep: 'Test Step',
         failedStepOutput: 'Error: Test failed',
         rerunCommand: 'npm test',
-        fullLogFile: '/tmp/validation.log',
+        fullLogFile: join(tmpdir(), 'validation.log'),
       });
     });
 
