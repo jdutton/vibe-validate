@@ -11,7 +11,7 @@
  * @packageDocumentation
  */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';
@@ -43,6 +43,10 @@ export interface DoctorResult {
   suggestions: string[];
   /** Whether verbose mode was enabled */
   verboseMode?: boolean;
+  /** Total number of checks run */
+  totalChecks: number;
+  /** Number of checks that passed */
+  passedChecks: number;
 }
 
 /**
@@ -287,6 +291,101 @@ async function checkWorkflowSync(): Promise<DoctorCheckResult> {
 }
 
 /**
+ * Check if pre-commit hook is installed
+ */
+async function checkPreCommitHook(): Promise<DoctorCheckResult> {
+  const huskyPath = '.husky/pre-commit';
+
+  // Load config to check if pre-commit is enabled
+  // If config fails to load, use defaults (will be caught by checkConfigValid)
+  let config;
+  try {
+    config = await loadConfig();
+  } catch (_error) {
+    // Config load failed - use defaults (error will be reported in checkConfigValid)
+    config = null;
+  }
+
+  const preCommitEnabled = config?.hooks?.preCommit?.enabled ?? true; // Default true
+  const expectedCommand = config?.hooks?.preCommit?.command ?? 'npx vibe-validate pre-commit';
+
+  // If user explicitly disabled, acknowledge their choice
+  if (!preCommitEnabled) {
+    return {
+      name: 'Pre-commit hook',
+      passed: true,
+      message: 'Pre-commit hook disabled in config (user preference)',
+    };
+  }
+
+  // ⚠️ ENABLED but not installed
+  if (!existsSync(huskyPath)) {
+    return {
+      name: 'Pre-commit hook',
+      passed: false,
+      message: 'Pre-commit hook not installed',
+      suggestion: 'Install: npx husky init && echo "npx vibe-validate pre-commit" > .husky/pre-commit (or set hooks.preCommit.enabled=false to disable)',
+    };
+  }
+
+  try {
+    const hookContent = readFileSync(huskyPath, 'utf8');
+
+    // Check if hook runs vibe-validate (directly or via npm script)
+    const hasVibeValidate = hookContent.includes('vibe-validate pre-commit') ||
+                            hookContent.includes('npm run pre-commit') ||
+                            hookContent.includes('pnpm pre-commit') ||
+                            hookContent.includes('npx vibe-validate validate');
+
+    if (hasVibeValidate) {
+      return {
+        name: 'Pre-commit hook',
+        passed: true,
+        message: 'Pre-commit hook installed and runs vibe-validate',
+      };
+    } else {
+      // ⚠️ ENABLED but custom hook (needs verification)
+      const hookPreview = hookContent.split('\n').slice(0, 3).join('; ').trim();
+      return {
+        name: 'Pre-commit hook',
+        passed: false,
+        message: `Custom pre-commit hook detected: "${hookPreview}..."`,
+        suggestion: `Verify that .husky/pre-commit runs "${expectedCommand}" OR set hooks.preCommit.enabled=false if you're handling validation differently`,
+      };
+    }
+  } catch (_error) {
+    return {
+      name: 'Pre-commit hook',
+      passed: false,
+      message: 'Pre-commit hook exists but unreadable',
+      suggestion: 'Fix file permissions or set hooks.preCommit.enabled=false',
+    };
+  }
+}
+
+/**
+ * Check if validation state file exists
+ */
+function checkValidationState(): DoctorCheckResult {
+  const statePath = '.vibe-validate-state.yaml';
+
+  if (existsSync(statePath)) {
+    return {
+      name: 'Validation state',
+      passed: true,
+      message: 'Validation state file exists',
+    };
+  } else {
+    return {
+      name: 'Validation state',
+      passed: false,
+      message: 'Validation state file not found',
+      suggestion: 'Run validation at least once: npx vibe-validate validate',
+    };
+  }
+}
+
+/**
  * Run all doctor checks
  */
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
@@ -301,6 +400,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(await checkConfigValid());
   allChecks.push(await checkPackageManager());
   allChecks.push(await checkWorkflowSync());
+  allChecks.push(await checkPreCommitHook());
+  allChecks.push(checkValidationState());
 
   // Collect suggestions from failed checks
   const suggestions: string[] = allChecks
@@ -308,6 +409,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     .map(c => c.suggestion as string);
 
   const allPassed = allChecks.every(c => c.passed);
+  const totalChecks = allChecks.length;
+  const passedChecks = allChecks.filter(c => c.passed).length;
 
   // In non-verbose mode, only show failing checks (or all if all pass for summary)
   const checks = verbose ? allChecks : (allPassed ? allChecks : allChecks.filter(c => !c.passed));
@@ -317,6 +420,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     checks,
     suggestions,
     verboseMode: verbose,
+    totalChecks,
+    passedChecks,
   };
 }
 
@@ -358,6 +463,8 @@ export function doctorCommand(program: Command): void {
           }
 
           // Summary
+          console.log(`📊 Results: ${result.passedChecks}/${result.totalChecks} checks passed\n`);
+
           if (result.allPassed) {
             console.log('✨ All checks passed! Your vibe-validate setup looks healthy.');
             if (!result.verboseMode) {

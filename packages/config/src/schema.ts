@@ -167,6 +167,25 @@ export const CIConfigSchema = z.object({
 export type CIConfig = z.infer<typeof CIConfigSchema>;
 
 /**
+ * Hooks Configuration Schema
+ */
+export const HooksConfigSchema = z.object({
+  /** Pre-commit hook configuration */
+  preCommit: z.object({
+    /** Enable pre-commit hook checking (default: true) */
+    enabled: z.boolean().default(true),
+
+    /** Custom pre-commit command (default: 'npx vibe-validate pre-commit') */
+    command: z.string().default('npx vibe-validate pre-commit'),
+  }).optional().default({
+    enabled: true,
+    command: 'npx vibe-validate pre-commit',
+  }),
+});
+
+export type HooksConfig = z.infer<typeof HooksConfigSchema>;
+
+/**
  * Full Configuration Schema
  *
  * Root configuration object for vibe-validate.
@@ -192,6 +211,14 @@ export const VibeValidateConfigSchema = z.object({
 
   /** CI/CD configuration (for GitHub Actions workflow generation) */
   ci: CIConfigSchema.optional(),
+
+  /** Hooks configuration (pre-commit, etc.) */
+  hooks: HooksConfigSchema.optional().default({
+    preCommit: {
+      enabled: true,
+      command: 'npx vibe-validate pre-commit',
+    },
+  }),
 
   /** Optional: Preset name (typescript-library, typescript-nodejs, etc.) */
   preset: z.string().optional(),

@@ -51,5 +51,41 @@ describe('Doctor Command Integration', () => {
     expect(result).toContain('Configuration valid');
     expect(result).toContain('Package manager');
     expect(result).toContain('GitHub Actions workflow');
+    expect(result).toContain('Pre-commit hook');
+    expect(result).toContain('Validation state');
+  });
+
+  it('should check pre-commit hook installation', () => {
+    const result = execSync(`node ${cliPath} doctor`, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    // Should detect pre-commit hook (vibe-validate project has one)
+    expect(result).toContain('Pre-commit hook');
+  });
+
+  it('should check validation state file', () => {
+    const result = execSync(`node ${cliPath} doctor`, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    // Should detect validation state file
+    expect(result).toContain('Validation state');
+  });
+
+  it('should show pass/fail summary', () => {
+    const result = execSync(`node ${cliPath} doctor`, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    // Should show summary line with counts
+    expect(result).toMatch(/📊 Results: \d+\/\d+ checks passed/);
+    expect(result).toContain('9/9 checks passed');
   });
 });
