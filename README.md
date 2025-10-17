@@ -1,48 +1,84 @@
 # vibe-validate
 
-**Git-aware validation orchestration for vibe coding** (LLM-assisted development)
+> Git-aware validation orchestration with 312x faster cached runs
 
-## What is this?
+[![npm version](https://img.shields.io/npm/v/@vibe-validate/cli.svg)](https://www.npmjs.com/package/@vibe-validate/cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`vibe-validate` is a validation orchestration tool designed for developers using AI assistants like Claude Code, Cursor, Aider, and Continue. It caches validation state using git tree hashes, runs steps in parallel, and formats errors for LLM consumption.
+**What it does**: Caches your validation results (tests, lint, typecheck) using git tree hashes. When code hasn't changed, validation completes in ~288ms instead of minutes.
 
-## Key Features
+**Who it's for**: TypeScript/JavaScript developers, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
 
-- ✅ **Git tree hash caching** - Skip validation when code unchanged (up to **312x speedup**)
-- ✅ **LLM-optimized output** - Strip noise, extract actionable errors
-- ✅ **Agent context detection** - Adapts output for Claude Code, Cursor, etc.
-- ✅ **Parallel execution** - Run multiple validation steps simultaneously
-- ✅ **Language-agnostic** - Works with any commands (TypeScript/JavaScript presets included)
-- ✅ **Pre-commit workflow** - Branch sync + validation + cleanup
-
-## Why vibe-validate?
-
-**Problem**: Running full validation suites repeatedly during development is slow and frustrating. Traditional CI/CD tools don't cache based on actual code changes.
-
-**Solution**: vibe-validate uses **deterministic git tree hashing** to cache validation results. If your code hasn't changed, validation completes in ~288ms instead of minutes.
-
-**Real-world performance**:
-- **Full validation**: ~90 seconds (9 steps across 2 parallel phases)
-- **Cached validation**: 288ms (reading state file + git hash)
-- **Speedup**: **312x** when code unchanged
-
-## Quick Start
+## Quick Start (3 commands)
 
 ```bash
-# Install
+# 1. Install
 npm install -D @vibe-validate/cli
 
-# Initialize with interactive preset selection
+# 2. Initialize (creates config, detects your project type)
 npx vibe-validate init
 
-# Or specify a preset directly
-npx vibe-validate init --preset=typescript-nodejs
+# 3. Validate (full run first time, cached after)
+npx vibe-validate validate
+```
 
-# Run validation (full first time, cached on repeat)
+**First run**: ~60-90s (runs all checks)
+**Cached run**: ~288ms (312x faster!)
+
+## When to Use This
+
+Use vibe-validate if you:
+- ✅ Run `npm test && npm run lint && npm run typecheck` repeatedly
+- ✅ Want validation to be fast (cached when code unchanged)
+- ✅ Need pre-commit hooks that don't slow you down
+- ✅ Want consistent validation between local dev and CI/CD
+- ✅ Use AI assistants and want cleaner error output
+
+## What You Get
+
+- **Git tree hash caching** - Content-based, deterministic caching (not timestamp)
+- **Parallel execution** - Run independent checks simultaneously
+- **Agent-friendly output** - Detects AI assistants, provides structured errors
+- **GitHub Actions generator** - Auto-generate CI/CD workflows from config
+- **Health checking** - Diagnose project issues with `doctor` command
+- **Pre-commit workflow** - Branch sync + validation in one command
+
+## Common Commands
+
+```bash
+# Run validation (uses cache if code unchanged)
 npx vibe-validate validate
 
-# Pre-commit workflow (branch sync + cached validation)
+# Check repository health
+npx vibe-validate doctor
+
+# Generate GitHub Actions workflow
+npx vibe-validate generate-workflow
+
+# Pre-commit workflow (recommended before every commit)
 npx vibe-validate pre-commit
+
+# View validation state
+npx vibe-validate state
+
+# Force re-validation (bypass cache)
+npx vibe-validate validate --force
+```
+
+## Example: Before & After
+
+**Before** (traditional workflow):
+```bash
+npm run typecheck && npm run lint && npm test
+# Always takes 60-90 seconds, even if nothing changed
+```
+
+**After** (with vibe-validate):
+```bash
+npx vibe-validate validate
+# First run: 60-90s (cache miss)
+# Every run after: 288ms if code unchanged (cache hit)
+# Speedup: 312x when code unchanged
 ```
 
 ## CLI Commands
