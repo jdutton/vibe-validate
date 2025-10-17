@@ -271,15 +271,87 @@ git push origin <branch-name>
 - Include parameter descriptions
 - Show example usage
 
+## Dogfooding: Testing vibe-validate While Building It
+
+**CRITICAL FOR DEVELOPMENT**: You (Claude Code) are now **actively using vibe-validate** to validate this project. This is intentional dogfooding to test LLM-friendliness.
+
+### What to Watch For
+
+Every time you run tests, validation, or encounter errors, ask yourself:
+
+1. **Is the error output concise?**
+   - ✅ Good: 4-5 lines showing what failed and next steps
+   - ❌ Bad: 200+ lines of verbose test output or stack traces
+
+2. **Is the guidance actionable?**
+   - ✅ Good: "Run `pnpm lint` to see details" or "Check `.vibe-validate-state.yaml`"
+   - ❌ Bad: Generic errors with no recovery path
+
+3. **Does it respect your context window?**
+   - ✅ Good: Complete error details in state file, not in terminal
+   - ❌ Bad: Spamming terminal with verbose logs
+
+4. **Is the workflow deterministic?**
+   - ✅ Good: Same input → same output, no flaky validation
+   - ❌ Bad: Random cache invalidation or inconsistent results
+
+5. **Is the caching transparent?**
+   - ✅ Good: Clear when validation is skipped and why
+   - ❌ Bad: Mysterious behavior or stale results
+
+### How to Provide Feedback
+
+**When you notice something that could be improved:**
+
+1. **Capture the experience** - Note exactly what was confusing or verbose
+2. **Identify the root cause** - Which package/command caused the issue?
+3. **Suggest a fix** - How would you make it more LLM-friendly?
+4. **Raise as improvement opportunity** - Add to TODO.md or create GitHub issue
+
+### Example Scenarios
+
+**Good Experience:**
+```bash
+$ pnpm validate
+✓ Pre-Qualification (2.1s)
+✗ Testing (0.8s)
+Failed: typecheck
+
+Check details: npx vibe-validate state
+```
+→ **Concise, actionable, respects context window**
+
+**Bad Experience (hypothetical):**
+```bash
+$ pnpm validate
+[verbose server startup logs]
+[200 lines of test output]
+[stack traces]
+Error: Tests failed
+```
+→ **Opportunity**: Add LLM_OUTPUT=1 mode or better output filtering
+
+### Constructive Improvement Process
+
+When you identify an opportunity:
+
+1. **Document it** - Write down the specific issue
+2. **Propose solution** - How would you fix it?
+3. **Estimate impact** - Is this CRITICAL, HIGH, MEDIUM, or LOW priority?
+4. **Add to backlog** - Update TODO.md or raise with user
+
+**Remember**: Your experience as an AI agent IS the product validation. Every friction point you encounter is a bug to fix.
+
 ## Current Focus
 
-**Active Work**: Phase 1.2 - Extract @vibe-validate/core
+**Active Work**: Phase 5.4.1 - CRITICAL Fixes (Open Source Governance Files)
 
 **Next Tasks** (see TODO.md for details):
-1. Create packages/core structure
-2. Extract validation runner
-3. Remove MCP-specific dependencies
-4. Add unit tests
+1. Create CODE_OF_CONDUCT.md
+2. Create SECURITY.md
+3. Create GitHub issue templates
+4. Create PR template
+5. Create git release tags
 
 ## Reference
 

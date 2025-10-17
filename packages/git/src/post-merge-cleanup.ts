@@ -13,9 +13,31 @@
  * - Provides clear feedback on all actions taken
  */
 
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 
 const TIMEOUT = 30000; // 30 seconds timeout for git operations
+
+/**
+ * Execute git command safely using spawnSync with array arguments
+ * Prevents command injection by avoiding shell interpretation
+ */
+function execGitSync(args: string[]): string {
+  const result = spawnSync('git', args, {
+    encoding: 'utf8',
+    timeout: TIMEOUT,
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`git ${args[0]} failed: ${result.stderr}`);
+  }
+
+  return result.stdout;
+}
 
 export interface CleanupResult {
   success: boolean;
@@ -92,10 +114,7 @@ export class PostPRMergeCleanup {
    */
   private getCurrentBranch(): string {
     try {
-      return execSync('git branch --show-current', {
-        encoding: 'utf8',
-        timeout: TIMEOUT
-      }).trim();
+      return execGitSync(['branch', '--show-current']).trim();
     } catch (error) {
       throw new Error(`Failed to get current branch: ${error}`);
     }
@@ -106,11 +125,7 @@ export class PostPRMergeCleanup {
    */
   private switchToMain(): void {
     try {
-      execSync(`git checkout ${this.mainBranch}`, {
-        encoding: 'utf8',
-        timeout: TIMEOUT,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      execGitSync(['checkout', this.mainBranch]);
     } catch (error) {
       throw new Error(`Failed to switch to ${this.mainBranch} branch: ${error}`);
     }
@@ -122,18 +137,10 @@ export class PostPRMergeCleanup {
   private syncMainBranch(): void {
     try {
       // Fetch latest changes from remote
-      execSync(`git fetch ${this.remoteName} ${this.mainBranch}`, {
-        encoding: 'utf8',
-        timeout: TIMEOUT,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      execGitSync(['fetch', this.remoteName, this.mainBranch]);
 
       // Fast-forward merge remote/main
-      execSync(`git merge ${this.remoteName}/${this.mainBranch} --ff-only`, {
-        encoding: 'utf8',
-        timeout: TIMEOUT,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      execGitSync(['merge', `${this.remoteName}/${this.mainBranch}`, '--ff-only']);
 
     } catch (error) {
       throw new Error(`Failed to sync ${this.mainBranch} branch: ${error}`);
@@ -145,11 +152,7 @@ export class PostPRMergeCleanup {
    */
   private fetchRemoteInfo(): void {
     try {
-      execSync(`git fetch ${this.remoteName} --prune`, {
-        encoding: 'utf8',
-        timeout: TIMEOUT,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      execGitSync(['fetch', this.remoteName, '--prune']);
     } catch (error) {
       throw new Error(`Failed to fetch remote info: ${error}`);
     }
@@ -161,10 +164,7 @@ export class PostPRMergeCleanup {
   private deleteMergedBranches(): string[] {
     try {
       // Get list of local branches (excluding main)
-      const allBranches = execSync('git branch --format="%(refname:short)"', {
-        encoding: 'utf8',
-        timeout: TIMEOUT
-      })
+      const allBranches = execGitSync(['branch', '--format=%(refname:short)'])
         .trim()
         .split('\n')
         .filter(branch => branch && branch !== this.mainBranch && !branch.startsWith('*'));
@@ -179,20 +179,12 @@ export class PostPRMergeCleanup {
           }
 
           try {
-            execSync(`git branch -d "${branch}"`, {
-              encoding: 'utf8',
-              timeout: TIMEOUT,
-              stdio: ['pipe', 'pipe', 'pipe']
-            });
+            execGitSync(['branch', '-d', branch]);
             deletedBranches.push(branch);
           } catch (_deleteError) {
             // Try force delete if regular delete fails
             try {
-              execSync(`git branch -D "${branch}"`, {
-                encoding: 'utf8',
-                timeout: TIMEOUT,
-                stdio: ['pipe', 'pipe', 'pipe']
-              });
+              execGitSync(['branch', '-D', branch]);
               deletedBranches.push(branch);
             } catch (_forceDeleteError) {
               // Couldn't delete - skip this branch
@@ -213,10 +205,7 @@ export class PostPRMergeCleanup {
    */
   private isBranchMerged(branch: string): boolean {
     try {
-      const mergedBranches = execSync(`git branch --merged ${this.mainBranch} --format="%(refname:short)"`, {
-        encoding: 'utf8',
-        timeout: TIMEOUT
-      });
+      const mergedBranches = execGitSync(['branch', '--merged', this.mainBranch, '--format=%(refname:short)']);
 
       return mergedBranches.includes(branch);
 
@@ -231,11 +220,7 @@ export class PostPRMergeCleanup {
    */
   private pruneRemoteReferences(): void {
     try {
-      execSync(`git remote prune ${this.remoteName}`, {
-        encoding: 'utf8',
-        timeout: TIMEOUT,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      execGitSync(['remote', 'prune', this.remoteName]);
     } catch (_error) {
       // Non-critical operation - don't fail on error
     }

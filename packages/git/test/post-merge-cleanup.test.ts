@@ -6,15 +6,35 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { PostPRMergeCleanup, cleanupMergedBranches, type CleanupResult } from '../src/post-merge-cleanup.js';
 
 // Mock child_process
 vi.mock('child_process', () => ({
-  execSync: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
-const mockExecSync = execSync as ReturnType<typeof vi.fn>;
+const mockSpawnSync = spawnSync as ReturnType<typeof vi.fn>;
+
+/**
+ * Helper to create spawnSync success result
+ */
+const createSpawnResult = (stdout: string, status = 0) => ({
+  status,
+  stdout,
+  stderr: '',
+  error: undefined,
+});
+
+/**
+ * Helper to create spawnSync error result
+ */
+const createSpawnError = (message: string) => ({
+  status: 1,
+  stdout: '',
+  stderr: message,
+  error: new Error(message),
+});
 
 describe('PostPRMergeCleanup', () => {
   beforeEach(() => {
@@ -29,29 +49,29 @@ describe('PostPRMergeCleanup', () => {
     it('should complete full cleanup workflow successfully', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
+      mockSpawnSync
         // Step 1: Get current branch
-        .mockReturnValueOnce('feature/test\n')
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
         // Step 2: Switch to main
-        .mockReturnValueOnce('')
+        .mockReturnValueOnce(createSpawnResult(''))
         // Step 3: Fetch main
-        .mockReturnValueOnce('')
+        .mockReturnValueOnce(createSpawnResult(''))
         // Step 3: Merge main
-        .mockReturnValueOnce('')
+        .mockReturnValueOnce(createSpawnResult(''))
         // Step 4: Fetch remote info
-        .mockReturnValueOnce('')
+        .mockReturnValueOnce(createSpawnResult(''))
         // Step 5: List branches
-        .mockReturnValueOnce('feature/test\nfeature/old\n')
+        .mockReturnValueOnce(createSpawnResult('feature/test\nfeature/old\n'))
         // Step 5: Check merged branches (1st check)
-        .mockReturnValueOnce('feature/test\nmain\n')
+        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
         // Step 5: Delete branch
-        .mockReturnValueOnce('')
+        .mockReturnValueOnce(createSpawnResult(''))
         // Step 5: Check merged branches (2nd check)
-        .mockReturnValueOnce('feature/old\nmain\n')
+        .mockReturnValueOnce(createSpawnResult('feature/old\nmain\n'))
         // Step 5: Delete branch
-        .mockReturnValueOnce('')
+        .mockReturnValueOnce(createSpawnResult(''))
         // Step 6: Prune remote
-        .mockReturnValueOnce('');
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
@@ -66,23 +86,24 @@ describe('PostPRMergeCleanup', () => {
     it('should handle custom main branch name', async () => {
       const cleanup = new PostPRMergeCleanup({ mainBranch: 'develop' });
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')  // checkout develop
-        .mockReturnValueOnce('')  // fetch develop
-        .mockReturnValueOnce('')  // merge develop
-        .mockReturnValueOnce('')  // fetch remote
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('feature/test\ndevelop\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))  // checkout develop
+        .mockReturnValueOnce(createSpawnResult(''))  // fetch develop
+        .mockReturnValueOnce(createSpawnResult(''))  // merge develop
+        .mockReturnValueOnce(createSpawnResult(''))  // fetch remote
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult('feature/test\ndevelop\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
       expect(result.success).toBe(true);
-      // Verify checkout develop was called
-      expect(mockExecSync).toHaveBeenCalledWith(
-        expect.stringContaining('checkout develop'),
+      // Verify checkout develop was called with array args
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        'git',
+        ['checkout', 'develop'],
         expect.any(Object)
       );
     });
@@ -90,21 +111,22 @@ describe('PostPRMergeCleanup', () => {
     it('should handle custom remote name', async () => {
       const cleanup = new PostPRMergeCleanup({ remoteName: 'upstream' });
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')  // fetch upstream main
-        .mockReturnValueOnce('')  // merge upstream/main
-        .mockReturnValueOnce('')  // fetch upstream
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))  // fetch upstream main
+        .mockReturnValueOnce(createSpawnResult(''))  // merge upstream/main
+        .mockReturnValueOnce(createSpawnResult(''))  // fetch upstream
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
       expect(result.success).toBe(true);
-      // Verify fetch upstream was called
-      expect(mockExecSync).toHaveBeenCalledWith(
-        expect.stringContaining('fetch upstream'),
+      // Verify fetch upstream was called with array args
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        'git',
+        ['fetch', 'upstream', 'main'],
         expect.any(Object)
       );
     });
@@ -112,23 +134,23 @@ describe('PostPRMergeCleanup', () => {
     it('should handle dry-run mode without deleting branches', async () => {
       const cleanup = new PostPRMergeCleanup({ dryRun: true });
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('feature/test\nmain\n')
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
       expect(result.success).toBe(true);
       expect(result.branchesDeleted).toContain('feature/test');
-      // Verify no delete commands were issued
-      const deleteCommands = mockExecSync.mock.calls.filter(
-        ([cmd]) => typeof cmd === 'string' && cmd.includes('branch -d')
+      // Verify no delete commands were issued - check for branch -d in args
+      const deleteCommands = mockSpawnSync.mock.calls.filter(
+        ([_cmd, args]) => Array.isArray(args) && args.includes('-d')
       );
       expect(deleteCommands).toHaveLength(0);
     });
@@ -136,19 +158,19 @@ describe('PostPRMergeCleanup', () => {
     it('should skip unmerged branches', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('feature/merged\nfeature/unmerged\n')
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult('feature/merged\nfeature/unmerged\n'))
         // feature/merged is merged
-        .mockReturnValueOnce('feature/merged\nmain\n')
-        .mockReturnValueOnce('')
+        .mockReturnValueOnce(createSpawnResult('feature/merged\nmain\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
         // feature/unmerged is NOT merged
-        .mockReturnValueOnce('main\n')
-        .mockReturnValueOnce('');
+        .mockReturnValueOnce(createSpawnResult('main\n'))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
@@ -160,11 +182,9 @@ describe('PostPRMergeCleanup', () => {
     it('should handle errors during branch switching', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockImplementationOnce(() => {
-          throw new Error('checkout failed');
-        });
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnError('checkout failed'));
 
       const result = await cleanup.runCleanup();
 
@@ -175,12 +195,10 @@ describe('PostPRMergeCleanup', () => {
     it('should handle errors during sync', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockImplementationOnce(() => {
-          throw new Error('fetch failed');
-        });
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnError('fetch failed'));
 
       const result = await cleanup.runCleanup();
 
@@ -191,9 +209,7 @@ describe('PostPRMergeCleanup', () => {
     it('should handle errors when getting current branch', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync.mockImplementationOnce(() => {
-        throw new Error('not a git repo');
-      });
+      mockSpawnSync.mockReturnValueOnce(createSpawnError('not a git repo'));
 
       const result = await cleanup.runCleanup();
 
@@ -204,29 +220,28 @@ describe('PostPRMergeCleanup', () => {
     it('should force delete branches if regular delete fails', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('feature/test\nmain\n')
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
         // Regular delete fails
-        .mockImplementationOnce(() => {
-          throw new Error('branch not fully merged');
-        })
+        .mockReturnValueOnce(createSpawnError('branch not fully merged'))
         // Force delete succeeds
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
       expect(result.success).toBe(true);
       expect(result.branchesDeleted).toContain('feature/test');
-      // Verify force delete was called
-      expect(mockExecSync).toHaveBeenCalledWith(
-        expect.stringContaining('branch -D'),
+      // Verify force delete was called with array args
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        'git',
+        ['branch', '-D', 'feature/test'],
         expect.any(Object)
       );
     });
@@ -234,23 +249,19 @@ describe('PostPRMergeCleanup', () => {
     it('should skip branch if both delete attempts fail', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('feature/test\nmain\n')
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
         // Regular delete fails
-        .mockImplementationOnce(() => {
-          throw new Error('delete failed');
-        })
+        .mockReturnValueOnce(createSpawnError('delete failed'))
         // Force delete also fails
-        .mockImplementationOnce(() => {
-          throw new Error('force delete failed');
-        })
-        .mockReturnValueOnce('');
+        .mockReturnValueOnce(createSpawnError('force delete failed'))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
@@ -261,14 +272,14 @@ describe('PostPRMergeCleanup', () => {
     it('should handle empty branch list', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('main\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')  // Empty branch list
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('main\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))  // Empty branch list
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
@@ -279,17 +290,17 @@ describe('PostPRMergeCleanup', () => {
     it('should filter out main branch from deletion list', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
         // Return main in the branch list (should be filtered)
-        .mockReturnValueOnce('main\nfeature/test\n')
-        .mockReturnValueOnce('feature/test\nmain\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+        .mockReturnValueOnce(createSpawnResult('main\nfeature/test\n'))
+        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
@@ -301,17 +312,15 @@ describe('PostPRMergeCleanup', () => {
     it('should handle prune errors gracefully', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
         // Prune fails - should not affect overall success
-        .mockImplementationOnce(() => {
-          throw new Error('prune failed');
-        });
+        .mockReturnValueOnce(createSpawnError('prune failed'));
 
       const result = await cleanup.runCleanup();
 
@@ -322,24 +331,25 @@ describe('PostPRMergeCleanup', () => {
     it('should handle branch name with special characters', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('feature/test-123\n')
-        .mockReturnValueOnce('feature/test-123\nmain\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult('feature/test-123\n'))
+        .mockReturnValueOnce(createSpawnResult('feature/test-123\nmain\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
       expect(result.success).toBe(true);
       expect(result.branchesDeleted).toContain('feature/test-123');
-      // Verify branch name was properly quoted
-      expect(mockExecSync).toHaveBeenCalledWith(
-        expect.stringContaining('"feature/test-123"'),
+      // Verify branch name was passed as array arg (no quoting needed)
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        'git',
+        ['branch', '-d', 'feature/test-123'],
         expect.any(Object)
       );
     });
@@ -347,14 +357,14 @@ describe('PostPRMergeCleanup', () => {
     it('should trim branch names properly', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('  feature/test  \n\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('  feature/test  \n\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
@@ -364,18 +374,16 @@ describe('PostPRMergeCleanup', () => {
     it('should handle merge status check errors', async () => {
       const cleanup = new PostPRMergeCleanup();
 
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('feature/test\n')
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
         // Merge status check fails - should skip branch
-        .mockImplementationOnce(() => {
-          throw new Error('merge check failed');
-        })
-        .mockReturnValueOnce('');
+        .mockReturnValueOnce(createSpawnError('merge check failed'))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanup.runCleanup();
 
@@ -387,14 +395,14 @@ describe('PostPRMergeCleanup', () => {
 
   describe('cleanupMergedBranches', () => {
     it('should provide convenience function for cleanup', async () => {
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanupMergedBranches();
 
@@ -403,14 +411,14 @@ describe('PostPRMergeCleanup', () => {
     });
 
     it('should support custom options', async () => {
-      mockExecSync
-        .mockReturnValueOnce('feature/test\n')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('');
+      mockSpawnSync
+        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''))
+        .mockReturnValueOnce(createSpawnResult(''));
 
       const result = await cleanupMergedBranches({
         mainBranch: 'develop',
@@ -419,9 +427,10 @@ describe('PostPRMergeCleanup', () => {
       });
 
       expect(result.success).toBe(true);
-      // Verify custom main branch was used
-      expect(mockExecSync).toHaveBeenCalledWith(
-        expect.stringContaining('checkout develop'),
+      // Verify custom main branch was used with array args
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        'git',
+        ['checkout', 'develop'],
         expect.any(Object)
       );
     });

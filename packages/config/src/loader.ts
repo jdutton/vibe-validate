@@ -3,6 +3,35 @@
  *
  * Loads and resolves vibe-validate configuration from files,
  * including preset resolution and config extension.
+ *
+ * SECURITY MODEL:
+ *
+ * This loader executes user-provided configuration files as code (TypeScript/JavaScript)
+ * or parses them as data (JSON). This is intentional and necessary for flexibility,
+ * but has security implications:
+ *
+ * **Trust Boundary**: Configuration files are treated as TRUSTED CODE.
+ * - Config files can execute arbitrary JavaScript/TypeScript
+ * - Config files define shell commands that will be executed during validation
+ * - Users MUST only use config files from trusted sources
+ *
+ * **No Sandboxing**: Configuration files run with full process permissions.
+ * - They have access to the file system, network, environment variables
+ * - They can import arbitrary npm packages
+ * - They can modify process.env or global state
+ *
+ * **Security Responsibilities**:
+ * - **Users**: Only use configs from trusted sources (own code, official presets)
+ * - **Preset Authors**: Ensure presets don't execute untrusted commands
+ * - **This Package**: Validate config schema, but cannot prevent malicious code execution
+ *
+ * **Mitigations**:
+ * - Configuration schema validation (Zod) ensures structure is correct
+ * - Git command injection prevention (array-based spawn, no shell)
+ * - No automatic config downloads from remote sources
+ * - Presets are vetted and included in this package
+ *
+ * See SECURITY.md for complete security considerations.
  */
 
 import { resolve, dirname } from 'path';
