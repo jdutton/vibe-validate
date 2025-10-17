@@ -82,13 +82,13 @@ describe('config command', () => {
       expect(options?.some(opt => opt.flags === '--validate')).toBe(true);
     });
 
-    it('should register --format option', () => {
+    it('should register --verbose option', () => {
       configCommand(program);
 
       const configCmd = program.commands.find(cmd => cmd.name() === 'config');
       const options = configCmd?.options;
 
-      expect(options?.some(opt => opt.flags === '--format <format>')).toBe(true);
+      expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
     });
   });
 
@@ -172,7 +172,7 @@ describe('config command', () => {
     });
   });
 
-  describe('output formats', () => {
+  describe('output verbosity', () => {
     beforeEach(() => {
       // Mock valid config with all sections
       const mockConfig: VibeValidateConfig = {
@@ -195,7 +195,7 @@ describe('config command', () => {
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
     });
 
-    it('should display config in human format by default', async () => {
+    it('should display config in minimal YAML format by default', async () => {
       configCommand(program);
 
       try {
@@ -206,42 +206,23 @@ describe('config command', () => {
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Vibe-Validate Configuration'));
-    });
-
-    it('should display config in JSON format when requested', async () => {
-      configCommand(program);
-
-      try {
-        await program.parseAsync(['config', '--format', 'json'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
-        }
-      }
-
-      // Should output valid JSON
-      const logCalls = (console.log as ReturnType<typeof vi.spyOn>).mock.calls;
-      const jsonOutput = logCalls.find(call => {
-        const output = call[0] as string;
-        return output.includes('{') && output.includes('}');
-      });
-
-      expect(jsonOutput).toBeDefined();
-    });
-
-    it('should display config in YAML format when requested', async () => {
-      configCommand(program);
-
-      try {
-        await program.parseAsync(['config', '--format', 'yaml'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
-        }
-      }
-
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('validation:'));
+    });
+
+    it('should display config in verbose format when requested', async () => {
+      configCommand(program);
+
+      try {
+        await program.parseAsync(['config', '--verbose'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      // Verbose mode should include both YAML and explanatory text
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('validation:'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Vibe-Validate Configuration'));
     });
   });
 

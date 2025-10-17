@@ -183,11 +183,11 @@ describe('bin.ts - CLI entry point', () => {
       expect(result.stderr).toContain('No configuration found');
     });
 
-    it('should pass --format option to state command', async () => {
-      const result = await executeCLI(['state', '--format', 'json']);
+    it('should pass --verbose option to state command', async () => {
+      const result = await executeCLI(['state', '--verbose']);
 
       expect(result.code).toBe(0);
-      expect(result.stdout).toContain('"exists": false');
+      expect(result.stdout).toContain('exists: false');
     });
 
     it('should pass --validate option to config command', async () => {

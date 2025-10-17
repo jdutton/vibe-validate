@@ -14,7 +14,7 @@ export function configCommand(program: Command): void {
     .command('config')
     .description('Show or validate vibe-validate configuration')
     .option('--validate', 'Validate configuration only (exit 0 if valid, 1 if invalid)')
-    .option('--format <format>', 'Output format (human|yaml|json)', 'human')
+    .option('-v, --verbose', 'Show detailed configuration with explanations')
     .action(async (options) => {
       try {
         // Find config file
@@ -38,14 +38,13 @@ export function configCommand(program: Command): void {
           process.exit(0);
         }
 
-        // Output based on format
-        if (options.format === 'json') {
-          console.log(JSON.stringify(config, null, 2));
-        } else if (options.format === 'yaml') {
-          displayYamlConfig(config);
+        // Output YAML format (always)
+        if (options.verbose) {
+          // Verbose mode: show with colors and explanations
+          displayVerboseConfig(config, configPath);
         } else {
-          // Human-friendly format
-          displayHumanConfig(config, configPath);
+          // Minimal mode: just the YAML
+          displayYamlConfig(config);
         }
 
         process.exit(0);
@@ -62,9 +61,15 @@ export function configCommand(program: Command): void {
 }
 
 /**
- * Display configuration in human-friendly format
+ * Display configuration in verbose format with colors and explanations
  */
-function displayHumanConfig(config: VibeValidateConfig, configPath: string): void {
+function displayVerboseConfig(config: VibeValidateConfig, configPath: string): void {
+  // First show YAML
+  displayYamlConfig(config);
+
+  // Then add colored summary
+  console.log();
+  console.log(chalk.gray('─'.repeat(50)));
   console.log(chalk.blue('⚙️  Vibe-Validate Configuration'));
   console.log(chalk.gray('─'.repeat(50)));
   console.log(chalk.gray(`Config file: ${configPath}`));

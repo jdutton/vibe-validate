@@ -115,7 +115,6 @@ pnpm build
 - Unit tests for all public APIs
 - Integration tests for workflows
 - Mock git commands (don't require real git repo)
-- **LLM-Optimized Output**: Use `LLM_OUTPUT=1` for concise, failure-focused test output
 - **Test-Driven Development (TDD) REQUIRED**: All features and bug fixes MUST follow TDD:
   1. Write failing tests FIRST that demonstrate the desired behavior
   2. Run tests to confirm they fail for the right reason
@@ -327,7 +326,7 @@ $ pnpm validate
 [stack traces]
 Error: Tests failed
 ```
-→ **Opportunity**: Add LLM_OUTPUT=1 mode or better output filtering
+→ **Opportunity**: Add better output filtering or improve agent context detection
 
 ### Constructive Improvement Process
 

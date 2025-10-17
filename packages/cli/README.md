@@ -65,20 +65,20 @@ npx vibe-validate validate [options]
 **Options:**
 - `--force` - Bypass cache and force re-validation
 - `--no-cache` - Disable caching for this run
-- `--format <format>` - Output format: `human`, `yaml`, `json`, or `auto`
+- `-v, --verbose` - Show detailed progress and output
 - `--config <path>` - Path to config file (default: `vibe-validate.config.mjs`)
 
 **Examples:**
 
 ```bash
-# Normal validation (uses cache)
+# Normal validation (uses cache, minimal output)
 npx vibe-validate validate
 
 # Force re-validation (bypass cache)
 npx vibe-validate validate --force
 
-# JSON output (for CI/CD)
-npx vibe-validate validate --format json
+# Verbose output (detailed progress indicators)
+npx vibe-validate validate --verbose
 
 # Custom config file
 npx vibe-validate validate --config ./custom-config.mjs
@@ -100,19 +100,16 @@ npx vibe-validate state [options]
 ```
 
 **Options:**
-- `--format <format>` - Output format: `human`, `yaml`, or `json`
+- `-v, --verbose` - Show full error output without truncation
 
 **Examples:**
 
 ```bash
-# Human-readable state
+# Minimal YAML output (agent-friendly)
 npx vibe-validate state
 
-# YAML output (for agents)
-npx vibe-validate state --format yaml
-
-# JSON output (for scripts)
-npx vibe-validate state --format json
+# Verbose output (includes explanatory text)
+npx vibe-validate state --verbose
 ```
 
 **Output includes:**
@@ -133,17 +130,17 @@ npx vibe-validate config [options]
 ```
 
 **Options:**
-- `--format <format>` - Output format: `human`, `yaml`, or `json`
+- `-v, --verbose` - Show detailed configuration with explanations
 - `--config <path>` - Path to config file
 
 **Examples:**
 
 ```bash
-# Show configuration
+# Show configuration (minimal YAML)
 npx vibe-validate config
 
-# JSON output
-npx vibe-validate config --format json
+# Verbose output (includes explanatory text)
+npx vibe-validate config --verbose
 ```
 
 **Use cases:**
@@ -406,13 +403,15 @@ vibe-validate uses **git tree hash-based caching** for deterministic, content-ba
 
 ## Agent-Friendly Output
 
-vibe-validate is optimized for AI agents like Claude Code:
+vibe-validate is optimized for AI agents like Claude Code with YAML-only structured output:
 
 **Benefits:**
+- **YAML everywhere**: Single format that's both machine and human readable
 - **Minimal token waste**: 4-5 lines on failure vs 200+ with traditional tools
 - **Structured errors**: Complete details in `.vibe-validate-state.yaml`
 - **Clear next steps**: Actionable commands in state file
-- **Zero noise**: No server logs, no verbose progress bars
+- **Auto-detection**: Minimal output for agents, verbose for interactive terminals
+- **Zero noise**: No server logs, no verbose progress bars (unless `--verbose`)
 
 **Example failure output:**
 
@@ -525,7 +524,6 @@ vv config
 
 - `NODE_ENV` - Set to `test` to disable progress indicators
 - `CI` - Auto-detected, disables colors and interactive features
-- `LLM_OUTPUT` - Set to `1` for minimal output (agent-friendly)
 
 ## Links
 

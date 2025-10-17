@@ -161,14 +161,6 @@ describe('generate-workflow command', () => {
       expect(job.steps[1].uses).toBe('actions/setup-node@v4');
     });
 
-    it('should add LLM_OUTPUT=1 environment variable in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const job = workflow.jobs['typescript-type-check'];
-      const commandStep = job.steps.find((s: any) => s.run === 'pnpm -r typecheck');
-      expect(commandStep.env.LLM_OUTPUT).toBe('1');
-    });
 
     it('should add all-validation-passed gate job in non-matrix mode', () => {
       const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
@@ -259,7 +251,6 @@ describe('generate-workflow command', () => {
       const testStep = job.steps.find((s: any) => s.run === 'npm test');
       expect(testStep.env.NODE_ENV).toBe('test');
       expect(testStep.env.API_KEY).toBe('${{ secrets.API_KEY }}');
-      expect(testStep.env.LLM_OUTPUT).toBe('1'); // Should add LLM_OUTPUT
     });
 
     it('should include header without timestamp', () => {
@@ -374,19 +365,6 @@ describe('generate-workflow command', () => {
       expect(pnpmStep.with.version).toBe('9');
     });
 
-    it('should add LLM_OUTPUT=1 environment variable in matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, {
-        packageManager: 'pnpm',
-        nodeVersions: ['20', '22'],
-        useMatrix: true,
-      });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const job = workflow.jobs['validate'];
-      const validateStep = job.steps.find((s: any) => s.run === 'pnpm validate');
-      expect(validateStep).toBeDefined();
-      expect(validateStep.env.LLM_OUTPUT).toBe('1');
-    });
 
     it('should add validation state upload on failure in matrix mode', () => {
       const workflowYaml = generateWorkflow(mockConfig, {

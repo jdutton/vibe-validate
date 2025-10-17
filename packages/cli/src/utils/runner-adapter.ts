@@ -11,7 +11,7 @@ import chalk from 'chalk';
 
 export interface RunnerOptions {
   force?: boolean;
-  format: 'human' | 'yaml' | 'json';
+  verbose: boolean;
   context: AgentContext;
 }
 
@@ -34,10 +34,10 @@ export function createRunnerConfig(
     }
   }
 
-  // Choose callbacks based on output format
-  const callbacks = options.format === 'human'
-    ? createHumanCallbacks()
-    : createAgentCallbacks(options.format);
+  // Choose callbacks based on verbosity
+  const callbacks = options.verbose
+    ? createVerboseCallbacks()
+    : createMinimalCallbacks();
 
   return {
     phases: config.validation?.phases || [],
@@ -50,9 +50,9 @@ export function createRunnerConfig(
 }
 
 /**
- * Create human-friendly console callbacks (colorful, verbose)
+ * Create verbose console callbacks (colorful, detailed progress)
  */
-function createHumanCallbacks() {
+function createVerboseCallbacks() {
   return {
     onPhaseStart: (phase: ValidationPhase) => {
       console.log(chalk.blue(`\n🔄 Running phase: ${phase.name}`));
@@ -81,20 +81,10 @@ function createHumanCallbacks() {
 }
 
 /**
- * Create agent-friendly callbacks (minimal, structured)
+ * Create minimal callbacks (agent-friendly YAML output)
  */
-function createAgentCallbacks(format: 'yaml' | 'json') {
-  if (format === 'json') {
-    // JSON format: output structured data only at the end
-    return {
-      onPhaseStart: () => {}, // Silent
-      onPhaseComplete: () => {}, // Silent
-      onStepStart: () => {}, // Silent
-      onStepComplete: () => {}, // Silent
-    };
-  }
-
-  // YAML format: minimal progress output
+function createMinimalCallbacks() {
+  // Minimal YAML-structured progress output
   return {
     onPhaseStart: (phase: ValidationPhase) => {
       console.log(`phase_start: ${phase.name}`);

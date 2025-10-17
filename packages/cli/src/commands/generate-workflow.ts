@@ -271,9 +271,6 @@ export function generateWorkflow(
     jobSteps.push({
       name: 'Run validation',
       run: packageManager === 'pnpm' ? 'pnpm validate' : 'npm run validate',
-      env: {
-        LLM_OUTPUT: '1',
-      },
     });
 
     // Add validation state upload on failure
@@ -339,9 +336,6 @@ export function generateWorkflow(
       coverageSteps.push({
         name: 'Run tests with coverage',
         run: packageManager === 'pnpm' ? 'pnpm test:coverage' : 'npm run test:coverage',
-        env: {
-          LLM_OUTPUT: '1',
-        },
       });
 
       if (coverageProvider === 'codecov') {
@@ -407,13 +401,6 @@ export function generateWorkflow(
         // Add environment variables from step config
         if (step.env) {
           testStep.env = { ...step.env };
-        } else {
-          testStep.env = {};
-        }
-
-        // Add LLM_OUTPUT=1 for concise CI output
-        if (!testStep.env.LLM_OUTPUT) {
-          testStep.env.LLM_OUTPUT = '1';
         }
 
         jobSteps.push(testStep);

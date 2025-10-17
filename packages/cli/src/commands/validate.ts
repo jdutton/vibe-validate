@@ -16,7 +16,7 @@ export function validateCommand(program: Command): void {
     .command('validate')
     .description('Run validation with git tree hash caching')
     .option('-f, --force', 'Force validation even if already passed')
-    .option('--format <format>', 'Output format (human|yaml|json|auto)', 'auto')
+    .option('-v, --verbose', 'Show detailed progress and output')
     .action(async (options) => {
       try {
         // Load configuration
@@ -29,15 +29,13 @@ export function validateCommand(program: Command): void {
         // Detect context (Claude Code, CI, etc.)
         const context = detectContext();
 
-        // Determine output format
-        const format = options.format === 'auto'
-          ? (context.isAgent ? 'yaml' : 'human')
-          : options.format;
+        // Determine verbosity (explicit flag or auto-detect from context)
+        const verbose = options.verbose ?? (context.isInteractive && !context.isAgent);
 
         // Create runner config
         const runnerConfig = createRunnerConfig(config, {
           force: options.force,
-          format,
+          verbose,
           context,
         });
 

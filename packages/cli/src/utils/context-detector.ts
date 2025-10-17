@@ -75,23 +75,27 @@ export function detectContext(): AgentContext {
 }
 
 /**
- * Get recommended output format based on context
+ * Determine if verbose output should be used based on context
  *
  * @param context Agent context
- * @returns Recommended output format
+ * @returns True if verbose output is recommended, false for minimal
  */
-export function getRecommendedFormat(context: AgentContext): 'human' | 'yaml' | 'json' {
+export function shouldBeVerbose(context: AgentContext): boolean {
+  // Agents (Claude Code, Cursor, etc.) prefer minimal output
   if (context.isAgent) {
-    return 'yaml'; // Agent-friendly structured format
+    return false;
   }
 
+  // CI environments prefer minimal output
   if (context.isCI) {
-    return 'json'; // Machine-readable for CI/CD pipelines
+    return false;
   }
 
+  // Interactive terminals can handle verbose output
   if (context.isInteractive) {
-    return 'human'; // Colorful, verbose output for terminals
+    return true;
   }
 
-  return 'human'; // Default fallback
+  // Default to minimal for non-interactive contexts
+  return false;
 }

@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/git",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "description": "Git utilities for vibe-validate - tree hash calculation, branch sync, and post-merge cleanup",
   "type": "module",
   "main": "./dist/index.js",

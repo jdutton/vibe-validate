@@ -91,13 +91,13 @@ describe('validate command', () => {
       expect(options?.some(opt => opt.flags === '-f, --force')).toBe(true);
     });
 
-    it('should register --format option', () => {
+    it('should register --verbose option', () => {
       validateCommand(program);
 
       const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
       const options = validateCmd?.options;
 
-      expect(options?.some(opt => opt.flags === '--format <format>')).toBe(true);
+      expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
     });
   });
 
@@ -244,7 +244,7 @@ describe('validate command', () => {
     });
   });
 
-  describe('output format detection', () => {
+  describe('verbosity detection', () => {
     beforeEach(() => {
       // Mock valid config
       const mockConfig: VibeValidateConfig = {
@@ -271,7 +271,7 @@ describe('validate command', () => {
       });
     });
 
-    it('should use yaml format for agents when format is auto', async () => {
+    it('should use minimal output for agents by default', async () => {
       // Mock Claude Code environment
       process.env.CLAUDE_CODE = 'true';
 
@@ -283,13 +283,13 @@ describe('validate command', () => {
         // Expected exit
       }
 
-      // Verify runValidation was called (format detection is handled by detectContext + createRunnerConfig)
+      // Verify runValidation was called (verbosity is handled by detectContext + createRunnerConfig)
       expect(core.runValidation).toHaveBeenCalled();
 
       delete process.env.CLAUDE_CODE;
     });
 
-    it('should use human format for non-agents when format is auto', async () => {
+    it('should use verbose output for interactive terminals by default', async () => {
       // Ensure no agent environment variables
       delete process.env.CLAUDE_CODE;
       delete process.env.CI;
@@ -302,20 +302,20 @@ describe('validate command', () => {
         // Expected exit
       }
 
-      // Verify runValidation was called (format detection is handled by detectContext + createRunnerConfig)
+      // Verify runValidation was called (verbosity detection is handled by detectContext + createRunnerConfig)
       expect(core.runValidation).toHaveBeenCalled();
     });
 
-    it('should respect explicit format option', async () => {
+    it('should respect explicit --verbose flag', async () => {
       validateCommand(program);
 
       try {
-        await program.parseAsync(['validate', '--format', 'json'], { from: 'user' });
+        await program.parseAsync(['validate', '--verbose'], { from: 'user' });
       } catch (error: unknown) {
         // Expected exit
       }
 
-      // Verify runValidation was called (format is processed by createRunnerConfig)
+      // Verify runValidation was called (verbose flag is processed by createRunnerConfig)
       expect(core.runValidation).toHaveBeenCalled();
     });
   });

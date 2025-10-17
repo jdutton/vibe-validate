@@ -23,7 +23,7 @@ export function stateCommand(program: Command): void {
   program
     .command('state')
     .description('Show current validation state')
-    .option('--format <format>', 'Output format (human|yaml|json)', 'human')
+    .option('-v, --verbose', 'Show full error output without truncation')
     .option('--file <path>', 'State file path', '.vibe-validate-state.yaml')
     .action(async (options) => {
       try {
@@ -32,13 +32,10 @@ export function stateCommand(program: Command): void {
 
         // Check if state file exists
         if (!existsSync(statePath)) {
-          if (options.format === 'human') {
-            console.log(chalk.gray('ℹ️  No validation state found'));
+          console.log('exists: false');
+          if (options.verbose) {
+            console.log(chalk.gray('\nℹ️  No validation state found'));
             console.log(chalk.gray('   Run: vibe-validate validate'));
-          } else if (options.format === 'json') {
-            console.log(JSON.stringify({ exists: false }, null, 2));
-          } else {
-            console.log('exists: false');
           }
           process.exit(0);
         }
@@ -47,14 +44,13 @@ export function stateCommand(program: Command): void {
         const stateContent = readFileSync(statePath, 'utf-8');
         const state = parseYaml(stateContent) as ValidationState;
 
-        // Output based on format
-        if (options.format === 'json') {
-          console.log(JSON.stringify({ exists: true, ...state }, null, 2));
-        } else if (options.format === 'yaml') {
-          console.log(stateContent);
+        // Output YAML format (always)
+        if (options.verbose) {
+          // Verbose mode: show full output with colors and explanations
+          displayVerboseState(state, stateContent);
         } else {
-          // Human-friendly format
-          displayHumanState(state);
+          // Minimal mode: just the YAML content
+          console.log(stateContent);
         }
 
         process.exit(0);
@@ -66,10 +62,15 @@ export function stateCommand(program: Command): void {
 }
 
 /**
- * Display validation state in human-friendly format
+ * Display validation state in verbose format with colors and explanations
  */
-function displayHumanState(state: ValidationState): void {
-  console.log(chalk.blue('📊 Validation State'));
+function displayVerboseState(state: ValidationState, yamlContent: string): void {
+  // First show the raw YAML
+  console.log(yamlContent);
+
+  // Then add colored summary and explanations
+  console.log(chalk.gray('─'.repeat(50)));
+  console.log(chalk.blue('📊 Validation State Summary'));
   console.log(chalk.gray('─'.repeat(50)));
 
   // Status
@@ -91,14 +92,8 @@ function displayHumanState(state: ValidationState): void {
     console.log(chalk.red(`\n❌ Failed Step: ${state.failedStep}`));
 
     if (state.failedStepOutput) {
-      console.log(chalk.red('\nError Output:'));
-      console.log(chalk.gray('─'.repeat(50)));
-      // Limit output to first 20 lines
-      const lines = state.failedStepOutput.split('\n').slice(0, 20);
-      lines.forEach(line => console.log(chalk.gray(line)));
-      if (state.failedStepOutput.split('\n').length > 20) {
-        console.log(chalk.gray('... (truncated)'));
-      }
+      console.log(chalk.red('\nError Output (included in YAML above):'));
+      console.log(chalk.gray('  See failedStepOutput field for complete error details'));
     }
 
     if (state.agentPrompt) {

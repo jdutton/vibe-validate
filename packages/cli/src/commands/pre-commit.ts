@@ -18,7 +18,7 @@ export function preCommitCommand(program: Command): void {
     .command('pre-commit')
     .description('Run branch sync check + validation (recommended before commit)')
     .option('--skip-sync', 'Skip branch sync check')
-    .option('--format <format>', 'Output format (human|yaml|json|auto)', 'auto')
+    .option('-v, --verbose', 'Show detailed progress and output')
     .action(async (options) => {
       try {
         // Step 1: Check branch sync (unless skipped)
@@ -55,17 +55,15 @@ export function preCommitCommand(program: Command): void {
         // Step 3: Detect context
         const context = detectContext();
 
-        // Step 4: Determine output format
-        const format = options.format === 'auto'
-          ? (context.isAgent ? 'yaml' : 'human')
-          : options.format;
+        // Step 4: Determine verbosity (explicit flag or auto-detect from context)
+        const verbose = options.verbose ?? (context.isInteractive && !context.isAgent);
 
         // Step 5: Run validation
         console.log(chalk.blue('\n🔄 Running validation...'));
 
         const runnerConfig = createRunnerConfig(config, {
           force: false, // Respect cache by default
-          format,
+          verbose,
           context,
         });
 
