@@ -500,6 +500,25 @@ export function generateWorkflow(
 }
 
 /**
+ * Convert CI config to GenerateWorkflowOptions
+ *
+ * @param config - Full vibe-validate configuration
+ * @returns Workflow options derived from config.ci
+ */
+export function ciConfigToWorkflowOptions(config: VibeValidateConfig): Partial<GenerateWorkflowOptions> {
+  if (!config.ci) {
+    return {};
+  }
+
+  return {
+    nodeVersions: config.ci.nodeVersions,
+    os: config.ci.os,
+    matrixFailFast: config.ci.failFast,
+    enableCoverage: config.ci.coverage,
+  };
+}
+
+/**
  * Check if workflow file is in sync with validation config
  */
 export function checkSync(
@@ -558,20 +577,19 @@ export function generateWorkflowCommand(program: Command): void {
           process.exit(1);
         }
 
-        // Parse options
+        // Parse options with config.ci as defaults
+        // Priority: CLI flags > config.ci > generateWorkflow defaults
+        const ciOptions = ciConfigToWorkflowOptions(config);
         const generateOptions: GenerateWorkflowOptions = {
           packageManager: detectPackageManager(),
-          enableCoverage: options.coverage || false,
-          // Parse comma-separated node versions
+          enableCoverage: options.coverage ?? ciOptions.enableCoverage ?? false,
           nodeVersions: options.nodeVersions
             ? options.nodeVersions.split(',').map(v => v.trim())
-            : undefined,
-          // Parse comma-separated OS values
+            : ciOptions.nodeVersions,
           os: options.os
             ? options.os.split(',').map(o => o.trim())
-            : undefined,
-          // Parse fail-fast flag
-          matrixFailFast: options.failFast || false,
+            : ciOptions.os,
+          matrixFailFast: options.failFast ?? ciOptions.matrixFailFast ?? false,
         };
 
         if (options.check) {

@@ -13,6 +13,9 @@ describe('runner-adapter', () => {
     // Set up minimal environment
     process.env.TEST_VAR = 'test-value';
 
+    // Clear VIBE_VALIDATE_FORCE to avoid test isolation issues
+    delete process.env.VIBE_VALIDATE_FORCE;
+
     // Spy on console.log to reduce noise
     vi.spyOn(console, 'log').mockImplementation(() => {});
   });

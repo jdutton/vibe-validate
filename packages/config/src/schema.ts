@@ -148,6 +148,25 @@ export const OutputConfigSchema = z.object({
 export type OutputConfig = z.infer<typeof OutputConfigSchema>;
 
 /**
+ * CI/CD Configuration Schema
+ */
+export const CIConfigSchema = z.object({
+  /** Node.js versions to test in CI (default: ['20', '22']) */
+  nodeVersions: z.array(z.string()).optional(),
+
+  /** Operating systems to test in CI (default: ['ubuntu-latest']) */
+  os: z.array(z.string()).optional(),
+
+  /** Fail fast in matrix strategy (default: false) */
+  failFast: z.boolean().optional(),
+
+  /** Enable coverage reporting (default: false) */
+  coverage: z.boolean().optional(),
+});
+
+export type CIConfig = z.infer<typeof CIConfigSchema>;
+
+/**
  * Full Configuration Schema
  *
  * Root configuration object for vibe-validate.
@@ -170,6 +189,9 @@ export const VibeValidateConfigSchema = z.object({
     verbose: false,
     noColor: false,
   }),
+
+  /** CI/CD configuration (for GitHub Actions workflow generation) */
+  ci: CIConfigSchema.optional(),
 
   /** Optional: Preset name (typescript-library, typescript-nodejs, etc.) */
   preset: z.string().optional(),

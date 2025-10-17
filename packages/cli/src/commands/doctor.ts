@@ -15,7 +15,7 @@ import { existsSync } from 'fs';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';
-import { checkSync } from './generate-workflow.js';
+import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 
 /**
  * Result of a single doctor check
@@ -257,7 +257,10 @@ async function checkWorkflowSync(): Promise<DoctorCheckResult> {
       };
     }
 
-    const { inSync, diff } = checkSync(config);
+    // Use CI config from vibe-validate.config.mjs if available
+    const generateOptions = ciConfigToWorkflowOptions(config);
+
+    const { inSync, diff } = checkSync(config, generateOptions);
 
     if (inSync) {
       return {
