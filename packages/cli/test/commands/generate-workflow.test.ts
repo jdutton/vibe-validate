@@ -262,9 +262,9 @@ describe('generate-workflow command', () => {
       expect(testStep.env.LLM_OUTPUT).toBe('1'); // Should add LLM_OUTPUT
     });
 
-    it('should include generation timestamp in header', () => {
+    it('should include header without timestamp', () => {
       const workflowYaml = generateWorkflow(mockConfig);
-      expect(workflowYaml).toContain('# Generated:');
+      expect(workflowYaml).not.toContain('# Generated:'); // No timestamp in v0.9.6+
       expect(workflowYaml).toContain('# Source of truth: vibe-validate.config.mjs');
     });
 
@@ -495,25 +495,225 @@ describe('generate-workflow command', () => {
       expect(result.diff).toContain('differs from validation config');
     });
 
-    it('should ignore timestamp differences when comparing', () => {
+    it('should compare workflows byte-for-byte without timestamp normalization', () => {
       const options: GenerateWorkflowOptions = {
         packageManager: 'pnpm',
         enableCoverage: false,
       };
 
       const workflow1 = generateWorkflow(mockConfig, options);
-      // Simulate different generation time
-      const workflow2 = workflow1.replace(
-        /# Generated: .+/,
-        '# Generated: 2024-01-01T00:00:00.000Z'
-      );
+      const workflow2 = generateWorkflow(mockConfig, options);
 
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(readFileSync).mockReturnValue(workflow2 as any);
 
       const result = checkSync(mockConfig, options);
 
+      // Should be in sync - workflows are byte-for-byte identical (no timestamp)
       expect(result.inSync).toBe(true);
+      expect(workflow1).toBe(workflow2);
+    });
+  });
+
+  describe('TDD for v0.9.6 improvements', () => {
+    describe('Timestamp removal (no timestamp in header)', () => {
+      it('should NOT include timestamp in generated workflow header', () => {
+        const workflowYaml = generateWorkflow(mockConfig);
+
+        // Should NOT contain timestamp line
+        expect(workflowYaml).not.toContain('# Generated:');
+
+        // Should still have other header lines
+        expect(workflowYaml).toContain('# THIS FILE IS AUTO-GENERATED');
+        expect(workflowYaml).toContain('# Source of truth: vibe-validate.config.mjs');
+        expect(workflowYaml).toContain('# Regenerate with: npx vibe-validate generate-workflow');
+      });
+
+      it('should NOT have timestamp normalization in checkSync since timestamp is removed', () => {
+        // This test ensures we can simplify checkSync after removing timestamp
+        const workflow1 = generateWorkflow(mockConfig, { packageManager: 'pnpm' });
+        const workflow2 = generateWorkflow(mockConfig, { packageManager: 'pnpm' });
+
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(readFileSync).mockReturnValue(workflow1 as any);
+
+        const result = checkSync(mockConfig, { packageManager: 'pnpm' });
+
+        // Should be in sync without any timestamp normalization
+        expect(result.inSync).toBe(true);
+
+        // Both workflows should be byte-for-byte identical
+        expect(workflow1).toBe(workflow2);
+      });
+    });
+
+    describe('Package manager detection improvements', () => {
+      it('should detect pnpm from packageManager field in package.json', () => {
+        // Mock package.json with packageManager field
+        vi.mocked(readFileSync).mockImplementation((path: any) => {
+          if (path.toString().endsWith('package.json')) {
+            return JSON.stringify({
+              name: 'test-project',
+              packageManager: 'pnpm@9.0.0',
+            });
+          }
+          return '';
+        });
+        vi.mocked(existsSync).mockReturnValue(true);
+
+        const workflowYaml = generateWorkflow(mockConfig);
+        const workflow = parseWorkflowYaml(workflowYaml);
+
+        // Should use pnpm based on packageManager field
+        const job = workflow.jobs['typescript-type-check'] || workflow.jobs['validate'];
+        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
+        expect(pnpmStep).toBeDefined();
+      });
+
+      it('should detect npm from packageManager field in package.json', () => {
+        // Mock package.json with packageManager field
+        vi.mocked(readFileSync).mockImplementation((path: any) => {
+          if (path.toString().endsWith('package.json')) {
+            return JSON.stringify({
+              name: 'test-project',
+              packageManager: 'npm@10.0.0',
+            });
+          }
+          return '';
+        });
+        vi.mocked(existsSync).mockReturnValue(true);
+
+        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
+        const workflow = parseWorkflowYaml(workflowYaml);
+
+        // Should use npm based on packageManager field
+        const job = workflow.jobs['typescript-type-check'];
+        const npmStep = job.steps.find((s: any) => s.run === 'npm ci');
+        expect(npmStep).toBeDefined();
+
+        // Should NOT have pnpm setup
+        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
+        expect(pnpmStep).toBeUndefined();
+      });
+
+      it('should prefer npm when both lockfiles exist (more conservative default)', () => {
+        // Mock fs to show both lockfiles exist
+        vi.mocked(existsSync).mockImplementation((path: any) => {
+          const pathStr = path.toString();
+          if (pathStr.endsWith('package-lock.json')) return true;
+          if (pathStr.endsWith('pnpm-lock.yaml')) return true;
+          return false;
+        });
+
+        // Mock package.json without packageManager field
+        vi.mocked(readFileSync).mockImplementation((path: any) => {
+          if (path.toString().endsWith('package.json')) {
+            return JSON.stringify({
+              name: 'test-project',
+              engines: { node: '>=22.0.0' },
+            });
+          }
+          return '';
+        });
+
+        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
+        const workflow = parseWorkflowYaml(workflowYaml);
+
+        // Should default to npm when both exist (more conservative)
+        const job = workflow.jobs['typescript-type-check'];
+        const npmStep = job.steps.find((s: any) => s.run === 'npm ci');
+        expect(npmStep).toBeDefined();
+
+        // Should NOT have pnpm setup
+        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
+        expect(pnpmStep).toBeUndefined();
+      });
+
+      it('should use pnpm when only pnpm-lock.yaml exists', () => {
+        // Mock fs to show only pnpm lockfile
+        vi.mocked(existsSync).mockImplementation((path: any) => {
+          const pathStr = path.toString();
+          if (pathStr.endsWith('package-lock.json')) return false;
+          if (pathStr.endsWith('pnpm-lock.yaml')) return true;
+          return true; // package.json exists
+        });
+
+        vi.mocked(readFileSync).mockImplementation((path: any) => {
+          if (path.toString().endsWith('package.json')) {
+            return JSON.stringify({
+              name: 'test-project',
+              engines: { node: '>=22.0.0' },
+            });
+          }
+          return '';
+        });
+
+        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
+        const workflow = parseWorkflowYaml(workflowYaml);
+
+        // Should use pnpm when only pnpm-lock exists
+        const job = workflow.jobs['typescript-type-check'];
+        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
+        expect(pnpmStep).toBeDefined();
+      });
+
+      it('should use npm when only package-lock.json exists', () => {
+        // Mock fs to show only npm lockfile
+        vi.mocked(existsSync).mockImplementation((path: any) => {
+          const pathStr = path.toString();
+          if (pathStr.endsWith('package-lock.json')) return true;
+          if (pathStr.endsWith('pnpm-lock.yaml')) return false;
+          return true; // package.json exists
+        });
+
+        vi.mocked(readFileSync).mockImplementation((path: any) => {
+          if (path.toString().endsWith('package.json')) {
+            return JSON.stringify({
+              name: 'test-project',
+              engines: { node: '>=22.0.0' },
+            });
+          }
+          return '';
+        });
+
+        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
+        const workflow = parseWorkflowYaml(workflowYaml);
+
+        // Should use npm when only package-lock exists
+        const job = workflow.jobs['typescript-type-check'];
+        const npmStep = job.steps.find((s: any) => s.run === 'npm ci');
+        expect(npmStep).toBeDefined();
+      });
+
+      it('should prioritize packageManager field over lockfile detection', () => {
+        // Mock both lockfiles existing
+        vi.mocked(existsSync).mockImplementation((path: any) => {
+          const pathStr = path.toString();
+          if (pathStr.endsWith('package-lock.json')) return true;
+          if (pathStr.endsWith('pnpm-lock.yaml')) return true;
+          return true;
+        });
+
+        // Mock package.json with explicit pnpm packageManager
+        vi.mocked(readFileSync).mockImplementation((path: any) => {
+          if (path.toString().endsWith('package.json')) {
+            return JSON.stringify({
+              name: 'test-project',
+              packageManager: 'pnpm@9.0.0',
+              engines: { node: '>=22.0.0' },
+            });
+          }
+          return '';
+        });
+
+        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
+        const workflow = parseWorkflowYaml(workflowYaml);
+
+        // Should use pnpm from packageManager field (not default to npm)
+        const job = workflow.jobs['typescript-type-check'];
+        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
+        expect(pnpmStep).toBeDefined();
+      });
     });
   });
 });

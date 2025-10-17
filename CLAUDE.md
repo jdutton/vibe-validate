@@ -117,6 +117,13 @@ pnpm build
 - Integration tests for workflows
 - Mock git commands (don't require real git repo)
 - **LLM-Optimized Output**: Use `LLM_OUTPUT=1` for concise, failure-focused test output
+- **Test-Driven Development (TDD) REQUIRED**: All features and bug fixes MUST follow TDD:
+  1. Write failing tests FIRST that demonstrate the desired behavior
+  2. Run tests to confirm they fail for the right reason
+  3. Implement the minimum code to make tests pass
+  4. Refactor while keeping tests green
+  - **Why TDD is critical**: Prevents regressions, validates requirements, enables confident refactoring
+  - **No exceptions**: Features without tests will not be merged
 
 ### Error Handling
 - Always provide context in error messages

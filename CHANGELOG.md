@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2025-10-17
+
+### ✨ Added
+
+- **@vibe-validate/cli**: New `doctor` command for diagnosing setup issues
+  - **7 comprehensive health checks**: Node.js version, Git installation, Git repository, configuration file, configuration validity, package manager availability, GitHub Actions workflow sync
+  - **Actionable suggestions** - Each failing check includes a specific suggestion for fixing the issue
+  - **Smart output modes**:
+    - `--verbose` flag: Shows all checks including passing ones (useful for debugging and verifying setup)
+    - Normal mode: Shows only failing checks when issues exist, or summary when all pass
+    - `--json` flag: Machine-readable output for programmatic use
+  - **Progressive disclosure**: Hints users to use `--verbose` to see full details
+  - **Exit codes**: Returns 0 if all checks pass, 1 if any fail (CI-friendly)
+  - Example usage:
+    - `npx vibe-validate doctor` - Quick health check (shows only problems)
+    - `npx vibe-validate doctor --verbose` - Show all checks
+    - `npx vibe-validate doctor --json` - JSON output for automation
+
+### 🐛 Fixed
+
+- **@vibe-validate/cli**: Improved `generate-workflow` command stability and determinism
+  - **Removed timestamp from workflow header** - Eliminates unnecessary workflow regeneration
+  - **Improved package manager detection** - Now checks `package.json` `packageManager` field first (official spec)
+  - **Conservative npm default** - Prefers npm when both lockfiles exist (more conservative)
+  - **Priority-based detection**: packageManager field → single lockfile → npm default
+  - Fixes issue where projects with both lockfiles incorrectly detected as pnpm
+
+### 🧪 Testing
+
+- **Enforced Test-Driven Development (TDD)** - All features and bug fixes now require TDD
+  - Updated CLAUDE.md with mandatory TDD requirements
+  - Added 14 comprehensive tests for doctor command (including verbose flag scenarios)
+  - Added 8 regression tests for generate-workflow improvements
+  - 356 tests total (353 passing, 99.2% pass rate)
+
+### 📚 Documentation
+
+- Updated CLAUDE.md to enforce TDD for all future development
+- Removed V1.0 caveats - TDD is now mandatory from v0.9.6 onwards
+- Added doctor command documentation with usage examples
+
 ## [0.9.5] - 2025-10-17
 
 ### ✨ Added
@@ -186,9 +227,11 @@ This is the first public release. No migration required.
 - **v0.9.0** (2025-10-16) - Initial beta release
 - **v0.9.1** (2025-10-16) - Fixed workspace dependencies
 - **v0.9.5** (2025-10-17) - Added generate-workflow command
+- **v0.9.6** (2025-10-17) - Fixed generate-workflow stability and enforced TDD
 - **v1.0.0** (TBD) - Stable release with API freeze
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.9.5...HEAD
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.9.6...HEAD
+[0.9.6]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.6
 [0.9.5]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.5
 [0.9.1]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.1
 [0.9.0]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.0

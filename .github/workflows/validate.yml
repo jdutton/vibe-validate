@@ -3,7 +3,6 @@
 # Regenerate with: npx vibe-validate generate-workflow
 #
 # Source of truth: vibe-validate.config.mjs
-# Generated: 2025-10-17T11:33:07.121Z
 name: Validation Pipeline
 "on":
   push:

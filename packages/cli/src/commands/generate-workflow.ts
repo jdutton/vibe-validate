@@ -141,12 +141,35 @@ function generateCheckScript(jobNames: string[]): string {
 }
 
 /**
- * Detect package manager from lockfile
+ * Detect package manager from package.json and lockfiles
+ * Priority:
+ * 1. package.json packageManager field (official spec)
+ * 2. Lockfile detection (prefer npm when both exist)
  */
 function detectPackageManager(cwd: string = process.cwd()): 'npm' | 'pnpm' {
-  if (existsSync(join(cwd, 'pnpm-lock.yaml'))) {
-    return 'pnpm';
+  // 1. Check package.json packageManager field (official spec)
+  try {
+    const packageJsonPath = join(cwd, 'package.json');
+    if (existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+      if (packageJson.packageManager) {
+        if (packageJson.packageManager.startsWith('pnpm@')) return 'pnpm';
+        if (packageJson.packageManager.startsWith('npm@')) return 'npm';
+      }
+    }
+  } catch {
+    // Continue to lockfile detection
   }
+
+  // 2. Check for lockfiles
+  const hasNpmLock = existsSync(join(cwd, 'package-lock.json'));
+  const hasPnpmLock = existsSync(join(cwd, 'pnpm-lock.yaml'));
+
+  // If only one lockfile exists, use that package manager
+  if (hasPnpmLock && !hasNpmLock) return 'pnpm';
+  if (hasNpmLock && !hasPnpmLock) return 'npm';
+
+  // If both exist, prefer npm (more conservative default)
   return 'npm';
 }
 
@@ -463,7 +486,6 @@ export function generateWorkflow(
     '# Regenerate with: npx vibe-validate generate-workflow',
     '#',
     '# Source of truth: vibe-validate.config.mjs',
-    `# Generated: ${new Date().toISOString()}`,
     '',
   ].join('\n');
 
@@ -496,14 +518,7 @@ export function checkSync(
   const currentWorkflow = readFileSync(workflowPath, 'utf8');
   const expectedWorkflow = generateWorkflow(config, options);
 
-  // Normalize for comparison (strip timestamps)
-  const normalize = (content: string) =>
-    content.replace(/# Generated: .+/g, '# Generated: <timestamp>');
-
-  const currentNormalized = normalize(currentWorkflow);
-  const expectedNormalized = normalize(expectedWorkflow);
-
-  if (currentNormalized === expectedNormalized) {
+  if (currentWorkflow === expectedWorkflow) {
     return { inSync: true };
   }
 

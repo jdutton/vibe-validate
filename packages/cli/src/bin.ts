@@ -17,6 +17,7 @@ import { syncCheckCommand } from './commands/sync-check.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
 import { generateWorkflowCommand } from './commands/generate-workflow.js';
+import { doctorCommand } from './commands/doctor.js';
 
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation
@@ -49,6 +50,7 @@ syncCheckCommand(program);            // vibe-validate sync-check
 cleanupCommand(program);              // vibe-validate cleanup
 configCommand(program);               // vibe-validate config
 generateWorkflowCommand(program);     // vibe-validate generate-workflow
+doctorCommand(program);               // vibe-validate doctor
 
 // Parse command line arguments
 program.parse();
