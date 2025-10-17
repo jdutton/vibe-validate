@@ -75,4 +75,12 @@ export default {
   output: {
     format: 'auto', // Auto-detect agent vs human context
   },
+
+  // CI/CD configuration for GitHub Actions workflow generation
+  ci: {
+    // Matrix testing: Test across multiple OS and Node.js versions
+    nodeVersions: ['20', '22', '24'],
+    os: ['ubuntu-latest', 'macos-latest', 'windows-latest'],
+    failFast: false, // Run all combinations even if one fails
+  },
 };
