@@ -237,8 +237,16 @@ export async function runStepsInParallel(
         let stdout = '';
         let stderr = '';
 
-        proc.stdout.on('data', data => { stdout += data.toString(); });
-        proc.stderr.on('data', data => { stderr += data.toString(); });
+        proc.stdout.on('data', data => {
+          const chunk = data.toString();
+          stdout += chunk;
+          process.stdout.write(chunk); // Stream output in real-time
+        });
+        proc.stderr.on('data', data => {
+          const chunk = data.toString();
+          stderr += chunk;
+          process.stderr.write(chunk); // Stream errors in real-time
+        });
 
         proc.on('close', code => {
           const duration = Date.now() - startTime;
