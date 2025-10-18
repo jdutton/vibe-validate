@@ -17,6 +17,7 @@ export function validateCommand(program: Command): void {
     .description('Run validation with git tree hash caching')
     .option('-f, --force', 'Force validation even if already passed')
     .option('-v, --verbose', 'Show detailed progress and output')
+    .option('-c, --check', 'Check if validation has already passed (do not run)')
     .action(async (options) => {
       try {
         // Load configuration
@@ -24,6 +25,13 @@ export function validateCommand(program: Command): void {
         if (!config) {
           console.error(chalk.red('❌ No configuration found'));
           process.exit(1);
+        }
+
+        // If --check flag is used, only check validation state without running
+        if (options.check) {
+          const { checkValidationStatus } = await import('../utils/check-validation.js');
+          await checkValidationStatus(config);
+          return; // Exit handled by checkValidationStatus
         }
 
         // Detect context (Claude Code, CI, etc.)

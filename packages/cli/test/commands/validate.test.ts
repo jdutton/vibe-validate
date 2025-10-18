@@ -99,6 +99,15 @@ describe('validate command', () => {
 
       expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
     });
+
+    it('should register --check option', () => {
+      validateCommand(program);
+
+      const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
+      const options = validateCmd?.options;
+
+      expect(options?.some(opt => opt.flags === '-c, --check')).toBe(true);
+    });
   });
 
   describe('no config file', () => {
@@ -357,6 +366,66 @@ describe('validate command', () => {
         expect.stringContaining('Validation failed with error'),
         expect.any(Error)
       );
+    });
+  });
+
+  describe('--check flag', () => {
+    beforeEach(() => {
+      // Mock valid config
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [
+                { name: 'Test Step', command: 'echo test' }
+              ]
+            }
+          ]
+        },
+        stateFilePath: join(testDir, '.vibe-validate-state.yaml'),
+      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+    });
+
+    it('should not run validation when --check flag is used', async () => {
+      // Create a state file with passed validation
+      const stateFile = join(testDir, '.vibe-validate-state.yaml');
+      writeFileSync(stateFile, `
+passed: true
+timestamp: ${new Date().toISOString()}
+treeHash: abc123def456
+phases: []
+      `);
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--check'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit from checkValidationStatus
+      }
+
+      // Verify runValidation was NOT called
+      expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('should exit with code 2 when state file is missing', async () => {
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--check'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(2);
+        }
+      }
+
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Validation state file not found')
+      );
+      expect(core.runValidation).not.toHaveBeenCalled();
     });
   });
 });
