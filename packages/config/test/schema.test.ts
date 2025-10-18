@@ -122,7 +122,7 @@ describe('validateConfig', () => {
     expect(result.validation.caching.strategy).toBe('git-tree-hash');
     expect(result.validation.caching.enabled).toBe(true);
     expect(result.git.mainBranch).toBe('main');
-    expect(result.output.format).toBe('auto');
+    // format field removed - state files are always YAML
   });
 });
 

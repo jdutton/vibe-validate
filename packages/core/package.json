@@ -42,7 +42,8 @@
     "access": "public"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "yaml": "^2.6.1"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

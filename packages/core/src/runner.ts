@@ -14,6 +14,7 @@ import { spawn, execSync, type ChildProcess } from 'child_process';
 import { writeFileSync, appendFileSync, existsSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { stringify as yamlStringify, parse as yamlParse } from 'yaml';
 import { stopProcessGroup } from './process-utils.js';
 import type {
   ValidationStep,
@@ -99,8 +100,8 @@ export function checkExistingValidation(
 
   try {
     const content = readFileSync(stateFilePath, 'utf8');
-    // Parse as JSON (will support YAML in CLI package)
-    const state = JSON.parse(content) as ValidationResult;
+    // Parse as YAML (JSON is valid YAML, so this handles both)
+    const state = yamlParse(content) as ValidationResult;
 
     // Check if validation passed and tree hash matches
     if (state.passed && state.treeHash === currentTreeHash) {
@@ -445,8 +446,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
         fullLogFile: logPath,
       };
 
-      // Write state file
-      writeFileSync(stateFilePath, JSON.stringify(validationResult, null, 2));
+      // Write state file as YAML
+      writeFileSync(stateFilePath, yamlStringify(validationResult));
 
       return validationResult;
     }
@@ -461,8 +462,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     fullLogFile: logPath,
   };
 
-  // Write state file
-  writeFileSync(stateFilePath, JSON.stringify(validationResult, null, 2));
+  // Write state file as YAML
+  writeFileSync(stateFilePath, yamlStringify(validationResult));
 
   return validationResult;
 }

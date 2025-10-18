@@ -238,10 +238,7 @@ export default defineConfig({
     autoSync: false, // Never auto-merge - safety first
   },
 
-  // Output configuration
-  output: {
-    format: 'auto', // Auto-detect agent vs human context
-  },
+  // Output configuration - state files are always written as YAML
 });
 `,
 
@@ -315,10 +312,7 @@ export default defineConfig({
     autoSync: false, // Never auto-merge - safety first
   },
 
-  // Output configuration
-  output: {
-    format: 'auto', // Auto-detect agent vs human context
-  },
+  // Output configuration - state files are always written as YAML
 });
 `,
 
@@ -392,10 +386,7 @@ export default defineConfig({
     autoSync: false, // Never auto-merge - safety first
   },
 
-  // Output configuration
-  output: {
-    format: 'auto', // Auto-detect agent vs human context
-  },
+  // Output configuration - state files are always written as YAML
 });
 `,
   };

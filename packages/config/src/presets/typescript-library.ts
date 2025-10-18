@@ -66,7 +66,6 @@ export const typescriptLibraryPreset = {
   },
 
   output: {
-    format: 'auto',
     showProgress: true,
     verbose: false,
     noColor: false,

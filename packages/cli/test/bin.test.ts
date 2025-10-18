@@ -37,6 +37,30 @@ describe('bin.ts - CLI entry point', () => {
   });
 
   /**
+   * Helper to log detailed diagnostics when a CLI command fails unexpectedly
+   */
+  function logCommandFailure(
+    args: string[],
+    result: { code: number; stdout: string; stderr: string },
+    expectedCode: number,
+    context?: string
+  ): void {
+    console.error(`${context ? `${context}: ` : ''}Command failed unexpectedly`);
+    console.error('Command:', args.join(' '));
+    console.error('Expected exit code:', expectedCode);
+    console.error('Actual exit code:', result.code);
+    console.error('Stdout:', result.stdout.substring(0, 500));
+    console.error('Stderr:', result.stderr.substring(0, 500));
+    console.error('Test directory:', testDir);
+    if (existsSync(join(testDir, 'vibe-validate.config.js'))) {
+      console.error('Config file exists: true');
+    }
+    if (existsSync(join(testDir, '.vibe-validate-state.yaml'))) {
+      console.error('State file exists: true');
+    }
+  }
+
+  /**
    * Helper function to execute CLI and capture output
    */
   function executeCLI(args: string[], timeoutMs: number = 10000): Promise<{ code: number; stdout: string; stderr: string }> {
@@ -74,6 +98,8 @@ describe('bin.ts - CLI entry point', () => {
           // Handle null code more explicitly - log it for debugging
           if (code === null) {
             console.warn(`Warning: Child process closed with null exit code for: ${args.join(' ')}`);
+            console.warn(`  Stdout: ${stdout.substring(0, 200)}`);
+            console.warn(`  Stderr: ${stderr.substring(0, 200)}`);
             resolve({ code: 1, stdout, stderr: stderr + '\n[Process closed with null exit code]' });
           } else {
             resolve({ code, stdout, stderr });
@@ -254,15 +280,9 @@ export default {
 
       // 1. Verify config is valid
       const configResult = await executeCLI(['config', '--validate']);
-
-      // Better debugging on failure
       if (configResult.code !== 0) {
-        console.error('Config validation failed:');
-        console.error('Exit code:', configResult.code);
-        console.error('Stdout:', configResult.stdout);
-        console.error('Stderr:', configResult.stderr);
+        logCommandFailure(['config', '--validate'], configResult, 0, 'Config validation');
       }
-
       expect(configResult.code).toBe(0);
       expect(configResult.stdout).toContain('Configuration is valid');
 
@@ -306,10 +326,16 @@ export default {
 
       // Run validation (should fail)
       const validateResult = await executeCLI(['validate']);
+      if (validateResult.code !== 1) {
+        logCommandFailure(['validate'], validateResult, 1, 'Validation failure workflow');
+      }
       expect(validateResult.code).toBe(1);
 
       // Check state (should show failed) - use --verbose for status text
       const stateResult = await executeCLI(['state', '--verbose']);
+      if (stateResult.code !== 0) {
+        logCommandFailure(['state', '--verbose'], stateResult, 0, 'State check after validation failure');
+      }
       expect(stateResult.code).toBe(0);
       expect(stateResult.stdout).toContain('FAILED');
     }, 30000); // Increase timeout for full workflow
@@ -334,6 +360,9 @@ export default {
 `;
       writeFileSync(join(testDir, 'vibe-validate.config.js'), configContent);
 
+      // Create .gitignore to exclude state file (prevents tree hash changes)
+      writeFileSync(join(testDir, '.gitignore'), '.vibe-validate-state.yaml\n');
+
       // Initialize git
       const { execSync } = await import('child_process');
       execSync('git init', { cwd: testDir });
@@ -344,17 +373,26 @@ export default {
 
       // 1. First run - should execute validation (minimal output: phase_start)
       const firstRun = await executeCLI(['validate']);
+      if (firstRun.code !== 0) {
+        logCommandFailure(['validate'], firstRun, 0, 'Cache bypass test - first run');
+      }
       expect(firstRun.code).toBe(0);
       expect(firstRun.stdout).toContain('phase_start: Test Phase');
 
       // 2. Second run without --force - should use cache
       const cachedRun = await executeCLI(['validate']);
+      if (cachedRun.code !== 0) {
+        logCommandFailure(['validate'], cachedRun, 0, 'Cache bypass test - cached run');
+      }
       expect(cachedRun.code).toBe(0);
       expect(cachedRun.stdout).toContain('already passed');
       expect(cachedRun.stdout).not.toContain('phase_start'); // Should NOT run phases
 
       // 3. Third run with --force - should bypass cache and run validation
       const forcedRun = await executeCLI(['validate', '--force']);
+      if (forcedRun.code !== 0) {
+        logCommandFailure(['validate', '--force'], forcedRun, 0, 'Cache bypass test - forced run');
+      }
       expect(forcedRun.code).toBe(0);
       expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run phases again
       expect(forcedRun.stdout).not.toContain('already passed'); // Should NOT show cache message

@@ -102,18 +102,6 @@ export const ValidationConfigSchema = z.object({
 export type ValidationConfig = z.infer<typeof ValidationConfigSchema>;
 
 /**
- * Output Format Schema
- */
-export const OutputFormatSchema = z.enum([
-  'human',  // Colorful, verbose output for humans
-  'yaml',   // Structured YAML for agents
-  'json',   // Machine-readable JSON
-  'auto',   // Auto-detect context (default)
-]);
-
-export type OutputFormat = z.infer<typeof OutputFormatSchema>;
-
-/**
  * Git Config Schema
  */
 export const GitConfigSchema = z.object({
@@ -136,9 +124,6 @@ export type GitConfig = z.infer<typeof GitConfigSchema>;
  * Output Config Schema
  */
 export const OutputConfigSchema = z.object({
-  /** Output format (default: auto) */
-  format: OutputFormatSchema.default('auto'),
-
   /** Show progress indicators (default: true) */
   showProgress: z.boolean().default(true),
 
@@ -208,7 +193,6 @@ export const VibeValidateConfigSchema = z.object({
 
   /** Output formatting configuration */
   output: OutputConfigSchema.optional().default({
-    format: 'auto',
     showProgress: true,
     verbose: false,
     noColor: false,

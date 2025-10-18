@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { parse as parseYaml } from 'yaml';
 import {
   getWorkingTreeHash,
   checkExistingValidation,
@@ -130,10 +131,11 @@ describe('runner', () => {
       expect(result.previousState).toEqual(state);
     });
 
-    it('should handle invalid JSON in state file', () => {
-      const stateFile = join(testDir, 'invalid-state.json');
+    it('should handle invalid YAML in state file', () => {
+      const stateFile = join(testDir, 'invalid-state.yaml');
 
-      writeFileSync(stateFile, 'not valid json');
+      // Write invalid YAML (unclosed quote)
+      writeFileSync(stateFile, 'key: "value without closing quote');
 
       const result = checkExistingValidation('abc123', stateFile);
 
@@ -374,7 +376,7 @@ describe('runner', () => {
 
       expect(existsSync(stateFile)).toBe(true);
 
-      const state = JSON.parse(readFileSync(stateFile, 'utf8'));
+      const state = parseYaml(readFileSync(stateFile, 'utf8'));
       expect(state.passed).toBe(true);
       expect(state.treeHash).toBeTruthy();
       expect(state.timestamp).toBeTruthy();

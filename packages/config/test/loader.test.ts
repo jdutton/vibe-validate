@@ -64,7 +64,7 @@ describe('loader', () => {
       expect(loaded.validation.phases).toHaveLength(1);
       expect(loaded.validation.phases[0].name).toBe('Test Phase');
       expect(loaded.git.mainBranch).toBe('main');
-      expect(loaded.output.format).toBe('auto');
+      // format field removed - state files are always YAML
     });
 
     it('should load TypeScript config file with ES module', async () => {
