@@ -35,9 +35,8 @@ export default {
         steps: [
           {
             name: 'Unit Tests with Coverage',
-            // Use verbose reporter in CI for better error visibility
-            command: process.env.CI ? 'pnpm test:coverage --reporter=verbose' : 'pnpm test:coverage',
-            description: 'Run all unit tests (301 tests) with coverage thresholds (75% min)',
+            command: 'pnpm test:coverage',
+            description: 'Run all unit tests (374 tests) with coverage thresholds (75% min)',
           },
         ],
       },

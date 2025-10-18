@@ -272,10 +272,10 @@ export function generateWorkflow(
       });
     }
 
-    // Run validation
+    // Run validation with verbose flag for CI debugging
     jobSteps.push({
       name: 'Run validation',
-      run: packageManager === 'pnpm' ? 'pnpm validate' : 'npm run validate',
+      run: packageManager === 'pnpm' ? 'pnpm validate --verbose' : 'npm run validate -- --verbose',
     });
 
     // Add validation state upload on failure

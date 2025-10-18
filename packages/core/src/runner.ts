@@ -198,7 +198,8 @@ export async function runStepsInParallel(
   steps: ValidationStep[],
   phaseName: string,
   enableFailFast: boolean = false,
-  env: Record<string, string> = {}
+  env: Record<string, string> = {},
+  verbose: boolean = false
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
@@ -240,12 +241,18 @@ export async function runStepsInParallel(
         proc.stdout.on('data', data => {
           const chunk = data.toString();
           stdout += chunk;
-          process.stdout.write(chunk); // Stream output in real-time
+          // Stream output in real-time when verbose mode is enabled
+          if (verbose) {
+            process.stdout.write(chunk);
+          }
         });
         proc.stderr.on('data', data => {
           const chunk = data.toString();
           stderr += chunk;
-          process.stderr.write(chunk); // Stream errors in real-time
+          // Stream errors in real-time when verbose mode is enabled
+          if (verbose) {
+            process.stderr.write(chunk);
+          }
         });
 
         proc.on('close', code => {
@@ -387,7 +394,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       phase.steps,
       phase.name,
       enableFailFast,
-      env
+      env,
+      config.verbose ?? false
     );
     const phaseDuration = Date.now() - phaseStartTime;
 
