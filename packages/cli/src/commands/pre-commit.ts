@@ -59,8 +59,8 @@ export function preCommitCommand(program: Command): void {
         // Step 3: Detect context
         const context = detectContext();
 
-        // Step 4: Determine verbosity (explicit flag or auto-detect from context)
-        const verbose = options.verbose ?? (context.isInteractive && !context.isAgent);
+        // Step 4: Verbose mode is ONLY enabled via explicit --verbose flag
+        const verbose = options.verbose ?? false;
 
         // Step 5: Run validation
         console.log(chalk.blue('\n🔄 Running validation...'));
