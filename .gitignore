@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+*.tgz
+
+# Testing
+coverage/
+.vitest/
+
+# Documentation (generated)
+docs/api/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Validation state (user-specific)
+.vibe-validate-state.yaml
+
+# Development/extraction tracking (git-ignored, local only)
+TODO.md
+TODO-ARCHIVE.md
+PUBLISHING.md

@@ -1,0 +1,76 @@
+{
+  "name": "@vibe-validate/cli",
+  "version": "0.9.8",
+  "description": "Command-line interface for vibe-validate validation framework",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "vibe-validate": "./dist/bin.js",
+    "vv": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ --max-warnings 0"
+  },
+  "keywords": [
+    "validation",
+    "testing",
+    "ci-cd",
+    "git",
+    "caching",
+    "pre-commit",
+    "typescript",
+    "javascript",
+    "ai-agent-friendly",
+    "claude-code",
+    "cursor",
+    "aider",
+    "developer-experience",
+    "developer-tools",
+    "automation",
+    "workflow",
+    "llm",
+    "cli"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@vibe-validate/core": "^0.9.0",
+    "@vibe-validate/git": "^0.9.0",
+    "@vibe-validate/config": "^0.9.0",
+    "commander": "^12.1.0",
+    "chalk": "^5.3.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.8",
+    "typescript": "^5.5.2",
+    "vitest": "^2.0.5"
+  }
+}

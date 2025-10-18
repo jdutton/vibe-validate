@@ -1,0 +1,116 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in vibe-validate
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us investigate.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+      placeholder: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior.
+      placeholder: |
+        1. Create a config file with...
+        2. Run `vibe-validate validate`
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include error messages, logs, or screenshots.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Please provide details about your environment:
+      placeholder: |
+        - vibe-validate version: [e.g., 0.9.3]
+        - Node.js version: [e.g., 20.10.0]
+        - Package manager: [e.g., pnpm 8.15.0]
+        - OS: [e.g., macOS 14.2, Ubuntu 22.04, Windows 11]
+        - AI assistant (if applicable): [e.g., Claude Code, Cursor, none]
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: |
+        If relevant, please share your `vibe-validate.config.mjs` or `.vibe-validate.config.js` file.
+        Remove any sensitive information before sharing.
+      render: javascript
+    validations:
+      required: false
+
+  - type: textarea
+    id: state-file
+    attributes:
+      label: Validation State File
+      description: |
+        If relevant, please share the contents of `.vibe-validate-state.yaml`.
+        Remove any sensitive information before sharing.
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Additional Logs
+      description: |
+        Any additional logs, error messages, or context that might help diagnose the issue.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting:
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have tested with the latest version of vibe-validate
+          required: true
+        - label: I have removed any sensitive information from logs/config files
+          required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context about the problem? Have you found any workarounds?
+    validations:
+      required: false

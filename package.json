@@ -1,0 +1,80 @@
+{
+  "name": "vibe-validate",
+  "version": "0.9.8",
+  "type": "module",
+  "private": true,
+  "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development)",
+  "keywords": [
+    "validation",
+    "git",
+    "cache",
+    "llm",
+    "ai",
+    "agent",
+    "typescript",
+    "testing",
+    "ci",
+    "pre-commit"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jdutton/vibe-validate/issues"
+  },
+  "homepage": "https://github.com/jdutton/vibe-validate#readme",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "find packages -name '*.tsbuildinfo' -delete && pnpm -r build",
+    "build:clean": "pnpm -r clean && pnpm build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint packages/*/src --max-warnings 0",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "dev": "pnpm -r --parallel dev",
+    "validate": "node packages/cli/dist/bin.js validate",
+    "validate:force": "rm -f .vibe-validate-state.yaml && npm run validate",
+    "pre-commit": "node packages/cli/dist/bin.js pre-commit",
+    "pre-publish": "./tools/pre-publish-check.sh",
+    "publish:dry-run": "pnpm -r --filter='@vibe-validate/*' exec npm publish --dry-run",
+    "publish:formatters": "cd packages/formatters && npm publish",
+    "publish:git": "cd packages/git && npm publish",
+    "publish:config": "cd packages/config && npm publish",
+    "publish:core": "cd packages/core && npm publish",
+    "publish:cli": "cd packages/cli && npm publish",
+    "publish:all": "npm run pre-publish && npm run publish:formatters && npm run publish:git && npm run publish:config && npm run publish:core && npm run publish:cli",
+    "version:patch": "pnpm -r exec npm version patch --no-git-tag-version",
+    "version:minor": "pnpm -r exec npm version minor --no-git-tag-version",
+    "version:major": "pnpm -r exec npm version major --no-git-tag-version",
+    "release:patch": "npm run version:patch && npm run build && git add -A && git commit -m 'chore: Release patch version' && npm run tag:create",
+    "release:minor": "npm run version:minor && npm run build && git add -A && git commit -m 'chore: Release minor version' && npm run tag:create",
+    "release:major": "npm run version:major && npm run build && git add -A && git commit -m 'chore: Release major version' && npm run tag:create",
+    "tag:create": "node -e \"const pkg = require('./packages/cli/package.json'); const tag = 'v' + pkg.version; require('child_process').execSync('git tag -a ' + tag + ' -m \\\"Release ' + tag + '\\\"', {stdio: 'inherit'});\"",
+    "docs:build": "typedoc",
+    "docs:serve": "cd docs/api && python3 -m http.server 8000",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.37.0",
+    "husky": "^9.1.7",
+    "typedoc": "^0.28.14",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "@vibe-validate/config",
+  "version": "0.9.8",
+  "description": "Configuration system for vibe-validate with TypeScript-first design and framework presets",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "validation",
+    "config",
+    "typescript",
+    "presets",
+    "framework"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git",
+    "directory": "packages/config"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "tsx": "^4.20.6",
+    "zod": "^3.24.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

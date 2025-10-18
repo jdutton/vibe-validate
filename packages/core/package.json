@@ -1,0 +1,53 @@
+{
+  "name": "@vibe-validate/core",
+  "version": "0.9.8",
+  "description": "Core validation orchestration engine for vibe-validate",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "keywords": [
+    "validation",
+    "parallel",
+    "orchestration",
+    "git",
+    "cache"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.17.6",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
