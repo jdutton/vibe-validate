@@ -228,7 +228,12 @@ export function generateWorkflow(
   if (useMatrix) {
     // Matrix strategy: Create single job that runs validation with matrix
     const jobSteps: GitHubWorkflowStep[] = [
-      { uses: 'actions/checkout@v4' },
+      {
+        uses: 'actions/checkout@v4',
+        with: {
+          'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
+        }
+      },
     ];
 
     // Add pnpm setup if needed
@@ -301,7 +306,12 @@ export function generateWorkflow(
     // Add coverage job if enabled (separate, runs on ubuntu only)
     if (enableCoverage) {
       const coverageSteps: GitHubWorkflowStep[] = [
-        { uses: 'actions/checkout@v4' },
+        {
+          uses: 'actions/checkout@v4',
+          with: {
+            'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
+          }
+        },
       ];
 
       if (packageManager === 'pnpm') {
@@ -371,7 +381,12 @@ export function generateWorkflow(
       for (const step of phase.steps) {
         const jobId = toJobId(step.name);
         const jobSteps: GitHubWorkflowStep[] = [
-          { uses: 'actions/checkout@v4' },
+          {
+            uses: 'actions/checkout@v4',
+            with: {
+              'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
+            }
+          },
           {
             uses: 'actions/setup-node@v4',
             with: {
