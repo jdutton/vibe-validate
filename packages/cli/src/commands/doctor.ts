@@ -370,15 +370,8 @@ async function checkPreCommitHook(): Promise<DoctorCheckResult> {
 function checkValidationState(): DoctorCheckResult {
   const statePath = '.vibe-validate-state.yaml';
 
-  // Skip this check in CI environments - state file won't exist on fresh checkout
-  if (process.env.CI) {
-    return {
-      name: 'Validation state',
-      passed: true,
-      message: 'Skipped in CI (state file created during validation run)',
-    };
-  }
-
+  // This check is informational only - missing state file is not an error
+  // (fresh checkouts, CI environments, etc. won't have it until first validation run)
   if (existsSync(statePath)) {
     return {
       name: 'Validation state',
@@ -388,9 +381,8 @@ function checkValidationState(): DoctorCheckResult {
   } else {
     return {
       name: 'Validation state',
-      passed: false,
-      message: 'Validation state file not found',
-      suggestion: 'Run validation at least once: npx vibe-validate validate',
+      passed: true,  // Always pass - this is informational only
+      message: 'Validation state file not found (will be created on first validation run)',
     };
   }
 }
