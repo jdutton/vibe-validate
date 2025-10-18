@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 📝 Documentation
+
+- **Improved README clarity** (Issue #1)
+  - Quick Start section: Clarified that `validate` is an ongoing command (run before every commit), not one-time
+  - Timing labels: Changed "First run/Cached run" to "When code changes/When code unchanged"
+  - Try It Out section: Focused on 3 key prerequisites (Node.js, Git, package manager) instead of listing all doctor checks
+  - Added note that `doctor` provides additional setup guidance beyond prerequisites
+  - Better positioning for AI agents evaluating project suitability
+
 ### 🔧 Changed
 
 - **Removed `config.output.format` field** - State files are now always written as YAML (not JSON)
