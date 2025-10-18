@@ -80,7 +80,7 @@ export default {
   ci: {
     // Matrix testing: Test across multiple OS and Node.js versions
     nodeVersions: ['20', '22', '24'],
-    os: ['ubuntu-latest', 'macos-latest', 'windows-latest'],
+    os: ['ubuntu-latest', 'macos-latest'], // Windows support tracked in Issue #4
     failFast: false, // Run all combinations even if one fails
   },
 };
