@@ -49,7 +49,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -73,7 +73,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -96,7 +96,7 @@ describe('runner-adapter', () => {
 
       const runnerConfig = createRunnerConfig(config, {
         force: true,
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -118,7 +118,7 @@ describe('runner-adapter', () => {
 
       const runnerConfig = createRunnerConfig(config, {
         force: false,
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -142,7 +142,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -163,14 +163,14 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
       expect(runnerConfig.phases).toEqual([]);
     });
 
-    it('should include human callbacks for human format', () => {
+    it('should include verbose callbacks when verbose=true', () => {
       const config: VibeValidateConfig = {
         validation: {
           phases: []
@@ -184,7 +184,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -194,7 +194,7 @@ describe('runner-adapter', () => {
       expect(runnerConfig.onStepComplete).toBeDefined();
     });
 
-    it('should include agent callbacks for yaml format', () => {
+    it('should include minimal callbacks when verbose=false', () => {
       const config: VibeValidateConfig = {
         validation: {
           phases: []
@@ -209,7 +209,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'yaml',
+        verbose: false,
         context
       });
 
@@ -219,7 +219,7 @@ describe('runner-adapter', () => {
       expect(runnerConfig.onStepComplete).toBeDefined();
     });
 
-    it('should include silent callbacks for json format', () => {
+    it('should include minimal callbacks for CI context (verbose=false)', () => {
       const config: VibeValidateConfig = {
         validation: {
           phases: []
@@ -233,7 +233,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'json',
+        verbose: false,
         context
       });
 
@@ -244,7 +244,7 @@ describe('runner-adapter', () => {
     });
   });
 
-  describe('human callbacks', () => {
+  describe('verbose callbacks', () => {
     it('should log colorful output for phase start', () => {
       const config: VibeValidateConfig = {
         validation: {
@@ -265,7 +265,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -297,7 +297,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -334,7 +334,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'human',
+        verbose: true,
         context
       });
 
@@ -352,8 +352,8 @@ describe('runner-adapter', () => {
     });
   });
 
-  describe('agent callbacks', () => {
-    it('should log structured output for yaml format', () => {
+  describe('minimal callbacks', () => {
+    it('should log minimal structured output when verbose=false', () => {
       const config: VibeValidateConfig = {
         validation: {
           phases: [
@@ -374,7 +374,7 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'yaml',
+        verbose: false,
         context
       });
 
@@ -384,7 +384,7 @@ describe('runner-adapter', () => {
       expect(console.log).toHaveBeenCalledWith('phase_start: Test Phase');
     });
 
-    it('should be silent for json format', () => {
+    it('should log minimal output for CI context (not silent)', () => {
       const config: VibeValidateConfig = {
         validation: {
           phases: [
@@ -404,11 +404,11 @@ describe('runner-adapter', () => {
       };
 
       const runnerConfig = createRunnerConfig(config, {
-        format: 'json',
+        verbose: false,
         context
       });
 
-      // Call callbacks - should not log anything
+      // Call callbacks - should log minimal YAML output
       runnerConfig.onPhaseStart?.(config.validation.phases[0]);
       runnerConfig.onPhaseComplete?.(config.validation.phases[0], {
         name: 'Test Phase',
@@ -417,7 +417,9 @@ describe('runner-adapter', () => {
         duration: 100
       });
 
-      expect(console.log).not.toHaveBeenCalled();
+      // Minimal callbacks DO log output (just minimal format)
+      expect(console.log).toHaveBeenCalledWith('phase_start: Test Phase');
+      expect(console.log).toHaveBeenCalledWith('phase_complete: Test Phase (passed)');
     });
   });
 });

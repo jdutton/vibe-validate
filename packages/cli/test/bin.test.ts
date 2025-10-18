@@ -129,11 +129,11 @@ describe('bin.ts - CLI entry point', () => {
     });
 
     it('should execute state command', async () => {
-      // Should succeed even with no state file
+      // Should succeed even with no state file (minimal YAML output)
       const result = await executeCLI(['state']);
 
       expect(result.code).toBe(0);
-      expect(result.stdout).toContain('No validation state found');
+      expect(result.stdout).toContain('exists: false');
     });
 
     it('should execute config command', async () => {
@@ -237,8 +237,8 @@ export default {
       const validateResult = await executeCLI(['validate']);
       expect(validateResult.code).toBe(0);
 
-      // 3. Check state (should show passed)
-      const stateResult = await executeCLI(['state']);
+      // 3. Check state (should show passed) - use --verbose for status text
+      const stateResult = await executeCLI(['state', '--verbose']);
       expect(stateResult.code).toBe(0);
       expect(stateResult.stdout).toContain('PASSED');
     }, 30000); // Increase timeout for full workflow
@@ -275,8 +275,8 @@ export default {
       const validateResult = await executeCLI(['validate']);
       expect(validateResult.code).toBe(1);
 
-      // Check state (should show failed)
-      const stateResult = await executeCLI(['state']);
+      // Check state (should show failed) - use --verbose for status text
+      const stateResult = await executeCLI(['state', '--verbose']);
       expect(stateResult.code).toBe(0);
       expect(stateResult.stdout).toContain('FAILED');
     }, 30000); // Increase timeout for full workflow
@@ -309,21 +309,21 @@ export default {
       execSync('git add .', { cwd: testDir });
       execSync('git commit -m "Initial commit"', { cwd: testDir });
 
-      // 1. First run - should execute validation
+      // 1. First run - should execute validation (minimal output: phase_start)
       const firstRun = await executeCLI(['validate']);
       expect(firstRun.code).toBe(0);
-      expect(firstRun.stdout).toContain('Running phase');
+      expect(firstRun.stdout).toContain('phase_start: Test Phase');
 
       // 2. Second run without --force - should use cache
       const cachedRun = await executeCLI(['validate']);
       expect(cachedRun.code).toBe(0);
       expect(cachedRun.stdout).toContain('already passed');
-      expect(cachedRun.stdout).not.toContain('Running phase'); // Should NOT run phases
+      expect(cachedRun.stdout).not.toContain('phase_start'); // Should NOT run phases
 
       // 3. Third run with --force - should bypass cache and run validation
       const forcedRun = await executeCLI(['validate', '--force']);
       expect(forcedRun.code).toBe(0);
-      expect(forcedRun.stdout).toContain('Running phase'); // Should run phases again
+      expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run phases again
       expect(forcedRun.stdout).not.toContain('already passed'); // Should NOT show cache message
     }, 30000); // Increase timeout for full workflow
   });

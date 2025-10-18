@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { detectContext, getRecommendedFormat } from '../src/utils/context-detector.js';
+import { detectContext, shouldBeVerbose } from '../src/utils/context-detector.js';
 
 describe('context-detector', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -141,8 +141,8 @@ describe('context-detector', () => {
     });
   });
 
-  describe('getRecommendedFormat', () => {
-    it('should recommend yaml for agent contexts', () => {
+  describe('shouldBeVerbose', () => {
+    it('should return false for agent contexts (minimal output preferred)', () => {
       const context = {
         isAgent: true,
         agentName: 'claude-code',
@@ -150,45 +150,45 @@ describe('context-detector', () => {
         isInteractive: false,
       };
 
-      const format = getRecommendedFormat(context);
+      const verbose = shouldBeVerbose(context);
 
-      expect(format).toBe('yaml');
+      expect(verbose).toBe(false);
     });
 
-    it('should recommend json for CI contexts', () => {
+    it('should return false for CI contexts (minimal output preferred)', () => {
       const context = {
         isAgent: false,
         isCI: true,
         isInteractive: false,
       };
 
-      const format = getRecommendedFormat(context);
+      const verbose = shouldBeVerbose(context);
 
-      expect(format).toBe('json');
+      expect(verbose).toBe(false);
     });
 
-    it('should recommend human for interactive terminals', () => {
+    it('should return true for interactive terminals (verbose output acceptable)', () => {
       const context = {
         isAgent: false,
         isCI: false,
         isInteractive: true,
       };
 
-      const format = getRecommendedFormat(context);
+      const verbose = shouldBeVerbose(context);
 
-      expect(format).toBe('human');
+      expect(verbose).toBe(true);
     });
 
-    it('should default to human for non-interactive, non-agent, non-CI', () => {
+    it('should return false for non-interactive, non-agent, non-CI (minimal default)', () => {
       const context = {
         isAgent: false,
         isCI: false,
         isInteractive: false,
       };
 
-      const format = getRecommendedFormat(context);
+      const verbose = shouldBeVerbose(context);
 
-      expect(format).toBe('human');
+      expect(verbose).toBe(false);
     });
 
     it('should prioritize agent over CI when both are true', () => {
@@ -200,9 +200,9 @@ describe('context-detector', () => {
         isInteractive: false,
       };
 
-      const format = getRecommendedFormat(context);
+      const verbose = shouldBeVerbose(context);
 
-      expect(format).toBe('yaml'); // Agent takes precedence
+      expect(verbose).toBe(false); // Agent takes precedence (both return false anyway)
     });
   });
 });

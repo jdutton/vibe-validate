@@ -57,13 +57,13 @@ describe('state command', () => {
       expect(stateCmd?.description()).toBe('Show current validation state');
     });
 
-    it('should register --format option', () => {
+    it('should register --verbose option', () => {
       stateCommand(program);
 
       const stateCmd = program.commands.find(cmd => cmd.name() === 'state');
       const options = stateCmd?.options;
 
-      expect(options?.some(opt => opt.flags === '--format <format>')).toBe(true);
+      expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
     });
 
     it('should register --file option', () => {
@@ -77,7 +77,7 @@ describe('state command', () => {
   });
 
   describe('no state file', () => {
-    it('should handle missing state file in human format', async () => {
+    it('should handle missing state file (minimal output)', async () => {
       stateCommand(program);
 
       try {
@@ -90,35 +90,24 @@ describe('state command', () => {
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No validation state found'));
-    });
-
-    it('should handle missing state file in json format', async () => {
-      stateCommand(program);
-
-      try {
-        await program.parseAsync(['state', '--format', 'json'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
-        }
-      }
-
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"exists": false'));
-    });
-
-    it('should handle missing state file in yaml format', async () => {
-      stateCommand(program);
-
-      try {
-        await program.parseAsync(['state', '--format', 'yaml'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
-        }
-      }
-
+      // Minimal YAML output
       expect(console.log).toHaveBeenCalledWith('exists: false');
+    });
+
+    it('should handle missing state file (verbose output)', async () => {
+      stateCommand(program);
+
+      try {
+        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      // Verbose output includes explanatory text
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('exists: false'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No validation state found'));
     });
   });
 
@@ -130,13 +119,17 @@ describe('state command', () => {
         treeHash: 'abc123def456',
       };
 
+      // Write YAML format (not JSON!)
+      const yamlContent = `passed: ${stateContent.passed}
+timestamp: ${stateContent.timestamp}
+treeHash: ${stateContent.treeHash}`;
       writeFileSync(
         join(testDir, '.vibe-validate-state.yaml'),
-        JSON.stringify(stateContent, null, 2)
+        yamlContent
       );
     });
 
-    it('should display passed state in human format', async () => {
+    it('should display passed state (minimal output)', async () => {
       stateCommand(program);
 
       try {
@@ -147,22 +140,24 @@ describe('state command', () => {
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('PASSED'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Safe to commit'));
+      // Minimal YAML output
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
     });
 
-    it('should display state in json format', async () => {
+    it('should display passed state (verbose output)', async () => {
       stateCommand(program);
 
       try {
-        await program.parseAsync(['state', '--format', 'json'], { from: 'user' });
+        await program.parseAsync(['state', '--verbose'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(0);
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"passed": true'));
+      // Verbose output includes status indicator and explanatory text
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('PASSED'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Safe to commit'));
     });
   });
 
@@ -177,13 +172,23 @@ describe('state command', () => {
         agentPrompt: 'Fix TypeScript type errors in src/index.ts',
       };
 
+      // Write YAML format (not JSON!)
+      // Properly indent multiline output
+      const indentedOutput = stateContent.failedStepOutput.split('\n').map(line => `  ${line}`).join('\n');
+      const yamlContent = `passed: ${stateContent.passed}
+timestamp: ${stateContent.timestamp}
+treeHash: ${stateContent.treeHash}
+failedStep: ${stateContent.failedStep}
+failedStepOutput: |
+${indentedOutput}
+agentPrompt: ${stateContent.agentPrompt}`;
       writeFileSync(
         join(testDir, '.vibe-validate-state.yaml'),
-        JSON.stringify(stateContent, null, 2)
+        yamlContent
       );
     });
 
-    it('should display failed state in human format', async () => {
+    it('should display failed state (minimal output)', async () => {
       stateCommand(program);
 
       try {
@@ -194,12 +199,29 @@ describe('state command', () => {
         }
       }
 
+      // Minimal YAML output
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('TypeScript Type Check'));
+    });
+
+    it('should display failed state (verbose output)', async () => {
+      stateCommand(program);
+
+      try {
+        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      // Verbose output includes status indicator and explanatory text
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('FAILED'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('TypeScript Type Check'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Next Steps'));
     });
 
-    it('should truncate long error output', async () => {
+    it('should display long error output without truncation (verbose mode)', async () => {
       const longOutput = Array(30).fill('Error line').join('\n');
       const stateContent = {
         passed: false,
@@ -209,22 +231,33 @@ describe('state command', () => {
         failedStepOutput: longOutput,
       };
 
+      // Write YAML format (not JSON!)
+      // Properly indent multiline output
+      const indentedOutput = stateContent.failedStepOutput.split('\n').map(line => `  ${line}`).join('\n');
+      const yamlContent = `passed: ${stateContent.passed}
+timestamp: ${stateContent.timestamp}
+treeHash: ${stateContent.treeHash}
+failedStep: ${stateContent.failedStep}
+failedStepOutput: |
+${indentedOutput}`;
       writeFileSync(
         join(testDir, '.vibe-validate-state.yaml'),
-        JSON.stringify(stateContent, null, 2)
+        yamlContent
       );
 
       stateCommand(program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await program.parseAsync(['state', '--verbose'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(0);
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('truncated'));
+      // Verbose mode shows full output (no truncation)
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('FAILED'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Build'));
     });
   });
 
