@@ -7,8 +7,10 @@
 import type { Command } from 'commander';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+import { execSync } from 'child_process';
 import chalk from 'chalk';
 import { configExists } from '../utils/config-loader.js';
+import { GIT_DEFAULTS } from '@vibe-validate/config';
 
 export function initCommand(program: Command): void {
   program
@@ -37,8 +39,19 @@ export function initCommand(program: Command): void {
           process.exit(1);
         }
 
+        // Detect git configuration
+        const gitConfig = detectGitConfig();
+
+        if (gitConfig.detected) {
+          console.log(chalk.blue('🔍 Auto-detected git configuration:'));
+          console.log(chalk.gray(`   Main branch: ${gitConfig.mainBranch}`));
+          console.log(chalk.gray(`   Remote: ${gitConfig.remoteOrigin}`));
+        } else {
+          console.log(chalk.gray('ℹ️  Using default git configuration (main, origin)'));
+        }
+
         // Generate config file content
-        const configContent = generateConfig(preset);
+        const configContent = generateConfig(preset, gitConfig);
         const configPath = join(cwd, 'vibe-validate.config.ts');
 
         // Write config file
@@ -64,9 +77,96 @@ export function initCommand(program: Command): void {
 }
 
 /**
+ * Detect git configuration from repository
+ */
+interface DetectedGitConfig {
+  mainBranch: string;
+  remoteOrigin: string;
+  detected: boolean;
+}
+
+function detectGitConfig(): DetectedGitConfig {
+  const defaults = {
+    mainBranch: GIT_DEFAULTS.MAIN_BRANCH,
+    remoteOrigin: GIT_DEFAULTS.REMOTE_ORIGIN,
+    detected: false,
+  };
+
+  try {
+    // Check if we're in a git repository
+    execSync('git rev-parse --git-dir', { stdio: 'pipe' });
+  } catch {
+    // Not a git repository - use defaults
+    return defaults;
+  }
+
+  let mainBranch: string = GIT_DEFAULTS.MAIN_BRANCH;
+  let remoteOrigin: string = GIT_DEFAULTS.REMOTE_ORIGIN;
+  let detected = false;
+
+  // Try to detect main branch from remote HEAD
+  try {
+    // First, get list of remotes
+    const remotesOutput = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' }).trim();
+    const remotes = remotesOutput.split('\n').filter(Boolean);
+
+    if (remotes.length > 0) {
+      // Prefer 'upstream' if it exists (forked repo workflow), otherwise use first remote
+      if (remotes.includes('upstream')) {
+        remoteOrigin = 'upstream';
+      } else if (remotes.includes('origin')) {
+        remoteOrigin = 'origin';
+      } else {
+        remoteOrigin = remotes[0]; // Use first available remote
+      }
+
+      // Try to detect main branch from remote HEAD
+      try {
+        const headRef = execSync(`git symbolic-ref refs/remotes/${remoteOrigin}/HEAD`, {
+          encoding: 'utf8',
+          stdio: 'pipe',
+        }).trim();
+        mainBranch = headRef.replace(`refs/remotes/${remoteOrigin}/`, '');
+        detected = true;
+      } catch {
+        // Remote HEAD not set, try to detect from common branch names
+        try {
+          const branches = execSync(`git ls-remote --heads ${remoteOrigin}`, {
+            encoding: 'utf8',
+            stdio: 'pipe',
+          }).trim();
+
+          // Check for common main branch names in order of preference
+          if (branches.includes('refs/heads/main')) {
+            mainBranch = 'main';
+            detected = true;
+          } else if (branches.includes('refs/heads/master')) {
+            mainBranch = 'master';
+            detected = true;
+          } else if (branches.includes('refs/heads/develop')) {
+            mainBranch = 'develop';
+            detected = true;
+          }
+        } catch {
+          // Failed to list remote branches - use defaults
+        }
+      }
+    }
+  } catch {
+    // Failed to detect - use defaults
+  }
+
+  return {
+    mainBranch,
+    remoteOrigin,
+    detected,
+  };
+}
+
+/**
  * Generate configuration content based on preset
  */
-function generateConfig(preset: string): string {
+function generateConfig(preset: string, gitConfig: DetectedGitConfig): string {
   const configs: Record<string, string> = {
     'typescript-library': `import { defineConfig } from '@vibe-validate/config';
 
@@ -133,7 +233,8 @@ export default defineConfig({
 
   // Git integration settings
   git: {
-    mainBranch: 'main',
+    mainBranch: '${gitConfig.mainBranch}',
+    remoteOrigin: '${gitConfig.remoteOrigin}',
     autoSync: false, // Never auto-merge - safety first
   },
 
@@ -209,7 +310,8 @@ export default defineConfig({
 
   // Git integration settings
   git: {
-    mainBranch: 'main',
+    mainBranch: '${gitConfig.mainBranch}',
+    remoteOrigin: '${gitConfig.remoteOrigin}',
     autoSync: false, // Never auto-merge - safety first
   },
 
@@ -285,7 +387,8 @@ export default defineConfig({
 
   // Git integration settings
   git: {
-    mainBranch: 'main',
+    mainBranch: '${gitConfig.mainBranch}',
+    remoteOrigin: '${gitConfig.remoteOrigin}',
     autoSync: false, // Never auto-merge - safety first
   },
 

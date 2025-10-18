@@ -6,6 +6,7 @@
  */
 
 import type { VibeValidateConfig } from '../schema.js';
+import { GIT_DEFAULTS } from '../constants.js';
 
 export const typescriptLibraryPreset = {
   preset: 'typescript-library',
@@ -58,9 +59,10 @@ export const typescriptLibraryPreset = {
   },
 
   git: {
-    mainBranch: 'main',
-    autoSync: false,
-    warnIfBehind: true,
+    mainBranch: GIT_DEFAULTS.MAIN_BRANCH,
+    remoteOrigin: GIT_DEFAULTS.REMOTE_ORIGIN,
+    autoSync: GIT_DEFAULTS.AUTO_SYNC,
+    warnIfBehind: GIT_DEFAULTS.WARN_IF_BEHIND,
   },
 
   output: {

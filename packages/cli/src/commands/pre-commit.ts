@@ -8,6 +8,7 @@
 import type { Command } from 'commander';
 import { runValidation } from '@vibe-validate/core';
 import { checkBranchSync } from '@vibe-validate/git';
+import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { createRunnerConfig } from '../utils/runner-adapter.js';
 import { detectContext } from '../utils/context-detector.js';
@@ -21,35 +22,38 @@ export function preCommitCommand(program: Command): void {
     .option('-v, --verbose', 'Show detailed progress and output')
     .action(async (options) => {
       try {
-        // Step 1: Check branch sync (unless skipped)
-        if (!options.skipSync) {
-          console.log(chalk.blue('🔄 Checking branch sync with origin/main...'));
-
-          const syncResult = await checkBranchSync({
-            remoteBranch: 'origin/main',
-          });
-
-          if (!syncResult.isUpToDate && syncResult.hasRemote) {
-            console.error(chalk.red('❌ Branch is behind origin/main'));
-            console.error(chalk.yellow(`   Behind by ${syncResult.behindBy} commit(s)`));
-            console.error(chalk.yellow('   Please merge origin/main before committing:'));
-            console.error(chalk.gray('   git merge origin/main'));
-            process.exit(1);
-          }
-
-          if (syncResult.hasRemote) {
-            console.log(chalk.green('✅ Branch is up to date with origin/main'));
-          } else {
-            console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or no remote)'));
-          }
-        }
-
-        // Step 2: Load configuration
+        // Step 1: Load configuration (needed for git settings)
         const config = await loadConfig();
         if (!config) {
           console.error(chalk.red('❌ No configuration found'));
           console.error(chalk.gray('   Run: vibe-validate init'));
           process.exit(1);
+        }
+
+        // Step 2: Check branch sync (unless skipped)
+        if (!options.skipSync) {
+          // Construct remote branch reference using helper
+          const remoteBranch = getRemoteBranch(config.git);
+
+          console.log(chalk.blue(`🔄 Checking branch sync with ${remoteBranch}...`));
+
+          const syncResult = await checkBranchSync({
+            remoteBranch,
+          });
+
+          if (!syncResult.isUpToDate && syncResult.hasRemote) {
+            console.error(chalk.red(`❌ Branch is behind ${remoteBranch}`));
+            console.error(chalk.yellow(`   Behind by ${syncResult.behindBy} commit(s)`));
+            console.error(chalk.yellow(`   Please merge ${remoteBranch} before committing:`));
+            console.error(chalk.gray(`   git merge ${remoteBranch}`));
+            process.exit(1);
+          }
+
+          if (syncResult.hasRemote) {
+            console.log(chalk.green(`✅ Branch is up to date with ${remoteBranch}`));
+          } else {
+            console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or no remote)'));
+          }
         }
 
         // Step 3: Detect context

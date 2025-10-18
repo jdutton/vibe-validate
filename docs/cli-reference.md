@@ -280,17 +280,19 @@ vibe-validate state --json
 
 ### `sync-check`
 
-Check if the current branch is behind origin/main (or configured main branch).
+Check if the current branch is behind the configured remote and main branch.
 
 #### Usage
 
 ```bash
-vibe-validate sync-check
+vibe-validate sync-check [options]
 ```
 
 #### Options
 
-None.
+- `--main-branch <branch>` - Main branch name (overrides config)
+- `--remote-origin <remote>` - Remote origin name (overrides config)
+- `--format <format>` - Output format (human/yaml/json/auto)
 
 #### Description
 
@@ -321,6 +323,20 @@ vibe-validate sync-check
 # Exit code: 1
 ```
 
+**Check against upstream (forked repos):**
+```bash
+vibe-validate sync-check --remote-origin upstream
+# Output:
+# ✅ Branch is up to date with upstream/main
+```
+
+**Check against custom branch:**
+```bash
+vibe-validate sync-check --main-branch develop --remote-origin upstream
+# Output:
+# ✅ Branch is up to date with upstream/develop
+```
+
 **Not on a git branch:**
 ```bash
 vibe-validate sync-check
@@ -340,21 +356,46 @@ vibe-validate sync-check
 #### Exit Codes
 
 - `0` - Branch is up to date OR not applicable (no remote, detached HEAD)
-- `1` - Branch is behind origin/main (merge needed)
+- `1` - Branch is behind remote main branch (merge needed)
 - `2` - Git error (repository not found, etc.)
 
 #### Configuration
 
-The main branch name is configurable:
+Git configuration is customizable for different workflows:
 
 ```typescript
 // vibe-validate.config.ts
 export default defineConfig({
   git: {
-    mainBranch: 'main', // or 'master', 'develop', etc.
+    mainBranch: 'main',      // Default: 'main'
+    remoteOrigin: 'origin',  // Default: 'origin'
   },
 });
 ```
+
+**Common scenarios**:
+
+```typescript
+// Forked repository - sync with upstream
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'upstream',
+}
+
+// Legacy project - use master branch
+git: {
+  mainBranch: 'master',
+  remoteOrigin: 'origin',
+}
+
+// Git-flow workflow - track develop
+git: {
+  mainBranch: 'develop',
+  remoteOrigin: 'origin',
+}
+```
+
+**CLI overrides**: Options passed via CLI always take precedence over config file settings.
 
 ---
 
@@ -431,13 +472,14 @@ vibe-validate cleanup
 
 #### Configuration
 
-The main branch name is configurable:
+Git configuration is customizable:
 
 ```typescript
 // vibe-validate.config.ts
 export default defineConfig({
   git: {
-    mainBranch: 'main', // or 'master', 'develop', etc.
+    mainBranch: 'main',      // Branch to switch to and sync
+    remoteOrigin: 'origin',  // Remote to pull from
   },
 });
 ```

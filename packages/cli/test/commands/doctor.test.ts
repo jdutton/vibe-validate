@@ -80,6 +80,9 @@ describe('doctor command', () => {
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
         if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any; // Branch exists
+        if (cmdStr.includes('git remote')) return 'origin' as any; // Remote exists
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any; // Remote branch exists
         return '' as any;
       });
 
@@ -90,7 +93,7 @@ describe('doctor command', () => {
       const result = await runDoctor();
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(9); // Total number of checks (7 original + 2 new)
+      expect(result.checks).toHaveLength(12); // Total number of checks (9 original + 3 new git checks)
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -99,7 +102,10 @@ describe('doctor command', () => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('node --version')) return 'v18.0.0' as any; // Too old
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
-        if (cmdStr.includes('git rev-parse')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
         return '' as any;
       });
 
@@ -259,7 +265,10 @@ describe('doctor command', () => {
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
-        if (cmdStr.includes('git rev-parse')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
         return '' as any;
       });
 
@@ -270,7 +279,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verbose mode should return all checks
-      expect(result.checks).toHaveLength(9); // 7 original + 2 new checks
+      expect(result.checks).toHaveLength(12); // 9 original + 3 new git checks
       expect(result.verboseMode).toBe(true);
     });
 
@@ -281,7 +290,10 @@ describe('doctor command', () => {
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
-        if (cmdStr.includes('git rev-parse')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
         return '' as any;
       });
 
@@ -294,7 +306,7 @@ describe('doctor command', () => {
       // Non-verbose with all passing should show all checks (for summary)
       expect(result.verboseMode).toBe(false);
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(9); // Shows all checks when all pass
+      expect(result.checks).toHaveLength(12); // Shows all checks when all pass (9 original + 3 git)
     });
 
     it('should always show failing checks in non-verbose mode', async () => {
@@ -302,7 +314,10 @@ describe('doctor command', () => {
         const cmdStr = cmd.toString();
         if (cmdStr.includes('node --version')) return 'v18.0.0' as any; // Too old
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
-        if (cmdStr.includes('git rev-parse')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
         return '' as any;
       });
 
@@ -327,7 +342,10 @@ describe('doctor command', () => {
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
-        if (cmdStr.includes('git rev-parse')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
         return '' as any;
       });
       vi.mocked(checkSync).mockReturnValue({ inSync: true });

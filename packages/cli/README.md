@@ -176,14 +176,16 @@ npx vibe-validate pre-commit
 
 ### `sync-check`
 
-Check if current branch is behind remote.
+Check if current branch is behind the configured remote and main branch.
 
 ```bash
 npx vibe-validate sync-check [options]
 ```
 
 **Options:**
-- `--remote-branch <branch>` - Remote branch to check (default: `origin/main`)
+- `--main-branch <branch>` - Main branch name (overrides config, default: `main`)
+- `--remote-origin <remote>` - Remote origin name (overrides config, default: `origin`)
+- `--format <format>` - Output format (human/yaml/json/auto)
 
 **Exit Codes:**
 - `0` - Up to date or no remote
@@ -193,11 +195,43 @@ npx vibe-validate sync-check [options]
 **Examples:**
 
 ```bash
-# Check against origin/main
+# Check against configured remote/branch (from config file)
 npx vibe-validate sync-check
 
-# Check against origin/develop
-npx vibe-validate sync-check --remote-branch origin/develop
+# Check against upstream/main (forked repos)
+npx vibe-validate sync-check --remote-origin upstream
+
+# Check against upstream/develop
+npx vibe-validate sync-check --main-branch develop --remote-origin upstream
+```
+
+**Configuration:**
+
+Set defaults in `vibe-validate.config.mjs`:
+
+```javascript
+export default defineConfig({
+  git: {
+    mainBranch: 'main',      // Default: 'main'
+    remoteOrigin: 'origin',  // Default: 'origin'
+  },
+});
+```
+
+**Common scenarios:**
+
+```javascript
+// Forked repository - sync with upstream
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'upstream',
+}
+
+// Legacy project - use master branch
+git: {
+  mainBranch: 'master',
+  remoteOrigin: 'origin',
+}
 ```
 
 ---
@@ -357,6 +391,7 @@ export default defineConfig({
   },
   git: {
     mainBranch: 'main',
+    remoteOrigin: 'origin',
     warnIfBehind: true,
   },
   output: {

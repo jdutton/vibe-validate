@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { GIT_DEFAULTS } from './constants.js';
 
 /**
  * Validation Step Schema
@@ -117,13 +118,16 @@ export type OutputFormat = z.infer<typeof OutputFormatSchema>;
  */
 export const GitConfigSchema = z.object({
   /** Main branch name (default: main) */
-  mainBranch: z.string().default('main'),
+  mainBranch: z.string().default(GIT_DEFAULTS.MAIN_BRANCH),
+
+  /** Remote name (default: origin) */
+  remoteOrigin: z.string().default(GIT_DEFAULTS.REMOTE_ORIGIN),
 
   /** Auto-sync with remote (default: false) */
-  autoSync: z.boolean().default(false),
+  autoSync: z.boolean().default(GIT_DEFAULTS.AUTO_SYNC),
 
   /** Warn if branch is behind remote (default: true) */
-  warnIfBehind: z.boolean().default(true),
+  warnIfBehind: z.boolean().default(GIT_DEFAULTS.WARN_IF_BEHIND),
 });
 
 export type GitConfig = z.infer<typeof GitConfigSchema>;
@@ -196,9 +200,10 @@ export const VibeValidateConfigSchema = z.object({
 
   /** Git integration configuration */
   git: GitConfigSchema.optional().default({
-    mainBranch: 'main',
-    autoSync: false,
-    warnIfBehind: true,
+    mainBranch: GIT_DEFAULTS.MAIN_BRANCH,
+    remoteOrigin: GIT_DEFAULTS.REMOTE_ORIGIN,
+    autoSync: GIT_DEFAULTS.AUTO_SYNC,
+    warnIfBehind: GIT_DEFAULTS.WARN_IF_BEHIND,
   }),
 
   /** Output formatting configuration */

@@ -16,6 +16,7 @@ import { execSync } from 'child_process';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
+import { getMainBranch, getRemoteOrigin } from '@vibe-validate/config';
 
 /**
  * Result of a single doctor check
@@ -386,6 +387,156 @@ function checkValidationState(): DoctorCheckResult {
 }
 
 /**
+ * Check if configured main branch exists locally
+ */
+async function checkMainBranch(): Promise<DoctorCheckResult> {
+  try {
+    const config = await loadConfig();
+    if (!config) {
+      return {
+        name: 'Git main branch',
+        passed: true,
+        message: 'Skipped (no config)',
+      };
+    }
+
+    const mainBranch = getMainBranch(config.git);
+
+    try {
+      execSync(`git rev-parse --verify ${mainBranch}`, { stdio: 'pipe' });
+      return {
+        name: 'Git main branch',
+        passed: true,
+        message: `Branch '${mainBranch}' exists locally`,
+      };
+    } catch (_error) {
+      return {
+        name: 'Git main branch',
+        passed: false,
+        message: `Configured main branch '${mainBranch}' does not exist locally`,
+        suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
+      };
+    }
+  } catch (_error) {
+    return {
+      name: 'Git main branch',
+      passed: true,
+      message: 'Skipped (config or git error)',
+    };
+  }
+}
+
+/**
+ * Check if configured remote origin exists
+ */
+async function checkRemoteOrigin(): Promise<DoctorCheckResult> {
+  try {
+    const config = await loadConfig();
+    if (!config) {
+      return {
+        name: 'Git remote origin',
+        passed: true,
+        message: 'Skipped (no config)',
+      };
+    }
+
+    const remoteOrigin = getRemoteOrigin(config.git);
+
+    try {
+      const remotes = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' })
+        .trim()
+        .split('\n')
+        .filter(Boolean);
+
+      if (remotes.includes(remoteOrigin)) {
+        return {
+          name: 'Git remote origin',
+          passed: true,
+          message: `Remote '${remoteOrigin}' exists`,
+        };
+      } else {
+        const availableRemotes = remotes.join(', ') || '(none)';
+        return {
+          name: 'Git remote origin',
+          passed: false,
+          message: `Configured remote '${remoteOrigin}' does not exist. Available: ${availableRemotes}`,
+          suggestion: `Add remote: git remote add ${remoteOrigin} <url> OR update config to use existing remote (e.g., 'origin')`,
+        };
+      }
+    } catch (_error) {
+      return {
+        name: 'Git remote origin',
+        passed: false,
+        message: 'Failed to list git remotes',
+        suggestion: 'Verify git repository is initialized',
+      };
+    }
+  } catch (_error) {
+    return {
+      name: 'Git remote origin',
+      passed: true,
+      message: 'Skipped (config or git error)',
+    };
+  }
+}
+
+/**
+ * Check if configured main branch exists on remote
+ */
+async function checkRemoteMainBranch(): Promise<DoctorCheckResult> {
+  try {
+    const config = await loadConfig();
+    if (!config) {
+      return {
+        name: 'Git remote main branch',
+        passed: true,
+        message: 'Skipped (no config)',
+      };
+    }
+
+    const mainBranch = getMainBranch(config.git);
+    const remoteOrigin = getRemoteOrigin(config.git);
+
+    try {
+      // First check if remote exists
+      const remotes = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' })
+        .trim()
+        .split('\n')
+        .filter(Boolean);
+
+      if (!remotes.includes(remoteOrigin)) {
+        return {
+          name: 'Git remote main branch',
+          passed: true,
+          message: `Skipped (remote '${remoteOrigin}' not configured)`,
+        };
+      }
+
+      // Check if remote branch exists
+      execSync(`git ls-remote --heads ${remoteOrigin} ${mainBranch}`, { stdio: 'pipe' });
+      return {
+        name: 'Git remote main branch',
+        passed: true,
+        message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}'`,
+      };
+    } catch (_error) {
+      return {
+        name: 'Git remote main branch',
+        passed: false,
+        message: `Branch '${mainBranch}' does not exist on remote '${remoteOrigin}'`,
+        suggestion: `Push branch: git push ${remoteOrigin} ${mainBranch} OR update config to match remote branch name`,
+      };
+    }
+  } catch (_error) {
+    return {
+      name: 'Git remote main branch',
+      passed: true,
+      message: 'Skipped (config or git error)',
+    };
+  }
+}
+
+/**
  * Run all doctor checks
  */
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
@@ -399,6 +550,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(checkConfigFile());
   allChecks.push(await checkConfigValid());
   allChecks.push(await checkPackageManager());
+  allChecks.push(await checkMainBranch());
+  allChecks.push(await checkRemoteOrigin());
+  allChecks.push(await checkRemoteMainBranch());
   allChecks.push(await checkWorkflowSync());
   allChecks.push(await checkPreCommitHook());
   allChecks.push(checkValidationState());

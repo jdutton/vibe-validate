@@ -1,24 +1,41 @@
 /**
  * Sync-Check Command
  *
- * Check if current branch is behind origin/main without auto-merging.
+ * Check if current branch is behind remote main branch without auto-merging.
  */
 
 import type { Command } from 'commander';
 import { checkBranchSync } from '@vibe-validate/git';
+import { getRemoteBranch, getMainBranch } from '@vibe-validate/config';
+import { loadConfig } from '../utils/config-loader.js';
 import chalk from 'chalk';
 
 export function syncCheckCommand(program: Command): void {
   program
     .command('sync-check')
-    .description('Check if branch is behind origin/main')
-    .option('--main-branch <branch>', 'Main branch name', 'main')
+    .description('Check if branch is behind remote main branch')
+    .option('--main-branch <branch>', 'Main branch name (overrides config)')
+    .option('--remote-origin <remote>', 'Remote origin name (overrides config)')
     .option('--format <format>', 'Output format (human|yaml|json)', 'human')
     .action(async (options) => {
       try {
+        // Load config to get defaults
+        const config = await loadConfig();
+
+        // Build git config with CLI option overrides
+        const gitConfig = {
+          ...config?.git,
+          ...(options.mainBranch && { mainBranch: options.mainBranch }),
+          ...(options.remoteOrigin && { remoteOrigin: options.remoteOrigin }),
+        };
+
+        // Construct remote branch using config + overrides
+        const remoteBranch = getRemoteBranch(gitConfig);
+        const mainBranch = getMainBranch(gitConfig); // Used in display function below
+
         // Check branch sync
         const result = await checkBranchSync({
-          remoteBranch: `origin/${options.mainBranch}`,
+          remoteBranch,
         });
 
         // Output based on format
@@ -35,7 +52,7 @@ export function syncCheckCommand(program: Command): void {
           }
         } else {
           // Human-friendly format
-          displayHumanSyncCheck(result, options.mainBranch);
+          displayHumanSyncCheck(result, mainBranch);
         }
 
         // Exit codes:
