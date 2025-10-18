@@ -5,6 +5,10 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['packages/*/test/**/*.test.ts'],
+    // Prevent Vitest worker timeouts by limiting concurrency
+    maxConcurrency: 5,
+    fileParallelism: false,
+    testTimeout: 10000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
