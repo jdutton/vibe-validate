@@ -334,6 +334,9 @@ export default {
 `;
       writeFileSync(join(testDir, 'vibe-validate.config.js'), configContent);
 
+      // Create .gitignore to exclude state file (prevents tree hash changes)
+      writeFileSync(join(testDir, '.gitignore'), '.vibe-validate-state.yaml\n');
+
       // Initialize git
       const { execSync } = await import('child_process');
       execSync('git init', { cwd: testDir });

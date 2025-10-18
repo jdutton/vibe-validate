@@ -25,23 +25,93 @@ npx vibe-validate validate
 **First run**: ~60-90s (runs all checks)
 **Cached run**: ~288ms (312x faster!)
 
-## When to Use This
+## Integration with package.json
 
-Use vibe-validate if you:
-- ✅ Run `npm test && npm run lint && npm run typecheck` repeatedly
-- ✅ Want validation to be fast (cached when code unchanged)
-- ✅ Need pre-commit hooks that don't slow you down
-- ✅ Want consistent validation between local dev and CI/CD
-- ✅ Use AI assistants and want cleaner error output
+Make vibe-validate part of your existing workflow:
 
-## What You Get
+```json
+{
+  "scripts": {
+    "validate": "vibe-validate validate",
+    "pre-commit": "vibe-validate pre-commit",
+    "test:all": "vibe-validate validate"
+  }
+}
+```
 
-- **Git tree hash caching** - Content-based, deterministic caching (not timestamp)
-- **Parallel execution** - Run independent checks simultaneously
-- **Agent-friendly output** - Detects AI assistants, provides structured errors
-- **GitHub Actions generator** - Auto-generate CI/CD workflows from config
-- **Health checking** - Diagnose project issues with `doctor` command
-- **Pre-commit workflow** - Branch sync + validation in one command
+**Benefits:**
+- Shorter commands: `npm run validate` vs `npx vibe-validate validate`
+- Familiar pattern for TypeScript developers (like `npm run typecheck`)
+- Works with any package manager (npm, pnpm, yarn)
+- Easier to document in team workflows
+
+**Usage:**
+```bash
+npm run validate      # Run validation (cached if code unchanged)
+npm run pre-commit    # Pre-commit workflow (branch sync + validation)
+```
+
+## Try It Out (No Installation)
+
+Evaluate vibe-validate for your project without installing:
+
+```bash
+# Diagnose your project setup (checks Node.js, Git, config, workflow sync)
+npx @vibe-validate/cli@latest doctor
+```
+
+**What `doctor` checks:**
+- ✅ Node.js version (>=20)
+- ✅ Git repository setup
+- ✅ Package manager availability
+- ✅ Existing vibe-validate configuration
+- ✅ Pre-commit hooks status
+- ✅ GitHub Actions workflow sync
+
+**Output:** Clear diagnostics with actionable suggestions for any issues found.
+
+## Why vibe-validate?
+
+**Built for agentic coding workflows** to help deterministically enforce SDLC best practices and minimize context window usage when working with AI assistants like [Claude Code](https://claude.ai/code).
+
+### Core Design Goals
+
+1. **Validate before pushing** - Prevent broken PRs by catching issues locally before they reach CI
+2. **PR/local sync** - Guarantee PR validation passes because it's identical to local testing
+3. **Speed up validation** - Parallel execution + smart caching + fail-fast = faster iteration
+4. **Minimize context window usage** - Agent-optimized error formatting with test filters
+5. **Keep branches synchronized** - Enforce branch sync with main during development
+
+### Key Features
+
+- **312x faster cached validation** (288ms vs 90s when code unchanged)
+- **Git tree hash caching** - Content-based, deterministic (includes untracked files)
+- **Parallel phase execution** - Run independent checks simultaneously
+- **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue
+- **Branch sync enforcement** - Pre-commit hook ensures branches stay current
+- **GitHub Actions generator** - CI/CD workflow auto-generated from config
+
+### vs. Alternatives
+
+**vs. Running commands manually** (`npm test && npm run lint && ...`):
+- ✅ 312x faster with caching
+- ✅ Parallel execution
+- ✅ Branch sync checking
+- ✅ Agent-friendly error output
+
+**vs. Nx/Turborepo**:
+- ✅ Simpler setup (one config file vs complex workspace)
+- ✅ Language-agnostic (not tied to npm workspaces)
+- ✅ Designed for AI assistants (Claude Code integration)
+- ✅ SDLC enforcement (pre-commit, branch sync)
+
+**vs. Pre-commit framework (Python)**:
+- ✅ Native Node.js (no Python dependency)
+- ✅ Full validation orchestration (not just pre-commit)
+- ✅ Caching between local/CI runs
+- ✅ GitHub Actions generator
+
+**Primarily tested with:** [Claude Code](https://claude.ai/code) - Anthropic's AI-powered coding assistant
 
 ## Common Commands
 
@@ -49,7 +119,7 @@ Use vibe-validate if you:
 # Run validation (uses cache if code unchanged)
 npx vibe-validate validate
 
-# Check repository health
+# Diagnose vibe-validate configuration and environment
 npx vibe-validate doctor
 
 # Generate GitHub Actions workflow
@@ -110,14 +180,11 @@ npx vibe-validate validate
 # Force re-validation (bypass cache)
 npx vibe-validate validate --force
 
-# Human-friendly output
-npx vibe-validate validate --format=human
+# Verbose output with detailed progress
+npx vibe-validate validate --verbose
 
-# YAML output (for agents)
-npx vibe-validate validate --format=yaml
-
-# JSON output (for CI/CD)
-npx vibe-validate validate --format=json
+# Check validation status without running
+npx vibe-validate validate --check
 ```
 
 **Features**:
@@ -170,11 +237,8 @@ Shows current validation state.
 # Human-friendly summary
 npx vibe-validate state
 
-# YAML format (for agents)
-npx vibe-validate state --format=yaml
-
-# JSON format (for scripts)
-npx vibe-validate state --format=json
+# Full error output (no truncation)
+npx vibe-validate state --verbose
 ```
 
 **Output includes**:
@@ -341,12 +405,10 @@ export default defineConfig({
     failFast: false, // Continue even if a step fails
   },
   git: {
-    mainBranch: 'main',
-    autoSync: false, // Never auto-merge
+    mainBranch: 'main', // Customize for 'master', 'develop', etc.
+    autoSync: false,     // Never auto-merge (safety first)
   },
-  output: {
-    format: 'auto', // 'human' | 'yaml' | 'json' | 'auto'
-  },
+  // State files are always written as YAML (human and machine readable)
 });
 ```
 
@@ -374,6 +436,25 @@ export default defineConfig(
   })
 );
 ```
+
+### Customizing Main Branch
+
+By default, vibe-validate assumes your main branch is `main`. To use a different branch:
+
+```typescript
+export default defineConfig({
+  git: {
+    mainBranch: 'master',  // or 'develop', 'trunk', etc.
+  },
+});
+```
+
+**Or via CLI:**
+```bash
+npx vibe-validate sync-check --main-branch master
+```
+
+**Note:** The `pre-commit` command respects `git.mainBranch` from your config file.
 
 ## Workflows
 
@@ -420,12 +501,13 @@ jobs:
         with:
           node-version: '20'
       - run: npm install
-      - run: npx vibe-validate validate --format=json
+      - run: npx vibe-validate validate
+        # State files are always YAML (human and machine readable)
 ```
 
 **Benefits**:
 - Exit code 0/1 for pass/fail
-- JSON output for CI parsing
+- YAML state files (machine-readable and human-reviewable)
 - Parallel execution (faster CI)
 - Consistent with local validation
 

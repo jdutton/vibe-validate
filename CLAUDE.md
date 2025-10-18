@@ -135,6 +135,44 @@ pnpm build
 - Document edge cases and limitations
 - Keep docs up-to-date with code
 
+## Contributing Guidelines
+
+**CRITICAL**: All contributors (humans and AI agents) MUST follow the guidelines in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Key Requirements from CONTRIBUTING.md
+
+1. **Pull Request Process** (Section: Submitting Changes)
+   - All changes via PRs (no direct main commits)
+   - Run `pnpm validate` before creating PR
+   - Update documentation for feature changes
+   - Include testing approach in PR description
+
+2. **Code Quality Standards** (Section: Pre-Commit Checklist)
+   - ✅ All tests pass (`pnpm test`)
+   - ✅ ESLint clean (0 errors, 0 warnings)
+   - ✅ TypeScript compiles (`pnpm typecheck`)
+   - ✅ Coverage maintained (80%+)
+   - ✅ Builds successfully (`pnpm -r build`)
+   - ✅ Validation passes (`pnpm validate`)
+
+3. **Commit Message Format** (Section: Commit Message Format)
+   - Follow conventional commits (feat:, fix:, docs:, test:, refactor:, chore:)
+   - Include clear description of changes
+
+4. **PR Template** (Section: Pull Request Process)
+   - Summary of changes
+   - Testing approach
+   - Coverage verification
+   - Breaking changes (if any)
+
+5. **TDD Requirements** (Section: Writing Tests)
+   - Write failing test first
+   - Implement feature
+   - Verify test passes
+   - Refactor while keeping tests green
+
+**Read CONTRIBUTING.md in full** before making any changes to ensure compliance.
+
 ## Source of Truth
 
 ### Configuration

@@ -102,12 +102,7 @@ function displayVerboseConfig(config: VibeValidateConfig, configPath: string): v
     console.log();
   }
 
-  // Output settings
-  if (config.output) {
-    console.log(chalk.blue('Output:'));
-    console.log(chalk.gray(`  Format: ${config.output.format || 'auto'}`));
-    console.log();
-  }
+  // Output settings (format field removed - state files are always YAML)
 
   // Preset info (if extended)
   if (config.extends) {
@@ -148,8 +143,5 @@ function displayYamlConfig(config: VibeValidateConfig): void {
     console.log(`  autoSync: ${config.git.autoSync || false}`);
   }
 
-  if (config.output) {
-    console.log('output:');
-    console.log(`  format: ${config.output.format || 'auto'}`);
-  }
+  // Output config removed - state files are always YAML
 }
