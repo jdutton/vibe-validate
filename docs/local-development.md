@@ -341,6 +341,53 @@ pnpm -r build  # Rebuild all packages
 ls -la packages/cli/dist/
 ```
 
+### Issue: "Cannot find exported member" from @vibe-validate packages
+
+**Symptom**: TypeScript error when importing from workspace packages:
+```
+error TS2305: Module '@vibe-validate/config' has no exported member 'MyNewExport'.
+```
+
+**Root Cause**: pnpm caches workspace packages based on version number in `package.json`. When you add new exports without bumping the version, pnpm uses the cached package which doesn't have your new code.
+
+**Why this happens**:
+- **Version ranges** (`^0.9.0`) cause pnpm to cache based on semver
+- pnpm doesn't monitor the `dist/` folder for changes
+- New exports exist in your source but not in the cached package
+
+**Solution 1: Use workspace:* protocol (RECOMMENDED)**
+
+Always use `workspace:*` for internal dependencies during development:
+
+```json
+// packages/cli/package.json
+{
+  "dependencies": {
+    "@vibe-validate/config": "workspace:*",  // ✅ Always live
+    "@vibe-validate/core": "workspace:*"
+  }
+}
+```
+
+**Benefits**:
+- Creates live symlinks to source packages
+- TypeScript always sees latest types from `dist/`
+- No caching issues during development
+- Automatically replaced with version ranges when publishing
+
+**Solution 2: Force pnpm to refresh (if using version ranges)**
+
+```bash
+# Nuclear option - removes all cached packages
+rm -rf node_modules
+pnpm install
+
+# Rebuild to ensure types are up-to-date
+pnpm -r build
+```
+
+**Prevention**: The vibe-validate monorepo uses `workspace:*` protocol for all internal dependencies to avoid this issue. If you're working on vibe-validate itself, this should not be a problem.
+
 ### Issue: "file: protocol breaks CI"
 
 **Cause**: CI doesn't have local vibe-validate workspace

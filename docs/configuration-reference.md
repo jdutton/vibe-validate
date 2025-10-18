@@ -184,6 +184,61 @@ Shell command to execute for this validation step.
 
 **Note**: Commands run in the project root directory.
 
+#### Environment-Specific Commands
+
+You can use `process.env` to customize commands based on environment:
+
+```javascript
+// vibe-validate.config.mjs
+export default {
+  validation: {
+    phases: [{
+      name: 'Testing',
+      steps: [{
+        name: 'Unit Tests',
+        // Verbose output in CI, concise locally
+        command: process.env.CI
+          ? 'npm test -- --reporter=verbose'
+          : 'npm test',
+        description: 'Run unit tests with coverage',
+      }]
+    }]
+  }
+}
+```
+
+**Common patterns**:
+- `process.env.CI` - Detect CI environment (GitHub Actions, GitLab CI, etc.)
+- `process.env.CLAUDE_CODE` - Detect Claude Code agent
+- `process.env.NODE_ENV` - Development vs production
+- `process.env.DEBUG` - Enable debug output
+
+**Why use environment-specific commands?**
+- **Verbose output in CI**: When tests fail in CI, you need full details immediately
+- **Concise output locally**: Developers prefer minimal noise during development
+- **Different tool configurations**: Use different configs for different environments
+
+**Example with multiple environments**:
+```javascript
+const isCI = process.env.CI === 'true';
+const isClaude = process.env.CLAUDE_CODE === '1';
+
+export default {
+  validation: {
+    phases: [{
+      steps: [{
+        name: 'Tests',
+        command: isCI
+          ? 'vitest run --reporter=verbose --coverage'
+          : isClaude
+            ? 'vitest run --reporter=json'
+            : 'vitest run',
+      }]
+    }]
+  }
+}
+```
+
 ### `validation.caching`
 
 Configuration for validation state caching.
@@ -384,6 +439,39 @@ output: {
   format: 'auto', // Automatically detect context
 }
 ```
+
+### Output Behavior
+
+#### Real-Time Streaming
+
+All validation commands stream output in real-time as they execute. This means you'll see:
+
+- **Test progress** as tests run
+- **Build output** as compilation happens
+- **Lint results** as files are checked
+
+Output is both streamed to the terminal AND captured for the state file, ensuring:
+- Immediate visibility during execution
+- Complete error details preserved for later analysis
+- Better debugging experience in CI environments
+
+**Example output during test execution:**
+```
+🔍 Running Testing (1 steps in parallel)...
+   ⏳ Unit Tests with Coverage  →  npm test
+
+ RUN  v3.2.4 /path/to/project
+ ✓ should pass first test
+ ✓ should pass second test
+ ✗ should fail this test
+
+      ✅ Unit Tests with Coverage - PASSED (15.3s)
+```
+
+This real-time feedback is especially valuable when:
+- Running long test suites
+- Debugging CI failures
+- Working with LLM assistants that need immediate feedback
 
 ## Using Presets
 
