@@ -18,12 +18,12 @@ npm install -D @vibe-validate/cli
 # 2. Initialize (creates config, detects your project type)
 npx vibe-validate init
 
-# 3. Validate (full run first time, cached after)
+# 3. Validate (run before every commit - uses cache when code unchanged)
 npx vibe-validate validate
 ```
 
-**First run**: ~60-90s (runs all checks)
-**Cached run**: ~288ms (312x faster!)
+**When code changes**: ~60-90s (runs all checks)
+**When code unchanged**: ~288ms (312x faster with cache!)
 
 ## Integration with package.json
 
@@ -53,22 +53,19 @@ npm run pre-commit    # Pre-commit workflow (branch sync + validation)
 
 ## Try It Out (No Installation)
 
-Evaluate vibe-validate for your project without installing:
+Evaluate if your project is suitable for vibe-validate:
 
 ```bash
-# Diagnose your project setup (checks Node.js, Git, config, workflow sync)
+# Check if your project meets prerequisites
 npx @vibe-validate/cli@latest doctor
 ```
 
-**What `doctor` checks:**
-- ✅ Node.js version (>=20)
-- ✅ Git repository setup
-- ✅ Package manager availability
-- ✅ Existing vibe-validate configuration
-- ✅ Pre-commit hooks status
-- ✅ GitHub Actions workflow sync
+**Prerequisites checked:**
+- ✅ Node.js 20+ installed
+- ✅ Git repository initialized
+- ✅ Package manager available (npm/pnpm)
 
-**Output:** Clear diagnostics with actionable suggestions for any issues found.
+**Additional guidance:** `doctor` will also provide setup recommendations for configuration, pre-commit hooks, and GitHub Actions workflow sync to help you get started.
 
 ## Why vibe-validate?
 
