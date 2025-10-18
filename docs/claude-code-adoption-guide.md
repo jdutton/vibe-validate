@@ -287,7 +287,7 @@ npx vibe-validate validate
 ```
 ❌ Phase Pre-Qualification failed
 
-📋 Error details: .vibe-validate-state.yaml
+📋 View errors: npx vibe-validate state
 🔄 To retry: npm run typecheck
 📄 Full log: /tmp/validation-2025-10-17-*.log
 ```
@@ -432,8 +432,8 @@ git commit -m "feat: Add vibe-validate for validation orchestration"
 
 **Solution**:
 1. Check git status: `git status`
-2. Verify state file exists: `ls .vibe-validate-state.yaml`
-3. Check state file isn't in `.gitignore`
+2. Check validation status: `npx vibe-validate validate --check`
+3. View validation state: `npx vibe-validate state`
 4. Try force re-validation: `npx vibe-validate validate --force`
 
 ---
@@ -450,7 +450,7 @@ git commit -m "feat: Add vibe-validate for validation orchestration"
 ### For Cursor/Aider/Continue
 
 1. **Non-interactive setup** - Prepare to handle interactive prompts
-2. **Validation state** - Read `.vibe-validate-state.yaml` for error details
+2. **Validation state** - Use `npx vibe-validate state` for error details
 3. **JSON output** - Use `--json` flag for machine-readable output:
    ```bash
    npx vibe-validate doctor --json

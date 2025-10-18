@@ -316,9 +316,9 @@ npx vibe-validate cleanup
 **Problem**: Cache not working, validation runs full every time.
 
 **Solution**:
-1. Check `.vibe-validate-state.yaml` exists and is writable
+1. Check validation status: `npx vibe-validate validate --check`
 2. Ensure working tree is clean: `git status`
-3. Verify state file isn't blocked by `.gitignore`
+3. View validation state: `npx vibe-validate state`
 4. Try force re-validation: `npx vibe-validate validate --force`
 
 ### Command not found

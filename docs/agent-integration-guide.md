@@ -73,8 +73,8 @@ vibe-validate officially supports these AI coding assistants:
 1. User: "Commit these changes"
 2. Agent: Run `vibe-validate pre-commit`
 3. If validation fails:
-   - Read `.vibe-validate-state.yaml`
-   - Extract `agentPrompt` field
+   - Run `vibe-validate state` to get error details
+   - Extract `agentPrompt` field from output
    - Analyze errors and suggest fixes
    - Apply fixes
    - Re-run validation (cached, fast!)
@@ -177,9 +177,9 @@ Validation results cached in `.vibe-validate-state.yaml`:
 ## Error Fixing
 
 When validation fails:
-1. Read `.vibe-validate-state.yaml`
-2. Extract `agentPrompt` field
-3. Fix errors listed
+1. Check validation status: `vibe-validate validate --check`
+2. View error details: `vibe-validate state`
+3. Fix errors listed in agentPrompt
 4. Re-run validation (fast with caching!)
 ```
 
@@ -299,7 +299,7 @@ Cursor: Running validation...
 [Runs: vibe-validate validate]
 
 Cursor: Found 2 TypeScript errors. Fixing...
-[Reads: .vibe-validate-state.yaml]
+[Runs: vibe-validate state]
 [Applies fixes]
 
 Cursor: Validation now passes. Ready to commit.
@@ -430,12 +430,12 @@ export default defineConfig({
     {
       "name": "validate",
       "description": "Run vibe-validate validation",
-      "prompt": "Run validation and report results:\n\n```\nvibe-validate validate\n```\n\nIf validation fails, read `.vibe-validate-state.yaml` and fix errors."
+      "prompt": "Run validation and report results:\n\n```\nvibe-validate validate\n```\n\nIf validation fails, run `vibe-validate state` to view errors and fix them."
     },
     {
       "name": "fix-errors",
       "description": "Fix validation errors",
-      "prompt": "Read `.vibe-validate-state.yaml`, extract agentPrompt, and fix all listed errors. Re-validate after fixing."
+      "prompt": "Run `vibe-validate state` to view errors, extract agentPrompt, and fix all listed errors. Re-validate after fixing."
     }
   ]
 }
@@ -467,7 +467,7 @@ Continue: Validation failed with 2 errors:
 User: /fix-errors
 
 Continue: Reading validation state...
-[Reads: .vibe-validate-state.yaml]
+[Runs: vibe-validate state]
 
 Continue: Fixing errors...
 [Applies fixes to src/index.ts and src/auth.ts]
@@ -515,10 +515,13 @@ export VIBE_OUTPUT_FORMAT=yaml
 vibe-validate validate
 ```
 
-### Step 3: Read State File
+### Step 3: Read Validation State
 
 ```bash
-# Parse YAML state file
+# View validation state
+vibe-validate state
+
+# Or read state file directly (advanced)
 cat .vibe-validate-state.yaml
 ```
 
@@ -611,7 +614,7 @@ if [ $EXIT_CODE -eq 0 ]; then
   echo "Validation passed"
 elif [ $EXIT_CODE -eq 1 ]; then
   echo "Validation failed - fix errors"
-  cat .vibe-validate-state.yaml
+  vibe-validate state
 elif [ $EXIT_CODE -eq 2 ]; then
   echo "Configuration error"
 fi
@@ -899,14 +902,14 @@ export default defineConfig({
 **Solution**: Run validation first to create state file:
 ```bash
 vibe-validate validate
-ls -la .vibe-validate-state.yaml
+vibe-validate validate --check
 ```
 
 ### "Agent fixes don't work"
 
-**Solution**: Check error format in state file:
+**Solution**: Check error format in state output:
 ```bash
-cat .vibe-validate-state.yaml | grep -A 10 "failedStepOutput"
+vibe-validate state | grep -A 10 "Failed step"
 ```
 
 Ensure error formatters are working correctly (see [Error Formatters Guide](./error-formatters-guide.md)).

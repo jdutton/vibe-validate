@@ -319,11 +319,11 @@ After fixing, run: vibe-validate validate
 
 **Example usage in Claude Code:**
 ```bash
-# Read state file
-cat .vibe-validate-state.yaml
+# Check validation status
+vibe-validate validate --check
 
-# Extract agentPrompt
-# Paste into Claude Code chat
+# View formatted errors with agent-friendly prompts
+vibe-validate state
 
 # Claude Code analyzes errors and suggests fixes
 ```
@@ -574,8 +574,8 @@ vibe-validate validate --force
 # Check formatted output
 vibe-validate state --yaml
 
-# Verify agentPrompt is actionable
-cat .vibe-validate-state.yaml | grep -A 20 "agentPrompt"
+# Verify agentPrompt is present
+vibe-validate state | grep -A 10 "Next steps"
 ```
 
 ### 5. Contribute Formatters
