@@ -370,6 +370,15 @@ async function checkPreCommitHook(): Promise<DoctorCheckResult> {
 function checkValidationState(): DoctorCheckResult {
   const statePath = '.vibe-validate-state.yaml';
 
+  // Skip this check in CI environments - state file won't exist on fresh checkout
+  if (process.env.CI) {
+    return {
+      name: 'Validation state',
+      passed: true,
+      message: 'Skipped in CI (state file created during validation run)',
+    };
+  }
+
   if (existsSync(statePath)) {
     return {
       name: 'Validation state',
