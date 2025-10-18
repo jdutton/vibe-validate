@@ -172,47 +172,17 @@ vibe-validate init
 
 ## Development Workflow
 
-### Testing CI Workflows Locally
-
-**Use `act` to test GitHub Actions workflows locally before pushing:**
-
-```bash
-# Install act (requires Docker)
-brew install act  # macOS
-# or
-choco install act-cli  # Windows
-
-# Run the full CI workflow locally
-act pull_request
-
-# Run specific job
-act -j validate
-
-# Run with specific matrix combination
-act -j validate --matrix os:ubuntu-latest --matrix node:20
-```
-
-**Benefits:**
-- Test CI changes without pushing commits
-- Fast feedback (seconds instead of minutes)
-- Catch CI-specific issues before they fail in GitHub
-- No pollution of PR commit history with "fix CI" commits
-
-**Limitations:**
-- Only supports Ubuntu runners (not Windows/macOS)
-- Some GitHub-specific features may not work identically
-- Always validate on real GitHub Actions for final check
-
 ### **MANDATORY Steps for ANY Code Change**
 **Every commit must follow this process - no exceptions:**
 
 1. **Create feature branch** (never work on main)
 2. **Make your changes**
 3. **Run validation locally** (`pnpm validate`)
-4. **(Optional) Test CI locally** (`act pull_request` to catch CI-specific issues)
-5. **Ask user permission before committing** (MANDATORY)
-6. **Commit with proper message format**
-7. **Push to remote**
+4. **Ask user permission before committing** (MANDATORY)
+5. **Commit with proper message format**
+6. **Push to remote**
+
+**Tip**: Use `act` to debug CI environment differences locally before pushing (requires Docker)
 
 ### Branch Management Requirements
 **CRITICAL**: All changes MUST be made on feature branches, never directly on `main`.
