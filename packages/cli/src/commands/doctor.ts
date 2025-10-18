@@ -401,7 +401,9 @@ async function checkMainBranch(): Promise<DoctorCheckResult> {
     }
 
     const mainBranch = getMainBranch(config.git);
+    const remoteOrigin = getRemoteOrigin(config.git);
 
+    // Check for local branch first
     try {
       execSync(`git rev-parse --verify ${mainBranch}`, { stdio: 'pipe' });
       return {
@@ -409,13 +411,23 @@ async function checkMainBranch(): Promise<DoctorCheckResult> {
         passed: true,
         message: `Branch '${mainBranch}' exists locally`,
       };
-    } catch (_error) {
-      return {
-        name: 'Git main branch',
-        passed: false,
-        message: `Configured main branch '${mainBranch}' does not exist locally`,
-        suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
-      };
+    } catch (_localError) {
+      // Local branch doesn't exist, check for remote branch
+      try {
+        execSync(`git rev-parse --verify ${remoteOrigin}/${mainBranch}`, { stdio: 'pipe' });
+        return {
+          name: 'Git main branch',
+          passed: true,
+          message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}' (fetch-depth: 0 required in CI)`,
+        };
+      } catch (_remoteError) {
+        return {
+          name: 'Git main branch',
+          passed: false,
+          message: `Configured main branch '${mainBranch}' does not exist locally or on remote '${remoteOrigin}'`,
+          suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
+        };
+      }
     }
   } catch (_error) {
     return {
