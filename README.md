@@ -2,7 +2,7 @@
 
 > Git-aware validation orchestration with 312x faster cached runs
 
-[![npm version](https://img.shields.io/npm/v/@vibe-validate/cli.svg)](https://www.npmjs.com/package/@vibe-validate/cli)
+[![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **What it does**: Caches your validation results (tests, lint, typecheck) using git tree hashes. When code hasn't changed, validation completes in ~288ms instead of minutes.
@@ -13,7 +13,7 @@
 
 ```bash
 # 1. Install
-npm install -D @vibe-validate/cli
+npm install -D vibe-validate
 
 # 2. Initialize (creates config, detects your project type)
 npx vibe-validate init
@@ -624,11 +624,14 @@ Real-world project (TypeScript Node.js app):
 
 This is a monorepo containing:
 
-- **[@vibe-validate/core](packages/core)** - Validation orchestration engine
-- **[@vibe-validate/git](packages/git)** - Git workflow utilities
-- **[@vibe-validate/formatters](packages/formatters)** - Error parsing & LLM optimization
-- **[@vibe-validate/config](packages/config)** - Configuration system with presets
+- **[vibe-validate](packages/vibe-validate)** - Umbrella package (install this)
 - **[@vibe-validate/cli](packages/cli)** - Command-line interface
+- **[@vibe-validate/core](packages/core)** - Validation orchestration engine
+- **[@vibe-validate/config](packages/config)** - Configuration system with presets
+- **[@vibe-validate/formatters](packages/formatters)** - Error parsing & LLM optimization
+- **[@vibe-validate/git](packages/git)** - Git workflow utilities
+
+**For most users**: Install `vibe-validate` which automatically includes all necessary packages.
 
 ## Requirements
 

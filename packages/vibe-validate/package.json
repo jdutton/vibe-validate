@@ -1,0 +1,46 @@
+{
+  "name": "vibe-validate",
+  "version": "0.9.10",
+  "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development) - umbrella package",
+  "type": "module",
+  "keywords": [
+    "validation",
+    "testing",
+    "ci-cd",
+    "git",
+    "caching",
+    "pre-commit",
+    "typescript",
+    "javascript",
+    "ai-agent-friendly",
+    "claude-code",
+    "cursor",
+    "aider",
+    "developer-experience",
+    "developer-tools",
+    "automation",
+    "workflow",
+    "llm",
+    "cli"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git",
+    "directory": "packages/vibe-validate"
+  },
+  "homepage": "https://github.com/jdutton/vibe-validate#readme",
+  "bugs": {
+    "url": "https://github.com/jdutton/vibe-validate/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@vibe-validate/cli": "0.9.10"
+  }
+}
