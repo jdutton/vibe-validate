@@ -43,6 +43,7 @@ export function createRunnerConfig(
     phases: config.validation?.phases || [],
     enableFailFast: true, // Default to fail-fast (individual phases can override)
     forceRun: options.force, // Pass force flag to runner
+    verbose: options.verbose, // Pass verbose flag to runner for output streaming
     env: envVars,
     stateFilePath: '.vibe-validate-state.yaml',
     ...callbacks,

@@ -84,3 +84,7 @@ export {
   findAndLoadConfig,
   loadConfigWithFallback,
 } from './loader.js';
+
+// Git configuration constants and helpers
+export { GIT_DEFAULTS } from './constants.js';
+export { getRemoteBranch, getMainBranch, getRemoteOrigin } from './git-helpers.js';

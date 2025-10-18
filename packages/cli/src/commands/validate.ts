@@ -37,8 +37,8 @@ export function validateCommand(program: Command): void {
         // Detect context (Claude Code, CI, etc.)
         const context = detectContext();
 
-        // Determine verbosity (explicit flag or auto-detect from context)
-        const verbose = options.verbose ?? (context.isInteractive && !context.isAgent);
+        // Verbose mode is ONLY enabled via explicit --verbose flag
+        const verbose = options.verbose ?? false;
 
         // Create runner config
         const runnerConfig = createRunnerConfig(config, {

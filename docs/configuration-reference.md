@@ -35,6 +35,7 @@ export default defineConfig({
   },
   git: {
     mainBranch: 'main',
+    remoteOrigin: 'origin',
     autoSync: false,
   },
   output: {
@@ -183,6 +184,61 @@ Shell command to execute for this validation step.
 
 **Note**: Commands run in the project root directory.
 
+#### Environment-Specific Commands
+
+You can use `process.env` to customize commands based on environment:
+
+```javascript
+// vibe-validate.config.mjs
+export default {
+  validation: {
+    phases: [{
+      name: 'Testing',
+      steps: [{
+        name: 'Unit Tests',
+        // Verbose output in CI, concise locally
+        command: process.env.CI
+          ? 'npm test -- --reporter=verbose'
+          : 'npm test',
+        description: 'Run unit tests with coverage',
+      }]
+    }]
+  }
+}
+```
+
+**Common patterns**:
+- `process.env.CI` - Detect CI environment (GitHub Actions, GitLab CI, etc.)
+- `process.env.CLAUDE_CODE` - Detect Claude Code agent
+- `process.env.NODE_ENV` - Development vs production
+- `process.env.DEBUG` - Enable debug output
+
+**Why use environment-specific commands?**
+- **Verbose output in CI**: When tests fail in CI, you need full details immediately
+- **Concise output locally**: Developers prefer minimal noise during development
+- **Different tool configurations**: Use different configs for different environments
+
+**Example with multiple environments**:
+```javascript
+const isCI = process.env.CI === 'true';
+const isClaude = process.env.CLAUDE_CODE === '1';
+
+export default {
+  validation: {
+    phases: [{
+      steps: [{
+        name: 'Tests',
+        command: isCI
+          ? 'vitest run --reporter=verbose --coverage'
+          : isClaude
+            ? 'vitest run --reporter=json'
+            : 'vitest run',
+      }]
+    }]
+  }
+}
+```
+
 ### `validation.caching`
 
 Configuration for validation state caching.
@@ -288,6 +344,44 @@ git: {
 }
 ```
 
+### `git.remoteOrigin`
+
+Name of the git remote to sync with.
+
+**Type**: `string`
+
+**Default**: `'origin'`
+
+**When to customize**:
+- **Forked repositories**: Use `upstream` to sync with the original repository
+- **Multiple remotes**: Specify which remote to track for validation
+- **Enterprise workflows**: Custom remote names for internal git servers
+
+**Examples**:
+```typescript
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'origin',  // Standard workflow (most projects)
+}
+
+// Forked repository workflow
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'upstream',  // Sync with upstream, not your fork
+}
+
+// Git-flow with custom remote
+git: {
+  mainBranch: 'develop',
+  remoteOrigin: 'upstream',  // Track upstream/develop
+}
+```
+
+**How it's used**:
+- `pre-commit` command: Checks if branch is behind `<remoteOrigin>/<mainBranch>`
+- `sync-check` command: Verifies sync with `<remoteOrigin>/<mainBranch>`
+- Branch validation: Ensures you're up-to-date before committing
+
 ### `git.autoSync`
 
 Whether to automatically merge/rebase when behind main branch.
@@ -345,6 +439,39 @@ output: {
   format: 'auto', // Automatically detect context
 }
 ```
+
+### Output Behavior
+
+#### Real-Time Streaming
+
+All validation commands stream output in real-time as they execute. This means you'll see:
+
+- **Test progress** as tests run
+- **Build output** as compilation happens
+- **Lint results** as files are checked
+
+Output is both streamed to the terminal AND captured for the state file, ensuring:
+- Immediate visibility during execution
+- Complete error details preserved for later analysis
+- Better debugging experience in CI environments
+
+**Example output during test execution:**
+```
+🔍 Running Testing (1 steps in parallel)...
+   ⏳ Unit Tests with Coverage  →  npm test
+
+ RUN  v3.2.4 /path/to/project
+ ✓ should pass first test
+ ✓ should pass second test
+ ✗ should fail this test
+
+      ✅ Unit Tests with Coverage - PASSED (15.3s)
+```
+
+This real-time feedback is especially valuable when:
+- Running long test suites
+- Debugging CI failures
+- Working with LLM assistants that need immediate feedback
 
 ## Using Presets
 
@@ -504,12 +631,120 @@ export default defineConfig({
   },
   git: {
     mainBranch: 'main',
+    remoteOrigin: 'origin',
     autoSync: false,
   },
   output: {
     format: 'auto',
   },
 });
+```
+
+## Common Git Configuration Scenarios
+
+### Standard Single-Remote Workflow
+
+Most projects use the default `origin` remote:
+
+```typescript
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'origin',  // Default - can be omitted
+}
+```
+
+### Forked Repository Workflow
+
+When working on a fork, sync with the upstream repository:
+
+```typescript
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'upstream',  // Sync with original repo, not your fork
+}
+```
+
+**Setup**:
+```bash
+# Add upstream remote (one-time setup)
+git remote add upstream https://github.com/original/repo.git
+
+# Configure vibe-validate to track upstream
+# (add remoteOrigin: 'upstream' to config)
+```
+
+### Legacy Main Branch Name
+
+Projects using `master` instead of `main`:
+
+```typescript
+git: {
+  mainBranch: 'master',
+  remoteOrigin: 'origin',
+}
+```
+
+### Git-Flow Workflow
+
+Track `develop` branch instead of `main`:
+
+```typescript
+git: {
+  mainBranch: 'develop',
+  remoteOrigin: 'origin',
+}
+```
+
+### Enterprise Custom Remote
+
+Internal git servers with custom remote names:
+
+```typescript
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'corporate',  // Custom remote name
+}
+```
+
+## Troubleshooting Git Configuration
+
+### "Branch is behind origin/main" but should check upstream
+
+**Problem**: You're working on a fork but vibe-validate checks `origin` instead of `upstream`.
+
+**Solution**: Set `remoteOrigin: 'upstream'` in your config:
+
+```typescript
+git: {
+  mainBranch: 'main',
+  remoteOrigin: 'upstream',
+}
+```
+
+### "Remote not found" error
+
+**Problem**: Configured remote doesn't exist in your repository.
+
+**Solution**: Verify remote exists:
+
+```bash
+git remote -v
+
+# Add missing remote if needed
+git remote add upstream https://github.com/owner/repo.git
+```
+
+### Using different branch names
+
+**Problem**: Your team uses `master` or `develop` instead of `main`.
+
+**Solution**: Configure the correct branch name:
+
+```typescript
+git: {
+  mainBranch: 'master',  // or 'develop', 'trunk', etc.
+  remoteOrigin: 'origin',
+}
 ```
 
 ## Validation File Locations

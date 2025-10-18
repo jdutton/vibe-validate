@@ -129,6 +129,9 @@ export interface ValidationConfig {
   /** Force re-run even if state says validation already passed */
   forceRun?: boolean;
 
+  /** Show verbose output (stream command stdout/stderr in real-time) */
+  verbose?: boolean;
+
   /** Environment variables to pass to all child processes */
   env?: Record<string, string>;
 

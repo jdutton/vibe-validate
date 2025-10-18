@@ -86,6 +86,6 @@ describe('Doctor Command Integration', () => {
 
     // Should show summary line with counts
     expect(result).toMatch(/📊 Results: \d+\/\d+ checks passed/);
-    expect(result).toContain('9/9 checks passed');
+    expect(result).toContain('12/12 checks passed');
   });
 });

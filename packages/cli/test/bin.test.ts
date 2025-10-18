@@ -39,8 +39,8 @@ describe('bin.ts - CLI entry point', () => {
   /**
    * Helper function to execute CLI and capture output
    */
-  function executeCLI(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
-    return new Promise((resolve) => {
+  function executeCLI(args: string[], timeoutMs: number = 10000): Promise<{ code: number; stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
       const child = spawn('node', [binPath, ...args], {
         cwd: testDir,
         env: { ...process.env, NO_COLOR: '1' }, // Disable colors for easier testing
@@ -48,6 +48,16 @@ describe('bin.ts - CLI entry point', () => {
 
       let stdout = '';
       let stderr = '';
+      let resolved = false;
+
+      // Timeout handler to prevent hanging
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          child.kill('SIGTERM');
+          reject(new Error(`Command timed out after ${timeoutMs}ms: node ${binPath} ${args.join(' ')}`));
+        }
+      }, timeoutMs);
 
       child.stdout.on('data', (data) => {
         stdout += data.toString();
@@ -58,11 +68,25 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       child.on('close', (code) => {
-        resolve({ code: code ?? 1, stdout, stderr });
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          // Handle null code more explicitly - log it for debugging
+          if (code === null) {
+            console.warn(`Warning: Child process closed with null exit code for: ${args.join(' ')}`);
+            resolve({ code: 1, stdout, stderr: stderr + '\n[Process closed with null exit code]' });
+          } else {
+            resolve({ code, stdout, stderr });
+          }
+        }
       });
 
       child.on('error', (error) => {
-        resolve({ code: 1, stdout, stderr: error.message });
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          resolve({ code: 1, stdout, stderr: error.message });
+        }
       });
     });
   }
@@ -230,6 +254,15 @@ export default {
 
       // 1. Verify config is valid
       const configResult = await executeCLI(['config', '--validate']);
+
+      // Better debugging on failure
+      if (configResult.code !== 0) {
+        console.error('Config validation failed:');
+        console.error('Exit code:', configResult.code);
+        console.error('Stdout:', configResult.stdout);
+        console.error('Stderr:', configResult.stderr);
+      }
+
       expect(configResult.code).toBe(0);
       expect(configResult.stdout).toContain('Configuration is valid');
 

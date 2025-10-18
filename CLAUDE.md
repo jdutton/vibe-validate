@@ -177,10 +177,12 @@ vibe-validate init
 
 1. **Create feature branch** (never work on main)
 2. **Make your changes**
-3. **Run validation** (when implemented: `pnpm validate`)
+3. **Run validation locally** (`pnpm validate`)
 4. **Ask user permission before committing** (MANDATORY)
 5. **Commit with proper message format**
 6. **Push to remote**
+
+**Tip**: Use `act` to debug CI environment differences locally before pushing (requires Docker)
 
 ### Branch Management Requirements
 **CRITICAL**: All changes MUST be made on feature branches, never directly on `main`.
