@@ -1,0 +1,238 @@
+{
+  "$ref": "#/definitions/VibeValidateConfig",
+  "definitions": {
+    "VibeValidateConfig": {
+      "type": "object",
+      "properties": {
+        "validation": {
+          "type": "object",
+          "properties": {
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parallel": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "dependsOn": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "command": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "timeout": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "continueOnError": {
+                          "type": "boolean"
+                        },
+                        "env": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "cwd": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "command"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  },
+                  "timeout": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "default": 300000
+                  },
+                  "failFast": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [
+                  "name",
+                  "steps"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "caching": {
+              "type": "object",
+              "properties": {
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "git-tree-hash",
+                    "timestamp",
+                    "disabled"
+                  ],
+                  "default": "git-tree-hash"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "statePath": {
+                  "type": "string",
+                  "default": ".vibe-validate-state.yaml"
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "strategy": "git-tree-hash",
+                "enabled": true,
+                "statePath": ".vibe-validate-state.yaml"
+              }
+            }
+          },
+          "required": [
+            "phases"
+          ],
+          "additionalProperties": false
+        },
+        "git": {
+          "type": "object",
+          "properties": {
+            "mainBranch": {
+              "type": "string",
+              "default": "main"
+            },
+            "remoteOrigin": {
+              "type": "string",
+              "default": "origin"
+            },
+            "autoSync": {
+              "type": "boolean",
+              "default": false
+            },
+            "warnIfBehind": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "mainBranch": "main",
+            "remoteOrigin": "origin",
+            "autoSync": false,
+            "warnIfBehind": true
+          }
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "showProgress": {
+              "type": "boolean",
+              "default": true
+            },
+            "verbose": {
+              "type": "boolean",
+              "default": false
+            },
+            "noColor": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "showProgress": true,
+            "verbose": false,
+            "noColor": false
+          }
+        },
+        "ci": {
+          "type": "object",
+          "properties": {
+            "nodeVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "os": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "failFast": {
+              "type": "boolean"
+            },
+            "coverage": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "hooks": {
+          "type": "object",
+          "properties": {
+            "preCommit": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "command": {
+                  "type": "string",
+                  "default": "npx vibe-validate pre-commit"
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "enabled": true,
+                "command": "npx vibe-validate pre-commit"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "preCommit": {
+              "enabled": true,
+              "command": "npx vibe-validate pre-commit"
+            }
+          }
+        },
+        "preset": {
+          "type": "string"
+        },
+        "extends": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "validation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

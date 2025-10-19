@@ -70,9 +70,9 @@ function createVerboseCallbacks() {
     },
     onStepComplete: (step: ValidationStep, result: StepResult) => {
       if (result.passed) {
-        console.log(chalk.green(`  ✅ ${step.name} (${result.duration}ms)`));
+        console.log(chalk.green(`  ✅ ${step.name} (${result.durationSecs}s)`));
       } else {
-        console.log(chalk.red(`  ❌ ${step.name} failed (${result.duration}ms)`));
+        console.log(chalk.red(`  ❌ ${step.name} failed (${result.durationSecs}s)`));
         if (result.output) {
           console.log(chalk.red(`     Error: ${result.output}`));
         }
@@ -97,7 +97,7 @@ function createMinimalCallbacks() {
       console.log(`  step_start: ${step.name}`);
     },
     onStepComplete: (step: ValidationStep, result: StepResult) => {
-      console.log(`  step_complete: ${step.name} (${result.passed ? 'passed' : 'failed'}, ${result.duration}ms)`);
+      console.log(`  step_complete: ${step.name} (${result.passed ? 'passed' : 'failed'}, ${result.durationSecs}s)`);
     },
   };
 }

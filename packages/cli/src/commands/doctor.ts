@@ -137,12 +137,8 @@ function checkGitRepository(): DoctorCheckResult {
  */
 function checkConfigFile(): DoctorCheckResult {
   const configPatterns = [
-    'vibe-validate.config.ts',
-    'vibe-validate.config.mjs',
-    'vibe-validate.config.js',
-    'vibe-validate.config.json',
     'vibe-validate.config.yaml',
-    'vibe-validate.config.yml',
+    'vibe-validate.config.mjs', // Legacy (deprecated)
   ];
 
   const found = configPatterns.find(pattern => existsSync(pattern));
@@ -161,6 +157,40 @@ function checkConfigFile(): DoctorCheckResult {
       suggestion: 'Run: npx vibe-validate init',
     };
   }
+}
+
+/**
+ * Check if config format needs migration from .mjs to .yaml
+ */
+function checkConfigFormatMigration(): DoctorCheckResult {
+  const mjsConfig = 'vibe-validate.config.mjs';
+  const yamlConfig = 'vibe-validate.config.yaml';
+
+  // If using YAML, all good!
+  if (existsSync(yamlConfig)) {
+    return {
+      name: 'Config format',
+      passed: true,
+      message: 'Using modern YAML format',
+    };
+  }
+
+  // If using legacy .mjs format, suggest migration
+  if (existsSync(mjsConfig)) {
+    return {
+      name: 'Config format',
+      passed: false,
+      message: 'Using deprecated .mjs format (will be removed in v1.0)',
+      suggestion: '⚠️  Migrate to YAML:\n   1. Run: vibe-validate init --migrate\n   2. Test the new YAML config\n   3. Delete vibe-validate.config.mjs after migration',
+    };
+  }
+
+  // No config found (will be caught by checkConfigFile)
+  return {
+    name: 'Config format',
+    passed: true,
+    message: 'Skipped (no config file)',
+  };
 }
 
 /**
@@ -278,7 +308,7 @@ async function checkWorkflowSync(): Promise<DoctorCheckResult> {
         name: 'GitHub Actions workflow',
         passed: false,
         message: `Workflow is out of sync: ${diff || 'differs from config'}`,
-        suggestion: 'Run: npx vibe-validate generate-workflow',
+        suggestion: 'Manual: npx vibe-validate generate-workflow\n   💡 Or run: vibe-validate init --setup-workflow',
       };
     }
   } catch (_error) {
@@ -325,7 +355,7 @@ async function checkPreCommitHook(): Promise<DoctorCheckResult> {
       name: 'Pre-commit hook',
       passed: false,
       message: 'Pre-commit hook not installed',
-      suggestion: 'Install: npx husky init && echo "npx vibe-validate pre-commit" > .husky/pre-commit (or set hooks.preCommit.enabled=false to disable)',
+      suggestion: 'Manual: npx husky init && echo "npx vibe-validate pre-commit" > .husky/pre-commit\n   💡 Or run: vibe-validate init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config',
     };
   }
 
@@ -351,7 +381,7 @@ async function checkPreCommitHook(): Promise<DoctorCheckResult> {
         name: 'Pre-commit hook',
         passed: false,
         message: `Custom pre-commit hook detected: "${hookPreview}..."`,
-        suggestion: `Verify that .husky/pre-commit runs "${expectedCommand}" OR set hooks.preCommit.enabled=false if you're handling validation differently`,
+        suggestion: `Manual: Verify that .husky/pre-commit runs "${expectedCommand}"\n   💡 Or run: vibe-validate init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config`,
       };
     }
   } catch (_error) {
@@ -360,6 +390,99 @@ async function checkPreCommitHook(): Promise<DoctorCheckResult> {
       passed: false,
       message: 'Pre-commit hook exists but unreadable',
       suggestion: 'Fix file permissions or set hooks.preCommit.enabled=false',
+    };
+  }
+}
+
+/**
+ * Check if vibe-validate version is up to date
+ */
+async function checkVersion(): Promise<DoctorCheckResult> {
+  try {
+    // Get current version from package.json
+    const packageJsonPath = new URL('../../package.json', import.meta.url);
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    const currentVersion = packageJson.version;
+
+    // Fetch latest version from npm registry
+    try {
+      const latestVersion = execSync('npm view vibe-validate version', {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }).trim();
+
+      if (currentVersion === latestVersion) {
+        return {
+          name: 'vibe-validate version',
+          passed: true,
+          message: `Current version ${currentVersion} is up to date`,
+        };
+      } else {
+        return {
+          name: 'vibe-validate version',
+          passed: true, // Warning only, not a failure
+          message: `Current: ${currentVersion}, Latest: ${latestVersion} available`,
+          suggestion: `Upgrade: npm install -D vibe-validate@latest (or pnpm add -D vibe-validate@latest)\n   💡 After upgrade: Run 'vibe-validate doctor' to verify setup`,
+        };
+      }
+    } catch (_npmError) {
+      // npm registry unavailable - not a critical error
+      return {
+        name: 'vibe-validate version',
+        passed: true,
+        message: `Current version: ${currentVersion} (unable to check for updates)`,
+      };
+    }
+  } catch (_error) {
+    return {
+      name: 'vibe-validate version',
+      passed: true,
+      message: 'Unable to determine version',
+    };
+  }
+}
+
+/**
+ * Check if .vibe-validate-state.yaml is in .gitignore
+ */
+function checkGitignoreStateFile(): DoctorCheckResult {
+  const gitignorePath = '.gitignore';
+  const stateFileName = '.vibe-validate-state.yaml';
+
+  // Check if .gitignore exists
+  if (!existsSync(gitignorePath)) {
+    return {
+      name: 'Gitignore state file',
+      passed: false,
+      message: '.gitignore file not found',
+      suggestion: 'Manual: echo ".vibe-validate-state.yaml" >> .gitignore\n   💡 Or run: vibe-validate init --fix-gitignore',
+    };
+  }
+
+  try {
+    const gitignoreContent = readFileSync(gitignorePath, 'utf8');
+
+    // Check if state file is already in .gitignore
+    if (gitignoreContent.includes(stateFileName)) {
+      return {
+        name: 'Gitignore state file',
+        passed: true,
+        message: '.vibe-validate-state.yaml is in .gitignore',
+      };
+    } else {
+      return {
+        name: 'Gitignore state file',
+        passed: false,
+        message: '.vibe-validate-state.yaml not in .gitignore (state file should not be committed)',
+        suggestion: 'Manual: echo ".vibe-validate-state.yaml" >> .gitignore\n   💡 Or run: vibe-validate init --fix-gitignore',
+      };
+    }
+  } catch (_error) {
+    return {
+      name: 'Gitignore state file',
+      passed: false,
+      message: '.gitignore exists but is unreadable',
+      suggestion: 'Fix file permissions: chmod 644 .gitignore',
     };
   }
 }
@@ -557,10 +680,12 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   const allChecks: DoctorCheckResult[] = [];
 
   // Run all checks
+  allChecks.push(await checkVersion());
   allChecks.push(checkNodeVersion());
   allChecks.push(checkGitInstalled());
   allChecks.push(checkGitRepository());
   allChecks.push(checkConfigFile());
+  allChecks.push(checkConfigFormatMigration());
   allChecks.push(await checkConfigValid());
   allChecks.push(await checkPackageManager());
   allChecks.push(await checkMainBranch());
@@ -568,6 +693,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(await checkRemoteMainBranch());
   allChecks.push(await checkWorkflowSync());
   allChecks.push(await checkPreCommitHook());
+  allChecks.push(checkGitignoreStateFile());
   allChecks.push(checkValidationState());
 
   // Collect suggestions from failed checks

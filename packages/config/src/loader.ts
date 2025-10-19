@@ -37,20 +37,20 @@
 import { resolve, dirname } from 'path';
 import { readFileSync } from 'fs';
 import { pathToFileURL } from 'url';
+import { load as parseYaml } from 'js-yaml';
 import { validateConfig, type VibeValidateConfig } from './schema.js';
 import { mergeConfig } from './define-config.js';
 import { getPreset } from './presets/index.js';
 
 /**
  * Configuration file names to search for (in order)
+ *
+ * YAML is the primary and recommended format.
+ * .mjs is legacy (deprecated) - supported for migration only.
  */
 export const CONFIG_FILE_NAMES = [
-  'vibe-validate.config.ts',
-  'vibe-validate.config.mts',
-  'vibe-validate.config.js',
-  'vibe-validate.config.mjs',
-  'vibe-validate.config.json',
-  '.vibe-validate.json',
+  'vibe-validate.config.yaml',
+  'vibe-validate.config.mjs', // DEPRECATED: Legacy format, will be removed in v1.0
 ];
 
 /**
@@ -65,36 +65,37 @@ export async function loadConfigFromFile(
 ): Promise<VibeValidateConfig> {
   const absolutePath = resolve(configPath);
 
-  // JSON files
-  if (absolutePath.endsWith('.json')) {
+  // YAML files (primary format)
+  if (absolutePath.endsWith('.yaml')) {
     const content = readFileSync(absolutePath, 'utf-8');
-    const raw = JSON.parse(content);
+    const raw = parseYaml(content);
+
+    // Remove $schema property if present (used for IDE support only)
+    if (raw && typeof raw === 'object' && '$schema' in raw) {
+      delete (raw as Record<string, unknown>)['$schema'];
+    }
+
     return await resolveConfig(raw, dirname(absolutePath));
   }
 
-  // TypeScript files - use tsx for loading
-  if (absolutePath.endsWith('.ts') || absolutePath.endsWith('.mts')) {
-    // Use tsx to load TypeScript files
-    const { register } = await import('tsx/esm/api');
-    const unregister = register();
+  // Legacy .mjs files (DEPRECATED - will be removed in v1.0)
+  if (absolutePath.endsWith('.mjs')) {
+    console.warn('⚠️  WARNING: .mjs config format is deprecated and will be removed in v1.0');
+    console.warn('   Please migrate to vibe-validate.config.yaml');
+    console.warn('   Run: vibe-validate doctor for migration guidance\n');
 
-    try {
-      // Add cache-busting timestamp to force fresh load
-      const fileUrl = pathToFileURL(absolutePath).href + '?t=' + Date.now();
-      const module = await import(fileUrl);
-      const raw = module.default || module;
-      return await resolveConfig(raw, dirname(absolutePath));
-    } finally {
-      unregister();
-    }
+    const fileUrl = pathToFileURL(absolutePath).href;
+    const module = await import(fileUrl);
+    const raw = module.default || module;
+
+    return await resolveConfig(raw, dirname(absolutePath));
   }
 
-  // JavaScript files (ES modules)
-  const fileUrl = pathToFileURL(absolutePath).href;
-  const module = await import(fileUrl);
-  const raw = module.default || module;
-
-  return await resolveConfig(raw, dirname(absolutePath));
+  throw new Error(
+    `Unsupported config file format: ${absolutePath}\n` +
+    `Only .yaml and .mjs (deprecated) formats are supported.\n` +
+    `Please use vibe-validate.config.yaml`
+  );
 }
 
 /**

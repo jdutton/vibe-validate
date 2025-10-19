@@ -13,13 +13,9 @@ import chalk from 'chalk';
 /**
  * Load vibe-validate configuration from project root
  *
- * Searches for configuration in multiple file patterns:
- * - vibe-validate.config.ts
- * - vibe-validate.config.js
- * - vibe-validate.config.mjs
- * - .vibe-validate.ts
- * - .vibe-validate.js
- * - .vibe-validate.mjs
+ * Searches for configuration files:
+ * - vibe-validate.config.yaml (primary format)
+ * - vibe-validate.config.mjs (deprecated, legacy support only)
  *
  * @param cwd Current working directory (defaults to process.cwd())
  * @returns Configuration object or null if not found
@@ -48,12 +44,8 @@ export async function loadConfig(cwd?: string): Promise<VibeValidateConfig | nul
 export function configExists(cwd?: string): boolean {
   const searchDir = cwd ?? process.cwd();
   const configPaths = [
-    'vibe-validate.config.ts',
-    'vibe-validate.config.js',
-    'vibe-validate.config.mjs',
-    '.vibe-validate.ts',
-    '.vibe-validate.js',
-    '.vibe-validate.mjs',
+    'vibe-validate.config.yaml',
+    'vibe-validate.config.mjs', // Legacy (deprecated)
   ];
 
   return configPaths.some(path => existsSync(join(searchDir, path)));
@@ -68,12 +60,8 @@ export function configExists(cwd?: string): boolean {
 export function findConfigPath(cwd?: string): string | null {
   const searchDir = cwd ?? process.cwd();
   const configPaths = [
-    'vibe-validate.config.ts',
-    'vibe-validate.config.js',
-    'vibe-validate.config.mjs',
-    '.vibe-validate.ts',
-    '.vibe-validate.js',
-    '.vibe-validate.mjs',
+    'vibe-validate.config.yaml',
+    'vibe-validate.config.mjs', // Legacy (deprecated)
   ];
 
   for (const path of configPaths) {

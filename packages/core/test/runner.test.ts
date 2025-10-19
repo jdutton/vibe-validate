@@ -253,7 +253,7 @@ describe('runner', () => {
 
       const result = await runStepsInParallel(steps, 'Test Phase', false);
 
-      expect(result.stepResults[0].duration).toBeGreaterThan(50);
+      expect(result.stepResults[0].durationSecs).toBeGreaterThan(0.05);
     });
 
     it('should pass environment variables to child processes', async () => {

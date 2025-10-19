@@ -13,6 +13,8 @@ Complete reference guide for all vibe-validate CLI commands.
   - [cleanup](#cleanup)
   - [config](#config)
   - [init](#init)
+  - [doctor](#doctor)
+  - [generate-workflow](#generate-workflow)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 
@@ -572,52 +574,123 @@ vibe-validate config --validate
 
 ### `init`
 
-Interactive setup wizard for creating a new configuration.
+Setup wizard for creating configuration and installing integrations.
 
 #### Usage
 
 ```bash
-vibe-validate init
+vibe-validate init [options]
 ```
 
 #### Options
 
-None (interactive mode).
+- `-p, --preset <preset>` - Use preset (typescript-library|typescript-nodejs|typescript-react)
+- `-f, --force` - Overwrite existing configuration
+- `--dry-run` - Preview changes without writing files
+- `--setup-hooks` - Install pre-commit hook (idempotent)
+- `--setup-workflow` - Create GitHub Actions workflow (idempotent)
+- `--fix-gitignore` - Add state file to .gitignore (idempotent)
 
 #### Description
 
-Guides you through creating a `vibe-validate.config.ts` file:
+**Default mode** - Creates a `vibe-validate.config.ts` file with the specified preset:
 
-1. **Select preset** - Choose from available framework presets
-2. **Customize settings** - Configure caching, git, output options
-3. **Generate config** - Create config file with selected settings
-4. **Add npm scripts** - Optionally add scripts to package.json
+1. **Detect git configuration** - Auto-detect main branch and remote
+2. **Generate config** - Create TypeScript config file with preset
+3. **Show next steps** - Display setup instructions
+
+**Focused modes** - Perform specific setup tasks (can be combined):
+
+- `--setup-hooks` - Creates `.husky/pre-commit` hook
+- `--setup-workflow` - Creates `.github/workflows/validate.yml`
+- `--fix-gitignore` - Adds `.vibe-validate-state.yaml` to .gitignore
+
+All focused modes are **idempotent** - safe to run multiple times.
 
 #### Examples
 
-**Interactive setup:**
+**Create config with default preset:**
 ```bash
 vibe-validate init
 
 # Output:
-? Select a preset: (Use arrow keys)
-  ❯ typescript-library (Default TypeScript library)
-    typescript-nodejs (Node.js application)
-    typescript-react (React application)
-    custom (Start from scratch)
-
-? Enable git tree hash caching? (Y/n) y
-? Main branch name: main
-? Add npm scripts to package.json? (Y/n) y
-
-✅ Created vibe-validate.config.ts
-✅ Added scripts to package.json:
-   - validate
-   - pre-commit
+🔍 Auto-detected git configuration:
+   Main branch: main
+   Remote: origin
+✅ Configuration file created successfully
+📋 Created: vibe-validate.config.ts
+   Preset: typescript-library
 
 Next steps:
-  1. Run: npm run validate
-  2. Add pre-commit hook: npx husky add .husky/pre-commit "npm run pre-commit"
+  1. Review and customize vibe-validate.config.ts
+  2. Run: vibe-validate validate
+  3. Add to package.json scripts:
+     "validate": "vibe-validate validate"
+     "pre-commit": "vibe-validate pre-commit"
+```
+
+**Create config with specific preset:**
+```bash
+vibe-validate init --preset typescript-nodejs
+```
+
+**Preview config creation (dry-run):**
+```bash
+vibe-validate init --dry-run
+
+# Output:
+🔍 Configuration preview (dry-run):
+   Would create:
+   - /path/to/vibe-validate.config.ts
+   - Preset: typescript-library
+
+💡 Run without --dry-run to create configuration
+```
+
+**Install pre-commit hook only:**
+```bash
+vibe-validate init --setup-hooks
+
+# Output:
+✅ Pre-commit hook: Created .husky/pre-commit hook (Note: Install husky as dev dependency if not already installed)
+```
+
+**Create GitHub Actions workflow only:**
+```bash
+vibe-validate init --setup-workflow
+
+# Output:
+✅ GitHub Actions workflow: Created .github/workflows/validate.yml
+```
+
+**Fix .gitignore only:**
+```bash
+vibe-validate init --fix-gitignore
+
+# Output:
+✅ Gitignore: Added .vibe-validate-state.yaml to .gitignore
+```
+
+**Combine multiple focused modes:**
+```bash
+vibe-validate init --setup-hooks --fix-gitignore
+
+# Output:
+✅ Gitignore: Added .vibe-validate-state.yaml to .gitignore
+✅ Pre-commit hook: Created .husky/pre-commit hook
+```
+
+**Preview focused mode changes:**
+```bash
+vibe-validate init --setup-hooks --dry-run
+
+# Output:
+🔍 Pre-commit hook (dry-run):
+   Install husky and create .husky/pre-commit hook with vibe-validate command
+   Would create:
+   - .husky/pre-commit (create)
+
+💡 Run without --dry-run to apply changes
 ```
 
 #### Generated Files
@@ -657,6 +730,183 @@ export default defineConfig({
 
 - `0` - Configuration created successfully
 - `1` - Setup cancelled or error occurred
+
+---
+
+### `doctor`
+
+Diagnose repository health and vibe-validate setup.
+
+#### Usage
+
+```bash
+vibe-validate doctor [options]
+```
+
+#### Options
+
+- `--verbose` - Show detailed diagnostic information
+
+#### Description
+
+Performs comprehensive health checks on your repository and vibe-validate setup:
+
+1. **Environment checks** - Node.js version, git availability
+2. **Config checks** - Config file exists, valid format, deprecation warnings
+3. **Git checks** - Main branch, remote origin, sync status
+4. **Integration checks** - Pre-commit hook, GitHub Actions workflow, .gitignore
+5. **Version check** - Compare current version with latest on npm
+6. **Validation state** - Check if validation is current
+
+Each check shows:
+- ✅ **Pass** - Working correctly
+- ❌ **Fail** - Needs attention, includes suggestion
+- ⚠️ **Warning** - Non-critical issue
+
+**Educational approach**: Failed checks show both manual steps AND automated `init` commands.
+
+#### Examples
+
+**Basic health check:**
+```bash
+vibe-validate doctor
+
+# Output:
+🏥 vibe-validate Doctor
+
+✅ Node.js version (v20.11.0)
+✅ Git repository
+✅ Config file (vibe-validate.config.ts)
+✅ Config valid
+⚠️  Config format (Using deprecated .mjs format)
+   💡 Migrate to YAML configuration
+✅ Package manager (pnpm)
+✅ Main branch (main)
+✅ Remote origin (origin)
+✅ GitHub Actions workflow
+❌ Pre-commit hook
+   Pre-commit hook not installed
+   💡 Manual: npx husky init && echo "npx vibe-validate pre-commit" > .husky/pre-commit
+   💡 Or run: vibe-validate init --setup-hooks
+   💡 Or disable: set hooks.preCommit.enabled=false in config
+❌ Gitignore state file
+   .vibe-validate-state.yaml not in .gitignore (state file should not be committed)
+   💡 Manual: echo ".vibe-validate-state.yaml" >> .gitignore
+   💡 Or run: vibe-validate init --fix-gitignore
+✅ Validation state (current)
+
+Summary: 11/13 checks passed
+
+💡 Fix issues using suggested commands, then run 'vibe-validate doctor' again
+```
+
+**Verbose diagnostic output:**
+```bash
+vibe-validate doctor --verbose
+
+# Output includes detailed information for each check
+```
+
+**Iterative fix workflow:**
+```bash
+# 1. Diagnose
+vibe-validate doctor
+
+# 2. Fix issues
+vibe-validate init --setup-hooks --fix-gitignore
+
+# 3. Verify
+vibe-validate doctor
+
+# Output:
+Summary: 13/13 checks passed ✅
+```
+
+#### Exit Codes
+
+- `0` - All checks passed
+- `1` - One or more checks failed
+
+---
+
+### `generate-workflow`
+
+Generate GitHub Actions workflow for CI/CD validation.
+
+#### Usage
+
+```bash
+vibe-validate generate-workflow [options]
+```
+
+#### Options
+
+- `--node-versions <versions>` - Node.js versions to test (comma-separated, default: "18,20")
+- `--os <platforms>` - Operating systems to test (comma-separated, default: "ubuntu-latest")
+- `--package-manager <pm>` - Package manager to use (npm|pnpm|yarn, auto-detected)
+
+#### Description
+
+Generates a `.github/workflows/validate.yml` file configured for your project:
+
+1. **Matrix testing** - Test across multiple Node.js versions and OS platforms
+2. **Smart package manager** - Auto-detects npm, pnpm, or yarn
+3. **Optimized caching** - Caches dependencies and validation state
+4. **Fail-fast strategy** - Stops on first failure to save CI minutes
+
+The generated workflow integrates with GitHub's status checks for pull requests.
+
+#### Examples
+
+**Generate default workflow:**
+```bash
+vibe-validate generate-workflow
+
+# Output:
+✅ Generated .github/workflows/validate.yml
+   Node versions: 18, 20
+   OS: ubuntu-latest
+   Package manager: pnpm (auto-detected)
+
+Next steps:
+  1. Review .github/workflows/validate.yml
+  2. Commit and push to enable CI validation
+```
+
+**Custom Node.js versions:**
+```bash
+vibe-validate generate-workflow --node-versions "18,20,22"
+```
+
+**Multi-platform testing:**
+```bash
+vibe-validate generate-workflow --os "ubuntu-latest,windows-latest,macos-latest"
+```
+
+**Specific package manager:**
+```bash
+vibe-validate generate-workflow --package-manager npm
+```
+
+**Or use focused init mode:**
+```bash
+vibe-validate init --setup-workflow
+# Simpler alternative with sensible defaults
+```
+
+#### Generated Workflow
+
+**Key features:**
+- Runs on push to main and all pull requests
+- Matrix strategy for multiple Node.js versions
+- Package manager dependency caching
+- Fails fast on first error
+- Uses vibe-validate's git tree hash caching
+
+#### Exit Codes
+
+- `0` - Workflow generated successfully
+- `1` - Generation failed (missing config, invalid options)
 
 ---
 

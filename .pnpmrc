@@ -1,0 +1,8 @@
+# pnpm-specific configuration
+# See: https://pnpm.io/npmrc
+
+# Only allow publishing from main branch
+publish-branch=main
+
+# Link workspace packages (convert workspace:* to actual versions on publish)
+link-workspace-packages=true

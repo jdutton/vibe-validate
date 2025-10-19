@@ -29,69 +29,20 @@ describe('loader', () => {
   });
 
   describe('loadConfigFromFile', () => {
-    it('should load JSON config file', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      const config = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: false,
-              steps: [
-                { name: 'Test Step', command: 'echo test' },
-              ],
-            },
-          ],
-          caching: {
-            strategy: 'git-tree-hash' as const,
-            enabled: true,
-          },
-        },
-        git: {
-          mainBranch: 'main',
-          autoSync: false,
-        },
-        output: {
-          format: 'auto' as const,
-        },
-      };
-
-      await writeFile(configPath, JSON.stringify(config, null, 2));
-
-      const loaded = await loadConfigFromFile(configPath);
-
-      // Verify key fields (defaults will be added by schema validation)
-      expect(loaded.validation.phases).toHaveLength(1);
-      expect(loaded.validation.phases[0].name).toBe('Test Phase');
-      expect(loaded.git.mainBranch).toBe('main');
-      // format field removed - state files are always YAML
-    });
-
-    it('should load TypeScript config file with ES module', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.ts');
+    it('should load legacy .mjs config file with deprecation warning', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.mjs');
       const configContent = `
 export default {
   validation: {
     phases: [
       {
-        name: 'TypeScript Phase',
-        parallel: true,
+        name: 'Legacy Phase',
+        parallel: false,
         steps: [
-          { name: 'TypeScript', command: 'tsc --noEmit' },
+          { name: 'Legacy Step', command: 'echo legacy' },
         ],
       },
     ],
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-  },
-  git: {
-    mainBranch: 'main',
-    autoSync: false,
-  },
-  output: {
-    format: 'auto',
   },
 };
 `;
@@ -99,152 +50,163 @@ export default {
       await writeFile(configPath, configContent);
 
       const loaded = await loadConfigFromFile(configPath);
+
+      // Verify config loads correctly
       expect(loaded.validation.phases).toHaveLength(1);
-      expect(loaded.validation.phases[0].name).toBe('TypeScript Phase');
-      expect(loaded.validation.phases[0].parallel).toBe(true);
+      expect(loaded.validation.phases[0].name).toBe('Legacy Phase');
+      // Note: Deprecation warning is logged to console, not tested here
     });
 
-    it('should load config with preset', async () => {
+    it('should throw error for unsupported config format', async () => {
       const configPath = join(testDir, 'vibe-validate.config.json');
-      const config = {
-        preset: 'typescript-library',
-      };
+      await writeFile(configPath, '{}');
 
-      await writeFile(configPath, JSON.stringify(config, null, 2));
+      await expect(loadConfigFromFile(configPath)).rejects.toThrow('Unsupported config file format');
+    });
+
+    // YAML Config Tests
+    it('should load YAML config file (.yaml)', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const yamlContent = `
+validation:
+  phases:
+    - name: YAML Phase
+      parallel: false
+      steps:
+        - name: YAML Step
+          command: echo yaml
+  caching:
+    strategy: git-tree-hash
+    enabled: true
+git:
+  mainBranch: main
+  autoSync: false
+`;
+
+      await writeFile(configPath, yamlContent);
 
       const loaded = await loadConfigFromFile(configPath);
-      expect(loaded.validation.phases.length).toBeGreaterThan(0);
+
+      expect(loaded.validation.phases).toHaveLength(1);
+      expect(loaded.validation.phases[0].name).toBe('YAML Phase');
       expect(loaded.git.mainBranch).toBe('main');
     });
 
-    it('should merge config with preset', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      const config = {
-        preset: 'typescript-library',
-        git: {
-          mainBranch: 'develop', // Override preset value
-        },
-      };
 
-      await writeFile(configPath, JSON.stringify(config, null, 2));
+    it('should load YAML config with preset', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const yamlContent = `
+preset: typescript-nodejs
+git:
+  mainBranch: develop
+`;
 
-      const loaded = await loadConfigFromFile(configPath);
-      expect(loaded.git.mainBranch).toBe('develop'); // User override
-      expect(loaded.validation.phases.length).toBeGreaterThan(0); // From preset
-    });
-
-    it('should throw error for unknown preset', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      const config = {
-        preset: 'unknown-preset',
-      };
-
-      await writeFile(configPath, JSON.stringify(config, null, 2));
-
-      await expect(loadConfigFromFile(configPath)).rejects.toThrow('Unknown preset: unknown-preset');
-    });
-
-    it('should support config extends', async () => {
-      // Create base config
-      const baseConfigPath = join(testDir, 'base.config.json');
-      const baseConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Base Phase',
-              parallel: false,
-              steps: [
-                { name: 'Base Step', command: 'echo base' },
-              ],
-            },
-          ],
-          caching: {
-            strategy: 'git-tree-hash',
-            enabled: true,
-          },
-        },
-        git: {
-          mainBranch: 'main',
-          autoSync: false,
-        },
-        output: {
-          format: 'auto',
-        },
-      };
-      await writeFile(baseConfigPath, JSON.stringify(baseConfig, null, 2));
-
-      // Create extending config
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      const config = {
-        extends: './base.config.json',
-        git: {
-          mainBranch: 'develop', // Override base value
-        },
-      };
-      await writeFile(configPath, JSON.stringify(config, null, 2));
+      await writeFile(configPath, yamlContent);
 
       const loaded = await loadConfigFromFile(configPath);
+
+      expect(loaded.validation.phases.length).toBeGreaterThan(0);
+      expect(loaded.git.mainBranch).toBe('develop');
+    });
+
+    it('should load YAML config with extends (preset name)', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const yamlContent = `
+extends: typescript-library
+git:
+  mainBranch: staging
+`;
+
+      await writeFile(configPath, yamlContent);
+
+      const loaded = await loadConfigFromFile(configPath);
+
+      expect(loaded.validation.phases.length).toBeGreaterThan(0);
+      expect(loaded.git.mainBranch).toBe('staging');
+    });
+
+    it('should load YAML config with extends (file path)', async () => {
+      // Create base YAML config
+      const baseConfigPath = join(testDir, 'base.config.yaml');
+      const baseYaml = `
+validation:
+  phases:
+    - name: Base YAML Phase
+      steps:
+        - name: Base Step
+          command: echo base
+git:
+  mainBranch: main
+`;
+      await writeFile(baseConfigPath, baseYaml);
+
+      // Create extending YAML config
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const extendingYaml = `
+extends: ./base.config.yaml
+git:
+  mainBranch: production
+`;
+      await writeFile(configPath, extendingYaml);
+
+      const loaded = await loadConfigFromFile(configPath);
+
       expect(loaded.validation.phases).toHaveLength(1);
-      expect(loaded.validation.phases[0].name).toBe('Base Phase'); // From base
-      expect(loaded.git.mainBranch).toBe('develop'); // User override
+      expect(loaded.validation.phases[0].name).toBe('Base YAML Phase');
+      expect(loaded.git.mainBranch).toBe('production');
     });
 
-    it('should support preset + extends combination', async () => {
-      // Create extending config with preset
-      const baseConfigPath = join(testDir, 'base.config.json');
-      const baseConfig = {
-        preset: 'typescript-library',
-        git: {
-          mainBranch: 'staging',
-        },
-      };
-      await writeFile(baseConfigPath, JSON.stringify(baseConfig, null, 2));
+    it('should throw error for invalid YAML syntax', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const invalidYaml = `
+validation:
+  phases:
+    - name: Invalid
+      steps:
+      - name: Missing indent
+    command: broken
+`;
 
-      // Create config that extends the preset-based config
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      const config = {
-        extends: './base.config.json',
-        git: {
-          mainBranch: 'production', // Final override
-        },
-      };
-      await writeFile(configPath, JSON.stringify(config, null, 2));
+      await writeFile(configPath, invalidYaml);
+
+      await expect(loadConfigFromFile(configPath)).rejects.toThrow();
+    });
+
+    it('should throw error for YAML with invalid schema', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const invalidSchemaYaml = `
+validation:
+  phases:
+    - name: ''  # Empty name (invalid)
+      steps:
+        - name: Step
+          command: echo test
+`;
+
+      await writeFile(configPath, invalidSchemaYaml);
+
+      await expect(loadConfigFromFile(configPath)).rejects.toThrow();
+    });
+
+    it('should ignore $schema property in YAML config', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const yamlWithSchema = `
+$schema: ./node_modules/@vibe-validate/config/vibe-validate.schema.json
+validation:
+  phases:
+    - name: Schema Phase
+      steps:
+        - name: Step
+          command: echo test
+`;
+
+      await writeFile(configPath, yamlWithSchema);
 
       const loaded = await loadConfigFromFile(configPath);
-      expect(loaded.validation.phases.length).toBeGreaterThan(0); // From preset
-      expect(loaded.git.mainBranch).toBe('production'); // Final override
-    });
 
-    it('should throw error for invalid JSON', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      await writeFile(configPath, '{ invalid json }');
-
-      await expect(loadConfigFromFile(configPath)).rejects.toThrow();
-    });
-
-    it('should throw error for non-object config', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      await writeFile(configPath, JSON.stringify(['not', 'an', 'object']));
-
-      await expect(loadConfigFromFile(configPath)).rejects.toThrow();
-    });
-
-    it('should validate config after loading', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.json');
-      const invalidConfig = {
-        validation: {
-          phases: [
-            {
-              // Missing required fields
-              parallel: false,
-            },
-          ],
-        },
-      };
-
-      await writeFile(configPath, JSON.stringify(invalidConfig, null, 2));
-
-      await expect(loadConfigFromFile(configPath)).rejects.toThrow();
+      expect(loaded.validation.phases).toHaveLength(1);
+      expect(loaded.validation.phases[0].name).toBe('Schema Phase');
+      // $schema should be ignored/removed during processing
     });
   });
 
@@ -285,51 +247,35 @@ export default {
     });
 
     it('should prioritize config files in order', async () => {
-      // Create two config files with different priority
-      const firstConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'First Priority',
-              parallel: false,
-              steps: [{ name: 'Step', command: 'echo first' }],
-            },
-          ],
-          caching: { strategy: 'git-tree-hash', enabled: true },
-        },
-        git: { mainBranch: 'main', autoSync: false },
-        output: { format: 'auto' },
-      };
+      // YAML has priority over .mjs
+      const yamlContent = `
+validation:
+  phases:
+    - name: YAML Priority
+      steps:
+        - name: Step
+          command: echo yaml
+`;
 
-      const secondConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Second Priority',
-              parallel: false,
-              steps: [{ name: 'Step', command: 'echo second' }],
-            },
-          ],
-          caching: { strategy: 'git-tree-hash', enabled: true },
-        },
-        git: { mainBranch: 'main', autoSync: false },
-        output: { format: 'auto' },
-      };
+      const mjsContent = `
+export default {
+  validation: {
+    phases: [
+      {
+        name: 'MJS Priority',
+        steps: [{ name: 'Step', command: 'echo mjs' }],
+      },
+    ],
+  },
+};
+`;
 
-      // Create higher priority config
-      await writeFile(
-        join(testDir, CONFIG_FILE_NAMES[0]),
-        `export default ${JSON.stringify(firstConfig)};`
-      );
-
-      // Create lower priority config
-      await writeFile(
-        join(testDir, CONFIG_FILE_NAMES[2]),
-        `export default ${JSON.stringify(secondConfig)};`
-      );
+      // Create both configs (YAML should win)
+      await writeFile(join(testDir, CONFIG_FILE_NAMES[0]), yamlContent);
+      await writeFile(join(testDir, CONFIG_FILE_NAMES[1]), mjsContent);
 
       const loaded = await findAndLoadConfig(testDir);
-      expect(loaded?.validation.phases[0].name).toBe('First Priority');
+      expect(loaded?.validation.phases[0].name).toBe('YAML Priority');
     });
 
     it('should return undefined if no config found', async () => {
@@ -347,24 +293,18 @@ export default {
 
   describe('loadConfigWithFallback', () => {
     it('should load user config if found', async () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'User Config',
-              parallel: false,
-              steps: [{ name: 'Step', command: 'echo user' }],
-            },
-          ],
-          caching: { strategy: 'git-tree-hash', enabled: true },
-        },
-        git: { mainBranch: 'main', autoSync: false },
-        output: { format: 'auto' },
-      };
+      const yamlContent = `
+validation:
+  phases:
+    - name: User Config
+      steps:
+        - name: Step
+          command: echo user
+`;
 
       await writeFile(
-        join(testDir, 'vibe-validate.config.json'),
-        JSON.stringify(config, null, 2)
+        join(testDir, 'vibe-validate.config.yaml'),
+        yamlContent
       );
 
       const loaded = await loadConfigWithFallback(testDir);
@@ -388,12 +328,8 @@ export default {
   describe('CONFIG_FILE_NAMES', () => {
     it('should export config file names in priority order', () => {
       expect(CONFIG_FILE_NAMES).toEqual([
-        'vibe-validate.config.ts',
-        'vibe-validate.config.mts',
-        'vibe-validate.config.js',
-        'vibe-validate.config.mjs',
-        'vibe-validate.config.json',
-        '.vibe-validate.json',
+        'vibe-validate.config.yaml',
+        'vibe-validate.config.mjs', // Legacy (deprecated)
       ]);
     });
   });

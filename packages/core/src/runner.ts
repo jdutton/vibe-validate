@@ -188,7 +188,7 @@ export async function runStepsInParallel(
 
   const results = await Promise.allSettled(
     steps.map(step =>
-      new Promise<{ step: ValidationStep; output: string; duration: number }>((resolve, reject) => {
+      new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
         const paddedName = step.name.padEnd(maxNameLength);
         console.log(`   ⏳ ${paddedName}  →  ${step.command}`);
 
@@ -226,19 +226,19 @@ export async function runStepsInParallel(
         });
 
         proc.on('close', code => {
-          const duration = Date.now() - startTime;
+          const durationMs = Date.now() - startTime;
+          const durationSecs = parseFloat((durationMs / 1000).toFixed(1));
           const output = stdout + stderr;
           outputs.set(step.name, output);
 
-          const durationSec = (duration / 1000).toFixed(1);
           const status = code === 0 ? '✅' : '❌';
           const result = code === 0 ? 'PASSED' : 'FAILED';
-          console.log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSec}s)`);
+          console.log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
-          stepResults.push({ name: step.name, passed: code === 0, duration });
+          stepResults.push({ name: step.name, passed: code === 0, durationSecs });
 
           if (code === 0) {
-            resolve({ step, output, duration });
+            resolve({ step, output, durationSecs });
           } else {
             // On first failure, kill other processes if fail-fast enabled
             // RACE CONDITION SAFE: While multiple processes could fail simultaneously,
@@ -257,7 +257,7 @@ export async function runStepsInParallel(
                 }
               }
             }
-            reject({ step, output, duration });
+            reject({ step, output, durationSecs });
           }
         });
       })
@@ -367,7 +367,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       env,
       config.verbose ?? false
     );
-    const phaseDuration = Date.now() - phaseStartTime;
+    const phaseDurationMs = Date.now() - phaseStartTime;
+    const durationSecs = parseFloat((phaseDurationMs / 1000).toFixed(1));
 
     // Append all outputs to log file
     for (const [stepName, output] of result.outputs) {
@@ -380,7 +381,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     // Record phase result
     const phaseResult: PhaseResult = {
       name: phase.name,
-      duration: phaseDuration,
+      durationSecs,
       passed: result.success,
       steps: result.stepResults,
     };
