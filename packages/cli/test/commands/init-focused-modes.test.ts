@@ -56,7 +56,7 @@ describe('init command - focused modes', () => {
       });
 
       expect(result).toContain('Would create:');
-      expect(result).toContain('vibe-validate.config.ts');
+      expect(result).toContain('vibe-validate.config.yaml');
     });
   });
 

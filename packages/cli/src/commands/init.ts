@@ -205,9 +205,9 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
     }
   }
 
-  // Generate config file content (still using TypeScript for now)
-  const configContent = generateConfig(preset, gitConfig);
-  const configPath = join(cwd, 'vibe-validate.config.ts');
+  // Generate YAML config file content
+  const configContent = generateYamlConfig(preset, gitConfig);
+  const configPath = join(cwd, 'vibe-validate.config.yaml');
 
   if (isDryRun) {
     // Preview mode - show what would be created
@@ -228,13 +228,55 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
   console.log(chalk.gray(`   Preset: ${preset}`));
   console.log();
   console.log(chalk.yellow('Next steps:'));
-  console.log(chalk.gray('  1. Review and customize vibe-validate.config.ts'));
+  console.log(chalk.gray('  1. Review and customize vibe-validate.config.yaml'));
   console.log(chalk.gray('  2. Run: vibe-validate validate'));
   console.log(chalk.gray('  3. Add to package.json scripts:'));
   console.log(chalk.gray('     "validate": "vibe-validate validate"'));
   console.log(chalk.gray('     "pre-commit": "vibe-validate pre-commit"'));
 
   process.exit(0);
+}
+
+/**
+ * Generate YAML configuration content based on preset
+ *
+ * Creates YAML configuration file content with the specified preset
+ * and git configuration values.
+ *
+ * @param preset - Preset name (typescript-library, typescript-nodejs, typescript-react)
+ * @param gitConfig - Detected git configuration
+ * @returns YAML configuration file content
+ */
+function generateYamlConfig(preset: string, gitConfig: DetectedGitConfig): string {
+  const baseConfig = {
+    // JSON Schema for IDE validation
+    $schema: 'https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+
+    // Use preset as base configuration
+    extends: preset,
+
+    // Git integration settings
+    git: {
+      mainBranch: gitConfig.mainBranch,
+      remoteOrigin: gitConfig.remoteOrigin,
+      autoSync: false, // Never auto-merge - safety first
+    },
+
+    // Validation configuration (from preset)
+    validation: {
+      caching: {
+        strategy: 'git-tree-hash',
+        enabled: true,
+      },
+      failFast: true,
+    },
+  };
+
+  return stringifyYaml(baseConfig, {
+    indent: 2,
+    lineWidth: 100,
+    noRefs: true,
+  });
 }
 
 /**
@@ -309,240 +351,3 @@ async function handleMigration(cwd: string, options: InitOptions, isDryRun: bool
   process.exit(0);
 }
 
-/**
- * Generate configuration content based on preset
- *
- * Creates TypeScript configuration file content with the specified preset
- * and git configuration values.
- *
- * @param preset - Preset name (typescript-library, typescript-nodejs, typescript-react)
- * @param gitConfig - Detected git configuration
- * @returns TypeScript configuration file content
- */
-function generateConfig(preset: string, gitConfig: DetectedGitConfig): string {
-  const configs: Record<string, string> = {
-    'typescript-library': `import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  // Use TypeScript library preset as base
-  extends: 'typescript-library',
-
-  validation: {
-    phases: [
-      // Phase 1: Fast Pre-Qualification (parallel)
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          {
-            name: 'TypeScript Type Check',
-            command: 'tsc --noEmit',
-            description: 'Type-check TypeScript files',
-          },
-          {
-            name: 'ESLint',
-            command: 'eslint src/',
-            description: 'Lint source code',
-          },
-        ],
-      },
-
-      // Phase 2: Unit Tests
-      {
-        name: 'Testing',
-        parallel: false,
-        steps: [
-          {
-            name: 'Unit Tests',
-            command: 'npm test',
-            description: 'Run unit tests with coverage',
-          },
-        ],
-      },
-
-      // Phase 3: Build Verification
-      {
-        name: 'Build',
-        parallel: false,
-        steps: [
-          {
-            name: 'Build Package',
-            command: 'npm run build',
-            description: 'Build TypeScript to JavaScript',
-          },
-        ],
-      },
-    ],
-
-    // Use git tree hash caching for maximum performance
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-
-    // Fail fast on first error
-    failFast: true,
-  },
-
-  // Git integration settings
-  git: {
-    mainBranch: '${gitConfig.mainBranch}',
-    remoteOrigin: '${gitConfig.remoteOrigin}',
-    autoSync: false, // Never auto-merge - safety first
-  },
-
-  // Output configuration - state files are always written as YAML
-});
-`,
-
-    'typescript-nodejs': `import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  // Use TypeScript Node.js preset as base
-  extends: 'typescript-nodejs',
-
-  validation: {
-    phases: [
-      // Phase 1: Fast Pre-Qualification (parallel)
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          {
-            name: 'TypeScript Type Check',
-            command: 'tsc --noEmit',
-            description: 'Type-check TypeScript files',
-          },
-          {
-            name: 'ESLint',
-            command: 'eslint src/',
-            description: 'Lint source code',
-          },
-        ],
-      },
-
-      // Phase 2: Unit Tests
-      {
-        name: 'Testing',
-        parallel: false,
-        steps: [
-          {
-            name: 'Unit Tests',
-            command: 'npm test',
-            description: 'Run unit tests with coverage',
-          },
-        ],
-      },
-
-      // Phase 3: Build Verification
-      {
-        name: 'Build',
-        parallel: false,
-        steps: [
-          {
-            name: 'Build Application',
-            command: 'npm run build',
-            description: 'Build TypeScript to JavaScript',
-          },
-        ],
-      },
-    ],
-
-    // Use git tree hash caching for maximum performance
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-
-    // Fail fast on first error
-    failFast: true,
-  },
-
-  // Git integration settings
-  git: {
-    mainBranch: '${gitConfig.mainBranch}',
-    remoteOrigin: '${gitConfig.remoteOrigin}',
-    autoSync: false, // Never auto-merge - safety first
-  },
-
-  // Output configuration - state files are always written as YAML
-});
-`,
-
-    'typescript-react': `import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  // Use TypeScript React preset as base
-  extends: 'typescript-react',
-
-  validation: {
-    phases: [
-      // Phase 1: Fast Pre-Qualification (parallel)
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          {
-            name: 'TypeScript Type Check',
-            command: 'tsc --noEmit',
-            description: 'Type-check TypeScript and React files',
-          },
-          {
-            name: 'ESLint',
-            command: 'eslint src/',
-            description: 'Lint source code with React rules',
-          },
-        ],
-      },
-
-      // Phase 2: Unit Tests
-      {
-        name: 'Testing',
-        parallel: false,
-        steps: [
-          {
-            name: 'Unit Tests',
-            command: 'npm test',
-            description: 'Run unit tests with coverage',
-          },
-        ],
-      },
-
-      // Phase 3: Build Verification
-      {
-        name: 'Build',
-        parallel: false,
-        steps: [
-          {
-            name: 'Build Application',
-            command: 'npm run build',
-            description: 'Build React application for production',
-          },
-        ],
-      },
-    ],
-
-    // Use git tree hash caching for maximum performance
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-
-    // Fail fast on first error
-    failFast: true,
-  },
-
-  // Git integration settings
-  git: {
-    mainBranch: '${gitConfig.mainBranch}',
-    remoteOrigin: '${gitConfig.remoteOrigin}',
-    autoSync: false, // Never auto-merge - safety first
-  },
-
-  // Output configuration - state files are always written as YAML
-});
-`,
-  };
-
-  return configs[preset] || configs['typescript-library'];
-}

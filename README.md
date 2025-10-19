@@ -164,7 +164,7 @@ npx vibe-validate init --preset=typescript-nodejs
 npx vibe-validate init --preset=typescript-react
 ```
 
-**Creates**: `vibe-validate.config.ts` (or `.js`, `.mjs`) in your project root.
+**Creates**: `vibe-validate.config.yaml` in your project root.
 
 ### `vibe-validate validate`
 
@@ -370,44 +370,32 @@ npx vibe-validate init --preset=typescript-react
 
 ### Configuration File Example
 
-`vibe-validate.config.ts`:
+`vibe-validate.config.yaml`:
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
+```yaml
+# vibe-validate.config.yaml
 
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Pre-Qualification',
-        parallel: true, // Run steps in parallel
-        steps: [
-          { name: 'TypeScript', command: 'tsc --noEmit' },
-          { name: 'ESLint', command: 'eslint src/' },
-        ],
-      },
-      {
-        name: 'Testing',
-        parallel: false, // Run steps sequentially
-        steps: [
-          { name: 'Unit Tests', command: 'vitest run' },
-          { name: 'Integration', command: 'npm run test:integration' },
-        ],
-      },
-    ],
-    caching: {
-      strategy: 'git-tree-hash', // Deterministic caching
-      enabled: true,
-    },
-    failFast: false, // Continue even if a step fails
-  },
-  git: {
-    mainBranch: 'main', // Customize for 'master', 'develop', etc.
-    autoSync: false,     // Never auto-merge (safety first)
-  },
-  // State files are always written as YAML (human and machine readable)
-});
+# JSON Schema for IDE autocomplete and validation
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/schema.json
+
+# Use preset as base configuration
+extends: typescript-library
+
+# Git integration settings
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  autoSync: false  # Never auto-merge - safety first
+
+# Validation configuration (preset provides sensible defaults)
+validation:
+  caching:
+    strategy: git-tree-hash  # Deterministic caching
+    enabled: true
+  failFast: false  # Continue even if a step fails
 ```
+
+**Note**: Presets (`typescript-library`, `typescript-nodejs`, `typescript-react`) provide complete validation phase configurations. You only need to specify git settings and optionally override caching/fail-fast behavior.
 
 ### Extending Presets
 
