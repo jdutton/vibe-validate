@@ -108,20 +108,14 @@ describe('Doctor Command Integration', () => {
   });
 
   it('should show pass/fail summary', () => {
-    try {
-      const result = execSync(`node ${cliPath} doctor`, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        stdio: 'pipe',
-      });
-      // Should show summary line with counts
-      expect(result).toMatch(/📊 Results: \d+\/\d+ checks passed/);
-      // This project uses .mjs (legacy), so Config format check fails: 14/15
-      expect(result).toContain('14/15 checks passed');
-    } catch (error: any) {
-      // Doctor exits with code 1 when checks fail (config format check fails because we use .mjs)
-      expect(error.stdout).toMatch(/📊 Results: \d+\/\d+ checks passed/);
-      expect(error.stdout).toContain('14/15 checks passed');
-    }
+    const result = execSync(`node ${cliPath} doctor`, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    // Should show summary line with counts
+    expect(result).toMatch(/📊 Results: \d+\/\d+ checks passed/);
+    // This project now uses YAML (modern format), so all checks pass: 15/15
+    expect(result).toContain('15/15 checks passed');
   });
 });
