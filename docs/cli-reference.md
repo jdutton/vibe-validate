@@ -776,10 +776,8 @@ vibe-validate doctor
 
 ✅ Node.js version (v20.11.0)
 ✅ Git repository
-✅ Config file (vibe-validate.config.ts)
+✅ Config file (vibe-validate.config.yaml)
 ✅ Config valid
-⚠️  Config format (Using deprecated .mjs format)
-   💡 Migrate to YAML configuration
 ✅ Package manager (pnpm)
 ✅ Main branch (main)
 ✅ Remote origin (origin)
@@ -984,16 +982,11 @@ GIT_DIR=/path/to/.git vibe-validate validate
 
 ## Configuration Files
 
-vibe-validate searches for configuration files in this order:
+vibe-validate uses **YAML** configuration format:
 
-1. `vibe-validate.config.ts`
-2. `vibe-validate.config.mts`
-3. `vibe-validate.config.cts`
-4. `vibe-validate.config.js`
-5. `vibe-validate.config.mjs`
-6. `vibe-validate.config.cjs`
+**File name**: `vibe-validate.config.yaml` (must be in project root)
 
-**Recommended**: Use `.ts` extension for TypeScript projects (best type safety).
+**Create config**: Run `npx vibe-validate init` to generate configuration file.
 
 ---
 

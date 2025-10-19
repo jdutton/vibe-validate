@@ -286,7 +286,7 @@ validation:
       // 3. Check state (should show passed) - use --verbose for status text
       const stateResult = await executeCLI(['state', '--verbose']);
       expect(stateResult.code).toBe(0);
-      expect(stateResult.stdout).toContain('PASSED');
+      expect(stateResult.stdout).toContain('passed: true');
     }, 30000); // Increase timeout for full workflow
 
     it('should handle validation failure workflow', async () => {
@@ -323,7 +323,7 @@ validation:
         logCommandFailure(['state', '--verbose'], stateResult, 0, 'State check after validation failure');
       }
       expect(stateResult.code).toBe(0);
-      expect(stateResult.stdout).toContain('FAILED');
+      expect(stateResult.stdout).toContain('passed: false');
     }, 30000); // Increase timeout for full workflow
 
     it('should bypass cache when --force flag is used', async () => {
