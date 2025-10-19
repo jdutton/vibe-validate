@@ -11,33 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
-- **CRITICAL: Fixed init command YAML config generation** (Issue #12)
-  - Init command was creating `.ts` configs that couldn't be loaded by the config loader
-  - Config loader only searches for `.yaml` and `.mjs` (deprecated) files
-  - This completely broke the initialization workflow in v0.10.0
-  - **Fix**: Updated `init.ts` to generate YAML configs using `generateYamlConfig()` function
-  - Removed obsolete `generateConfig()` function (240 lines of TypeScript templates)
-  - All 460 tests passing
+- **CRITICAL: Fixed broken `init` command** (Issue #12)
+  - **Problem**: `vibe-validate init` was creating `.ts` config files that couldn't be loaded, breaking the initialization workflow for new users in v0.10.0
+  - **Solution**: Now correctly generates `vibe-validate.config.yaml` files
+  - **Impact**: New users can now successfully initialize and use vibe-validate
 
-- **Fixed JSON Schema URL in generated configs**
-  - Schema URL was pointing to `schema.json` but actual file is `vibe-validate.schema.json`
-  - Updated init command and all documentation to use correct schema URL
-  - Ensures IDE autocomplete and validation works correctly
+- **Fixed IDE autocomplete for YAML configs**
+  - Corrected JSON Schema URL in generated configs
+  - IDEs (VS Code, WebStorm, etc.) now properly provide autocomplete and validation
 
 ### 📝 Documentation
 
-- **Updated core documentation to YAML-only format**
-  - `getting-started.md`: Removed `.ts`/`.js`/`.json` references, updated all examples to YAML
-  - `README.md`: Updated config examples to use YAML format
-  - `configuration-reference.md`: Added YAML configuration section and migration guidance
-  - `presets-guide.md`: Updated preset usage examples to YAML
-  - Added migration guidance: `npx vibe-validate init --migrate` for legacy `.mjs` configs
-
-### ✅ Testing
-
-- Updated test expectations to validate YAML config generation
-- Test: `init-focused-modes.test.ts` - Changed `.ts` to `.yaml` expectation
-- All 460 tests passing (100% pass rate)
+- Updated all examples to use YAML configuration format
+- Added migration guide for users with legacy `.mjs` configs: `npx vibe-validate init --migrate`
+- Clarified that YAML is the only supported format (`.ts`, `.js`, `.json` are not supported)
 
 ## [0.10.0] - 2025-10-19
 

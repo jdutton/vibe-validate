@@ -264,15 +264,26 @@ git push origin <branch-name>
 - Include issue/PR references where applicable
 - **NEVER release without updating CHANGELOG**
 
+**CHANGELOG Writing Guidelines - User Focus**:
+- **Write for users, not developers**: Focus on user impact, not implementation details
+- **Avoid internal details**: No function names, file paths, test counts, or code references
+- **Structure entries as**: Problem → Solution → Impact
+- **Use clear language**: Explain what was broken and what's fixed
+- **Examples**:
+  - ❌ Bad: "Updated `init.ts` to generate YAML configs using `generateYamlConfig()` function"
+  - ✅ Good: "`vibe-validate init` now correctly generates YAML config files"
+  - ❌ Bad: "Added 11 new tests for schema validation"
+  - ✅ Good: "Fixed IDE autocomplete for YAML configs"
+
 Example CHANGELOG entry:
 ```markdown
 ## [Unreleased]
 
 ### Bug Fixes
-- **Fix tree hash consistency** (Issue #8)
-  - Replace non-deterministic `git stash create` with deterministic `git write-tree`
-  - Ensures `validate` and `validate --check` use same hash calculation
-  - Fixes broken caching mechanism that defeated 312x speedup feature
+- **CRITICAL: Fixed broken `init` command** (Issue #12)
+  - **Problem**: `vibe-validate init` was creating `.ts` config files that couldn't be loaded
+  - **Solution**: Now correctly generates `vibe-validate.config.yaml` files
+  - **Impact**: New users can now successfully initialize and use vibe-validate
 ```
 
 ### Git History Management
