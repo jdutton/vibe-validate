@@ -321,7 +321,6 @@ npx vibe-validate cleanup
 1. Run `npx vibe-validate init` to create config
 2. Ensure config is in project root
 3. Config must be named `vibe-validate.config.yaml`
-4. If you have a legacy `.mjs` config, run `npx vibe-validate init --migrate` to convert to YAML
 
 ### Validation passes locally but fails in CI
 

@@ -8,10 +8,11 @@ vibe-validate uses **YAML** as the configuration format.
 
 The configuration file must be named `vibe-validate.config.yaml` in your project root.
 
-**Migrating from legacy formats**: If you have an existing `.mjs` config, run:
+**Migrating configurations**: After upgrading vibe-validate, run:
 ```bash
 npx vibe-validate init --migrate
 ```
+This will help migrate your configuration to the latest format and structure.
 
 ## Basic Configuration
 

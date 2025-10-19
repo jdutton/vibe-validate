@@ -9,6 +9,8 @@
 
 **Who it's for**: TypeScript/JavaScript developers, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
 
+**For AI Assistants**: Get all command help at once with `npx vibe-validate --help --verbose`
+
 ## Quick Start (3 commands)
 
 ```bash
@@ -376,7 +378,7 @@ npx vibe-validate init --preset=typescript-react
 # vibe-validate.config.yaml
 
 # JSON Schema for IDE autocomplete and validation
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/schema.json
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
 # Use preset as base configuration
 extends: typescript-library
@@ -663,7 +665,7 @@ This is a monorepo containing:
 **Solution**:
 1. Run `npx vibe-validate init` to create config
 2. Ensure file is in project root
-3. Check supported formats: `.ts`, `.js`, `.mjs`, `.json`
+3. Check file is named `vibe-validate.config.yaml`
 
 ## Contributing
 

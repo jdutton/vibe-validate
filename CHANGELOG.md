@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2025-10-19
+
+### ✨ Features
+
+- **AI Assistant Support: Get All Help at Once** (Issue #14)
+  - Use `vibe-validate --help --verbose` to see all command options in one output
+  - Perfect for AI assistants (Claude Code, Cursor, Aider, Continue) to get complete CLI reference
+  - Regular `--help` remains concise for human users
+  - Eliminates need to run 9 separate `<command> --help` calls
+
+### 🐛 Bug Fixes
+
+- **Fixed IDE Autocomplete in Documentation** (Issue #14)
+  - Corrected schema URL in README examples: Now uses `vibe-validate.schema.json` (was: `schema.json`)
+  - Users following documentation will now get proper IDE autocomplete and validation
+
+### 📝 Documentation
+
+- **Added Package Installation Clarity** (Issue #14)
+  - New FAQ: "Should I install `vibe-validate` or `@vibe-validate/cli`?"
+  - Both packages work identically - use whichever name you prefer
+  - Eliminates confusion from seeing two different package names
+
+- **Improved AI Assistant Guidance**
+  - Added prominent "For AI Assistants" callout in README
+  - Documents `--help --verbose` for comprehensive help output
+
+- **Cleaned Up Format References**
+  - Focused documentation on YAML configuration (the current standard)
+  - Removed outdated format references from user-facing docs
+  - Simplified troubleshooting and getting-started guides
+
 ## [0.10.1] - 2025-10-19
 
 ### 🐛 Bug Fixes
