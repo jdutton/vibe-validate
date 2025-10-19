@@ -10,11 +10,12 @@
  * @packageDocumentation
  */
 
-import { spawn, execSync, type ChildProcess } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import { writeFileSync, appendFileSync, existsSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { stringify as yamlStringify, parse as yamlParse } from 'yaml';
+import { getGitTreeHash } from '@vibe-validate/git';
 import { stopProcessGroup } from './process-utils.js';
 import type {
   ValidationStep,
@@ -25,45 +26,13 @@ import type {
 } from './types.js';
 
 /**
- * Git tree hash calculator
+ * Legacy function - REMOVED in favor of @vibe-validate/git package
  *
- * NOTE: This is a simplified fallback implementation.
- * For production use, prefer @vibe-validate/git package which provides
- * deterministic git tree hashing using git write-tree instead of git stash create.
+ * Use `getGitTreeHash()` from '@vibe-validate/git' instead.
+ * This provides deterministic, content-based tree hashing.
  *
- * This implementation uses git stash create, which includes timestamps and is
- * non-deterministic (same code content may produce different hashes).
- *
- * @returns SHA-1 hash representing working tree state (non-deterministic)
- * @internal
+ * @deprecated Removed in v0.9.11 - Use @vibe-validate/git instead
  */
-export function getWorkingTreeHash(): string {
-  try {
-    // Use git stash create to include ALL working tree changes
-    // WARNING: This creates commit objects with timestamps (non-deterministic)
-    const stashHash = execSync('git stash create', {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore']
-    }).trim();
-
-    // If no changes, fall back to HEAD tree
-    if (!stashHash) {
-      return execSync('git rev-parse HEAD^{tree}', {
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'ignore']
-      }).trim();
-    }
-
-    // Extract tree hash from stash commit
-    return execSync(`git rev-parse ${stashHash}^{tree}`, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore']
-    }).trim();
-  } catch (_error) {
-    // Fallback for non-git repos or git command failures
-    return `nogit-${Date.now()}`;
-  }
-}
 
 /**
  * Check if validation has already passed for current working tree state
@@ -363,8 +332,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     onPhaseComplete,
   } = config;
 
-  // Get current working tree hash
-  const currentTreeHash = getWorkingTreeHash();
+  // Get current working tree hash (deterministic, content-based)
+  const currentTreeHash = await getGitTreeHash();
 
   // Check if validation already passed for this exact code state
   if (!forceRun) {
