@@ -176,7 +176,7 @@ describe('doctor command', () => {
 
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
       expect(configCheck?.passed).toBe(false);
-      expect(configCheck?.message).toContain('Invalid');
+      expect(configCheck?.message).toContain('Failed to load configuration');
     });
 
     it('should detect not in git repository', async () => {
@@ -235,6 +235,10 @@ describe('doctor command', () => {
     it('should check package manager availability', async () => {
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         if (cmd.includes('node --version')) return 'v22.0.0' as any;
+        if (cmd.includes('git --version')) return 'git version 2.40.0' as any;
+        if (cmd.includes('git rev-parse')) return '/path/to/repo' as any;
+        if (cmd.includes('git config')) return 'https://github.com/test/repo' as any;
+        if (cmd.includes('npm view')) return '0.9.11' as any;
         if (cmd.includes('pnpm --version')) throw new Error('pnpm not found');
         return '' as any;
       });
@@ -242,7 +246,7 @@ describe('doctor command', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
-      const result = await runDoctor();
+      const result = await runDoctor({ verbose: true });
 
       const pmCheck = result.checks.find(c => c.name === 'Package manager');
       expect(pmCheck?.passed).toBe(false);

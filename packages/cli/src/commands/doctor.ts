@@ -16,7 +16,7 @@ import { execSync } from 'child_process';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
-import { getMainBranch, getRemoteOrigin } from '@vibe-validate/config';
+import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 
 /**
  * Result of a single doctor check
@@ -196,9 +196,8 @@ function checkConfigFormatMigration(): DoctorCheckResult {
 /**
  * Check if configuration is valid
  */
-async function checkConfigValid(): Promise<DoctorCheckResult> {
+async function checkConfigValid(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   try {
-    const config = await loadConfig();
     if (!config) {
       return {
         name: 'Configuration valid',
@@ -226,9 +225,8 @@ async function checkConfigValid(): Promise<DoctorCheckResult> {
 /**
  * Check if package manager is available
  */
-async function checkPackageManager(): Promise<DoctorCheckResult> {
+async function checkPackageManager(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   try {
-    const config = await loadConfig();
     if (!config) {
       // Config check will catch this
       return {
@@ -271,7 +269,7 @@ async function checkPackageManager(): Promise<DoctorCheckResult> {
 /**
  * Check if GitHub Actions workflow is in sync
  */
-async function checkWorkflowSync(): Promise<DoctorCheckResult> {
+async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   const workflowPath = '.github/workflows/validate.yml';
 
   if (!existsSync(workflowPath)) {
@@ -283,7 +281,6 @@ async function checkWorkflowSync(): Promise<DoctorCheckResult> {
   }
 
   try {
-    const config = await loadConfig();
     if (!config) {
       return {
         name: 'GitHub Actions workflow',
@@ -324,18 +321,8 @@ async function checkWorkflowSync(): Promise<DoctorCheckResult> {
 /**
  * Check if pre-commit hook is installed
  */
-async function checkPreCommitHook(): Promise<DoctorCheckResult> {
+async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   const huskyPath = '.husky/pre-commit';
-
-  // Load config to check if pre-commit is enabled
-  // If config fails to load, use defaults (will be caught by checkConfigValid)
-  let config;
-  try {
-    config = await loadConfig();
-  } catch (_error) {
-    // Config load failed - use defaults (error will be reported in checkConfigValid)
-    config = null;
-  }
 
   const preCommitEnabled = config?.hooks?.preCommit?.enabled ?? true; // Default true
   const expectedCommand = config?.hooks?.preCommit?.command ?? 'npx vibe-validate pre-commit';
@@ -513,9 +500,8 @@ function checkValidationState(): DoctorCheckResult {
 /**
  * Check if configured main branch exists locally
  */
-async function checkMainBranch(): Promise<DoctorCheckResult> {
+async function checkMainBranch(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   try {
-    const config = await loadConfig();
     if (!config) {
       return {
         name: 'Git main branch',
@@ -565,9 +551,8 @@ async function checkMainBranch(): Promise<DoctorCheckResult> {
 /**
  * Check if configured remote origin exists
  */
-async function checkRemoteOrigin(): Promise<DoctorCheckResult> {
+async function checkRemoteOrigin(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   try {
-    const config = await loadConfig();
     if (!config) {
       return {
         name: 'Git remote origin',
@@ -619,9 +604,8 @@ async function checkRemoteOrigin(): Promise<DoctorCheckResult> {
 /**
  * Check if configured main branch exists on remote
  */
-async function checkRemoteMainBranch(): Promise<DoctorCheckResult> {
+async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   try {
-    const config = await loadConfig();
     if (!config) {
       return {
         name: 'Git remote main branch',
@@ -679,6 +663,15 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   const { verbose = false } = options;
   const allChecks: DoctorCheckResult[] = [];
 
+  // Load config once to avoid duplicate warnings
+  let config;
+  try {
+    config = await loadConfig();
+  } catch (_error) {
+    // Config load error will be caught by checkConfigValid
+    config = null;
+  }
+
   // Run all checks
   allChecks.push(await checkVersion());
   allChecks.push(checkNodeVersion());
@@ -686,13 +679,13 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(checkGitRepository());
   allChecks.push(checkConfigFile());
   allChecks.push(checkConfigFormatMigration());
-  allChecks.push(await checkConfigValid());
-  allChecks.push(await checkPackageManager());
-  allChecks.push(await checkMainBranch());
-  allChecks.push(await checkRemoteOrigin());
-  allChecks.push(await checkRemoteMainBranch());
-  allChecks.push(await checkWorkflowSync());
-  allChecks.push(await checkPreCommitHook());
+  allChecks.push(await checkConfigValid(config));
+  allChecks.push(await checkPackageManager(config));
+  allChecks.push(await checkMainBranch(config));
+  allChecks.push(await checkRemoteOrigin(config));
+  allChecks.push(await checkRemoteMainBranch(config));
+  allChecks.push(await checkWorkflowSync(config));
+  allChecks.push(await checkPreCommitHook(config));
   allChecks.push(checkGitignoreStateFile());
   allChecks.push(checkValidationState());
 
