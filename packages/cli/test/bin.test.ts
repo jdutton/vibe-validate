@@ -166,6 +166,217 @@ describe('bin.ts - CLI entry point', () => {
       expect(result.stdout).toContain('cleanup');
       expect(result.stdout).toContain('config');
     });
+
+    describe('comprehensive help (--help --verbose)', () => {
+      it('should display comprehensive help with --help --verbose (Markdown format)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# vibe-validate CLI Reference');
+        expect(result.stdout).toContain('> Agent-friendly validation framework');
+        expect(result.stdout).toContain('## Usage');
+        expect(result.stdout).toContain('## Commands');
+      });
+
+      it('should include exit codes for all commands (Markdown format)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        // Check validate command exit codes (Markdown format with backticks)
+        expect(result.stdout).toContain('**Exit codes:**');
+        expect(result.stdout).toContain('- `0` - Validation passed (or cached pass)');
+        expect(result.stdout).toContain('- `1` - Validation failed');
+        expect(result.stdout).toContain('- `2` - Configuration error');
+
+        // Check init command exit codes
+        expect(result.stdout).toContain('- `0` - Configuration created successfully');
+
+        // Check sync-check exit codes
+        expect(result.stdout).toContain('- `0` - Up to date or no remote tracking');
+        expect(result.stdout).toContain('- `1` - Branch is behind (needs merge)');
+      });
+
+      it('should include "What it does" sections for commands', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        // Check validate command
+        expect(result.stdout).toContain('What it does:');
+        expect(result.stdout).toContain('Calculates git tree hash of working directory');
+        expect(result.stdout).toContain('Checks if hash matches cached state');
+
+        // Check init command
+        expect(result.stdout).toContain('Creates vibe-validate.config.yaml in project root');
+
+        // Check pre-commit command
+        expect(result.stdout).toContain('Runs sync-check');
+        expect(result.stdout).toContain('Runs validate');
+      });
+
+      it('should include file locations created/modified', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('Creates/modifies:');
+        expect(result.stdout).toContain('.vibe-validate-state.yaml (auto-created)');
+        expect(result.stdout).toContain('vibe-validate.config.yaml (always)');
+        expect(result.stdout).toContain('.husky/pre-commit (with --setup-hooks)');
+        expect(result.stdout).toContain('.github/workflows/validate.yml');
+      });
+
+      it('should include examples for commands', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('Examples:');
+        expect(result.stdout).toContain('vibe-validate validate              # Use cache if available');
+        expect(result.stdout).toContain('vibe-validate validate --force      # Always run validation');
+        expect(result.stdout).toContain('vibe-validate init --preset typescript-nodejs');
+        expect(result.stdout).toContain('vibe-validate doctor         # Run diagnostics');
+      });
+
+      it('should include error recovery guidance (Markdown format)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('**Error recovery:**');
+        expect(result.stdout).toContain('If **sync failed**:');
+        expect(result.stdout).toContain('git fetch origin');
+        expect(result.stdout).toContain('git merge origin/main');
+        expect(result.stdout).toContain('If **validation failed**:');
+        expect(result.stdout).toContain('Fix errors shown in output');
+      });
+
+      it('should include "When to use" guidance', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('When to use:');
+        expect(result.stdout).toContain('Run before every commit to ensure code is synced and validated');
+        expect(result.stdout).toContain('Debug why validation is cached/not cached');
+        expect(result.stdout).toContain('Diagnose setup issues or verify environment');
+      });
+
+      it('should include FILES section (Markdown format)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('## Files');
+        expect(result.stdout).toContain('vibe-validate.config.yaml');
+        expect(result.stdout).toContain('.vibe-validate-state.yaml');
+        expect(result.stdout).toContain('.github/workflows/validate.yml');
+        expect(result.stdout).toContain('.husky/pre-commit');
+      });
+
+      it('should include COMMON WORKFLOWS section (Markdown format)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('## Common Workflows');
+        expect(result.stdout).toContain('### First-time setup');
+        expect(result.stdout).toContain('vibe-validate init --preset typescript-nodejs --setup-workflow');
+        expect(result.stdout).toContain('### Before every commit (recommended)');
+        expect(result.stdout).toContain('vibe-validate pre-commit');
+        expect(result.stdout).toContain('### After PR merge');
+        expect(result.stdout).toContain('vibe-validate cleanup');
+        expect(result.stdout).toContain('### Check validation state');
+        expect(result.stdout).toContain('vibe-validate state --verbose');
+        expect(result.stdout).toContain('### Force re-validation');
+        expect(result.stdout).toContain('vibe-validate validate --force');
+      });
+
+      it('should include EXIT CODES section (Markdown format)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('## Exit Codes');
+        expect(result.stdout).toContain('| `0` | Success |');
+        expect(result.stdout).toContain('| `1` | Failure (validation failed, sync check failed, invalid config) |');
+        expect(result.stdout).toContain('| `2` | Error (git command failed, file system error) |');
+      });
+
+      it('should include CACHING section (Markdown format)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('## Caching');
+        expect(result.stdout).toContain('**Cache key**: Git tree hash of working directory (includes untracked files)');
+        expect(result.stdout).toContain('**Cache hit**: Validation skipped (~288ms)');
+        expect(result.stdout).toContain('**Cache miss**: Full validation runs (~60-90s)');
+        expect(result.stdout).toContain('**Invalidation**: Any file change (tracked or untracked)');
+      });
+
+      it('should include repository link', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.stdout).toContain('For more details: https://github.com/jdutton/vibe-validate');
+      });
+
+      it('should be significantly longer than regular help', async () => {
+        const regularHelp = await executeCLI(['--help']);
+        const verboseHelp = await executeCLI(['--help', '--verbose']);
+
+        const regularLines = regularHelp.stdout.split('\n').length;
+        const verboseLines = verboseHelp.stdout.split('\n').length;
+
+        // Verbose help should be at least 3x longer than regular help
+        expect(verboseLines).toBeGreaterThan(regularLines * 3);
+      });
+
+      it('should have CLI reference docs that match --help --verbose output exactly', async () => {
+        const { readFileSync, existsSync } = await import('fs');
+        const { join } = await import('path');
+
+        const result = await executeCLI(['--help', '--verbose']);
+        const docsPath = join(__dirname, '../../../docs/cli-reference.md');
+
+        if (!existsSync(docsPath)) {
+          throw new Error(
+            'CLI reference docs missing at docs/cli-reference.md\n' +
+            'The documentation should be auto-generated from --help --verbose output.'
+          );
+        }
+
+        const docs = readFileSync(docsPath, 'utf-8');
+        const helpOutput = result.stdout;
+
+        // Extract the auto-synced section from docs (after the preamble separator ---)
+        const docsSections = docs.split('---\n');
+        if (docsSections.length < 2) {
+          throw new Error(
+            'docs/cli-reference.md should have a preamble followed by --- separator, ' +
+            'then the exact --help --verbose output'
+          );
+        }
+
+        // The content after the first --- separator should be the exact help output
+        const docsHelpContent = docsSections.slice(1).join('---\n').trim();
+        const expectedHelpOutput = helpOutput.trim();
+
+        // Exact character-by-character match
+        if (docsHelpContent !== expectedHelpOutput) {
+          // Show a useful diff for debugging
+          const docsLines = docsHelpContent.split('\n');
+          const helpLines = expectedHelpOutput.split('\n');
+          const maxLines = Math.max(docsLines.length, helpLines.length);
+
+          console.error('\n❌ docs/cli-reference.md does NOT match --help --verbose output exactly!\n');
+          console.error('Showing first 10 differences:\n');
+
+          let diffsShown = 0;
+          for (let i = 0; i < maxLines && diffsShown < 10; i++) {
+            const docLine = docsLines[i] || '<missing>';
+            const helpLine = helpLines[i] || '<missing>';
+
+            if (docLine !== helpLine) {
+              console.error(`Line ${i + 1}:`);
+              console.error(`  DOCS: ${docLine.substring(0, 80)}`);
+              console.error(`  HELP: ${helpLine.substring(0, 80)}`);
+              console.error('');
+              diffsShown++;
+            }
+          }
+
+          console.error(`\nTotal: ${docsLines.length} lines in docs, ${helpLines.length} lines in help output\n`);
+          console.error('To fix: Run `node packages/cli/dist/bin.js --help --verbose` and update docs/cli-reference.md\n');
+        }
+
+        expect(docsHelpContent,
+          'docs/cli-reference.md must contain the EXACT output from --help --verbose (after the --- separator). ' +
+          'This ensures perfect sync between CLI and documentation.'
+        ).toBe(expectedHelpOutput);
+      });
+    });
   });
 
   describe('command registration', () => {

@@ -9,7 +9,7 @@
 
 **Who it's for**: TypeScript/JavaScript developers, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
 
-**For AI Assistants**: Get all command help at once with `npx vibe-validate --help --verbose`
+**For AI Assistants**: Get all command help at once with `npx vibe-validate --help --verbose` or see the [Complete CLI Reference](docs/cli-reference.md)
 
 ## Quick Start (3 commands)
 

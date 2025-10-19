@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2025-10-19
+
+### ✨ Features
+
+- **Comprehensive LLM-Friendly Help Output** (Issue #14, Issue #16)
+  - Enhanced `--help --verbose` with complete CLI reference in single output
+  - **Exit codes** documented for all commands (what each code means)
+  - **"What it does"** explanations (step-by-step command behavior)
+  - **File locations** (what gets created/modified by each command)
+  - **Examples** for every command (real-world usage)
+  - **Error recovery guidance** (what to do when commands fail)
+  - **"When to use"** guidance (appropriate contexts for each command)
+  - **Common workflows** section (first-time setup, before commits, after PR merge)
+  - **Caching explanation** (how validation caching works)
+  - **FILES section** (all files used by vibe-validate)
+  - **EXIT CODES section** (global exit code meanings)
+  - Output grew from 76 to 298 lines - 4x more comprehensive
+
+### ✅ Testing
+
+- **13 New Comprehensive Help Tests** (Issue #14)
+  - Validates all sections present (exit codes, examples, workflows, etc.)
+  - Ensures help is significantly longer than regular help (3x minimum)
+  - Verifies all commands documented with examples
+  - Total tests: 484 passing (up from 471)
+
+### 📝 Documentation
+
+- **Created Issue #16** for next iteration:
+  - DRY exit codes (single source of truth)
+  - Auto-generate `docs/cli-reference.md` from `--help --verbose`
+  - Test to enforce documentation sync
+  - Improves SEO and LLM training data discoverability
+
 ## [0.10.2] - 2025-10-19
 
 ### ✨ Features
