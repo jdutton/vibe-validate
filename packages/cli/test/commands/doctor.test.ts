@@ -73,9 +73,22 @@ describe('doctor command', () => {
 
   describe('runDoctor', () => {
     it('should return all checks passing when environment is healthy', async () => {
+      // Mock file reads for version and gitignore checks
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\nnode_modules\n' as any;
+        }
+        return 'npx vibe-validate pre-commit' as any; // Pre-commit hook content
+      });
+
       // Mock healthy environment
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
@@ -86,14 +99,19 @@ describe('doctor command', () => {
         return '' as any;
       });
 
-      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        // Config format check needs specific file checks
+        if (path.toString() === 'vibe-validate.config.yaml') return true;
+        if (path.toString() === 'vibe-validate.config.mjs') return false;
+        return true; // Everything else exists
+      });
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
       const result = await runDoctor();
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(12); // Total number of checks (9 original + 3 new git checks)
+      expect(result.checks).toHaveLength(15); // Total number of checks (includes new config format migration check)
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -158,7 +176,7 @@ describe('doctor command', () => {
 
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
       expect(configCheck?.passed).toBe(false);
-      expect(configCheck?.message).toContain('Invalid');
+      expect(configCheck?.message).toContain('Failed to load configuration');
     });
 
     it('should detect not in git repository', async () => {
@@ -217,6 +235,10 @@ describe('doctor command', () => {
     it('should check package manager availability', async () => {
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         if (cmd.includes('node --version')) return 'v22.0.0' as any;
+        if (cmd.includes('git --version')) return 'git version 2.40.0' as any;
+        if (cmd.includes('git rev-parse')) return '/path/to/repo' as any;
+        if (cmd.includes('git config')) return 'https://github.com/test/repo' as any;
+        if (cmd.includes('npm view')) return '0.9.11' as any;
         if (cmd.includes('pnpm --version')) throw new Error('pnpm not found');
         return '' as any;
       });
@@ -224,7 +246,7 @@ describe('doctor command', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
-      const result = await runDoctor();
+      const result = await runDoctor({ verbose: true });
 
       const pmCheck = result.checks.find(c => c.name === 'Package manager');
       expect(pmCheck?.passed).toBe(false);
@@ -259,9 +281,22 @@ describe('doctor command', () => {
 
   describe('--verbose flag', () => {
     it('should show all checks including passing ones in verbose mode', async () => {
+      // Mock file reads
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npx vibe-validate pre-commit' as any;
+      });
+
       // Mock healthy environment
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
@@ -279,14 +314,27 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verbose mode should return all checks
-      expect(result.checks).toHaveLength(12); // 9 original + 3 new git checks
+      expect(result.checks).toHaveLength(15); // All checks including config format migration check
       expect(result.verboseMode).toBe(true);
     });
 
     it('should show all checks in non-verbose mode when all pass', async () => {
+      // Mock file reads
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npx vibe-validate pre-commit' as any;
+      });
+
       // Mock healthy environment
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
@@ -306,7 +354,7 @@ describe('doctor command', () => {
       // Non-verbose with all passing should show all checks (for summary)
       expect(result.verboseMode).toBe(false);
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(12); // Shows all checks when all pass (9 original + 3 git)
+      expect(result.checks).toHaveLength(15); // Shows all checks when all pass
     });
 
     it('should always show failing checks in non-verbose mode', async () => {
@@ -335,10 +383,23 @@ describe('doctor command', () => {
   });
 
   describe('pre-commit hook opt-out', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
+      // Mock file reads for all pre-commit tests
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npx vibe-validate pre-commit' as any;
+      });
+
       // Mock healthy environment for all pre-commit tests
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
         if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
         if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
@@ -393,7 +454,15 @@ describe('doctor command', () => {
 
     it('should pass when pre-commit hook is properly configured with vibe-validate', async () => {
       const { readFileSync } = await import('fs');
-      vi.mocked(readFileSync).mockReturnValue('npx vibe-validate pre-commit' as any);
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npx vibe-validate pre-commit' as any; // Pre-commit hook content
+      });
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
@@ -407,7 +476,15 @@ describe('doctor command', () => {
 
     it('should pass when pre-commit hook runs vibe-validate via npm script', async () => {
       const { readFileSync } = await import('fs');
-      vi.mocked(readFileSync).mockReturnValue('npm run pre-commit' as any);
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npm run pre-commit' as any; // Pre-commit hook runs via npm
+      });
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
@@ -420,7 +497,15 @@ describe('doctor command', () => {
 
     it('should pass when pre-commit hook runs vibe-validate via pnpm script', async () => {
       const { readFileSync } = await import('fs');
-      vi.mocked(readFileSync).mockReturnValue('pnpm pre-commit' as any);
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'pnpm pre-commit' as any; // Pre-commit hook runs via pnpm
+      });
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
@@ -486,6 +571,348 @@ describe('doctor command', () => {
       const hookCheck = result.checks.find(c => c.name === 'Pre-commit hook');
       expect(hookCheck?.passed).toBe(false);
       expect(hookCheck?.suggestion).toContain('npm run custom-validate');
+    });
+  });
+
+  describe('version check', () => {
+    it('should pass when current version is up to date', async () => {
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const versionCheck = result.checks.find(c => c.name === 'vibe-validate version');
+      expect(versionCheck?.passed).toBe(true);
+      expect(versionCheck?.message).toContain('up to date');
+    });
+
+    it('should warn when newer version is available', async () => {
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.10' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const versionCheck = result.checks.find(c => c.name === 'vibe-validate version');
+      expect(versionCheck?.passed).toBe(true); // Warning only, not a failure
+      expect(versionCheck?.message).toContain('0.9.10');
+      expect(versionCheck?.message).toContain('0.9.11');
+      expect(versionCheck?.suggestion).toContain('npm install -D vibe-validate@latest');
+      expect(versionCheck?.suggestion).toContain('vibe-validate doctor');
+    });
+
+    it('should handle npm registry unavailable gracefully', async () => {
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) {
+          throw new Error('ENOTFOUND registry.npmjs.org');
+        }
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const versionCheck = result.checks.find(c => c.name === 'vibe-validate version');
+      expect(versionCheck?.passed).toBe(true);
+      expect(versionCheck?.message).toContain('unable to check');
+    });
+  });
+
+  describe('gitignore state file check', () => {
+    it('should pass when .vibe-validate-state.yaml is in .gitignore', async () => {
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\nnode_modules\n' as any;
+        }
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file');
+      expect(gitignoreCheck?.passed).toBe(true);
+      expect(gitignoreCheck?.message).toContain('.vibe-validate-state.yaml is in .gitignore');
+    });
+
+    it('should fail when .gitignore exists but state file not listed', async () => {
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('.gitignore')) {
+          return 'node_modules\ndist\n' as any; // No state file
+        }
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file');
+      expect(gitignoreCheck?.passed).toBe(false);
+      expect(gitignoreCheck?.message).toContain('not in .gitignore');
+      expect(gitignoreCheck?.suggestion).toContain('echo ".vibe-validate-state.yaml" >> .gitignore');
+      expect(gitignoreCheck?.suggestion).toContain('vibe-validate init --fix-gitignore');
+    });
+
+    it('should fail when .gitignore does not exist', async () => {
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString().includes('.gitignore')) return false;
+        return true;
+      });
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file');
+      expect(gitignoreCheck?.passed).toBe(false);
+      expect(gitignoreCheck?.message).toContain('.gitignore file not found');
+      expect(gitignoreCheck?.suggestion).toContain('vibe-validate init --fix-gitignore');
+    });
+
+    it('should fail when .gitignore is unreadable', async () => {
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('.gitignore')) {
+          throw new Error('EACCES: permission denied');
+        }
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file');
+      expect(gitignoreCheck?.passed).toBe(false);
+      expect(gitignoreCheck?.message).toContain('unreadable');
+      expect(gitignoreCheck?.suggestion).toContain('chmod 644');
+    });
+  });
+
+  describe('config format check', () => {
+    it('should detect .yaml config files', async () => {
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return '.vibe-validate-state.yaml\n' as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === 'vibe-validate.config.yaml') return true;
+        if (path.toString() === 'vibe-validate.config.ts') return false;
+        if (path.toString() === 'vibe-validate.config.mjs') return false;
+        if (path.toString() === 'vibe-validate.config.js') return false;
+        if (path.toString() === 'vibe-validate.config.yml') return false;
+        return true;
+      });
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor();
+
+      const configCheck = result.checks.find(c => c.name === 'Configuration file');
+      expect(configCheck?.passed).toBe(true);
+      expect(configCheck?.message).toContain('vibe-validate.config.yaml');
+    });
+
+    it('should not check for .json config files (JSON not supported)', async () => {
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        // JSON file exists but should not be detected
+        if (path.toString() === 'vibe-validate.config.json') return true;
+        if (path.toString() === 'vibe-validate.config.yaml') return false;
+        if (path.toString() === 'vibe-validate.config.yml') return false;
+        if (path.toString() === 'vibe-validate.config.ts') return false;
+        if (path.toString() === 'vibe-validate.config.mjs') return false;
+        if (path.toString() === 'vibe-validate.config.js') return false;
+        return true;
+      });
+      vi.mocked(loadConfig).mockResolvedValue(null);
+
+      const result = await runDoctor();
+
+      const configCheck = result.checks.find(c => c.name === 'Configuration file');
+      expect(configCheck?.passed).toBe(false);
+      expect(configCheck?.message).toContain('not found');
+    });
+  });
+
+  describe('config format migration check', () => {
+    it('should pass when using YAML format', async () => {
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === 'vibe-validate.config.yaml') return true;
+        if (path.toString() === 'vibe-validate.config.mjs') return false;
+        return true;
+      });
+      vi.mocked(loadConfig).mockResolvedValue({
+        validation: { phases: [] },
+      } as any);
+
+      const result = await runDoctor({ verbose: true }); // Verbose to see all checks
+
+      const migrationCheck = result.checks.find(c => c.name === 'Config format');
+      expect(migrationCheck?.passed).toBe(true);
+      expect(migrationCheck?.message).toContain('modern YAML format');
+    });
+
+    it('should fail when using deprecated .mjs format', async () => {
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === 'vibe-validate.config.yaml') return false;
+        if (path.toString() === 'vibe-validate.config.mjs') return true;
+        return true;
+      });
+      vi.mocked(loadConfig).mockResolvedValue({
+        validation: { phases: [] },
+      } as any);
+
+      const result = await runDoctor(); // Non-verbose, failing check should appear
+
+      const migrationCheck = result.checks.find(c => c.name === 'Config format');
+      expect(migrationCheck?.passed).toBe(false);
+      expect(migrationCheck?.message).toContain('deprecated .mjs format');
+      expect(migrationCheck?.suggestion).toContain('Migrate to YAML');
+    });
+
+    it('should skip check when no config file exists', async () => {
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === 'vibe-validate.config.yaml') return false;
+        if (path.toString() === 'vibe-validate.config.mjs') return false;
+        return true;
+      });
+      vi.mocked(loadConfig).mockResolvedValue(null);
+
+      const result = await runDoctor({ verbose: true }); // Verbose to see all checks
+
+      const migrationCheck = result.checks.find(c => c.name === 'Config format');
+      expect(migrationCheck?.passed).toBe(true);
+      expect(migrationCheck?.message).toContain('Skipped');
     });
   });
 });

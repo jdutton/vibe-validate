@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/config",
-  "version": "0.9.11",
+  "version": "0.10.0",
   "description": "Configuration system for vibe-validate with TypeScript-first design and framework presets",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,11 +12,12 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "vibe-validate.schema.json"
   ],
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist"
+    "build": "tsc && node --import tsx ./src/scripts/generate-schema.ts",
+    "clean": "rm -rf dist vibe-validate.schema.json"
   },
   "keywords": [
     "validation",
@@ -33,11 +34,14 @@
     "directory": "packages/config"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "js-yaml": "^4.1.0",
     "tsx": "^4.20.6",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.6"
   },
   "engines": {
     "node": ">=20.0.0"

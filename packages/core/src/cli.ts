@@ -84,9 +84,9 @@ async function main() {
       onStepStart: (step) => console.log(`  ⏳ ${step.name}...`),
       onStepComplete: (step, result) => {
         if (result.passed) {
-          console.log(`  ✅ ${step.name} (${result.duration}ms)`);
+          console.log(`  ✅ ${step.name} (${result.durationSecs}s)`);
         } else {
-          console.log(`  ❌ ${step.name} failed (${result.duration}ms)`);
+          console.log(`  ❌ ${step.name} failed (${result.durationSecs}s)`);
         }
       },
     };

@@ -7,6 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2025-10-19
+
+### 🎉 Major Features
+
+- **YAML Configuration Support** (Issue #6)
+  - Primary format: `vibe-validate.config.yaml` (modern, maintainable)
+  - JSON Schema generation for IDE validation and autocomplete
+  - Legacy `.mjs` support with deprecation warnings
+  - Migration command: `vibe-validate init --migrate` to convert .mjs → YAML
+  - Better IDE support, more readable, industry-standard format
+
+- **Focused Init Modes - Idempotent Setup Operations** (Issue #6)
+  - `init --setup-hooks`: Install pre-commit hook only
+  - `init --setup-workflow`: Create GitHub Actions workflow only
+  - `init --fix-gitignore`: Add state file to .gitignore only
+  - `init --migrate`: Convert .mjs config to YAML format
+  - `init --dry-run`: Preview changes without writing files
+  - All operations are idempotent (safe to run multiple times)
+  - 50+ comprehensive tests for setup operations
+
+- **Enhanced Doctor Diagnostics** (Issue #6)
+  - Version check with upgrade guidance
+  - .gitignore validation for state file
+  - Config format migration warnings with actionable steps
+  - Educational suggestions (manual instructions + CLI commands)
+  - Performance optimization: Load config once (reduced duplicate warnings 7→1)
+
+- **Setup Engine Architecture** (Issue #6)
+  - New `SetupCheck` interface for standardized operations
+  - Reusable check/preview/fix pattern
+  - Idempotent operations with preview mode
+  - Comprehensive test coverage (50 tests)
+
+### 🐛 Bug Fixes
+
+- **Fixed ESLint Errors** (Issue #6)
+  - Prefixed unused interface parameters with underscore
+  - Removed unused imports
+  - Clean lint: 0 errors, 0 warnings
+
+- **Replaced TypeScript `any` Types** (Issue #6)
+  - Created `InitOptions` interface for init command options
+  - Created `SetupOperation` interface for setup operations
+  - Added comprehensive JSDoc to all functions
+  - Full type safety restored
+
+- **Fixed npm Warnings** (Issue #10)
+  - Separated pnpm-specific configs to `.pnpmrc`
+  - Cleaned up `.npmrc` for npm-only settings
+  - No more `@pnpm/types` warnings during npm operations
+
+- **Reduced Duplicate .mjs Warnings in Doctor Command**
+  - Refactored `runDoctor()` to load config once
+  - Reduced duplicate deprecation warnings from 7 to 1
+  - Updated 7 function signatures to accept config parameter
+  - Better performance and cleaner output
+
+### 🔧 Changed
+
+- **Duration Format Improvement**
+  - Changed validation state file from milliseconds to seconds
+  - Field renamed: `duration` → `durationSecs` (camelCase)
+  - More human-readable output (e.g., `1.1` instead of `1100`)
+
+### ♻️ Refactoring
+
+- **Git Detection (DRY)** (Issue #6)
+  - Extracted shared `git-detection.ts` module
+  - Removed 82 lines of duplication from `init.ts`
+  - 11 comprehensive tests for git detection
+  - Reusable across commands
+
+### 📝 Documentation
+
+- **CLI Reference Updates** (Issue #6)
+  - Complete `init` command documentation
+  - Doctor command usage guide
+  - All focused modes with examples
+  - Migration workflow guide
+
+### ✅ Testing
+
+- **Test-Driven Development (TDD)**
+  - All features written with TDD approach
+  - 460/460 tests passing (100% pass rate)
+  - 17 new test files added
+  - Coverage maintained at 80%+
+
+### 🎯 Migration Demonstration
+
+- **Dogfooding**: This project itself migrated from .mjs to YAML
+  - Demonstrates the `init --migrate` workflow
+  - Doctor now shows 15/15 checks passing (was 14/15)
+  - No deprecation warnings
+
 ## [0.9.11] - 2025-10-18
 
 ### 🐛 Bug Fixes
@@ -113,9 +208,11 @@ Real-world TypeScript Node.js app:
 
 ## Version History
 
+- **v0.10.0** (2025-10-19) - YAML config support, focused init modes, enhanced doctor
 - **v0.9.11** (2025-10-18) - Critical bug fix for tree hash consistency
 - **v0.9.8** (2025-10-18) - Initial public release
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.9.11...HEAD
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/jdutton/vibe-validate/compare/v0.9.11...v0.10.0
 [0.9.11]: https://github.com/jdutton/vibe-validate/compare/v0.9.10...v0.9.11
 [0.9.8]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.8

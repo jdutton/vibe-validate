@@ -32,53 +32,17 @@ describe('config-loader', () => {
   });
 
   describe('configExists', () => {
-    it('should return true if vibe-validate.config.ts exists', () => {
-      const configPath = join(testDir, 'vibe-validate.config.ts');
-      writeFileSync(configPath, 'export default {}');
+    it('should return true if vibe-validate.config.yaml exists', () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(configPath, 'validation:\n  phases: []\n');
 
       const exists = configExists(testDir);
 
       expect(exists).toBe(true);
     });
 
-    it('should return true if vibe-validate.config.js exists', () => {
-      const configPath = join(testDir, 'vibe-validate.config.js');
-      writeFileSync(configPath, 'module.exports = {}');
-
-      const exists = configExists(testDir);
-
-      expect(exists).toBe(true);
-    });
-
-    it('should return true if vibe-validate.config.mjs exists', () => {
+    it('should return true if vibe-validate.config.mjs exists (deprecated)', () => {
       const configPath = join(testDir, 'vibe-validate.config.mjs');
-      writeFileSync(configPath, 'export default {}');
-
-      const exists = configExists(testDir);
-
-      expect(exists).toBe(true);
-    });
-
-    it('should return true if .vibe-validate.ts exists', () => {
-      const configPath = join(testDir, '.vibe-validate.ts');
-      writeFileSync(configPath, 'export default {}');
-
-      const exists = configExists(testDir);
-
-      expect(exists).toBe(true);
-    });
-
-    it('should return true if .vibe-validate.js exists', () => {
-      const configPath = join(testDir, '.vibe-validate.js');
-      writeFileSync(configPath, 'module.exports = {}');
-
-      const exists = configExists(testDir);
-
-      expect(exists).toBe(true);
-    });
-
-    it('should return true if .vibe-validate.mjs exists', () => {
-      const configPath = join(testDir, '.vibe-validate.mjs');
       writeFileSync(configPath, 'export default {}');
 
       const exists = configExists(testDir);
@@ -102,8 +66,17 @@ describe('config-loader', () => {
   });
 
   describe('findConfigPath', () => {
-    it('should return path if vibe-validate.config.ts exists', () => {
-      const configPath = join(testDir, 'vibe-validate.config.ts');
+    it('should return path if vibe-validate.config.yaml exists', () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(configPath, 'validation:\n  phases: []\n');
+
+      const foundPath = findConfigPath(testDir);
+
+      expect(foundPath).toBe(configPath);
+    });
+
+    it('should return path if vibe-validate.config.mjs exists (deprecated)', () => {
+      const configPath = join(testDir, 'vibe-validate.config.mjs');
       writeFileSync(configPath, 'export default {}');
 
       const foundPath = findConfigPath(testDir);
@@ -111,24 +84,15 @@ describe('config-loader', () => {
       expect(foundPath).toBe(configPath);
     });
 
-    it('should return path if vibe-validate.config.js exists', () => {
-      const configPath = join(testDir, 'vibe-validate.config.js');
-      writeFileSync(configPath, 'module.exports = {}');
+    it('should prioritize vibe-validate.config.yaml over .mjs', () => {
+      const yamlPath = join(testDir, 'vibe-validate.config.yaml');
+      const mjsPath = join(testDir, 'vibe-validate.config.mjs');
+      writeFileSync(yamlPath, 'validation:\n  phases: []\n');
+      writeFileSync(mjsPath, 'export default {}');
 
       const foundPath = findConfigPath(testDir);
 
-      expect(foundPath).toBe(configPath);
-    });
-
-    it('should prioritize vibe-validate.config.ts over .vibe-validate.ts', () => {
-      const primaryPath = join(testDir, 'vibe-validate.config.ts');
-      const secondaryPath = join(testDir, '.vibe-validate.ts');
-      writeFileSync(primaryPath, 'export default {}');
-      writeFileSync(secondaryPath, 'export default {}');
-
-      const foundPath = findConfigPath(testDir);
-
-      expect(foundPath).toBe(primaryPath);
+      expect(foundPath).toBe(yamlPath);
     });
 
     it('should return null if no config file exists', () => {

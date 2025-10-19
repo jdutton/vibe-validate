@@ -48,8 +48,8 @@ export interface StepResult {
   /** Did the step pass? */
   passed: boolean;
 
-  /** Execution duration in milliseconds */
-  duration: number;
+  /** Execution duration in seconds */
+  durationSecs: number;
 
   /** Output from the step (stdout + stderr) */
   output?: string;
@@ -62,8 +62,8 @@ export interface PhaseResult {
   /** Phase name */
   name: string;
 
-  /** Phase execution duration in milliseconds */
-  duration: number;
+  /** Phase execution duration in seconds */
+  durationSecs: number;
 
   /** Did the phase pass? */
   passed: boolean;
