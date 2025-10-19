@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2025-10-19
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed broken `init` command** (Issue #12)
+  - **Problem**: `vibe-validate init` was creating `.ts` config files that couldn't be loaded, breaking the initialization workflow for new users in v0.10.0
+  - **Solution**: Now correctly generates `vibe-validate.config.yaml` files
+  - **Impact**: New users can now successfully initialize and use vibe-validate
+
+- **Fixed IDE autocomplete for YAML configs**
+  - Corrected JSON Schema URL in generated configs
+  - IDEs (VS Code, WebStorm, etc.) now properly provide autocomplete and validation
+
+### 📝 Documentation
+
+- Updated all examples to use YAML configuration format
+- Added migration guide for users with legacy `.mjs` configs: `npx vibe-validate init --migrate`
+- Clarified that YAML is the only supported format (`.ts`, `.js`, `.json` are not supported)
+
 ## [0.10.0] - 2025-10-19
 
 ### 🎉 Major Features

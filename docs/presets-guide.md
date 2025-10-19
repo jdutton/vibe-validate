@@ -242,17 +242,23 @@ Output:
 
 ### Manual Configuration
 
-Create `vibe-validate.config.ts` with your chosen preset:
+Create `vibe-validate.config.yaml` with your chosen preset:
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
+```yaml
+# vibe-validate.config.yaml
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-export default defineConfig({
-  preset: 'typescript-nodejs',
-});
+# Use preset as base configuration
+extends: typescript-nodejs
+
+# Git settings (required)
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  autoSync: false
 ```
 
-That's it! The preset provides all necessary configuration.
+That's it! The preset provides all necessary validation configuration.
 
 ### Verify Configuration
 
@@ -266,7 +272,7 @@ Output:
 ```
 ⚙️  Configuration
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Config file: vibe-validate.config.ts
+Config file: vibe-validate.config.yaml
 Preset:      typescript-nodejs
 
 Validation Phases (3):
@@ -286,24 +292,27 @@ Presets provide defaults, but you can override anything you need.
 
 **Example**: Change ESLint command to check specific directories:
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
+```yaml
+# vibe-validate.config.yaml
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-export default defineConfig({
-  preset: 'typescript-nodejs',
-  validation: {
-    phases: [
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          { name: 'TypeScript', command: 'tsc --noEmit' },
-          { name: 'ESLint', command: 'eslint src/ test/' }, // ← customized
-        ],
-      },
-    ],
-  },
-});
+extends: typescript-nodejs
+
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  autoSync: false
+
+validation:
+  # Override specific phases from preset
+  phases:
+    - name: Pre-Qualification
+      parallel: true
+      steps:
+        - name: TypeScript
+          command: tsc --noEmit
+        - name: ESLint
+          command: eslint src/ test/  # ← customized to check test directory too
 ```
 
 ### Add Additional Steps

@@ -4,83 +4,82 @@ Complete reference for vibe-validate configuration options.
 
 ## Configuration File
 
-vibe-validate looks for configuration files in your project root in this order:
+vibe-validate uses **YAML** as the configuration format.
 
-1. `vibe-validate.config.ts`
-2. `vibe-validate.config.js`
-3. `vibe-validate.config.mjs`
-4. `vibe-validate.config.json`
-5. `.vibe-validaterc.ts`
-6. `.vibe-validaterc.js`
+The configuration file must be named `vibe-validate.config.yaml` in your project root.
 
-**Recommended**: Use `.ts` or `.mjs` format for TypeScript type checking and modern JavaScript features.
+**Migrating from legacy formats**: If you have an existing `.mjs` config, run:
+```bash
+npx vibe-validate init --migrate
+```
 
 ## Basic Configuration
 
-### TypeScript Configuration (Recommended)
+### YAML Configuration
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
+```yaml
+# vibe-validate.config.yaml
 
-export default defineConfig({
-  validation: {
-    phases: [
-      // Validation phases configuration
-    ],
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-    failFast: false,
-  },
-  git: {
-    mainBranch: 'main',
-    remoteOrigin: 'origin',
-    autoSync: false,
-  },
-  output: {
-    format: 'auto',
-  },
-});
+# JSON Schema for IDE autocomplete and validation
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+
+# Use a preset as base (typescript-library, typescript-nodejs, typescript-react)
+extends: typescript-library
+
+# Git integration settings
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  autoSync: false  # Never auto-merge - safety first
+
+# Validation configuration
+validation:
+  caching:
+    strategy: git-tree-hash  # Content-based caching
+    enabled: true
+  failFast: true  # Stop at first failure
 ```
 
-### JavaScript (ESM) Configuration
+### Configuration with Custom Phases
 
-```javascript
-// vibe-validate.config.mjs
-export default {
-  validation: {
-    phases: [
-      // Validation phases configuration
-    ],
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-  },
-};
-```
+If you need to customize validation steps beyond the preset defaults:
 
-### JSON Configuration
+```yaml
+# vibe-validate.config.yaml
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-```json
-{
-  "validation": {
-    "phases": [
-      {
-        "name": "Pre-Qualification",
-        "parallel": true,
-        "steps": [
-          { "name": "TypeScript", "command": "tsc --noEmit" }
-        ]
-      }
-    ],
-    "caching": {
-      "strategy": "git-tree-hash",
-      "enabled": true
-    }
-  }
-}
+extends: typescript-library
+
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  autoSync: false
+
+validation:
+  # Override preset phases with custom steps
+  phases:
+    - name: Pre-Qualification
+      parallel: true  # Run steps simultaneously
+      steps:
+        - name: TypeScript
+          command: tsc --noEmit
+          description: Type-check TypeScript files
+        - name: ESLint
+          command: eslint src/
+          description: Lint source code
+
+    - name: Testing
+      parallel: false  # Run steps sequentially
+      steps:
+        - name: Unit Tests
+          command: npm test
+          description: Run unit tests with coverage
+
+  caching:
+    strategy: git-tree-hash
+    enabled: true
+
+  failFast: false  # Continue even if a step fails
 ```
 
 ## Configuration Schema

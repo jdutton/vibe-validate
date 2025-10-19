@@ -46,10 +46,8 @@ npx vibe-validate init
 
 You'll be prompted to:
 1. Choose a preset (typescript-library, typescript-nodejs, typescript-react)
-2. Select configuration file format (.ts, .js, .mjs, .json)
-3. Confirm validation steps
 
-**Result**: Creates `vibe-validate.config.ts` (or your chosen format) in your project root.
+**Result**: Creates `vibe-validate.config.yaml` in your project root.
 
 ### Step 2: Run Validation
 
@@ -84,44 +82,28 @@ npm run pre-commit
 
 After running `init`, you'll have a configuration file that looks like this:
 
-```typescript
-// vibe-validate.config.ts
-import { defineConfig } from '@vibe-validate/config';
+```yaml
+# vibe-validate.config.yaml
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Pre-Qualification',
-        parallel: true, // Run steps simultaneously
-        steps: [
-          { name: 'TypeScript', command: 'tsc --noEmit' },
-          { name: 'ESLint', command: 'eslint src/' },
-        ],
-      },
-      {
-        name: 'Testing',
-        parallel: false, // Run steps sequentially
-        steps: [
-          { name: 'Unit Tests', command: 'vitest run' },
-        ],
-      },
-    ],
-    caching: {
-      strategy: 'git-tree-hash', // Content-based caching
-      enabled: true,
-    },
-    failFast: false, // Continue even if a step fails
-  },
-  git: {
-    mainBranch: 'main',
-    autoSync: false, // Never auto-merge
-  },
-  output: {
-    format: 'auto', // Detects context (human/agent/CI)
-  },
-});
+# Use a preset as base configuration
+extends: typescript-library
+
+# Git integration settings
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  autoSync: false  # Never auto-merge - safety first
+
+# Validation configuration (preset provides sensible defaults)
+validation:
+  caching:
+    strategy: git-tree-hash  # Content-based caching
+    enabled: true
+  failFast: true  # Stop at first failure
 ```
+
+**Note**: The preset (`typescript-library`, `typescript-nodejs`, or `typescript-react`) provides sensible defaults for validation phases. You can override them by adding a `validation.phases` section to your config.
 
 ### Key Concepts
 
@@ -265,8 +247,9 @@ Cache is NOT invalidated by:
    - Run independent checks in parallel phases
 
 2. **Use fail-fast for quick feedback**:
-   ```typescript
-   failFast: true // Stop at first failure
+   ```yaml
+   validation:
+     failFast: true  # Stop at first failure
    ```
 
 3. **Skip expensive checks in pre-commit**:
@@ -337,8 +320,8 @@ npx vibe-validate cleanup
 **Solution**:
 1. Run `npx vibe-validate init` to create config
 2. Ensure config is in project root
-3. Check supported formats: `.ts`, `.js`, `.mjs`, `.json`
-4. Verify config filename: `vibe-validate.config.*`
+3. Config must be named `vibe-validate.config.yaml`
+4. If you have a legacy `.mjs` config, run `npx vibe-validate init --migrate` to convert to YAML
 
 ### Validation passes locally but fails in CI
 
