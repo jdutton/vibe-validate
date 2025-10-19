@@ -24,13 +24,17 @@ const GIT_OPTIONS = {
  * Get deterministic git tree hash representing current working tree state
  *
  * Implementation:
- * 1. Mark untracked files with --intent-to-add (no actual staging)
- * 2. Calculate tree hash with git write-tree (content-based, no timestamps)
- * 3. Reset index to clean state (no side effects)
+ * 1. Create temporary index file (doesn't affect real index)
+ * 2. Copy current index to temporary index
+ * 3. Mark untracked files with --intent-to-add in temp index
+ * 4. Calculate tree hash with git write-tree using temp index
+ * 5. Clean up temp index file
  *
  * Why this is better than git stash create:
  * - git stash create: includes timestamps in commit → different hash each time
  * - git write-tree: content-based only → same content = same hash (deterministic)
+ *
+ * CRITICAL: Uses GIT_INDEX_FILE to avoid corrupting real index during git commit hooks
  *
  * @returns Git tree SHA-1 hash (40 hex characters)
  * @throws Error if not in a git repository or git command fails
@@ -40,32 +44,50 @@ export async function getGitTreeHash(): Promise<string> {
     // Check if we're in a git repository
     execSync('git rev-parse --is-inside-work-tree', GIT_OPTIONS);
 
-    // Step 1: Mark all untracked files with --intent-to-add
-    // This adds them to the index WITHOUT staging their content
-    // --force: include ignored files for complete state tracking
+    // Get git directory and create temp index path
+    const gitDir = execSync('git rev-parse --git-dir', GIT_OPTIONS).trim();
+    const tempIndexFile = `${gitDir}/vibe-validate-temp-index`;
+
     try {
-      execSync('git add --intent-to-add --all --force', {
+      // Step 1: Copy current index to temp index
+      const currentIndex = `${gitDir}/index`;
+      execSync(`cp "${currentIndex}" "${tempIndexFile}"`, GIT_OPTIONS);
+
+      // Step 2: Use temp index for all operations (doesn't affect real index)
+      const tempIndexOptions: typeof GIT_OPTIONS & { env: NodeJS.ProcessEnv } = {
         ...GIT_OPTIONS,
-        stdio: ['pipe', 'pipe', 'pipe'] // Capture stderr for error handling
-      });
-    } catch (addError) {
-      // If no untracked files, git add fails with "nothing to add"
-      // This is fine - just means we only have tracked files
-      const errorMessage = addError instanceof Error ? addError.message : String(addError);
-      if (!errorMessage.includes('nothing')) {
-        // Real error - re-throw
-        throw addError;
+        env: { ...process.env, GIT_INDEX_FILE: tempIndexFile }
+      };
+
+      // Step 3: Mark all untracked files with --intent-to-add in temp index
+      try {
+        execSync('git add --intent-to-add --all --force', {
+          ...tempIndexOptions,
+          stdio: ['pipe', 'pipe', 'pipe'] // Capture stderr for error handling
+        });
+      } catch (addError) {
+        // If no untracked files, git add fails with "nothing to add"
+        // This is fine - just means we only have tracked files
+        const errorMessage = addError instanceof Error ? addError.message : String(addError);
+        if (!errorMessage.includes('nothing')) {
+          // Real error - re-throw
+          throw addError;
+        }
+      }
+
+      // Step 4: Get tree hash using temp index (content-based, no timestamps)
+      const treeHash = execSync('git write-tree', tempIndexOptions).trim();
+
+      return treeHash;
+
+    } finally {
+      // Step 5: Always clean up temp index file
+      try {
+        execSync(`rm -f "${tempIndexFile}"`, GIT_OPTIONS);
+      } catch (_cleanupError) {
+        // Ignore cleanup errors - temp file cleanup is best effort
       }
     }
-
-    // Step 2: Get tree hash (content-based, no timestamps)
-    const treeHash = execSync('git write-tree', GIT_OPTIONS).trim();
-
-    // Step 3: Reset index to clean state (remove intent-to-add marks)
-    // This ensures no side effects from our hash calculation
-    execSync('git reset', GIT_OPTIONS);
-
-    return treeHash;
 
   } catch (error) {
     // Handle not-in-git-repo case

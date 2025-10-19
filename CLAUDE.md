@@ -256,6 +256,25 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 git push origin <branch-name>
 ```
 
+**Step 4: Update CHANGELOG.md (MANDATORY for releases)**
+**CRITICAL**: Before releasing any version (patch, minor, or major), MUST update CHANGELOG.md:
+- Add changes to the "Unreleased" section during development
+- Move "Unreleased" to versioned section (e.g., "## [0.9.11] - 2025-10-18") when releasing
+- Follow format: Bug Fixes, Features, Documentation, Breaking Changes
+- Include issue/PR references where applicable
+- **NEVER release without updating CHANGELOG**
+
+Example CHANGELOG entry:
+```markdown
+## [Unreleased]
+
+### Bug Fixes
+- **Fix tree hash consistency** (Issue #8)
+  - Replace non-deterministic `git stash create` with deterministic `git write-tree`
+  - Ensures `validate` and `validate --check` use same hash calculation
+  - Fixes broken caching mechanism that defeated 312x speedup feature
+```
+
 ### Git History Management
 **Best Practices:**
 - Review commit messages for clarity

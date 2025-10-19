@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.9.10",
+  "version": "0.9.11",
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development) - umbrella package",
   "type": "module",
   "keywords": [
@@ -41,6 +41,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@vibe-validate/cli": "0.9.10"
+    "@vibe-validate/cli": "workspace:*"
   }
 }

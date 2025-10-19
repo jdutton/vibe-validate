@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.11] - 2025-10-18
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fix tree hash consistency between validate and validate --check** (Issue #8)
+  - Replaced non-deterministic `getWorkingTreeHash()` (using `git stash create` with timestamps) with deterministic `getGitTreeHash()` (using `git write-tree`, content-based only)
+  - **CRITICAL FIX**: Use temporary GIT_INDEX_FILE to prevent corrupting git index during pre-commit hooks
+  - Added `@vibe-validate/git` as dependency to `@vibe-validate/core` package
+  - Ensures `validate` and `validate --check` calculate identical tree hashes for unchanged working tree
+  - Fixes broken caching mechanism that defeated the 312x speedup feature
+  - `--check` flag now accurately detects when validation is needed vs already passed
+  - Added TDD test to verify deterministic hash calculation (Issue #8)
+  - Removed deprecated non-deterministic `getWorkingTreeHash()` function from core package
+  - Pre-commit hook now works correctly without corrupting staged files
+
 ### 📝 Documentation
 
 - **Improved README clarity** (Issue #1)
@@ -15,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Try It Out section: Focused on 3 key prerequisites (Node.js, Git, package manager) instead of listing all doctor checks
   - Added note that `doctor` provides additional setup guidance beyond prerequisites
   - Better positioning for AI agents evaluating project suitability
+
+- **Added CHANGELOG.md update requirement to CLAUDE.md**
+  - Documented mandatory CHANGELOG update before any release
+  - Added example CHANGELOG entry format with Issue #8 as demonstration
 
 ### 🔧 Changed
 
@@ -94,7 +113,9 @@ Real-world TypeScript Node.js app:
 
 ## Version History
 
+- **v0.9.11** (2025-10-18) - Critical bug fix for tree hash consistency
 - **v0.9.8** (2025-10-18) - Initial public release
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.9.8...HEAD
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.9.11...HEAD
+[0.9.11]: https://github.com/jdutton/vibe-validate/compare/v0.9.10...v0.9.11
 [0.9.8]: https://github.com/jdutton/vibe-validate/releases/tag/v0.9.8

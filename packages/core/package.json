@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/core",
-  "version": "0.9.10",
+  "version": "0.9.11",
   "description": "Core validation orchestration engine for vibe-validate",
   "type": "module",
   "main": "./dist/index.js",
@@ -42,6 +42,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@vibe-validate/git": "workspace:*",
     "js-yaml": "^4.1.0",
     "yaml": "^2.6.1"
   },

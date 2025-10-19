@@ -59,7 +59,6 @@ export type {
 export {
   runValidation,
   runStepsInParallel,
-  getWorkingTreeHash,
   checkExistingValidation,
   parseFailures,
   setupSignalHandlers,
