@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/formatters",
-  "version": "0.9.11",
+  "version": "0.10.0",
   "description": "LLM-optimized error formatters for validation output",
   "type": "module",
   "main": "./dist/index.js",
