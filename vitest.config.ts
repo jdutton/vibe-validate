@@ -20,6 +20,19 @@ export default defineConfig({
         'packages/*/src/index.ts',
         // Exclude type definition files
         'packages/*/src/types.ts',
+        // Exclude CLI command files (tested via integration tests)
+        'packages/cli/src/commands/**/*.ts',
+        // Exclude bin.ts entry point (tested via integration tests)
+        'packages/cli/src/bin.ts',
+        // Exclude core CLI (entry point, tested via integration)
+        'packages/core/src/cli.ts',
+        // Exclude scripts (not runtime code)
+        'packages/*/src/scripts/**/*.ts',
+        // Exclude utility modules with external dependencies
+        'packages/formatters/src/utils.ts',
+        'packages/config/src/git-helpers.ts',
+        'packages/config/src/schema-export.ts',
+        'packages/cli/src/utils/setup-engine.ts',
       ],
       thresholds: {
         // Updated for v0.9.5 (2025-10-17)

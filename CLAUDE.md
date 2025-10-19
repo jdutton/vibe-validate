@@ -375,6 +375,37 @@ Every time you run tests, validation, or encounter errors, ask yourself:
 3. **Suggest a fix** - How would you make it more LLM-friendly?
 4. **Raise as improvement opportunity** - Create GitHub issue or discuss with user
 
+### Think Like a Consumer While Developing
+
+**CRITICAL MINDSET**: While developing vibe-validate, you ARE the target user - an AI agent helping developers. Always evaluate features from the consumer perspective:
+
+1. **After implementing any feature, ask yourself:**
+   - Would I find this helpful as an AI assistant using vibe-validate?
+   - Is the output format optimized for my consumption?
+   - Does this reduce context window usage?
+   - Is the error message actionable without additional research?
+   - Would a human developer understand this quickly?
+
+2. **Proactively suggest improvements:**
+   - **Don't wait to be asked** - if you see an opportunity to improve LLM-friendliness, propose it
+   - Create GitHub issues for ideas (even if not implementing immediately)
+   - Think about discoverability (docs, help output, error messages)
+   - Consider both human and LLM workflows
+
+3. **Test your own work like a user would:**
+   - Run the commands you just implemented
+   - Read the help output - is it complete?
+   - Look at error messages - are they clear?
+   - Check if docs match reality
+
+4. **Examples of consumer-first thinking:**
+   - ✅ "This error needs exit codes documented so agents know what success/failure means"
+   - ✅ "The help output should include examples so agents see real usage patterns"
+   - ✅ "This workflow section would help agents understand command sequencing"
+   - ✅ "Auto-generating docs from --help ensures accuracy and discoverability"
+
+**Remember**: Every time you use vibe-validate while developing it, you're gathering real-world feedback. Use it!
+
 ### Example Scenarios
 
 **Good Experience:**
