@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.4] - 2025-10-19
+
+### 🐛 Bug Fixes
+
+- **Fixed false `.mjs` deprecation warning**
+  - `doctor` command no longer shows `.mjs` deprecation warning when only invalid YAML config exists
+  - Warning now only appears when `.mjs` file actually exists
+  - Fixes confusing output during initial setup when YAML config is incomplete
+
+- **Improved `doctor` error messages for invalid configurations**
+  - Now clearly indicates when config file exists but contains validation errors
+  - Provides specific filename (e.g., "Found vibe-validate.config.yaml but it contains validation errors")
+  - Includes helpful links to:
+    - Configuration documentation
+    - JSON Schema for IDE validation
+    - Example configurations
+  - Better guidance for LLMs and developers debugging config issues
+
+### ✅ Testing
+
+- **2 New Tests**
+  - Test for .mjs warning only showing when file actually exists
+  - Test for improved doctor error message with helpful guidance
+  - Total tests: **487 passing** (up from 485)
+
 ## [0.10.3] - 2025-10-19
 
 ### ✨ Features

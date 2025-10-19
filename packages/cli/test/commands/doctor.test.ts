@@ -26,7 +26,7 @@ vi.mock('../../src/utils/config-loader.js');
 vi.mock('../../src/commands/generate-workflow.js');
 
 import { runDoctor, type DoctorCheckResult } from '../../src/commands/doctor.js';
-import { loadConfig } from '../../src/utils/config-loader.js';
+import { loadConfig, findConfigPath } from '../../src/utils/config-loader.js';
 import { checkSync } from '../../src/commands/generate-workflow.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
@@ -167,16 +167,34 @@ describe('doctor command', () => {
       expect(configCheck?.message).toContain('not found');
     });
 
-    it('should detect invalid configuration', async () => {
+    it('should detect missing configuration file', async () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
       vi.mocked(existsSync).mockReturnValue(true);
-      vi.mocked(loadConfig).mockRejectedValue(new Error('Invalid config'));
+      vi.mocked(loadConfig).mockResolvedValue(null); // Config failed to load
+      vi.mocked(findConfigPath).mockReturnValue(null); // No config file found
 
       const result = await runDoctor();
 
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
       expect(configCheck?.passed).toBe(false);
-      expect(configCheck?.message).toContain('Failed to load configuration');
+      expect(configCheck?.message).toContain('No configuration file found');
+      expect(configCheck?.suggestion).toContain('vibe-validate init');
+    });
+
+    it('should detect invalid configuration file with helpful guidance', async () => {
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(null); // Config failed validation
+      vi.mocked(findConfigPath).mockReturnValue('/path/to/vibe-validate.config.yaml'); // File exists but invalid
+
+      const result = await runDoctor();
+
+      const configCheck = result.checks.find(c => c.name === 'Configuration valid');
+      expect(configCheck?.passed).toBe(false);
+      expect(configCheck?.message).toContain('Found vibe-validate.config.yaml but it contains validation errors');
+      expect(configCheck?.suggestion).toContain('configuration docs');
+      expect(configCheck?.suggestion).toContain('JSON Schema');
+      expect(configCheck?.suggestion).toContain('Example configs');
     });
 
     it('should detect not in git repository', async () => {

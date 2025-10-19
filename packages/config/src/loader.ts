@@ -80,6 +80,15 @@ export async function loadConfigFromFile(
 
   // Legacy .mjs files (DEPRECATED - will be removed in v1.0)
   if (absolutePath.endsWith('.mjs')) {
+    // Only show deprecation warning if the file actually exists
+    // (Don't warn if we're just trying to find ANY config file and .mjs doesn't exist)
+    try {
+      readFileSync(absolutePath, 'utf-8'); // Check if file exists
+    } catch (_err) {
+      // File doesn't exist - don't show deprecation warning, just throw error
+      throw new Error(`Config file not found: ${absolutePath}`);
+    }
+
     console.warn('⚠️  WARNING: .mjs config format is deprecated and will be removed in v1.0');
     console.warn('   Please migrate to vibe-validate.config.yaml');
     console.warn('   Run: vibe-validate doctor for migration guidance\n');

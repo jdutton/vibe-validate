@@ -14,7 +14,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
-import { loadConfig } from '../utils/config-loader.js';
+import { loadConfig, findConfigPath } from '../utils/config-loader.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 
@@ -199,12 +199,32 @@ function checkConfigFormatMigration(): DoctorCheckResult {
 async function checkConfigValid(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
   try {
     if (!config) {
-      return {
-        name: 'Configuration valid',
-        passed: false,
-        message: 'Failed to load configuration',
-        suggestion: 'Check syntax in vibe-validate.config.*',
-      };
+      // Find which config file exists (if any)
+      const configPath = findConfigPath();
+
+      if (configPath) {
+        // Config file exists but failed to load (validation error)
+        const fileName = configPath.split('/').pop() || 'vibe-validate.config.yaml';
+        return {
+          name: 'Configuration valid',
+          passed: false,
+          message: `Found ${fileName} but it contains validation errors`,
+          suggestion: [
+            `💡 Fix syntax/validation errors in ${fileName}`,
+            '💡 See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
+            '💡 JSON Schema for IDE validation: https://unpkg.com/@vibe-validate/config/vibe-validate.schema.json',
+            '💡 Example configs: https://github.com/jdutton/vibe-validate/tree/main/packages/config/src/presets'
+          ].join('\n   '),
+        };
+      } else {
+        // No config file found
+        return {
+          name: 'Configuration valid',
+          passed: false,
+          message: 'No configuration file found',
+          suggestion: '💡 Run: vibe-validate init --preset typescript-nodejs (or typescript-library, typescript-react)',
+        };
+      }
     }
 
     return {
@@ -217,7 +237,7 @@ async function checkConfigValid(config?: VibeValidateConfig | null): Promise<Doc
       name: 'Configuration valid',
       passed: false,
       message: `Invalid configuration: ${_error instanceof Error ? _error.message : String(_error)}`,
-      suggestion: 'Fix syntax errors in vibe-validate.config.*',
+      suggestion: '💡 Check syntax in vibe-validate.config.yaml',
     };
   }
 }

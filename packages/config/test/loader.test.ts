@@ -289,6 +289,42 @@ export default {
       // May or may not find a config depending on where test runs from
       expect(loaded === undefined || typeof loaded === 'object').toBe(true);
     });
+
+    it('should NOT show .mjs deprecation warning when only invalid YAML exists', async () => {
+      // Bug scenario: User has invalid YAML config during setup
+      // Should NOT trigger .mjs deprecation warning when .mjs file doesn't exist
+      const invalidYaml = `
+validation:
+  phases:
+    - name: ''  # Invalid: empty name
+      steps:
+        - name: Step
+          command: echo test
+`;
+
+      await writeFile(join(testDir, 'vibe-validate.config.yaml'), invalidYaml);
+
+      // Capture console.warn calls to verify NO .mjs warning is shown
+      const originalWarn = console.warn;
+      const warnCalls: string[] = [];
+      console.warn = (...args: unknown[]) => {
+        warnCalls.push(args.join(' '));
+      };
+
+      try {
+        await findAndLoadConfig(testDir);
+      } catch (_err) {
+        // Expected to fail due to invalid YAML
+      }
+
+      console.warn = originalWarn;
+
+      // Verify NO .mjs deprecation warning was shown
+      const hasDeprecationWarning = warnCalls.some(call =>
+        call.includes('.mjs config format is deprecated')
+      );
+      expect(hasDeprecationWarning).toBe(false);
+    });
   });
 
   describe('loadConfigWithFallback', () => {
