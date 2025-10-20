@@ -257,13 +257,13 @@ npm test
       expect(content).toBe(existingContent);
     });
 
-    it('should make pre-commit file executable', async () => {
+    it.skipIf(process.platform === 'win32')('should make pre-commit file executable (Unix only)', async () => {
       const preCommitPath = join(testDir, '.husky', 'pre-commit');
 
       await hooksCheck.fix({ cwd: testDir });
 
       // Check file permissions (should be executable)
-      // Note: This test may behave differently on Windows
+      // Note: This test is skipped on Windows (no Unix permission bits)
       const stats = await import('fs/promises').then(fs => fs.stat(preCommitPath));
       const isExecutable = (stats.mode & 0o111) !== 0;
       expect(isExecutable).toBe(true);
