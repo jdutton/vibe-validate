@@ -32,6 +32,7 @@ interface GitHubWorkflowStep {
   run?: string;
   env?: Record<string, string>;
   if?: string;
+  shell?: string;
 }
 
 /**
@@ -279,9 +280,10 @@ export function generateWorkflow(
     });
 
     // Display validation state file contents on failure for easier debugging
+    // Platform-specific steps for Unix and Windows
     jobSteps.push({
-      name: 'Display validation state on failure',
-      if: 'failure()',
+      name: 'Display validation state on failure (Unix)',
+      if: "failure() && runner.os != 'Windows'",
       run: `echo "=========================================="
 echo "📋 VALIDATION STATE FILE CONTENTS"
 echo "=========================================="
@@ -298,6 +300,31 @@ else
   find . -name "*validate*state*.yaml" -o -name ".vibe-validate*" 2>/dev/null || echo "No state files found"
 fi
 echo "=========================================="`,
+    });
+
+    // Windows-specific display state step using PowerShell
+    jobSteps.push({
+      name: 'Display validation state on failure (Windows)',
+      if: "failure() && runner.os == 'Windows'",
+      shell: 'powershell',
+      run: `Write-Host "=========================================="
+Write-Host "📋 VALIDATION STATE FILE CONTENTS"
+Write-Host "=========================================="
+
+if (Test-Path .vibe-validate-state.yaml) {
+  Get-Content .vibe-validate-state.yaml
+} else {
+  Write-Host "❌ State file not found!"
+  Write-Host "Expected location: $PWD\\.vibe-validate-state.yaml"
+  Write-Host ""
+  Write-Host "📂 Files in current directory:"
+  Get-ChildItem | Select-Object -First 20
+  Write-Host ""
+  Write-Host "🔍 Searching for state files:"
+  Get-ChildItem -Recurse -Filter "*validate*state*.yaml" -ErrorAction SilentlyContinue
+}
+
+Write-Host "=========================================="`,
     });
 
     // Add validation state upload on failure
