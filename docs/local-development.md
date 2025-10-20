@@ -509,38 +509,43 @@ cd /path/to/your-project
 # Link to local vibe-validate (development mode)
 pnpm add -D file:../vibe-validate/packages/cli
 
-# Create config
-cat > vibe-validate.config.ts << 'EOF'
-import { defineConfig } from '@vibe-validate/config';
+# Create config (copy from template and customize)
+npx vibe-validate init --template typescript-nodejs
 
-export default defineConfig({
-  extends: 'typescript-nodejs',
-  validation: {
-    phases: [
-      {
-        name: 'Phase 1: Pre-Qualification + Build',
-        parallel: true,
-        steps: [
-          { name: 'TypeScript', command: 'npm run typecheck' },
-          { name: 'ESLint', command: 'npm run lint' },
-          { name: 'OpenAPI', command: 'npm run test:openapi' },
-          { name: 'Build', command: 'npm run build' },
-        ],
-      },
-      {
-        name: 'Phase 2: Testing',
-        parallel: true,
-        steps: [
-          { name: 'Unit tests', command: 'npm run test:unit' },
-          { name: 'Integration tests', command: 'npm run test:integration' },
-          { name: 'STDIO tests', command: 'npm run test:system:stdio' },
-          { name: 'HTTP tests', command: 'npm run test:system:ci' },
-          { name: 'Headless tests', command: 'npm run test:system:headless' },
-        ],
-      },
-    ],
-  },
-});
+# Or create custom config
+cat > vibe-validate.config.yaml << 'EOF'
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+
+git:
+  mainBranch: main
+
+validation:
+  phases:
+    - name: Pre-Qualification + Build
+      parallel: true
+      steps:
+        - name: TypeScript
+          command: npm run typecheck
+        - name: ESLint
+          command: npm run lint
+        - name: OpenAPI
+          command: npm run test:openapi
+        - name: Build
+          command: npm run build
+
+    - name: Testing
+      parallel: true
+      steps:
+        - name: Unit tests
+          command: npm run test:unit
+        - name: Integration tests
+          command: npm run test:integration
+        - name: STDIO tests
+          command: npm run test:system:stdio
+        - name: HTTP tests
+          command: npm run test:system:ci
+        - name: Headless tests
+          command: npm run test:system:headless
 EOF
 
 # Test validation

@@ -652,7 +652,7 @@ TypeScript (3 errors):
 - [Getting Started Guide](./getting-started.md)
 - [Configuration Reference](./configuration-reference.md)
 - [CLI Reference](./cli-reference.md)
-- [Presets Guide](./presets-guide.md)
+- [Config Templates Guide](./../config-templates/README.md)
 - [Agent Integration Guide](./agent-integration-guide.md)
 
 ---

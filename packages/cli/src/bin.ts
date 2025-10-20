@@ -119,7 +119,7 @@ function showComprehensiveHelp(program: Command): void {
       ],
       exitCodes: {
         0: 'Configuration created successfully',
-        1: 'Failed (config exists without --force, or invalid preset)'
+        1: 'Failed (config exists without --force, or invalid template)'
       },
       creates: [
         'vibe-validate.config.yaml (always)',
@@ -128,10 +128,10 @@ function showComprehensiveHelp(program: Command): void {
         'Updates .gitignore (with --fix-gitignore)'
       ],
       examples: [
-        'vibe-validate init --preset typescript-nodejs',
-        'vibe-validate init --preset typescript-nodejs --setup-workflow --setup-hooks',
-        'vibe-validate init --force --preset typescript-react  # Overwrite existing',
-        'vibe-validate init --migrate  # Convert .mjs to .yaml'
+        'vibe-validate init  # Uses minimal template',
+        'vibe-validate init --template typescript-nodejs',
+        'vibe-validate init --template typescript-nodejs --setup-workflow --setup-hooks',
+        'vibe-validate init --force --template typescript-react  # Overwrite existing'
       ]
     },
     'pre-commit': {
@@ -212,7 +212,7 @@ function showComprehensiveHelp(program: Command): void {
       whatItDoes: [
         'Shows resolved configuration',
         'Validates configuration structure',
-        'Shows preset merging if applicable'
+        'Displays all configuration settings'
       ],
       exitCodes: {
         0: 'Configuration valid',
@@ -338,7 +338,7 @@ function showComprehensiveHelp(program: Command): void {
   console.log('## Common Workflows\n');
   console.log('### First-time setup\n');
   console.log('```bash');
-  console.log('vibe-validate init --preset typescript-nodejs --setup-workflow');
+  console.log('vibe-validate init --template typescript-nodejs --setup-workflow');
   console.log('git add vibe-validate.config.yaml .github/workflows/validate.yml');
   console.log('git commit -m "feat: add vibe-validate"');
   console.log('```\n');

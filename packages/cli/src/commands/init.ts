@@ -5,10 +5,10 @@
  */
 
 import type { Command } from 'commander';
-import { writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
-import { pathToFileURL } from 'url';
-import { dump as stringifyYaml } from 'js-yaml';
+import { writeFileSync, existsSync, readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { dump as stringifyYaml, load as parseYaml } from 'js-yaml';
 import chalk from 'chalk';
 import { configExists } from '../utils/config-loader.js';
 import { detectGitConfig, type DetectedGitConfig } from '../utils/git-detection.js';
@@ -16,18 +16,18 @@ import { GitignoreSetupCheck } from '../utils/setup-checks/gitignore-check.js';
 import { HooksSetupCheck } from '../utils/setup-checks/hooks-check.js';
 import { WorkflowSetupCheck } from '../utils/setup-checks/workflow-check.js';
 import type { SetupCheck } from '../utils/setup-engine.js';
+import { discoverTemplates } from '../utils/template-discovery.js';
 
 /**
  * Options for the init command
  */
 interface InitOptions {
-  preset?: string;
+  template?: string;
   force?: boolean;
   dryRun?: boolean;
   setupHooks?: boolean;
   setupWorkflow?: boolean;
   fixGitignore?: boolean;
-  migrate?: boolean;
 }
 
 /**
@@ -43,23 +43,16 @@ export function initCommand(program: Command): void {
   program
     .command('init')
     .description('Initialize vibe-validate configuration')
-    .option('-p, --preset <preset>', 'Use preset (typescript-library|typescript-nodejs|typescript-react)')
+    .option('-t, --template <name>', 'Template to use (minimal|typescript-library|typescript-nodejs|typescript-react)', 'minimal')
     .option('-f, --force', 'Overwrite existing configuration')
     .option('--dry-run', 'Preview changes without writing files')
     .option('--setup-hooks', 'Install pre-commit hook')
     .option('--setup-workflow', 'Create GitHub Actions workflow')
     .option('--fix-gitignore', 'Add state file to .gitignore')
-    .option('--migrate', 'Migrate .mjs config to .yaml format')
     .action(async (options) => {
       try {
         const cwd = process.cwd();
         const isDryRun = options.dryRun || false;
-
-        // Handle migration
-        if (options.migrate) {
-          await handleMigration(cwd, options, isDryRun);
-          return;
-        }
 
         // Check if this is a focused operation
         const isFocusedOperation = options.setupHooks || options.setupWorkflow || options.fixGitignore;
@@ -166,8 +159,8 @@ async function handleFocusedOperations(cwd: string, options: InitOptions, isDryR
 /**
  * Handle config file initialization
  *
- * Creates a new vibe-validate configuration file using the specified preset.
- * Auto-detects git configuration and generates appropriate defaults.
+ * Creates a vibe-validate configuration file by copying the specified template
+ * from the config-templates directory and customizing it with auto-detected settings.
  *
  * @param cwd - Current working directory
  * @param options - Init command options
@@ -182,15 +175,8 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
     process.exit(1);
   }
 
-  const preset = options.preset || 'typescript-library';
-
-  // Validate preset
-  const validPresets = ['typescript-library', 'typescript-nodejs', 'typescript-react'];
-  if (!validPresets.includes(preset)) {
-    console.error(chalk.red(`❌ Invalid preset: ${preset}`));
-    console.error(chalk.gray(`   Valid presets: ${validPresets.join(', ')}`));
-    process.exit(1);
-  }
+  // Get template name (defaults to 'minimal')
+  const templateName = options.template || 'minimal';
 
   // Detect git configuration
   const gitConfig = detectGitConfig();
@@ -205,8 +191,8 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
     }
   }
 
-  // Generate YAML config file content
-  const configContent = generateYamlConfig(preset, gitConfig);
+  // Generate YAML config file content from template
+  const configContent = generateYamlConfig(templateName, gitConfig);
   const configPath = join(cwd, 'vibe-validate.config.yaml');
 
   if (isDryRun) {
@@ -214,7 +200,7 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
     console.log(chalk.blue('🔍 Configuration preview (dry-run):'));
     console.log(chalk.yellow('   Would create:'));
     console.log(chalk.gray(`   - ${configPath}`));
-    console.log(chalk.gray(`   - Preset: ${preset}`));
+    console.log(chalk.gray(`   - Template: ${templateName}`));
     console.log();
     console.log(chalk.yellow('💡 Run without --dry-run to create configuration'));
     process.exit(0);
@@ -225,7 +211,7 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
 
   console.log(chalk.green('✅ Configuration file created successfully'));
   console.log(chalk.blue(`📋 Created: ${configPath}`));
-  console.log(chalk.gray(`   Preset: ${preset}`));
+  console.log(chalk.gray(`   Template: ${templateName}`));
   console.log();
   console.log(chalk.yellow('Next steps:'));
   console.log(chalk.gray('  1. Review and customize vibe-validate.config.yaml'));
@@ -238,116 +224,86 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
 }
 
 /**
- * Generate YAML configuration content based on preset
+ * Get the path to the config-templates directory
  *
- * Creates YAML configuration file content with the specified preset
- * and git configuration values.
+ * Works both in development (from source) and when installed as npm package.
  *
- * @param preset - Preset name (typescript-library, typescript-nodejs, typescript-react)
- * @param gitConfig - Detected git configuration
- * @returns YAML configuration file content
+ * @returns Absolute path to config-templates directory
  */
-function generateYamlConfig(preset: string, gitConfig: DetectedGitConfig): string {
-  const baseConfig = {
-    // JSON Schema for IDE validation
-    $schema: 'https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+function getTemplatesDir(): string {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
 
-    // Use preset as base configuration
-    extends: preset,
+  // Try paths in order:
+  // 1. Development: packages/cli/src/commands/../../config-templates
+  const devPath = join(__dirname, '../../../../config-templates');
+  if (existsSync(devPath)) {
+    return devPath;
+  }
 
-    // Git integration settings
-    git: {
-      mainBranch: gitConfig.mainBranch,
-      remoteOrigin: gitConfig.remoteOrigin,
-      autoSync: false, // Never auto-merge - safety first
-    },
+  // 2. Production: packages/cli/dist/commands/../config-templates
+  const prodPath = join(__dirname, '../../../config-templates');
+  if (existsSync(prodPath)) {
+    return prodPath;
+  }
 
-    // Validation configuration (from preset)
-    validation: {
-      caching: {
-        strategy: 'git-tree-hash',
-        enabled: true,
-      },
-      failFast: true,
-    },
-  };
-
-  return stringifyYaml(baseConfig, {
-    indent: 2,
-    lineWidth: 100,
-    noRefs: true,
-  });
+  // 3. Fallback: assume monorepo root
+  const fallbackPath = join(process.cwd(), 'config-templates');
+  return fallbackPath;
 }
 
 /**
- * Handle migration from .mjs to .yaml config format
+ * Generate YAML configuration content by copying specified template
  *
- * Loads the existing .mjs configuration, converts it to YAML format,
- * and writes it to vibe-validate.config.yaml.
+ * Reads the specified template from config-templates/ and customizes
+ * it with the detected git configuration values.
  *
- * @param cwd - Current working directory
- * @param options - Init command options
- * @param isDryRun - Preview mode (no file modifications)
- * @throws Error if .mjs config doesn't exist or .yaml already exists (without --force)
+ * @param templateName - Name of the template (without .yaml extension)
+ * @param gitConfig - Detected git configuration
+ * @returns YAML configuration file content
+ * @throws Error if template doesn't exist or is invalid
  */
-async function handleMigration(cwd: string, options: InitOptions, isDryRun: boolean): Promise<void> {
-  const mjsPath = join(cwd, 'vibe-validate.config.mjs');
-  const yamlPath = join(cwd, 'vibe-validate.config.yaml');
+function generateYamlConfig(templateName: string, gitConfig: DetectedGitConfig): string {
+  const templatesDir = getTemplatesDir();
 
-  // Check if .mjs config exists
-  if (!existsSync(mjsPath)) {
-    console.error(chalk.red('❌ No .mjs config found to migrate'));
-    console.error(chalk.gray('   Expected: vibe-validate.config.mjs'));
+  // Add .yaml extension if not present
+  const templateFile = templateName.endsWith('.yaml') ? templateName : `${templateName}.yaml`;
+  const templatePath = join(templatesDir, templateFile);
+
+  // Check if template exists
+  if (!existsSync(templatePath)) {
+    // List available templates using discovery utility
+    const availableTemplates = discoverTemplates();
+
+    console.error(chalk.red(`❌ Template '${templateName}' not found`));
+    console.error(chalk.gray('   Available templates:'));
+    for (const template of availableTemplates) {
+      const displayName = template.filename.replace('.yaml', '');
+      if (template.description) {
+        console.error(chalk.gray(`   - ${displayName} (${template.description})`));
+      } else {
+        console.error(chalk.gray(`   - ${displayName}`));
+      }
+    }
     process.exit(1);
   }
 
-  // Check if .yaml config already exists (unless --force)
-  if (existsSync(yamlPath) && !options.force && !isDryRun) {
-    console.error(chalk.red('❌ YAML config already exists'));
-    console.error(chalk.gray('   Use --force to overwrite'));
-    process.exit(1);
+  // Read and parse the template
+  const templateContent = readFileSync(templatePath, 'utf-8');
+  const templateConfig = parseYaml(templateContent) as Record<string, unknown>;
+
+  // Customize git settings with auto-detected values
+  if (typeof templateConfig.git === 'object' && templateConfig.git !== null) {
+    const gitSection = templateConfig.git as Record<string, unknown>;
+    gitSection.mainBranch = gitConfig.mainBranch;
+    gitSection.remoteOrigin = gitConfig.remoteOrigin;
   }
 
-  // Load the .mjs config
-  const fileUrl = pathToFileURL(mjsPath).href;
-  const module = await import(fileUrl);
-  const config = module.default || module;
-
-  // Convert to YAML
-  const yamlContent = stringifyYaml(config, {
+  // Return the customized config
+  return stringifyYaml(templateConfig, {
     indent: 2,
     lineWidth: 100,
     noRefs: true,
   });
-
-  if (isDryRun) {
-    // Preview mode
-    console.log(chalk.blue('🔍 Migration preview (dry-run):'));
-    console.log(chalk.yellow('   Would create:'));
-    console.log(chalk.gray(`   - ${yamlPath}`));
-    console.log();
-    console.log(chalk.gray('Preview of YAML content:'));
-    console.log(chalk.gray('─'.repeat(60)));
-    console.log(yamlContent);
-    console.log(chalk.gray('─'.repeat(60)));
-    console.log();
-    console.log(chalk.yellow('💡 Run without --dry-run to apply migration'));
-    console.log(chalk.gray('   Original .mjs file will be preserved (you can delete it manually)'));
-    process.exit(0);
-  }
-
-  // Write YAML config
-  writeFileSync(yamlPath, yamlContent, 'utf-8');
-
-  console.log(chalk.green('✅ Migration completed successfully'));
-  console.log(chalk.blue(`📋 Created: ${yamlPath}`));
-  console.log();
-  console.log(chalk.yellow('Next steps:'));
-  console.log(chalk.gray('  1. Review vibe-validate.config.yaml'));
-  console.log(chalk.gray('  2. Test with: vibe-validate validate'));
-  console.log(chalk.gray(`  3. Delete old config: rm ${mjsPath}`));
-  console.log(chalk.gray('  4. Commit the new YAML config'));
-
-  process.exit(0);
 }
 

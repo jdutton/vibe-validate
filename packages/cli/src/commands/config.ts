@@ -87,10 +87,6 @@ function displayVerboseConfig(config: VibeValidateConfig, configPath: string): v
       });
     }
 
-    if (config.validation.caching) {
-      console.log(chalk.gray(`  Caching: ${config.validation.caching.strategy} (${config.validation.caching.enabled ? 'enabled' : 'disabled'})`));
-    }
-
     console.log();
   }
 
@@ -99,15 +95,6 @@ function displayVerboseConfig(config: VibeValidateConfig, configPath: string): v
     console.log(chalk.blue('Git:'));
     console.log(chalk.gray(`  Main Branch: ${config.git.mainBranch || 'main'}`));
     console.log(chalk.gray(`  Auto Sync: ${config.git.autoSync ? 'enabled' : 'disabled'}`));
-    console.log();
-  }
-
-  // Output settings (format field removed - state files are always YAML)
-
-  // Preset info (if extended)
-  if (config.extends) {
-    console.log(chalk.blue('Extends:'));
-    console.log(chalk.gray(`  Preset: ${config.extends}`));
     console.log();
   }
 
@@ -129,12 +116,6 @@ function displayYamlConfig(config: VibeValidateConfig): void {
       console.log(`      parallel: ${phase.parallel}`);
       console.log(`      steps: ${phase.steps?.length || 0}`);
     });
-  }
-
-  if (config.validation?.caching) {
-    console.log('  caching:');
-    console.log(`    strategy: ${config.validation.caching.strategy}`);
-    console.log(`    enabled: ${config.validation.caching.enabled}`);
   }
 
   if (config.git) {

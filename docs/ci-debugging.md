@@ -87,21 +87,15 @@ env:
 
 **Solution**: vibe-validate automatically streams command output in real-time (as of v0.9.8). Combined with verbose test reporting in CI:
 
-```javascript
-// vibe-validate.config.mjs
-export default {
-  validation: {
-    phases: [{
-      steps: [{
-        name: 'Unit Tests',
-        // Verbose in CI, concise locally
-        command: process.env.CI
-          ? 'npm test -- --reporter=verbose'
-          : 'npm test',
-      }]
-    }]
-  }
-}
+```yaml
+# vibe-validate.config.yaml
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          # Verbose in CI via environment variable expansion
+          command: npm test ${CI:+-- --reporter=verbose}
 ```
 
 ### Pattern 3: State File Not Created

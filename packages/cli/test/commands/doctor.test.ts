@@ -16,6 +16,7 @@ import { execSync } from 'child_process';
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(() => 'npm run pre-commit'), // Mock pre-commit hook content
+  readdirSync: vi.fn(() => []), // Mock empty directory for template discovery
 }));
 
 vi.mock('child_process', () => ({
@@ -178,7 +179,7 @@ describe('doctor command', () => {
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
       expect(configCheck?.passed).toBe(false);
       expect(configCheck?.message).toContain('No configuration file found');
-      expect(configCheck?.suggestion).toContain('vibe-validate init');
+      expect(configCheck?.suggestion).toContain('Copy a config template from GitHub');
     });
 
     it('should detect invalid configuration file with helpful guidance', async () => {
@@ -226,7 +227,7 @@ describe('doctor command', () => {
       expect(configCheck?.message).toContain('validation.phases.0.name: Required');
       expect(configCheck?.suggestion).toContain('Fix validation errors shown above');
       expect(configCheck?.suggestion).toContain('https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json');
-      expect(configCheck?.suggestion).toContain('https://github.com/jdutton/vibe-validate/tree/main/examples');
+      expect(configCheck?.suggestion).toContain('https://github.com/jdutton/vibe-validate/tree/main/config-templates');
     });
 
     it('should run all checks even when config has validation errors', async () => {
@@ -1024,7 +1025,7 @@ describe('doctor command', () => {
 
       const migrationCheck = result.checks.find(c => c.name === 'Config format');
       expect(migrationCheck?.passed).toBe(true);
-      expect(migrationCheck?.message).toContain('modern YAML format');
+      expect(migrationCheck?.message).toContain('Using YAML format');
     });
 
     it('should fail when using deprecated .mjs format', async () => {
@@ -1042,8 +1043,8 @@ describe('doctor command', () => {
 
       const migrationCheck = result.checks.find(c => c.name === 'Config format');
       expect(migrationCheck?.passed).toBe(false);
-      expect(migrationCheck?.message).toContain('deprecated .mjs format');
-      expect(migrationCheck?.suggestion).toContain('Migrate to YAML');
+      expect(migrationCheck?.message).toContain('.mjs config format is not supported');
+      expect(migrationCheck?.suggestion).toContain('YAML format: vibe-validate.config.yaml');
     });
 
     it('should skip check when no config file exists', async () => {

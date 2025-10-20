@@ -109,7 +109,7 @@ describe('init command - focused modes', () => {
       // Create minimal config first (required for workflow generation)
       await writeFile(
         join(testDir, 'vibe-validate.config.yaml'),
-        'extends: typescript-nodejs\n'
+        'validation:\n  phases:\n    - name: Test\n      steps:\n        - name: Test\n          command: echo test\ngit:\n  mainBranch: main\n'
       );
 
       execSync(`node ${cliPath} init --setup-workflow`, {
@@ -128,7 +128,7 @@ describe('init command - focused modes', () => {
     it('should be idempotent - not overwrite existing workflow', async () => {
       await writeFile(
         join(testDir, 'vibe-validate.config.yaml'),
-        'extends: typescript-nodejs\n'
+        'validation:\n  phases:\n    - name: Test\n      steps:\n        - name: Test\n          command: echo test\ngit:\n  mainBranch: main\n'
       );
 
       // First run
@@ -222,118 +222,5 @@ describe('init command - focused modes', () => {
     });
   });
 
-  describe('--migrate', () => {
-    it('should convert .mjs config to .yaml format', async () => {
-      // Create a sample .mjs config
-      const mjsConfig = `export default {
-  extends: 'typescript-library',
-  validation: {
-    phases: [
-      {
-        name: 'Testing',
-        parallel: false,
-        steps: [
-          { name: 'Unit Tests', command: 'npm test', description: 'Run tests' }
-        ]
-      }
-    ],
-    caching: { strategy: 'git-tree-hash', enabled: true },
-    failFast: true
-  },
-  git: {
-    mainBranch: 'main',
-    remoteOrigin: 'origin',
-    autoSync: false
-  }
-};`;
-
-      const mjsPath = join(testDir, 'vibe-validate.config.mjs');
-      await writeFile(mjsPath, mjsConfig);
-
-      // Run migrate
-      execSync(`node ${cliPath} init --migrate`, {
-        cwd: testDir,
-      });
-
-      // Should create .yaml config
-      const yamlPath = join(testDir, 'vibe-validate.config.yaml');
-      expect(existsSync(yamlPath)).toBe(true);
-
-      // Should contain key config values
-      const yamlContent = await readFile(yamlPath, 'utf-8');
-      expect(yamlContent).toContain('extends: typescript-library');
-      expect(yamlContent).toContain('name: Testing');
-      expect(yamlContent).toContain('npm test');
-      expect(yamlContent).toContain('mainBranch: main');
-
-      // Original .mjs should still exist (user can delete manually)
-      expect(existsSync(mjsPath)).toBe(true);
-    });
-
-    it('should handle --dry-run to preview migration', async () => {
-      // Create a sample .mjs config
-      const mjsConfig = `export default {
-  extends: 'typescript-library',
-  validation: { phases: [] }
-};`;
-
-      const mjsPath = join(testDir, 'vibe-validate.config.mjs');
-      await writeFile(mjsPath, mjsConfig);
-
-      // Run migrate with dry-run
-      const result = execSync(`node ${cliPath} init --migrate --dry-run`, {
-        cwd: testDir,
-        encoding: 'utf8',
-      });
-
-      expect(result).toContain('dry-run');
-      expect(result).toContain('Would create');
-      expect(result).toContain('vibe-validate.config.yaml');
-
-      // Should NOT create .yaml file
-      const yamlPath = join(testDir, 'vibe-validate.config.yaml');
-      expect(existsSync(yamlPath)).toBe(false);
-    });
-
-    it('should error if no .mjs config exists', () => {
-      expect(() => {
-        execSync(`node ${cliPath} init --migrate`, {
-          cwd: testDir,
-          stdio: 'pipe',
-        });
-      }).toThrow();
-    });
-
-    it('should error if .yaml config already exists', async () => {
-      // Create both configs
-      await writeFile(join(testDir, 'vibe-validate.config.mjs'), 'export default {};');
-      await writeFile(join(testDir, 'vibe-validate.config.yaml'), 'extends: typescript-library');
-
-      expect(() => {
-        execSync(`node ${cliPath} init --migrate`, {
-          cwd: testDir,
-          stdio: 'pipe',
-        });
-      }).toThrow();
-    });
-
-    it('should support --force to overwrite existing .yaml config', async () => {
-      // Create both configs
-      const mjsConfig = `export default {
-  extends: 'typescript-nodejs',
-  validation: { phases: [] }
-};`;
-
-      await writeFile(join(testDir, 'vibe-validate.config.mjs'), mjsConfig);
-      await writeFile(join(testDir, 'vibe-validate.config.yaml'), 'extends: typescript-library');
-
-      // Should succeed with --force
-      execSync(`node ${cliPath} init --migrate --force`, {
-        cwd: testDir,
-      });
-
-      const yamlContent = await readFile(join(testDir, 'vibe-validate.config.yaml'), 'utf-8');
-      expect(yamlContent).toContain('extends: typescript-nodejs');
-    });
-  });
 });
+

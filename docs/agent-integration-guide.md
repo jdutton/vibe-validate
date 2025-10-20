@@ -920,9 +920,6 @@ Ensure error formatters are working correctly (see [Error Formatters Guide](./er
 ```typescript
 export default defineConfig({
   validation: {
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true, // ← Must be true
     },
   },
 });
@@ -935,7 +932,7 @@ export default defineConfig({
 - [Getting Started Guide](./getting-started.md)
 - [Configuration Reference](./configuration-reference.md)
 - [CLI Reference](./cli-reference.md)
-- [Presets Guide](./presets-guide.md)
+- [Config Templates Guide](./../config-templates/README.md)
 - [Error Formatters Guide](./error-formatters-guide.md)
 
 ---

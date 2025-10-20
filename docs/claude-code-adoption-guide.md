@@ -63,8 +63,8 @@ npx vibe-validate init
 
 **The `init` command**:
 - Detects project type (TypeScript, JavaScript, monorepo)
-- Offers presets (typescript-library, typescript-nodejs, typescript-react)
-- Creates `vibe-validate.config.mjs` (or user's preferred format)
+- Offers templates (minimal, typescript-library, typescript-nodejs, typescript-react)
+- Creates `vibe-validate.config.yaml`
 - Auto-detects existing validation scripts (npm run test, npm run lint, etc.)
 
 **Expected interaction**:
@@ -73,23 +73,15 @@ npx vibe-validate init
 
 Project type detected: TypeScript Node.js application
 
-Select a preset:
-  1) typescript-library (libraries, no runtime)
-  2) typescript-nodejs (Node.js applications)  ← [Recommended]
-  3) typescript-react (React applications)
-  4) custom (manual setup)
+Select a template:
+  1) minimal (bare-bones starting point)
+  2) typescript-library (libraries, no runtime)
+  3) typescript-nodejs (Node.js applications)  ← [Recommended]
+  4) typescript-react (React applications)
 
-Choice: 2
+Choice: 3
 
-Configuration file format:
-  1) vibe-validate.config.ts (TypeScript)  ← [Recommended]
-  2) vibe-validate.config.mjs (ES Module)
-  3) vibe-validate.config.js (CommonJS)
-  4) vibe-validate.config.json (JSON)
-
-Choice: 1
-
-✅ Created vibe-validate.config.ts
+✅ Created vibe-validate.config.yaml
 
 Next steps:
   1. Review configuration: cat vibe-validate.config.ts
@@ -412,9 +404,9 @@ git commit -m "feat: Add vibe-validate for validation orchestration"
 **Cause**: Config file not in project root or wrong format
 
 **Solution**:
-1. Check config exists: `ls vibe-validate.config.*`
+1. Check config exists: `ls vibe-validate.config.yaml`
 2. Move config to project root
-3. Verify format is supported (`.ts`, `.mjs`, `.js`, `.json`)
+3. Verify format is `.yaml` (only YAML configs are supported)
 
 ### Issue: Validation passes locally but fails in CI
 

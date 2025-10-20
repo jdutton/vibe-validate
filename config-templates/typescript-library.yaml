@@ -1,0 +1,39 @@
+# ============================================================================
+# CONFIGURATION TEMPLATE - vibe-validate for TypeScript Libraries
+# ============================================================================
+#
+# USAGE:
+#   1. Copy this file to your project root as 'vibe-validate.config.yaml'
+#   2. Customize the validation phases and commands for your project
+#   3. Run: vibe-validate validate
+#
+# This template is optimized for TypeScript libraries and npm packages.
+# It includes pre-configured validation phases for type checking, linting,
+# testing, and building.
+#
+# Learn more: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
+# ============================================================================
+
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+
+# Git settings
+git:
+  mainBranch: main
+
+# Validation configuration
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: true
+      steps:
+        - name: TypeScript
+          command: tsc --noEmit
+        - name: ESLint
+          command: eslint .
+
+    - name: Build & Test
+      steps:
+        - name: Unit Tests
+          command: npm test
+        - name: Build
+          command: npm run build

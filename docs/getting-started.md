@@ -11,7 +11,7 @@ vibe-validate is a **validation orchestration tool** designed for developers usi
 - ✅ **Formats errors for LLMs** - strips noise, provides actionable fixes
 - ✅ **Detects AI assistants** - auto-optimizes output for Claude Code, Cursor, Aider, Continue
 - ✅ **Integrates with git workflows** - branch sync checking, pre-commit validation
-- ✅ **Works with any language** - JavaScript/TypeScript presets included, but language-agnostic
+- ✅ **Works with any language** - JavaScript/TypeScript templates included, but language-agnostic
 
 ## Installation
 
@@ -44,8 +44,17 @@ Run the interactive setup wizard:
 npx vibe-validate init
 ```
 
-You'll be prompted to:
-1. Choose a preset (typescript-library, typescript-nodejs, typescript-react)
+By default, this creates a minimal configuration. To use a specific template:
+
+```bash
+npx vibe-validate init --template typescript-nodejs
+```
+
+Available templates:
+- `minimal` - Bare-bones starting point (default)
+- `typescript-library` - npm packages and shared libraries
+- `typescript-nodejs` - Node.js apps, APIs, and backend services
+- `typescript-react` - React SPAs and Next.js applications
 
 **Result**: Creates `vibe-validate.config.yaml` in your project root.
 
@@ -86,24 +95,30 @@ After running `init`, you'll have a configuration file that looks like this:
 # vibe-validate.config.yaml
 $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-# Use a preset as base configuration
-extends: typescript-library
-
 # Git integration settings
 git:
   mainBranch: main
   remoteOrigin: origin
   autoSync: false  # Never auto-merge - safety first
 
-# Validation configuration (preset provides sensible defaults)
+# Validation configuration
 validation:
-  caching:
-    strategy: git-tree-hash  # Content-based caching
-    enabled: true
+  phases:
+    - name: Validation
+      parallel: false
+      steps:
+        - name: Tests
+          command: npm test
+
   failFast: true  # Stop at first failure
 ```
 
-**Note**: The preset (`typescript-library`, `typescript-nodejs`, or `typescript-react`) provides sensible defaults for validation phases. You can override them by adding a `validation.phases` section to your config.
+**Note**: This is the minimal template. For more comprehensive setups with linting, type-checking, and build steps, use one of the other templates:
+- `typescript-library` - Complete setup for npm packages
+- `typescript-nodejs` - Full validation for Node.js apps
+- `typescript-react` - Optimized for React applications
+
+View all templates at: https://github.com/jdutton/vibe-validate/tree/main/config-templates
 
 ### Key Concepts
 
@@ -288,7 +303,7 @@ npx vibe-validate cleanup
 
 - **Customize configuration**: See [Configuration Reference](configuration-reference.md)
 - **Learn CLI commands**: See [CLI Reference](cli-reference.md)
-- **Extend presets**: See [Presets Guide](presets-guide.md)
+- **Use config templates**: See [Config Templates Guide](../config-templates/README.md)
 - **Integrate with AI assistants**: See [Agent Integration Guide](agent-integration-guide.md)
 - **Understand error formatters**: See [Error Formatters Guide](error-formatters-guide.md)
 

@@ -157,13 +157,13 @@ npx vibe-validate validate
 Interactive setup wizard that creates a configuration file.
 
 ```bash
-# Interactive mode (recommended for first-time setup)
+# Minimal template (default)
 npx vibe-validate init
 
-# With preset
-npx vibe-validate init --preset=typescript-library
-npx vibe-validate init --preset=typescript-nodejs
-npx vibe-validate init --preset=typescript-react
+# With specific template
+npx vibe-validate init --template typescript-library
+npx vibe-validate init --template typescript-nodejs
+npx vibe-validate init --template typescript-react
 ```
 
 **Creates**: `vibe-validate.config.yaml` in your project root.
@@ -260,7 +260,7 @@ npx vibe-validate config --validate
 ```
 
 **Features**:
-- ✅ Shows resolved configuration (with preset merging)
+- ✅ Shows resolved configuration
 - ✅ Validates config schema (Zod validation)
 - ✅ Reports any configuration errors
 
@@ -355,20 +355,25 @@ jobs:
 
 ## Configuration
 
-### Quick Start with Presets
+### Quick Start with Templates
 
-vibe-validate includes presets for common project types:
+vibe-validate includes configuration templates for common project types:
 
 ```bash
-# Library (default) - For npm packages
-npx vibe-validate init --preset=typescript-library
+# Minimal template (default) - Bare-bones starting point
+npx vibe-validate init
+
+# Library - For npm packages and shared libraries
+npx vibe-validate init --template typescript-library
 
 # Node.js Application - For servers/CLI apps
-npx vibe-validate init --preset=typescript-nodejs
+npx vibe-validate init --template typescript-nodejs
 
 # React Application - For React/Next.js apps
-npx vibe-validate init --preset=typescript-react
+npx vibe-validate init --template typescript-react
 ```
+
+All templates are available in the [config-templates directory](https://github.com/jdutton/vibe-validate/tree/main/config-templates).
 
 ### Configuration File Example
 
@@ -380,60 +385,80 @@ npx vibe-validate init --preset=typescript-react
 # JSON Schema for IDE autocomplete and validation
 $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-# Use preset as base configuration
-extends: typescript-library
-
 # Git integration settings
 git:
   mainBranch: main
   remoteOrigin: origin
   autoSync: false  # Never auto-merge - safety first
 
-# Validation configuration (preset provides sensible defaults)
+# Validation configuration
 validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: true
+      steps:
+        - name: TypeScript Type Check
+          command: pnpm typecheck
+        - name: ESLint
+          command: pnpm lint
+
+    - name: Testing
+      parallel: false
+      steps:
+        - name: Unit Tests
+          command: pnpm test
+
+    - name: Build
+      parallel: false
+      steps:
+        - name: Build
+          command: pnpm build
+
   caching:
     strategy: git-tree-hash  # Deterministic caching
     enabled: true
-  failFast: false  # Continue even if a step fails
+  failFast: true  # Stop on first phase failure
 ```
 
-**Note**: Presets (`typescript-library`, `typescript-nodejs`, `typescript-react`) provide complete validation phase configurations. You only need to specify git settings and optionally override caching/fail-fast behavior.
+### Customizing Templates
 
-### Extending Presets
+Start with a template and add custom phases:
 
-Start with a preset and override specific settings:
+```yaml
+# Copy a template first
+# curl -o vibe-validate.config.yaml \
+#   https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml
 
-```typescript
-import { defineConfig, mergeConfig } from '@vibe-validate/config';
-import { typescriptNodejsPreset } from '@vibe-validate/config/presets';
+# Then add custom phases
+validation:
+  phases:
+    - name: Pre-Qualification
+      # ... (from template)
 
-export default defineConfig(
-  mergeConfig(typescriptNodejsPreset, {
-    validation: {
-      phases: [
-        // Add custom phase after preset phases
-        {
-          name: 'Security Scan',
-          steps: [
-            { name: 'npm audit', command: 'npm audit --audit-level=high' },
-          ],
-        },
-      ],
-    },
-  })
-);
+    - name: Testing
+      # ... (from template)
+
+    - name: Security Scan
+      parallel: false
+      steps:
+        - name: npm audit
+          command: npm audit --audit-level=high
+        - name: License check
+          command: npx license-checker --summary
+
+    - name: Build
+      # ... (from template)
 ```
 
 ### Customizing Main Branch
 
 By default, vibe-validate assumes your main branch is `main`. To use a different branch:
 
-```typescript
-export default defineConfig({
-  git: {
-    mainBranch: 'master',  // or 'develop', 'trunk', etc.
-  },
-});
+```yaml
+git:
+  mainBranch: master  # or 'develop', 'trunk', etc.
+  remoteOrigin: origin
+  autoSync: false
 ```
 
 **Or via CLI:**
@@ -617,7 +642,7 @@ This is a monorepo containing:
 - **[vibe-validate](packages/vibe-validate)** - Umbrella package (install this)
 - **[@vibe-validate/cli](packages/cli)** - Command-line interface
 - **[@vibe-validate/core](packages/core)** - Validation orchestration engine
-- **[@vibe-validate/config](packages/config)** - Configuration system with presets
+- **[@vibe-validate/config](packages/config)** - Configuration system with schema validation
 - **[@vibe-validate/formatters](packages/formatters)** - Error parsing & LLM optimization
 - **[@vibe-validate/git](packages/git)** - Git workflow utilities
 

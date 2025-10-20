@@ -1,0 +1,29 @@
+# ============================================================================
+# CONFIGURATION TEMPLATE - Minimal vibe-validate Configuration
+# ============================================================================
+#
+# USAGE:
+#   1. Copy this file to your project root as 'vibe-validate.config.yaml'
+#   2. Customize the validation phases and commands for your project
+#   3. Run: vibe-validate validate
+#
+# This is a minimal configuration template with just the essentials.
+# Use this as a starting point for custom projects or non-TypeScript projects
+# (Python, Rust, Go, etc.).
+#
+# Learn more: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
+# ============================================================================
+
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+
+# Git settings
+git:
+  mainBranch: main
+
+# Validation configuration
+validation:
+  phases:
+    - name: Validation
+      steps:
+        - name: Tests
+          command: npm test

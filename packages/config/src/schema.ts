@@ -20,6 +20,9 @@ export const ValidationStepSchema = z.object({
   /** Command to execute (e.g., "npm run typecheck") */
   command: z.string().min(1, 'Command cannot be empty'),
 
+  /** Optional: Description of what this step does (for documentation) */
+  description: z.string().optional(),
+
   /** Optional: Custom timeout in milliseconds (default: inherited from phase) */
   timeout: z.number().positive().optional(),
 
@@ -31,7 +34,7 @@ export const ValidationStepSchema = z.object({
 
   /** Optional: Working directory for this step (default: project root) */
   cwd: z.string().optional(),
-});
+}).strict();
 
 export type ValidationStep = z.infer<typeof ValidationStepSchema>;
 
@@ -48,9 +51,6 @@ export const ValidationPhaseSchema = z.object({
   /** Execute steps in parallel (default: false) */
   parallel: z.boolean().optional().default(false),
 
-  /** Optional: Phase names this phase depends on */
-  dependsOn: z.array(z.string()).optional(),
-
   /** Steps to execute in this phase */
   steps: z.array(ValidationStepSchema).min(1, 'Phase must have at least one step'),
 
@@ -59,21 +59,10 @@ export const ValidationPhaseSchema = z.object({
 
   /** Optional: Fail fast - stop on first error (default: true) */
   failFast: z.boolean().optional().default(true),
-});
+}).strict();
 
 // Use input type which makes fields with defaults optional
 export type ValidationPhase = z.input<typeof ValidationPhaseSchema>;
-
-/**
- * Caching Strategy Schema
- */
-export const CachingStrategySchema = z.enum([
-  'git-tree-hash',  // Content-based hashing (default)
-  'timestamp',      // File modification time
-  'disabled',       // No caching
-]);
-
-export type CachingStrategy = z.infer<typeof CachingStrategySchema>;
 
 /**
  * Validation Config Schema
@@ -82,22 +71,9 @@ export const ValidationConfigSchema = z.object({
   /** Validation phases to execute */
   phases: z.array(ValidationPhaseSchema).min(1, 'At least one phase required'),
 
-  /** Caching configuration */
-  caching: z.object({
-    /** Caching strategy (default: git-tree-hash) */
-    strategy: CachingStrategySchema.default('git-tree-hash'),
-
-    /** Enable caching (default: true) */
-    enabled: z.boolean().default(true),
-
-    /** State file path (default: .vibe-validate-state.yaml) */
-    statePath: z.string().default('.vibe-validate-state.yaml'),
-  }).optional().default({
-    strategy: 'git-tree-hash',
-    enabled: true,
-    statePath: '.vibe-validate-state.yaml',
-  }),
-});
+  /** Optional: Fail fast - stop all validation on first phase failure (default: true) */
+  failFast: z.boolean().optional().default(true),
+}).strict();
 
 export type ValidationConfig = z.infer<typeof ValidationConfigSchema>;
 
@@ -116,25 +92,9 @@ export const GitConfigSchema = z.object({
 
   /** Warn if branch is behind remote (default: true) */
   warnIfBehind: z.boolean().default(GIT_DEFAULTS.WARN_IF_BEHIND),
-});
+}).strict();
 
 export type GitConfig = z.infer<typeof GitConfigSchema>;
-
-/**
- * Output Config Schema
- */
-export const OutputConfigSchema = z.object({
-  /** Show progress indicators (default: true) */
-  showProgress: z.boolean().default(true),
-
-  /** Verbose logging (default: false) */
-  verbose: z.boolean().default(false),
-
-  /** Suppress ANSI colors (default: false) */
-  noColor: z.boolean().default(false),
-});
-
-export type OutputConfig = z.infer<typeof OutputConfigSchema>;
 
 /**
  * CI/CD Configuration Schema
@@ -151,7 +111,7 @@ export const CIConfigSchema = z.object({
 
   /** Enable coverage reporting (default: false) */
   coverage: z.boolean().optional(),
-});
+}).strict();
 
 export type CIConfig = z.infer<typeof CIConfigSchema>;
 
@@ -166,11 +126,11 @@ export const HooksConfigSchema = z.object({
 
     /** Custom pre-commit command (default: 'npx vibe-validate pre-commit') */
     command: z.string().default('npx vibe-validate pre-commit'),
-  }).optional().default({
+  }).strict().optional().default({
     enabled: true,
     command: 'npx vibe-validate pre-commit',
   }),
-});
+}).strict();
 
 export type HooksConfig = z.infer<typeof HooksConfigSchema>;
 
@@ -191,13 +151,6 @@ export const VibeValidateConfigSchema = z.object({
     warnIfBehind: GIT_DEFAULTS.WARN_IF_BEHIND,
   }),
 
-  /** Output formatting configuration */
-  output: OutputConfigSchema.optional().default({
-    showProgress: true,
-    verbose: false,
-    noColor: false,
-  }),
-
   /** CI/CD configuration (for GitHub Actions workflow generation) */
   ci: CIConfigSchema.optional(),
 
@@ -208,13 +161,7 @@ export const VibeValidateConfigSchema = z.object({
       command: 'npx vibe-validate pre-commit',
     },
   }),
-
-  /** Optional: Preset name (typescript-library, typescript-nodejs, etc.) */
-  preset: z.string().optional(),
-
-  /** Optional: Extend another config file */
-  extends: z.string().optional(),
-});
+}).strict();
 
 export type VibeValidateConfig = z.infer<typeof VibeValidateConfigSchema>;
 

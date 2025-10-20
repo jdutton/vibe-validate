@@ -32,7 +32,7 @@ describe('init command - schema validation', () => {
   describe('schema URL in generated configs', () => {
     it('should generate config with correct schema URL', async () => {
       // Run init command
-      execSync(`node ${cliPath} init --preset typescript-library`, {
+      execSync(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
@@ -51,7 +51,7 @@ describe('init command - schema validation', () => {
     });
 
     it('should reference schema file with correct filename', () => {
-      execSync(`node ${cliPath} init --preset typescript-library`, {
+      execSync(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
@@ -104,7 +104,7 @@ describe('init command - schema validation', () => {
 
     it('should be accessible via GitHub raw URL', () => {
       // Generate config and verify it references the GitHub URL
-      execSync(`node ${cliPath} init --preset typescript-library`, {
+      execSync(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
@@ -156,7 +156,7 @@ describe('init command - schema validation', () => {
         const dir = join(testDir, preset);
         await mkdir(dir, { recursive: true });
 
-        execSync(`node ${cliPath} init --preset ${preset}`, {
+        execSync(`node ${cliPath} init --template ${preset}`, {
           cwd: dir,
         });
 

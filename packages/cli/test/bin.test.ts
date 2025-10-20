@@ -227,7 +227,7 @@ describe('bin.ts - CLI entry point', () => {
         expect(result.stdout).toContain('Examples:');
         expect(result.stdout).toContain('vibe-validate validate              # Use cache if available');
         expect(result.stdout).toContain('vibe-validate validate --force      # Always run validation');
-        expect(result.stdout).toContain('vibe-validate init --preset typescript-nodejs');
+        expect(result.stdout).toContain('vibe-validate init --template typescript-nodejs');
         expect(result.stdout).toContain('vibe-validate doctor         # Run diagnostics');
       });
 
@@ -266,7 +266,7 @@ describe('bin.ts - CLI entry point', () => {
 
         expect(result.stdout).toContain('## Common Workflows');
         expect(result.stdout).toContain('### First-time setup');
-        expect(result.stdout).toContain('vibe-validate init --preset typescript-nodejs --setup-workflow');
+        expect(result.stdout).toContain('vibe-validate init --template typescript-nodejs --setup-workflow');
         expect(result.stdout).toContain('### Before every commit (recommended)');
         expect(result.stdout).toContain('vibe-validate pre-commit');
         expect(result.stdout).toContain('### After PR merge');
@@ -463,14 +463,15 @@ describe('bin.ts - CLI entry point', () => {
   describe('end-to-end workflows', () => {
     it('should run full config → state workflow', async () => {
       // Create a minimal config file (YAML format)
-      const configContent = `extends: typescript-nodejs
-validation:
+      const configContent = `validation:
   phases:
     - name: Test Phase
       parallel: true
       steps:
         - name: Pass Test
           command: echo "test passed"
+git:
+  mainBranch: main
 `;
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 
@@ -502,14 +503,15 @@ validation:
 
     it('should handle validation failure workflow', async () => {
       // Create a config with failing step
-      const configContent = `extends: typescript-nodejs
-validation:
+      const configContent = `validation:
   phases:
     - name: Test Phase
       parallel: true
       steps:
         - name: Fail Test
           command: exit 1
+git:
+  mainBranch: main
 `;
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 
@@ -539,14 +541,15 @@ validation:
 
     it('should bypass cache when --force flag is used', async () => {
       // Create a config with passing step
-      const configContent = `extends: typescript-nodejs
-validation:
+      const configContent = `validation:
   phases:
     - name: Test Phase
       parallel: true
       steps:
         - name: Pass Test
           command: echo "test passed"
+git:
+  mainBranch: main
 `;
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 

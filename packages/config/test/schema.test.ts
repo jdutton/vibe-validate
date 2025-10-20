@@ -119,10 +119,8 @@ describe('validateConfig', () => {
     };
 
     const result = validateConfig(config);
-    expect(result.validation.caching.strategy).toBe('git-tree-hash');
-    expect(result.validation.caching.enabled).toBe(true);
     expect(result.git.mainBranch).toBe('main');
-    // format field removed - state files are always YAML
+    expect(result.validation.phases).toHaveLength(1);
   });
 });
 
@@ -173,5 +171,107 @@ describe('safeValidateConfig', () => {
     expect(result.errors).toBeDefined();
     // Should have descriptive error messages
     expect(result.errors!.some(e => e.includes('cannot be empty'))).toBe(true);
+  });
+});
+
+describe('Strict Schema Validation', () => {
+  it('should reject unknown properties in config root', () => {
+    const config = {
+      git: { mainBranch: 'main' },
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      unknownProperty: 'should be rejected'
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+  });
+
+  it('should reject unknown properties in nested objects (output)', () => {
+    const config = {
+      git: { mainBranch: 'main' },
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      output: {
+        format: 'auto'  // This property doesn't exist in schema
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('output') && e.includes('Unrecognized key'))).toBe(true);
+  });
+
+  it('should reject unknown properties in validation steps', () => {
+    const config = {
+      git: { mainBranch: 'main' },
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{
+            name: 'Test',
+            command: 'npm test',
+            unknownStepProperty: 'should fail'
+          }]
+        }]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+  });
+
+  it('should reject unknown properties in git config', () => {
+    const config = {
+      git: {
+        mainBranch: 'main',
+        unknownGitProp: 'should fail'
+      },
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('git') && e.includes('Unrecognized key'))).toBe(true);
+  });
+
+  it('should accept valid config with no unknown properties', () => {
+    const config = {
+      git: { mainBranch: 'main' },
+      validation: {
+        phases: [{
+          name: 'Test',
+          parallel: false,
+          steps: [{
+            name: 'Test',
+            command: 'npm test',
+            timeout: 60000
+          }]
+        }],
+        failFast: true
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
   });
 });

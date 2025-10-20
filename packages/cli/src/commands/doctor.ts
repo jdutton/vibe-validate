@@ -17,6 +17,7 @@ import { Command } from 'commander';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
+import { formatTemplateList } from '../utils/template-discovery.js';
 
 /**
  * Result of a single doctor check
@@ -136,18 +137,13 @@ function checkGitRepository(): DoctorCheckResult {
  * Check if configuration file exists
  */
 function checkConfigFile(): DoctorCheckResult {
-  const configPatterns = [
-    'vibe-validate.config.yaml',
-    'vibe-validate.config.mjs', // Legacy (deprecated)
-  ];
+  const yamlConfig = 'vibe-validate.config.yaml';
 
-  const found = configPatterns.find(pattern => existsSync(pattern));
-
-  if (found) {
+  if (existsSync(yamlConfig)) {
     return {
       name: 'Configuration file',
       passed: true,
-      message: `Found: ${found}`,
+      message: `Found: ${yamlConfig}`,
     };
   } else {
     return {
@@ -160,9 +156,9 @@ function checkConfigFile(): DoctorCheckResult {
 }
 
 /**
- * Check if config format needs migration from .mjs to .yaml
+ * Check if legacy .mjs config exists (no longer supported)
  */
-function checkConfigFormatMigration(): DoctorCheckResult {
+function checkLegacyConfig(): DoctorCheckResult {
   const mjsConfig = 'vibe-validate.config.mjs';
   const yamlConfig = 'vibe-validate.config.yaml';
 
@@ -171,17 +167,17 @@ function checkConfigFormatMigration(): DoctorCheckResult {
     return {
       name: 'Config format',
       passed: true,
-      message: 'Using modern YAML format',
+      message: 'Using YAML format',
     };
   }
 
-  // If using legacy .mjs format, suggest migration
+  // If legacy .mjs config exists, it's not supported
   if (existsSync(mjsConfig)) {
     return {
       name: 'Config format',
       passed: false,
-      message: 'Using deprecated .mjs format (will be removed in v1.0)',
-      suggestion: '⚠️  Migrate to YAML:\n   1. Run: vibe-validate init --migrate\n   2. Test the new YAML config\n   3. Delete vibe-validate.config.mjs after migration',
+      message: '.mjs config format is not supported',
+      suggestion: '⚠️  .mjs config format is no longer supported.\n   Please use YAML format: vibe-validate.config.yaml\n   Run: npx vibe-validate init',
     };
   }
 
@@ -219,7 +215,7 @@ async function checkConfigValid(
             'Fix validation errors shown above',
             'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
             'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
-            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/examples'
+            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/config-templates'
           ].join('\n   '),
         };
       }
@@ -236,16 +232,30 @@ async function checkConfigValid(
             `Fix syntax/validation errors in ${fileName}`,
             'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
             'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
-            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/examples'
+            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/config-templates'
           ].join('\n   '),
         };
       } else {
         // No config file found
+        const templateList = formatTemplateList();
         return {
           name: 'Configuration valid',
           passed: false,
           message: 'No configuration file found',
-          suggestion: 'Run: vibe-validate init --preset typescript-nodejs (or typescript-library, typescript-react)',
+          suggestion: [
+            'Copy a config template from GitHub:',
+            'https://github.com/jdutton/vibe-validate/tree/main/config-templates',
+            '',
+            'Available templates:',
+            ...templateList.map(line => line),
+            '',
+            'Quick start:',
+            'curl -o vibe-validate.config.yaml \\',
+            '  https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml',
+            '',
+            'JSON Schema for IDE validation:',
+            'https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+          ].join('\n   '),
         };
       }
     }
@@ -332,7 +342,7 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
       };
     }
 
-    // Use CI config from vibe-validate.config.mjs if available
+    // Use CI config from vibe-validate config
     const generateOptions = ciConfigToWorkflowOptions(config);
 
     const { inSync, diff } = checkSync(config, generateOptions);
@@ -724,7 +734,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(checkGitInstalled());
   allChecks.push(checkGitRepository());
   allChecks.push(checkConfigFile());
-  allChecks.push(checkConfigFormatMigration());
+  allChecks.push(checkLegacyConfig());
   allChecks.push(await checkConfigValid(config, configWithErrors));
   allChecks.push(await checkPackageManager(config));
   allChecks.push(await checkMainBranch(config));

@@ -23,8 +23,9 @@ vibe-validate/
 │   ├── core/          # Validation orchestration engine
 │   ├── git/           # Git workflow utilities
 │   ├── formatters/    # Error parsing & LLM optimization
-│   ├── config/        # Configuration system with presets
+│   ├── config/        # Configuration system with schema validation
 │   └── cli/           # Command-line interface
+├── config-templates/  # YAML configuration templates
 ├── docs/              # Comprehensive documentation
 └── package.json       # Monorepo root
 ```
@@ -77,7 +78,7 @@ pnpm build
 
 ### 1. Language-Agnostic Core
 - Core engine executes ANY commands (not just npm scripts)
-- TypeScript/JavaScript presets are just configuration
+- TypeScript/JavaScript templates are just example configurations
 - Works with Python, Rust, Go, etc.
 
 ### 2. LLM-First Output
@@ -97,10 +98,10 @@ pnpm build
 - Git command failure → use timestamp fallback
 - Corrupted state file → proceed with validation
 
-### 5. Zero Configuration with Smart Defaults
-- Works out-of-box with TypeScript projects
-- Framework presets for common setups
-- Fully customizable via TypeScript config
+### 5. Flexible Configuration with Smart Defaults
+- Works out-of-box with minimal template
+- Templates for common project types (TypeScript library, Node.js, React)
+- Fully customizable via YAML config
 
 ## Coding Standards
 
@@ -179,7 +180,7 @@ pnpm build
 All validation logic is data-driven:
 - No hardcoded commands
 - User provides validation phases via config
-- Presets are just pre-filled configs
+- Templates are just example configs to copy and customize
 
 ### State Management
 Single source of truth: `.vibe-validate-state.yaml`

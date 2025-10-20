@@ -21,8 +21,8 @@ import yaml from 'yaml';
  *   2 = State file missing (run validation)
  *   3 = Git tree hash mismatch (run validation)
  */
-export async function checkValidationStatus(config: VibeValidateConfig): Promise<void> {
-  const stateFilePath = config.validation.caching?.statePath || '.vibe-validate-state.yaml';
+export async function checkValidationStatus(_config: VibeValidateConfig): Promise<void> {
+  const stateFilePath = '.vibe-validate-state.yaml';
 
   // Check if state file exists
   if (!existsSync(stateFilePath)) {

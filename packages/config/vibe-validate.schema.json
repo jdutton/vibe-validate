@@ -20,12 +20,6 @@
                     "type": "boolean",
                     "default": false
                   },
-                  "dependsOn": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
                   "steps": {
                     "type": "array",
                     "items": {
@@ -38,6 +32,9 @@
                         "command": {
                           "type": "string",
                           "minLength": 1
+                        },
+                        "description": {
+                          "type": "string"
                         },
                         "timeout": {
                           "type": "number",
@@ -82,33 +79,9 @@
               },
               "minItems": 1
             },
-            "caching": {
-              "type": "object",
-              "properties": {
-                "strategy": {
-                  "type": "string",
-                  "enum": [
-                    "git-tree-hash",
-                    "timestamp",
-                    "disabled"
-                  ],
-                  "default": "git-tree-hash"
-                },
-                "enabled": {
-                  "type": "boolean",
-                  "default": true
-                },
-                "statePath": {
-                  "type": "string",
-                  "default": ".vibe-validate-state.yaml"
-                }
-              },
-              "additionalProperties": false,
-              "default": {
-                "strategy": "git-tree-hash",
-                "enabled": true,
-                "statePath": ".vibe-validate-state.yaml"
-              }
+            "failFast": {
+              "type": "boolean",
+              "default": true
             }
           },
           "required": [
@@ -142,29 +115,6 @@
             "remoteOrigin": "origin",
             "autoSync": false,
             "warnIfBehind": true
-          }
-        },
-        "output": {
-          "type": "object",
-          "properties": {
-            "showProgress": {
-              "type": "boolean",
-              "default": true
-            },
-            "verbose": {
-              "type": "boolean",
-              "default": false
-            },
-            "noColor": {
-              "type": "boolean",
-              "default": false
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "showProgress": true,
-            "verbose": false,
-            "noColor": false
           }
         },
         "ci": {
@@ -220,12 +170,6 @@
               "command": "npx vibe-validate pre-commit"
             }
           }
-        },
-        "preset": {
-          "type": "string"
-        },
-        "extends": {
-          "type": "string"
         }
       },
       "required": [
