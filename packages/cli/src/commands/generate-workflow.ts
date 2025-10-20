@@ -20,6 +20,7 @@ import { dirname, join } from 'path';
 import { stringify as yamlStringify } from 'yaml';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';
+import { normalizeLineEndings } from '../utils/normalize-line-endings.js';
 import type { VibeValidateConfig, ValidationPhase } from '@vibe-validate/config';
 
 /**
@@ -585,7 +586,11 @@ export function checkSync(
   const currentWorkflow = readFileSync(workflowPath, 'utf8');
   const expectedWorkflow = generateWorkflow(config, options);
 
-  if (currentWorkflow === expectedWorkflow) {
+  // Normalize line endings for cross-platform comparison (Windows CRLF vs Unix LF)
+  const normalizedCurrent = normalizeLineEndings(currentWorkflow);
+  const normalizedExpected = normalizeLineEndings(expectedWorkflow);
+
+  if (normalizedCurrent === normalizedExpected) {
     return { inSync: true };
   }
 
