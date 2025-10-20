@@ -303,11 +303,12 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should be significantly longer than regular help', async () => {
+        const { splitLines } = await import('../src/utils/normalize-line-endings.js');
         const regularHelp = await executeCLI(['--help']);
         const verboseHelp = await executeCLI(['--help', '--verbose']);
 
-        const regularLines = regularHelp.stdout.split('\n').length;
-        const verboseLines = verboseHelp.stdout.split('\n').length;
+        const regularLines = splitLines(regularHelp.stdout).length;
+        const verboseLines = splitLines(verboseHelp.stdout).length;
 
         // Verbose help should be at least 3x longer than regular help
         expect(verboseLines).toBeGreaterThan(regularLines * 3);
@@ -316,6 +317,7 @@ describe('bin.ts - CLI entry point', () => {
       it('should have CLI reference docs that match --help --verbose output exactly', async () => {
         const { readFileSync, existsSync } = await import('fs');
         const { join } = await import('path');
+        const { normalizeLineEndings, splitLines } = await import('../src/utils/normalize-line-endings.js');
 
         const result = await executeCLI(['--help', '--verbose']);
         const docsPath = join(__dirname, '../../../docs/cli-reference.md');
@@ -330,9 +332,9 @@ describe('bin.ts - CLI entry point', () => {
         const docs = readFileSync(docsPath, 'utf-8');
         const helpOutput = result.stdout;
 
-        // Normalize line endings to \n (Windows uses \r\n, Unix uses \n)
-        const normalizedDocs = docs.replace(/\r\n/g, '\n');
-        const normalizedHelpOutput = helpOutput.replace(/\r\n/g, '\n');
+        // Normalize line endings for cross-platform comparison
+        const normalizedDocs = normalizeLineEndings(docs);
+        const normalizedHelpOutput = normalizeLineEndings(helpOutput);
 
         // Extract the auto-synced section from docs (after the preamble separator ---)
         const docsSections = normalizedDocs.split('---\n');
@@ -350,8 +352,8 @@ describe('bin.ts - CLI entry point', () => {
         // Exact character-by-character match
         if (docsHelpContent !== expectedHelpOutput) {
           // Show a useful diff for debugging
-          const docsLines = docsHelpContent.split('\n');
-          const helpLines = expectedHelpOutput.split('\n');
+          const docsLines = splitLines(docsHelpContent);
+          const helpLines = splitLines(expectedHelpOutput);
           const maxLines = Math.max(docsLines.length, helpLines.length);
 
           console.error('\n❌ docs/cli-reference.md does NOT match --help --verbose output exactly!\n');
