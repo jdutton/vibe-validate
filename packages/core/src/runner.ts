@@ -198,7 +198,8 @@ export async function runStepsInParallel(
         const proc = spawn(step.command, [], {
           stdio: 'pipe',
           shell: true,  // Cross-platform: cmd.exe on Windows, sh on Unix
-          detached: true,  // Create new process group for easier cleanup
+          // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
+          detached: process.platform !== 'win32',
           env: {
             ...process.env,
             ...env,
