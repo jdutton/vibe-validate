@@ -103,7 +103,6 @@ describe('doctor command', () => {
       vi.mocked(existsSync).mockImplementation((path: string) => {
         // Config format check needs specific file checks
         if (path.toString() === 'vibe-validate.config.yaml') return true;
-        if (path.toString() === 'vibe-validate.config.mjs') return false;
         return true; // Everything else exists
       });
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
@@ -112,7 +111,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(15); // Total number of checks (includes new config format migration check)
+      expect(result.checks).toHaveLength(14); // Total number of checks (includes new config format migration check)
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -264,7 +263,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verify that all 15 checks ran (not just the config check)
-      expect(result.checks).toHaveLength(15);
+      expect(result.checks).toHaveLength(14);
 
       // Config check should fail
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
@@ -277,10 +276,10 @@ describe('doctor command', () => {
       expect(result.checks.find(c => c.name === 'Git installed')?.passed).toBe(true);
       expect(result.checks.find(c => c.name === 'Git repository')?.passed).toBe(true);
 
-      // Summary should show 14/15 passed (only config check fails)
+      // Summary should show 13/14 passed (only config check fails)
       expect(result.allPassed).toBe(false);
-      expect(result.totalChecks).toBe(15);
-      expect(result.passedChecks).toBe(14);
+      expect(result.totalChecks).toBe(14);
+      expect(result.passedChecks).toBe(13);
     });
 
     it('should detect not in git repository', async () => {
@@ -418,7 +417,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verbose mode should return all checks
-      expect(result.checks).toHaveLength(15); // All checks including config format migration check
+      expect(result.checks).toHaveLength(14); // All checks including config format migration check
       expect(result.verboseMode).toBe(true);
     });
 
@@ -520,7 +519,7 @@ describe('doctor command', () => {
 
       // Verbose mode should show ALL 15 checks (including passing ones)
       expect(result.verboseMode).toBe(true);
-      expect(result.checks).toHaveLength(15); // All checks
+      expect(result.checks).toHaveLength(14); // All checks
       expect(result.allPassed).toBe(false); // Has failures
 
       const failedChecks = result.checks.filter(c => !c.passed);
@@ -971,10 +970,8 @@ describe('doctor command', () => {
 
       vi.mocked(existsSync).mockImplementation((path: string) => {
         if (path.toString() === 'vibe-validate.config.yaml') return true;
-        if (path.toString() === 'vibe-validate.config.ts') return false;
-        if (path.toString() === 'vibe-validate.config.mjs') return false;
+        if (path.toString() === 'vibe-validate.config.yaml') return false;
         if (path.toString() === 'vibe-validate.config.js') return false;
-        if (path.toString() === 'vibe-validate.config.yml') return false;
         return true;
       });
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
@@ -991,11 +988,8 @@ describe('doctor command', () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
       vi.mocked(existsSync).mockImplementation((path: string) => {
         // JSON file exists but should not be detected
-        if (path.toString() === 'vibe-validate.config.json') return true;
         if (path.toString() === 'vibe-validate.config.yaml') return false;
-        if (path.toString() === 'vibe-validate.config.yml') return false;
-        if (path.toString() === 'vibe-validate.config.ts') return false;
-        if (path.toString() === 'vibe-validate.config.mjs') return false;
+        if (path.toString() === 'vibe-validate.config.yaml') return false;
         if (path.toString() === 'vibe-validate.config.js') return false;
         return true;
       });
@@ -1014,7 +1008,6 @@ describe('doctor command', () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
       vi.mocked(existsSync).mockImplementation((path: string) => {
         if (path.toString() === 'vibe-validate.config.yaml') return true;
-        if (path.toString() === 'vibe-validate.config.mjs') return false;
         return true;
       });
       vi.mocked(loadConfig).mockResolvedValue({
@@ -1023,44 +1016,18 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true }); // Verbose to see all checks
 
-      const migrationCheck = result.checks.find(c => c.name === 'Config format');
-      expect(migrationCheck?.passed).toBe(true);
-      expect(migrationCheck?.message).toContain('Using YAML format');
-    });
-
-    it('should fail when using deprecated .mjs format', async () => {
-      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString() === 'vibe-validate.config.yaml') return false;
-        if (path.toString() === 'vibe-validate.config.mjs') return true;
-        return true;
-      });
-      vi.mocked(loadConfig).mockResolvedValue({
-        validation: { phases: [] },
-      } as any);
-
-      const result = await runDoctor({ verbose: true }); // Non-verbose, failing check should appear
-
-      const migrationCheck = result.checks.find(c => c.name === 'Config format');
-      expect(migrationCheck?.passed).toBe(false);
-      expect(migrationCheck?.message).toContain('.mjs config format is not supported');
-      expect(migrationCheck?.suggestion).toContain('YAML format: vibe-validate.config.yaml');
     });
 
     it('should skip check when no config file exists', async () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
       vi.mocked(existsSync).mockImplementation((path: string) => {
         if (path.toString() === 'vibe-validate.config.yaml') return false;
-        if (path.toString() === 'vibe-validate.config.mjs') return false;
         return true;
       });
       vi.mocked(loadConfig).mockResolvedValue(null);
 
       const result = await runDoctor({ verbose: true }); // Verbose to see all checks
 
-      const migrationCheck = result.checks.find(c => c.name === 'Config format');
-      expect(migrationCheck?.passed).toBe(true);
-      expect(migrationCheck?.message).toContain('Skipped');
     });
   });
 });

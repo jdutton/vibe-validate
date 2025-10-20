@@ -42,9 +42,6 @@ export {
   safeValidateConfig,
 } from './schema.js';
 
-// Config definition helper
-export { defineConfig } from './define-config.js';
-
 // Config loading
 export {
   CONFIG_FILE_NAME,

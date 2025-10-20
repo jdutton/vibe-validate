@@ -541,11 +541,11 @@ vv config
 
 ## Links
 
-- [Full Documentation](https://github.com/jeffrdutton/vibe-validate#readme)
+- [Full Documentation](https://github.com/jdutton/vibe-validate#readme)
 - [Configuration Reference](https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md)
 - [Config Templates Guide](https://github.com/jdutton/vibe-validate/blob/main/config-templates/README.md)
 - [Getting Started](https://github.com/jdutton/vibe-validate/blob/main/docs/getting-started.md)
 
 ## License
 
-MIT © [Jeff Dutton](https://github.com/jeffrdutton)
+MIT © [Jeff Dutton](https://github.com/jdutton)

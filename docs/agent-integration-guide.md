@@ -136,16 +136,18 @@ do {
 ### Setup
 
 **1. Configure vibe-validate:**
-```typescript
-// vibe-validate.config.ts
-import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  preset: 'typescript-nodejs',
-  output: {
-    format: 'auto', // Auto-detects Claude Code
-  },
-});
+<!-- config:example -->
+```yaml
+# vibe-validate.config.yaml
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+git:
+  mainBranch: main
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: npm test
 ```
 
 **2. Add npm scripts:**
@@ -241,14 +243,18 @@ $ git commit -m "fix: resolve TypeScript errors"
 ### Setup
 
 **1. Configure vibe-validate:**
-```typescript
-// vibe-validate.config.ts
-export default defineConfig({
-  preset: 'typescript-react', // Common for Cursor projects
-  output: {
-    format: 'auto', // Auto-detects Cursor
-  },
-});
+<!-- config:example -->
+```yaml
+# vibe-validate.config.yaml
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+git:
+  mainBranch: main
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: npm test
 ```
 
 **2. Add VSCode tasks:**
@@ -335,14 +341,18 @@ npm run validate
 ### Setup
 
 **1. Configure vibe-validate:**
-```typescript
-// vibe-validate.config.ts
-export default defineConfig({
-  preset: 'typescript-nodejs',
-  output: {
-    format: 'auto', // Auto-detects Aider
-  },
-});
+<!-- config:example -->
+```yaml
+# vibe-validate.config.yaml
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+git:
+  mainBranch: main
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: npm test
 ```
 
 **2. Create Aider configuration:**
@@ -412,14 +422,18 @@ You: Great! Commit the changes.
 ### Setup
 
 **1. Configure vibe-validate:**
-```typescript
-// vibe-validate.config.ts
-export default defineConfig({
-  preset: 'typescript-library',
-  output: {
-    format: 'auto', // Auto-detects Continue
-  },
-});
+<!-- config:example -->
+```yaml
+# vibe-validate.config.yaml
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+git:
+  mainBranch: main
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: npm test
 ```
 
 **2. Add Continue configuration:**
@@ -502,11 +516,8 @@ Integrate vibe-validate with your own AI tools or scripts.
 ### Step 1: Set Environment Variable
 
 ```bash
-# Set custom agent detection
+# Set custom agent detection (optional)
 export MY_AGENT=1
-
-# Configure output format
-export VIBE_OUTPUT_FORMAT=yaml
 ```
 
 ### Step 2: Run Validation
@@ -881,22 +892,6 @@ async function learnFromFixes() {
 
 ## Troubleshooting
 
-### "Agent not detecting YAML output"
-
-**Solution**: Manually set output format:
-```bash
-vibe-validate validate --yaml
-```
-
-Or configure in `vibe-validate.config.ts`:
-```typescript
-export default defineConfig({
-  output: {
-    format: 'yaml', // Force YAML
-  },
-});
-```
-
 ### "State file not found"
 
 **Solution**: Run validation first to create state file:
@@ -913,17 +908,6 @@ vibe-validate state | grep -A 10 "Failed step"
 ```
 
 Ensure error formatters are working correctly (see [Error Formatters Guide](./error-formatters-guide.md)).
-
-### "Validation too slow for iteration"
-
-**Solution**: Ensure caching is enabled:
-```typescript
-export default defineConfig({
-  validation: {
-    },
-  },
-});
-```
 
 ---
 

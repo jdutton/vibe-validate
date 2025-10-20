@@ -34,6 +34,25 @@ jobs:
         run: pnpm -r build
       - name: Run validation
         run: pnpm validate --verbose
+      - name: Display validation state on failure
+        if: failure()
+        run: |-
+          echo "=========================================="
+          echo "📋 VALIDATION STATE FILE CONTENTS"
+          echo "=========================================="
+          if [ -f .vibe-validate-state.yaml ]; then
+            cat .vibe-validate-state.yaml
+          else
+            echo "❌ State file not found!"
+            echo "Expected location: $(pwd)/.vibe-validate-state.yaml"
+            echo ""
+            echo "📂 Files in current directory:"
+            ls -la | head -20
+            echo ""
+            echo "🔍 Searching for state files:"
+            find . -name "*validate*state*.yaml" -o -name ".vibe-validate*" 2>/dev/null || echo "No state files found"
+          fi
+          echo "=========================================="
       - name: Upload validation state on failure
         if: failure()
         uses: actions/upload-artifact@v4

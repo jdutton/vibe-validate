@@ -155,39 +155,6 @@ function checkConfigFile(): DoctorCheckResult {
   }
 }
 
-/**
- * Check if legacy .mjs config exists (no longer supported)
- */
-function checkLegacyConfig(): DoctorCheckResult {
-  const mjsConfig = 'vibe-validate.config.mjs';
-  const yamlConfig = 'vibe-validate.config.yaml';
-
-  // If using YAML, all good!
-  if (existsSync(yamlConfig)) {
-    return {
-      name: 'Config format',
-      passed: true,
-      message: 'Using YAML format',
-    };
-  }
-
-  // If legacy .mjs config exists, it's not supported
-  if (existsSync(mjsConfig)) {
-    return {
-      name: 'Config format',
-      passed: false,
-      message: '.mjs config format is not supported',
-      suggestion: '⚠️  .mjs config format is no longer supported.\n   Please use YAML format: vibe-validate.config.yaml\n   Run: npx vibe-validate init',
-    };
-  }
-
-  // No config found (will be caught by checkConfigFile)
-  return {
-    name: 'Config format',
-    passed: true,
-    message: 'Skipped (no config file)',
-  };
-}
 
 /**
  * Check if configuration is valid
@@ -734,7 +701,6 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(checkGitInstalled());
   allChecks.push(checkGitRepository());
   allChecks.push(checkConfigFile());
-  allChecks.push(checkLegacyConfig());
   allChecks.push(await checkConfigValid(config, configWithErrors));
   allChecks.push(await checkPackageManager(config));
   allChecks.push(await checkMainBranch(config));

@@ -21,7 +21,7 @@ describe('Doctor Command Integration', () => {
       stdio: 'pipe',
     });
 
-    // Should show all checks passed (e.g., "15/15 checks passed")
+    // Should show all checks passed (e.g., "14/14 checks passed")
     expect(result).toContain('vibe-validate Doctor');
     expect(result).toMatch(/📊 Results: (\d+)\/\1 checks passed/);
   });
@@ -49,8 +49,6 @@ describe('Doctor Command Integration', () => {
 
     // Project uses YAML config, config format check should pass
     expect(result).toContain('vibe-validate Doctor');
-    expect(result).toContain('Config format');
-    expect(result).toContain('Using YAML format');
   });
 
   it('should show Node.js and Git checks in verbose mode', () => {

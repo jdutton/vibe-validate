@@ -142,7 +142,6 @@ The loader searches for the config file:
 
 - `vibe-validate.config.yaml` (only supported format)
 
-**Note**: `.mjs` config format is no longer supported. If you have a legacy `.mjs` config, run `vibe-validate doctor` to see migration guidance.
 
 ## Configuration Schema
 

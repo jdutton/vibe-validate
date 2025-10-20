@@ -378,23 +378,18 @@ const result = await runValidation({
 
 ### Step 3: Use in Configuration
 
-```typescript
-// vibe-validate.config.ts
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Custom Checks',
-        steps: [
-          {
-            name: 'my-tool', // ← Matches formatter key
-            command: 'my-custom-tool check',
-          },
-        ],
-      },
-    ],
-  },
-});
+<!-- config:example -->
+```yaml
+# vibe-validate.config.yaml
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+git:
+  mainBranch: main
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: npm test
 ```
 
 ### Formatter Interface
@@ -449,7 +444,7 @@ export function formatDockerBuild(output: string): FormattedError {
 
 ### "Formatter not working for my tool"
 
-**Cause**: Tool not detected or custom output format.
+**Cause**: Tool not detected or tool outputs non-standard format.
 
 **Solution 1**: Rename step to include tool name:
 ```typescript

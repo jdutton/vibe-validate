@@ -614,12 +614,14 @@ vibe-validate respects these environment variables for agent context detection:
 - `CONTINUE=true` - Detects Continue context
 - `CI=true` - Detects CI environment
 
-**Purpose**: Agent detection optimizes output format for AI assistants vs. interactive terminals.
+**Purpose**: Agent detection optimizes output verbosity for AI assistants vs. interactive terminals.
 
 **Behavior**:
-- **Agent contexts** (Claude Code, Cursor, etc.): Minimal output, structured errors
-- **CI environments**: Minimal output, machine-readable format
-- **Interactive terminals**: Rich output with colors and progress indicators
+- **Agent contexts** (Claude Code, Cursor, etc.): Minimal terminal output, errors in state file
+- **CI environments**: Minimal terminal output, errors in state file
+- **Interactive terminals**: Verbose terminal output with colors and progress indicators
+
+**Note**: All contexts use YAML for the state file (`.vibe-validate-state.yaml`)
 
 **Note**: Use CLI flags for behavior control (e.g., `--force` to bypass cache, `--verbose` for detailed output)
 

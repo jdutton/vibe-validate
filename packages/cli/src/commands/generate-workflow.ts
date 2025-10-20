@@ -278,6 +278,28 @@ export function generateWorkflow(
       run: packageManager === 'pnpm' ? 'pnpm validate --verbose' : 'npm run validate -- --verbose',
     });
 
+    // Display validation state file contents on failure for easier debugging
+    jobSteps.push({
+      name: 'Display validation state on failure',
+      if: 'failure()',
+      run: `echo "=========================================="
+echo "📋 VALIDATION STATE FILE CONTENTS"
+echo "=========================================="
+if [ -f .vibe-validate-state.yaml ]; then
+  cat .vibe-validate-state.yaml
+else
+  echo "❌ State file not found!"
+  echo "Expected location: $(pwd)/.vibe-validate-state.yaml"
+  echo ""
+  echo "📂 Files in current directory:"
+  ls -la | head -20
+  echo ""
+  echo "🔍 Searching for state files:"
+  find . -name "*validate*state*.yaml" -o -name ".vibe-validate*" 2>/dev/null || echo "No state files found"
+fi
+echo "=========================================="`,
+    });
+
     // Add validation state upload on failure
     jobSteps.push({
       name: 'Upload validation state on failure',

@@ -46,7 +46,7 @@ describe('init command - focused modes', () => {
 
       // Should NOT create config file
       expect(existsSync(join(testDir, 'vibe-validate.config.yaml'))).toBe(false);
-      expect(existsSync(join(testDir, 'vibe-validate.config.ts'))).toBe(false);
+      expect(existsSync(join(testDir, 'vibe-validate.config.yaml'))).toBe(false);
     });
 
     it('should show what would be created in dry-run mode', () => {
@@ -100,7 +100,7 @@ describe('init command - focused modes', () => {
 
       // Config files should NOT be created
       expect(existsSync(join(testDir, 'vibe-validate.config.yaml'))).toBe(false);
-      expect(existsSync(join(testDir, 'vibe-validate.config.ts'))).toBe(false);
+      expect(existsSync(join(testDir, 'vibe-validate.config.yaml'))).toBe(false);
     });
   });
 

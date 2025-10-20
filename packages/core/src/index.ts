@@ -68,3 +68,18 @@ export {
 export {
   stopProcessGroup,
 } from './process-utils.js';
+
+// Export validation result schema and validators
+export {
+  ValidationResultSchema,
+  StepResultSchema,
+  PhaseResultSchema,
+  safeValidateResult,
+  validateResult,
+} from './result-schema.js';
+
+// Export JSON Schema generation
+export {
+  validationResultJsonSchema,
+  generateValidationResultJsonSchema,
+} from './result-schema-export.js';

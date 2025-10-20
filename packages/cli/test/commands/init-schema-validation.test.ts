@@ -148,15 +148,15 @@ describe('init command - schema validation', () => {
   });
 
   describe('multiple config formats', () => {
-    it('should use same schema URL for all presets', async () => {
-      const presets = ['typescript-library', 'typescript-nodejs', 'typescript-react'];
+    it('should use same schema URL for all templates', async () => {
+      const templates = ['typescript-library', 'typescript-nodejs', 'typescript-react'];
       const schemaUrls: string[] = [];
 
-      for (const preset of presets) {
-        const dir = join(testDir, preset);
+      for (const template of templates) {
+        const dir = join(testDir, template);
         await mkdir(dir, { recursive: true });
 
-        execSync(`node ${cliPath} init --template ${preset}`, {
+        execSync(`node ${cliPath} init --template ${template}`, {
           cwd: dir,
         });
 
@@ -167,7 +167,7 @@ describe('init command - schema validation', () => {
         schemaUrls.push(config.$schema as string);
       }
 
-      // All presets should use the same schema URL
+      // All templates should use the same schema URL
       expect(new Set(schemaUrls).size).toBe(1);
       expect(schemaUrls[0]).toContain('vibe-validate.schema.json');
     });

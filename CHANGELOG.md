@@ -131,8 +131,6 @@ Run `vibe-validate doctor` to check your config for issues.
   - Doctor now shows specific Zod validation errors (e.g., "validation.phases.0.name: Required")
   - Displays up to 5 validation errors with helpful links to documentation and examples
 
-- **Fixed false `.mjs` deprecation warning**
-  - Warning now only appears when `.mjs` file actually exists
   - No more confusing warnings during initial setup
 
 ## [0.10.3] - 2025-10-19
@@ -217,7 +215,6 @@ Run `vibe-validate doctor` to check your config for issues.
 ### 📝 Documentation
 
 - Updated all examples to use YAML configuration format
-- Added migration guide for users with legacy `.mjs` configs: `npx vibe-validate init --migrate`
 - Clarified that YAML is the only supported format (`.ts`, `.js`, `.json` are not supported)
 
 ## [0.10.0] - 2025-10-19
@@ -227,15 +224,12 @@ Run `vibe-validate doctor` to check your config for issues.
 - **YAML Configuration Support** (Issue #6)
   - Primary format: `vibe-validate.config.yaml` (modern, maintainable)
   - JSON Schema generation for IDE validation and autocomplete
-  - Legacy `.mjs` support with deprecation warnings
-  - Migration command: `vibe-validate init --migrate` to convert .mjs → YAML
   - Better IDE support, more readable, industry-standard format
 
 - **Focused Init Modes - Idempotent Setup Operations** (Issue #6)
   - `init --setup-hooks`: Install pre-commit hook only
   - `init --setup-workflow`: Create GitHub Actions workflow only
   - `init --fix-gitignore`: Add state file to .gitignore only
-  - `init --migrate`: Convert .mjs config to YAML format
   - `init --dry-run`: Preview changes without writing files
   - All operations are idempotent (safe to run multiple times)
   - 50+ comprehensive tests for setup operations
@@ -271,7 +265,6 @@ Run `vibe-validate doctor` to check your config for issues.
   - Cleaned up `.npmrc` for npm-only settings
   - No more `@pnpm/types` warnings during npm operations
 
-- **Reduced Duplicate .mjs Warnings in Doctor Command**
   - Refactored `runDoctor()` to load config once
   - Reduced duplicate deprecation warnings from 7 to 1
   - Updated 7 function signatures to accept config parameter
@@ -310,7 +303,6 @@ Run `vibe-validate doctor` to check your config for issues.
 
 ### 🎯 Migration Demonstration
 
-- **Dogfooding**: This project itself migrated from .mjs to YAML
   - Demonstrates the `init --migrate` workflow
   - Doctor now shows 15/15 checks passing (was 14/15)
   - No deprecation warnings

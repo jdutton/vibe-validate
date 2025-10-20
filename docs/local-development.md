@@ -559,7 +559,7 @@ pnpm validate
 pnpm add -D @vibe-validate/cli@latest
 
 # Commit changes
-git add package.json pnpm-lock.yaml vibe-validate.config.ts
+git add package.json pnpm-lock.yaml vibe-validate.config.yaml
 git commit -m "feat: migrate to vibe-validate for validation"
 ```
 

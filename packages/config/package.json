@@ -1,7 +1,7 @@
 {
   "name": "@vibe-validate/config",
   "version": "0.11.0",
-  "description": "Configuration system for vibe-validate with TypeScript-first design and framework presets",
+  "description": "Configuration system for vibe-validate with TypeScript-first design and config templates",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,7 +23,7 @@
     "validation",
     "config",
     "typescript",
-    "presets",
+    "config-templates",
     "framework"
   ],
   "author": "Jeff Dutton",

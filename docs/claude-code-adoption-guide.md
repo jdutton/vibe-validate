@@ -84,36 +84,24 @@ Choice: 3
 ✅ Created vibe-validate.config.yaml
 
 Next steps:
-  1. Review configuration: cat vibe-validate.config.ts
+  1. Review configuration: cat vibe-validate.config.yaml
   2. Run validation: npx vibe-validate validate
   3. Generate workflow: npx vibe-validate generate-workflow
 ```
 
 **Common issue**: If `init` fails, manually create config:
-```typescript
-// vibe-validate.config.ts
-import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          { name: 'TypeScript', command: 'npm run typecheck' },
-          { name: 'ESLint', command: 'npm run lint' },
-        ],
-      },
-      {
-        name: 'Testing',
-        steps: [
-          { name: 'Unit Tests', command: 'npm test' },
-        ],
-      },
-    ],
-  },
-});
+<!-- config:example -->
+```yaml
+# vibe-validate.config.yaml
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+git:
+  mainBranch: main
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: npm test
 ```
 
 **Next step**: Run doctor to verify setup
@@ -351,8 +339,8 @@ npm install -D @vibe-validate/cli
 
 # 2. Initialize
 npx vibe-validate init
-# → Choose preset (typescript-nodejs)
-# → Choose format (vibe-validate.config.ts)
+# → Choose template (typescript-nodejs)
+# → Choose format (vibe-validate.config.yaml)
 
 # 3. Health check
 npx vibe-validate doctor
@@ -376,7 +364,7 @@ echo '#!/bin/sh\nnpx vibe-validate pre-commit' > .husky/pre-commit
 chmod +x .husky/pre-commit
 
 # 7. Commit workflow + config
-git add vibe-validate.config.ts .github/workflows/validate.yml .husky/
+git add vibe-validate.config.yaml .github/workflows/validate.yml .husky/
 git commit -m "feat: Add vibe-validate for validation orchestration"
 ```
 
@@ -464,7 +452,7 @@ Commands:
   npx vibe-validate doctor # Health check
 
 Next steps:
-  1. Review config: cat vibe-validate.config.ts
+  1. Review config: cat vibe-validate.config.yaml
   2. Commit changes: git add . && git commit -m "feat: Add vibe-validate"
   3. Push to GitHub to trigger CI workflow
 

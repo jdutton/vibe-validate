@@ -12,14 +12,15 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "validation-result.schema.json"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node dist/scripts/generate-result-schema.js",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo validation-result.schema.json"
   },
   "keywords": [
     "validation",
@@ -44,7 +45,9 @@
   "dependencies": {
     "@vibe-validate/git": "workspace:*",
     "js-yaml": "^4.1.0",
-    "yaml": "^2.6.1"
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
