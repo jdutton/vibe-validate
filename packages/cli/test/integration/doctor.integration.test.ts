@@ -24,7 +24,7 @@ describe('Doctor Command Integration', () => {
     // Should show all checks passed (e.g., "14/14 checks passed")
     expect(result).toContain('vibe-validate Doctor');
     expect(result).toMatch(/📊 Results: (\d+)\/\1 checks passed/);
-  });
+  }, 30000); // 30s timeout for integration test (runs real CLI command)
 
   it('should exit with status 0 in verbose mode when all checks pass', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -36,7 +36,7 @@ describe('Doctor Command Integration', () => {
 
     expect(result).toContain('vibe-validate Doctor');
     expect(result).toContain('Running diagnostic checks (verbose mode)');
-  });
+  }, 30000);
 
   it('should show config format check passing (YAML)', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -49,7 +49,7 @@ describe('Doctor Command Integration', () => {
 
     // Project uses YAML config, config format check should pass
     expect(result).toContain('vibe-validate Doctor');
-  });
+  }, 30000);
 
   it('should show Node.js and Git checks in verbose mode', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -63,7 +63,7 @@ describe('Doctor Command Integration', () => {
     expect(result).toContain('vibe-validate Doctor');
     expect(result).toContain('Node.js version');
     expect(result).toContain('Git installed');
-  });
+  }, 30000);
 
   it('should check pre-commit hook installation', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -75,7 +75,7 @@ describe('Doctor Command Integration', () => {
 
     // Should detect pre-commit hook (vibe-validate project has one)
     expect(result).toContain('Pre-commit hook');
-  });
+  }, 30000);
 
   it('should check validation state file', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -87,7 +87,7 @@ describe('Doctor Command Integration', () => {
 
     // Should detect validation state file
     expect(result).toContain('Validation state');
-  });
+  }, 30000);
 
   it('should show pass/fail summary', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -99,7 +99,7 @@ describe('Doctor Command Integration', () => {
 
     // Should show summary line with counts
     expect(result).toMatch(/📊 Results: \d+\/\d+ checks passed/);
-  });
+  }, 30000);
 
   it('should NOT show all checks in non-verbose mode when all pass', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -114,7 +114,7 @@ describe('Doctor Command Integration', () => {
     const checkMatches = result.match(/✅/g);
     const checkCount = checkMatches ? checkMatches.length : 0;
     expect(checkCount).toBe(0); // No checks shown, just summary
-  });
+  }, 30000);
 
   it('should show all checks in verbose mode', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
@@ -133,5 +133,5 @@ describe('Doctor Command Integration', () => {
     // Verify some specific checks are shown
     expect(result).toContain('Node.js version');
     expect(result).toContain('Git installed');
-  });
+  }, 30000);
 });
