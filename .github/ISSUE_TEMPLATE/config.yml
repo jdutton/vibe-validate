@@ -1,11 +1,11 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
   - name: 💬 Discussions
-    url: https://github.com/jeffrdutton/vibe-validate/discussions
+    url: https://github.com/jdutton/vibe-validate/discussions
     about: Ask questions, share ideas, or discuss vibe-validate with the community
   - name: 📚 Documentation
-    url: https://github.com/jeffrdutton/vibe-validate#readme
+    url: https://github.com/jdutton/vibe-validate#readme
     about: Read the official documentation and guides
   - name: 🔒 Security Vulnerability
-    url: https://github.com/jeffrdutton/vibe-validate/security/advisories/new
+    url: https://github.com/jdutton/vibe-validate/security/advisories/new
     about: Report a security vulnerability (private disclosure)
