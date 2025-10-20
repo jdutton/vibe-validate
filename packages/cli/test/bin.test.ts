@@ -73,6 +73,9 @@ describe('bin.ts - CLI entry point', () => {
       let stdout = '';
       let stderr = '';
       let resolved = false;
+      let stdoutEnded = false;
+      let stderrEnded = false;
+      let exitCode: number | null = null;
 
       // Timeout handler to prevent hanging
       const timeout = setTimeout(() => {
@@ -83,6 +86,23 @@ describe('bin.ts - CLI entry point', () => {
         }
       }, timeoutMs);
 
+      // Helper to check if we can resolve
+      const tryResolve = () => {
+        // Only resolve once we have: exit code AND both streams ended
+        if (!resolved && exitCode !== null && stdoutEnded && stderrEnded) {
+          resolved = true;
+          clearTimeout(timeout);
+          if (exitCode === null) {
+            console.warn(`Warning: Child process closed with null exit code for: ${args.join(' ')}`);
+            console.warn(`  Stdout: ${stdout.substring(0, 200)}`);
+            console.warn(`  Stderr: ${stderr.substring(0, 200)}`);
+            resolve({ code: 1, stdout, stderr: stderr + '\n[Process closed with null exit code]' });
+          } else {
+            resolve({ code: exitCode, stdout, stderr });
+          }
+        }
+      };
+
       child.stdout.on('data', (data) => {
         stdout += data.toString();
       });
@@ -91,20 +111,20 @@ describe('bin.ts - CLI entry point', () => {
         stderr += data.toString();
       });
 
+      // Wait for streams to end (all data flushed)
+      child.stdout.on('end', () => {
+        stdoutEnded = true;
+        tryResolve();
+      });
+
+      child.stderr.on('end', () => {
+        stderrEnded = true;
+        tryResolve();
+      });
+
       child.on('close', (code) => {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeout);
-          // Handle null code more explicitly - log it for debugging
-          if (code === null) {
-            console.warn(`Warning: Child process closed with null exit code for: ${args.join(' ')}`);
-            console.warn(`  Stdout: ${stdout.substring(0, 200)}`);
-            console.warn(`  Stderr: ${stderr.substring(0, 200)}`);
-            resolve({ code: 1, stdout, stderr: stderr + '\n[Process closed with null exit code]' });
-          } else {
-            resolve({ code, stdout, stderr });
-          }
-        }
+        exitCode = code ?? 1;
+        tryResolve();
       });
 
       child.on('error', (error) => {
