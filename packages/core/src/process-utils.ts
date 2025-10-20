@@ -5,17 +5,20 @@
  * Used by validation runner for signal handling and fail-fast behavior.
  */
 
-import { ChildProcess } from 'child_process';
+import { ChildProcess, execSync } from 'child_process';
 
 /**
- * Stop a child process and its entire process group
+ * Stop a child process and its entire process group (cross-platform)
  *
- * Uses negative PID to kill process group, ensuring all children are terminated.
+ * **Windows Implementation:**
+ * - Uses `taskkill /pid <PID> /T /F` to terminate process tree
+ * - /T flag kills child processes
+ * - /F flag forces termination
  *
- * **Implementation:**
- * - Graceful shutdown: SIGTERM to process group (-PID)
+ * **Unix Implementation:**
+ * - Uses negative PID to kill process group (-PID)
+ * - Graceful shutdown: SIGTERM to process group
  * - Force kill after 1s: SIGKILL to process group
- * - Ultimate timeout: Resolves after 2s regardless
  *
  * @param childProcess - The child process to stop
  * @param processName - Optional name for logging (e.g., "TypeScript", "ESLint")
@@ -23,7 +26,7 @@ import { ChildProcess } from 'child_process';
  *
  * @example
  * ```typescript
- * const proc = spawn('tsc', ['--noEmit']);
+ * const proc = spawn('tsc --noEmit', [], { shell: true });
  * await stopProcessGroup(proc, 'TypeScript');
  * ```
  */
@@ -40,22 +43,34 @@ export async function stopProcessGroup(
         resolve();
       });
 
-      // Kill the entire process group by negating the PID
-      // This kills the process and all its children
-      try {
-        process.kill(-pid, 'SIGTERM');
-      } catch {
-        // Process may already be dead, ignore error
-      }
-
-      // Force kill entire process group after 1 second if not stopped
-      setTimeout(() => {
+      // Platform-specific process termination
+      if (process.platform === 'win32') {
+        // Windows: Use taskkill to terminate process tree
+        // /T - Terminates all child processes
+        // /F - Forcefully terminates the process
         try {
-          process.kill(-pid, 'SIGKILL');
+          execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
         } catch {
           // Process may already be dead, ignore error
         }
-      }, 1000);
+      } else {
+        // Unix: Kill process group with negative PID
+        // This kills the process and all its children
+        try {
+          process.kill(-pid, 'SIGTERM');
+        } catch {
+          // Process may already be dead, ignore error
+        }
+
+        // Force kill entire process group after 1 second if not stopped
+        setTimeout(() => {
+          try {
+            process.kill(-pid, 'SIGKILL');
+          } catch {
+            // Process may already be dead, ignore error
+          }
+        }, 1000);
+      }
 
       // Ultimate timeout - resolve after 2 seconds regardless
       setTimeout(() => {

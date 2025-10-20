@@ -9,6 +9,8 @@ describe('process-utils', () => {
     let processKillSpy: ReturnType<typeof vi.spyOn>;
     let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
+    const isWindows = process.platform === 'win32';
+
     beforeEach(() => {
       // Create mock child process
       mockProcess = new EventEmitter() as ChildProcess & EventEmitter;
@@ -27,7 +29,7 @@ describe('process-utils', () => {
       vi.restoreAllMocks();
     });
 
-    it('should send SIGTERM to process group', async () => {
+    it.skipIf(isWindows)('should send SIGTERM to process group (Unix only)', async () => {
       const stopPromise = stopProcessGroup(mockProcess, 'TestProcess');
 
       // Immediately emit exit to resolve quickly
@@ -59,7 +61,7 @@ describe('process-utils', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith('🛑 Process stopped');
     });
 
-    it('should send SIGKILL after 1 second if process does not exit', async () => {
+    it.skipIf(isWindows)('should send SIGKILL after 1 second if process does not exit (Unix only)', async () => {
       vi.useFakeTimers();
 
       const stopPromise = stopProcessGroup(mockProcess, 'StubbornProcess');
@@ -164,7 +166,7 @@ describe('process-utils', () => {
       await expect(Promise.all([stopPromise1, stopPromise2])).resolves.toBeDefined();
     });
 
-    it('should kill entire process group (negative PID)', async () => {
+    it.skipIf(isWindows)('should kill entire process group (negative PID) (Unix only)', async () => {
       const stopPromise = stopProcessGroup(mockProcess, 'GroupProcess');
 
       setImmediate(() => mockProcess.emit('exit', 0, null));

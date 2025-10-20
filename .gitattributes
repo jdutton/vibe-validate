@@ -1,0 +1,42 @@
+# Enforce consistent line endings across all platforms
+# Prevents Windows developers from accidentally committing CRLF line endings
+
+# Default: Use LF for all text files
+* text=auto eol=lf
+
+# Explicitly declare text files for consistency
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+*.sh text eol=lf
+
+# Configuration files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+.npmrc text eol=lf
+.pnpmrc text eol=lf
+
+# Documentation
+LICENSE text eol=lf
+README.md text eol=lf
+CHANGELOG.md text eol=lf
+CONTRIBUTING.md text eol=lf
+
+# Binary files (no line ending conversion)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

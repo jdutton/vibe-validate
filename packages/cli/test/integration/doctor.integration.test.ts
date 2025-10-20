@@ -12,126 +12,126 @@ describe('Doctor Command Integration', () => {
    * - Exit code 1: One or more critical checks failed
    */
 
+  /**
+   * Helper to execute CLI and capture output/errors
+   */
+  function executeCLI(args: string[]): { stdout: string; stderr: string; exitCode: number } {
+    try {
+      const stdout = execSync(`node "${cliPath}" ${args.join(' ')}`, {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+      return { stdout, stderr: '', exitCode: 0 };
+    } catch (error: any) {
+      // execSync throws on non-zero exit, but we want to see the output
+      return {
+        stdout: error.stdout || '',
+        stderr: error.stderr || '',
+        exitCode: error.status || 1,
+      };
+    }
+  }
+
+  /**
+   * Helper to run doctor command and assert successful execution
+   */
+  function expectDoctorSuccess(args: string[] = []): string {
+    const result = executeCLI(['doctor', ...args]);
+
+    // Debug output if test fails
+    if (result.exitCode !== 0) {
+      console.error('Doctor command failed!');
+      console.error('Exit code:', result.exitCode);
+      console.error('STDOUT:', result.stdout);
+      console.error('STDERR:', result.stderr);
+    }
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('vibe-validate Doctor');
+
+    return result.stdout;
+  }
+
   it('should exit with status 0 when all checks pass in this repository', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
     // If this test fails, it means there's a real issue in this repo that needs fixing
-    const result = execSync(`node ${cliPath} doctor`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess();
 
     // Should show all checks passed (e.g., "14/14 checks passed")
-    expect(result).toContain('vibe-validate Doctor');
-    expect(result).toMatch(/📊 Results: (\d+)\/\1 checks passed/);
-  }, 30000); // 30s timeout for integration test (runs real CLI command)
+    expect(stdout).toMatch(/📊 Results: (\d+)\/\1 checks passed/);
+  }, 60000); // 60s timeout for integration test (Windows Node 24 can be slow)
 
   it('should exit with status 0 in verbose mode when all checks pass', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
-    const result = execSync(`node ${cliPath} doctor --verbose`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess(['--verbose']);
 
-    expect(result).toContain('vibe-validate Doctor');
-    expect(result).toContain('Running diagnostic checks (verbose mode)');
+    expect(stdout).toContain('Running diagnostic checks (verbose mode)');
   }, 30000);
 
   it('should show config format check passing (YAML)', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
     // Use --verbose to see all checks including passing ones
-    const result = execSync(`node ${cliPath} doctor --verbose`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-
     // Project uses YAML config, config format check should pass
-    expect(result).toContain('vibe-validate Doctor');
+    expectDoctorSuccess(['--verbose']);
   }, 30000);
 
   it('should show Node.js and Git checks in verbose mode', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
-    const result = execSync(`node ${cliPath} doctor --verbose`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess(['--verbose']);
 
     // Should show all check details in verbose mode
-    expect(result).toContain('vibe-validate Doctor');
-    expect(result).toContain('Node.js version');
-    expect(result).toContain('Git installed');
+    expect(stdout).toContain('Node.js version');
+    expect(stdout).toContain('Git installed');
   }, 30000);
 
   it('should check pre-commit hook installation', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
-    const result = execSync(`node ${cliPath} doctor --verbose`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess(['--verbose']);
 
     // Should detect pre-commit hook (vibe-validate project has one)
-    expect(result).toContain('Pre-commit hook');
+    expect(stdout).toContain('Pre-commit hook');
   }, 30000);
 
   it('should check validation state file', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
-    const result = execSync(`node ${cliPath} doctor --verbose`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess(['--verbose']);
 
     // Should detect validation state file
-    expect(result).toContain('Validation state');
+    expect(stdout).toContain('Validation state');
   }, 30000);
 
   it('should show pass/fail summary', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
-    const result = execSync(`node ${cliPath} doctor`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess();
 
     // Should show summary line with counts
-    expect(result).toMatch(/📊 Results: \d+\/\d+ checks passed/);
+    expect(stdout).toMatch(/📊 Results: \d+\/\d+ checks passed/);
   }, 30000);
 
   it('should NOT show all checks in non-verbose mode when all pass', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
-    const result = execSync(`node ${cliPath} doctor`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess();
 
     // If all pass, summary only (no individual checks)
-    expect(result).toContain('checks passed');
-    const checkMatches = result.match(/✅/g);
+    expect(stdout).toContain('checks passed');
+    const checkMatches = stdout.match(/✅/g);
     const checkCount = checkMatches ? checkMatches.length : 0;
     expect(checkCount).toBe(0); // No checks shown, just summary
   }, 30000);
 
   it('should show all checks in verbose mode', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
-    const result = execSync(`node ${cliPath} doctor --verbose`, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const stdout = expectDoctorSuccess(['--verbose']);
 
     // Verbose mode shows all checks
-    expect(result).toContain('checks passed');
-    const checkMatches = result.match(/✅|❌/g);
+    expect(stdout).toContain('checks passed');
+    const checkMatches = stdout.match(/✅|❌/g);
     const checkCount = checkMatches ? checkMatches.length : 0;
     expect(checkCount).toBeGreaterThan(10); // Should show most/all of 15 checks
 
     // Verify some specific checks are shown
-    expect(result).toContain('Node.js version');
-    expect(result).toContain('Git installed');
+    expect(stdout).toContain('Node.js version');
+    expect(stdout).toContain('Git installed');
   }, 30000);
 });

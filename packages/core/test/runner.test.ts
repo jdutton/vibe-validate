@@ -258,7 +258,9 @@ describe('runner', () => {
 
     it('should pass environment variables to child processes', async () => {
       const steps: ValidationStep[] = [
-        { name: 'EnvTest', command: 'echo $TEST_VAR' },
+        // Use Node.js to print env var for cross-platform compatibility
+        // (Unix: $TEST_VAR, Windows cmd: %TEST_VAR%, Windows PS: $env:TEST_VAR)
+        { name: 'EnvTest', command: 'node -e "console.log(process.env.TEST_VAR)"' },
       ];
 
       const result = await runStepsInParallel(steps, 'Test Phase', false, {

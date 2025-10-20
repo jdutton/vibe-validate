@@ -193,9 +193,13 @@ export async function runStepsInParallel(
         console.log(`   ⏳ ${paddedName}  →  ${step.command}`);
 
         const startTime = Date.now();
-        const proc = spawn('sh', ['-c', step.command], {
+        // Use shell: true for cross-platform compatibility
+        // Node.js automatically selects cmd.exe on Windows, sh on Unix
+        const proc = spawn(step.command, [], {
           stdio: 'pipe',
-          detached: true,  // Create new process group for easier cleanup
+          shell: true,  // Cross-platform: cmd.exe on Windows, sh on Unix
+          // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
+          detached: process.platform !== 'win32',
           env: {
             ...process.env,
             ...env,

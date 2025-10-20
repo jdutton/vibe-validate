@@ -73,6 +73,9 @@ describe('bin.ts - CLI entry point', () => {
       let stdout = '';
       let stderr = '';
       let resolved = false;
+      let stdoutEnded = false;
+      let stderrEnded = false;
+      let exitCode: number | null = null;
 
       // Timeout handler to prevent hanging
       const timeout = setTimeout(() => {
@@ -83,6 +86,23 @@ describe('bin.ts - CLI entry point', () => {
         }
       }, timeoutMs);
 
+      // Helper to check if we can resolve
+      const tryResolve = () => {
+        // Only resolve once we have: exit code AND both streams ended
+        if (!resolved && exitCode !== null && stdoutEnded && stderrEnded) {
+          resolved = true;
+          clearTimeout(timeout);
+          if (exitCode === null) {
+            console.warn(`Warning: Child process closed with null exit code for: ${args.join(' ')}`);
+            console.warn(`  Stdout: ${stdout.substring(0, 200)}`);
+            console.warn(`  Stderr: ${stderr.substring(0, 200)}`);
+            resolve({ code: 1, stdout, stderr: stderr + '\n[Process closed with null exit code]' });
+          } else {
+            resolve({ code: exitCode, stdout, stderr });
+          }
+        }
+      };
+
       child.stdout.on('data', (data) => {
         stdout += data.toString();
       });
@@ -91,20 +111,20 @@ describe('bin.ts - CLI entry point', () => {
         stderr += data.toString();
       });
 
+      // Wait for streams to end (all data flushed)
+      child.stdout.on('end', () => {
+        stdoutEnded = true;
+        tryResolve();
+      });
+
+      child.stderr.on('end', () => {
+        stderrEnded = true;
+        tryResolve();
+      });
+
       child.on('close', (code) => {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeout);
-          // Handle null code more explicitly - log it for debugging
-          if (code === null) {
-            console.warn(`Warning: Child process closed with null exit code for: ${args.join(' ')}`);
-            console.warn(`  Stdout: ${stdout.substring(0, 200)}`);
-            console.warn(`  Stderr: ${stderr.substring(0, 200)}`);
-            resolve({ code: 1, stdout, stderr: stderr + '\n[Process closed with null exit code]' });
-          } else {
-            resolve({ code, stdout, stderr });
-          }
-        }
+        exitCode = code ?? 1;
+        tryResolve();
       });
 
       child.on('error', (error) => {
@@ -303,11 +323,12 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should be significantly longer than regular help', async () => {
+        const { splitLines } = await import('../src/utils/normalize-line-endings.js');
         const regularHelp = await executeCLI(['--help']);
         const verboseHelp = await executeCLI(['--help', '--verbose']);
 
-        const regularLines = regularHelp.stdout.split('\n').length;
-        const verboseLines = verboseHelp.stdout.split('\n').length;
+        const regularLines = splitLines(regularHelp.stdout).length;
+        const verboseLines = splitLines(verboseHelp.stdout).length;
 
         // Verbose help should be at least 3x longer than regular help
         expect(verboseLines).toBeGreaterThan(regularLines * 3);
@@ -316,6 +337,7 @@ describe('bin.ts - CLI entry point', () => {
       it('should have CLI reference docs that match --help --verbose output exactly', async () => {
         const { readFileSync, existsSync } = await import('fs');
         const { join } = await import('path');
+        const { normalizeLineEndings, splitLines } = await import('../src/utils/normalize-line-endings.js');
 
         const result = await executeCLI(['--help', '--verbose']);
         const docsPath = join(__dirname, '../../../docs/cli-reference.md');
@@ -330,8 +352,12 @@ describe('bin.ts - CLI entry point', () => {
         const docs = readFileSync(docsPath, 'utf-8');
         const helpOutput = result.stdout;
 
+        // Normalize line endings for cross-platform comparison
+        const normalizedDocs = normalizeLineEndings(docs);
+        const normalizedHelpOutput = normalizeLineEndings(helpOutput);
+
         // Extract the auto-synced section from docs (after the preamble separator ---)
-        const docsSections = docs.split('---\n');
+        const docsSections = normalizedDocs.split('---\n');
         if (docsSections.length < 2) {
           throw new Error(
             'docs/cli-reference.md should have a preamble followed by --- separator, ' +
@@ -341,13 +367,13 @@ describe('bin.ts - CLI entry point', () => {
 
         // The content after the first --- separator should be the exact help output
         const docsHelpContent = docsSections.slice(1).join('---\n').trim();
-        const expectedHelpOutput = helpOutput.trim();
+        const expectedHelpOutput = normalizedHelpOutput.trim();
 
         // Exact character-by-character match
         if (docsHelpContent !== expectedHelpOutput) {
           // Show a useful diff for debugging
-          const docsLines = docsHelpContent.split('\n');
-          const helpLines = expectedHelpOutput.split('\n');
+          const docsLines = splitLines(docsHelpContent);
+          const helpLines = splitLines(expectedHelpOutput);
           const maxLines = Math.max(docsLines.length, helpLines.length);
 
           console.error('\n❌ docs/cli-reference.md does NOT match --help --verbose output exactly!\n');

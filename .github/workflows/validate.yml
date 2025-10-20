@@ -34,8 +34,8 @@ jobs:
         run: pnpm -r build
       - name: Run validation
         run: pnpm validate --verbose
-      - name: Display validation state on failure
-        if: failure()
+      - name: Display validation state on failure (Unix)
+        if: failure() && runner.os != 'Windows'
         run: >-
           echo "=========================================="
 
@@ -57,6 +57,32 @@ jobs:
           fi
 
           echo "=========================================="
+      - name: Display validation state on failure (Windows)
+        if: failure() && runner.os == 'Windows'
+        shell: powershell
+        run: >-
+          Write-Host '=========================================='
+
+          Write-Host 'VALIDATION STATE FILE CONTENTS'
+
+          Write-Host '=========================================='
+
+
+          if (Test-Path .vibe-validate-state.yaml) {
+            Get-Content .vibe-validate-state.yaml
+          } else {
+            Write-Host 'State file not found!'
+            Write-Host "Expected location: $PWD\.vibe-validate-state.yaml"
+            Write-Host ''
+            Write-Host 'Files in current directory:'
+            Get-ChildItem | Select-Object -First 20
+            Write-Host ''
+            Write-Host 'Searching for state files:'
+            Get-ChildItem -Recurse -Filter '*validate*state*.yaml' -ErrorAction SilentlyContinue
+          }
+
+
+          Write-Host '=========================================='
       - name: Upload validation state on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -69,9 +95,8 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
+          - windows-latest
         node:
-          - "20"
           - "22"
           - "24"
   all-validation-passed:
