@@ -347,7 +347,6 @@ Verifies GitHub Actions workflow
 **Options:**
 
 - `--json` - Output results as JSON
-- `--verbose` - Show all checks including passing ones
 
 **Examples:**
 

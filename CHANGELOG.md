@@ -11,26 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+- **CRITICAL: Fixed `doctor` command check display logic**
+  - **Non-verbose mode with all checks passing**: Now shows summary only (was showing all 15 checks)
+  - **Verbose mode with failures**: Now shows all 15 checks including passing ones (was showing only failing checks)
+  - Fixed `--verbose` flag not working due to Commander.js option conflict
+  - Message now correctly says "(Use --verbose to see all checks)" when checks are hidden
+
+- **Shows specific validation errors when config is invalid**
+  - Doctor now displays actual Zod validation errors (e.g., "validation.phases.0.name: Required")
+  - Added `loadConfigWithErrors()` function to extract detailed error messages
+  - Shows up to 5 validation errors in doctor output
+  - Includes helpful links to documentation, JSON Schema, and examples
+
 - **Fixed false `.mjs` deprecation warning**
-  - `doctor` command no longer shows `.mjs` deprecation warning when only invalid YAML config exists
   - Warning now only appears when `.mjs` file actually exists
   - Fixes confusing output during initial setup when YAML config is incomplete
 
-- **Improved `doctor` error messages for invalid configurations**
-  - Now clearly indicates when config file exists but contains validation errors
-  - Provides specific filename (e.g., "Found vibe-validate.config.yaml but it contains validation errors")
-  - Includes helpful links to:
-    - Configuration documentation
-    - JSON Schema for IDE validation
-    - Example configurations
-  - Better guidance for LLMs and developers debugging config issues
-
 ### ✅ Testing
 
-- **2 New Tests**
-  - Test for .mjs warning only showing when file actually exists
-  - Test for improved doctor error message with helpful guidance
-  - Total tests: **487 passing** (up from 485)
+- **5 New Tests Added**
+  - Test for non-verbose mode showing summary only when all pass
+  - Test for non-verbose mode showing only failing checks
+  - Test for verbose mode showing all checks when failures exist
+  - Integration test verifying CLI `--verbose` flag parsing
+  - Integration test verifying check filtering in all scenarios
+  - Total tests: **492 passing** (up from 487)
 
 ## [0.10.3] - 2025-10-19
 

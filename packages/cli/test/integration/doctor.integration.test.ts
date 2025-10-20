@@ -118,4 +118,46 @@ describe('Doctor Command Integration', () => {
     // This project now uses YAML (modern format), so all checks pass: 15/15
     expect(result).toContain('15/15 checks passed');
   });
+
+  it('should NOT show all checks in non-verbose mode when all pass', () => {
+    const result = execSync(`node ${cliPath} doctor`, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    // Summary should say 15/15 passed
+    expect(result).toContain('15/15 checks passed');
+
+    // But should NOT show individual check details (non-verbose mode)
+    // Count occurrences of ✅ emoji (one per displayed check)
+    const checkMatches = result.match(/✅/g);
+    const checkCount = checkMatches ? checkMatches.length : 0;
+
+    // In non-verbose mode with all passing, should show 0 checks (summary only)
+    expect(checkCount).toBe(0);
+  });
+
+  it('should show all checks in verbose mode when all pass', () => {
+    const result = execSync(`node ${cliPath} doctor --verbose`, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    // Summary should say 15/15 passed
+    expect(result).toContain('15/15 checks passed');
+
+    // Should show all 15 individual checks (verbose mode)
+    const checkMatches = result.match(/✅/g);
+    const checkCount = checkMatches ? checkMatches.length : 0;
+
+    // In verbose mode, should show all 15 checks
+    expect(checkCount).toBe(15);
+
+    // Verify some specific checks are shown
+    expect(result).toContain('Node.js version');
+    expect(result).toContain('Git installed');
+    expect(result).toContain('Configuration valid');
+  });
 });

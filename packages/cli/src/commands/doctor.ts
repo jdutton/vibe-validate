@@ -14,7 +14,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
-import { loadConfig, findConfigPath } from '../utils/config-loader.js';
+import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 
@@ -195,25 +195,48 @@ function checkConfigFormatMigration(): DoctorCheckResult {
 
 /**
  * Check if configuration is valid
+ *
+ * @param config - Config from loadConfig() (may be null)
+ * @param configWithErrors - Result from loadConfigWithErrors() with detailed error info
  */
-async function checkConfigValid(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
+async function checkConfigValid(
+  config?: VibeValidateConfig | null,
+  configWithErrors?: { config: VibeValidateConfig | null; errors: string[] | null; filePath: string | null }
+): Promise<DoctorCheckResult> {
   try {
     if (!config) {
-      // Find which config file exists (if any)
-      const configPath = findConfigPath();
+      // Check if we have detailed error information
+      if (configWithErrors?.errors && configWithErrors.filePath) {
+        const fileName = configWithErrors.filePath.split('/').pop() || 'vibe-validate.config.yaml';
+        const errorList = configWithErrors.errors.slice(0, 5); // Show first 5 errors
+        const errorMessages = errorList.map(err => `     • ${err}`).join('\n');
 
+        return {
+          name: 'Configuration valid',
+          passed: false,
+          message: `Found ${fileName} but it contains validation errors:\n${errorMessages}`,
+          suggestion: [
+            'Fix validation errors shown above',
+            'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
+            'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/examples'
+          ].join('\n   '),
+        };
+      }
+
+      // Fallback: try to find config file path
+      const configPath = findConfigPath();
       if (configPath) {
-        // Config file exists but failed to load (validation error)
         const fileName = configPath.split('/').pop() || 'vibe-validate.config.yaml';
         return {
           name: 'Configuration valid',
           passed: false,
           message: `Found ${fileName} but it contains validation errors`,
           suggestion: [
-            `💡 Fix syntax/validation errors in ${fileName}`,
-            '💡 See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
-            '💡 JSON Schema for IDE validation: https://unpkg.com/@vibe-validate/config/vibe-validate.schema.json',
-            '💡 Example configs: https://github.com/jdutton/vibe-validate/tree/main/packages/config/src/presets'
+            `Fix syntax/validation errors in ${fileName}`,
+            'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
+            'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/examples'
           ].join('\n   '),
         };
       } else {
@@ -222,7 +245,7 @@ async function checkConfigValid(config?: VibeValidateConfig | null): Promise<Doc
           name: 'Configuration valid',
           passed: false,
           message: 'No configuration file found',
-          suggestion: '💡 Run: vibe-validate init --preset typescript-nodejs (or typescript-library, typescript-react)',
+          suggestion: 'Run: vibe-validate init --preset typescript-nodejs (or typescript-library, typescript-react)',
         };
       }
     }
@@ -237,7 +260,7 @@ async function checkConfigValid(config?: VibeValidateConfig | null): Promise<Doc
       name: 'Configuration valid',
       passed: false,
       message: `Invalid configuration: ${_error instanceof Error ? _error.message : String(_error)}`,
-      suggestion: '💡 Check syntax in vibe-validate.config.yaml',
+      suggestion: 'Check syntax in vibe-validate.config.yaml',
     };
   }
 }
@@ -685,11 +708,14 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
 
   // Load config once to avoid duplicate warnings
   let config;
+  let configWithErrors;
   try {
     config = await loadConfig();
+    configWithErrors = await loadConfigWithErrors();
   } catch (_error) {
     // Config load error will be caught by checkConfigValid
     config = null;
+    configWithErrors = { config: null, errors: null, filePath: null };
   }
 
   // Run all checks
@@ -699,7 +725,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(checkGitRepository());
   allChecks.push(checkConfigFile());
   allChecks.push(checkConfigFormatMigration());
-  allChecks.push(await checkConfigValid(config));
+  allChecks.push(await checkConfigValid(config, configWithErrors));
   allChecks.push(await checkPackageManager(config));
   allChecks.push(await checkMainBranch(config));
   allChecks.push(await checkRemoteOrigin(config));
@@ -718,8 +744,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   const totalChecks = allChecks.length;
   const passedChecks = allChecks.filter(c => c.passed).length;
 
-  // In non-verbose mode, only show failing checks (or all if all pass for summary)
-  const checks = verbose ? allChecks : (allPassed ? allChecks : allChecks.filter(c => !c.passed));
+  // In non-verbose mode, only show failing checks (empty array if all pass)
+  // In verbose mode, always show all checks
+  const checks = verbose ? allChecks : allChecks.filter(c => !c.passed);
 
   return {
     allPassed,
@@ -739,10 +766,11 @@ export function doctorCommand(program: Command): void {
     .command('doctor')
     .description('Diagnose vibe-validate setup and environment')
     .option('--json', 'Output results as JSON')
-    .option('--verbose', 'Show all checks including passing ones')
-    .action(async (options: { json?: boolean; verbose?: boolean }) => {
+    .action(async (options: { json?: boolean; verbose?: boolean }, command: Command) => {
+      // Get verbose from global options (inherited from program)
+      const verbose = command.optsWithGlobals().verbose as boolean | undefined;
       try {
-        const result = await runDoctor({ verbose: options.verbose });
+        const result = await runDoctor({ verbose });
 
         if (options.json) {
           // JSON output for programmatic use
