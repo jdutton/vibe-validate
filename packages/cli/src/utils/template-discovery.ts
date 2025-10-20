@@ -7,6 +7,7 @@
 import { readdirSync, readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { splitLines } from './normalize-line-endings.js';
 
 /**
  * Metadata for a config template
@@ -70,7 +71,7 @@ function getTemplatesDir(): string {
  * @returns Template metadata
  */
 function parseTemplateMetadata(filename: string, content: string): TemplateMetadata {
-  const lines = content.split('\n');
+  const lines = splitLines(content);
 
   // Find the title line (line 2, format: "# CONFIGURATION TEMPLATE - <title>")
   let displayName = filename.replace('.yaml', '');

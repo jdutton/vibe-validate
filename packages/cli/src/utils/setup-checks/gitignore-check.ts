@@ -8,6 +8,7 @@
 import { readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { splitLines } from '../normalize-line-endings.js';
 import type {
   SetupCheck,
   CheckResult,
@@ -39,8 +40,7 @@ export class GitignoreSetupCheck implements SetupCheck {
     const content = await readFile(gitignorePath, 'utf-8');
 
     // Check if state file entry exists (with flexible whitespace)
-    const hasEntry = content
-      .split('\n')
+    const hasEntry = splitLines(content)
       .some(line => line.trim() === STATE_FILE_ENTRY);
 
     if (!hasEntry) {
@@ -139,8 +139,7 @@ export class GitignoreSetupCheck implements SetupCheck {
 
     // If .gitignore exists, add entry if missing
     const content = await readFile(gitignorePath, 'utf-8');
-    const hasEntry = content
-      .split('\n')
+    const hasEntry = splitLines(content)
       .some(line => line.trim() === STATE_FILE_ENTRY);
 
     if (hasEntry) {

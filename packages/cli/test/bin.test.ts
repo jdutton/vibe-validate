@@ -330,8 +330,12 @@ describe('bin.ts - CLI entry point', () => {
         const docs = readFileSync(docsPath, 'utf-8');
         const helpOutput = result.stdout;
 
+        // Normalize line endings to \n (Windows uses \r\n, Unix uses \n)
+        const normalizedDocs = docs.replace(/\r\n/g, '\n');
+        const normalizedHelpOutput = helpOutput.replace(/\r\n/g, '\n');
+
         // Extract the auto-synced section from docs (after the preamble separator ---)
-        const docsSections = docs.split('---\n');
+        const docsSections = normalizedDocs.split('---\n');
         if (docsSections.length < 2) {
           throw new Error(
             'docs/cli-reference.md should have a preamble followed by --- separator, ' +
@@ -341,7 +345,7 @@ describe('bin.ts - CLI entry point', () => {
 
         // The content after the first --- separator should be the exact help output
         const docsHelpContent = docsSections.slice(1).join('---\n').trim();
-        const expectedHelpOutput = helpOutput.trim();
+        const expectedHelpOutput = normalizedHelpOutput.trim();
 
         // Exact character-by-character match
         if (docsHelpContent !== expectedHelpOutput) {
