@@ -7,7 +7,6 @@
 > The content below is the exact output from running `vibe-validate --help --verbose`. This ensures perfect accuracy between CLI and documentation.
 
 ---
-
 # vibe-validate CLI Reference
 
 > Agent-friendly validation framework with git tree hash caching
