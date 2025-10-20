@@ -18,7 +18,7 @@ export const StepResultSchema = z.object({
   passed: z.boolean(),
 
   /** Execution duration in seconds */
-  durationSecs: z.number(),
+  durationSecs: z.coerce.number(),
 
   /** Output from the step (stdout + stderr) */
   output: z.string().optional(),
@@ -32,7 +32,7 @@ export const PhaseResultSchema = z.object({
   name: z.string(),
 
   /** Phase execution duration in seconds */
-  durationSecs: z.number(),
+  durationSecs: z.coerce.number(),
 
   /** Did the phase pass? */
   passed: z.boolean(),
