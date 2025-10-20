@@ -91,6 +91,7 @@ npm run pre-commit
 
 After running `init`, you'll have a configuration file that looks like this:
 
+<!-- config:example -->
 ```yaml
 # vibe-validate.config.yaml
 $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
@@ -262,6 +263,7 @@ Cache is NOT invalidated by:
    - Run independent checks in parallel phases
 
 2. **Use fail-fast for quick feedback**:
+   <!-- config:partial -->
    ```yaml
    validation:
      failFast: true  # Stop at first failure

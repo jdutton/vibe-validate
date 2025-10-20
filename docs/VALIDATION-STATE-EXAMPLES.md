@@ -192,10 +192,6 @@ Agents should expect ALL fields from the schema, but only these fields are guara
 **Optional fields (always):**
 - `phases` (array of phase results with steps)
 
-**Fields that do NOT exist:**
-- ❌ `agentPrompt` - This field does NOT exist in the schema
-- ❌ Any other undocumented fields
-
 ---
 
 # Configuration File Examples

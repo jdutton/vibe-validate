@@ -8,7 +8,7 @@ import type { Command } from 'commander';
 import { writeFileSync, existsSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dump as stringifyYaml, load as parseYaml } from 'js-yaml';
+import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
 import chalk from 'chalk';
 import { configExists } from '../utils/config-loader.js';
 import { detectGitConfig, type DetectedGitConfig } from '../utils/git-detection.js';
@@ -303,7 +303,6 @@ function generateYamlConfig(templateName: string, gitConfig: DetectedGitConfig):
   return stringifyYaml(templateConfig, {
     indent: 2,
     lineWidth: 100,
-    noRefs: true,
   });
 }
 

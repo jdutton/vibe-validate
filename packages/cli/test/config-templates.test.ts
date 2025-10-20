@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
-import { load as parseYaml } from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 import { resolve } from 'path';
 import { safeValidateConfig } from '@vibe-validate/config';
 

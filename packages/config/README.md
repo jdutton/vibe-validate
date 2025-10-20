@@ -35,6 +35,7 @@ All templates: https://github.com/jdutton/vibe-validate/tree/main/config-templat
 
 ### Example YAML Configuration
 
+<!-- config:example -->
 ```yaml
 $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
@@ -65,18 +66,13 @@ validation:
           description: Run test suite
 
   failFast: true  # Stop all validation on first phase failure
-
-# Output configuration
-output:
-  showProgress: true
-  verbose: false
-  noColor: false
 ```
 
 ### YAML Schema Support
 
 The `$schema` property enables IDE autocomplete and validation:
 
+<!-- config:partial -->
 ```yaml
 $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 ```
@@ -154,14 +150,12 @@ See the complete configuration reference: https://github.com/jdutton/vibe-valida
 - **`validation.phases`** - Array of validation phases to execute
 - **`validation.phases[].steps`** - Array of commands to run in each phase
 - **`validation.failFast`** - Stop all validation on first phase failure (default: true)
-- **`output`** - Output formatting options
-- **`ci`** - CI/CD configuration (Node versions, OS matrix, etc.)
-- **`hooks`** - Git hooks configuration
 
 ### Strict Validation
 
 All Zod schemas use strict validation - unknown properties are rejected:
 
+<!-- config:partial -->
 ```yaml
 validation:
   phases: []

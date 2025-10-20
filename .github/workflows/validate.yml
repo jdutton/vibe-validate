@@ -4,7 +4,7 @@
 #
 # Source of truth: vibe-validate.config.yaml
 name: Validation Pipeline
-"on":
+on:
   push:
     branches:
       - main
@@ -36,10 +36,13 @@ jobs:
         run: pnpm validate --verbose
       - name: Display validation state on failure
         if: failure()
-        run: |-
+        run: >-
           echo "=========================================="
+
           echo "📋 VALIDATION STATE FILE CONTENTS"
+
           echo "=========================================="
+
           if [ -f .vibe-validate-state.yaml ]; then
             cat .vibe-validate-state.yaml
           else
@@ -52,6 +55,7 @@ jobs:
             echo "🔍 Searching for state files:"
             find . -name "*validate*state*.yaml" -o -name ".vibe-validate*" 2>/dev/null || echo "No state files found"
           fi
+
           echo "=========================================="
       - name: Upload validation state on failure
         if: failure()

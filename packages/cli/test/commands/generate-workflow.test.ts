@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateWorkflow, checkSync, toJobId, getAllJobIds, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import yaml from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 
 // Mock fs module
 vi.mock('fs', () => ({
@@ -22,7 +22,7 @@ vi.mock('fs', () => ({
 function parseWorkflowYaml(workflowYaml: string): any {
   const lines = workflowYaml.split('\n');
   const yamlContent = lines.filter(line => !line.trim().startsWith('#') && line.trim() !== '').join('\n');
-  return yaml.load(yamlContent);
+  return parseYaml(yamlContent);
 }
 
 describe('generate-workflow command', () => {

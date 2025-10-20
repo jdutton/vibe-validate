@@ -6,7 +6,7 @@
 
 import { resolve, dirname } from 'path';
 import { readFileSync } from 'fs';
-import { load as parseYaml } from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 import { validateConfig, type VibeValidateConfig } from './schema.js';
 
 /**

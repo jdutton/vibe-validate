@@ -11,7 +11,7 @@ import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { execSync } from 'child_process';
-import { load as parseYaml } from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 
 describe('init command - schema validation', () => {
   let testDir: string;

@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
-import { load as parseYaml } from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 import { safeValidateResult } from '../src/result-schema.js';
 
 // Import config validator from config package

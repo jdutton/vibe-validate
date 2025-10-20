@@ -17,7 +17,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import yaml from 'js-yaml';
+import { stringify as yamlStringify } from 'yaml';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';
 import type { VibeValidateConfig, ValidationPhase } from '@vibe-validate/config';
@@ -514,12 +514,7 @@ echo "=========================================="`,
     '',
   ].join('\n');
 
-  const workflowYaml = yaml.dump(workflow, {
-    lineWidth: -1,
-    noRefs: true,
-    quotingType: '"',
-    forceQuotes: false,
-  });
+  const workflowYaml = yamlStringify(workflow);
 
   return header + workflowYaml;
 }

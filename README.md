@@ -379,6 +379,7 @@ All templates are available in the [config-templates directory](https://github.c
 
 `vibe-validate.config.yaml`:
 
+<!-- config:example -->
 ```yaml
 # vibe-validate.config.yaml
 
@@ -414,9 +415,6 @@ validation:
         - name: Build
           command: pnpm build
 
-  caching:
-    strategy: git-tree-hash  # Deterministic caching
-    enabled: true
   failFast: true  # Stop on first phase failure
 ```
 

@@ -89,14 +89,10 @@ src/index.ts:42:5 - error TS2322
 ```
 
 **Agent-friendly (YAML):**
+<!-- validation-result:partial -->
 ```yaml
 failedStep: TypeScript
 failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
-agentPrompt: |
-  The validation step "TypeScript" failed. Fix the following errors:
-
   src/index.ts:42:5 - error TS2322
   Type 'string' is not assignable to type 'number'
 ```
@@ -270,62 +266,40 @@ if (process.env.CI === 'true') {
 ### YAML Output Format
 
 **Structure:**
+<!-- validation-result:example -->
 ```yaml
 passed: false
 timestamp: 2025-10-16T15:30:00.000Z
-treeHash: a1b2c3d4e5f6789...
+treeHash: a1b2c3d4e5f6789abc123def456
 failedStep: TypeScript
+rerunCommand: pnpm typecheck
 failedStepOutput: |
   src/index.ts:42:5 - error TS2322
   Type 'string' is not assignable to type 'number'
 
   src/auth.ts:128:10 - error TS2345
   Argument of type 'null' is not assignable to parameter of type 'User'
-agentPrompt: |
-  The validation step "TypeScript" failed with 2 errors. Fix the following issues:
-
-  1. src/index.ts:42:5 - error TS2322
-     Type 'string' is not assignable to type 'number'
-
-  2. src/auth.ts:128:10 - error TS2345
-     Argument of type 'null' is not assignable to parameter of type 'User'
-
-  After fixing, run: vibe-validate validate
 ```
 
 ### Why YAML?
 
 **Benefits for AI assistants:**
 - **Structured data** - Easy to parse programmatically
-- **Embedded output** - Error details included in state file
-- **Ready-to-use prompt** - `agentPrompt` field is copy-paste ready
+- **Embedded output** - Error details included in state file (no separate log files)
 - **No ambiguity** - Clear field boundaries (no color codes)
 - **Cacheable** - Stored in `.vibe-validate-state.yaml`
 
-### Agent Prompt Generation
-
-The `agentPrompt` field provides a ready-to-use prompt for AI assistants:
-
-```typescript
-const prompt = `
-The validation step "${stepName}" failed with ${errorCount} errors.
-Fix the following issues:
-
-${formattedErrors}
-
-After fixing, run: vibe-validate validate
-`;
-```
+### Using State File in Agent Workflows
 
 **Example usage in Claude Code:**
 ```bash
 # Check validation status
 vibe-validate validate --check
 
-# View formatted errors with agent-friendly prompts
+# View state file with formatted errors
 vibe-validate state
 
-# Claude Code analyzes errors and suggests fixes
+# Claude Code reads failedStepOutput and suggests fixes
 ```
 
 ---
@@ -567,10 +541,7 @@ Verify formatter works as expected:
 vibe-validate validate --force
 
 # Check formatted output
-vibe-validate state --yaml
-
-# Verify agentPrompt is present
-vibe-validate state | grep -A 10 "Next steps"
+vibe-validate state
 ```
 
 ### 5. Contribute Formatters

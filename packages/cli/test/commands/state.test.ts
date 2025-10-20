@@ -169,7 +169,6 @@ treeHash: ${stateContent.treeHash}`;
         treeHash: 'abc123def456',
         failedStep: 'TypeScript Type Check',
         failedStepOutput: 'Error: Type mismatch\nExpected string, got number',
-        agentPrompt: 'Fix TypeScript type errors in src/index.ts',
       };
 
       // Write YAML format (not JSON!)
@@ -180,8 +179,7 @@ timestamp: ${stateContent.timestamp}
 treeHash: ${stateContent.treeHash}
 failedStep: ${stateContent.failedStep}
 failedStepOutput: |
-${indentedOutput}
-agentPrompt: ${stateContent.agentPrompt}`;
+${indentedOutput}`;
       writeFileSync(
         join(testDir, '.vibe-validate-state.yaml'),
         yamlContent

@@ -16,7 +16,6 @@ interface ValidationState {
   treeHash: string;
   failedStep?: string;
   failedStepOutput?: string;
-  agentPrompt?: string;
 }
 
 export function stateCommand(program: Command): void {
@@ -94,12 +93,6 @@ function displayVerboseState(state: ValidationState, yamlContent: string): void 
     if (state.failedStepOutput) {
       console.log(chalk.red('\nError Output (included in YAML above):'));
       console.log(chalk.gray('  See failedStepOutput field for complete error details'));
-    }
-
-    if (state.agentPrompt) {
-      console.log(chalk.yellow('\n💡 Agent Prompt:'));
-      console.log(chalk.gray('─'.repeat(50)));
-      console.log(chalk.gray(state.agentPrompt));
     }
   }
 

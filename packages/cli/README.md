@@ -207,6 +207,7 @@ npx vibe-validate sync-check --main-branch develop --remote-origin upstream
 
 Set defaults in `vibe-validate.config.yaml`:
 
+<!-- config:partial -->
 ```yaml
 git:
   mainBranch: main      # Default: 'main'
@@ -215,6 +216,7 @@ git:
 
 **Common scenarios:**
 
+<!-- config:partial -->
 ```yaml
 # Forked repository - sync with upstream
 git:
@@ -356,6 +358,7 @@ npx vibe-validate doctor
 
 Create `vibe-validate.config.yaml` in your project root:
 
+<!-- config:example -->
 ```yaml
 # JSON Schema for IDE autocomplete
 $schema: https://unpkg.com/@vibe-validate/config/vibe-validate.schema.json
@@ -443,6 +446,7 @@ npx vibe-validate state
 
 **Output:**
 
+<!-- validation-result:example -->
 ```yaml
 passed: false
 timestamp: 2025-10-16T20:00:00.000Z

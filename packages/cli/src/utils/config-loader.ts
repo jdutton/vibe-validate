@@ -84,7 +84,7 @@ export async function loadConfigWithErrors(cwd?: string): Promise<{
   // Always parse and validate to get detailed errors
   try {
     const { readFileSync } = await import('fs');
-    const { load: parseYaml } = await import('js-yaml');
+    const { parse: parseYaml } = await import('yaml');
     const { safeValidateConfig } = await import('@vibe-validate/config');
 
     const content = readFileSync(configPath, 'utf-8');

@@ -38,14 +38,12 @@ Found 1 error.
 ```
 
 **Agent-Friendly Output (Structured):**
+<!-- validation-result:partial -->
 ```yaml
 passed: false
 failedStep: TypeScript
 failedStepOutput: |
   src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
-agentPrompt: |
-  Fix this TypeScript error in src/index.ts:42:5:
   Type 'string' is not assignable to type 'number'
 ```
 
@@ -74,7 +72,6 @@ vibe-validate officially supports these AI coding assistants:
 2. Agent: Run `vibe-validate pre-commit`
 3. If validation fails:
    - Run `vibe-validate state` to get error details
-   - Extract `agentPrompt` field from output
    - Analyze errors and suggest fixes
    - Apply fixes
    - Re-run validation (cached, fast!)
@@ -97,7 +94,7 @@ do {
   result = run `vibe-validate validate`
   if (result.passed) break;
 
-  errors = parse result.agentPrompt
+  errors = parse result.failedStepOutput
   fixes = suggest_fixes(errors)
   apply_fixes(fixes)
 } while (max_iterations)
@@ -181,7 +178,6 @@ Validation results cached in `.vibe-validate-state.yaml`:
 When validation fails:
 1. Check validation status: `vibe-validate validate --check`
 2. View error details: `vibe-validate state`
-3. Fix errors listed in agentPrompt
 4. Re-run validation (fast with caching!)
 ```
 
@@ -200,21 +196,7 @@ $ vibe-validate state
 # Output (YAML format):
 # passed: false
 # failedStep: TypeScript
-# agentPrompt: |
-#   Fix these TypeScript errors:
-#   src/index.ts:42:5 - error TS2322
-
-# 2. Analyze and fix errors
-# (Claude Code reads YAML, understands errors, makes fixes)
-
-# 3. Re-validate (cached - fast!)
-$ vibe-validate validate
-
-# Output:
-# ✅ Validation passed (using cached state)
-
-# 4. Commit changes
-$ git commit -m "fix: resolve TypeScript errors"
+# 
 ```
 
 ### Claude Code Features
@@ -226,7 +208,6 @@ $ git commit -m "fix: resolve TypeScript errors"
 
 **State file integration:**
 - Claude Code can read `.vibe-validate-state.yaml`
-- `agentPrompt` field provides ready-to-use prompts
 - Structured data for programmatic parsing
 
 **Performance:**
@@ -449,7 +430,6 @@ validation:
     {
       "name": "fix-errors",
       "description": "Fix validation errors",
-      "prompt": "Run `vibe-validate state` to view errors, extract agentPrompt, and fix all listed errors. Re-validate after fixing."
     }
   ]
 }
@@ -537,16 +517,15 @@ cat .vibe-validate-state.yaml
 ```
 
 **State file structure:**
+<!-- validation-result:example -->
 ```yaml
 passed: false
 timestamp: 2025-10-16T15:30:00.000Z
-treeHash: a1b2c3d4e5f6789...
+treeHash: a1b2c3d4e5f6789abc123def456
 failedStep: TypeScript
+rerunCommand: pnpm typecheck
 failedStepOutput: |
   src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
-agentPrompt: |
-  Fix this TypeScript error in src/index.ts:42:5:
   Type 'string' is not assignable to type 'number'
 ```
 
@@ -571,7 +550,7 @@ with open('.vibe-validate-state.yaml', 'r') as f:
 if not state['passed']:
     print(f"Validation failed: {state['failedStep']}")
     print(f"Errors:\n{state['failedStepOutput']}")
-    print(f"\nPrompt:\n{state['agentPrompt']}")
+    print(f"\nPrompt:\n{state['failedStepOutput']}")
 
     # AI agent fixes errors here
     # ...
@@ -604,7 +583,7 @@ if (!state.passed) {
   console.log(`Errors:\n${state.failedStepOutput}`);
 
   // AI agent processes errors
-  const fixes = await aiAgent.fixErrors(state.agentPrompt);
+  const fixes = await aiAgent.fixErrors(state.failedStepOutput);
 
   // Apply fixes
   await applyFixes(fixes);
@@ -635,38 +614,6 @@ fi
 
 ## Best Practices
 
-### 1. Use `agentPrompt` Field
-
-The `agentPrompt` field is optimized for AI consumption:
-
-```yaml
-agentPrompt: |
-  The validation step "TypeScript" failed with 2 errors.
-  Fix the following issues:
-
-  1. src/index.ts:42:5 - error TS2322
-     Type 'string' is not assignable to type 'number'
-
-  2. src/auth.ts:128:10 - error TS2345
-     Argument of type 'null' is not assignable to parameter of type 'User'
-
-  After fixing, run: vibe-validate validate
-```
-
-**Agent workflow:**
-```typescript
-// Read agentPrompt
-const prompt = state.agentPrompt;
-
-// Feed to AI model
-const response = await ai.chat(prompt);
-
-// Apply suggested fixes
-await applyFixes(response);
-
-// Re-validate
-await validate();
-```
 
 ### 2. Leverage Caching for Iteration
 
