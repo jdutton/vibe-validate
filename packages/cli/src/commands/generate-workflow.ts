@@ -303,25 +303,25 @@ echo "=========================================="`,
     });
 
     // Windows-specific display state step using PowerShell
-    // Note: Using single quotes in PowerShell to avoid variable expansion issues
+    // Note: Emojis removed due to PowerShell UTF-8 encoding issues on Windows
     jobSteps.push({
       name: 'Display validation state on failure (Windows)',
       if: "failure() && runner.os == 'Windows'",
       shell: 'powershell',
       run: `Write-Host '=========================================='
-Write-Host '📋 VALIDATION STATE FILE CONTENTS'
+Write-Host 'VALIDATION STATE FILE CONTENTS'
 Write-Host '=========================================='
 
 if (Test-Path .vibe-validate-state.yaml) {
   Get-Content .vibe-validate-state.yaml
 } else {
-  Write-Host '❌ State file not found!'
+  Write-Host 'State file not found!'
   Write-Host "Expected location: $PWD\\.vibe-validate-state.yaml"
   Write-Host ''
-  Write-Host '📂 Files in current directory:'
+  Write-Host 'Files in current directory:'
   Get-ChildItem | Select-Object -First 20
   Write-Host ''
-  Write-Host '🔍 Searching for state files:'
+  Write-Host 'Searching for state files:'
   Get-ChildItem -Recurse -Filter '*validate*state*.yaml' -ErrorAction SilentlyContinue
 }
 
