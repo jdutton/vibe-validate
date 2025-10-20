@@ -22,13 +22,14 @@ describe('WorkflowSetupCheck', () => {
     workflowCheck = new WorkflowSetupCheck();
 
     // Create minimal config file for workflow generation
-    const configContent = `extends: typescript-nodejs
-validation:
+    const configContent = `validation:
   phases:
     - name: Test Phase
       steps:
         - name: Test Step
           command: echo "test"
+git:
+  mainBranch: main
 `;
     await writeFile(join(testDir, 'vibe-validate.config.yaml'), configContent);
   });

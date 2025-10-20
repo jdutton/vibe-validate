@@ -11,7 +11,7 @@ import { existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { execSync } from 'child_process';
-import { load as parseYaml } from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 
 describe('init command - schema validation', () => {
   let testDir: string;
@@ -32,7 +32,7 @@ describe('init command - schema validation', () => {
   describe('schema URL in generated configs', () => {
     it('should generate config with correct schema URL', async () => {
       // Run init command
-      execSync(`node ${cliPath} init --preset typescript-library`, {
+      execSync(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
@@ -51,7 +51,7 @@ describe('init command - schema validation', () => {
     });
 
     it('should reference schema file with correct filename', () => {
-      execSync(`node ${cliPath} init --preset typescript-library`, {
+      execSync(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
@@ -104,7 +104,7 @@ describe('init command - schema validation', () => {
 
     it('should be accessible via GitHub raw URL', () => {
       // Generate config and verify it references the GitHub URL
-      execSync(`node ${cliPath} init --preset typescript-library`, {
+      execSync(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
@@ -148,15 +148,15 @@ describe('init command - schema validation', () => {
   });
 
   describe('multiple config formats', () => {
-    it('should use same schema URL for all presets', async () => {
-      const presets = ['typescript-library', 'typescript-nodejs', 'typescript-react'];
+    it('should use same schema URL for all templates', async () => {
+      const templates = ['typescript-library', 'typescript-nodejs', 'typescript-react'];
       const schemaUrls: string[] = [];
 
-      for (const preset of presets) {
-        const dir = join(testDir, preset);
+      for (const template of templates) {
+        const dir = join(testDir, template);
         await mkdir(dir, { recursive: true });
 
-        execSync(`node ${cliPath} init --preset ${preset}`, {
+        execSync(`node ${cliPath} init --template ${template}`, {
           cwd: dir,
         });
 
@@ -167,7 +167,7 @@ describe('init command - schema validation', () => {
         schemaUrls.push(config.$schema as string);
       }
 
-      // All presets should use the same schema URL
+      // All templates should use the same schema URL
       expect(new Set(schemaUrls).size).toBe(1);
       expect(schemaUrls[0]).toContain('vibe-validate.schema.json');
     });

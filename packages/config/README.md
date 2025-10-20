@@ -1,15 +1,13 @@
 # @vibe-validate/config
 
-TypeScript-first configuration system for vibe-validate with Zod schema validation and framework presets.
+Configuration system for vibe-validate with strict Zod schema validation and JSON Schema support.
 
 ## Features
 
-- ✅ **TypeScript-First**: Full type safety with IDE autocomplete
-- ✅ **Zod Validation**: Runtime schema validation with detailed error messages
-- ✅ **Framework Presets**: Pre-configured setups for common TypeScript project types
-- ✅ **Preset Override**: Extend and customize presets easily
-- ✅ **Multiple File Formats**: Support for `.ts`, `.mts`, `.js`, `.mjs`, and `.json` configs
-- ✅ **Config Extension**: Extend other config files
+- ✅ **Strict Schema Validation**: Runtime validation with Zod (rejects unknown properties)
+- ✅ **JSON Schema Support**: IDE autocomplete and validation for YAML configs
+- ✅ **YAML Configuration**: Primary format with schema validation
+- ✅ **Type Safety**: Full TypeScript definitions for programmatic use
 
 ## Installation
 
@@ -19,167 +17,92 @@ npm install @vibe-validate/config
 
 ## Usage
 
-### Basic Configuration
+### YAML Configuration (Recommended)
 
-Create a `vibe-validate.config.ts` file in your project root:
+Create a `vibe-validate.config.yaml` file using a template:
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Type Checking',
-        parallel: false,
-        steps: [
-          { name: 'TypeScript', command: 'tsc --noEmit' }
-        ]
-      }
-    ]
-  }
-});
+```bash
+npx vibe-validate init --template typescript-nodejs
 ```
 
-### Using a Preset
+**Available templates:**
+- `minimal` - Bare-bones starting point
+- `typescript-library` - TypeScript libraries/npm packages
+- `typescript-nodejs` - Node.js applications
+- `typescript-react` - React/Next.js applications
 
-Start with a framework-specific preset:
+All templates: https://github.com/jdutton/vibe-validate/tree/main/config-templates
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
+### Example YAML Configuration
 
-export default defineConfig({
-  preset: 'typescript-nodejs',
-  // Optional: Override or extend preset configuration
-  validation: {
-    phases: [
-      // Add custom phases or override preset phases
-    ]
-  }
-});
+<!-- config:example -->
+```yaml
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+
+# Git settings
+git:
+  mainBranch: main
+  autoSync: false
+  warnIfBehind: true
+
+# Validation configuration
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: true
+      steps:
+        - name: TypeScript
+          command: tsc --noEmit
+          description: Type-check all code
+        - name: ESLint
+          command: eslint .
+          description: Lint for code quality
+
+    - name: Testing
+      parallel: false
+      steps:
+        - name: Unit Tests
+          command: npm test
+          description: Run test suite
+
+  failFast: true  # Stop all validation on first phase failure
 ```
 
-### Available Presets
+### YAML Schema Support
 
-#### `typescript-library`
+The `$schema` property enables IDE autocomplete and validation:
 
-Default preset for TypeScript npm libraries:
-- TypeScript type checking
-- ESLint linting
-- Unit tests
-- Build validation
-
-#### `typescript-nodejs`
-
-Preset for Node.js applications:
-- TypeScript type checking + build
-- ESLint linting
-- Unit + integration tests
-
-#### `typescript-react`
-
-Preset for React applications:
-- TypeScript type checking
-- ESLint linting
-- Unit + component tests
-- Production build (10min timeout)
-
-## Configuration Schema
-
-### Full Configuration Example
-
-```typescript
-import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Phase 1: Pre-Qualification',
-        parallel: true,
-        timeout: 300000, // 5 minutes (default)
-        failFast: true,  // Stop on first error (default)
-        steps: [
-          {
-            name: 'TypeScript',
-            command: 'tsc --noEmit',
-            timeout: 60000, // Step-specific timeout
-            continueOnError: false,
-            env: { NODE_ENV: 'test' },
-            cwd: './packages/core'
-          }
-        ]
-      }
-    ],
-    caching: {
-      strategy: 'git-tree-hash', // 'git-tree-hash' | 'timestamp' | 'disabled'
-      enabled: true,
-      statePath: '.vibe-validate-state.yaml'
-    }
-  },
-  git: {
-    mainBranch: 'main',
-    autoSync: false,
-    warnIfBehind: true
-  },
-  output: {
-    format: 'auto', // 'auto' | 'human' | 'yaml' | 'json'
-    showProgress: true,
-    verbose: false,
-    noColor: false
-  }
-});
+<!-- config:partial -->
+```yaml
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 ```
 
-### Config Extension
+This gives you:
+- ✅ Autocomplete for all configuration properties
+- ✅ Inline validation errors
+- ✅ Hover documentation for each field
+- ✅ Type checking for YAML configs
 
-Extend another config file:
+## API (Programmatic Usage)
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
+### `loadConfig(cwd?)`
 
-export default defineConfig({
-  extends: '../base-config.ts',
-  validation: {
-    // Overrides merged with base config
-  }
-});
-```
-
-## API
-
-### `defineConfig(config)`
-
-Type-safe configuration helper providing IDE autocomplete and validation.
-
-### `getPreset(name)`
-
-Get a preset by name:
+Load configuration from current directory:
 
 ```typescript
-import { getPreset } from '@vibe-validate/config';
+import { loadConfig } from '@vibe-validate/config';
 
-const preset = getPreset('typescript-library');
-```
-
-### `listPresets()`
-
-List all available presets:
-
-```typescript
-import { listPresets } from '@vibe-validate/config';
-
-console.log(listPresets()); // ['typescript-library', 'typescript-nodejs', 'typescript-react']
+const config = await loadConfig(); // Searches for vibe-validate.config.yaml
 ```
 
 ### `loadConfigFromFile(path)`
 
-Load and validate configuration from a file:
+Load and validate configuration from a specific file:
 
 ```typescript
 import { loadConfigFromFile } from '@vibe-validate/config';
 
-const config = await loadConfigFromFile('./vibe-validate.config.ts');
+const config = await loadConfigFromFile('./vibe-validate.config.yaml');
 ```
 
 ### `findAndLoadConfig(cwd?)`
@@ -192,30 +115,9 @@ import { findAndLoadConfig } from '@vibe-validate/config';
 const config = await findAndLoadConfig(); // Searches for config in cwd
 ```
 
-### `loadConfigWithFallback(cwd?)`
+### `validateConfig(rawConfig)`
 
-Load configuration with fallback to default preset:
-
-```typescript
-import { loadConfigWithFallback } from '@vibe-validate/config';
-
-const config = await loadConfigWithFallback(); // Uses typescript-library preset if no config found
-```
-
-## Configuration File Discovery
-
-The loader searches for config files in this order:
-
-1. `vibe-validate.config.ts`
-2. `vibe-validate.config.mts`
-3. `vibe-validate.config.js`
-4. `vibe-validate.config.mjs`
-5. `vibe-validate.config.json`
-6. `.vibe-validate.json`
-
-## Validation
-
-Zod schemas provide runtime validation with detailed error messages:
+Validate a raw configuration object:
 
 ```typescript
 import { validateConfig, safeValidateConfig } from '@vibe-validate/config';
@@ -229,6 +131,38 @@ if (!result.success) {
   console.error(result.errors);
 }
 ```
+
+## Configuration File Discovery
+
+The loader searches for the config file:
+
+- `vibe-validate.config.yaml` (only supported format)
+
+
+## Configuration Schema
+
+See the complete configuration reference: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
+
+### Key Sections
+
+- **`git`** - Git repository settings (mainBranch, autoSync, etc.)
+- **`validation`** - Validation phases and steps configuration
+- **`validation.phases`** - Array of validation phases to execute
+- **`validation.phases[].steps`** - Array of commands to run in each phase
+- **`validation.failFast`** - Stop all validation on first phase failure (default: true)
+
+### Strict Validation
+
+All Zod schemas use strict validation - unknown properties are rejected:
+
+<!-- config:partial -->
+```yaml
+validation:
+  phases: []
+  unknownProperty: true  # ❌ ERROR: Unrecognized key 'unknownProperty'
+```
+
+This catches typos and prevents configuration drift.
 
 ## License
 

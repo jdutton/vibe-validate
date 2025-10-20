@@ -14,34 +14,30 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['packages/*/src/**/*.ts'],
       exclude: [
+        // Only exclude true build artifacts and type definitions
         'packages/*/src/**/*.d.ts',
         'packages/*/dist/**',
-        // Exclude index files (re-exports only)
-        'packages/*/src/index.ts',
-        // Exclude type definition files
-        'packages/*/src/types.ts',
-        // Exclude CLI command files (tested via integration tests)
-        'packages/cli/src/commands/**/*.ts',
-        // Exclude bin.ts entry point (tested via integration tests)
-        'packages/cli/src/bin.ts',
-        // Exclude core CLI (entry point, tested via integration)
-        'packages/core/src/cli.ts',
-        // Exclude scripts (not runtime code)
+        'packages/*/src/index.ts',  // Re-exports only
+        'packages/*/src/types.ts',   // Type definitions only
+        // Build-time scripts (not runtime code)
         'packages/*/src/scripts/**/*.ts',
-        // Exclude utility modules with external dependencies
-        'packages/formatters/src/utils.ts',
-        'packages/config/src/git-helpers.ts',
-        'packages/config/src/schema-export.ts',
-        'packages/cli/src/utils/setup-engine.ts',
+        'packages/config/src/schema-export.ts',  // Build-time JSON schema generation
       ],
       thresholds: {
-        // Updated for v0.9.5 (2025-10-17)
-        // Current coverage: 74.59% statements, 86.72% branches, 81.05% functions, 74.59% lines
-        // Thresholds lowered to allow new feature development without test coverage blocking releases
-        statements: 72,
-        branches: 84,
-        functions: 78,
-        lines: 72,
+        // v0.11.0: True coverage with minimal exclusions
+        // Current: 69.83% statements, 88.45% branches, 90.83% functions, 69.83% lines
+        //
+        // Strategy:
+        // - CLI commands (bin.ts, init.ts, cleanup.ts, sync-check.ts) have 0% unit test coverage
+        //   These are tested via integration tests (see packages/cli/test/integration/)
+        // - All utility modules (git-helpers, formatters/utils, etc.) have 100% coverage
+        // - Core validation logic (runner.ts, process-utils.ts) has 95%+ coverage
+        //
+        // Thresholds set to current levels to prevent regression
+        statements: 69,
+        branches: 88,
+        functions: 90,
+        lines: 69,
       },
     },
   },

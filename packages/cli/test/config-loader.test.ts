@@ -41,15 +41,6 @@ describe('config-loader', () => {
       expect(exists).toBe(true);
     });
 
-    it('should return true if vibe-validate.config.mjs exists (deprecated)', () => {
-      const configPath = join(testDir, 'vibe-validate.config.mjs');
-      writeFileSync(configPath, 'export default {}');
-
-      const exists = configExists(testDir);
-
-      expect(exists).toBe(true);
-    });
-
     it('should return false if no config file exists', () => {
       const exists = configExists(testDir);
 
@@ -73,26 +64,6 @@ describe('config-loader', () => {
       const foundPath = findConfigPath(testDir);
 
       expect(foundPath).toBe(configPath);
-    });
-
-    it('should return path if vibe-validate.config.mjs exists (deprecated)', () => {
-      const configPath = join(testDir, 'vibe-validate.config.mjs');
-      writeFileSync(configPath, 'export default {}');
-
-      const foundPath = findConfigPath(testDir);
-
-      expect(foundPath).toBe(configPath);
-    });
-
-    it('should prioritize vibe-validate.config.yaml over .mjs', () => {
-      const yamlPath = join(testDir, 'vibe-validate.config.yaml');
-      const mjsPath = join(testDir, 'vibe-validate.config.mjs');
-      writeFileSync(yamlPath, 'validation:\n  phases: []\n');
-      writeFileSync(mjsPath, 'export default {}');
-
-      const foundPath = findConfigPath(testDir);
-
-      expect(foundPath).toBe(yamlPath);
     });
 
     it('should return null if no config file exists', () => {

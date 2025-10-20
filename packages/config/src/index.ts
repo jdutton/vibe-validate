@@ -1,40 +1,24 @@
 /**
  * @vibe-validate/config
  *
- * Configuration system for vibe-validate with TypeScript-first design,
- * Zod schema validation, and framework presets.
+ * Configuration system for vibe-validate with YAML-first design
+ * and Zod schema validation.
  *
- * @example
- * ```typescript
- * import { defineConfig } from '@vibe-validate/config';
+ * @example Basic YAML configuration
+ * ```yaml
+ * # vibe-validate.config.yaml
+ * $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
  *
- * export default defineConfig({
- *   validation: {
- *     phases: [
- *       {
- *         name: 'Type Checking',
- *         parallel: false,
- *         steps: [
- *           { name: 'TypeScript', command: 'tsc --noEmit' }
- *         ]
- *       }
- *     ]
- *   }
- * });
- * ```
+ * git:
+ *   mainBranch: main
  *
- * @example Using a preset
- * ```typescript
- * import { defineConfig } from '@vibe-validate/config';
- *
- * export default defineConfig({
- *   preset: 'typescript-nodejs',
- *   validation: {
- *     phases: [
- *       // Override or extend preset phases
- *     ]
- *   }
- * });
+ * validation:
+ *   phases:
+ *     - name: Type Checking
+ *       parallel: false
+ *       steps:
+ *         - name: TypeScript
+ *           command: tsc --noEmit
  * ```
  */
 
@@ -43,18 +27,14 @@ export {
   type ValidationStep,
   type ValidationPhase,
   type ValidationConfig,
-  type CachingStrategy,
   type GitConfig,
-  type OutputConfig,
   type CIConfig,
   type HooksConfig,
   type VibeValidateConfig,
   ValidationStepSchema,
   ValidationPhaseSchema,
   ValidationConfigSchema,
-  CachingStrategySchema,
   GitConfigSchema,
-  OutputConfigSchema,
   CIConfigSchema,
   HooksConfigSchema,
   VibeValidateConfigSchema,
@@ -62,25 +42,11 @@ export {
   safeValidateConfig,
 } from './schema.js';
 
-// Config definition helper
-export { defineConfig, mergeConfig } from './define-config.js';
-
-// Presets
-export {
-  typescriptLibraryPreset,
-  typescriptNodejsPreset,
-  typescriptReactPreset,
-  PRESETS,
-  getPreset,
-  listPresets,
-} from './presets/index.js';
-
 // Config loading
 export {
-  CONFIG_FILE_NAMES,
+  CONFIG_FILE_NAME,
   loadConfigFromFile,
   findAndLoadConfig,
-  loadConfigWithFallback,
 } from './loader.js';
 
 // Git configuration constants and helpers

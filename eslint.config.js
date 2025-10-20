@@ -45,7 +45,6 @@ export default [
       'coverage/',
       'node_modules/',
       '**/*.js', // Ignore compiled JS files
-      '**/*.mjs', // Ignore config files
       '**/*.d.ts',
     ],
   },

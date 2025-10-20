@@ -2,7 +2,7 @@
  * Agent Context Detection
  *
  * Detects if running in an agent context (Claude Code, Cursor, CI, etc.)
- * and adapts output format accordingly.
+ * and adapts output verbosity accordingly (minimal for agents, verbose for interactive).
  */
 
 export interface AgentContext {

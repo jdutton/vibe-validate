@@ -72,7 +72,7 @@ Optionally updates .gitignore
 **Exit codes:**
 
 - `0` - Configuration created successfully
-- `1` - Failed (config exists without --force, or invalid preset)
+- `1` - Failed (config exists without --force, or invalid template)
 
 **Creates/modifies:**
 
@@ -83,21 +83,20 @@ Optionally updates .gitignore
 
 **Options:**
 
-- `-p, --preset <preset>` - Use preset (typescript-library|typescript-nodejs|typescript-react)
+- `-t, --template <name>` - Template to use (minimal|typescript-library|typescript-nodejs|typescript-react)
 - `-f, --force` - Overwrite existing configuration
 - `--dry-run` - Preview changes without writing files
 - `--setup-hooks` - Install pre-commit hook
 - `--setup-workflow` - Create GitHub Actions workflow
 - `--fix-gitignore` - Add state file to .gitignore
-- `--migrate` - Migrate .mjs config to .yaml format
 
 **Examples:**
 
 ```bash
-vibe-validate init --preset typescript-nodejs
-vibe-validate init --preset typescript-nodejs --setup-workflow --setup-hooks
-vibe-validate init --force --preset typescript-react  # Overwrite existing
-vibe-validate init --migrate  # Convert .mjs to .yaml
+vibe-validate init  # Uses minimal template
+vibe-validate init --template typescript-nodejs
+vibe-validate init --template typescript-nodejs --setup-workflow --setup-hooks
+vibe-validate init --force --template typescript-react  # Overwrite existing
 ```
 
 ---
@@ -264,7 +263,7 @@ Show or validate vibe-validate configuration
 
 Shows resolved configuration
 Validates configuration structure
-Shows preset merging if applicable
+Displays all configuration settings
 
 **Exit codes:**
 
@@ -347,7 +346,6 @@ Verifies GitHub Actions workflow
 **Options:**
 
 - `--json` - Output results as JSON
-- `--verbose` - Show all checks including passing ones
 
 **Examples:**
 
@@ -378,7 +376,7 @@ vibe-validate doctor --json  # JSON output for scripts
 ### First-time setup
 
 ```bash
-vibe-validate init --preset typescript-nodejs --setup-workflow
+vibe-validate init --template typescript-nodejs --setup-workflow
 git add vibe-validate.config.yaml .github/workflows/validate.yml
 git commit -m "feat: add vibe-validate"
 ```

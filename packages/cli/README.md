@@ -30,15 +30,13 @@ npx @vibe-validate/cli validate
 
 ## Quick Start
 
-1. **Create configuration file** (`vibe-validate.config.mjs`):
+1. **Create configuration file**:
 
-```javascript
-import { defineConfig, preset } from '@vibe-validate/config';
-
-export default defineConfig({
-  preset: preset('typescript-nodejs'),
-});
+```bash
+npx vibe-validate init --template typescript-nodejs
 ```
+
+This creates `vibe-validate.config.yaml` with sensible defaults.
 
 2. **Run validation**:
 
@@ -66,7 +64,7 @@ npx vibe-validate validate [options]
 - `--force` - Bypass cache and force re-validation
 - `--no-cache` - Disable caching for this run
 - `-v, --verbose` - Show detailed progress and output
-- `--config <path>` - Path to config file (default: `vibe-validate.config.mjs`)
+- `--config <path>` - Path to config file (default: `vibe-validate.config.yaml`)
 
 **Examples:**
 
@@ -81,7 +79,7 @@ npx vibe-validate validate --force
 npx vibe-validate validate --verbose
 
 # Custom config file
-npx vibe-validate validate --config ./custom-config.mjs
+npx vibe-validate validate --config ./custom-config.yaml
 ```
 
 **Exit Codes:**
@@ -145,8 +143,8 @@ npx vibe-validate config --verbose
 
 **Use cases:**
 - Verify configuration is loaded correctly
-- Debug preset behavior
-- Inspect default values
+- Debug configuration behavior
+- Inspect settings
 
 ---
 
@@ -207,31 +205,28 @@ npx vibe-validate sync-check --main-branch develop --remote-origin upstream
 
 **Configuration:**
 
-Set defaults in `vibe-validate.config.mjs`:
+Set defaults in `vibe-validate.config.yaml`:
 
-```javascript
-export default defineConfig({
-  git: {
-    mainBranch: 'main',      // Default: 'main'
-    remoteOrigin: 'origin',  // Default: 'origin'
-  },
-});
+<!-- config:partial -->
+```yaml
+git:
+  mainBranch: main      # Default: 'main'
+  remoteOrigin: origin  # Default: 'origin'
 ```
 
 **Common scenarios:**
 
-```javascript
-// Forked repository - sync with upstream
-git: {
-  mainBranch: 'main',
-  remoteOrigin: 'upstream',
-}
+<!-- config:partial -->
+```yaml
+# Forked repository - sync with upstream
+git:
+  mainBranch: main
+  remoteOrigin: upstream
 
-// Legacy project - use master branch
-git: {
-  mainBranch: 'master',
-  remoteOrigin: 'origin',
-}
+# Legacy project - use master branch
+git:
+  mainBranch: master
+  remoteOrigin: origin
 ```
 
 ---
@@ -361,60 +356,47 @@ npx vibe-validate doctor
 
 ## Configuration
 
-Create `vibe-validate.config.mjs` in your project root:
+Create `vibe-validate.config.yaml` in your project root:
 
-```javascript
-import { defineConfig } from '@vibe-validate/config';
+<!-- config:example -->
+```yaml
+# JSON Schema for IDE autocomplete
+$schema: https://unpkg.com/@vibe-validate/config/vibe-validate.schema.json
 
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          { name: 'TypeScript', command: 'pnpm typecheck' },
-          { name: 'ESLint', command: 'pnpm lint' },
-        ],
-      },
-      {
-        name: 'Testing',
-        steps: [
-          { name: 'Unit Tests', command: 'pnpm test' },
-        ],
-      },
-    ],
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-  },
-  git: {
-    mainBranch: 'main',
-    remoteOrigin: 'origin',
-    warnIfBehind: true,
-  },
-  output: {
-    format: 'auto',
-    showProgress: true,
-  },
-});
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  warnIfBehind: true
+
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: true
+      steps:
+        - name: TypeScript
+          command: pnpm typecheck
+        - name: ESLint
+          command: pnpm lint
+
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: pnpm test
 ```
 
-**Or use presets:**
+**Or use a config template:**
 
-```javascript
-import { defineConfig, preset } from '@vibe-validate/config';
-
-export default defineConfig({
-  preset: preset('typescript-nodejs'),
-});
+```bash
+npx vibe-validate init --template typescript-nodejs
 ```
 
-**Available presets:**
+**Available templates:**
+- `minimal` - Bare-bones starting point
 - `typescript-library` - TypeScript library (no runtime)
 - `typescript-nodejs` - Node.js application with TypeScript
 - `typescript-react` - React application with TypeScript
+
+All templates available at: https://github.com/jdutton/vibe-validate/tree/main/config-templates
 
 ## Caching
 
@@ -464,6 +446,7 @@ npx vibe-validate state
 
 **Output:**
 
+<!-- validation-result:example -->
 ```yaml
 passed: false
 timestamp: 2025-10-16T20:00:00.000Z
@@ -562,12 +545,11 @@ vv config
 
 ## Links
 
-- [Full Documentation](https://github.com/jeffrdutton/vibe-validate#readme)
-- [Configuration Guide](https://github.com/jeffrdutton/vibe-validate/blob/main/docs/configuration.md)
-- [Presets Reference](https://github.com/jeffrdutton/vibe-validate/blob/main/docs/presets.md)
-- [API Reference](https://github.com/jeffrdutton/vibe-validate/blob/main/docs/api/)
-- [Examples](https://github.com/jeffrdutton/vibe-validate/tree/main/examples)
+- [Full Documentation](https://github.com/jdutton/vibe-validate#readme)
+- [Configuration Reference](https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md)
+- [Config Templates Guide](https://github.com/jdutton/vibe-validate/blob/main/config-templates/README.md)
+- [Getting Started](https://github.com/jdutton/vibe-validate/blob/main/docs/getting-started.md)
 
 ## License
 
-MIT © [Jeff Dutton](https://github.com/jeffrdutton)
+MIT © [Jeff Dutton](https://github.com/jdutton)

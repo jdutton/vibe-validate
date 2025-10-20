@@ -50,8 +50,8 @@ This information will help us triage your report more quickly.
 vibe-validate executes user-defined commands from configuration files. Users should:
 
 - Only use configuration files from trusted sources
-- Review all `validateScript` commands before running validation
-- Be cautious with third-party presets that execute arbitrary commands
+- Review all validation step commands before running validation
+- Be cautious with third-party templates that execute arbitrary commands
 
 ### Git Operations
 
@@ -80,7 +80,7 @@ vibe-validate respects standard environment variables but does not:
 ## Security Best Practices for Users
 
 1. **Trust Your Configuration**: Only use configuration files from trusted sources
-2. **Review Presets**: Examine preset configurations before using them
+2. **Review Templates**: Examine template configurations before using them
 3. **Keep Updated**: Use the latest version of vibe-validate for security fixes
 4. **Audit Commands**: Review all validation commands in your config
 5. **Limit Scope**: Run validation in isolated environments (CI/CD, containers) when possible

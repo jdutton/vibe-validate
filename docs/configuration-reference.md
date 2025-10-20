@@ -8,12 +8,6 @@ vibe-validate uses **YAML** as the configuration format.
 
 The configuration file must be named `vibe-validate.config.yaml` in your project root.
 
-**Migrating configurations**: After upgrading vibe-validate, run:
-```bash
-npx vibe-validate init --migrate
-```
-This will help migrate your configuration to the latest format and structure.
-
 ## Basic Configuration
 
 ### YAML Configuration
@@ -24,9 +18,6 @@ This will help migrate your configuration to the latest format and structure.
 # JSON Schema for IDE autocomplete and validation
 $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-# Use a preset as base (typescript-library, typescript-nodejs, typescript-react)
-extends: typescript-library
-
 # Git integration settings
 git:
   mainBranch: main
@@ -35,21 +26,16 @@ git:
 
 # Validation configuration
 validation:
-  caching:
-    strategy: git-tree-hash  # Content-based caching
-    enabled: true
   failFast: true  # Stop at first failure
 ```
 
 ### Configuration with Custom Phases
 
-If you need to customize validation steps beyond the preset defaults:
+Example with custom validation phases:
 
 ```yaml
 # vibe-validate.config.yaml
 $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
-
-extends: typescript-library
 
 git:
   mainBranch: main
@@ -57,7 +43,7 @@ git:
   autoSync: false
 
 validation:
-  # Override preset phases with custom steps
+  # Define custom validation phases
   phases:
     - name: Pre-Qualification
       parallel: true  # Run steps simultaneously
@@ -76,10 +62,6 @@ validation:
           command: npm test
           description: Run unit tests with coverage
 
-  caching:
-    strategy: git-tree-hash
-    enabled: true
-
   failFast: false  # Continue even if a step fails
 ```
 
@@ -87,12 +69,12 @@ validation:
 
 ### Top-Level Options
 
-```typescript
-{
-  validation: ValidationConfig;  // Required
-  git?: GitConfig;               // Optional
-  output?: OutputConfig;         // Optional
-}
+```yaml
+validation:  # Required - validation configuration
+  phases: []
+
+git:  # Optional - git integration settings
+  mainBranch: main
 ```
 
 ## Validation Configuration
@@ -105,15 +87,13 @@ Array of validation phases. Each phase groups related validation steps.
 
 **Required**: Yes
 
-```typescript
-phases: [
-  {
-    name: string;        // Phase name
-    parallel?: boolean;  // Run steps in parallel (default: false)
-    steps: Step[];       // Validation steps
-  },
-  // ... more phases
-]
+```yaml
+phases:
+  - name: Phase Name         # Required: string
+    parallel: false           # Optional: boolean (default: false)
+    steps:                    # Required: array of steps
+      - name: Step Name
+        command: command here
 ```
 
 ### Phase Options
@@ -136,27 +116,80 @@ Whether to run steps in this phase simultaneously or sequentially.
 
 **Examples**:
 
-```typescript
-// Parallel execution (faster, for independent checks)
-{
-  name: 'Static Analysis',
-  parallel: true,
-  steps: [
-    { name: 'TypeScript', command: 'tsc --noEmit' },
-    { name: 'ESLint', command: 'eslint src/' },
-  ],
-}
+```yaml
+# Parallel execution (faster, for independent checks)
+- name: Static Analysis
+  parallel: true
+  steps:
+    - name: TypeScript
+      command: tsc --noEmit
+    - name: ESLint
+      command: eslint src/
 
-// Sequential execution (for dependent checks)
-{
-  name: 'Testing',
-  parallel: false,
-  steps: [
-    { name: 'Unit Tests', command: 'vitest run' },
-    { name: 'Integration Tests', command: 'npm run test:integration' },
-  ],
-}
+# Sequential execution (for dependent checks)
+- name: Testing
+  parallel: false
+  steps:
+    - name: Unit Tests
+      command: vitest run
+    - name: Integration Tests
+      command: npm run test:integration
 ```
+
+#### `timeout` (optional)
+
+Default timeout for all steps in this phase (in milliseconds).
+
+**Type**: `number`
+
+**Default**: `300000` (5 minutes)
+
+**Example**:
+```yaml
+- name: End-to-End Tests
+  parallel: false
+  timeout: 900000  # 15 minutes for all steps in this phase
+  steps:
+    - name: E2E Tests
+      command: npm run test:e2e
+```
+
+**Note**: Individual steps can override this with their own `timeout` property.
+
+#### `failFast` (optional)
+
+Stop executing steps in this phase after first failure.
+
+**Type**: `boolean`
+
+**Default**: `true`
+
+**Examples**:
+```yaml
+# Stop phase on first step failure (default)
+- name: Pre-Qualification
+  parallel: true
+  failFast: true  # Stop if TypeScript OR ESLint fails
+  steps:
+    - name: TypeScript
+      command: tsc --noEmit
+    - name: ESLint
+      command: eslint src/
+
+# Run all steps even if some fail (collect all errors)
+- name: Code Quality Checks
+  parallel: true
+  failFast: false  # Run all checks to see all issues
+  steps:
+    - name: TypeScript
+      command: tsc --noEmit
+    - name: ESLint
+      command: eslint src/
+    - name: Prettier
+      command: prettier --check src/
+```
+
+**Note**: This is different from `validation.failFast` which controls whether to stop ALL validation (all phases) on first phase failure.
 
 ### Step Configuration
 
@@ -175,150 +208,140 @@ Shell command to execute for this validation step.
 **Type**: `string`
 
 **Examples**:
-```typescript
-{ name: 'TypeScript', command: 'tsc --noEmit' }
-{ name: 'ESLint', command: 'eslint src/ --max-warnings=0' }
-{ name: 'Tests', command: 'vitest run --coverage' }
-{ name: 'Build', command: 'npm run build' }
+```yaml
+- name: TypeScript
+  command: tsc --noEmit
+
+- name: ESLint
+  command: eslint src/ --max-warnings=0
+
+- name: Tests
+  command: vitest run --coverage
+
+- name: Build
+  command: npm run build
 ```
 
-**Note**: Commands run in the project root directory.
+**Note**: Commands run in the project root directory by default (see `cwd` option to override).
 
-#### Environment-Specific Commands
+#### `description` (optional)
 
-You can use `process.env` to customize commands based on environment:
+Human-readable description of what this step does.
 
-```javascript
-// vibe-validate.config.mjs
-export default {
-  validation: {
-    phases: [{
-      name: 'Testing',
-      steps: [{
-        name: 'Unit Tests',
-        // Verbose output in CI, concise locally
-        command: process.env.CI
-          ? 'npm test -- --reporter=verbose'
-          : 'npm test',
-        description: 'Run unit tests with coverage',
-      }]
-    }]
-  }
-}
-```
-
-**Common patterns**:
-- `process.env.CI` - Detect CI environment (GitHub Actions, GitLab CI, etc.)
-- `process.env.CLAUDE_CODE` - Detect Claude Code agent
-- `process.env.NODE_ENV` - Development vs production
-- `process.env.DEBUG` - Enable debug output
-
-**Why use environment-specific commands?**
-- **Verbose output in CI**: When tests fail in CI, you need full details immediately
-- **Concise output locally**: Developers prefer minimal noise during development
-- **Different tool configurations**: Use different configs for different environments
-
-**Example with multiple environments**:
-```javascript
-const isCI = process.env.CI === 'true';
-const isClaude = process.env.CLAUDE_CODE === '1';
-
-export default {
-  validation: {
-    phases: [{
-      steps: [{
-        name: 'Tests',
-        command: isCI
-          ? 'vitest run --reporter=verbose --coverage'
-          : isClaude
-            ? 'vitest run --reporter=json'
-            : 'vitest run',
-      }]
-    }]
-  }
-}
-```
-
-### `validation.caching`
-
-Configuration for validation state caching.
-
-#### `strategy`
-
-Caching strategy to use.
-
-**Type**: `'git-tree-hash' | 'timestamp' | 'disabled'`
-
-**Default**: `'git-tree-hash'`
-
-**Options**:
-
-- **`git-tree-hash`** (recommended): Content-based caching using deterministic git tree hashing
-  - Cache key based on actual file content
-  - Includes untracked files
-  - Deterministic (same code = same hash)
-  - Invalidated when any file content changes
-
-- **`timestamp`**: Time-based caching using file modification times
-  - Cache key based on most recent file modification
-  - Faster calculation than git-tree-hash
-  - Less accurate (file touch invalidates cache)
-
-- **`disabled`**: No caching
-  - Always runs full validation
-  - Useful for debugging caching issues
+**Type**: `string`
 
 **Example**:
-```typescript
-caching: {
-  strategy: 'git-tree-hash',
-  enabled: true,
-}
+```yaml
+- name: TypeScript
+  command: tsc --noEmit
+  description: Type-check all TypeScript files
 ```
 
-#### `enabled`
+**Note**: Used for documentation and informational purposes only.
 
-Whether caching is enabled.
+#### `timeout` (optional)
 
-**Type**: `boolean`
+Override the phase timeout for this specific step (in milliseconds).
 
-**Default**: `true`
+**Type**: `number`
+
+**Default**: Inherits from `phase.timeout` (300000ms = 5 minutes)
 
 **Example**:
-```typescript
-caching: {
-  enabled: false, // Disable caching entirely
-}
+```yaml
+- name: Integration Tests
+  command: npm run test:integration
+  timeout: 600000  # 10 minutes (longer than phase default)
 ```
 
-### `validation.failFast`
+#### `continueOnError` (optional)
 
-Whether to stop validation at first failure.
+Continue to next step even if this step fails.
 
 **Type**: `boolean`
 
 **Default**: `false`
 
+**Example**:
+```yaml
+- name: Optional Linter
+  command: npm run lint:experimental
+  continueOnError: true  # Don't fail phase if this fails
+```
+
+**Use case**: Non-critical checks that shouldn't block validation.
+
+#### `env` (optional)
+
+Environment variables to set for this step only.
+
+**Type**: `object` (key-value pairs)
+
+**Example**:
+```yaml
+- name: Tests
+  command: npm test
+  env:
+    NODE_ENV: test
+    CI: "true"
+    COVERAGE: "true"
+
+- name: Build
+  command: npm run build
+  env:
+    NODE_ENV: production
+    BUILD_TARGET: es2020
+```
+
+**Note**: These variables are merged with system environment variables (step-level vars take precedence).
+
+#### `cwd` (optional)
+
+Working directory for this step's command.
+
+**Type**: `string` (relative or absolute path)
+
+**Default**: Project root directory
+
+**Example**:
+```yaml
+- name: Test Subpackage
+  command: npm test
+  cwd: packages/core
+
+- name: Build Docs
+  command: npm run build
+  cwd: ./docs-site
+```
+
+**Use case**: Monorepos or projects with subdirectories that need isolated commands.
+
+### `validation.failFast`
+
+Whether to stop validation at first phase failure.
+
+**Type**: `boolean`
+
+**Default**: `true`
+
 **Options**:
 
-- **`false`** (recommended): Runs all validation steps even if some fail
-  - Provides complete error visibility
-  - Shows all issues in one run
-  - Better for fixing multiple issues at once
-
-- **`true`**: Stops at first failure
+- **`true`** (default): Stops at first phase failure
   - Faster feedback on breakage
   - Useful for quick iteration
   - May hide subsequent issues
 
+- **`false`**: Runs all validation phases even if some fail
+  - Provides complete error visibility
+  - Shows all issues in one run
+  - Better for fixing multiple issues at once
+
 **Example**:
-```typescript
-validation: {
-  failFast: true, // Stop at first failure
-  phases: [
-    // ...
-  ],
-}
+```yaml
+validation:
+  failFast: false  # Run all phases even if one fails
+  phases:
+    # ... (your phases here)
 ```
 
 ## Git Configuration
@@ -334,14 +357,18 @@ Name of the main branch to sync with.
 **Default**: `'main'`
 
 **Examples**:
-```typescript
-git: {
-  mainBranch: 'main',   // Most projects
-  // or
-  mainBranch: 'master', // Legacy projects
-  // or
-  mainBranch: 'develop', // Git-flow projects
-}
+```yaml
+# Most projects
+git:
+  mainBranch: main
+
+# Legacy projects
+git:
+  mainBranch: master
+
+# Git-flow projects
+git:
+  mainBranch: develop
 ```
 
 ### `git.remoteOrigin`
@@ -358,23 +385,21 @@ Name of the git remote to sync with.
 - **Enterprise workflows**: Custom remote names for internal git servers
 
 **Examples**:
-```typescript
-git: {
-  mainBranch: 'main',
-  remoteOrigin: 'origin',  // Standard workflow (most projects)
-}
+```yaml
+# Standard workflow (most projects)
+git:
+  mainBranch: main
+  remoteOrigin: origin
 
-// Forked repository workflow
-git: {
-  mainBranch: 'main',
-  remoteOrigin: 'upstream',  // Sync with upstream, not your fork
-}
+# Forked repository workflow
+git:
+  mainBranch: main
+  remoteOrigin: upstream  # Sync with upstream, not your fork
 
-// Git-flow with custom remote
-git: {
-  mainBranch: 'develop',
-  remoteOrigin: 'upstream',  // Track upstream/develop
-}
+# Git-flow with custom remote
+git:
+  mainBranch: develop
+  remoteOrigin: upstream  # Track upstream/develop
 ```
 
 **How it's used**:
@@ -393,251 +418,307 @@ Whether to automatically merge/rebase when behind main branch.
 **Safety**: This option is **always false** for safety. vibe-validate never auto-merges.
 
 **Example**:
-```typescript
-git: {
-  autoSync: false, // Never auto-merge (always false)
-}
+```yaml
+git:
+  autoSync: false  # Never auto-merge (always false)
 ```
 
-## Output Configuration
+## CI Configuration
 
-Configuration for output formatting.
+Configuration for GitHub Actions workflow generation (via `generate-workflow` command).
 
-### `output.format`
+### `ci.nodeVersions` (optional)
 
-Output format for validation results.
+Node.js versions to test in CI matrix.
 
-**Type**: `'human' | 'yaml' | 'json' | 'auto'`
+**Type**: `string[]`
 
-**Default**: `'auto'`
-
-**Options**:
-
-- **`human`**: Colorful, verbose output with emojis and progress bars
-  - Best for manual terminal usage
-  - Includes context and explanations
-  - Uses chalk for colors
-
-- **`yaml`**: Structured YAML output
-  - Agent-friendly format
-  - Used by AI assistants (Claude Code, Cursor, etc.)
-  - Includes embedded error output
-
-- **`json`**: Machine-readable JSON output
-  - CI/CD integration
-  - Programmatic consumption
-  - Parseable by scripts
-
-- **`auto`** (recommended): Automatically detects context
-  - `human` for manual terminal usage
-  - `yaml` for AI assistants (detected via environment variables)
-  - `json` for CI environments (CI=true)
+**Default**: `['20', '22']`
 
 **Example**:
-```typescript
-output: {
-  format: 'auto', // Automatically detect context
-}
+```yaml
+ci:
+  nodeVersions: ['20', '22', '24']  # Test on Node.js 20, 22, and 24
 ```
 
-### Output Behavior
+### `ci.os` (optional)
 
-#### Real-Time Streaming
+Operating systems to test in CI matrix.
 
-All validation commands stream output in real-time as they execute. This means you'll see:
+**Type**: `string[]`
 
-- **Test progress** as tests run
-- **Build output** as compilation happens
-- **Lint results** as files are checked
+**Default**: `['ubuntu-latest']`
 
-Output is both streamed to the terminal AND captured for the state file, ensuring:
-- Immediate visibility during execution
-- Complete error details preserved for later analysis
-- Better debugging experience in CI environments
-
-**Example output during test execution:**
-```
-🔍 Running Testing (1 steps in parallel)...
-   ⏳ Unit Tests with Coverage  →  npm test
-
- RUN  v3.2.4 /path/to/project
- ✓ should pass first test
- ✓ should pass second test
- ✗ should fail this test
-
-      ✅ Unit Tests with Coverage - PASSED (15.3s)
+**Example**:
+```yaml
+ci:
+  os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
 ```
 
-This real-time feedback is especially valuable when:
-- Running long test suites
-- Debugging CI failures
-- Working with LLM assistants that need immediate feedback
+### `ci.failFast` (optional)
 
-## Using Presets
+Stop CI matrix on first failure.
 
-Start with a preset and customize as needed.
+**Type**: `boolean`
 
-### Available Presets
+**Default**: `false`
 
+**Example**:
+```yaml
+ci:
+  failFast: true  # Stop testing other OS/Node combos on first failure
+```
+
+### `ci.coverage` (optional)
+
+Enable coverage reporting in CI.
+
+**Type**: `boolean`
+
+**Default**: `false`
+
+**Example**:
+```yaml
+ci:
+  coverage: true  # Upload coverage reports to Codecov
+```
+
+**Complete CI Example**:
+```yaml
+ci:
+  nodeVersions: ['20', '22', '24']
+  os: ['ubuntu-latest', 'macos-latest']
+  failFast: false
+  coverage: true
+```
+
+## Hooks Configuration
+
+Configuration for git hooks (pre-commit, etc.).
+
+### `hooks.preCommit.enabled` (optional)
+
+Enable pre-commit hook checking during `doctor` command.
+
+**Type**: `boolean`
+
+**Default**: `true`
+
+**Example**:
+```yaml
+hooks:
+  preCommit:
+    enabled: false  # Skip pre-commit hook checks
+```
+
+### `hooks.preCommit.command` (optional)
+
+Custom command to run in pre-commit hook.
+
+**Type**: `string`
+
+**Default**: `'npx vibe-validate pre-commit'`
+
+**Example**:
+```yaml
+hooks:
+  preCommit:
+    enabled: true
+    command: 'pnpm vibe-validate pre-commit'  # Use pnpm instead of npx
+```
+
+**Complete Hooks Example**:
+```yaml
+hooks:
+  preCommit:
+    enabled: true
+    command: 'npx vibe-validate pre-commit'
+```
+
+## Using Config Templates
+
+Start with a template and customize as needed.
+
+### Available Templates
+
+- **`minimal`**: Bare-bones starting point
 - **`typescript-library`**: For npm packages and libraries
 - **`typescript-nodejs`**: For Node.js applications and servers
 - **`typescript-react`**: For React/Next.js applications
 
-### Extending a Preset
+All templates are available at: https://github.com/jdutton/vibe-validate/tree/main/config-templates
 
-```typescript
-import { defineConfig, mergeConfig } from '@vibe-validate/config';
-import { typescriptNodejsPreset } from '@vibe-validate/config/presets';
+### Using a Template
 
-export default defineConfig(
-  mergeConfig(typescriptNodejsPreset, {
-    validation: {
-      phases: [
-        // Add custom phases after preset phases
-        {
-          name: 'Security Scan',
-          steps: [
-            { name: 'npm audit', command: 'npm audit --audit-level=high' },
-            { name: 'snyk', command: 'snyk test' },
-          ],
-        },
-      ],
-      caching: {
-        strategy: 'git-tree-hash', // Override preset caching
-      },
-    },
-    git: {
-      mainBranch: 'develop', // Override preset main branch
-    },
-  })
-);
+```bash
+# Initialize with a specific template
+npx vibe-validate init --template typescript-nodejs
+
+# Or copy directly from GitHub
+curl -o vibe-validate.config.yaml \
+  https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml
 ```
 
-### Overriding Preset Steps
+### Customizing Templates
 
-Replace specific steps from the preset:
+After copying a template, customize it for your project:
 
-```typescript
-import { defineConfig, mergeConfig } from '@vibe-validate/config';
-import { typescriptLibraryPreset } from '@vibe-validate/config/presets';
+```yaml
+# Start with typescript-nodejs template, then customize
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: true
+      steps:
+        - name: TypeScript
+          command: pnpm typecheck
+        - name: ESLint
+          command: pnpm lint
 
-// Get preset config
-const preset = typescriptLibraryPreset;
+    - name: Testing
+      parallel: false
+      steps:
+        - name: Unit Tests
+          command: pnpm test
 
-// Override specific phases
-preset.validation.phases[0].steps = [
-  { name: 'TypeScript', command: 'tsc --noEmit --strict' }, // Stricter
-  { name: 'ESLint', command: 'eslint src/ --max-warnings=0' }, // No warnings
-];
+    # Add custom security phase
+    - name: Security
+      parallel: true
+      steps:
+        - name: npm audit
+          command: npm audit --audit-level=high
+        - name: Snyk scan
+          command: snyk test
 
-export default defineConfig(preset);
-```
+    - name: Build
+      parallel: false
+      steps:
+        - name: Build
+          command: pnpm build
 
-## Config Inheritance
+  failFast: true
 
-Use the `extends` field to inherit from another configuration.
-
-```typescript
-// vibe-validate.config.base.ts
-export default {
-  validation: {
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-  },
-};
-
-// vibe-validate.config.ts
-import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  extends: './vibe-validate.config.base.ts',
-  validation: {
-    phases: [
-      // Custom phases
-    ],
-  },
-});
+git:
+  mainBranch: develop  # Customize for your workflow
+  remoteOrigin: origin
+  autoSync: false
 ```
 
 ## Environment Variables
 
-vibe-validate respects these environment variables:
+vibe-validate respects these environment variables for agent context detection:
 
-### Agent Detection
-
-- `CLAUDE_CODE=true` - Detects Claude Code
-- `CURSOR=true` - Detects Cursor
-- `AIDER=true` - Detects Aider
-- `CONTINUE=true` - Detects Continue
+- `CLAUDE_CODE=true` - Detects Claude Code context
+- `CURSOR=true` - Detects Cursor context
+- `AIDER=true` - Detects Aider context
+- `CONTINUE=true` - Detects Continue context
 - `CI=true` - Detects CI environment
 
-### Behavior Overrides
+**Purpose**: Agent detection optimizes output verbosity for AI assistants vs. interactive terminals.
 
-- `VIBE_VALIDATE_FORCE=true` - Force validation (bypass cache)
-- `VIBE_VALIDATE_FORMAT=human|yaml|json` - Override output format
-- `VIBE_VALIDATE_NO_COLOR=true` - Disable colored output
+**Behavior**:
+- **Agent contexts** (Claude Code, Cursor, etc.): Minimal terminal output, errors in state file
+- **CI environments**: Minimal terminal output, errors in state file
+- **Interactive terminals**: Verbose terminal output with colors and progress indicators
+
+**Note**: All contexts use YAML for the state file (`.vibe-validate-state.yaml`)
+
+**Note**: Use CLI flags for behavior control (e.g., `--force` to bypass cache, `--verbose` for detailed output)
 
 ## Complete Example
 
 Comprehensive configuration with all options:
 
-```typescript
-import { defineConfig } from '@vibe-validate/config';
+```yaml
+# vibe-validate.config.yaml
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
 
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          { name: 'TypeScript', command: 'tsc --noEmit' },
-          { name: 'ESLint', command: 'eslint src/ --max-warnings=0' },
-          { name: 'Prettier', command: 'prettier --check src/' },
-        ],
-      },
-      {
-        name: 'Testing',
-        parallel: false,
-        steps: [
-          { name: 'Unit Tests', command: 'vitest run --coverage' },
-          { name: 'Integration Tests', command: 'npm run test:integration' },
-        ],
-      },
-      {
-        name: 'Build',
-        parallel: false,
-        steps: [
-          { name: 'Build', command: 'npm run build' },
-          { name: 'Bundle Size', command: 'npm run check:bundle-size' },
-        ],
-      },
-      {
-        name: 'Security',
-        parallel: true,
-        steps: [
-          { name: 'npm audit', command: 'npm audit --audit-level=high' },
-          { name: 'License Check', command: 'npm run check:licenses' },
-        ],
-      },
-    ],
-    caching: {
-      strategy: 'git-tree-hash',
-      enabled: true,
-    },
-    failFast: false,
-  },
-  git: {
-    mainBranch: 'main',
-    remoteOrigin: 'origin',
-    autoSync: false,
-  },
-  output: {
-    format: 'auto',
-  },
-});
+# Git configuration
+git:
+  mainBranch: main
+  remoteOrigin: origin
+  autoSync: false
+  warnIfBehind: true
+
+# CI/CD configuration (for generate-workflow command)
+ci:
+  nodeVersions: ['20', '22', '24']
+  os: ['ubuntu-latest', 'macos-latest']
+  failFast: false
+  coverage: true
+
+# Hooks configuration
+hooks:
+  preCommit:
+    enabled: true
+    command: 'npx vibe-validate pre-commit'
+
+# Validation configuration
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: true
+      timeout: 300000  # 5 minutes for all steps in this phase
+      failFast: true   # Stop phase on first step failure
+      steps:
+        - name: TypeScript
+          command: tsc --noEmit
+          description: Type-check all TypeScript files
+
+        - name: ESLint
+          command: eslint src/ --max-warnings=0
+          description: Lint source code
+
+        - name: Prettier
+          command: prettier --check src/
+          description: Check code formatting
+
+    - name: Testing
+      parallel: false
+      timeout: 600000  # 10 minutes for this phase
+      steps:
+        - name: Unit Tests
+          command: vitest run --coverage
+          description: Run unit tests with coverage
+          env:
+            NODE_ENV: test
+            COVERAGE: "true"
+
+        - name: Integration Tests
+          command: npm run test:integration
+          description: Run integration tests
+          timeout: 900000  # 15 minutes (override phase timeout)
+          env:
+            NODE_ENV: test
+
+    - name: Build
+      parallel: false
+      steps:
+        - name: Build
+          command: npm run build
+          description: Build application
+          env:
+            NODE_ENV: production
+
+        - name: Bundle Size
+          command: npm run check:bundle-size
+          description: Verify bundle size limits
+          continueOnError: true  # Don't fail if bundle is slightly large
+
+    - name: Security
+      parallel: true
+      failFast: false  # Run all security checks even if one fails
+      steps:
+        - name: npm audit
+          command: npm audit --audit-level=high
+          description: Check for security vulnerabilities
+          continueOnError: true  # Don't block on audit findings
+
+        - name: License Check
+          command: npm run check:licenses
+          description: Verify dependency licenses
+
+  failFast: false  # Continue all phases even if one fails
 ```
 
 ## Common Git Configuration Scenarios
@@ -646,22 +727,20 @@ export default defineConfig({
 
 Most projects use the default `origin` remote:
 
-```typescript
-git: {
-  mainBranch: 'main',
-  remoteOrigin: 'origin',  // Default - can be omitted
-}
+```yaml
+git:
+  mainBranch: main
+  remoteOrigin: origin  # Default - can be omitted
 ```
 
 ### Forked Repository Workflow
 
 When working on a fork, sync with the upstream repository:
 
-```typescript
-git: {
-  mainBranch: 'main',
-  remoteOrigin: 'upstream',  // Sync with original repo, not your fork
-}
+```yaml
+git:
+  mainBranch: main
+  remoteOrigin: upstream  # Sync with original repo, not your fork
 ```
 
 **Setup**:
@@ -677,33 +756,30 @@ git remote add upstream https://github.com/original/repo.git
 
 Projects using `master` instead of `main`:
 
-```typescript
-git: {
-  mainBranch: 'master',
-  remoteOrigin: 'origin',
-}
+```yaml
+git:
+  mainBranch: master
+  remoteOrigin: origin
 ```
 
 ### Git-Flow Workflow
 
 Track `develop` branch instead of `main`:
 
-```typescript
-git: {
-  mainBranch: 'develop',
-  remoteOrigin: 'origin',
-}
+```yaml
+git:
+  mainBranch: develop
+  remoteOrigin: origin
 ```
 
 ### Enterprise Custom Remote
 
 Internal git servers with custom remote names:
 
-```typescript
-git: {
-  mainBranch: 'main',
-  remoteOrigin: 'corporate',  // Custom remote name
-}
+```yaml
+git:
+  mainBranch: main
+  remoteOrigin: corporate  # Custom remote name
 ```
 
 ## Troubleshooting Git Configuration
@@ -714,11 +790,10 @@ git: {
 
 **Solution**: Set `remoteOrigin: 'upstream'` in your config:
 
-```typescript
-git: {
-  mainBranch: 'main',
-  remoteOrigin: 'upstream',
-}
+```yaml
+git:
+  mainBranch: main
+  remoteOrigin: upstream
 ```
 
 ### "Remote not found" error
@@ -740,11 +815,10 @@ git remote add upstream https://github.com/owner/repo.git
 
 **Solution**: Configure the correct branch name:
 
-```typescript
-git: {
-  mainBranch: 'master',  // or 'develop', 'trunk', etc.
-  remoteOrigin: 'origin',
-}
+```yaml
+git:
+  mainBranch: master  # or 'develop', 'trunk', etc.
+  remoteOrigin: origin
 ```
 
 ## Validation File Locations
@@ -765,5 +839,5 @@ Cache state file:
 
 - [Getting Started](getting-started.md) - Initial setup
 - [CLI Reference](cli-reference.md) - Command-line options
-- [Presets Guide](presets-guide.md) - Using and customizing presets
+- [Config Templates Guide](../config-templates/README.md) - Using and customizing templates
 - [Error Formatters Guide](error-formatters-guide.md) - Error formatting details

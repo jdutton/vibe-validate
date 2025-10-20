@@ -1,7 +1,7 @@
 {
   "name": "@vibe-validate/config",
-  "version": "0.10.3",
-  "description": "Configuration system for vibe-validate with TypeScript-first design and framework presets",
+  "version": "0.11.0",
+  "description": "Configuration system for vibe-validate with TypeScript-first design and config templates",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,7 +23,7 @@
     "validation",
     "config",
     "typescript",
-    "presets",
+    "config-templates",
     "framework"
   ],
   "author": "Jeff Dutton",
@@ -34,12 +34,11 @@
     "directory": "packages/config"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0",
     "tsx": "^4.20.6",
+    "yaml": "^2.6.1",
     "zod": "^3.24.1",
     "zod-to-json-schema": "^3.24.6"
   },

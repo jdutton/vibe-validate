@@ -1,0 +1,100 @@
+{
+  "$ref": "#/definitions/ValidationResult",
+  "definitions": {
+    "ValidationResult": {
+      "type": "object",
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "treeHash": {
+          "type": "string"
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "durationSecs": {
+                "type": "number"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "passed": {
+                      "type": "boolean"
+                    },
+                    "durationSecs": {
+                      "type": "number"
+                    },
+                    "output": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "passed",
+                    "durationSecs"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "output": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "durationSecs",
+              "passed",
+              "steps"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "failedStep": {
+          "type": "string"
+        },
+        "rerunCommand": {
+          "type": "string"
+        },
+        "failedStepOutput": {
+          "type": "string"
+        },
+        "failedTests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fullLogFile": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "passed",
+        "timestamp",
+        "treeHash"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

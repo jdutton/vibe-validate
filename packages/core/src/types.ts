@@ -31,9 +31,6 @@ export interface ValidationPhase {
   /** Run steps in parallel? */
   parallel: boolean;
 
-  /** Phase names this phase depends on */
-  dependsOn?: string[];
-
   /** Steps to execute in this phase */
   steps: ValidationStep[];
 }

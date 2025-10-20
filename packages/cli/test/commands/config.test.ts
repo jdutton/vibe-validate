@@ -176,7 +176,6 @@ describe('config command', () => {
     beforeEach(() => {
       // Mock valid config with all sections
       const mockConfig: VibeValidateConfig = {
-        extends: 'typescript-nodejs',
         validation: {
           phases: [
             { name: 'Phase 1', parallel: false, steps: [] }
@@ -185,13 +184,10 @@ describe('config command', () => {
         git: {
           mainBranch: 'main',
           autoSync: false
-        },
-        output: {
-          format: 'auto'
         }
       };
 
-      vi.mocked(configLoader.findConfigPath).mockReturnValue(join(testDir, 'vibe-validate.config.js'));
+      vi.mocked(configLoader.findConfigPath).mockReturnValue(join(testDir, 'vibe-validate.config.yaml'));
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
     });
 

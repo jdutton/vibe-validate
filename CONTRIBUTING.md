@@ -119,7 +119,7 @@ vibe-validate uses itself for validation! The `pnpm validate` command runs:
 - **Phase 1**: Type checking, linting, unit tests, build (parallel)
 - **Phase 2**: Coverage verification
 
-Configuration: `vibe-validate.config.ts`
+Configuration: `vibe-validate.config.yaml`
 
 ### Incremental Development
 

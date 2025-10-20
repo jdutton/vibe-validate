@@ -7,6 +7,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2025-10-19
+
+### 🐛 Bug Fixes
+
+- **Fixed Incomplete Schema** (discovered during strict validation implementation)
+  - Added missing `validation.failFast` field to schema (was used by code but not in schema)
+  - Added missing `description` field to ValidationStepSchema (for documenting what steps do)
+  - These fields were being used in configs but silently ignored - now properly validated
+  - Updated all config templates to include these fields with helpful comments
+
+### 🚨 BREAKING CHANGES
+
+- **Removed TypeScript Preset System**
+  - `preset:` property no longer supported in configs
+  - Migration: Copy YAML templates from `config-templates/` directory instead
+  - See [Config Templates Guide](./config-templates/README.md) for migration instructions
+
+- **Strict Schema Validation Enabled**
+  - Unknown properties in configs now cause validation errors (previously ignored silently)
+  - Example: `output.format` field no longer exists - remove it from your config
+  - Run `vibe-validate doctor` to check your config for issues
+  - Benefits: Catches typos, prevents configuration drift
+
+### ✨ Features
+
+- **Config Templates Replace Presets**
+  - Four YAML templates available in `config-templates/` directory
+  - Templates are transparent (everything visible, no hidden defaults)
+  - Anyone can contribute templates (no TypeScript knowledge needed)
+  - Browse on GitHub: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+  - Copy template → customize → done
+
+- **Strict Validation Prevents Configuration Drift**
+  - Unknown properties immediately rejected with clear error messages
+  - Catches removed/renamed fields (like `output.format`)
+  - Catches typos in configuration field names
+  - Fail fast with helpful errors instead of silent failures
+
+### 📝 Documentation
+
+- **New**: [Config Templates Guide](./config-templates/README.md)
+  - Explains how to use YAML templates
+  - Migration guide from old `preset:` system
+  - Best practices for customizing templates
+  - Examples for all project types
+
+- **Updated**: All documentation now references config templates instead of presets
+  - getting-started.md
+  - configuration-reference.md
+  - agent-integration-guide.md
+  - error-formatters-guide.md
+
+### 🗑️ Removed
+
+- **Removed unused configuration fields** (YAGNI principle - "You Aren't Gonna Need It"):
+  - `preset:` field - Use config templates from `config-templates/` directory instead
+  - `extends:` field - Zero usage detected, templates are simpler
+  - `output:` section - Was never implemented
+
+- **Impact**: Cleaner, more focused configuration schema with only actively-used features
+
+### 🎯 Migration Guide
+
+**Before (v0.10.x and earlier):**
+```yaml
+preset: typescript-nodejs
+git:
+  mainBranch: develop
+```
+
+**After (v0.11.0+):**
+```bash
+# Copy template
+curl -o vibe-validate.config.yaml \
+  https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml
+
+# Edit to customize (e.g., change mainBranch to 'develop')
+```
+
+**Strict validation fix:**
+```yaml
+# Remove unknown properties
+output:
+  format: auto  # ❌ Remove this - field doesn't exist
+```
+
+Run `vibe-validate doctor` to check your config for issues.
+
+### 📊 Impact
+
+- **Transparent configs**: Everything visible in YAML (no hidden defaults)
+- **Better errors**: Unknown properties caught immediately with helpful guidance
+- **Easier contributions**: Anyone can submit template PRs (no TypeScript knowledge needed)
+- **Faster onboarding**: Copy template → customize → done
+
+## [0.10.4] - 2025-10-19
+
+### ✨ Features
+
+- **Added YAML Configuration Templates**
+  - Four ready-to-use YAML configuration templates in `config-templates/` directory:
+    - `typescript-library.yaml` - For npm packages and shared libraries
+    - `typescript-nodejs.yaml` - For Node.js apps, APIs, and backend services
+    - `typescript-react.yaml` - For React SPAs and Next.js applications
+    - `minimal.yaml` - Bare-bones template for custom projects
+  - Each template includes descriptive comments and JSON Schema URL for IDE autocomplete
+  - Browse templates on GitHub: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+
+### 🐛 Bug Fixes
+
+- **Fixed broken example link in `doctor` error messages**
+  - Doctor previously pointed to non-existent `examples/` directory (404 error)
+  - Now correctly links to `config-templates/` directory with real working examples
+
+- **CRITICAL: Fixed `doctor` command output**
+  - Non-verbose mode now shows summary only when all checks pass (was showing all 15 checks)
+  - Verbose mode now shows all checks when failures exist (was showing only failing checks)
+  - Fixed `--verbose` flag not working due to option conflict
+  - Clearer messaging about when checks are hidden
+
+- **Better validation error messages**
+  - Doctor now shows specific Zod validation errors (e.g., "validation.phases.0.name: Required")
+  - Displays up to 5 validation errors with helpful links to documentation and examples
+
+  - No more confusing warnings during initial setup
+
 ## [0.10.3] - 2025-10-19
 
 ### ✨ Features
@@ -89,7 +215,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 📝 Documentation
 
 - Updated all examples to use YAML configuration format
-- Added migration guide for users with legacy `.mjs` configs: `npx vibe-validate init --migrate`
 - Clarified that YAML is the only supported format (`.ts`, `.js`, `.json` are not supported)
 
 ## [0.10.0] - 2025-10-19
@@ -99,15 +224,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **YAML Configuration Support** (Issue #6)
   - Primary format: `vibe-validate.config.yaml` (modern, maintainable)
   - JSON Schema generation for IDE validation and autocomplete
-  - Legacy `.mjs` support with deprecation warnings
-  - Migration command: `vibe-validate init --migrate` to convert .mjs → YAML
   - Better IDE support, more readable, industry-standard format
 
 - **Focused Init Modes - Idempotent Setup Operations** (Issue #6)
   - `init --setup-hooks`: Install pre-commit hook only
   - `init --setup-workflow`: Create GitHub Actions workflow only
   - `init --fix-gitignore`: Add state file to .gitignore only
-  - `init --migrate`: Convert .mjs config to YAML format
   - `init --dry-run`: Preview changes without writing files
   - All operations are idempotent (safe to run multiple times)
   - 50+ comprehensive tests for setup operations
@@ -143,7 +265,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cleaned up `.npmrc` for npm-only settings
   - No more `@pnpm/types` warnings during npm operations
 
-- **Reduced Duplicate .mjs Warnings in Doctor Command**
   - Refactored `runDoctor()` to load config once
   - Reduced duplicate deprecation warnings from 7 to 1
   - Updated 7 function signatures to accept config parameter
@@ -182,7 +303,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🎯 Migration Demonstration
 
-- **Dogfooding**: This project itself migrated from .mjs to YAML
   - Demonstrates the `init --migrate` workflow
   - Doctor now shows 15/15 checks passing (was 14/15)
   - No deprecation warnings

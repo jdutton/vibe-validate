@@ -63,8 +63,8 @@ npx vibe-validate init
 
 **The `init` command**:
 - Detects project type (TypeScript, JavaScript, monorepo)
-- Offers presets (typescript-library, typescript-nodejs, typescript-react)
-- Creates `vibe-validate.config.mjs` (or user's preferred format)
+- Offers templates (minimal, typescript-library, typescript-nodejs, typescript-react)
+- Creates `vibe-validate.config.yaml`
 - Auto-detects existing validation scripts (npm run test, npm run lint, etc.)
 
 **Expected interaction**:
@@ -73,55 +73,35 @@ npx vibe-validate init
 
 Project type detected: TypeScript Node.js application
 
-Select a preset:
-  1) typescript-library (libraries, no runtime)
-  2) typescript-nodejs (Node.js applications)  ← [Recommended]
-  3) typescript-react (React applications)
-  4) custom (manual setup)
+Select a template:
+  1) minimal (bare-bones starting point)
+  2) typescript-library (libraries, no runtime)
+  3) typescript-nodejs (Node.js applications)  ← [Recommended]
+  4) typescript-react (React applications)
 
-Choice: 2
+Choice: 3
 
-Configuration file format:
-  1) vibe-validate.config.ts (TypeScript)  ← [Recommended]
-  2) vibe-validate.config.mjs (ES Module)
-  3) vibe-validate.config.js (CommonJS)
-  4) vibe-validate.config.json (JSON)
-
-Choice: 1
-
-✅ Created vibe-validate.config.ts
+✅ Created vibe-validate.config.yaml
 
 Next steps:
-  1. Review configuration: cat vibe-validate.config.ts
+  1. Review configuration: cat vibe-validate.config.yaml
   2. Run validation: npx vibe-validate validate
   3. Generate workflow: npx vibe-validate generate-workflow
 ```
 
 **Common issue**: If `init` fails, manually create config:
-```typescript
-// vibe-validate.config.ts
-import { defineConfig } from '@vibe-validate/config';
-
-export default defineConfig({
-  validation: {
-    phases: [
-      {
-        name: 'Pre-Qualification',
-        parallel: true,
-        steps: [
-          { name: 'TypeScript', command: 'npm run typecheck' },
-          { name: 'ESLint', command: 'npm run lint' },
-        ],
-      },
-      {
-        name: 'Testing',
-        steps: [
-          { name: 'Unit Tests', command: 'npm test' },
-        ],
-      },
-    ],
-  },
-});
+<!-- config:example -->
+```yaml
+# vibe-validate.config.yaml
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+git:
+  mainBranch: main
+validation:
+  phases:
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: npm test
 ```
 
 **Next step**: Run doctor to verify setup
@@ -359,8 +339,8 @@ npm install -D @vibe-validate/cli
 
 # 2. Initialize
 npx vibe-validate init
-# → Choose preset (typescript-nodejs)
-# → Choose format (vibe-validate.config.ts)
+# → Choose template (typescript-nodejs)
+# → Choose format (vibe-validate.config.yaml)
 
 # 3. Health check
 npx vibe-validate doctor
@@ -384,7 +364,7 @@ echo '#!/bin/sh\nnpx vibe-validate pre-commit' > .husky/pre-commit
 chmod +x .husky/pre-commit
 
 # 7. Commit workflow + config
-git add vibe-validate.config.ts .github/workflows/validate.yml .husky/
+git add vibe-validate.config.yaml .github/workflows/validate.yml .husky/
 git commit -m "feat: Add vibe-validate for validation orchestration"
 ```
 
@@ -412,9 +392,9 @@ git commit -m "feat: Add vibe-validate for validation orchestration"
 **Cause**: Config file not in project root or wrong format
 
 **Solution**:
-1. Check config exists: `ls vibe-validate.config.*`
+1. Check config exists: `ls vibe-validate.config.yaml`
 2. Move config to project root
-3. Verify format is supported (`.ts`, `.mjs`, `.js`, `.json`)
+3. Verify format is `.yaml` (only YAML configs are supported)
 
 ### Issue: Validation passes locally but fails in CI
 
@@ -472,7 +452,7 @@ Commands:
   npx vibe-validate doctor # Health check
 
 Next steps:
-  1. Review config: cat vibe-validate.config.ts
+  1. Review config: cat vibe-validate.config.yaml
   2. Commit changes: git add . && git commit -m "feat: Add vibe-validate"
   3. Push to GitHub to trigger CI workflow
 

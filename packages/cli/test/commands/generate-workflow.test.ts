@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateWorkflow, checkSync, toJobId, getAllJobIds, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import yaml from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 
 // Mock fs module
 vi.mock('fs', () => ({
@@ -22,7 +22,7 @@ vi.mock('fs', () => ({
 function parseWorkflowYaml(workflowYaml: string): any {
   const lines = workflowYaml.split('\n');
   const yamlContent = lines.filter(line => !line.trim().startsWith('#') && line.trim() !== '').join('\n');
-  return yaml.load(yamlContent);
+  return parseYaml(yamlContent);
 }
 
 describe('generate-workflow command', () => {
@@ -48,7 +48,6 @@ describe('generate-workflow command', () => {
         {
           name: 'Testing',
           parallel: false,
-          dependsOn: ['Pre-Qualification'],
           steps: [
             {
               name: 'Unit Tests with Coverage',
@@ -141,11 +140,11 @@ describe('generate-workflow command', () => {
       expect(workflow.jobs).toHaveProperty('unit-tests-with-coverage');
     });
 
-    it('should set up dependencies based on dependsOn in non-matrix mode', () => {
+    it('should auto-depend on previous phase in non-matrix mode', () => {
       const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
       const workflow = parseWorkflowYaml(workflowYaml);
 
-      // Testing phase depends on Pre-Qualification phase
+      // Testing phase (phase 2) auto-depends on Pre-Qualification phase (phase 1)
       expect(workflow.jobs['unit-tests-with-coverage'].needs).toEqual([
         'typescript-type-check',
         'eslint-code-quality',
@@ -256,7 +255,7 @@ describe('generate-workflow command', () => {
     it('should include header without timestamp', () => {
       const workflowYaml = generateWorkflow(mockConfig);
       expect(workflowYaml).not.toContain('# Generated:'); // No timestamp in v0.9.6+
-      expect(workflowYaml).toContain('# Source of truth: vibe-validate.config.mjs');
+      expect(workflowYaml).toContain('# Source of truth: vibe-validate.config.yaml');
     });
 
     it('should use custom main branch from config', () => {
@@ -503,7 +502,7 @@ describe('generate-workflow command', () => {
 
         // Should still have other header lines
         expect(workflowYaml).toContain('# THIS FILE IS AUTO-GENERATED');
-        expect(workflowYaml).toContain('# Source of truth: vibe-validate.config.mjs');
+        expect(workflowYaml).toContain('# Source of truth: vibe-validate.config.yaml');
         expect(workflowYaml).toContain('# Regenerate with: npx vibe-validate generate-workflow');
       });
 
