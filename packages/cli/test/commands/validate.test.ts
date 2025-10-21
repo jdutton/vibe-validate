@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { validateCommand } from '../../src/commands/validate.js';
 import * as core from '@vibe-validate/core';
 import * as configLoader from '../../src/utils/config-loader.js';
+import * as history from '@vibe-validate/history';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
 // Mock the core validation module
@@ -23,6 +24,15 @@ vi.mock('../../src/utils/config-loader.js', async () => {
   return {
     ...actual,
     loadConfig: vi.fn(),
+  };
+});
+
+// Mock the history module
+vi.mock('@vibe-validate/history', async () => {
+  const actual = await vi.importActual<typeof history>('@vibe-validate/history');
+  return {
+    ...actual,
+    readHistoryNote: vi.fn(),
   };
 });
 
@@ -384,20 +394,32 @@ describe('validate command', () => {
             }
           ]
         },
-        stateFilePath: join(testDir, '.vibe-validate-state.yaml'),
       };
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
     });
 
     it('should not run validation when --check flag is used', async () => {
-      // Create a state file with passed validation
-      const stateFile = join(testDir, '.vibe-validate-state.yaml');
-      writeFileSync(stateFile, `
-passed: true
-timestamp: ${new Date().toISOString()}
-treeHash: abc123def456
-phases: []
-      `);
+      // Mock git notes with passing validation
+      vi.mocked(history.readHistoryNote).mockResolvedValue({
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: new Date().toISOString(),
+            duration: 1000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: new Date().toISOString(),
+              treeHash: 'abc123def456',
+              phases: [],
+            },
+          },
+        ],
+      });
 
       validateCommand(program);
 
@@ -411,7 +433,10 @@ phases: []
       expect(core.runValidation).not.toHaveBeenCalled();
     });
 
-    it('should exit with code 2 when state file is missing', async () => {
+    it('should exit with code 2 when no validation history exists', async () => {
+      // Mock git notes with no history
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+
       validateCommand(program);
 
       try {
@@ -423,7 +448,7 @@ phases: []
       }
 
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validation state file not found')
+        expect.stringContaining('No validation history for current working tree')
       );
       expect(core.runValidation).not.toHaveBeenCalled();
     });

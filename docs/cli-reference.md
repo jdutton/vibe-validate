@@ -323,7 +323,7 @@ vibe-validate generate-workflow --check  # Verify workflow is up to date
 
 ### `doctor`
 
-Diagnose vibe-validate setup and environment
+Diagnose vibe-validate setup and environment (run after upgrading)
 
 **What it does:**
 
@@ -387,8 +387,8 @@ Watch CI checks for a pull/merge request in real-time
 
 If **check fails**:
 ```bash
-# View error from state file in YAML output
-vibe-validate watch-pr 42 --yaml | yq '.failures[0].stateFile'
+# View validation result from YAML output
+vibe-validate watch-pr 42 --yaml | yq '.failures[0].validationResult'
 
 # Re-run failed check
 gh run rerun <run-id> --failed

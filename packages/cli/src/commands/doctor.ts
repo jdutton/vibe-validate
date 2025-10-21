@@ -21,6 +21,9 @@ import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-v
 import { formatTemplateList } from '../utils/template-discovery.js';
 import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
 
+/** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
+const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
+
 /**
  * Result of a single doctor check
  */
@@ -452,11 +455,11 @@ async function checkVersion(): Promise<DoctorCheckResult> {
 }
 
 /**
- * Check if .vibe-validate-state.yaml is in .gitignore
+ * Check if deprecated state file is in .gitignore
  */
 function checkGitignoreStateFile(): DoctorCheckResult {
   const gitignorePath = '.gitignore';
-  const stateFileName = '.vibe-validate-state.yaml';
+  const stateFileName = DEPRECATED_STATE_FILE;
 
   // Check if .gitignore exists
   if (!existsSync(gitignorePath)) {
@@ -475,8 +478,8 @@ function checkGitignoreStateFile(): DoctorCheckResult {
       return {
         name: 'Gitignore state file (deprecated)',
         passed: false,
-        message: '.vibe-validate-state.yaml in .gitignore (deprecated - can be removed)',
-        suggestion: 'Remove from .gitignore: sed -i.bak \'/.vibe-validate-state.yaml/d\' .gitignore && rm .gitignore.bak\n   ℹ️  Validation now uses git notes instead of state file',
+        message: `${DEPRECATED_STATE_FILE} in .gitignore (deprecated - can be removed)`,
+        suggestion: `Remove from .gitignore: sed -i.bak '/${DEPRECATED_STATE_FILE}/d' .gitignore && rm .gitignore.bak\n   ℹ️  Validation now uses git notes instead of state file`,
       };
     } else {
       return {
@@ -496,18 +499,18 @@ function checkGitignoreStateFile(): DoctorCheckResult {
 }
 
 /**
- * Check if validation state file exists
+ * Check if deprecated validation state file exists
  */
 function checkValidationState(): DoctorCheckResult {
-  const statePath = '.vibe-validate-state.yaml';
+  const statePath = DEPRECATED_STATE_FILE;
 
   // Check if deprecated state file exists
   if (existsSync(statePath)) {
     return {
       name: 'Validation state (deprecated)',
       passed: false,
-      message: '.vibe-validate-state.yaml found (deprecated file - safe to remove)',
-      suggestion: 'Remove deprecated state file: rm .vibe-validate-state.yaml\n   ℹ️  Validation now uses git notes for improved caching',
+      message: `${DEPRECATED_STATE_FILE} found (deprecated file - safe to remove)`,
+      suggestion: `Remove deprecated state file: rm ${DEPRECATED_STATE_FILE}\n   ℹ️  Validation now uses git notes for improved caching`,
     };
   } else {
     return {
@@ -774,7 +777,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
 export function doctorCommand(program: Command): void {
   program
     .command('doctor')
-    .description('Diagnose vibe-validate setup and environment')
+    .description('Diagnose vibe-validate setup and environment (run after upgrading)')
     .option('--yaml', 'Output YAML only (no human-friendly display)')
     .action(async (options: { yaml?: boolean; verbose?: boolean }, command: Command) => {
       // Get verbose from global options (inherited from program)

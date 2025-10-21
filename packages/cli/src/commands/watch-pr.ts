@@ -5,7 +5,7 @@ import type {
   CIProvider,
   CheckStatus,
   CheckResult,
-  StateFileContents,
+  ValidationResultContents,
 } from '../services/ci-provider.js';
 
 interface WatchPROptions {
@@ -20,7 +20,7 @@ interface FailureDetail {
   name: string;
   checkId: string;
   errorSummary?: string;
-  stateFile?: StateFileContents;
+  validationResult?: ValidationResultContents;
   nextSteps: string[];
 }
 
@@ -210,8 +210,8 @@ async function handleCompletion(
           name: check.name,
           checkId: check.id,
           errorSummary: logs.errorSummary,
-          stateFile: logs.stateFile,
-          nextSteps: generateNextSteps(check.id, logs.stateFile),
+          validationResult: logs.validationResult,
+          nextSteps: generateNextSteps(check.id, logs.validationResult),
         };
       } catch (error) {
         return {
@@ -305,14 +305,14 @@ function displayHumanCompletion(
     for (const failure of failures) {
       console.log(`\n📋 ${failure.name}:`);
 
-      if (failure.stateFile) {
-        console.log(`   Failed step: ${failure.stateFile.failedStep}`);
-        if (failure.stateFile.rerunCommand) {
-          console.log(`   Re-run locally: ${failure.stateFile.rerunCommand}`);
+      if (failure.validationResult) {
+        console.log(`   Failed step: ${failure.validationResult.failedStep}`);
+        if (failure.validationResult.rerunCommand) {
+          console.log(`   Re-run locally: ${failure.validationResult.rerunCommand}`);
         }
-        if (failure.stateFile.failedStepOutput) {
+        if (failure.validationResult.failedStepOutput) {
           console.log(`\n   Error output:`);
-          const lines = failure.stateFile.failedStepOutput.split('\n').slice(0, 10);
+          const lines = failure.validationResult.failedStepOutput.split('\n').slice(0, 10);
           lines.forEach((line: string) => console.log(`   ${line}`));
         }
       } else if (failure.errorSummary) {
@@ -344,12 +344,12 @@ function getCheckIcon(check: CheckResult): string {
  */
 function generateNextSteps(
   checkId: string,
-  stateFile: StateFileContents | undefined
+  validationResult: ValidationResultContents | undefined
 ): string[] {
   const steps: string[] = [];
 
-  if (stateFile?.rerunCommand) {
-    steps.push(`Run locally: ${stateFile.rerunCommand}`);
+  if (validationResult?.rerunCommand) {
+    steps.push(`Run locally: ${validationResult.rerunCommand}`);
   }
 
   steps.push(`View logs: gh run view ${checkId} --log-failed`);

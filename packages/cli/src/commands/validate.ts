@@ -11,6 +11,7 @@ import {
   recordValidationHistory,
   checkWorktreeStability,
   checkHistoryHealth,
+  readHistoryNote,
 } from '@vibe-validate/history';
 import { loadConfig } from '../utils/config-loader.js';
 import { createRunnerConfig } from '../utils/runner-adapter.js';
@@ -53,7 +54,7 @@ export function validateCommand(program: Command): void {
           context,
         });
 
-        // Get tree hash BEFORE validation (for stability check)
+        // Get tree hash BEFORE validation (for caching and stability check)
         let treeHashBefore: string | null = null;
         try {
           treeHashBefore = await getGitTreeHash();
@@ -61,6 +62,34 @@ export function validateCommand(program: Command): void {
           // Not in git repo or git command failed - continue without history
           if (verbose) {
             console.warn(chalk.yellow('⚠️  Could not get git tree hash - history recording disabled'));
+          }
+        }
+
+        // Check cache: if validation already passed for this tree hash, skip re-running
+        if (treeHashBefore && !options.force) {
+          try {
+            const historyNote = await readHistoryNote(treeHashBefore);
+
+            if (historyNote && historyNote.runs.length > 0) {
+              // Find most recent passing run
+              const passingRun = [...historyNote.runs]
+                .reverse()
+                .find(run => run.passed);
+
+              if (passingRun) {
+                console.log(chalk.green('✅ Validation already passed for current working tree state'));
+                console.log(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}...`));
+                console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
+                console.log(chalk.gray(`   Duration: ${passingRun.duration}ms`));
+                console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
+
+                // Return cached result (construct from history note)
+                process.exit(0);
+              }
+            }
+          } catch (_error) {
+            // Cache check failed - proceed with validation
+            // This is expected for first-time validation
           }
         }
 

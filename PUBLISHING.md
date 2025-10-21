@@ -278,7 +278,6 @@ npm pack --dry-run
 # Verify .npmignore excludes unnecessary files:
 # - test/
 # - *.test.ts
-# - .vibe-validate-state.yaml
 # - node_modules (automatically excluded)
 ```
 

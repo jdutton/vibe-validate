@@ -286,20 +286,9 @@ export function generateWorkflow(
       name: 'Display validation state on failure (Unix)',
       if: "failure() && runner.os != 'Windows'",
       run: `echo "=========================================="
-echo "📋 VALIDATION STATE FILE CONTENTS"
+echo "📋 VALIDATION STATE"
 echo "=========================================="
-if [ -f .vibe-validate-state.yaml ]; then
-  cat .vibe-validate-state.yaml
-else
-  echo "❌ State file not found!"
-  echo "Expected location: $(pwd)/.vibe-validate-state.yaml"
-  echo ""
-  echo "📂 Files in current directory:"
-  ls -la | head -20
-  echo ""
-  echo "🔍 Searching for state files:"
-  find . -name "*validate*state*.yaml" -o -name ".vibe-validate*" 2>/dev/null || echo "No state files found"
-fi
+npx vibe-validate state || echo "❌ Could not retrieve validation state"
 echo "=========================================="`,
     });
 
@@ -310,36 +299,15 @@ echo "=========================================="`,
       if: "failure() && runner.os == 'Windows'",
       shell: 'powershell',
       run: `Write-Host '=========================================='
-Write-Host 'VALIDATION STATE FILE CONTENTS'
+Write-Host 'VALIDATION STATE'
 Write-Host '=========================================='
-
-if (Test-Path .vibe-validate-state.yaml) {
-  Get-Content .vibe-validate-state.yaml
-} else {
-  Write-Host 'State file not found!'
-  Write-Host "Expected location: $PWD\\.vibe-validate-state.yaml"
-  Write-Host ''
-  Write-Host 'Files in current directory:'
-  Get-ChildItem | Select-Object -First 20
-  Write-Host ''
-  Write-Host 'Searching for state files:'
-  Get-ChildItem -Recurse -Filter '*validate*state*.yaml' -ErrorAction SilentlyContinue
-}
-
+npx vibe-validate state
+if ($LASTEXITCODE -ne 0) { Write-Host 'Could not retrieve validation state' }
 Write-Host '=========================================='`,
     });
 
-    // Add validation state upload on failure
-    jobSteps.push({
-      name: 'Upload validation state on failure',
-      if: 'failure()',
-      uses: 'actions/upload-artifact@v4',
-      with: {
-        name: 'validation-state-${{ matrix.os }}-node${{ matrix.node }}',
-        path: '.vibe-validate-state.yaml',
-        'retention-days': 7,
-      },
-    });
+    // Note: Validation state is now stored in git notes and displayed above
+    // No need to upload artifacts - state is accessible via 'vibe-validate state' command
 
     jobs['validate'] = {
       name: 'Run vibe-validate validation',

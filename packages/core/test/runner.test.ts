@@ -5,7 +5,6 @@ import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 import { getGitTreeHash } from '@vibe-validate/git';
 import {
-  checkExistingValidation,
   parseFailures,
   runStepsInParallel,
   runValidation,
@@ -54,76 +53,6 @@ describe('runner', () => {
 
   // Note: getGitTreeHash is tested in packages/git/test/tree-hash.test.ts
   // These tests focus on runner logic, with getGitTreeHash mocked
-
-  describe('checkExistingValidation', () => {
-    it('should return alreadyPassed false if state file does not exist', () => {
-      const result = checkExistingValidation('abc123', '/nonexistent/state.json');
-
-      expect(result.alreadyPassed).toBe(false);
-      expect(result.previousState).toBeUndefined();
-    });
-
-    it('should return alreadyPassed true if state file matches tree hash', () => {
-      const stateFile = join(testDir, 'state.json');
-      const state = {
-        passed: true,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123',
-      };
-
-      writeFileSync(stateFile, JSON.stringify(state));
-
-      const result = checkExistingValidation('abc123', stateFile);
-
-      expect(result.alreadyPassed).toBe(true);
-      expect(result.previousState).toEqual(state);
-    });
-
-    it('should return alreadyPassed false if tree hash does not match', () => {
-      const stateFile = join(testDir, 'state.json');
-      const state = {
-        passed: true,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123',
-      };
-
-      writeFileSync(stateFile, JSON.stringify(state));
-
-      const result = checkExistingValidation('def456', stateFile);
-
-      expect(result.alreadyPassed).toBe(false);
-      expect(result.previousState).toEqual(state);
-    });
-
-    it('should return alreadyPassed false if validation did not pass', () => {
-      const stateFile = join(testDir, 'state.json');
-      const state = {
-        passed: false,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123',
-        failedStep: 'TypeScript',
-      };
-
-      writeFileSync(stateFile, JSON.stringify(state));
-
-      const result = checkExistingValidation('abc123', stateFile);
-
-      expect(result.alreadyPassed).toBe(false);
-      expect(result.previousState).toEqual(state);
-    });
-
-    it('should handle invalid YAML in state file', () => {
-      const stateFile = join(testDir, 'invalid-state.yaml');
-
-      // Write invalid YAML (unclosed quote)
-      writeFileSync(stateFile, 'key: "value without closing quote');
-
-      const result = checkExistingValidation('abc123', stateFile);
-
-      expect(result.alreadyPassed).toBe(false);
-      expect(result.previousState).toBeUndefined();
-    });
-  });
 
   describe('parseFailures', () => {
     it('should extract Vitest test failures', () => {
@@ -299,7 +228,6 @@ describe('runner', () => {
             steps: [{ name: 'Step2', command: 'echo "phase2"' }],
           },
         ],
-        stateFilePath: join(testDir, 'state.json'),
         logPath: join(testDir, 'log.txt'),
       };
 
@@ -330,7 +258,6 @@ describe('runner', () => {
             steps: [{ name: 'Never', command: 'echo "skipped"' }],
           },
         ],
-        stateFilePath: join(testDir, 'state.json'),
         logPath: join(testDir, 'log.txt'),
       };
 
@@ -341,85 +268,8 @@ describe('runner', () => {
       expect(result.phases).toHaveLength(2); // Should not run third phase
     });
 
-    it('should write state file on completion', async () => {
-      const stateFile = join(testDir, 'state.json');
-      const config: ValidationConfig = {
-        phases: [
-          {
-            name: 'Test',
-            parallel: true,
-            steps: [{ name: 'Step', command: 'echo "test"' }],
-          },
-        ],
-        stateFilePath: stateFile,
-        logPath: join(testDir, 'log.txt'),
-      };
-
-      await runValidation(config);
-
-      expect(existsSync(stateFile)).toBe(true);
-
-      const state = parseYaml(readFileSync(stateFile, 'utf8'));
-      expect(state.passed).toBe(true);
-      expect(state.treeHash).toBeTruthy();
-      expect(state.timestamp).toBeTruthy();
-    });
-
-    it('should skip validation if already passed for current tree hash', async () => {
-      const stateFile = join(testDir, 'state.json');
-      const config: ValidationConfig = {
-        phases: [
-          {
-            name: 'Test',
-            parallel: true,
-            steps: [{ name: 'Step', command: 'echo "test"' }],
-          },
-        ],
-        stateFilePath: stateFile,
-        logPath: join(testDir, 'log.txt'),
-      };
-
-      // Run first time
-      const result1 = await runValidation(config);
-      expect(result1.passed).toBe(true);
-
-      // Run second time - should skip
-      const result2 = await runValidation(config);
-      expect(result2.passed).toBe(true);
-
-      // Should return same tree hash (skipped validation)
-      // Note: In git repo, hash is deterministic. In non-git, may differ due to timestamp
-      expect(result2.treeHash).toBeTruthy();
-      expect(result1.treeHash).toBeTruthy();
-
-      // If both are git hashes (not nogit-), they should match
-      if (!result1.treeHash.startsWith('nogit-')) {
-        expect(result2.treeHash).toBe(result1.treeHash);
-      }
-    });
-
-    it('should force re-run when forceRun is true', async () => {
-      const stateFile = join(testDir, 'state.json');
-      const config: ValidationConfig = {
-        phases: [
-          {
-            name: 'Test',
-            parallel: true,
-            steps: [{ name: 'Step', command: 'echo "test"' }],
-          },
-        ],
-        stateFilePath: stateFile,
-        logPath: join(testDir, 'log.txt'),
-        forceRun: true,
-      };
-
-      // Run first time
-      await runValidation(config);
-
-      // Run second time with forceRun - should re-run
-      const result = await runValidation(config);
-      expect(result.passed).toBe(true);
-    });
+    // Note: State file persistence tests removed in v0.12.0
+    // Caching is now handled at CLI layer via git notes (see packages/cli/src/commands/validate.ts)
 
     it('should call onPhaseStart callback', async () => {
       const phaseStartCallback = vi.fn();
@@ -432,7 +282,6 @@ describe('runner', () => {
             steps: [{ name: 'Step', command: 'echo "test"' }],
           },
         ],
-        stateFilePath: join(testDir, 'state.json'),
         logPath: join(testDir, 'log.txt'),
         onPhaseStart: phaseStartCallback,
       };
@@ -453,7 +302,6 @@ describe('runner', () => {
             steps: [{ name: 'Step', command: 'echo "test"' }],
           },
         ],
-        stateFilePath: join(testDir, 'state.json'),
         logPath: join(testDir, 'log.txt'),
         onPhaseComplete: phaseCompleteCallback,
       };
@@ -478,7 +326,6 @@ describe('runner', () => {
             steps: [{ name: 'Bad', command: 'echo "error message" && exit 1' }],
           },
         ],
-        stateFilePath: join(testDir, 'state.json'),
         logPath: join(testDir, 'log.txt'),
       };
 
@@ -501,7 +348,6 @@ describe('runner', () => {
             ],
           },
         ],
-        stateFilePath: join(testDir, 'state.json'),
         logPath: logFile,
       };
 

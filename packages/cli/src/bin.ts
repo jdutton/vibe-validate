@@ -289,8 +289,8 @@ function showComprehensiveHelp(program: Command): void {
       ],
       errorGuidance: {
         'check fails': [
-          '# View error from state file in YAML output',
-          'vibe-validate watch-pr 42 --yaml | yq \'.failures[0].stateFile\'',
+          '# View validation result from YAML output',
+          'vibe-validate watch-pr 42 --yaml | yq \'.failures[0].validationResult\'',
           '',
           '# Re-run failed check',
           'gh run rerun <run-id> --failed'

@@ -36,7 +36,7 @@ const VALIDATORS: SchemaValidator[] = [
     name: 'ValidationResult',
     tags: ['validation-result:example', 'state-file:example'],
     validate: safeValidateResult,
-    description: 'Validation state file schema (.vibe-validate-state.yaml)',
+    description: 'Validation result schema (git notes history)',
   },
   {
     name: 'VibeValidateConfig',

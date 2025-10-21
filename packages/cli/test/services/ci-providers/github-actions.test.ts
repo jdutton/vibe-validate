@@ -240,15 +240,15 @@ More log output after
 
       const result = await provider.fetchFailureLogs('123456');
 
-      expect(result.stateFile).toBeDefined();
-      expect(result.stateFile?.passed).toBe(false);
-      expect(result.stateFile?.failedStep).toBe('Unit Tests');
-      expect(result.stateFile?.rerunCommand).toBe('pnpm test');
+      expect(result.validationResult).toBeDefined();
+      expect(result.validationResult?.passed).toBe(false);
+      expect(result.validationResult?.failedStep).toBe('Unit Tests');
+      expect(result.validationResult?.rerunCommand).toBe('pnpm test');
     });
 
-    it('should handle missing state file gracefully', async () => {
+    it('should handle missing validation result gracefully', async () => {
       const runData = { name: 'Test' };
-      const logs = 'Regular log output without state file';
+      const logs = 'Regular log output without validation result';
 
       vi.mocked(execSync)
         .mockReturnValueOnce(JSON.stringify(runData) as any)
@@ -256,12 +256,12 @@ More log output after
 
       const result = await provider.fetchFailureLogs('123456');
 
-      expect(result.stateFile).toBeUndefined();
+      expect(result.validationResult).toBeUndefined();
     });
   });
 
-  describe('extractStateFile', () => {
-    it('should extract and parse YAML state file', () => {
+  describe('extractValidationResult', () => {
+    it('should extract and parse YAML validation result', () => {
       // GitHub Actions log format: "Job\tStep\tTimestamp Content"
       const logs = `
 Some output before
@@ -275,7 +275,7 @@ Run validation\tDisplay state\t2025-10-20T10:00:00.600Z ========================
 Output after
 `;
 
-      const result = provider.extractStateFile(logs);
+      const result = provider.extractValidationResult(logs);
 
       expect(result).toEqual({
         passed: false,
@@ -284,10 +284,10 @@ Output after
       });
     });
 
-    it('should return null when state file not found', () => {
-      const logs = 'No state file here';
+    it('should return null when validation result not found', () => {
+      const logs = 'No validation result here';
 
-      const result = provider.extractStateFile(logs);
+      const result = provider.extractValidationResult(logs);
 
       expect(result).toBeNull();
     });
@@ -301,7 +301,7 @@ invalid: yaml: content: [
 ==========================================
 `;
 
-      const result = provider.extractStateFile(logs);
+      const result = provider.extractValidationResult(logs);
 
       expect(result).toBeNull();
     });

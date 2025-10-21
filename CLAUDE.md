@@ -57,35 +57,6 @@ pnpm pre-commit        # Pre-commit workflow (sync check + validation)
 pnpm exec vibe-validate doctor  # Diagnose setup issues (ALWAYS run after upgrade!)
 ```
 
-## ⚠️ CRITICAL: Run Doctor After Every Upgrade
-
-**For AI Agents (Claude Code, Cursor, Aider, Continue)**:
-
-Whenever you upgrade `vibe-validate` (or any `@vibe-validate/*` package), **ALWAYS** run the doctor command immediately:
-
-```bash
-npx vibe-validate doctor
-```
-
-**Why this matters**:
-- ✅ Detects deprecated files (`.vibe-validate-state.yaml`)
-- ✅ Recommends removal from `.gitignore`
-- ✅ Checks for new configuration requirements
-- ✅ Validates setup matches latest version
-- ✅ Provides actionable migration steps
-
-**Example workflow** (for agents):
-```typescript
-// After running: npm install -D vibe-validate@latest
-1. Run: npx vibe-validate doctor
-2. Review any warnings or failures
-3. Apply suggested fixes (remove deprecated files, update config, etc.)
-4. Re-run doctor until all checks pass
-5. Commit changes
-```
-
-**Key pattern**: `upgrade → doctor → fix → verify → commit`
-
 ## Package Management
 
 This is a **pnpm monorepo**. Each package in `packages/` is independently versioned and publishable.
@@ -385,7 +356,7 @@ Every time you run tests, validation, or encounter errors, ask yourself:
    - ❌ Bad: 200+ lines of verbose test output or stack traces
 
 2. **Is the guidance actionable?**
-   - ✅ Good: "Run `pnpm lint` to see details" or "Check `.vibe-validate-state.yaml`"
+   - ✅ Good: "Run `pnpm lint` to see details" or "Check state: `vibe-validate state`"
    - ❌ Bad: Generic errors with no recovery path
 
 3. **Does it respect your context window?**

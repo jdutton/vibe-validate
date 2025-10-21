@@ -24,8 +24,9 @@ export async function checkHistoryHealth(
     },
   };
 
-  const warnAfterDays = mergedConfig.retention.warnAfterDays ?? DEFAULT_HISTORY_CONFIG.retention.warnAfterDays;
-  const warnAfterCount = mergedConfig.retention.warnAfterCount ?? DEFAULT_HISTORY_CONFIG.retention.warnAfterCount;
+  // Type assertion safe: DEFAULT_HISTORY_CONFIG is Required<HistoryConfig>
+  const warnAfterDays = (mergedConfig.retention.warnAfterDays ?? DEFAULT_HISTORY_CONFIG.retention.warnAfterDays) as number;
+  const warnAfterCount = (mergedConfig.retention.warnAfterCount ?? DEFAULT_HISTORY_CONFIG.retention.warnAfterCount) as number;
 
   const allNotes = await getAllHistoryNotes(
     mergedConfig.gitNotes?.ref || DEFAULT_HISTORY_CONFIG.gitNotes.ref
