@@ -8,6 +8,7 @@ import type { Command } from 'commander';
 import { checkBranchSync } from '@vibe-validate/git';
 import { getRemoteBranch, getMainBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
+import { stringify as stringifyYaml } from 'yaml';
 import chalk from 'chalk';
 
 export function syncCheckCommand(program: Command): void {
@@ -16,7 +17,7 @@ export function syncCheckCommand(program: Command): void {
     .description('Check if branch is behind remote main branch')
     .option('--main-branch <branch>', 'Main branch name (overrides config)')
     .option('--remote-origin <remote>', 'Remote origin name (overrides config)')
-    .option('--format <format>', 'Output format (human|yaml|json)', 'human')
+    .option('--yaml', 'Output YAML only (no human-friendly display)')
     .action(async (options) => {
       try {
         // Load config to get defaults
@@ -38,18 +39,9 @@ export function syncCheckCommand(program: Command): void {
           remoteBranch,
         });
 
-        // Output based on format
-        if (options.format === 'json') {
-          console.log(JSON.stringify(result, null, 2));
-        } else if (options.format === 'yaml') {
-          console.log(`hasRemote: ${result.hasRemote}`);
-          console.log(`isUpToDate: ${result.isUpToDate}`);
-          if (result.currentBranch) {
-            console.log(`currentBranch: ${result.currentBranch}`);
-          }
-          if (result.behindBy !== undefined) {
-            console.log(`behindBy: ${result.behindBy}`);
-          }
+        // Output based on quiet flag
+        if (options.yaml) {
+          console.log(stringifyYaml(result));
         } else {
           // Human-friendly format
           displayHumanSyncCheck(result, mainBranch);

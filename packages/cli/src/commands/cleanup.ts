@@ -6,6 +6,7 @@
 
 import type { Command } from 'commander';
 import { cleanupMergedBranches } from '@vibe-validate/git';
+import { stringify as stringifyYaml } from 'yaml';
 import chalk from 'chalk';
 
 export function cleanupCommand(program: Command): void {
@@ -14,7 +15,7 @@ export function cleanupCommand(program: Command): void {
     .description('Post-merge cleanup (switch to main, delete merged branches)')
     .option('--main-branch <branch>', 'Main branch name', 'main')
     .option('--dry-run', 'Show what would be deleted without actually deleting')
-    .option('--format <format>', 'Output format (human|yaml|json)', 'human')
+    .option('--yaml', 'Output YAML only (no human-friendly display)')
     .action(async (options) => {
       try {
         // Run post-merge cleanup
@@ -23,20 +24,9 @@ export function cleanupCommand(program: Command): void {
           dryRun: options.dryRun,
         });
 
-        // Output based on format
-        if (options.format === 'json') {
-          console.log(JSON.stringify(result, null, 2));
-        } else if (options.format === 'yaml') {
-          console.log(`success: ${result.success}`);
-          console.log(`currentBranch: ${result.currentBranch}`);
-          console.log(`mainSynced: ${result.mainSynced}`);
-          console.log(`branchesDeleted:`);
-          result.branchesDeleted.forEach((branch: string) => {
-            console.log(`  - ${branch}`);
-          });
-          if ('error' in result && result.error) {
-            console.log(`error: ${result.error}`);
-          }
+        // Output based on quiet flag
+        if (options.yaml) {
+          console.log(stringifyYaml(result));
         } else {
           // Human-friendly format
           displayHumanCleanup(result, options.dryRun);

@@ -17,10 +17,11 @@
   },
   "files": [
     "dist",
+    "watch-pr-result.schema.json",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node dist/scripts/generate-watch-pr-schema.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -61,12 +62,14 @@
     "access": "public"
   },
   "dependencies": {
+    "@vibe-validate/config": "workspace:*",
     "@vibe-validate/core": "workspace:*",
     "@vibe-validate/git": "workspace:*",
-    "@vibe-validate/config": "workspace:*",
-    "commander": "^12.1.0",
     "chalk": "^5.3.0",
-    "yaml": "^2.6.1"
+    "commander": "^12.1.0",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
     "@types/node": "^20.14.8",

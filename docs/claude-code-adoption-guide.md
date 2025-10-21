@@ -431,10 +431,10 @@ git commit -m "feat: Add vibe-validate for validation orchestration"
 
 1. **Non-interactive setup** - Prepare to handle interactive prompts
 2. **Validation state** - Use `npx vibe-validate state` for error details
-3. **JSON output** - Use `--json` flag for machine-readable output:
+3. **YAML output** - Use `--yaml` flag for machine-readable output:
    ```bash
-   npx vibe-validate doctor --json
-   npx vibe-validate state --format json
+   npx vibe-validate doctor --yaml
+   npx vibe-validate state --verbose
    ```
 
 ---

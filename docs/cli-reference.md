@@ -199,7 +199,7 @@ Reports sync status
 
 - `--main-branch <branch>` - Main branch name (overrides config)
 - `--remote-origin <remote>` - Remote origin name (overrides config)
-- `--format <format>` - Output format (human|yaml|json)
+- `--yaml` - Output YAML only (no human-friendly display)
 
 **Error recovery:**
 
@@ -215,7 +215,7 @@ vibe-validate pre-commit  # Retry
 
 ```bash
 vibe-validate sync-check
-vibe-validate sync-check --format yaml  # Machine-readable output
+vibe-validate sync-check --yaml  # YAML output only
 ```
 
 ---
@@ -243,7 +243,7 @@ Post-merge cleanup (switch to main, delete merged branches)
 
 - `--main-branch <branch>` - Main branch name
 - `--dry-run` - Show what would be deleted without actually deleting
-- `--format <format>` - Output format (human|yaml|json)
+- `--yaml` - Output YAML only (no human-friendly display)
 
 **Examples:**
 
@@ -344,13 +344,75 @@ Verifies GitHub Actions workflow
 
 **Options:**
 
-- `--json` - Output results as JSON
+- `--yaml` - Output YAML only (no human-friendly display)
 
 **Examples:**
 
 ```bash
 vibe-validate doctor         # Run diagnostics
-vibe-validate doctor --json  # JSON output for scripts
+vibe-validate doctor --yaml # YAML output only
+```
+
+---
+
+### `watch-pr`
+
+Watch CI checks for a pull/merge request in real-time
+
+**What it does:**
+
+1. Detects PR from current branch (or uses provided PR number)
+2. Polls CI provider (GitHub Actions) for check status
+3. Shows real-time progress of all matrix jobs
+4. On failure: fetches logs and extracts vibe-validate state file
+5. Provides actionable recovery commands
+6. Exits when all checks complete or timeout reached
+
+**Exit codes:**
+
+- `0` - All checks passed
+- `1` - One or more checks failed
+- `2` - Timeout reached before completion
+
+**When to use:** Monitor CI checks in real-time after pushing to PR, especially useful for AI agents
+
+**Options:**
+
+- `--provider <name>` - Force specific CI provider (github-actions, gitlab-ci)
+- `--yaml` - Output YAML only (no interactive display)
+- `--timeout <seconds>` - Maximum time to wait in seconds (default: 3600)
+- `--poll-interval <seconds>` - Polling frequency in seconds (default: 10)
+- `--fail-fast` - Exit immediately on first check failure
+
+**Error recovery:**
+
+If **check fails**:
+```bash
+# View error from state file in YAML output
+vibe-validate watch-pr 42 --yaml | yq '.failures[0].stateFile'
+
+# Re-run failed check
+gh run rerun <run-id> --failed
+```
+
+If **no PR found**:
+```bash
+# Create PR first
+gh pr create
+
+# Or specify PR number explicitly
+vibe-validate watch-pr 42
+```
+
+**Examples:**
+
+```bash
+git push origin my-branch
+vibe-validate watch-pr              # Auto-detect PR
+vibe-validate watch-pr 42           # Watch specific PR
+vibe-validate watch-pr --yaml      # YAML output only
+vibe-validate watch-pr --fail-fast  # Exit on first failure
+vibe-validate watch-pr --timeout 600  # 10 minute timeout
 ```
 
 ---

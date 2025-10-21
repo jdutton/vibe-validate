@@ -18,6 +18,7 @@ import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
 import { generateWorkflowCommand } from './commands/generate-workflow.js';
 import { doctorCommand } from './commands/doctor.js';
+import { registerWatchPRCommand } from './commands/watch-pr.js';
 
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation
@@ -52,6 +53,7 @@ cleanupCommand(program);              // vibe-validate cleanup
 configCommand(program);               // vibe-validate config
 generateWorkflowCommand(program);     // vibe-validate generate-workflow
 doctorCommand(program);               // vibe-validate doctor
+registerWatchPRCommand(program);      // vibe-validate watch-pr
 
 // Custom help handler: --help --verbose shows all subcommand options
 const args = process.argv;
@@ -187,7 +189,7 @@ function showComprehensiveHelp(program: Command): void {
       },
       examples: [
         'vibe-validate sync-check',
-        'vibe-validate sync-check --format yaml  # Machine-readable output'
+        'vibe-validate sync-check --yaml  # YAML output only'
       ]
     },
     cleanup: {
@@ -257,8 +259,48 @@ function showComprehensiveHelp(program: Command): void {
       whenToUse: 'Diagnose setup issues or verify environment before using vibe-validate',
       examples: [
         'vibe-validate doctor         # Run diagnostics',
-        'vibe-validate doctor --json  # JSON output for scripts'
+        'vibe-validate doctor --yaml # YAML output only'
       ]
+    },
+    'watch-pr': {
+      whatItDoes: [
+        '1. Detects PR from current branch (or uses provided PR number)',
+        '2. Polls CI provider (GitHub Actions) for check status',
+        '3. Shows real-time progress of all matrix jobs',
+        '4. On failure: fetches logs and extracts vibe-validate state file',
+        '5. Provides actionable recovery commands',
+        '6. Exits when all checks complete or timeout reached'
+      ],
+      exitCodes: {
+        0: 'All checks passed',
+        1: 'One or more checks failed',
+        2: 'Timeout reached before completion'
+      },
+      whenToUse: 'Monitor CI checks in real-time after pushing to PR, especially useful for AI agents',
+      examples: [
+        'git push origin my-branch',
+        'vibe-validate watch-pr              # Auto-detect PR',
+        'vibe-validate watch-pr 42           # Watch specific PR',
+        'vibe-validate watch-pr --yaml      # YAML output only',
+        'vibe-validate watch-pr --fail-fast  # Exit on first failure',
+        'vibe-validate watch-pr --timeout 600  # 10 minute timeout'
+      ],
+      errorGuidance: {
+        'check fails': [
+          '# View error from state file in YAML output',
+          'vibe-validate watch-pr 42 --yaml | yq \'.failures[0].stateFile\'',
+          '',
+          '# Re-run failed check',
+          'gh run rerun <run-id> --failed'
+        ],
+        'no PR found': [
+          '# Create PR first',
+          'gh pr create',
+          '',
+          '# Or specify PR number explicitly',
+          'vibe-validate watch-pr 42'
+        ]
+      }
     }
   };
 
