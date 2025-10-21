@@ -98,17 +98,18 @@ validation:
           command: npm test ${CI:+-- --reporter=verbose}
 ```
 
-### Pattern 3: State File Not Created
+### Pattern 3: Validation State Not Recorded
 
-**Symptom**: Validation fails but `.vibe-validate-state.yaml` is not in artifacts
+**Symptom**: Validation fails but `vibe-validate state` shows no results
 
-**Cause**: Command crashed before runner could write state file
+**Cause**: Command crashed before runner could write state to git notes
 
 **Solution**: Check for:
 - Out of memory errors
 - Segmentation faults
 - Process killed by timeout
 - Configuration syntax errors
+- Git notes write failures (rare)
 
 ## Debugging with Verbose Output
 
@@ -162,20 +163,20 @@ If validation fails, the state file is uploaded as an artifact:
 
 ```yaml
 # In your workflow
-- name: Upload validation state on failure
+- name: Extract validation state on failure
   if: failure()
-  uses: actions/upload-artifact@v4
-  with:
-    name: validation-state-${{ matrix.os }}-node${{ matrix.node }}
-    path: .vibe-validate-state.yaml
-    retention-days: 7
+  run: |
+    echo "## Validation State" >> $GITHUB_STEP_SUMMARY
+    vibe-validate state >> $GITHUB_STEP_SUMMARY || echo "No state available" >> $GITHUB_STEP_SUMMARY
 ```
 
-Download it from the GitHub Actions UI:
+View it from the GitHub Actions UI:
 1. Go to failed workflow run
-2. Scroll to "Artifacts" section
-3. Download `validation-state-*`
-4. Inspect the YAML file for error details
+2. Click on the job summary
+3. View the "Validation State" section
+4. Inspect the YAML output for error details
+
+**Alternative**: Use `vibe-validate watch-pr <PR>` locally to extract state from failed CI runs
 
 ## Testing CI Locally with act
 
@@ -368,15 +369,16 @@ export default {
 ### 2. Enable Artifact Upload
 
 ```yaml
-- name: Upload validation state on failure
+- name: Extract validation state to job summary
   if: failure()
-  uses: actions/upload-artifact@v4
-  with:
-    name: validation-state
-    path: .vibe-validate-state.yaml
+  run: |
+    echo "## Validation State" >> $GITHUB_STEP_SUMMARY
+    vibe-validate state >> $GITHUB_STEP_SUMMARY
 ```
 
 **Why**: Provides structured error details even when logs are unclear.
+
+**Tip**: Use `vibe-validate watch-pr <PR>` to retrieve state from failed CI runs.
 
 ### 3. Test Locally with act Before Pushing
 

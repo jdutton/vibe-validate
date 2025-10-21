@@ -11,7 +11,7 @@
 
 **For AI Assistants**: Get all command help at once with `npx vibe-validate --help --verbose` or see the [Complete CLI Reference](docs/cli-reference.md)
 
-## Quick Start (3 commands)
+## Quick Start (4 commands)
 
 ```bash
 # 1. Install
@@ -20,12 +20,17 @@ npm install -D vibe-validate
 # 2. Initialize (creates config, detects your project type)
 npx vibe-validate init
 
-# 3. Validate (run before every commit - uses cache when code unchanged)
+# 3. Check setup health (ALWAYS run after install/upgrade!)
+npx vibe-validate doctor
+
+# 4. Validate (run before every commit - uses cache when code unchanged)
 npx vibe-validate validate
 ```
 
 **When code changes**: ~60-90s (runs all checks)
-**When code unchanged**: ~288ms (312x faster with cache!)
+**When code unchanged**: ~288ms (content-based caching!)
+
+**💡 Tip for AI Agents**: Always run `npx vibe-validate doctor` after upgrading to detect deprecated files and get migration guidance.
 
 ## Integration with package.json
 
@@ -659,9 +664,9 @@ This is a monorepo containing:
 **Problem**: Cache not working, validation runs every time.
 
 **Solution**: Check for:
-1. `.vibe-validate-state.yaml` exists and is writable
-2. Working tree is clean (`git status`)
-3. No `.gitignore` blocking state file
+1. In a git repository (`git rev-parse --git-dir`)
+2. Git notes enabled (default in most git setups)
+3. Run `vibe-validate doctor` to diagnose issues
 
 ### Validation passes locally but fails in CI
 

@@ -239,7 +239,7 @@ describe('validate command', () => {
       }
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error details'),
+        expect.stringContaining('View error details'),
         expect.anything()
       );
       expect(console.error).toHaveBeenCalledWith(

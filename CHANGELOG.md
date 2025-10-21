@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-10-21
+
+### 🚨 BREAKING CHANGES
+
+- **State File Deprecated - Git Notes-Based Caching**
+  - **Problem**: `.vibe-validate-state.yaml` file only cached one tree hash, limiting cache effectiveness
+  - **Solution**: Git notes provide content-based caching across branches
+  - **Impact**: Run `vibe-validate doctor` after upgrade to detect and remove deprecated files
+  - **Migration**: Delete `.vibe-validate-state.yaml` and remove from `.gitignore`
+  - Better cache hits across branch switches, reverts, and multiple branches
+  - No more cache misses from branch changes when code is identical
+
+### ✨ New Features
+
+- **Validation History Tracking** (Issue #23)
+  - `vibe-validate history list` - View validation timeline across all tree hashes
+  - `vibe-validate history show <hash>` - Inspect specific validation results
+  - `vibe-validate history prune` - Cleanup old history (by age or all)
+  - `vibe-validate history health` - Check git notes storage health
+  - Multi-run support per tree hash (tracks every validation run)
+  - Worktree stability checks (before/after validation)
+  - Output truncation (10KB max per step)
+
+- **Enhanced `vibe-validate state` Command**
+  - Now reads from git notes instead of state file
+  - Same command, same output format, better caching
+  - Displays most recent validation for current tree hash
+  - Compatible YAML output format maintained
+
+### 🐛 Bug Fixes
+
+- **Fixed Git Tree Hash Error Handling**
+  - Git stderr now properly captured (was being ignored)
+  - Non-git repositories now handled gracefully
+  - Proper fallback to timestamp-based hash
+  - `vibe-validate state` exits 0 in non-git repos
+
+### 🩺 Doctor Command Improvements
+
+- **3 New Health Checks** (15 total, was 14):
+  - Detects deprecated `.vibe-validate-state.yaml` file
+  - Warns if state file still in `.gitignore`
+  - Checks validation history health (git notes)
+  - Suggests cleanup when needed
+
+### 📝 Documentation
+
+- **"Run Doctor After Upgrade" Pattern** - Documented for AI agents
+  - CLAUDE.md: Prominent upgrade workflow section
+  - README.md: Added doctor to Quick Start (4 steps)
+  - Pattern: `upgrade → doctor → fix → verify → commit`
+
+- **Updated Agent Integration Guide**
+  - All examples use `vibe-validate state` command
+  - Python and Node.js examples updated
+  - Added note: "Validation state stored in git notes (not files)"
+
+- **Auto-Synced CLI Reference**
+  - Updated with new `history` commands
+  - Perfect sync with `--help --verbose` output
+
+### 🧪 Testing
+
+- **579 tests passing** (100% pass rate)
+- **14 new tests** for validation history
+- Comprehensive git notes integration tests
+- Cross-platform compatibility verified
+
 ## [0.11.0] - 2025-10-20
 
 ### ✨ New Features

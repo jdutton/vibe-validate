@@ -19,6 +19,7 @@ import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/confi
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 import { formatTemplateList } from '../utils/template-discovery.js';
+import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
 
 /**
  * Result of a single doctor check
@@ -461,28 +462,27 @@ function checkGitignoreStateFile(): DoctorCheckResult {
   if (!existsSync(gitignorePath)) {
     return {
       name: 'Gitignore state file',
-      passed: false,
-      message: '.gitignore file not found',
-      suggestion: 'Manual: echo ".vibe-validate-state.yaml" >> .gitignore\n   💡 Or run: vibe-validate init --fix-gitignore',
+      passed: true,
+      message: '.gitignore file not found (state file deprecated - using git notes)',
     };
   }
 
   try {
     const gitignoreContent = readFileSync(gitignorePath, 'utf8');
 
-    // Check if state file is already in .gitignore
+    // Check if deprecated state file is in .gitignore
     if (gitignoreContent.includes(stateFileName)) {
       return {
-        name: 'Gitignore state file',
-        passed: true,
-        message: '.vibe-validate-state.yaml is in .gitignore',
+        name: 'Gitignore state file (deprecated)',
+        passed: false,
+        message: '.vibe-validate-state.yaml in .gitignore (deprecated - can be removed)',
+        suggestion: 'Remove from .gitignore: sed -i.bak \'/.vibe-validate-state.yaml/d\' .gitignore && rm .gitignore.bak\n   ℹ️  Validation now uses git notes instead of state file',
       };
     } else {
       return {
         name: 'Gitignore state file',
-        passed: false,
-        message: '.vibe-validate-state.yaml not in .gitignore (state file should not be committed)',
-        suggestion: 'Manual: echo ".vibe-validate-state.yaml" >> .gitignore\n   💡 Or run: vibe-validate init --fix-gitignore',
+        passed: true,
+        message: 'No deprecated state file entries in .gitignore',
       };
     }
   } catch (_error) {
@@ -501,19 +501,51 @@ function checkGitignoreStateFile(): DoctorCheckResult {
 function checkValidationState(): DoctorCheckResult {
   const statePath = '.vibe-validate-state.yaml';
 
-  // This check is informational only - missing state file is not an error
-  // (fresh checkouts, CI environments, etc. won't have it until first validation run)
+  // Check if deprecated state file exists
   if (existsSync(statePath)) {
     return {
-      name: 'Validation state',
-      passed: true,
-      message: 'Validation state file exists',
+      name: 'Validation state (deprecated)',
+      passed: false,
+      message: '.vibe-validate-state.yaml found (deprecated file - safe to remove)',
+      suggestion: 'Remove deprecated state file: rm .vibe-validate-state.yaml\n   ℹ️  Validation now uses git notes for improved caching',
     };
   } else {
     return {
       name: 'Validation state',
-      passed: true,  // Always pass - this is informational only
-      message: 'Validation state file not found (will be created on first validation run)',
+      passed: true,
+      message: 'No deprecated state file found (using git notes)',
+    };
+  }
+}
+
+/**
+ * Check validation history health
+ */
+async function checkHistoryHealth(): Promise<DoctorCheckResult> {
+  try {
+    const health = await checkValidationHistoryHealth();
+
+    if (!health.shouldWarn) {
+      return {
+        name: 'Validation history',
+        passed: true,
+        message: `${health.totalNotes} tree hashes tracked, history is healthy`,
+      };
+    }
+
+    // Has warnings
+    return {
+      name: 'Validation history',
+      passed: false,
+      message: `${health.totalNotes} tree hashes tracked (${health.oldNotesCount} older than 90 days)`,
+      suggestion: 'Prune old history: vibe-validate history prune --older-than "90 days"',
+    };
+  } catch (_error) {
+    // Git notes not available or other error - not critical
+    return {
+      name: 'Validation history',
+      passed: true,
+      message: 'History unavailable (not in git repo or no validation runs yet)',
     };
   }
 }
@@ -711,6 +743,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(await checkPreCommitHook(config));
   allChecks.push(checkGitignoreStateFile());
   allChecks.push(checkValidationState());
+  allChecks.push(await checkHistoryHealth());
 
   // Collect suggestions from failed checks
   const suggestions: string[] = allChecks

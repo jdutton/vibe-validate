@@ -47,6 +47,9 @@ importers:
       '@vibe-validate/git':
         specifier: workspace:*
         version: link:../git
+      '@vibe-validate/history':
+        specifier: workspace:*
+        version: link:../history
       chalk:
         specifier: ^5.3.0
         version: 5.6.2
@@ -124,6 +127,28 @@ importers:
         version: 5.9.3
 
   packages/git:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.18.10
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.18.10)
+
+  packages/history:
+    dependencies:
+      '@vibe-validate/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vibe-validate/git':
+        specifier: workspace:*
+        version: link:../git
+      yaml:
+        specifier: ^2.3.4
+        version: 2.8.1
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

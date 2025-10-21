@@ -617,11 +617,11 @@ vibe-validate respects these environment variables for agent context detection:
 **Purpose**: Agent detection optimizes output verbosity for AI assistants vs. interactive terminals.
 
 **Behavior**:
-- **Agent contexts** (Claude Code, Cursor, etc.): Minimal terminal output, errors in state file
-- **CI environments**: Minimal terminal output, errors in state file
+- **Agent contexts** (Claude Code, Cursor, etc.): Minimal terminal output, errors in validation state
+- **CI environments**: Minimal terminal output, errors in validation state
 - **Interactive terminals**: Verbose terminal output with colors and progress indicators
 
-**Note**: All contexts use YAML for the state file (`.vibe-validate-state.yaml`)
+**Note**: All contexts use YAML format (access via `vibe-validate state` command)
 
 **Note**: Use CLI flags for behavior control (e.g., `--force` to bypass cache, `--verbose` for detailed output)
 
@@ -821,19 +821,18 @@ git:
   remoteOrigin: origin
 ```
 
-## Validation File Locations
+## Validation State Storage
 
-Cache state file:
+Validation state is stored in git notes (not files):
 
-- **Location**: `.vibe-validate-state.yaml` (project root)
-- **Git**: Should be .gitignored
+- **Storage**: Git notes under `refs/notes/vibe-validate/runs`
+- **Access**: Use `vibe-validate state` command to view current state
+- **History**: Use `vibe-validate history list` to view all validations
 - **Contents**: Validation results, git tree hash, timestamp, errors
 
-**Add to `.gitignore`**:
-```gitignore
-# vibe-validate state (never commit)
-.vibe-validate-state.yaml
-```
+**No `.gitignore` needed** - state is stored in git notes, not tracked files.
+
+**Migration from v0.11.x**: If upgrading, run `vibe-validate doctor` to detect deprecated `.vibe-validate-state.yaml` files.
 
 ## See Also
 

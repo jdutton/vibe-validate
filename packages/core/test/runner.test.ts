@@ -13,6 +13,11 @@ import {
 } from '../src/runner.js';
 import type { ValidationConfig, ValidationPhase, ValidationStep } from '../src/types.js';
 
+// Mock git functions
+vi.mock('@vibe-validate/git', () => ({
+  getGitTreeHash: vi.fn(),
+}));
+
 describe('runner', () => {
   let testDir: string;
 
@@ -22,6 +27,9 @@ describe('runner', () => {
     if (!existsSync(testDir)) {
       mkdirSync(testDir, { recursive: true });
     }
+
+    // Mock git tree hash to return consistent value
+    vi.mocked(getGitTreeHash).mockResolvedValue('test-tree-hash-abc123');
 
     // Spy on console.log to reduce noise
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -44,42 +52,8 @@ describe('runner', () => {
     vi.restoreAllMocks();
   });
 
-  describe('getGitTreeHash', () => {
-    it('should return a hash string', async () => {
-      const hash = await getGitTreeHash();
-
-      expect(hash).toBeTruthy();
-      expect(typeof hash).toBe('string');
-    });
-
-    it('should return DETERMINISTIC hash for same working tree state (Issue #8)', async () => {
-      // TDD TEST: This validates the fix for Issue #8
-      // Previously: git stash create included timestamps (non-deterministic)
-      // Now: git write-tree is content-based only (deterministic)
-
-      const hash1 = await getGitTreeHash();
-      const hash2 = await getGitTreeHash();
-
-      // CRITICAL: Hashes MUST be identical for unchanged working tree
-      // This is the core requirement for caching to work correctly
-      expect(hash1).toBe(hash2);
-
-      // This test ensures:
-      // 1. Validation state caching works reliably
-      // 2. --check flag accurately detects changes
-      // 3. 312x speedup feature functions as designed
-    });
-
-    it('should return fallback for non-git repos', async () => {
-      // This test verifies that non-git repos get a fallback hash
-      const fallbackPattern = /^(nogit-\d+|[a-f0-9]{40})$/;
-
-      const hash = await getGitTreeHash();
-
-      // Should match either a git hash or nogit-timestamp fallback
-      expect(hash).toMatch(fallbackPattern);
-    });
-  });
+  // Note: getGitTreeHash is tested in packages/git/test/tree-hash.test.ts
+  // These tests focus on runner logic, with getGitTreeHash mocked
 
   describe('checkExistingValidation', () => {
     it('should return alreadyPassed false if state file does not exist', () => {

@@ -169,16 +169,17 @@ validation:
 
 ## Validation State
 
-Validation results cached in `.vibe-validate-state.yaml`:
-- Check state: `vibe-validate state`
-- Force validation: `vibe-validate validate --force`
+Validation results cached via git notes (content-based):
+- Check current state: `vibe-validate state`
+- Force re-validation: `vibe-validate validate --force`
+- View timeline (advanced): `vibe-validate history list`
 
 ## Error Fixing
 
 When validation fails:
-1. Check validation status: `vibe-validate validate --check`
-2. View error details: `vibe-validate state`
-4. Re-run validation (fast with caching!)
+1. View error details: `vibe-validate state`
+2. Fix the issue
+3. Re-run validation (fast with caching!)
 ```
 
 ### Usage in Claude Code
@@ -206,9 +207,9 @@ $ vibe-validate state
 - vibe-validate automatically uses YAML output
 - No manual configuration needed
 
-**State file integration:**
-- Claude Code can read `.vibe-validate-state.yaml`
-- Structured data for programmatic parsing
+**State integration:**
+- Claude Code can run `vibe-validate state` for validation results
+- Structured YAML data for programmatic parsing
 
 **Performance:**
 - Validation caching = fast iteration
@@ -509,14 +510,11 @@ vibe-validate validate
 ### Step 3: Read Validation State
 
 ```bash
-# View validation state
+# View validation state (YAML output)
 vibe-validate state
-
-# Or read state file directly (advanced)
-cat .vibe-validate-state.yaml
 ```
 
-**State file structure:**
+**State output structure:**
 <!-- validation-result:example -->
 ```yaml
 passed: false
@@ -528,6 +526,8 @@ failedStepOutput: |
   src/index.ts:42:5 - error TS2322
   Type 'string' is not assignable to type 'number'
 ```
+
+**Note**: Validation state is stored in git notes (not files). Always use `vibe-validate state` to query.
 
 ### Step 4: Parse and Act
 
@@ -543,26 +543,29 @@ result = subprocess.run(
     env={'MY_AGENT': '1'}
 )
 
-# Read state file
-with open('.vibe-validate-state.yaml', 'r') as f:
-    state = yaml.safe_load(f)
+# Read state via command (YAML output)
+state_output = subprocess.run(
+    ['vibe-validate', 'state'],
+    capture_output=True,
+    text=True
+).stdout
+
+state = yaml.safe_load(state_output)
 
 if not state['passed']:
     print(f"Validation failed: {state['failedStep']}")
     print(f"Errors:\n{state['failedStepOutput']}")
-    print(f"\nPrompt:\n{state['failedStepOutput']}")
 
     # AI agent fixes errors here
     # ...
 
-    # Re-validate
+    # Re-validate (fast with caching!)
     subprocess.run(['vibe-validate', 'validate'])
 ```
 
 **Node.js example:**
 ```typescript
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
 import yaml from 'yaml';
 
 // Run validation
@@ -574,9 +577,9 @@ try {
   // Validation failed
 }
 
-// Read state
-const stateFile = readFileSync('.vibe-validate-state.yaml', 'utf-8');
-const state = yaml.parse(stateFile);
+// Read state via command (YAML output)
+const stateOutput = execSync('vibe-validate state', { encoding: 'utf-8' });
+const state = yaml.parse(stateOutput);
 
 if (!state.passed) {
   console.log(`Failed: ${state.failedStep}`);
@@ -588,7 +591,7 @@ if (!state.passed) {
   // Apply fixes
   await applyFixes(fixes);
 
-  // Re-validate
+  // Re-validate (fast with caching!)
   execSync('vibe-validate validate');
 }
 ```

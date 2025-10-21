@@ -52,7 +52,39 @@ pnpm typecheck         # TypeScript type checking
 # Validation
 pnpm validate          # Full validation pipeline
 pnpm pre-commit        # Pre-commit workflow (sync check + validation)
+
+# Health checks
+pnpm exec vibe-validate doctor  # Diagnose setup issues (ALWAYS run after upgrade!)
 ```
+
+## ⚠️ CRITICAL: Run Doctor After Every Upgrade
+
+**For AI Agents (Claude Code, Cursor, Aider, Continue)**:
+
+Whenever you upgrade `vibe-validate` (or any `@vibe-validate/*` package), **ALWAYS** run the doctor command immediately:
+
+```bash
+npx vibe-validate doctor
+```
+
+**Why this matters**:
+- ✅ Detects deprecated files (`.vibe-validate-state.yaml`)
+- ✅ Recommends removal from `.gitignore`
+- ✅ Checks for new configuration requirements
+- ✅ Validates setup matches latest version
+- ✅ Provides actionable migration steps
+
+**Example workflow** (for agents):
+```typescript
+// After running: npm install -D vibe-validate@latest
+1. Run: npx vibe-validate doctor
+2. Review any warnings or failures
+3. Apply suggested fixes (remove deprecated files, update config, etc.)
+4. Re-run doctor until all checks pass
+5. Commit changes
+```
+
+**Key pattern**: `upgrade → doctor → fix → verify → commit`
 
 ## Package Management
 
@@ -183,11 +215,12 @@ All validation logic is data-driven:
 - Templates are just example configs to copy and customize
 
 ### State Management
-Single source of truth: `.vibe-validate-state.yaml`
-- Contains validation results
-- Includes git tree hash
-- Embeds error output (no separate log files)
-- Provides agent-friendly prompt
+Validation state tracked via **git notes** (content-based caching):
+- Query current state: `vibe-validate state`
+- View history timeline: `vibe-validate history list`
+- Git notes storage (implementation detail - users don't touch directly)
+- Provides agent-friendly YAML output
+- See `docs/git-validation-tracking.md` for architecture details
 
 ## Common Tasks
 
@@ -416,7 +449,7 @@ $ pnpm validate
 ✗ Testing (0.8s)
 Failed: typecheck
 
-Check details: npx vibe-validate state
+📋 View error details: vibe-validate state
 ```
 → **Concise, actionable, respects context window**
 

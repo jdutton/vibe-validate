@@ -35,9 +35,6 @@ Thumbs.db
 npm-debug.log*
 pnpm-debug.log*
 
-# Validation state (user-specific)
-.vibe-validate-state.yaml
-
 # Development/extraction tracking (git-ignored, local only)
 TODO.md
 TODO-ARCHIVE.md

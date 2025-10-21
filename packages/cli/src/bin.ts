@@ -19,6 +19,7 @@ import { configCommand } from './commands/config.js';
 import { generateWorkflowCommand } from './commands/generate-workflow.js';
 import { doctorCommand } from './commands/doctor.js';
 import { registerWatchPRCommand } from './commands/watch-pr.js';
+import { historyCommand } from './commands/history.js';
 
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation
@@ -54,6 +55,7 @@ configCommand(program);               // vibe-validate config
 generateWorkflowCommand(program);     // vibe-validate generate-workflow
 doctorCommand(program);               // vibe-validate doctor
 registerWatchPRCommand(program);      // vibe-validate watch-pr
+historyCommand(program);              // vibe-validate history
 
 // Custom help handler: --help --verbose shows all subcommand options
 const args = process.argv;
@@ -105,7 +107,7 @@ function showComprehensiveHelp(program: Command): void {
         1: 'Validation failed',
         2: 'Configuration error'
       },
-      creates: ['.vibe-validate-state.yaml (auto-created)'],
+      creates: ['Git notes under refs/notes/vibe-validate/runs'],
       examples: [
         'vibe-validate validate              # Use cache if available',
         'vibe-validate validate --force      # Always run validation',
@@ -373,7 +375,7 @@ function showComprehensiveHelp(program: Command): void {
   console.log('| File | Purpose |');
   console.log('|------|---------|');
   console.log('| `vibe-validate.config.yaml` | Configuration (required) |');
-  console.log('| `.vibe-validate-state.yaml` | Validation state (auto-created, add to .gitignore) |');
+  console.log('| `refs/notes/vibe-validate/runs` | Validation state (git notes, auto-created) |');
   console.log('| `.github/workflows/validate.yml` | CI workflow (optional, generated) |');
   console.log('| `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |\n');
 
