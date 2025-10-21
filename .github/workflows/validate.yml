@@ -63,7 +63,7 @@ jobs:
         run: >-
           Write-Host '=========================================='
 
-          Write-Host 'VALIDATION STATE FILE CONTENTS'
+          Write-Host '📋 VALIDATION STATE FILE CONTENTS'
 
           Write-Host '=========================================='
 
