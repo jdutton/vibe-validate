@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ New Features
+
+- **Pre-commit Secret Scanning** (Issue #24)
+  - **Problem**: Developers accidentally commit API keys, tokens, and passwords to git
+  - **Solution**: Configurable pre-commit secret scanning blocks commits containing secrets
+  - **Impact**: Prevents credential leaks before they enter git history
+  - Tool-agnostic design via `scanCommand` configuration
+  - Gitleaks recommended (fast, free, 160+ secret types)
+  - Advisory doctor check ensures scanner is installed
+  - Comprehensive false positive management (baseline, .gitleaksignore, inline comments)
+  - All config templates include secret scanning by default
+  - Pre-commit only (GitHub already scans repos after push)
+
 ## [0.11.0] - 2025-10-20
 
 ### ✨ New Features

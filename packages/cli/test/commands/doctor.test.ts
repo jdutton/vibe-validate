@@ -111,7 +111,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(14); // Total number of checks (includes new config format migration check)
+      expect(result.checks).toHaveLength(15); // Total number of checks (includes secret scanning check)
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -263,7 +263,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verify that all 15 checks ran (not just the config check)
-      expect(result.checks).toHaveLength(14);
+      expect(result.checks).toHaveLength(15);
 
       // Config check should fail
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
@@ -276,10 +276,10 @@ describe('doctor command', () => {
       expect(result.checks.find(c => c.name === 'Git installed')?.passed).toBe(true);
       expect(result.checks.find(c => c.name === 'Git repository')?.passed).toBe(true);
 
-      // Summary should show 13/14 passed (only config check fails)
+      // Summary should show 14/15 passed (only config check fails)
       expect(result.allPassed).toBe(false);
-      expect(result.totalChecks).toBe(14);
-      expect(result.passedChecks).toBe(13);
+      expect(result.totalChecks).toBe(15);
+      expect(result.passedChecks).toBe(14);
     });
 
     it('should detect not in git repository', async () => {
@@ -417,7 +417,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verbose mode should return all checks
-      expect(result.checks).toHaveLength(14); // All checks including config format migration check
+      expect(result.checks).toHaveLength(15); // All checks including config format migration check
       expect(result.verboseMode).toBe(true);
     });
 
@@ -519,7 +519,7 @@ describe('doctor command', () => {
 
       // Verbose mode should show ALL 15 checks (including passing ones)
       expect(result.verboseMode).toBe(true);
-      expect(result.checks).toHaveLength(14); // All checks
+      expect(result.checks).toHaveLength(15); // All checks
       expect(result.allPassed).toBe(false); // Has failures
 
       const failedChecks = result.checks.filter(c => !c.passed);
@@ -1028,6 +1028,174 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true }); // Verbose to see all checks
 
+    });
+  });
+
+  describe('secret scanning check', () => {
+    it('should pass when secret scanning is disabled', async () => {
+      const mockConfigNoScanning: VibeValidateConfig = {
+        ...mockConfig,
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: false,
+            },
+          },
+        },
+      };
+
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfigNoScanning);
+
+      const result = await runDoctor({ verbose: true });
+
+      const secretCheck = result.checks.find(c => c.name === 'Pre-commit secret scanning');
+      expect(secretCheck).toBeDefined();
+      expect(secretCheck?.passed).toBe(true);
+      expect(secretCheck?.message).toContain('disabled');
+    });
+
+    it('should pass with success message when scanning enabled and tool found', async () => {
+      const mockConfigWithScanning: VibeValidateConfig = {
+        ...mockConfig,
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'gitleaks protect --staged --verbose',
+            },
+          },
+        },
+      };
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('gitleaks version') || cmdStr.includes('gitleaks --version')) {
+          return 'v8.18.0' as any;
+        }
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfigWithScanning);
+
+      const result = await runDoctor({ verbose: true });
+
+      const secretCheck = result.checks.find(c => c.name === 'Pre-commit secret scanning');
+      expect(secretCheck).toBeDefined();
+      expect(secretCheck?.passed).toBe(true);
+      expect(secretCheck?.message).toContain('gitleaks');
+      expect(secretCheck?.message).toContain('v8.18.0');
+    });
+
+    it('should pass with warning when scanning enabled but tool not found', async () => {
+      const mockConfigWithScanning: VibeValidateConfig = {
+        ...mockConfig,
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'gitleaks protect --staged --verbose',
+            },
+          },
+        },
+      };
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('gitleaks version') || cmdStr.includes('gitleaks --version')) {
+          throw new Error('Command not found');
+        }
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfigWithScanning);
+
+      const result = await runDoctor({ verbose: true });
+
+      const secretCheck = result.checks.find(c => c.name === 'Pre-commit secret scanning');
+      expect(secretCheck).toBeDefined();
+      expect(secretCheck?.passed).toBe(true); // Advisory only, always passes
+      expect(secretCheck?.message).toContain('enabled but');
+      expect(secretCheck?.message).toContain('not found');
+      expect(secretCheck?.suggestion).toBeDefined();
+      expect(secretCheck?.suggestion).toContain('Install');
+    });
+
+    it('should skip check when secretScanning config not provided', async () => {
+      const mockConfigNoHooks: VibeValidateConfig = {
+        ...mockConfig,
+        hooks: {
+          preCommit: {
+            enabled: true,
+            // No secretScanning config
+          },
+        },
+      };
+
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfigNoHooks);
+
+      const result = await runDoctor({ verbose: true });
+
+      const secretCheck = result.checks.find(c => c.name === 'Pre-commit secret scanning');
+      expect(secretCheck).toBeDefined();
+      expect(secretCheck?.passed).toBe(true);
+      expect(secretCheck?.message).toContain('not configured');
+    });
+
+    it('should handle custom secret scanning tools (detect-secrets)', async () => {
+      const mockConfigDetectSecrets: VibeValidateConfig = {
+        ...mockConfig,
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'detect-secrets scan --staged',
+            },
+          },
+        },
+      };
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('detect-secrets version') || cmdStr.includes('detect-secrets --version')) {
+          return '1.4.0' as any;
+        }
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfigDetectSecrets);
+
+      const result = await runDoctor({ verbose: true });
+
+      const secretCheck = result.checks.find(c => c.name === 'Pre-commit secret scanning');
+      expect(secretCheck).toBeDefined();
+      expect(secretCheck?.passed).toBe(true);
+      expect(secretCheck?.message).toContain('detect-secrets');
     });
   });
 });

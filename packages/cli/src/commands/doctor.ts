@@ -678,6 +678,86 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
 }
 
 /**
+ * Check if secret scanning is configured and tool is available
+ */
+async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
+  try {
+    if (!config) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message: 'Skipped (no config)',
+      };
+    }
+
+    const secretScanning = config.hooks?.preCommit?.secretScanning;
+
+    // If not configured at all, pass with info message
+    if (!secretScanning) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message: 'Secret scanning not configured (optional)',
+      };
+    }
+
+    // If explicitly disabled, acknowledge user choice
+    if (!secretScanning.enabled) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message: 'Secret scanning disabled in config (user preference)',
+      };
+    }
+
+    // If enabled, check if tool is available
+    if (secretScanning.scanCommand) {
+      // Extract tool name (first word of command)
+      const toolName = secretScanning.scanCommand.split(' ')[0];
+
+      try {
+        // Try to get tool version
+        let version: string;
+        try {
+          version = execSync(`${toolName} version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+        } catch (_versionError) {
+          // Try --version flag
+          version = execSync(`${toolName} --version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+        }
+
+        return {
+          name: 'Pre-commit secret scanning',
+          passed: true,
+          message: `Secret scanning enabled with ${toolName} ${version}`,
+        };
+      } catch (_error) {
+        // Tool not found
+        return {
+          name: 'Pre-commit secret scanning',
+          passed: true, // Advisory only, never fails
+          message: `Secret scanning enabled but '${toolName}' not found`,
+          suggestion: `Install ${toolName}:\n   • gitleaks: brew install gitleaks\n   • Or disable: set hooks.preCommit.secretScanning.enabled=false in config`,
+        };
+      }
+    }
+
+    // Enabled but no scanCommand (should be caught by schema validation)
+    return {
+      name: 'Pre-commit secret scanning',
+      passed: true,
+      message: 'Secret scanning enabled but no scanCommand configured',
+      suggestion: 'Add hooks.preCommit.secretScanning.scanCommand to config',
+    };
+  } catch (_error) {
+    return {
+      name: 'Pre-commit secret scanning',
+      passed: true,
+      message: 'Skipped (config or execution error)',
+    };
+  }
+}
+
+/**
  * Run all doctor checks
  */
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
@@ -709,6 +789,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(await checkRemoteMainBranch(config));
   allChecks.push(await checkWorkflowSync(config));
   allChecks.push(await checkPreCommitHook(config));
+  allChecks.push(await checkSecretScanning(config));
   allChecks.push(checkGitignoreStateFile());
   allChecks.push(checkValidationState());
 

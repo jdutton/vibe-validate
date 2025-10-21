@@ -21,6 +21,24 @@ $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/c
 git:
   mainBranch: main
 
+# Pre-commit hooks configuration
+hooks:
+  preCommit:
+    enabled: true
+    # Secret scanning prevents accidental credential commits
+    # Runs before validation to catch secrets in staged files
+    secretScanning:
+      enabled: true
+      # Gitleaks is recommended for speed and comprehensive detection (160+ secret types)
+      # Install: brew install gitleaks (macOS) | https://github.com/gitleaks/gitleaks#installation
+      scanCommand: "gitleaks protect --staged --verbose"
+      # Alternative tools:
+      # - detect-secrets: scanCommand: "detect-secrets scan --staged"
+      # - semgrep: scanCommand: "semgrep scan --config auto"
+      #
+      # False positives: Create .gitleaksignore file with fingerprints
+      # To disable: set enabled: false
+
 # Validation configuration
 validation:
   phases:

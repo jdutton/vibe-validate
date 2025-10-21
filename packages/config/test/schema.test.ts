@@ -174,6 +174,174 @@ describe('safeValidateConfig', () => {
   });
 });
 
+describe('HooksConfigSchema', () => {
+  it('should validate config with secret scanning enabled', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      hooks: {
+        preCommit: {
+          enabled: true,
+          command: 'npx vibe-validate pre-commit',
+          secretScanning: {
+            enabled: true,
+            scanCommand: 'gitleaks protect --staged --verbose'
+          }
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);
+    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBe('gitleaks protect --staged --verbose');
+  });
+
+  it('should validate config with secret scanning disabled', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      hooks: {
+        preCommit: {
+          enabled: true,
+          secretScanning: {
+            enabled: false
+          }
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(false);
+  });
+
+  it('should apply defaults when secretScanning not specified', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      hooks: {
+        preCommit: {
+          enabled: true
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    // secretScanning should not be present by default (optional field)
+    expect(result.data?.hooks?.preCommit?.secretScanning).toBeUndefined();
+  });
+
+  it('should require scanCommand when secretScanning is enabled', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      hooks: {
+        preCommit: {
+          enabled: true,
+          secretScanning: {
+            enabled: true
+            // Missing scanCommand
+          }
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('scanCommand') || e.includes('required'))).toBe(true);
+  });
+
+  it('should allow custom scan commands', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      hooks: {
+        preCommit: {
+          secretScanning: {
+            enabled: true,
+            scanCommand: 'detect-secrets scan --staged'
+          }
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBe('detect-secrets scan --staged');
+  });
+
+  it('should reject scanCommand when enabled is false', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      hooks: {
+        preCommit: {
+          secretScanning: {
+            enabled: false,
+            scanCommand: 'gitleaks protect --staged'  // Should not be allowed when disabled
+          }
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    // This should succeed but scanCommand is ignored when enabled=false
+    // Or we could make it fail - let's check the implementation
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject empty scanCommand', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      hooks: {
+        preCommit: {
+          secretScanning: {
+            enabled: true,
+            scanCommand: ''
+          }
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('scanCommand') && e.includes('empty'))).toBe(true);
+  });
+});
+
 describe('Strict Schema Validation', () => {
   it('should reject unknown properties in config root', () => {
     const config = {

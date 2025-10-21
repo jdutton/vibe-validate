@@ -12,6 +12,7 @@ import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { createRunnerConfig } from '../utils/runner-adapter.js';
 import { detectContext } from '../utils/context-detector.js';
+import { execSync } from 'child_process';
 import chalk from 'chalk';
 
 export function preCommitCommand(program: Command): void {
@@ -56,13 +57,71 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
-        // Step 3: Detect context
-        const context = detectContext();
-
-        // Step 4: Verbose mode is ONLY enabled via explicit --verbose flag
+        // Step 3: Verbose mode is ONLY enabled via explicit --verbose flag
         const verbose = options.verbose ?? false;
 
-        // Step 5: Run validation
+        // Step 4: Run secret scanning if enabled
+        const secretScanning = config.hooks?.preCommit?.secretScanning;
+        if (secretScanning?.enabled && secretScanning?.scanCommand) {
+          console.log(chalk.blue('\n🔒 Running secret scanning...'));
+
+          try {
+            const result = execSync(secretScanning.scanCommand, {
+              encoding: 'utf8',
+              stdio: 'pipe',
+            });
+
+            // Show scan output if verbose
+            if (verbose && result) {
+              console.log(chalk.gray(result));
+            }
+
+            console.log(chalk.green('✅ No secrets detected'));
+          } catch (error: unknown) {
+            // Secret scanning failed (either tool missing or secrets found)
+            if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+              // Tool not found
+              const toolName = secretScanning.scanCommand.split(' ')[0];
+              console.error(chalk.red('\n❌ Secret scanning tool not found'));
+              console.error(chalk.yellow(`   Command: ${chalk.white(secretScanning.scanCommand)}`));
+              console.error(chalk.yellow(`   Tool '${toolName}' is not installed or not in PATH`));
+              console.error(chalk.blue('\n💡 Fix options:'));
+              console.error(chalk.gray('   1. Install the tool (e.g., brew install gitleaks)'));
+              console.error(chalk.gray('   2. Disable scanning: set hooks.preCommit.secretScanning.enabled=false'));
+              process.exit(1);
+            } else if (error && typeof error === 'object' && 'stderr' in error && 'stdout' in error) {
+              // Tool ran but found secrets
+              const stderr = 'stderr' in error && error.stderr ? String(error.stderr) : '';
+              const stdout = 'stdout' in error && error.stdout ? String(error.stdout) : '';
+
+              console.error(chalk.red('\n❌ Secret scanning detected potential secrets in staged files\n'));
+
+              // Show scan output
+              if (stdout) {
+                console.error(stdout);
+              }
+              if (stderr) {
+                console.error(stderr);
+              }
+
+              console.error(chalk.blue('\n💡 Fix options:'));
+              console.error(chalk.gray('   1. Remove secrets from staged files'));
+              console.error(chalk.gray('   2. Use .gitleaksignore to mark false positives (if using gitleaks)'));
+              console.error(chalk.gray('   3. Disable scanning: set hooks.preCommit.secretScanning.enabled=false'));
+              process.exit(1);
+            } else {
+              // Unknown error
+              console.error(chalk.red('\n❌ Secret scanning failed with unknown error'));
+              console.error(chalk.gray(String(error)));
+              process.exit(1);
+            }
+          }
+        }
+
+        // Step 5: Detect context
+        const context = detectContext();
+
+        // Step 6: Run validation
         console.log(chalk.blue('\n🔄 Running validation...'));
 
         const runnerConfig = createRunnerConfig(config, {
