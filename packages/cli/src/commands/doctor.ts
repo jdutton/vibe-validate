@@ -803,9 +803,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   const totalChecks = allChecks.length;
   const passedChecks = allChecks.filter(c => c.passed).length;
 
-  // In non-verbose mode, only show failing checks (empty array if all pass)
+  // In non-verbose mode, show failing checks OR checks with recommendations
   // In verbose mode, always show all checks
-  const checks = verbose ? allChecks : allChecks.filter(c => !c.passed);
+  const checks = verbose ? allChecks : allChecks.filter(c => !c.passed || c.suggestion);
 
   return {
     allPassed,
