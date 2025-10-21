@@ -454,10 +454,14 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: false });
 
-      // Non-verbose with all passing should show ONLY failed checks (none in this case)
+      // Non-verbose with all passing should show ONLY failed checks OR checks with suggestions
       expect(result.verboseMode).toBe(false);
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(0); // No failed checks to show
+      // Should show secret scanning recommendation (passes but has suggestion)
+      expect(result.checks).toHaveLength(1);
+      expect(result.checks[0].name).toBe('Pre-commit secret scanning');
+      expect(result.checks[0].passed).toBe(true);
+      expect(result.checks[0].suggestion).toBeDefined();
     });
 
     it('should show only failing checks in non-verbose mode', async () => {
@@ -478,12 +482,14 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: false });
 
-      // Non-verbose should show ONLY failing checks, not passing ones
+      // Non-verbose should show ONLY failing checks OR checks with suggestions
       const failedChecks = result.checks.filter(c => !c.passed);
-      const passingChecks = result.checks.filter(c => c.passed);
+      const passingChecksWithSuggestions = result.checks.filter(c => c.passed && c.suggestion);
       expect(failedChecks.length).toBeGreaterThan(0); // At least 1 failure (Node.js version)
-      expect(passingChecks.length).toBe(0); // Should NOT show any passing checks
-      expect(result.checks).toHaveLength(failedChecks.length); // Only failed checks
+      // Should show secret scanning recommendation (passes but has suggestion)
+      expect(passingChecksWithSuggestions.length).toBe(1);
+      expect(passingChecksWithSuggestions[0].name).toBe('Pre-commit secret scanning');
+      expect(result.checks).toHaveLength(failedChecks.length + passingChecksWithSuggestions.length);
     });
 
     it('should show all checks including passing in verbose mode when failures exist', async () => {
