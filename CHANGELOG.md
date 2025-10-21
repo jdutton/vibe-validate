@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.0] - 2025-10-19
+## [0.11.0] - 2025-10-20
+
+### ✨ New Features
+
+- **Real-time CI Monitoring with `watch-pr` Command** (Issue #21)
+  - Monitor GitHub Actions PR checks in real-time
+  - Auto-detects PR from current branch or accepts PR number
+  - Extracts vibe-validate state files from failed CI runs
+  - Provides actionable recovery commands
+  - Supports fail-fast mode and configurable timeout
+  - Human-friendly live display OR structured YAML output
+
+- **YAML-Only Output Standardization** (BREAKING CHANGE)
+  - Removed confusing `--format` and `--json` options from all commands
+  - Single `--yaml` flag across all commands for structured output
+  - Clear semantics: `--yaml` means exactly what it says
+  - Affected commands: `doctor`, `sync-check`, `cleanup`, `watch-pr`
+
+- **Windows Compatibility** (Issue #4)
+  - Cross-platform shell execution (`shell: true`)
+  - Platform-specific process termination (taskkill on Windows, signals on Unix)
+  - Windows CI testing (Ubuntu + macOS + Windows × Node 20 + 22 + 24)
+  - Fixed ESLint glob patterns for Windows
+  - Comprehensive line ending normalization
 
 ### 🐛 Bug Fixes
 
@@ -17,7 +40,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - These fields were being used in configs but silently ignored - now properly validated
   - Updated all config templates to include these fields with helpful comments
 
+- **Cross-Platform Compatibility Fixes**
+  - Fixed stdout/stderr capture on Windows (disabled detached mode)
+  - Fixed line ending differences (CRLF vs LF) across all file operations
+  - Fixed platform-specific test failures (permission bits, signals)
+  - Added `.gitattributes` and `.editorconfig` for consistent line endings
+
 ### 🚨 BREAKING CHANGES
+
+- **Output Flag Standardization**
+  - Old: `doctor --json`, `sync-check --format yaml`, `cleanup --format json`
+  - New: All commands use `--yaml` for structured output
+  - Migration: Replace `--json` or `--format` with `--yaml` in scripts/workflows
 
 - **Removed TypeScript Preset System**
   - `preset:` property no longer supported in configs
