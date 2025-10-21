@@ -126,11 +126,11 @@ export class GitHubActionsProvider implements CIProvider {
       return contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '').replace(/^[0-9T:.Z-]+$/, '');
     };
 
-    // Find the start: line containing "VALIDATION STATE FILE CONTENTS"
+    // Find the start: line containing "VALIDATION STATE"
     // (This header is from the CI workflow displaying the validation result)
     // Skip lines with ANSI codes (those are the commands being echoed, not the output)
     const startIdx = lines.findIndex(l => {
-      return l.includes('VALIDATION STATE FILE CONTENTS') && !l.includes('[36;1m') && !l.includes('[0m');
+      return l.includes('VALIDATION STATE') && !l.includes('[36;1m') && !l.includes('[0m');
     });
     if (startIdx < 0) {
       return null;

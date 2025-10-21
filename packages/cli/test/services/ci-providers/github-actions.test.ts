@@ -266,7 +266,7 @@ More log output after
       const logs = `
 Some output before
 Run validation\tDisplay state\t2025-10-20T10:00:00.000Z ==========================================
-Run validation\tDisplay state\t2025-10-20T10:00:00.100Z 📋 VALIDATION STATE FILE CONTENTS
+Run validation\tDisplay state\t2025-10-20T10:00:00.100Z 📋 VALIDATION STATE
 Run validation\tDisplay state\t2025-10-20T10:00:00.200Z ==========================================
 Run validation\tDisplay state\t2025-10-20T10:00:00.300Z passed: false
 Run validation\tDisplay state\t2025-10-20T10:00:00.400Z failedStep: TypeScript Type Check
@@ -295,7 +295,7 @@ Output after
     it('should return null when YAML parsing fails', () => {
       const logs = `
 ==========================================
-📋 VALIDATION STATE FILE CONTENTS
+📋 VALIDATION STATE
 ==========================================
 invalid: yaml: content: [
 ==========================================
