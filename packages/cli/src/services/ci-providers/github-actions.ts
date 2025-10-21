@@ -93,10 +93,11 @@ export class GitHubActionsProvider implements CIProvider {
       // Ignore error, use default name
     }
 
-    // Fetch full logs
+    // Fetch full logs (includes "Display validation state on failure" step)
     const logs = execSync(`gh run view ${runId} --log`, {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      maxBuffer: 50 * 1024 * 1024, // 50MB buffer to handle large logs
     });
 
     const stateFile = this.extractStateFile(logs);
@@ -112,19 +113,61 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   extractStateFile(logs: string): StateFileContents | null {
-    // Look for vibe-validate state file display in logs
-    // This matches the format from .github/workflows/validate.yml
-    // Format: ========================================== \n 📋 VALIDATION STATE FILE CONTENTS \n ========================================== \n <yaml> \n ==========================================
-    const stateMatch = logs.match(
-      /={40,}\s*\n.*?📋 VALIDATION STATE FILE CONTENTS\s*\n={40,}\s*\n([\s\S]+?)\n={40,}/
-    );
+    // GitHub Actions logs have format: "Run name\tStep name\tTimestamp <content>"
+    // We need to strip prefixes to get actual output
+    const lines = logs.split('\n');
 
-    if (!stateMatch) {
+    // Helper to extract content from a GitHub Actions log line
+    const extractContent = (line: string): string => {
+      const parts = line.split('\t');
+      if (parts.length < 3) return '';
+      const contentWithTimestamp = parts.slice(2).join('\t');
+      // Strip timestamp (format: "2025-10-21T00:56:24.8654285Z <content>")
+      return contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '').replace(/^[0-9T:.Z-]+$/, '');
+    };
+
+    // Find the start: line containing "VALIDATION STATE FILE CONTENTS"
+    // Skip lines with ANSI codes (those are the commands being echoed, not the output)
+    const startIdx = lines.findIndex(l => {
+      return l.includes('VALIDATION STATE FILE CONTENTS') && !l.includes('[36;1m') && !l.includes('[0m');
+    });
+    if (startIdx < 0) {
       return null;
     }
 
+    // Find the closing separator (next line with ==== that comes after some YAML content)
+    // Look for a line with just ========== (40+ chars) after we've seen some YAML (passed:, timestamp:, etc.)
+    let endIdx = -1;
+    let foundYamlContent = false;
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      const content = extractContent(lines[i]).trim();
+
+      // Check if we've seen YAML content
+      if (content.startsWith('passed:') || content.startsWith('timestamp:') || content.startsWith('treeHash:')) {
+        foundYamlContent = true;
+      }
+
+      // Look for closing separator after we've seen YAML content
+      if (foundYamlContent && content.match(/^={40,}$/)) {
+        endIdx = i;
+        break;
+      }
+    }
+
+    if (endIdx < 0) {
+      return null;
+    }
+
+    // Extract YAML content (skip the header separator line, start from actual YAML)
+    const yamlLines: string[] = [];
+    for (let i = startIdx + 2; i < endIdx; i++) {
+      // Strip the prefix (job name + step + timestamp) to get actual content
+      const content = extractContent(lines[i]);
+      yamlLines.push(content);
+    }
+
     try {
-      const stateYaml = stateMatch[1].trim();
+      const stateYaml = yamlLines.join('\n').trim();
       return parseYaml(stateYaml) as StateFileContents;
     } catch (_error) {
       // Failed to parse YAML, return null
@@ -278,15 +321,31 @@ export class GitHubActionsProvider implements CIProvider {
 
   /**
    * Extract concise error summary from logs
+   *
+   * Prioritizes vibe-validate state file extraction for most actionable errors.
    */
   private extractErrorSummary(logs: string): string | undefined {
-    // Look for vibe-validate state file first (most concise)
-    const stateMatch = logs.match(
-      /failedStep: (.+)\n[\s\S]*?failedStepOutput: \|\n([\s\S]{0,500})/
-    );
+    // First, try to extract the full state file (most detailed)
+    const stateFile = this.extractStateFile(logs);
 
-    if (stateMatch) {
-      return `Failed: ${stateMatch[1]}\n${stateMatch[2].trim()}`;
+    if (stateFile && !stateFile.passed && stateFile.phases) {
+      // Find the first failed phase
+      const failedPhase = stateFile.phases.find(p => !p.passed);
+
+      if (failedPhase && failedPhase.steps) {
+        // Find the first failed step in that phase
+        const failedStep = failedPhase.steps.find(s => !s.passed);
+
+        if (failedStep && failedPhase.output) {
+          // Return a concise summary with the failed step and its output
+          const outputPreview = failedPhase.output
+            .split('\n')
+            .slice(0, 20) // First 20 lines of output
+            .join('\n');
+
+          return `Phase: ${failedPhase.name}\nFailed Step: ${failedStep.name}\n\n${outputPreview}`;
+        }
+      }
     }
 
     // Fallback: Look for ##[error] lines

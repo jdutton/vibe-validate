@@ -74,6 +74,8 @@ export interface StateFileContents {
   phases?: Array<{
     name: string;
     passed: boolean;
+    durationSecs?: number;
+    output?: string; // Output from the phase (if failed)
     steps?: Array<{
       name: string;
       passed: boolean;

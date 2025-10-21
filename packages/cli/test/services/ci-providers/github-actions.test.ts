@@ -218,18 +218,19 @@ FAIL test/example.test.ts
 
     it('should extract vibe-validate state file from logs', async () => {
       const runData = { name: 'Test' };
+      // GitHub Actions log format: "Job\tStep\tTimestamp Content"
       const logs = `
 Some other log output
-==========================================
-📋 VALIDATION STATE FILE CONTENTS
-==========================================
-passed: false
-timestamp: '2025-10-20T10:00:00.000Z'
-failedStep: Unit Tests
-rerunCommand: pnpm test
-failedStepOutput: |
-  FAIL test/example.test.ts
-==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.000Z ==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.100Z 📋 VALIDATION STATE FILE CONTENTS
+Run validation\tDisplay state\t2025-10-20T10:00:00.200Z ==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.300Z passed: false
+Run validation\tDisplay state\t2025-10-20T10:00:00.400Z timestamp: '2025-10-20T10:00:00.000Z'
+Run validation\tDisplay state\t2025-10-20T10:00:00.500Z failedStep: Unit Tests
+Run validation\tDisplay state\t2025-10-20T10:00:00.600Z rerunCommand: pnpm test
+Run validation\tDisplay state\t2025-10-20T10:00:00.700Z failedStepOutput: |
+Run validation\tDisplay state\t2025-10-20T10:00:00.800Z   FAIL test/example.test.ts
+Run validation\tDisplay state\t2025-10-20T10:00:00.900Z ==========================================
 More log output after
 `;
 
@@ -261,15 +262,16 @@ More log output after
 
   describe('extractStateFile', () => {
     it('should extract and parse YAML state file', () => {
+      // GitHub Actions log format: "Job\tStep\tTimestamp Content"
       const logs = `
 Some output before
-==========================================
-📋 VALIDATION STATE FILE CONTENTS
-==========================================
-passed: false
-failedStep: TypeScript Type Check
-rerunCommand: pnpm typecheck
-==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.000Z ==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.100Z 📋 VALIDATION STATE FILE CONTENTS
+Run validation\tDisplay state\t2025-10-20T10:00:00.200Z ==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.300Z passed: false
+Run validation\tDisplay state\t2025-10-20T10:00:00.400Z failedStep: TypeScript Type Check
+Run validation\tDisplay state\t2025-10-20T10:00:00.500Z rerunCommand: pnpm typecheck
+Run validation\tDisplay state\t2025-10-20T10:00:00.600Z ==========================================
 Output after
 `;
 
