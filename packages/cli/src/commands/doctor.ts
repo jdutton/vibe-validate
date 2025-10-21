@@ -14,6 +14,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { Command } from 'commander';
+import { stringify as stringifyYaml } from 'yaml';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
@@ -741,16 +742,16 @@ export function doctorCommand(program: Command): void {
   program
     .command('doctor')
     .description('Diagnose vibe-validate setup and environment')
-    .option('--json', 'Output results as JSON')
-    .action(async (options: { json?: boolean; verbose?: boolean }, command: Command) => {
+    .option('--yaml', 'Output YAML only (no human-friendly display)')
+    .action(async (options: { yaml?: boolean; verbose?: boolean }, command: Command) => {
       // Get verbose from global options (inherited from program)
       const verbose = command.optsWithGlobals().verbose as boolean | undefined;
       try {
         const result = await runDoctor({ verbose });
 
-        if (options.json) {
-          // JSON output for programmatic use
-          console.log(JSON.stringify(result, null, 2));
+        if (options.yaml) {
+          // YAML output for programmatic use
+          console.log(stringifyYaml(result));
         } else {
           // Human-friendly output
           console.log('🩺 vibe-validate Doctor\n');

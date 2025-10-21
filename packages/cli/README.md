@@ -183,7 +183,7 @@ npx vibe-validate sync-check [options]
 **Options:**
 - `--main-branch <branch>` - Main branch name (overrides config, default: `main`)
 - `--remote-origin <remote>` - Remote origin name (overrides config, default: `origin`)
-- `--format <format>` - Output format (human/yaml/json/auto)
+- `--yaml` - Suppress human-friendly output, output YAML only
 
 **Exit Codes:**
 - `0` - Up to date or no remote

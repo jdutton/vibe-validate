@@ -203,7 +203,7 @@ jobs:
         with:
           node-version: '20'
       - run: npm install
-      - run: npx vibe-validate validate --format=json
+      - run: npx vibe-validate validate
 ```
 
 **Benefits**:

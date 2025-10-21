@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/jdutton/vibe-validate/blob/main/packages/cli/watch-pr-result.schema.json",
+  "title": "vibe-validate watch-pr Result Schema",
+  "description": "JSON Schema for vibe-validate watch-pr command YAML output",
+  "$ref": "#/definitions/WatchPRResult",
+  "definitions": {
+    "WatchPRResult": {
+      "type": "object",
+      "properties": {
+        "pr": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed",
+            "timeout"
+          ]
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "success",
+            "failure",
+            "cancelled",
+            "unknown"
+          ]
+        },
+        "duration": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "conclusion": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "duration": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "name",
+              "status",
+              "conclusion"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "checkId": {
+                "type": "string"
+              },
+              "errorSummary": {
+                "type": "string"
+              },
+              "stateFile": {
+                "type": "object",
+                "properties": {
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "timestamp": {
+                    "type": "string"
+                  },
+                  "treeHash": {
+                    "type": "string"
+                  },
+                  "failedStep": {
+                    "type": "string"
+                  },
+                  "rerunCommand": {
+                    "type": "string"
+                  },
+                  "failedStepOutput": {
+                    "type": "string"
+                  },
+                  "phases": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "passed": {
+                                "type": "boolean"
+                              },
+                              "durationSecs": {
+                                "type": "number"
+                              },
+                              "output": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "passed"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "passed"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "passed"
+                ],
+                "additionalProperties": false
+              },
+              "nextSteps": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "checkId",
+              "nextSteps"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "pr",
+        "status",
+        "result",
+        "duration",
+        "summary",
+        "checks"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

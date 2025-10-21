@@ -60,7 +60,7 @@ describe('Doctor Command Integration', () => {
 
     // Should show all checks passed (e.g., "14/14 checks passed")
     expect(stdout).toMatch(/📊 Results: (\d+)\/\1 checks passed/);
-  }, 60000); // 60s timeout for integration test (Windows Node 24 can be slow)
+  }, 100); // DELIBERATE BUG: Reduced timeout to test watch-pr failure detection
 
   it('should exit with status 0 in verbose mode when all checks pass', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
