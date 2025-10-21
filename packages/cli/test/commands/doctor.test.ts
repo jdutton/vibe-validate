@@ -1137,7 +1137,7 @@ describe('doctor command', () => {
       expect(secretCheck?.suggestion).toContain('Install');
     });
 
-    it('should skip check when secretScanning config not provided', async () => {
+    it('should recommend enabling when secretScanning config not provided', async () => {
       const mockConfigNoHooks: VibeValidateConfig = {
         ...mockConfig,
         hooks: {
@@ -1158,6 +1158,9 @@ describe('doctor command', () => {
       expect(secretCheck).toBeDefined();
       expect(secretCheck?.passed).toBe(true);
       expect(secretCheck?.message).toContain('not configured');
+      expect(secretCheck?.suggestion).toBeDefined();
+      expect(secretCheck?.suggestion).toContain('Recommended');
+      expect(secretCheck?.suggestion).toContain('Enable secret scanning');
     });
 
     it('should handle custom secret scanning tools (detect-secrets)', async () => {

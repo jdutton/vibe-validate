@@ -692,17 +692,18 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
 
     const secretScanning = config.hooks?.preCommit?.secretScanning;
 
-    // If not configured at all, pass with info message
+    // If not configured at all, recommend enabling it
     if (!secretScanning) {
       return {
         name: 'Pre-commit secret scanning',
         passed: true,
-        message: 'Secret scanning not configured (optional)',
+        message: 'Secret scanning not configured',
+        suggestion: 'Recommended: Enable secret scanning to prevent credential leaks\n   • Add to config: hooks.preCommit.secretScanning.enabled=true\n   • scanCommand: "gitleaks protect --staged --verbose"\n   • Install gitleaks: brew install gitleaks',
       };
     }
 
     // If explicitly disabled, acknowledge user choice
-    if (!secretScanning.enabled) {
+    if (secretScanning.enabled === false) {
       return {
         name: 'Pre-commit secret scanning',
         passed: true,
@@ -848,7 +849,7 @@ export function doctorCommand(program: Command): void {
             const icon = check.passed ? '✅' : '❌';
             console.log(`${icon} ${check.name}`);
             console.log(`   ${check.message}`);
-            if (check.suggestion && !check.passed) {
+            if (check.suggestion) {
               console.log(`   💡 ${check.suggestion}`);
             }
             console.log('');
