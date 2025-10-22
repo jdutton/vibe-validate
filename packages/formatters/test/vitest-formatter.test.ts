@@ -263,4 +263,15 @@ Error: error 2
     expect(result.cleanOutput).toContain('test/unit/config/environment.test.ts:57:30');
     expect(result.cleanOutput).toContain('test/unit/auth/factory.test.ts:100:15');
   });
+
+  // DELIBERATE FAILURE - Testing dogfooding workflow
+  // This test is intentionally failing to validate:
+  // 1. Formatter extraction works in real CI
+  // 2. watch-pr displays failures correctly
+  // 3. "Help Improve" links appear
+  // Remove this test after validating the workflow
+  it('DOGFOOD TEST: should demonstrate formatter extraction in CI', () => {
+    // This will fail with a clear assertion error
+    expect(42).toBe(99); // Expected: 99, Received: 42
+  });
 });
