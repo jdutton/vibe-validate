@@ -160,15 +160,9 @@ export class GitHubActionsProvider implements CIProvider {
     }
 
     // Extract YAML content (skip the header separator line, start from actual YAML)
-    // Note: The header is sometimes duplicated, so find where "passed:" actually starts
-    let yamlStartIdx = startIdx + 2;
-    for (let i = startIdx + 2; i < endIdx; i++) {
-      const content = extractContent(lines[i]).trim();
-      if (content.startsWith('passed:')) {
-        yamlStartIdx = i;
-        break;
-      }
-    }
+    // The workflow outputs: ==== / VALIDATION RESULT / ==== / <YAML> / ====
+    // So YAML starts at startIdx + 2 (skip "VALIDATION RESULT" and separator)
+    const yamlStartIdx = startIdx + 2;
 
     const yamlLines: string[] = [];
     for (let i = yamlStartIdx; i < endIdx; i++) {

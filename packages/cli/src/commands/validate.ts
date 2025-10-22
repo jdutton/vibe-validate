@@ -161,11 +161,8 @@ export function validateCommand(program: Command): void {
           // Small delay to ensure stderr is flushed before writing to stdout
           await new Promise(resolve => setTimeout(resolve, 10));
 
-          process.stdout.write('==========================================\n');
-          process.stdout.write('VALIDATION RESULT\n');
-          process.stdout.write('==========================================\n');
+          // Output pure YAML without headers (workflow provides display framing)
           process.stdout.write(yamlStringify(result));
-          process.stdout.write('==========================================\n');
         }
 
         // Exit with appropriate code

@@ -501,8 +501,7 @@ describe('validate command', () => {
         // Expected exit
       }
 
-      // Verify YAML header was written to stdout
-      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('VALIDATION RESULT'));
+      // Verify pure YAML was written to stdout (no headers, workflow adds those)
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
     });
 
@@ -527,8 +526,7 @@ describe('validate command', () => {
         }
       }
 
-      // Verify YAML header and failure were written to stdout
-      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('VALIDATION RESULT'));
+      // Verify pure YAML was written to stdout (no headers, workflow adds those)
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
     });
 
