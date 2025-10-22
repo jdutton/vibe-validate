@@ -325,39 +325,27 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   /**
-   * Extract concise error summary from logs
+   * Extract concise error summary from logs (LLM-friendly format)
    *
-   * Prioritizes validation result extraction for most actionable errors.
+   * Returns just the failed step name and command - keeps output minimal.
+   * Full details are in the validationResult field.
    */
   private extractErrorSummary(logs: string): string | undefined {
-    // First, try to extract the full validation result (most detailed)
+    // Use the validation result which already has parsed failures
     const validationResult = this.extractValidationResult(logs);
 
-    if (validationResult && !validationResult.passed && validationResult.phases) {
-      // Find the first failed phase
-      const failedPhase = validationResult.phases.find(p => !p.passed);
-
-      if (failedPhase && failedPhase.steps) {
-        // Find the first failed step in that phase
-        const failedStep = failedPhase.steps.find(s => !s.passed);
-
-        if (failedStep && failedPhase.output) {
-          // Return a concise summary with the failed step and its output
-          const outputPreview = failedPhase.output
-            .split('\n')
-            .slice(0, 20) // First 20 lines of output
-            .join('\n');
-
-          return `Phase: ${failedPhase.name}\nFailed Step: ${failedStep.name}\n\n${outputPreview}`;
-        }
+    if (validationResult && !validationResult.passed) {
+      // Show concise summary: just the failed step and how to rerun
+      if (validationResult.failedStep) {
+        return `Failed step: ${validationResult.failedStep}\nRerun: ${validationResult.rerunCommand || 'see full logs'}`;
       }
     }
 
-    // Fallback: Look for ##[error] lines
+    // Fallback: Look for ##[error] lines (for non-validation failures)
     const errorLines = logs
       .split('\n')
       .filter((line) => line.includes('##[error]'))
-      .slice(0, 10) // First 10 error lines
+      .slice(0, 5) // First 5 error lines
       .map((line) => line.replace(/##\[error\]/g, '').trim())
       .join('\n');
 
