@@ -319,18 +319,20 @@ Write-Host '=========================================='`,
     });
 
     // Fail the job if validation failed (check YAML result - Unix)
+    // Use grep with line-start anchor to match only root-level "passed:" field
     jobSteps.push({
       name: 'Check validation result (Unix)',
       if: "always() && runner.os != 'Windows'",
-      run: `grep -q "passed: true" validation-result.yaml || exit 1`,
+      run: `grep -q "^passed: true" validation-result.yaml || exit 1`,
     });
 
     // Fail the job if validation failed (check YAML result - Windows)
+    // Use PowerShell regex with line-start anchor to match only root-level "passed:" field
     jobSteps.push({
       name: 'Check validation result (Windows)',
       if: "always() && runner.os == 'Windows'",
       shell: 'powershell',
-      run: `if (!(Select-String -Path validation-result.yaml -Pattern "passed: true" -Quiet)) { exit 1 }`,
+      run: `if (!(Select-String -Path validation-result.yaml -Pattern "^passed: true" -Quiet)) { exit 1 }`,
     });
 
     jobs['validate'] = {

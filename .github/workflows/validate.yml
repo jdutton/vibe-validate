@@ -76,11 +76,11 @@ jobs:
           Write-Host '=========================================='
       - name: Check validation result (Unix)
         if: always() && runner.os != 'Windows'
-        run: 'grep -q "passed: true" validation-result.yaml || exit 1'
+        run: 'grep -q "^passed: true" validation-result.yaml || exit 1'
       - name: Check validation result (Windows)
         if: always() && runner.os == 'Windows'
         shell: powershell
-        run: 'if (!(Select-String -Path validation-result.yaml -Pattern "passed: true"
+        run: 'if (!(Select-String -Path validation-result.yaml -Pattern "^passed: true"
           -Quiet)) { exit 1 }'
     strategy:
       fail-fast: false
