@@ -160,8 +160,18 @@ export class GitHubActionsProvider implements CIProvider {
     }
 
     // Extract YAML content (skip the header separator line, start from actual YAML)
-    const yamlLines: string[] = [];
+    // Note: The header is sometimes duplicated, so find where "passed:" actually starts
+    let yamlStartIdx = startIdx + 2;
     for (let i = startIdx + 2; i < endIdx; i++) {
+      const content = extractContent(lines[i]).trim();
+      if (content.startsWith('passed:')) {
+        yamlStartIdx = i;
+        break;
+      }
+    }
+
+    const yamlLines: string[] = [];
+    for (let i = yamlStartIdx; i < endIdx; i++) {
       // Strip the prefix (job name + step + timestamp) to get actual content
       const content = extractContent(lines[i]);
       yamlLines.push(content);
