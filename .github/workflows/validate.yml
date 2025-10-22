@@ -32,20 +32,6 @@ jobs:
         run: pnpm install
       - name: Build packages
         run: pnpm -r build
-      - name: Install gitleaks (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          wget https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_linux_x64.tar.gz
-          tar -xzf gitleaks_8.18.0_linux_x64.tar.gz
-          sudo mv gitleaks /usr/local/bin/
-          gitleaks version
-      - name: Install gitleaks (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_windows_x64.zip" -OutFile gitleaks.zip
-          Expand-Archive -Path gitleaks.zip -DestinationPath .
-          Move-Item -Path gitleaks.exe -Destination C:\Windows\System32\
-          gitleaks version
       - name: Run validation (Unix)
         if: runner.os != 'Windows'
         run: node packages/cli/dist/bin.js validate --yaml --verbose

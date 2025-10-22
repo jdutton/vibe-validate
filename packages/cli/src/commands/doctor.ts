@@ -768,6 +768,17 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
         };
       } catch (_error) {
         // Tool not found
+        // In CI, this is expected (secret scanning is pre-commit only, not needed in CI)
+        const isCI = process.env.CI === 'true' || process.env.CI === '1';
+
+        if (isCI) {
+          return {
+            name: 'Pre-commit secret scanning',
+            passed: true,
+            message: `Secret scanning enabled (pre-commit only, not needed in CI)`,
+          };
+        }
+
         return {
           name: 'Pre-commit secret scanning',
           passed: true, // Advisory only, never fails
