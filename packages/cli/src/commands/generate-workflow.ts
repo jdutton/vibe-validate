@@ -273,15 +273,6 @@ export function generateWorkflow(
         name: 'Build packages',
         run: packageManager === 'pnpm' ? 'pnpm -r build' : 'npm run build',
       });
-
-      // Re-link workspace binaries after build (vibe-validate monorepo only)
-      // This ensures locally-built binaries are available via pnpm exec
-      if (isVibeValidateRepo && packageManager === 'pnpm') {
-        jobSteps.push({
-          name: 'Re-link workspace binaries',
-          run: 'pnpm install --offline',
-        });
-      }
     }
 
     // Run validation with verbose flag for CI debugging
@@ -292,7 +283,11 @@ export function generateWorkflow(
 
     // Display validation state for easier debugging and CI log extraction
     // Platform-specific steps for Unix and Windows
-    const stateCommand = packageManager === 'pnpm' ? 'pnpm exec vibe-validate state' : 'npx vibe-validate state';
+    // Use direct node path for vibe-validate monorepo (binaries built after install, not linked)
+    // Use package-manager commands for user projects (pre-built packages from npm)
+    const stateCommand = isVibeValidateRepo
+      ? 'node packages/cli/dist/bin.js state'
+      : (packageManager === 'pnpm' ? 'pnpm exec vibe-validate state' : 'npx vibe-validate state');
     jobSteps.push({
       name: 'Display validation state (Unix)',
       if: "always() && runner.os != 'Windows'",

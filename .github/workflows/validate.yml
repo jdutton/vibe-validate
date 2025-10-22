@@ -32,8 +32,6 @@ jobs:
         run: pnpm install
       - name: Build packages
         run: pnpm -r build
-      - name: Re-link workspace binaries
-        run: pnpm install --offline
       - name: Run validation
         run: pnpm validate --verbose
       - name: Display validation state (Unix)
@@ -45,8 +43,8 @@ jobs:
 
           echo "=========================================="
 
-          pnpm exec vibe-validate state || echo "❌ Could not retrieve validation
-          state"
+          node packages/cli/dist/bin.js state || echo "❌ Could not retrieve
+          validation state"
 
           echo "=========================================="
       - name: Display validation state (Windows)
@@ -59,7 +57,7 @@ jobs:
 
           Write-Host '=========================================='
 
-          pnpm exec vibe-validate state
+          node packages/cli/dist/bin.js state
 
           if ($LASTEXITCODE -ne 0) { Write-Host 'Could not retrieve validation
           state' }
