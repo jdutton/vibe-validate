@@ -135,6 +135,14 @@ function displayVerboseState(state: ValidationResult, yamlContent: string, branc
     console.log(chalk.gray('  1. Fix the failed step'));
     console.log(chalk.gray('  2. Re-run: vibe-validate validate'));
     console.log(chalk.gray('  3. Or force re-validation: vibe-validate validate --force'));
+
+    // Suggest reporting formatter issues
+    console.log(chalk.gray('\n💡 Error output unclear or missing details?'));
+    console.log(
+      chalk.gray(
+        '   Help improve extraction: https://github.com/jdutton/vibe-validate/issues/new?template=formatter-improvement.yml',
+      ),
+    );
   } else {
     console.log(chalk.green('\n✅ Validation passed! Safe to commit.'));
   }

@@ -1,0 +1,141 @@
+name: Formatter Improvement
+description: Report poor failure extraction or suggest formatter improvements
+title: "[Formatter]: "
+labels: ["formatter", "improvement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve vibe-validate's failure extraction!
+
+        Your report will help us understand real-world test output patterns and improve formatters for everyone.
+
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Tool/Command
+      description: Which tool's output is not being extracted correctly?
+      options:
+        - Vitest
+        - TypeScript (tsc)
+        - ESLint
+        - Jest
+        - Prettier
+        - Biome
+        - Webpack
+        - Rollup
+        - Other (specify below)
+    validations:
+      required: true
+
+  - type: input
+    id: tool-other
+    attributes:
+      label: Tool Name (if "Other" selected)
+      description: What tool is this?
+      placeholder: e.g., pytest, cargo test, go test
+    validations:
+      required: false
+
+  - type: textarea
+    id: raw-output
+    attributes:
+      label: Raw Tool Output
+      description: |
+        Paste the **exact output** from the failing command.
+        This is what vibe-validate captured (check `vibe-validate state`).
+      placeholder: |
+        Example:
+        ❌ FAIL test/runner.test.ts > should handle errors
+        AssertionError: expected 2 to equal 3
+          at /path/to/test.ts:45:12
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-extraction
+    attributes:
+      label: What Should Be Extracted?
+      description: |
+        What key information should vibe-validate extract from this output?
+        Focus on what would help you fix the issue quickly.
+      placeholder: |
+        Example:
+        - File: test/runner.test.ts
+        - Line: 45
+        - Error: AssertionError: expected 2 to equal 3
+        - Test name: should handle errors
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-extraction
+    attributes:
+      label: What Does vibe-validate Currently Extract?
+      description: |
+        What does `vibe-validate state` show in the `failedSteps` or output?
+        Leave blank if nothing is extracted.
+      render: yaml
+    validations:
+      required: false
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact on Your Workflow
+      description: How much does this affect your ability to debug failures?
+      options:
+        - "Critical - Cannot debug without manual inspection"
+        - "High - Significantly slows down debugging"
+        - "Medium - Minor inconvenience"
+        - "Low - Nice to have"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Details about your setup
+      placeholder: |
+        - vibe-validate version: [e.g., 0.11.0]
+        - Tool version: [e.g., vitest 3.2.0]
+        - Node.js version: [e.g., 20.10.0]
+        - OS: [e.g., macOS 14.2, Ubuntu 22.04, Windows 11]
+      render: markdown
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution Interest
+      description: Would you like to help improve this?
+      options:
+        - label: I can provide more examples of this pattern
+        - label: I'd like to contribute a fixture for this case
+        - label: I'm willing to test formatter improvements
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context? Patterns you've noticed? Links to similar issues?
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## What Happens Next?
+
+        1. **Maintainers will review** your issue and may ask for clarifications
+        2. **We'll create a fixture** from your example to prevent regressions
+        3. **Formatter improvements** will be made to handle this pattern
+        4. **You'll be credited** in the fixture metadata and CHANGELOG
+
+        Thank you for making vibe-validate better for everyone! 🙏

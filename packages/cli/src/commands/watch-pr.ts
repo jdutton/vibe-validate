@@ -330,6 +330,12 @@ function displayHumanCompletion(
       console.log(`\n   Next steps:`);
       failure.nextSteps.forEach((step: string) => console.log(`   - ${step}`));
     }
+
+    // Suggest reporting formatter issues if extraction quality is poor
+    console.log('\n💡 Error output unclear or missing details?');
+    console.log(
+      '   Help improve extraction: https://github.com/jdutton/vibe-validate/issues/new?template=formatter-improvement.yml'
+    );
   }
 
   console.log('='.repeat(60));
