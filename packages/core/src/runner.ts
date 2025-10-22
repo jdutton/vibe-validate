@@ -14,6 +14,7 @@ import { spawn, type ChildProcess } from 'child_process';
 import { writeFileSync, appendFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { stopProcessGroup } from './process-utils.js';
 import type {
@@ -170,23 +171,28 @@ export async function runStepsInParallel(
 
         proc.stdout.on('data', data => {
           const chunk = data.toString();
-          stdout += chunk;
+          // Strip ANSI escape codes to make output readable for humans and LLMs
+          // These codes (e.g., \e[32m for colors) are noise in logs, YAML, and git notes
+          const cleanChunk = stripAnsi(chunk);
+          stdout += cleanChunk;
           // Stream output in real-time when verbose mode is enabled
           // When yaml mode is on, redirect subprocess output to stderr to keep stdout clean
           if (verbose) {
             if (yaml) {
-              process.stderr.write(chunk);
+              process.stderr.write(chunk);  // Keep colors for terminal viewing
             } else {
-              process.stdout.write(chunk);
+              process.stdout.write(chunk);  // Keep colors for terminal viewing
             }
           }
         });
         proc.stderr.on('data', data => {
           const chunk = data.toString();
-          stderr += chunk;
+          // Strip ANSI escape codes from stderr as well
+          const cleanChunk = stripAnsi(chunk);
+          stderr += cleanChunk;
           // Stream errors in real-time when verbose mode is enabled
           if (verbose) {
-            process.stderr.write(chunk);
+            process.stderr.write(chunk);  // Keep colors for terminal viewing
           }
         });
 
