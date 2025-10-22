@@ -163,6 +163,19 @@ export function validateCommand(program: Command): void {
 
           // Output pure YAML without headers (workflow provides display framing)
           process.stdout.write(yamlStringify(result));
+
+          // CRITICAL: Wait for stdout to flush before exiting
+          // When stdout is redirected to a file (CI), process.exit() can kill the process
+          // before the write buffer is flushed, causing truncated output
+          await new Promise<void>(resolve => {
+            if (process.stdout.write('')) {
+              // Write buffer is empty, can exit immediately
+              resolve();
+            } else {
+              // Wait for drain event
+              process.stdout.once('drain', resolve);
+            }
+          });
         }
 
         // Exit with appropriate code
