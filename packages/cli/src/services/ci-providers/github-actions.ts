@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
+import { formatByStepName } from '@vibe-validate/formatters';
 import type {
   CIProvider,
   PullRequest,
@@ -173,7 +174,25 @@ export class GitHubActionsProvider implements CIProvider {
 
     try {
       const stateYaml = yamlLines.join('\n').trim();
-      return parseYaml(stateYaml) as ValidationResultContents;
+      const result = parseYaml(stateYaml) as ValidationResultContents;
+
+      // If validation failed and we have step output, run it through formatters
+      // to extract structured failure details (test names, file locations, etc.)
+      if (!result.passed && result.failedStep && result.failedStepOutput) {
+        const formatterResult = formatByStepName(result.failedStep, result.failedStepOutput);
+
+        // Extract failed tests in "file:line" format from formatter errors
+        if (formatterResult.errors && formatterResult.errors.length > 0) {
+          result.failedTests = formatterResult.errors
+            .filter((e: { file?: string; line?: number }) => e.file && e.line)
+            .map((e: { file?: string; line?: number; column?: number; message?: string }) =>
+              `${e.file}:${e.line}${e.column ? `:${e.column}` : ''} - ${e.message || 'Test failed'}`
+            )
+            .slice(0, 10); // Limit to first 10 for display
+        }
+      }
+
+      return result;
     } catch (_error) {
       // Failed to parse YAML, return null
       return null;

@@ -44,6 +44,9 @@ importers:
       '@vibe-validate/core':
         specifier: workspace:*
         version: link:../core
+      '@vibe-validate/formatters':
+        specifier: workspace:*
+        version: link:../formatters
       '@vibe-validate/git':
         specifier: workspace:*
         version: link:../git

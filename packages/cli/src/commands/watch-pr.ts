@@ -310,7 +310,15 @@ function displayHumanCompletion(
         if (failure.validationResult.rerunCommand) {
           console.log(`   Re-run locally: ${failure.validationResult.rerunCommand}`);
         }
-        if (failure.validationResult.failedStepOutput) {
+
+        // Show parsed test failures (formatted by formatters package)
+        if (failure.validationResult.failedTests && failure.validationResult.failedTests.length > 0) {
+          console.log(`\n   Failed tests:`);
+          failure.validationResult.failedTests.forEach((test: string) => {
+            console.log(`   ❌ ${test}`);
+          });
+        } else if (failure.validationResult.failedStepOutput) {
+          // Fallback: show raw output if formatter didn't extract anything
           console.log(`\n   Error output:`);
           const lines = failure.validationResult.failedStepOutput.split('\n').slice(0, 10);
           lines.forEach((line: string) => console.log(`   ${line}`));
