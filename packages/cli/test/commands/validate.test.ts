@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { validateCommand } from '../../src/commands/validate.js';
 import * as core from '@vibe-validate/core';
 import * as configLoader from '../../src/utils/config-loader.js';
+import * as history from '@vibe-validate/history';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
 // Mock the core validation module
@@ -23,6 +24,15 @@ vi.mock('../../src/utils/config-loader.js', async () => {
   return {
     ...actual,
     loadConfig: vi.fn(),
+  };
+});
+
+// Mock the history module
+vi.mock('@vibe-validate/history', async () => {
+  const actual = await vi.importActual<typeof history>('@vibe-validate/history');
+  return {
+    ...actual,
+    readHistoryNote: vi.fn(),
   };
 });
 
@@ -239,7 +249,7 @@ describe('validate command', () => {
       }
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error details'),
+        expect.stringContaining('View error details'),
         expect.anything()
       );
       expect(console.error).toHaveBeenCalledWith(
@@ -384,20 +394,32 @@ describe('validate command', () => {
             }
           ]
         },
-        stateFilePath: join(testDir, '.vibe-validate-state.yaml'),
       };
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
     });
 
     it('should not run validation when --check flag is used', async () => {
-      // Create a state file with passed validation
-      const stateFile = join(testDir, '.vibe-validate-state.yaml');
-      writeFileSync(stateFile, `
-passed: true
-timestamp: ${new Date().toISOString()}
-treeHash: abc123def456
-phases: []
-      `);
+      // Mock git notes with passing validation
+      vi.mocked(history.readHistoryNote).mockResolvedValue({
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: new Date().toISOString(),
+            duration: 1000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: new Date().toISOString(),
+              treeHash: 'abc123def456',
+              phases: [],
+            },
+          },
+        ],
+      });
 
       validateCommand(program);
 
@@ -411,7 +433,10 @@ phases: []
       expect(core.runValidation).not.toHaveBeenCalled();
     });
 
-    it('should exit with code 2 when state file is missing', async () => {
+    it('should exit with code 2 when no validation history exists', async () => {
+      // Mock git notes with no history
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+
       validateCommand(program);
 
       try {
@@ -423,9 +448,137 @@ phases: []
       }
 
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validation state file not found')
+        expect.stringContaining('No validation history for current working tree')
       );
       expect(core.runValidation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('--yaml flag', () => {
+    beforeEach(() => {
+      // Mock valid config
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [
+                { name: 'Test Step', command: 'echo test' }
+              ]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+
+      // Spy on process.stdout.write to capture YAML output
+      vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+
+    it('should register --yaml option', () => {
+      validateCommand(program);
+
+      const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
+      const options = validateCmd?.options;
+
+      expect(options?.some(opt => opt.flags === '-y, --yaml')).toBe(true);
+    });
+
+    it('should output YAML to stdout on successful validation', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify YAML header was written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('VALIDATION RESULT'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
+    });
+
+    it('should output YAML to stdout on failed validation', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: false,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+        failedStep: 'Test Step',
+        rerunCommand: 'echo test',
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit with code 1
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(1);
+        }
+      }
+
+      // Verify YAML header and failure were written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('VALIDATION RESULT'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
+    });
+
+    it('should pass yaml flag to runner config', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify runValidation was called with yaml in config
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yaml: true
+        })
+      );
+    });
+
+    it('should work with both --yaml and --verbose flags', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml', '--verbose'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify both flags were passed to runner
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yaml: true,
+          verbose: true
+        })
+      );
     });
   });
 });

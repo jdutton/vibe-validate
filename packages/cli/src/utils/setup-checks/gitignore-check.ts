@@ -1,14 +1,13 @@
 /**
- * Gitignore Setup Check
+ * Gitignore Setup Check (DEPRECATED)
  *
- * Ensures that .vibe-validate-state.yaml is listed in .gitignore
- * to prevent committing validation state files.
+ * @deprecated Since v0.12.0 - State file (.vibe-validate-state.yaml) is deprecated.
+ * Validation history is now stored in git notes instead of a state file.
+ * This check always passes and does not modify .gitignore.
+ *
+ * Use `vibe-validate doctor` to detect and remove deprecated state file entries.
  */
 
-import { readFile, writeFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
-import { splitLines } from '../normalize-line-endings.js';
 import type {
   SetupCheck,
   CheckResult,
@@ -17,173 +16,34 @@ import type {
   FixOptions,
 } from '../setup-engine.js';
 
-const STATE_FILE_ENTRY = '.vibe-validate-state.yaml';
-
 export class GitignoreSetupCheck implements SetupCheck {
   readonly id = 'gitignore';
-  readonly name = 'Gitignore Setup';
+  readonly name = 'Gitignore Setup (deprecated)';
 
-  async check(options?: FixOptions): Promise<CheckResult> {
-    const cwd = options?.cwd ?? process.cwd();
-    const gitignorePath = join(cwd, '.gitignore');
-
-    // Check if .gitignore exists
-    if (!existsSync(gitignorePath)) {
-      return {
-        passed: false,
-        message: '.gitignore not found',
-        suggestion: `Create .gitignore and add ${STATE_FILE_ENTRY}`,
-      };
-    }
-
-    // Read .gitignore content
-    const content = await readFile(gitignorePath, 'utf-8');
-
-    // Check if state file entry exists (with flexible whitespace)
-    const hasEntry = splitLines(content)
-      .some(line => line.trim() === STATE_FILE_ENTRY);
-
-    if (!hasEntry) {
-      return {
-        passed: false,
-        message: `.gitignore missing ${STATE_FILE_ENTRY} entry`,
-        suggestion: `Add ${STATE_FILE_ENTRY} to .gitignore`,
-      };
-    }
-
+  async check(_options?: FixOptions): Promise<CheckResult> {
+    // DEPRECATED: State file is no longer used (git notes replaced it in v0.12.0)
+    // Always return passed - no .gitignore modifications needed
     return {
       passed: true,
-      message: '.gitignore correctly configured with state file entry',
+      message: '.gitignore check skipped (state file deprecated in v0.12.0)',
     };
   }
 
-  async preview(options?: FixOptions): Promise<PreviewResult> {
-    const cwd = options?.cwd ?? process.cwd();
-    const gitignorePath = join(cwd, '.gitignore');
-
-    // Check current state
-    const checkResult = await this.check(options);
-
-    if (checkResult.passed) {
-      return {
-        description: '.gitignore already configured correctly',
-        filesAffected: [],
-        changes: [],
-      };
-    }
-
-    // If .gitignore doesn't exist
-    if (!existsSync(gitignorePath)) {
-      const content = this.generateNewGitignoreContent();
-      return {
-        description: 'Create new .gitignore with vibe-validate state file entry',
-        filesAffected: ['.gitignore'],
-        changes: [
-          {
-            file: '.gitignore',
-            action: 'create',
-            content,
-          },
-        ],
-      };
-    }
-
-    // If .gitignore exists but missing entry
+  async preview(_options?: FixOptions): Promise<PreviewResult> {
+    // DEPRECATED: No .gitignore modifications needed (state file deprecated)
     return {
-      description: `Add ${STATE_FILE_ENTRY} entry to existing .gitignore`,
-      filesAffected: ['.gitignore'],
-      changes: [
-        {
-          file: '.gitignore',
-          action: 'modify',
-        },
-      ],
+      description: 'Gitignore check deprecated (state file no longer used)',
+      filesAffected: [],
+      changes: [],
     };
   }
 
-  async fix(options?: FixOptions): Promise<FixResult> {
-    const cwd = options?.cwd ?? process.cwd();
-    const gitignorePath = join(cwd, '.gitignore');
-    const dryRun = options?.dryRun ?? false;
-
-    // Check current state
-    const checkResult = await this.check(options);
-
-    if (checkResult.passed && !options?.force) {
-      return {
-        success: true,
-        message: '.gitignore already configured correctly',
-        filesChanged: [],
-      };
-    }
-
-    if (dryRun) {
-      return {
-        success: true,
-        message: '[dry-run] Would update .gitignore',
-        filesChanged: [],
-      };
-    }
-
-    // If .gitignore doesn't exist, create it
-    if (!existsSync(gitignorePath)) {
-      const content = this.generateNewGitignoreContent();
-      await writeFile(gitignorePath, content, 'utf-8');
-
-      return {
-        success: true,
-        message: 'Created .gitignore with state file entry',
-        filesChanged: ['.gitignore'],
-      };
-    }
-
-    // If .gitignore exists, add entry if missing
-    const content = await readFile(gitignorePath, 'utf-8');
-    const hasEntry = splitLines(content)
-      .some(line => line.trim() === STATE_FILE_ENTRY);
-
-    if (hasEntry) {
-      // Entry already exists (idempotent)
-      return {
-        success: true,
-        message: '.gitignore already contains state file entry',
-        filesChanged: [],
-      };
-    }
-
-    // Add entry to existing .gitignore
-    const updatedContent = this.addEntryToGitignore(content);
-    await writeFile(gitignorePath, updatedContent, 'utf-8');
-
+  async fix(_options?: FixOptions): Promise<FixResult> {
+    // DEPRECATED: No .gitignore modifications needed (state file deprecated)
     return {
       success: true,
-      message: `Added ${STATE_FILE_ENTRY} to .gitignore`,
-      filesChanged: ['.gitignore'],
+      message: 'Gitignore check deprecated (state file no longer used)',
+      filesChanged: [],
     };
-  }
-
-  /**
-   * Generate content for a new .gitignore file
-   */
-  private generateNewGitignoreContent(): string {
-    return `# vibe-validate
-${STATE_FILE_ENTRY}
-`;
-  }
-
-  /**
-   * Add state file entry to existing .gitignore content
-   */
-  private addEntryToGitignore(content: string): string {
-    // Ensure content ends with newline
-    let updatedContent = content;
-    if (!content.endsWith('\n')) {
-      updatedContent += '\n';
-    }
-
-    // Add vibe-validate section
-    updatedContent += `\n# vibe-validate\n${STATE_FILE_ENTRY}\n`;
-
-    return updatedContent;
   }
 }

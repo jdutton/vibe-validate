@@ -103,7 +103,7 @@
               "errorSummary": {
                 "type": "string"
               },
-              "stateFile": {
+              "validationResult": {
                 "type": "object",
                 "properties": {
                   "passed": {

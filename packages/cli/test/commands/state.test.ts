@@ -1,26 +1,27 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
 import { Command } from 'commander';
 import { stateCommand } from '../../src/commands/state.js';
+import type { ValidationResult } from '@vibe-validate/core';
+import type { HistoryNote } from '@vibe-validate/history';
+
+// Mock dependencies
+vi.mock('@vibe-validate/git', () => ({
+  getGitTreeHash: vi.fn(),
+}));
+
+vi.mock('@vibe-validate/history', () => ({
+  hasHistoryForTree: vi.fn(),
+  readHistoryNote: vi.fn(),
+}));
+
+import { getGitTreeHash } from '@vibe-validate/git';
+import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
 
 describe('state command', () => {
-  let testDir: string;
-  let originalCwd: string;
   let program: Command;
+  const mockTreeHash = 'abc123def456';
 
   beforeEach(() => {
-    // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-state-test-${Date.now()}`);
-    if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true });
-    }
-
-    // Save original cwd and change to test directory
-    originalCwd = process.cwd();
-    process.chdir(testDir);
-
     // Create fresh Commander instance
     program = new Command();
     program.exitOverride(); // Prevent process.exit() from killing tests
@@ -28,21 +29,14 @@ describe('state command', () => {
     // Spy on console methods to capture output
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Default mock implementations
+    vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHash);
+    vi.mocked(hasHistoryForTree).mockResolvedValue(false);
+    vi.mocked(readHistoryNote).mockResolvedValue(null);
   });
 
   afterEach(() => {
-    // Restore cwd
-    process.chdir(originalCwd);
-
-    // Clean up test files
-    if (existsSync(testDir)) {
-      try {
-        rmSync(testDir, { recursive: true, force: true });
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-
     vi.restoreAllMocks();
   });
 
@@ -54,7 +48,7 @@ describe('state command', () => {
       const stateCmd = commands.find(cmd => cmd.name() === 'state');
 
       expect(stateCmd).toBeDefined();
-      expect(stateCmd?.description()).toBe('Show current validation state');
+      expect(stateCmd?.description()).toBe('Show current validation state from git notes');
     });
 
     it('should register --verbose option', () => {
@@ -65,26 +59,19 @@ describe('state command', () => {
 
       expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
     });
-
-    it('should register --file option', () => {
-      stateCommand(program);
-
-      const stateCmd = program.commands.find(cmd => cmd.name() === 'state');
-      const options = stateCmd?.options;
-
-      expect(options?.some(opt => opt.flags === '--file <path>')).toBe(true);
-    });
   });
 
-  describe('no state file', () => {
-    it('should handle missing state file (minimal output)', async () => {
+  describe('no validation state', () => {
+    it('should handle missing state (minimal output)', async () => {
+      vi.mocked(hasHistoryForTree).mockResolvedValue(false);
+
       stateCommand(program);
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
       } catch (error: unknown) {
         // Commander throws when exitOverride is set
-        // We expect exit code 0 for missing state file
+        // We expect exit code 0 for missing state
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(0);
         }
@@ -94,7 +81,9 @@ describe('state command', () => {
       expect(console.log).toHaveBeenCalledWith('exists: false');
     });
 
-    it('should handle missing state file (verbose output)', async () => {
+    it('should handle missing state (verbose output)', async () => {
+      vi.mocked(hasHistoryForTree).mockResolvedValue(false);
+
       stateCommand(program);
 
       try {
@@ -106,27 +95,53 @@ describe('state command', () => {
       }
 
       // Verbose output includes explanatory text
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('exists: false'));
+      expect(console.log).toHaveBeenCalledWith('exists: false');
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No validation state found'));
+    });
+
+    it('should handle empty history note', async () => {
+      vi.mocked(hasHistoryForTree).mockResolvedValue(true);
+      vi.mocked(readHistoryNote).mockResolvedValue({
+        treeHash: mockTreeHash,
+        runs: [],
+      });
+
+      stateCommand(program);
+
+      try {
+        await program.parseAsync(['state'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      expect(console.log).toHaveBeenCalledWith('exists: false');
     });
   });
 
   describe('passed validation state', () => {
     beforeEach(() => {
-      const stateContent = {
+      const mockResult: ValidationResult = {
         passed: true,
         timestamp: '2025-10-16T12:00:00.000Z',
-        treeHash: 'abc123def456',
+        treeHash: mockTreeHash,
+        phases: [],
       };
 
-      // Write YAML format (not JSON!)
-      const yamlContent = `passed: ${stateContent.passed}
-timestamp: ${stateContent.timestamp}
-treeHash: ${stateContent.treeHash}`;
-      writeFileSync(
-        join(testDir, '.vibe-validate-state.yaml'),
-        yamlContent
-      );
+      const mockHistoryNote: HistoryNote = {
+        treeHash: mockTreeHash,
+        runs: [
+          {
+            branch: 'main',
+            timestamp: '2025-10-16T12:00:00.000Z',
+            result: mockResult,
+          },
+        ],
+      };
+
+      vi.mocked(hasHistoryForTree).mockResolvedValue(true);
+      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
     });
 
     it('should display passed state (minimal output)', async () => {
@@ -163,27 +178,28 @@ treeHash: ${stateContent.treeHash}`;
 
   describe('failed validation state', () => {
     beforeEach(() => {
-      const stateContent = {
+      const mockResult: ValidationResult = {
         passed: false,
         timestamp: '2025-10-16T12:00:00.000Z',
-        treeHash: 'abc123def456',
+        treeHash: mockTreeHash,
         failedStep: 'TypeScript Type Check',
         failedStepOutput: 'Error: Type mismatch\nExpected string, got number',
+        phases: [],
       };
 
-      // Write YAML format (not JSON!)
-      // Properly indent multiline output
-      const indentedOutput = stateContent.failedStepOutput.split('\n').map(line => `  ${line}`).join('\n');
-      const yamlContent = `passed: ${stateContent.passed}
-timestamp: ${stateContent.timestamp}
-treeHash: ${stateContent.treeHash}
-failedStep: ${stateContent.failedStep}
-failedStepOutput: |
-${indentedOutput}`;
-      writeFileSync(
-        join(testDir, '.vibe-validate-state.yaml'),
-        yamlContent
-      );
+      const mockHistoryNote: HistoryNote = {
+        treeHash: mockTreeHash,
+        runs: [
+          {
+            branch: 'main',
+            timestamp: '2025-10-16T12:00:00.000Z',
+            result: mockResult,
+          },
+        ],
+      };
+
+      vi.mocked(hasHistoryForTree).mockResolvedValue(true);
+      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
     });
 
     it('should display failed state (minimal output)', async () => {
@@ -221,27 +237,27 @@ ${indentedOutput}`;
 
     it('should display long error output without truncation (verbose mode)', async () => {
       const longOutput = Array(30).fill('Error line').join('\n');
-      const stateContent = {
+      const mockResult: ValidationResult = {
         passed: false,
         timestamp: '2025-10-16T12:00:00.000Z',
-        treeHash: 'abc123def456',
+        treeHash: mockTreeHash,
         failedStep: 'Build',
         failedStepOutput: longOutput,
+        phases: [],
       };
 
-      // Write YAML format (not JSON!)
-      // Properly indent multiline output
-      const indentedOutput = stateContent.failedStepOutput.split('\n').map(line => `  ${line}`).join('\n');
-      const yamlContent = `passed: ${stateContent.passed}
-timestamp: ${stateContent.timestamp}
-treeHash: ${stateContent.treeHash}
-failedStep: ${stateContent.failedStep}
-failedStepOutput: |
-${indentedOutput}`;
-      writeFileSync(
-        join(testDir, '.vibe-validate-state.yaml'),
-        yamlContent
-      );
+      const mockHistoryNote: HistoryNote = {
+        treeHash: mockTreeHash,
+        runs: [
+          {
+            branch: 'main',
+            timestamp: '2025-10-16T12:00:00.000Z',
+            result: mockResult,
+          },
+        ],
+      };
+
+      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       stateCommand(program);
 
@@ -259,40 +275,42 @@ ${indentedOutput}`;
     });
   });
 
-  describe('custom state file path', () => {
-    it('should read from custom path when --file provided', async () => {
-      const customPath = 'custom-state.yaml';
-      const stateContent = {
-        passed: true,
-        timestamp: '2025-10-16T12:00:00.000Z',
-        treeHash: 'custom123',
-      };
-
-      writeFileSync(
-        join(testDir, customPath),
-        JSON.stringify(stateContent, null, 2)
-      );
+  describe('error handling', () => {
+    it('should handle non-git repository', async () => {
+      vi.mocked(getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
 
       stateCommand(program);
 
       try {
-        await program.parseAsync(['state', '--file', customPath], { from: 'user' });
+        await program.parseAsync(['state'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(0);
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('custom123'));
+      expect(console.log).toHaveBeenCalledWith('exists: false');
     });
-  });
 
-  describe('error handling', () => {
-    it('should handle invalid JSON in state file', async () => {
-      writeFileSync(
-        join(testDir, '.vibe-validate-state.yaml'),
-        'this is not valid JSON!'
-      );
+    it('should handle non-git repository (verbose)', async () => {
+      vi.mocked(getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
+
+      stateCommand(program);
+
+      try {
+        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      expect(console.log).toHaveBeenCalledWith('exists: false');
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Not in a git repository'));
+    });
+
+    it('should handle git errors', async () => {
+      vi.mocked(getGitTreeHash).mockRejectedValue(new Error('some git error'));
 
       stateCommand(program);
 
@@ -308,6 +326,58 @@ ${indentedOutput}`;
         expect.stringContaining('Failed to read validation state'),
         expect.anything()
       );
+    });
+  });
+
+  describe('multiple runs', () => {
+    it('should return most recent run', async () => {
+      const olderResult: ValidationResult = {
+        passed: false,
+        timestamp: '2025-10-16T10:00:00.000Z',
+        treeHash: mockTreeHash,
+        failedStep: 'Old failure',
+        phases: [],
+      };
+
+      const newerResult: ValidationResult = {
+        passed: true,
+        timestamp: '2025-10-16T12:00:00.000Z',
+        treeHash: mockTreeHash,
+        phases: [],
+      };
+
+      const mockHistoryNote: HistoryNote = {
+        treeHash: mockTreeHash,
+        runs: [
+          {
+            branch: 'main',
+            timestamp: '2025-10-16T10:00:00.000Z',
+            result: olderResult,
+          },
+          {
+            branch: 'main',
+            timestamp: '2025-10-16T12:00:00.000Z',
+            result: newerResult,
+          },
+        ],
+      };
+
+      vi.mocked(hasHistoryForTree).mockResolvedValue(true);
+      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
+
+      stateCommand(program);
+
+      try {
+        await program.parseAsync(['state'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      // Should show the newer result (passed: true)
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
+      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Old failure'));
     });
   });
 });

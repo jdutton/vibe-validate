@@ -58,22 +58,11 @@ describe('generate-workflow command', () => {
           failFast: true,
         },
       ],
-      caching: {
-        strategy: 'git-tree-hash' as const,
-        enabled: true,
-        statePath: '.vibe-validate-state.yaml',
-      },
     },
     git: {
       mainBranch: 'main',
       autoSync: false,
       warnIfBehind: true,
-    },
-    output: {
-      format: 'auto' as const,
-      showProgress: true,
-      verbose: false,
-      noColor: false,
     },
   };
 
@@ -365,7 +354,7 @@ describe('generate-workflow command', () => {
     });
 
 
-    it('should add validation state upload on failure in matrix mode', () => {
+    it('should NOT add validation state upload (deprecated in v0.12.0)', () => {
       const workflowYaml = generateWorkflow(mockConfig, {
         nodeVersions: ['20', '22'],
         os: ['ubuntu-latest', 'macos-latest'],
@@ -377,9 +366,8 @@ describe('generate-workflow command', () => {
       const uploadStep = job.steps.find(
         (s: any) => s.uses === 'actions/upload-artifact@v4'
       );
-      expect(uploadStep).toBeDefined();
-      expect(uploadStep.if).toBe('failure()');
-      expect(uploadStep.with.name).toBe('validation-state-${{ matrix.os }}-node${{ matrix.node }}');
+      // State upload removed in v0.12.0 - validation history now in git notes
+      expect(uploadStep).toBeUndefined();
     });
 
     it('should add separate coverage job in matrix mode when enabled', () => {

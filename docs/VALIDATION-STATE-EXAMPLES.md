@@ -38,9 +38,9 @@ validation:
 
 | Tag | Schema | File Type | Description |
 |-----|--------|-----------|-------------|
-| `validation-result:example` | ValidationResult | `.vibe-validate-state.yaml` | State file (validated) |
+| `validation-result:example` | ValidationResult | Validation State | State from git notes (validated) |
 | `validation-result:partial` | N/A | Documentation | Partial example (not validated) |
-| `state-file:example` | ValidationResult | `.vibe-validate-state.yaml` | Alias for validation-result |
+| `state-file:example` | ValidationResult | Validation State | Alias for validation-result |
 | `config:example` | VibeValidateConfig | `vibe-validate.config.yaml` | Config file (validated) |
 | `config:partial` | N/A | Documentation | Partial config (not validated) |
 | `vibe-config:example` | VibeValidateConfig | `vibe-validate.config.yaml` | Alias for config |

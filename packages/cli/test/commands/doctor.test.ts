@@ -31,6 +31,9 @@ import { loadConfig, findConfigPath, loadConfigWithErrors } from '../../src/util
 import { checkSync } from '../../src/commands/generate-workflow.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
+/** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
+const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
+
 describe('doctor command', () => {
   const mockConfig: VibeValidateConfig = {
     validation: {
@@ -45,22 +48,11 @@ describe('doctor command', () => {
           failFast: true,
         },
       ],
-      caching: {
-        strategy: 'git-tree-hash' as const,
-        enabled: true,
-        statePath: '.vibe-validate-state.yaml',
-      },
     },
     git: {
       mainBranch: 'main',
       autoSync: false,
       warnIfBehind: true,
-    },
-    output: {
-      format: 'auto' as const,
-      showProgress: true,
-      verbose: false,
-      noColor: false,
     },
   };
 
@@ -81,7 +73,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\nnode_modules\n' as any;
+          return 'node_modules\ndist\n' as any; // Healthy: no deprecated state file
         }
         return 'npx vibe-validate pre-commit' as any; // Pre-commit hook content
       });
@@ -103,6 +95,7 @@ describe('doctor command', () => {
       vi.mocked(existsSync).mockImplementation((path: string) => {
         // Config format check needs specific file checks
         if (path.toString() === 'vibe-validate.config.yaml') return true;
+        if (path.toString() === DEPRECATED_STATE_FILE) return false; // Healthy: no deprecated state file
         return true; // Everything else exists
       });
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
@@ -111,7 +104,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(15); // Total number of checks (includes secret scanning check)
+      expect(result.checks).toHaveLength(16); // Total number of checks (includes secret scanning, deprecated state file checks, and history health)
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -236,7 +229,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.10.4' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return 'node_modules\ndist\n' as any; // No deprecated state file - only want config to fail
         }
         return 'npm run pre-commit' as any;
       });
@@ -250,7 +243,10 @@ describe('doctor command', () => {
         if (cmd.includes('git symbolic-ref refs/remotes/origin/HEAD')) return 'refs/remotes/origin/main' as any;
         return '' as any;
       });
-      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === DEPRECATED_STATE_FILE) return false; // No deprecated state file
+        return true; // Everything else exists
+      });
       vi.mocked(loadConfig).mockResolvedValue(null); // Config failed validation
       vi.mocked(findConfigPath).mockReturnValue('/path/to/vibe-validate.config.yaml');
       vi.mocked(loadConfigWithErrors).mockResolvedValue({
@@ -262,8 +258,8 @@ describe('doctor command', () => {
       // Use verbose mode to see all checks
       const result = await runDoctor({ verbose: true });
 
-      // Verify that all 15 checks ran (not just the config check)
-      expect(result.checks).toHaveLength(15);
+      // Verify that all 16 checks ran (not just the config check)
+      expect(result.checks).toHaveLength(16);
 
       // Config check should fail
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
@@ -276,10 +272,10 @@ describe('doctor command', () => {
       expect(result.checks.find(c => c.name === 'Git installed')?.passed).toBe(true);
       expect(result.checks.find(c => c.name === 'Git repository')?.passed).toBe(true);
 
-      // Summary should show 14/15 passed (only config check fails)
+      // Summary should show 15/16 passed (only config check fails)
       expect(result.allPassed).toBe(false);
-      expect(result.totalChecks).toBe(15);
-      expect(result.passedChecks).toBe(14);
+      expect(result.totalChecks).toBe(16);
+      expect(result.passedChecks).toBe(15);
     });
 
     it('should detect not in git repository', async () => {
@@ -391,7 +387,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npx vibe-validate pre-commit' as any;
       });
@@ -417,7 +413,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verbose mode should return all checks
-      expect(result.checks).toHaveLength(15); // All checks including config format migration check
+      expect(result.checks).toHaveLength(16); // All checks including secret scanning, deprecated state file checks, and history health
       expect(result.verboseMode).toBe(true);
     });
 
@@ -429,7 +425,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return 'node_modules\ndist\n' as any; // Healthy: no deprecated state file
         }
         return 'npx vibe-validate pre-commit' as any;
       });
@@ -448,7 +444,10 @@ describe('doctor command', () => {
         return '' as any;
       });
 
-      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === DEPRECATED_STATE_FILE) return false; // Healthy: no deprecated state file
+        return true;
+      });
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -499,7 +498,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npx vibe-validate pre-commit' as any;
       });
@@ -523,9 +522,9 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true });
 
-      // Verbose mode should show ALL 15 checks (including passing ones)
+      // Verbose mode should show ALL 16 checks (including passing ones)
       expect(result.verboseMode).toBe(true);
-      expect(result.checks).toHaveLength(15); // All checks
+      expect(result.checks).toHaveLength(16); // All checks
       expect(result.allPassed).toBe(false); // Has failures
 
       const failedChecks = result.checks.filter(c => !c.passed);
@@ -544,7 +543,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npx vibe-validate pre-commit' as any;
       });
@@ -575,8 +574,37 @@ describe('doctor command', () => {
         },
       };
 
-      vi.mocked(existsSync).mockReturnValue(true); // Config and validation state exist
+      // Mock all necessary dependencies for healthy environment
+      const { readFileSync } = await import('fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return 'node_modules\ndist\n' as any; // Healthy: no deprecated state file
+        }
+        return 'npx vibe-validate pre-commit' as any;
+      });
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+        if (cmdStr.includes('git remote')) return 'origin' as any;
+        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
+        return '' as any;
+      });
+
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === DEPRECATED_STATE_FILE) return false; // No deprecated state file
+        return true; // Everything else exists
+      });
       vi.mocked(loadConfig).mockResolvedValue(configWithDisabledHook);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
       const result = await runDoctor({ verbose: true });
 
@@ -612,11 +640,14 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return 'node_modules\ndist\n' as any; // Healthy: no deprecated state file
         }
         return 'npx vibe-validate pre-commit' as any; // Pre-commit hook content
       });
-      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === DEPRECATED_STATE_FILE) return false; // No deprecated state file
+        return true;
+      });
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
       const result = await runDoctor({ verbose: true });
@@ -634,7 +665,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npm run pre-commit' as any; // Pre-commit hook runs via npm
       });
@@ -655,7 +686,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'pnpm pre-commit' as any; // Pre-commit hook runs via pnpm
       });
@@ -735,7 +766,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npm run pre-commit' as any;
       });
@@ -771,7 +802,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.10' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npm run pre-commit' as any;
       });
@@ -810,7 +841,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npm run pre-commit' as any;
       });
@@ -843,11 +874,11 @@ describe('doctor command', () => {
   });
 
   describe('gitignore state file check', () => {
-    it('should pass when .vibe-validate-state.yaml is in .gitignore', async () => {
+    it(`should warn when ${DEPRECATED_STATE_FILE} is in .gitignore (deprecated)`, async () => {
       const { readFileSync } = await import('fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\nnode_modules\n' as any;
+          return `${DEPRECATED_STATE_FILE}\nnode_modules\n` as any;
         }
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -874,12 +905,12 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true });
 
-      const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file');
-      expect(gitignoreCheck?.passed).toBe(true);
-      expect(gitignoreCheck?.message).toContain('.vibe-validate-state.yaml is in .gitignore');
+      const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file (deprecated)');
+      expect(gitignoreCheck?.passed).toBe(false); // Should fail - deprecated entry needs removal
+      expect(gitignoreCheck?.message).toContain(`${DEPRECATED_STATE_FILE} in .gitignore`);
     });
 
-    it('should fail when .gitignore exists but state file not listed', async () => {
+    it('should pass when .gitignore exists but state file not listed (state file deprecated)', async () => {
       const { readFileSync } = await import('fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('.gitignore')) {
@@ -899,13 +930,11 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file');
-      expect(gitignoreCheck?.passed).toBe(false);
-      expect(gitignoreCheck?.message).toContain('not in .gitignore');
-      expect(gitignoreCheck?.suggestion).toContain('echo ".vibe-validate-state.yaml" >> .gitignore');
-      expect(gitignoreCheck?.suggestion).toContain('vibe-validate init --fix-gitignore');
+      expect(gitignoreCheck?.passed).toBe(true);
+      expect(gitignoreCheck?.message).toContain('No deprecated state file entries');
     });
 
-    it('should fail when .gitignore does not exist', async () => {
+    it('should pass when .gitignore does not exist (state file deprecated)', async () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
       vi.mocked(existsSync).mockImplementation((path: string) => {
         if (path.toString().includes('.gitignore')) return false;
@@ -917,9 +946,8 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       const gitignoreCheck = result.checks.find(c => c.name === 'Gitignore state file');
-      expect(gitignoreCheck?.passed).toBe(false);
-      expect(gitignoreCheck?.message).toContain('.gitignore file not found');
-      expect(gitignoreCheck?.suggestion).toContain('vibe-validate init --fix-gitignore');
+      expect(gitignoreCheck?.passed).toBe(true);
+      expect(gitignoreCheck?.message).toContain('state file deprecated - using git notes');
     });
 
     it('should fail when .gitignore is unreadable', async () => {
@@ -956,7 +984,7 @@ describe('doctor command', () => {
           return JSON.stringify({ version: '0.9.11' }) as any;
         }
         if (path.toString().includes('.gitignore')) {
-          return '.vibe-validate-state.yaml\n' as any;
+          return `${DEPRECATED_STATE_FILE}\n` as any;
         }
         return 'npm run pre-commit' as any;
       });

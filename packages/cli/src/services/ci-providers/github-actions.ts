@@ -6,7 +6,7 @@ import type {
   CheckStatus,
   CheckResult,
   FailureLogs,
-  StateFileContents,
+  ValidationResultContents,
 } from '../ci-provider.js';
 
 /**
@@ -100,7 +100,7 @@ export class GitHubActionsProvider implements CIProvider {
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer to handle large logs
     });
 
-    const stateFile = this.extractStateFile(logs);
+    const validationResult = this.extractValidationResult(logs);
 
     return {
       checkId: runId,
@@ -108,11 +108,11 @@ export class GitHubActionsProvider implements CIProvider {
       rawLogs: logs,
       failedStep: this.extractFailedStep(logs),
       errorSummary: this.extractErrorSummary(logs),
-      stateFile: stateFile ?? undefined,
+      validationResult: validationResult ?? undefined,
     };
   }
 
-  extractStateFile(logs: string): StateFileContents | null {
+  extractValidationResult(logs: string): ValidationResultContents | null {
     // GitHub Actions logs have format: "Run name\tStep name\tTimestamp <content>"
     // We need to strip prefixes to get actual output
     const lines = logs.split('\n');
@@ -126,10 +126,11 @@ export class GitHubActionsProvider implements CIProvider {
       return contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '').replace(/^[0-9T:.Z-]+$/, '');
     };
 
-    // Find the start: line containing "VALIDATION STATE FILE CONTENTS"
+    // Find the start: line containing "VALIDATION RESULT"
+    // (This header is from the CI workflow displaying the validation result)
     // Skip lines with ANSI codes (those are the commands being echoed, not the output)
     const startIdx = lines.findIndex(l => {
-      return l.includes('VALIDATION STATE FILE CONTENTS') && !l.includes('[36;1m') && !l.includes('[0m');
+      return l.includes('VALIDATION RESULT') && !l.includes('[36;1m') && !l.includes('[0m');
     });
     if (startIdx < 0) {
       return null;
@@ -168,7 +169,7 @@ export class GitHubActionsProvider implements CIProvider {
 
     try {
       const stateYaml = yamlLines.join('\n').trim();
-      return parseYaml(stateYaml) as StateFileContents;
+      return parseYaml(stateYaml) as ValidationResultContents;
     } catch (_error) {
       // Failed to parse YAML, return null
       return null;
@@ -322,15 +323,15 @@ export class GitHubActionsProvider implements CIProvider {
   /**
    * Extract concise error summary from logs
    *
-   * Prioritizes vibe-validate state file extraction for most actionable errors.
+   * Prioritizes validation result extraction for most actionable errors.
    */
   private extractErrorSummary(logs: string): string | undefined {
-    // First, try to extract the full state file (most detailed)
-    const stateFile = this.extractStateFile(logs);
+    // First, try to extract the full validation result (most detailed)
+    const validationResult = this.extractValidationResult(logs);
 
-    if (stateFile && !stateFile.passed && stateFile.phases) {
+    if (validationResult && !validationResult.passed && validationResult.phases) {
       // Find the first failed phase
-      const failedPhase = stateFile.phases.find(p => !p.passed);
+      const failedPhase = validationResult.phases.find(p => !p.passed);
 
       if (failedPhase && failedPhase.steps) {
         // Find the first failed step in that phase

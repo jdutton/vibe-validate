@@ -285,9 +285,9 @@ failedStepOutput: |
 
 **Benefits for AI assistants:**
 - **Structured data** - Easy to parse programmatically
-- **Embedded output** - Error details included in state file (no separate log files)
+- **Embedded output** - Error details included in validation state (no separate log files)
 - **No ambiguity** - Clear field boundaries (no color codes)
-- **Cacheable** - Stored in `.vibe-validate-state.yaml`
+- **Cacheable** - Stored in git notes (access via `vibe-validate state`)
 
 ### Using State File in Agent Workflows
 

@@ -109,13 +109,13 @@ export interface ValidationResult {
 
 /**
  * Validation configuration
+ *
+ * Note: State management (caching, forceRun) is now handled at the CLI layer
+ * via git notes. See packages/cli/src/commands/validate.ts and @vibe-validate/history.
  */
 export interface ValidationConfig {
   /** Validation phases to execute */
   phases: ValidationPhase[];
-
-  /** Path to state file (default: .validate-state.json) */
-  stateFilePath?: string;
 
   /** Path to log file (default: os.tmpdir()/validation-{timestamp}.log) */
   logPath?: string;
@@ -123,11 +123,11 @@ export interface ValidationConfig {
   /** Enable fail-fast (stop on first failure) */
   enableFailFast?: boolean;
 
-  /** Force re-run even if state says validation already passed */
-  forceRun?: boolean;
-
   /** Show verbose output (stream command stdout/stderr in real-time) */
   verbose?: boolean;
+
+  /** Output YAML result to stdout (redirects subprocess output to stderr when true) */
+  yaml?: boolean;
 
   /** Environment variables to pass to all child processes */
   env?: Record<string, string>;
@@ -143,25 +143,4 @@ export interface ValidationConfig {
 
   /** Callback when step completes */
   onStepComplete?: (_step: ValidationStep, _result: StepResult) => void;
-
-  /** Caching configuration */
-  caching?: {
-    /** Enable git tree hash caching */
-    enabled: boolean;
-
-    /** Cache strategy */
-    strategy: 'git-tree-hash' | 'file-hash' | 'timestamp';
-
-    /** Maximum age of cached results (ms) */
-    maxAge?: number;
-  };
-
-  /** Output configuration */
-  output?: {
-    /** Output format */
-    format: 'auto' | 'human' | 'yaml' | 'json';
-
-    /** Show verbose output */
-    verbose?: boolean;
-  };
 }

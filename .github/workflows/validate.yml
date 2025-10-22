@@ -32,64 +32,56 @@ jobs:
         run: pnpm install
       - name: Build packages
         run: pnpm -r build
-      - name: Run validation
-        run: pnpm validate --verbose
-      - name: Display validation state on failure (Unix)
-        if: failure() && runner.os != 'Windows'
+      - name: Run validation (Unix)
+        if: runner.os != 'Windows'
+        run: node packages/cli/dist/bin.js validate --yaml --verbose
+          1>validation-result.yaml || true
+      - name: Run validation (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: >-
+          node packages/cli/dist/bin.js validate --yaml --verbose
+          1>validation-result.yaml
+
+          $exitCode = $LASTEXITCODE
+
+          exit 0  # Always succeed to allow result display
+      - name: Display validation result (Unix)
+        if: always() && runner.os != 'Windows'
         run: >-
           echo "=========================================="
 
-          echo "📋 VALIDATION STATE FILE CONTENTS"
+          echo "VALIDATION RESULT"
 
           echo "=========================================="
 
-          if [ -f .vibe-validate-state.yaml ]; then
-            cat .vibe-validate-state.yaml
-          else
-            echo "❌ State file not found!"
-            echo "Expected location: $(pwd)/.vibe-validate-state.yaml"
-            echo ""
-            echo "📂 Files in current directory:"
-            ls -la | head -20
-            echo ""
-            echo "🔍 Searching for state files:"
-            find . -name "*validate*state*.yaml" -o -name ".vibe-validate*" 2>/dev/null || echo "No state files found"
-          fi
+          cat validation-result.yaml 2>/dev/null || echo "❌ Could not read
+          validation result"
 
           echo "=========================================="
-      - name: Display validation state on failure (Windows)
-        if: failure() && runner.os == 'Windows'
+      - name: Display validation result (Windows)
+        if: always() && runner.os == 'Windows'
         shell: powershell
         run: >-
           Write-Host '=========================================='
 
-          Write-Host 'VALIDATION STATE FILE CONTENTS'
+          Write-Host 'VALIDATION RESULT'
 
           Write-Host '=========================================='
 
-
-          if (Test-Path .vibe-validate-state.yaml) {
-            Get-Content .vibe-validate-state.yaml
-          } else {
-            Write-Host 'State file not found!'
-            Write-Host "Expected location: $PWD\.vibe-validate-state.yaml"
-            Write-Host ''
-            Write-Host 'Files in current directory:'
-            Get-ChildItem | Select-Object -First 20
-            Write-Host ''
-            Write-Host 'Searching for state files:'
-            Get-ChildItem -Recurse -Filter '*validate*state*.yaml' -ErrorAction SilentlyContinue
-          }
-
+          if (Test-Path validation-result.yaml) { Get-Content
+          validation-result.yaml } else { Write-Host 'Could not read validation
+          result' }
 
           Write-Host '=========================================='
-      - name: Upload validation state on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: validation-state-${{ matrix.os }}-node${{ matrix.node }}
-          path: .vibe-validate-state.yaml
-          retention-days: 7
+      - name: Check validation result (Unix)
+        if: always() && runner.os != 'Windows'
+        run: 'grep -q "^passed: true" validation-result.yaml || exit 1'
+      - name: Check validation result (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: powershell
+        run: 'if (!(Select-String -Path validation-result.yaml -Pattern "^passed: true"
+          -Quiet)) { exit 1 }'
     strategy:
       fail-fast: false
       matrix:

@@ -55,9 +55,12 @@ export interface CheckStatus {
 }
 
 /**
- * Parsed contents of vibe-validate state file
+ * Validation result extracted from CI logs
+ *
+ * Note: This is NOT about the deprecated .vibe-validate-state.yaml file.
+ * This represents the validation result that's displayed in CI logs.
  */
-export interface StateFileContents {
+export interface ValidationResultContents {
   /** Whether validation passed */
   passed: boolean;
   /** Timestamp of validation */
@@ -99,8 +102,8 @@ export interface FailureLogs {
   failedStep?: string;
   /** Concise error summary */
   errorSummary?: string;
-  /** Parsed vibe-validate state file (if present) */
-  stateFile?: StateFileContents;
+  /** Validation result extracted from CI logs (if present) */
+  validationResult?: ValidationResultContents;
 }
 
 /**
@@ -158,13 +161,13 @@ export interface CIProvider {
   fetchFailureLogs(_checkId: string): Promise<FailureLogs>;
 
   /**
-   * Extract vibe-validate state file from logs
+   * Extract validation result from CI logs
    *
-   * Looks for the state file display section in workflow logs.
+   * Looks for the validation result display section in workflow logs.
    * This is provider-specific as log formats differ.
    *
    * @param _logs - Raw log output
-   * @returns Parsed state file contents if found, null otherwise
+   * @returns Parsed validation result if found, null otherwise
    */
-  extractStateFile(_logs: string): StateFileContents | null;
+  extractValidationResult(_logs: string): ValidationResultContents | null;
 }

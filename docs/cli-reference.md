@@ -39,12 +39,13 @@ Run validation with git tree hash caching
 
 **Creates/modifies:**
 
-- .vibe-validate-state.yaml (auto-created)
+- Git notes under refs/notes/vibe-validate/runs
 
 **Options:**
 
 - `-f, --force` - Force validation even if already passed
 - `-v, --verbose` - Show detailed progress and output
+- `-y, --yaml` - Output validation result as YAML to stdout
 - `-c, --check` - Check if validation has already passed (do not run)
 
 **Examples:**
@@ -149,7 +150,7 @@ vibe-validate pre-commit --skip-sync  # Skip sync check (not recommended)
 
 ### `state`
 
-Show current validation state
+Show current validation state from git notes
 
 **What it does:**
 
@@ -168,7 +169,6 @@ Shows error summary (if failed)
 **Options:**
 
 - `-v, --verbose` - Show full error output without truncation
-- `--file <path>` - State file path
 
 **Examples:**
 
@@ -324,7 +324,7 @@ vibe-validate generate-workflow --check  # Verify workflow is up to date
 
 ### `doctor`
 
-Diagnose vibe-validate setup and environment
+Diagnose vibe-validate setup and environment (run after upgrading)
 
 **What it does:**
 
@@ -388,8 +388,8 @@ Watch CI checks for a pull/merge request in real-time
 
 If **check fails**:
 ```bash
-# View error from state file in YAML output
-vibe-validate watch-pr 42 --yaml | yq '.failures[0].stateFile'
+# View validation result from YAML output
+vibe-validate watch-pr 42 --yaml | yq '.failures[0].validationResult'
 
 # Re-run failed check
 gh run rerun <run-id> --failed
@@ -417,6 +417,12 @@ vibe-validate watch-pr --timeout 600  # 10 minute timeout
 
 ---
 
+### `history`
+
+View and manage validation history stored in git notes
+
+---
+
 ## Global Options
 
 - `-V, --version` - Show vibe-validate version
@@ -428,7 +434,7 @@ vibe-validate watch-pr --timeout 600  # 10 minute timeout
 | File | Purpose |
 |------|---------|
 | `vibe-validate.config.yaml` | Configuration (required) |
-| `.vibe-validate-state.yaml` | Validation state (auto-created, add to .gitignore) |
+| `refs/notes/vibe-validate/runs` | Validation state (git notes, auto-created) |
 | `.github/workflows/validate.yml` | CI workflow (optional, generated) |
 | `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |
 
