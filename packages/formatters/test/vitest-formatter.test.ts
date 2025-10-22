@@ -33,7 +33,7 @@ AssertionError: expected 3000 to be 9999 // Object.is equality
     expect(result.totalCount).toBe(1);
   });
 
-  it('should extract test hierarchy', () => {
+  it('should extract test hierarchy and error message', () => {
     const output = `
  FAIL  test/unit/config/environment.test.ts > EnvironmentConfig > should parse HTTP_PORT correctly
 AssertionError: expected 3000 to be 9999
@@ -42,7 +42,10 @@ AssertionError: expected 3000 to be 9999
 
     const result = formatVitestErrors(output);
 
-    expect(result.errors[0].message).toContain('EnvironmentConfig > should parse HTTP_PORT correctly');
+    // Message should contain the actual error, not just the test hierarchy
+    expect(result.errors[0].message).toContain('AssertionError: expected 3000 to be 9999');
+    // Test hierarchy is captured in cleanOutput, not in message
+    expect(result.cleanOutput).toContain('EnvironmentConfig > should parse HTTP_PORT correctly');
   });
 
   it('should extract error message', () => {

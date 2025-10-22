@@ -1,0 +1,63 @@
+$schema: ../fixture-schema.json
+
+# ESLint error - unused variable
+
+metadata:
+  tool: eslint
+  toolVersion: "9.37.0"
+  platform: linux
+  nodeVersion: "22.0.0"
+  contributor: vibe-validate
+  contributedDate: "2025-10-22"
+  sourceIssue: null
+  sourcePR: null
+  category: lint-error
+  difficulty: easy
+  description: |
+    Standard ESLint error output.
+    Shows file, line, column, severity, message, and rule.
+    Common pattern from eslint --format stylish.
+
+input:
+  raw: |
+    /Users/jeff/project/packages/core/src/runner.ts
+      45:10  error  'foo' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+    ✖ 1 problem (1 error, 0 warnings)
+
+expected:
+  detectionConfidence: 95
+  detectedTool: eslint
+  failures:
+    - tool: eslint
+      type: lint-error
+      summary: "'foo' is assigned a value but never used"
+      message: "'foo' is assigned a value but never used (@typescript-eslint/no-unused-vars)"
+      location:
+        file: /Users/jeff/project/packages/core/src/runner.ts
+        line: 45
+        column: 10
+      context: null
+      stackTrace: []
+      relevance: 80
+
+      # Terse summary for users
+      llmSummary: |
+        ESLint error in packages/core/src/runner.ts:45 - 'foo' is assigned a value but never used (@typescript-eslint/no-unused-vars)
+
+quality:
+  lastTested: null
+  fields: {}
+  score: null
+  issues: []
+  scoreHistory: []
+
+improvementHints:
+  - "ESLint format: line:col  severity  message  rule-name"
+  - "File path on separate line before errors"
+  - "Summary line shows total problems"
+  - "Rule name is important for categorization"
+
+relatedFixtures:
+  - eslint/lint-error-002.yaml
+  - eslint/lint-warning-001.yaml

@@ -1,0 +1,57 @@
+$schema: ./fixture-schema.json
+
+# Copy this template to create a new fixture
+# Fill in all required fields and delete this comment
+
+metadata:
+  tool: vitest  # Change to your tool
+  toolVersion: "1.0.0"
+  platform: linux  # linux | darwin | win32
+  nodeVersion: "22.0.0"
+  contributor: your-github-username
+  contributedDate: "2025-10-22"
+  sourceIssue: null
+  sourcePR: null
+  category: assertion-failure  # Describe the error type
+  difficulty: easy  # easy | medium | hard | very-hard
+  description: |
+    Describe what this fixture tests.
+    What pattern does it demonstrate?
+
+input:
+  raw: |
+    # Paste EXACT output from the tool here
+    # Include colors, formatting, everything
+    # Don't truncate or modify
+
+expected:
+  detectionConfidence: 95
+  detectedTool: vitest
+  failures:
+    - tool: vitest
+      type: test-failure
+      summary: "Test name here"
+      message: "Error message here"
+      location:
+        file: path/to/file.test.ts
+        line: 42
+        column: 10
+      context: null
+      stackTrace: []
+      relevance: 100
+
+      # CRITICAL: What users actually see (terse, actionable)
+      llmSummary: |
+        One-line summary of the failure with file:line
+        Optional second line with key error info
+
+quality:
+  # This section is auto-generated - leave empty
+  lastTested: null
+  fields: {}
+  score: null
+  issues: []
+  scoreHistory: []
+
+improvementHints: []
+relatedFixtures: []

@@ -23,7 +23,7 @@ src/index.ts:10:5: error Unexpected console statement no-console
       line: 10,
       column: 5,
       severity: 'error',
-      message: 'Unexpected console statement',
+      message: 'Unexpected console statement (no-console)',
       code: 'no-console'
     });
     expect(result.summary).toBe('1 ESLint error(s), 0 warning(s)');
@@ -116,8 +116,8 @@ src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-e
 
     const result = formatESLintErrors(output);
 
-    expect(result.cleanOutput).toContain('src/index.ts:10:5 - Unexpected console statement [no-console]');
-    expect(result.cleanOutput).toContain('src/config.ts:25:12 - \'unusedVar\' is defined but never used [@typescript-eslint/no-unused-vars]');
+    expect(result.cleanOutput).toContain('src/index.ts:10:5 - Unexpected console statement (no-console) [no-console]');
+    expect(result.cleanOutput).toContain('src/config.ts:25:12 - \'unusedVar\' is defined but never used (@typescript-eslint/no-unused-vars) [@typescript-eslint/no-unused-vars]');
   });
 
   it('should handle empty output', () => {

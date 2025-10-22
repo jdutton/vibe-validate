@@ -45,7 +45,8 @@ export function formatVitestErrors(output: string): ErrorFormatterResult {
     const line = lines[i];
 
     // Match: FAIL test/unit/config/environment.test.ts > EnvironmentConfig > test name
-    const failLineMatch = line.match(/FAIL\s+(test\/[^\s]+\.test\.ts)\s*>\s*(.+)/);
+    // OR: ❌ packages/core/test/runner.test.ts > ValidationRunner > test name
+    const failLineMatch = line.match(/(?:FAIL|❌)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/);
     if (failLineMatch) {
       if (currentFailure && currentFailure.file) {
         failures.push(currentFailure as TestFailure);
@@ -61,21 +62,31 @@ export function formatVitestErrors(output: string): ErrorFormatterResult {
     }
 
     // Match: AssertionError: expected 3000 to be 9999 // Object.is equality
-    if (currentFailure && (line.includes('AssertionError:') || line.includes('Error:'))) {
-      const errorMatch = line.match(/(?:AssertionError|Error):\s*(.+)/);
+    if (currentFailure && !currentFailure.errorMessage && (line.includes('AssertionError:') || line.includes('Error:'))) {
+      const errorMatch = line.match(/((?:AssertionError|Error):\s*.+)/);
       if (errorMatch) {
+        // Keep the full error including the type (AssertionError: ...)
         currentFailure.errorMessage = errorMatch[1].trim();
       }
       continue;
     }
 
     // Match: ❯ test/unit/config/environment.test.ts:57:30
-    if (currentFailure && line.includes('❯') && line.includes('.test.ts:')) {
-      const locationMatch = line.match(/❯\s*(.+\.test\.ts):(\d+):(\d+)/);
-      if (locationMatch) {
-        currentFailure.location = `${locationMatch[1]}:${locationMatch[2]}:${locationMatch[3]}`;
+    // OR stack trace: at Object.<anonymous> (packages/core/test/runner.test.ts:45:12)
+    if (currentFailure && !currentFailure.location) {
+      // Try vitest location marker first
+      const vitestLocation = line.match(/❯\s*(.+\.test\.ts):(\d+):(\d+)/);
+      if (vitestLocation) {
+        currentFailure.location = `${vitestLocation[1]}:${vitestLocation[2]}:${vitestLocation[3]}`;
+        continue;
       }
-      continue;
+
+      // Try stack trace pattern
+      const stackLocation = line.match(/at\s+.+\(([^\s]+\.test\.ts):(\d+):(\d+)\)/);
+      if (stackLocation) {
+        currentFailure.location = `${stackLocation[1]}:${stackLocation[2]}:${stackLocation[3]}`;
+        continue;
+      }
     }
 
     // Match source line: 57|     expect(config.HTTP_PORT).toBe(9999);
@@ -136,7 +147,7 @@ export function formatVitestErrors(output: string): ErrorFormatterResult {
       file: f.file,
       line: f.location ? parseInt(f.location.split(':')[1]) : undefined,
       column: f.location ? parseInt(f.location.split(':')[2]) : undefined,
-      message: `${f.testHierarchy}: ${f.errorMessage}`
+      message: f.errorMessage || `Test failure: ${f.testHierarchy}`
     })),
     summary: `${failures.length} test failure(s)`,
     totalCount: failures.length,

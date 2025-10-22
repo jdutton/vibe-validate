@@ -37,19 +37,21 @@ import { formatGenericErrors } from './generic-formatter.js';
  * ```
  */
 export function formatByStepName(stepName: string, output: string): ErrorFormatterResult {
-  if (stepName.includes('TypeScript') || stepName.includes('typecheck')) {
+  const lowerStepName = stepName.toLowerCase();
+
+  if (lowerStepName.includes('typescript') || lowerStepName.includes('typecheck') || lowerStepName.includes('tsc')) {
     return formatTypeScriptErrors(output);
   }
 
-  if (stepName.includes('ESLint') || stepName.includes('lint')) {
+  if (lowerStepName.includes('eslint') || lowerStepName.includes('lint')) {
     return formatESLintErrors(output);
   }
 
-  if (stepName.includes('test') && !stepName.includes('OpenAPI')) {
+  if (lowerStepName.includes('test') && !lowerStepName.includes('openapi')) {
     return formatVitestErrors(output);
   }
 
-  if (stepName.includes('OpenAPI')) {
+  if (lowerStepName.includes('openapi')) {
     return formatOpenAPIErrors(output);
   }
 

@@ -80,16 +80,20 @@ openapi.yaml:30:5 - warning - Example should match schema
     expect(result.guidance).toContain('Review the output');
   });
 
-  it('should handle case-sensitive step names', () => {
+  it('should handle case-insensitive step names', () => {
     const output = 'src/index.ts(10,5): error TS2322: Type error.';
 
-    // Should match "TypeScript" (case-sensitive)
+    // Should match TypeScript formatter (case-insensitive)
     const result1 = formatByStepName('typescript checking', output);
-    expect(result1.summary).not.toContain('type error');
+    expect(result1.summary).toContain('type error');
 
-    // Should match "TypeScript"
+    // Should also match TypeScript formatter
     const result2 = formatByStepName('TypeScript checking', output);
     expect(result2.summary).toContain('type error');
+
+    // Even all caps should match
+    const result3 = formatByStepName('TYPESCRIPT checking', output);
+    expect(result3.summary).toContain('type error');
   });
 
   it('should handle step names with multiple keywords', () => {

@@ -1,0 +1,324 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://vibe-validate.dev/schemas/test-fixture.json",
+  "title": "Vibe Validate Test Fixture",
+  "description": "Schema for test fixtures used to validate error extraction accuracy in vibe-validate formatters",
+  "type": "object",
+  "required": ["metadata", "input", "expected"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for IDE support"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Metadata about this test case",
+      "required": [
+        "tool",
+        "platform",
+        "contributor",
+        "contributedDate",
+        "category",
+        "difficulty",
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "type": "string",
+          "description": "Which tool produced this output",
+          "enum": [
+            "vitest",
+            "jest",
+            "typescript",
+            "eslint",
+            "prettier",
+            "webpack",
+            "rollup",
+            "vite",
+            "esbuild",
+            "tsc",
+            "babel",
+            "unknown"
+          ]
+        },
+        "toolVersion": {
+          "type": "string",
+          "description": "Tool version (semantic version)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+.*$"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Test environment platform",
+          "enum": ["linux", "darwin", "win32"]
+        },
+        "nodeVersion": {
+          "type": "string",
+          "description": "Node.js version",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "contributor": {
+          "type": "string",
+          "description": "GitHub username of contributor"
+        },
+        "contributedDate": {
+          "type": "string",
+          "description": "Date fixture was contributed (YYYY-MM-DD)",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "sourceIssue": {
+          "type": ["string", "null"],
+          "description": "GitHub issue this came from (e.g., '#123')",
+          "pattern": "^#\\d+$"
+        },
+        "sourcePR": {
+          "type": ["string", "null"],
+          "description": "Pull request that added this fixture (e.g., '#456')",
+          "pattern": "^#\\d+$"
+        },
+        "category": {
+          "type": "string",
+          "description": "Classification of the error type",
+          "enum": [
+            "assertion-failure",
+            "type-error",
+            "lint-error",
+            "syntax-error",
+            "timeout",
+            "runtime-error",
+            "build-error",
+            "import-error",
+            "other"
+          ]
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "Expected extraction difficulty level",
+          "enum": ["easy", "medium", "hard", "very-hard"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of what this fixture tests and why it's interesting"
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "description": "Raw output from the tool exactly as captured",
+      "required": ["raw"],
+      "additionalProperties": false,
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "Raw text output that gets fed into the extractor"
+        },
+        "structured": {
+          "type": "object",
+          "description": "Optional structured output (JUnit XML, TAP, CTRF)",
+          "required": ["format", "data"],
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": ["ctrf", "junit", "tap", "json"]
+            },
+            "data": {
+              "type": "string",
+              "description": "Structured data as a string (JSON or XML)"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "description": "What we should extract (ground truth for testing)",
+      "required": ["detectedTool", "failures"],
+      "additionalProperties": false,
+      "properties": {
+        "detectionConfidence": {
+          "type": "number",
+          "description": "Confidence this is the right tool (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "detectedTool": {
+          "type": "string",
+          "description": "Detected tool name"
+        },
+        "failures": {
+          "type": "array",
+          "description": "Detailed failures for testing extraction accuracy",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["tool", "llmSummary"],
+            "additionalProperties": false,
+            "properties": {
+              "tool": {
+                "type": "string",
+                "description": "Tool that generated this failure"
+              },
+              "type": {
+                "type": "string",
+                "description": "Type of failure",
+                "enum": [
+                  "test-failure",
+                  "type-error",
+                  "lint-error",
+                  "syntax-error",
+                  "timeout",
+                  "runtime-error",
+                  "build-error",
+                  "import-error",
+                  "other"
+                ]
+              },
+              "summary": {
+                "type": "string",
+                "description": "Summary for test identification (e.g., test path)"
+              },
+              "message": {
+                "type": "string",
+                "description": "Full error message"
+              },
+              "location": {
+                "type": "object",
+                "description": "Source location of the error",
+                "required": ["file"],
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "File path (relative to project root)"
+                  },
+                  "line": {
+                    "type": "number",
+                    "description": "Line number (1-indexed)"
+                  },
+                  "column": {
+                    "type": "number",
+                    "description": "Column number (1-indexed)"
+                  }
+                }
+              },
+              "context": {
+                "type": ["string", "null"],
+                "description": "Additional context (e.g., Expected vs Received)"
+              },
+              "stackTrace": {
+                "type": "array",
+                "description": "Stack trace frames",
+                "items": {
+                  "type": "object",
+                  "required": ["file"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "file": {
+                      "type": "string",
+                      "description": "File path"
+                    },
+                    "line": {
+                      "type": "number",
+                      "description": "Line number"
+                    },
+                    "column": {
+                      "type": "number",
+                      "description": "Column number"
+                    },
+                    "function": {
+                      "type": "string",
+                      "description": "Function name"
+                    }
+                  }
+                }
+              },
+              "relevance": {
+                "type": "number",
+                "description": "Relevance score for ranking (0-100)",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "llmSummary": {
+                "type": "string",
+                "description": "⭐ CRITICAL: Terse, actionable summary shown to users/LLMs (1-2 lines max)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "description": "Extraction quality metrics (auto-computed, don't edit manually)",
+      "additionalProperties": false,
+      "properties": {
+        "lastTested": {
+          "type": ["string", "null"],
+          "description": "ISO 8601 timestamp of last test run",
+          "format": "date-time"
+        },
+        "fields": {
+          "type": "object",
+          "description": "Field-level accuracy (0.0 - 1.0)",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "score": {
+          "type": ["number", "null"],
+          "description": "Overall weighted average score (0.0 - 1.0)",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "issues": {
+          "type": "array",
+          "description": "What's missing or wrong",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scoreHistory": {
+          "type": "array",
+          "description": "History tracking improvements/regressions",
+          "items": {
+            "type": "object",
+            "required": ["date", "score"],
+            "additionalProperties": false,
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "Date of test run (YYYY-MM-DD)",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "score": {
+                "type": "number",
+                "description": "Score at this date",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "improvementHints": {
+      "type": "array",
+      "description": "Guidance for developers fixing issues",
+      "items": {
+        "type": "string"
+      }
+    },
+    "relatedFixtures": {
+      "type": "array",
+      "description": "Related fixtures for learning patterns",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z-]+/[a-z0-9-]+\\.yaml$"
+      }
+    }
+  }
+}

@@ -25,20 +25,48 @@ import type { ErrorFormatterResult, FormattedError } from './types.js';
  */
 export function formatESLintErrors(output: string): ErrorFormatterResult {
   const errors: FormattedError[] = [];
+  const lines = output.split('\n');
+  let currentFile = '';
 
-  // ESLint error pattern (modern format): file:line:col - severity message [rule-name]
-  const eslintPattern = /^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s+(\S+)$/gm;
+  for (const line of lines) {
+    // Try modern format first: file:line:col: severity message [rule-name]
+    const modernMatch = line.match(/^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s+(\S+)$/);
+    if (modernMatch) {
+      const ruleMessage = modernMatch[5].trim();
+      const ruleName = modernMatch[6].replace(/[[\]]/g, ''); // Remove brackets if present
+      errors.push({
+        file: modernMatch[1].trim(),
+        line: parseInt(modernMatch[2]),
+        column: parseInt(modernMatch[3]),
+        severity: modernMatch[4] as 'error' | 'warning',
+        message: `${ruleMessage} (${ruleName})`,
+        code: ruleName
+      });
+      continue;
+    }
 
-  let match;
-  while ((match = eslintPattern.exec(output)) !== null) {
-    errors.push({
-      file: match[1].trim(),
-      line: parseInt(match[2]),
-      column: parseInt(match[3]),
-      severity: match[4] as 'error' | 'warning',
-      message: match[5].trim(),
-      code: match[6]  // Rule name
-    });
+    // Stylish format: spaces + line:col + spaces + severity + spaces + message + spaces + rule
+    const stylishMatch = line.match(/^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s+(\S+)\s*$/);
+    if (stylishMatch && currentFile) {
+      const ruleMessage = stylishMatch[4].trim();
+      const ruleName = stylishMatch[5];
+      errors.push({
+        file: currentFile,
+        line: parseInt(stylishMatch[1]),
+        column: parseInt(stylishMatch[2]),
+        severity: stylishMatch[3] as 'error' | 'warning',
+        message: `${ruleMessage} (${ruleName})`,
+        code: ruleName
+      });
+      continue;
+    }
+
+    // Check if this is a file path line for stylish format (no colons, just a path)
+    if (line && !line.includes(':') && !line.startsWith(' ') && !line.startsWith('\t') && (line.includes('/') || line.includes('\\'))) {
+      // Potential file path for stylish format
+      currentFile = line.trim();
+      continue;
+    }
   }
 
   const errorCount = errors.filter(e => e.severity === 'error').length;
