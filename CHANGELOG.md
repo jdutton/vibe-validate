@@ -36,6 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Displays most recent validation for current tree hash
   - Compatible YAML output format maintained
 
+- **Pre-commit Secret Scanning** (Issue #24)
+  - **Problem**: Developers accidentally commit API keys, tokens, and passwords to git
+  - **Solution**: Configurable pre-commit secret scanning blocks commits containing secrets
+  - **Impact**: Prevents credential leaks before they enter git history
+  - Tool-agnostic design via `scanCommand` configuration
+  - Gitleaks recommended (fast, free, 160+ secret types)
+  - Advisory doctor check ensures scanner is installed
+  - Comprehensive false positive management (baseline, .gitleaksignore, inline comments)
+  - All config templates include secret scanning by default
+  - Pre-commit only (GitHub already scans repos after push)
+
 ### 🐛 Bug Fixes
 
 - **Fixed Git Tree Hash Error Handling**
@@ -67,13 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auto-Synced CLI Reference**
   - Updated with new `history` commands
   - Perfect sync with `--help --verbose` output
-
-### 🧪 Testing
-
-- **579 tests passing** (100% pass rate)
-- **14 new tests** for validation history
-- Comprehensive git notes integration tests
-- Cross-platform compatibility verified
 
 ## [0.11.0] - 2025-10-20
 

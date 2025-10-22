@@ -213,4 +213,308 @@ describe('pre-commit command', () => {
       });
     });
   });
+
+  describe('secret scanning integration', () => {
+    it('should run secret scanning before validation when enabled', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'echo "No secrets found"', // Mock command that exits 0
+            },
+          },
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0); // Should succeed
+        }
+      }
+
+      // Validation should still run after successful secret scan
+      expect(core.runValidation).toHaveBeenCalled();
+    });
+
+    it('should block commit when secret scanning finds secrets', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'exit 1', // Mock command that exits 1 (secrets found)
+            },
+          },
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+        throw new Error('Should have exited with error');
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(1); // Should fail
+        }
+      }
+
+      // Validation should NOT run when secret scanning fails
+      expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('should skip secret scanning when disabled', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: false,
+              scanCommand: 'exit 1', // Would fail if run
+            },
+          },
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0); // Should succeed
+        }
+      }
+
+      // Validation should run since scanning was skipped
+      expect(core.runValidation).toHaveBeenCalled();
+    });
+
+    it('should skip secret scanning when secretScanning config not provided', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+        hooks: {
+          preCommit: {
+            enabled: true,
+            // No secretScanning config
+          },
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0); // Should succeed
+        }
+      }
+
+      // Validation should run since no scanning configured
+      expect(core.runValidation).toHaveBeenCalled();
+    });
+
+    it('should handle missing scan tool gracefully', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'nonexistent-tool --scan', // Command that doesn't exist
+            },
+          },
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+        throw new Error('Should have exited with error');
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(1); // Should fail
+        }
+      }
+
+      // Should show error about missing tool
+      expect(console.error).toHaveBeenCalled();
+      // Validation should NOT run when tool is missing
+      expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('should allow custom scan commands (detect-secrets)', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'echo "detect-secrets scan complete"',
+            },
+          },
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0); // Should succeed
+        }
+      }
+
+      // Validation should run after successful scan
+      expect(core.runValidation).toHaveBeenCalled();
+    });
+
+    it('should provide helpful error message when secrets detected', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: {
+              enabled: true,
+              scanCommand: 'echo "Found: AWS_SECRET_KEY=abc123" && exit 1',
+            },
+          },
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+        throw new Error('Should have exited with error');
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(1);
+        }
+      }
+
+      // Should show error message about secrets
+      expect(console.error).toHaveBeenCalled();
+      const errorCalls = vi.mocked(console.error).mock.calls;
+      const errorOutput = errorCalls.map(call => call.join(' ')).join('\n');
+      expect(errorOutput).toContain('secret');
+    });
+  });
 });

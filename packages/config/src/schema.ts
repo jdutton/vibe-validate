@@ -116,6 +116,31 @@ export const CIConfigSchema = z.object({
 export type CIConfig = z.infer<typeof CIConfigSchema>;
 
 /**
+ * Secret Scanning Configuration Schema
+ */
+export const SecretScanningSchema = z.object({
+  /** Enable secret scanning in pre-commit (default: true) */
+  enabled: z.boolean().default(true),
+
+  /** Command to run for secret scanning (required when enabled) */
+  scanCommand: z.string().min(1, 'scanCommand cannot be empty').optional(),
+}).strict().refine(
+  (data) => {
+    // If enabled is true, scanCommand must be provided
+    if (data.enabled && !data.scanCommand) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'scanCommand is required when secret scanning is enabled',
+    path: ['scanCommand'],
+  }
+);
+
+export type SecretScanningConfig = z.infer<typeof SecretScanningSchema>;
+
+/**
  * Hooks Configuration Schema
  */
 export const HooksConfigSchema = z.object({
@@ -126,6 +151,9 @@ export const HooksConfigSchema = z.object({
 
     /** Custom pre-commit command (default: 'npx vibe-validate pre-commit') */
     command: z.string().default('npx vibe-validate pre-commit'),
+
+    /** Secret scanning configuration (optional) */
+    secretScanning: SecretScanningSchema.optional(),
   }).strict().optional().default({
     enabled: true,
     command: 'npx vibe-validate pre-commit',

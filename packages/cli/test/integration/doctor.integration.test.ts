@@ -113,11 +113,11 @@ describe('Doctor Command Integration', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
     const stdout = expectDoctorSuccess();
 
-    // If all pass, summary only (no individual checks)
+    // With secret scanning now configured in this repo, no recommendations shown
     expect(stdout).toContain('checks passed');
     const checkMatches = stdout.match(/✅/g);
     const checkCount = checkMatches ? checkMatches.length : 0;
-    expect(checkCount).toBe(0); // No checks shown, just summary
+    expect(checkCount).toBe(0); // No recommendations (secret scanning is configured)
   }, 30000);
 
   it('should show all checks in verbose mode', () => {

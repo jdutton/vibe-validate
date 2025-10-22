@@ -17,6 +17,12 @@ validation:
           command: pnpm -r build
 git:
   mainBranch: main
+hooks:
+  preCommit:
+    enabled: true
+    secretScanning:
+      enabled: true
+      scanCommand: "gitleaks protect --staged --verbose"
 ci:
   nodeVersions:
     - '22'

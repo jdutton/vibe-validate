@@ -154,6 +154,20 @@
                 "command": {
                   "type": "string",
                   "default": "npx vibe-validate pre-commit"
+                },
+                "secretScanning": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "scanCommand": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false,

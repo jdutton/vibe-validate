@@ -713,6 +713,98 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
 }
 
 /**
+ * Check if secret scanning is configured and tool is available
+ */
+async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
+  try {
+    if (!config) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message: 'Skipped (no config)',
+      };
+    }
+
+    const secretScanning = config.hooks?.preCommit?.secretScanning;
+
+    // If not configured at all, recommend enabling it
+    if (!secretScanning) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message: 'Secret scanning not configured',
+        suggestion: 'Recommended: Enable secret scanning to prevent credential leaks\n   • Add to config: hooks.preCommit.secretScanning.enabled=true\n   • scanCommand: "gitleaks protect --staged --verbose"\n   • Install gitleaks: brew install gitleaks',
+      };
+    }
+
+    // If explicitly disabled, acknowledge user choice
+    if (secretScanning.enabled === false) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message: 'Secret scanning disabled in config (user preference)',
+      };
+    }
+
+    // If enabled, check if tool is available
+    if (secretScanning.scanCommand) {
+      // Extract tool name (first word of command)
+      const toolName = secretScanning.scanCommand.split(' ')[0];
+
+      try {
+        // Try to get tool version
+        let version: string;
+        try {
+          version = execSync(`${toolName} version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+        } catch (_versionError) {
+          // Try --version flag
+          version = execSync(`${toolName} --version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+        }
+
+        return {
+          name: 'Pre-commit secret scanning',
+          passed: true,
+          message: `Secret scanning enabled with ${toolName} ${version}`,
+        };
+      } catch (_error) {
+        // Tool not found
+        // In CI, this is expected (secret scanning is pre-commit only, not needed in CI)
+        const isCI = process.env.CI === 'true' || process.env.CI === '1';
+
+        if (isCI) {
+          return {
+            name: 'Pre-commit secret scanning',
+            passed: true,
+            message: `Secret scanning enabled (pre-commit only, not needed in CI)`,
+          };
+        }
+
+        return {
+          name: 'Pre-commit secret scanning',
+          passed: true, // Advisory only, never fails
+          message: `Secret scanning enabled but '${toolName}' not found`,
+          suggestion: `Install ${toolName}:\n   • gitleaks: brew install gitleaks\n   • Or disable: set hooks.preCommit.secretScanning.enabled=false in config`,
+        };
+      }
+    }
+
+    // Enabled but no scanCommand (should be caught by schema validation)
+    return {
+      name: 'Pre-commit secret scanning',
+      passed: true,
+      message: 'Secret scanning enabled but no scanCommand configured',
+      suggestion: 'Add hooks.preCommit.secretScanning.scanCommand to config',
+    };
+  } catch (_error) {
+    return {
+      name: 'Pre-commit secret scanning',
+      passed: true,
+      message: 'Skipped (config or execution error)',
+    };
+  }
+}
+
+/**
  * Run all doctor checks
  */
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
@@ -744,6 +836,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(await checkRemoteMainBranch(config));
   allChecks.push(await checkWorkflowSync(config));
   allChecks.push(await checkPreCommitHook(config));
+  allChecks.push(await checkSecretScanning(config));
   allChecks.push(checkGitignoreStateFile());
   allChecks.push(checkValidationState());
   allChecks.push(await checkHistoryHealth());
@@ -757,9 +850,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   const totalChecks = allChecks.length;
   const passedChecks = allChecks.filter(c => c.passed).length;
 
-  // In non-verbose mode, only show failing checks (empty array if all pass)
+  // In non-verbose mode, show failing checks OR checks with recommendations
   // In verbose mode, always show all checks
-  const checks = verbose ? allChecks : allChecks.filter(c => !c.passed);
+  const checks = verbose ? allChecks : allChecks.filter(c => !c.passed || c.suggestion);
 
   return {
     allPassed,
@@ -803,7 +896,7 @@ export function doctorCommand(program: Command): void {
             const icon = check.passed ? '✅' : '❌';
             console.log(`${icon} ${check.name}`);
             console.log(`   ${check.message}`);
-            if (check.suggestion && !check.passed) {
+            if (check.suggestion) {
               console.log(`   💡 ${check.suggestion}`);
             }
             console.log('');
