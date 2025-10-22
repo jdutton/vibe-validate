@@ -47,8 +47,8 @@ export const PhaseResultSchema = z.object({
 /**
  * Validation Result Schema
  *
- * This is the complete schema for the validation state file
- * (.vibe-validate-state.yaml)
+ * This schema defines the validation result structure returned by the validation
+ * runner and stored in git notes (v0.12.0+) for history tracking.
  */
 export const ValidationResultSchema = z.object({
   /** Did validation pass? */

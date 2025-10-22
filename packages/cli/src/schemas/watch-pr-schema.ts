@@ -32,7 +32,7 @@ export const WatchPRResultSchema = z.object({
         name: z.string(),
         checkId: z.string(),
         errorSummary: z.string().optional(),
-        stateFile: z
+        validationResult: z
           .object({
             passed: z.boolean(),
             timestamp: z.string().optional(),

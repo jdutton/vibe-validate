@@ -59,7 +59,6 @@ export type {
 export {
   runValidation,
   runStepsInParallel,
-  checkExistingValidation,
   parseFailures,
   setupSignalHandlers,
 } from './runner.js';

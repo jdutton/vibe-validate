@@ -28,6 +28,16 @@ Or use directly via `npx`:
 npx @vibe-validate/cli validate
 ```
 
+## Upgrading
+
+After upgrading vibe-validate to a new version, run the doctor command to check for configuration issues and deprecated files:
+
+```bash
+npx vibe-validate doctor
+```
+
+This will detect deprecated state files, outdated .gitignore entries, and provide actionable migration steps.
+
 ## Quick Start
 
 1. **Create configuration file**:
@@ -334,7 +344,7 @@ Use `--check` in CI to ensure workflow stays in sync with config:
 
 ### `doctor`
 
-Check repository health and best practices.
+Check repository health and best practices (run after upgrading vibe-validate).
 
 ```bash
 npx vibe-validate doctor
@@ -342,7 +352,7 @@ npx vibe-validate doctor
 
 **Checks:**
 - Pre-commit hook installed
-- Validation state file exists
+- Deprecated state file detection
 - Config file is valid
 - Git repository exists
 - On feature branch (not main)
@@ -425,8 +435,8 @@ vibe-validate is optimized for AI agents like Claude Code with YAML-only structu
 **Benefits:**
 - **YAML everywhere**: Single format that's both machine and human readable
 - **Minimal token waste**: 4-5 lines on failure vs 200+ with traditional tools
-- **Structured errors**: Complete details in `.vibe-validate-state.yaml`
-- **Clear next steps**: Actionable commands in state file
+- **Structured errors**: Complete details via `vibe-validate state` command
+- **Clear next steps**: Actionable commands in validation output
 - **Auto-detection**: Minimal output for agents, verbose for interactive terminals
 - **Zero noise**: No server logs, no verbose progress bars (unless `--verbose`)
 

@@ -11,10 +11,9 @@
  */
 
 import { spawn, type ChildProcess } from 'child_process';
-import { writeFileSync, appendFileSync, existsSync, readFileSync } from 'fs';
+import { writeFileSync, appendFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { stringify as yamlStringify, parse as yamlParse } from 'yaml';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { stopProcessGroup } from './process-utils.js';
 import type {
@@ -33,55 +32,6 @@ import type {
  *
  * @deprecated Removed in v0.9.11 - Use @vibe-validate/git instead
  */
-
-/**
- * Check if validation has already passed for current working tree state
- *
- * Reads the validation state file and compares the git tree hash to determine
- * if validation can be skipped (cache hit).
- *
- * @param currentTreeHash - Current git tree hash of working directory
- * @param stateFilePath - Path to validation state file
- * @returns Object with alreadyPassed flag and optional previousState
- *
- * @example
- * ```typescript
- * const { alreadyPassed, previousState } = checkExistingValidation(
- *   'abc123...',
- *   '.validate-state.json'
- * );
- *
- * if (alreadyPassed) {
- *   console.log('Validation already passed!');
- *   return previousState;
- * }
- * ```
- *
- * @public
- */
-export function checkExistingValidation(
-  currentTreeHash: string,
-  stateFilePath: string
-): { alreadyPassed: boolean; previousState?: ValidationResult } {
-  if (!existsSync(stateFilePath)) {
-    return { alreadyPassed: false };
-  }
-
-  try {
-    const content = readFileSync(stateFilePath, 'utf8');
-    // Parse as YAML (JSON is valid YAML, so this handles both)
-    const state = yamlParse(content) as ValidationResult;
-
-    // Check if validation passed and tree hash matches
-    if (state.passed && state.treeHash === currentTreeHash) {
-      return { alreadyPassed: true, previousState: state };
-    }
-
-    return { alreadyPassed: false, previousState: state };
-  } catch (_error) {
-    return { alreadyPassed: false };
-  }
-}
 
 /**
  * Parse test output to extract specific failures
@@ -169,14 +119,20 @@ export async function runStepsInParallel(
   phaseName: string,
   enableFailFast: boolean = false,
   env: Record<string, string> = {},
-  verbose: boolean = false
+  verbose: boolean = false,
+  yaml: boolean = false
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
   outputs: Map<string, string>;
   stepResults: StepResult[];
 }> {
-  console.log(`\n🔍 Running ${phaseName} (${steps.length} steps in parallel)...`);
+  // When yaml mode is on, write progress to stderr to keep stdout clean
+  const log = yaml ?
+    (msg: string) => process.stderr.write(msg + '\n') :
+    (msg: string) => console.log(msg);
+
+  log(`\n🔍 Running ${phaseName} (${steps.length} steps in parallel)...`);
 
   // Find longest step name for alignment
   const maxNameLength = Math.max(...steps.map(s => s.name.length));
@@ -190,7 +146,7 @@ export async function runStepsInParallel(
     steps.map(step =>
       new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
         const paddedName = step.name.padEnd(maxNameLength);
-        console.log(`   ⏳ ${paddedName}  →  ${step.command}`);
+        log(`   ⏳ ${paddedName}  →  ${step.command}`);
 
         const startTime = Date.now();
         // Use shell: true for cross-platform compatibility
@@ -216,8 +172,13 @@ export async function runStepsInParallel(
           const chunk = data.toString();
           stdout += chunk;
           // Stream output in real-time when verbose mode is enabled
+          // When yaml mode is on, redirect subprocess output to stderr to keep stdout clean
           if (verbose) {
-            process.stdout.write(chunk);
+            if (yaml) {
+              process.stderr.write(chunk);
+            } else {
+              process.stdout.write(chunk);
+            }
           }
         });
         proc.stderr.on('data', data => {
@@ -237,7 +198,7 @@ export async function runStepsInParallel(
 
           const status = code === 0 ? '✅' : '❌';
           const result = code === 0 ? 'PASSED' : 'FAILED';
-          console.log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
+          log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
           stepResults.push({ name: step.name, passed: code === 0, durationSecs });
 
@@ -250,7 +211,7 @@ export async function runStepsInParallel(
             // Even if multiple failures occur, only one will be firstFailure, which is acceptable.
             if (enableFailFast && !firstFailure) {
               firstFailure = { step, output };
-              console.log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
+              log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
 
               // Kill all other running processes
               for (const { proc: otherProc, step: otherStep } of processes) {
@@ -309,9 +270,7 @@ export async function runStepsInParallel(
  *       ],
  *     },
  *   ],
- *   stateFilePath: '.vibe-validate-state.yaml',
  *   enableFailFast: false,
- *   forceRun: false,
  * });
  *
  * if (result.passed) {
@@ -327,10 +286,8 @@ export async function runStepsInParallel(
 export async function runValidation(config: ValidationConfig): Promise<ValidationResult> {
   const {
     phases,
-    stateFilePath = '.validate-state.json',
     logPath = join(tmpdir(), `validation-${new Date().toISOString().replace(/[:.]/g, '-')}.log`),
     enableFailFast = false,
-    forceRun = false,
     env = {},
     onPhaseStart,
     onPhaseComplete,
@@ -339,17 +296,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   // Get current working tree hash (deterministic, content-based)
   const currentTreeHash = await getGitTreeHash();
 
-  // Check if validation already passed for this exact code state
-  if (!forceRun) {
-    const { alreadyPassed, previousState } = checkExistingValidation(currentTreeHash, stateFilePath);
-
-    if (alreadyPassed && previousState) {
-      console.log('✅ Validation already passed for current working tree state');
-      console.log(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`);
-      console.log(`   Last validated: ${previousState.timestamp}`);
-      return previousState;
-    }
-  }
+  // Note: Caching is now handled at the CLI layer via git notes
+  // (see packages/cli/src/commands/validate.ts and @vibe-validate/history)
 
   // Initialize log file
   writeFileSync(logPath, `Validation started at ${new Date().toISOString()}\n\n`);
@@ -369,7 +317,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       phase.name,
       enableFailFast,
       env,
-      config.verbose ?? false
+      config.verbose ?? false,
+      config.yaml ?? false
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
     const durationSecs = parseFloat((phaseDurationMs / 1000).toFixed(1));
@@ -420,8 +369,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
         fullLogFile: logPath,
       };
 
-      // Write state file as YAML
-      writeFileSync(stateFilePath, yamlStringify(validationResult));
+      // State persistence moved to validate.ts via git notes (v0.12.0+)
+      // The state file is deprecated - git notes are now the source of truth
 
       return validationResult;
     }
@@ -436,8 +385,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     fullLogFile: logPath,
   };
 
-  // Write state file as YAML
-  writeFileSync(stateFilePath, yamlStringify(validationResult));
+  // State persistence moved to validate.ts via git notes (v0.12.0+)
+  // The state file is deprecated - git notes are now the source of truth
 
   return validationResult;
 }

@@ -83,7 +83,7 @@ export function preCommitCommand(program: Command): void {
           console.error(chalk.yellow('   Fix errors before committing.'));
 
           // Show agent-friendly error details
-          console.error(chalk.blue('\n📋 Error details:'), chalk.white(runnerConfig.stateFilePath || '.vibe-validate-state.yaml'));
+          console.error(chalk.blue('\n📋 Error details:'), chalk.white('vibe-validate state'));
           if (result.rerunCommand) {
             console.error(chalk.blue('🔄 To retry:'), chalk.white(result.rerunCommand));
           }

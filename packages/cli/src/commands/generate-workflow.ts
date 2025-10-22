@@ -267,6 +267,7 @@ export function generateWorkflow(
     const hasBuildPhase = phases.some(p =>
       p.steps.some(s => s.name.toLowerCase().includes('build'))
     );
+    const isVibeValidateRepo = existsSync('packages/cli/dist/bin.js');
     if (hasBuildPhase) {
       jobSteps.push({
         name: 'Build packages',
@@ -274,71 +275,64 @@ export function generateWorkflow(
       });
     }
 
-    // Run validation with verbose flag for CI debugging
+    // Run validation with --yaml --verbose flags for structured output
+    // Redirect stdout (YAML result) to file, stderr (verbose logs) to console
+    const validateCommand = isVibeValidateRepo
+      ? 'node packages/cli/dist/bin.js validate --yaml --verbose'
+      : (packageManager === 'pnpm' ? 'pnpm validate --yaml --verbose' : 'npm run validate -- --yaml --verbose');
+
     jobSteps.push({
-      name: 'Run validation',
-      run: packageManager === 'pnpm' ? 'pnpm validate --verbose' : 'npm run validate -- --verbose',
+      name: 'Run validation (Unix)',
+      if: "runner.os != 'Windows'",
+      run: `${validateCommand} 1>validation-result.yaml || true`,
     });
 
-    // Display validation state file contents on failure for easier debugging
-    // Platform-specific steps for Unix and Windows
     jobSteps.push({
-      name: 'Display validation state on failure (Unix)',
-      if: "failure() && runner.os != 'Windows'",
+      name: 'Run validation (Windows)',
+      if: "runner.os == 'Windows'",
+      shell: 'powershell',
+      run: `${validateCommand} 1>validation-result.yaml
+$exitCode = $LASTEXITCODE
+exit 0  # Always succeed to allow result display`,
+    });
+
+    // Display validation result from YAML file (always runs, even on failure)
+    jobSteps.push({
+      name: 'Display validation result (Unix)',
+      if: "always() && runner.os != 'Windows'",
       run: `echo "=========================================="
-echo "📋 VALIDATION STATE FILE CONTENTS"
+echo "VALIDATION RESULT"
 echo "=========================================="
-if [ -f .vibe-validate-state.yaml ]; then
-  cat .vibe-validate-state.yaml
-else
-  echo "❌ State file not found!"
-  echo "Expected location: $(pwd)/.vibe-validate-state.yaml"
-  echo ""
-  echo "📂 Files in current directory:"
-  ls -la | head -20
-  echo ""
-  echo "🔍 Searching for state files:"
-  find . -name "*validate*state*.yaml" -o -name ".vibe-validate*" 2>/dev/null || echo "No state files found"
-fi
+cat validation-result.yaml 2>/dev/null || echo "❌ Could not read validation result"
 echo "=========================================="`,
     });
 
-    // Windows-specific display state step using PowerShell
-    // Note: Emojis removed due to PowerShell UTF-8 encoding issues on Windows
     jobSteps.push({
-      name: 'Display validation state on failure (Windows)',
-      if: "failure() && runner.os == 'Windows'",
+      name: 'Display validation result (Windows)',
+      if: "always() && runner.os == 'Windows'",
       shell: 'powershell',
       run: `Write-Host '=========================================='
-Write-Host 'VALIDATION STATE FILE CONTENTS'
+Write-Host 'VALIDATION RESULT'
 Write-Host '=========================================='
-
-if (Test-Path .vibe-validate-state.yaml) {
-  Get-Content .vibe-validate-state.yaml
-} else {
-  Write-Host 'State file not found!'
-  Write-Host "Expected location: $PWD\\.vibe-validate-state.yaml"
-  Write-Host ''
-  Write-Host 'Files in current directory:'
-  Get-ChildItem | Select-Object -First 20
-  Write-Host ''
-  Write-Host 'Searching for state files:'
-  Get-ChildItem -Recurse -Filter '*validate*state*.yaml' -ErrorAction SilentlyContinue
-}
-
+if (Test-Path validation-result.yaml) { Get-Content validation-result.yaml } else { Write-Host 'Could not read validation result' }
 Write-Host '=========================================='`,
     });
 
-    // Add validation state upload on failure
+    // Fail the job if validation failed (check YAML result - Unix)
+    // Use grep with line-start anchor to match only root-level "passed:" field
     jobSteps.push({
-      name: 'Upload validation state on failure',
-      if: 'failure()',
-      uses: 'actions/upload-artifact@v4',
-      with: {
-        name: 'validation-state-${{ matrix.os }}-node${{ matrix.node }}',
-        path: '.vibe-validate-state.yaml',
-        'retention-days': 7,
-      },
+      name: 'Check validation result (Unix)',
+      if: "always() && runner.os != 'Windows'",
+      run: `grep -q "^passed: true" validation-result.yaml || exit 1`,
+    });
+
+    // Fail the job if validation failed (check YAML result - Windows)
+    // Use PowerShell regex with line-start anchor to match only root-level "passed:" field
+    jobSteps.push({
+      name: 'Check validation result (Windows)',
+      if: "always() && runner.os == 'Windows'",
+      shell: 'powershell',
+      run: `if (!(Select-String -Path validation-result.yaml -Pattern "^passed: true" -Quiet)) { exit 1 }`,
     });
 
     jobs['validate'] = {

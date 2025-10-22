@@ -55,7 +55,6 @@ describe('runner-adapter', () => {
 
       expect(runnerConfig.phases).toEqual(config.validation.phases);
       expect(runnerConfig.enableFailFast).toBe(true);
-      expect(runnerConfig.stateFilePath).toBe('.vibe-validate-state.yaml');
       expect(runnerConfig.env).toBeDefined();
     });
 
@@ -81,49 +80,7 @@ describe('runner-adapter', () => {
       expect(runnerConfig.env?.TEST_VAR).toBe('test-value');
     });
 
-    it('should set forceRun when force is true', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: []
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        force: true,
-        verbose: true,
-        context
-      });
-
-      expect(runnerConfig.forceRun).toBe(true);
-    });
-
-    it('should not set forceRun when force is false', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: []
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        force: false,
-        verbose: true,
-        context
-      });
-
-      expect(runnerConfig.forceRun).toBe(false);
-    });
+    // Note: forceRun tests removed in v0.12.0 - force flag now handled at CLI layer via git notes
 
     it('should filter out undefined environment variables', () => {
       // Add an undefined variable

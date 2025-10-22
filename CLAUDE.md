@@ -52,6 +52,9 @@ pnpm typecheck         # TypeScript type checking
 # Validation
 pnpm validate          # Full validation pipeline
 pnpm pre-commit        # Pre-commit workflow (sync check + validation)
+
+# Health checks
+pnpm exec vibe-validate doctor  # Diagnose setup issues (ALWAYS run after upgrade!)
 ```
 
 ## Package Management
@@ -183,11 +186,12 @@ All validation logic is data-driven:
 - Templates are just example configs to copy and customize
 
 ### State Management
-Single source of truth: `.vibe-validate-state.yaml`
-- Contains validation results
-- Includes git tree hash
-- Embeds error output (no separate log files)
-- Provides agent-friendly prompt
+Validation state tracked via **git notes** (content-based caching):
+- Query current state: `vibe-validate state`
+- View history timeline: `vibe-validate history list`
+- Git notes storage (implementation detail - users don't touch directly)
+- Provides agent-friendly YAML output
+- See `docs/git-validation-tracking.md` for architecture details
 
 ## Common Tasks
 
@@ -352,7 +356,7 @@ Every time you run tests, validation, or encounter errors, ask yourself:
    - ❌ Bad: 200+ lines of verbose test output or stack traces
 
 2. **Is the guidance actionable?**
-   - ✅ Good: "Run `pnpm lint` to see details" or "Check `.vibe-validate-state.yaml`"
+   - ✅ Good: "Run `pnpm lint` to see details" or "Check state: `vibe-validate state`"
    - ❌ Bad: Generic errors with no recovery path
 
 3. **Does it respect your context window?**
@@ -416,7 +420,7 @@ $ pnpm validate
 ✗ Testing (0.8s)
 Failed: typecheck
 
-Check details: npx vibe-validate state
+📋 View error details: vibe-validate state
 ```
 → **Concise, actionable, respects context window**
 

@@ -161,40 +161,30 @@ describe('init command - focused modes', () => {
     });
   });
 
-  describe('--fix-gitignore', () => {
-    it('should create .gitignore with state file entry', async () => {
+  describe('--fix-gitignore (deprecated)', () => {
+    it('should not create .gitignore (deprecated in v0.12.0)', async () => {
       execSync(`node ${cliPath} init --fix-gitignore`, {
         cwd: testDir,
       });
 
+      // Should not create .gitignore (deprecated operation)
       const gitignorePath = join(testDir, '.gitignore');
-      expect(existsSync(gitignorePath)).toBe(true);
-
-      const content = await readFile(gitignorePath, 'utf-8');
-      expect(content).toContain('.vibe-validate-state.yaml');
+      expect(existsSync(gitignorePath)).toBe(false);
     });
 
-    it('should add to existing .gitignore without duplicates', async () => {
+    it('should not modify existing .gitignore (deprecated in v0.12.0)', async () => {
       const gitignorePath = join(testDir, '.gitignore');
-      await writeFile(gitignorePath, 'node_modules/\n.env\n');
+      const originalContent = 'node_modules/\n.env\n';
+      await writeFile(gitignorePath, originalContent);
 
-      // First run
       execSync(`node ${cliPath} init --fix-gitignore`, {
         cwd: testDir,
       });
 
-      let content = await readFile(gitignorePath, 'utf-8');
-      expect(content).toContain('.vibe-validate-state.yaml');
-      expect(content).toContain('node_modules/');
-
-      // Second run should not add duplicate
-      execSync(`node ${cliPath} init --fix-gitignore`, {
-        cwd: testDir,
-      });
-
-      content = await readFile(gitignorePath, 'utf-8');
-      const matches = content.match(/\.vibe-validate-state\.yaml/g);
-      expect(matches?.length).toBe(1);
+      // Content should remain unchanged
+      const content = await readFile(gitignorePath, 'utf-8');
+      expect(content).toBe(originalContent);
+      expect(content).not.toContain('.vibe-validate-state.yaml');
     });
   });
 
@@ -204,9 +194,11 @@ describe('init command - focused modes', () => {
         cwd: testDir,
       });
 
-      // Both should be created
+      // Hooks should be created
       expect(existsSync(join(testDir, '.husky', 'pre-commit'))).toBe(true);
-      expect(existsSync(join(testDir, '.gitignore'))).toBe(true);
+
+      // .gitignore should NOT be created (--fix-gitignore deprecated in v0.12.0)
+      expect(existsSync(join(testDir, '.gitignore'))).toBe(false);
     });
 
     it('should support dry-run with focused modes', () => {

@@ -63,11 +63,12 @@ vibe-validate interacts with git repositories. Security features:
 
 ### File System Access
 
-vibe-validate reads and writes validation state files:
+vibe-validate stores validation state in git notes:
 
-- State files are stored in `.vibe-validate-state.yaml` (git-ignored by default)
-- No user credentials or secrets should be stored in state files
-- State files may contain error output from validation commands
+- Validation history is stored in git notes under `refs/notes/vibe-validate/runs`
+- No user credentials or secrets should be stored in validation state
+- Git notes may contain error output from validation commands
+- Git notes are not pushed by default (requires explicit `git push origin refs/notes/*`)
 
 ### Environment Variables
 
