@@ -7,13 +7,14 @@
 
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
+import { fileURLToPath } from 'url';
 import { parse as parseYaml } from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import type { Fixture, FixtureTestResult, QualityReport } from './fixture-types.js';
 
-const FIXTURES_DIR = new URL('./fixtures/', import.meta.url).pathname;
-const SCHEMA_PATH = new URL('./fixtures/fixture-schema.json', import.meta.url).pathname;
+const FIXTURES_DIR = fileURLToPath(new URL('./fixtures/', import.meta.url));
+const SCHEMA_PATH = fileURLToPath(new URL('./fixtures/fixture-schema.json', import.meta.url));
 
 // Initialize JSON Schema validator
 const ajv = new Ajv({ allErrors: true, verbose: true });
