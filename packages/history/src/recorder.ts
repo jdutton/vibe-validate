@@ -4,6 +4,8 @@
 
 import { execSync } from 'child_process';
 import { writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { stringify as stringifyYaml } from 'yaml';
 import { getGitTreeHash, hasWorkingTreeChanges } from '@vibe-validate/git';
 import type { ValidationResult } from '@vibe-validate/core';
@@ -126,8 +128,8 @@ export async function recordValidationHistory(
       };
     }
 
-    // 4. Write note to temp file
-    const tempFile = `/tmp/note.vibe-validate.${treeHash.slice(0, 12)}.${process.pid}.yaml`;
+    // 4. Write note to temp file (use cross-platform temp directory)
+    const tempFile = join(tmpdir(), `note.vibe-validate.${treeHash.slice(0, 12)}.${process.pid}.yaml`);
 
     try {
       writeFileSync(tempFile, stringifyYaml(note), 'utf8');
