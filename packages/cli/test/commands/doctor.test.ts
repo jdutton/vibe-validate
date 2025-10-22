@@ -1131,44 +1131,55 @@ describe('doctor command', () => {
     });
 
     it('should pass with warning when scanning enabled but tool not found', async () => {
-      const mockConfigWithScanning: VibeValidateConfig = {
-        ...mockConfig,
-        hooks: {
-          preCommit: {
-            enabled: true,
-            secretScanning: {
+      // Mock non-CI environment to test local behavior
+      const originalCI = process.env.CI;
+      delete process.env.CI;
+
+      try {
+        const mockConfigWithScanning: VibeValidateConfig = {
+          ...mockConfig,
+          hooks: {
+            preCommit: {
               enabled: true,
-              scanCommand: 'gitleaks protect --staged --verbose',
+              secretScanning: {
+                enabled: true,
+                scanCommand: 'gitleaks protect --staged --verbose',
+              },
             },
           },
-        },
-      };
+        };
 
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('gitleaks version') || cmdStr.includes('gitleaks --version')) {
-          throw new Error('Command not found');
+        vi.mocked(execSync).mockImplementation((cmd: string) => {
+          const cmdStr = cmd.toString();
+          if (cmdStr.includes('gitleaks version') || cmdStr.includes('gitleaks --version')) {
+            throw new Error('Command not found');
+          }
+          if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+          if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+          if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+          if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+          if (cmdStr.includes('git remote')) return 'origin' as any;
+          if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
+          return '' as any;
+        });
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(loadConfig).mockResolvedValue(mockConfigWithScanning);
+
+        const result = await runDoctor({ verbose: true });
+
+        const secretCheck = result.checks.find(c => c.name === 'Pre-commit secret scanning');
+        expect(secretCheck).toBeDefined();
+        expect(secretCheck?.passed).toBe(true); // Advisory only, always passes
+        expect(secretCheck?.message).toContain('enabled but');
+        expect(secretCheck?.message).toContain('not found');
+        expect(secretCheck?.suggestion).toBeDefined();
+        expect(secretCheck?.suggestion).toContain('Install');
+      } finally {
+        // Restore original CI value
+        if (originalCI !== undefined) {
+          process.env.CI = originalCI;
         }
-        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
-        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
-        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
-        if (cmdStr.includes('git remote')) return 'origin' as any;
-        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
-        return '' as any;
-      });
-      vi.mocked(existsSync).mockReturnValue(true);
-      vi.mocked(loadConfig).mockResolvedValue(mockConfigWithScanning);
-
-      const result = await runDoctor({ verbose: true });
-
-      const secretCheck = result.checks.find(c => c.name === 'Pre-commit secret scanning');
-      expect(secretCheck).toBeDefined();
-      expect(secretCheck?.passed).toBe(true); // Advisory only, always passes
-      expect(secretCheck?.message).toContain('enabled but');
-      expect(secretCheck?.message).toContain('not found');
-      expect(secretCheck?.suggestion).toBeDefined();
-      expect(secretCheck?.suggestion).toContain('Install');
+      }
     });
 
     it('should recommend enabling when secretScanning config not provided', async () => {
