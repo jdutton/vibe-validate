@@ -282,7 +282,11 @@ export function generateWorkflow(
 
     // Display validation state for easier debugging and CI log extraction
     // Platform-specific steps for Unix and Windows
-    const stateCommand = packageManager === 'pnpm' ? 'pnpm exec vibe-validate state' : 'npx vibe-validate state';
+    // Detect if we're in the vibe-validate monorepo itself (has packages/cli/dist/bin.js)
+    const isVibeValidateRepo = existsSync('packages/cli/dist/bin.js');
+    const stateCommand = isVibeValidateRepo
+      ? 'node packages/cli/dist/bin.js state'
+      : (packageManager === 'pnpm' ? 'pnpm exec vibe-validate state' : 'npx vibe-validate state');
     jobSteps.push({
       name: 'Display validation state (Unix)',
       if: "always() && runner.os != 'Windows'",
