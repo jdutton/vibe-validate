@@ -280,11 +280,11 @@ export function generateWorkflow(
       run: packageManager === 'pnpm' ? 'pnpm validate --verbose' : 'npm run validate -- --verbose',
     });
 
-    // Display validation state file contents on failure for easier debugging
+    // Display validation state for easier debugging and CI log extraction
     // Platform-specific steps for Unix and Windows
     jobSteps.push({
-      name: 'Display validation state on failure (Unix)',
-      if: "failure() && runner.os != 'Windows'",
+      name: 'Display validation state (Unix)',
+      if: "always() && runner.os != 'Windows'",
       run: `echo "=========================================="
 echo "📋 VALIDATION STATE"
 echo "=========================================="
@@ -295,8 +295,8 @@ echo "=========================================="`,
     // Windows-specific display state step using PowerShell
     // Note: Emojis removed due to PowerShell UTF-8 encoding issues on Windows
     jobSteps.push({
-      name: 'Display validation state on failure (Windows)',
-      if: "failure() && runner.os == 'Windows'",
+      name: 'Display validation state (Windows)',
+      if: "always() && runner.os == 'Windows'",
       shell: 'powershell',
       run: `Write-Host '=========================================='
 Write-Host 'VALIDATION STATE'
