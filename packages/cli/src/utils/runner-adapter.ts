@@ -12,6 +12,7 @@ import chalk from 'chalk';
 export interface RunnerOptions {
   force?: boolean;
   verbose: boolean;
+  yaml?: boolean;
   context: AgentContext;
 }
 
@@ -36,13 +37,14 @@ export function createRunnerConfig(
 
   // Choose callbacks based on verbosity
   const callbacks = options.verbose
-    ? createVerboseCallbacks()
-    : createMinimalCallbacks();
+    ? createVerboseCallbacks(options.yaml)
+    : createMinimalCallbacks(options.yaml);
 
   return {
     phases: config.validation?.phases || [],
     enableFailFast: true, // Default to fail-fast (individual phases can override)
     verbose: options.verbose, // Pass verbose flag to runner for output streaming
+    yaml: options.yaml, // Pass yaml flag to runner for stdout/stderr routing
     env: envVars,
     ...callbacks,
   };
@@ -51,28 +53,33 @@ export function createRunnerConfig(
 /**
  * Create verbose console callbacks (colorful, detailed progress)
  */
-function createVerboseCallbacks() {
+function createVerboseCallbacks(yaml: boolean = false) {
+  // When yaml mode is on, write to stderr to keep stdout clean for YAML data
+  const log = yaml ?
+    (msg: string) => process.stderr.write(msg + '\n') :
+    (msg: string) => console.log(msg);
+
   return {
     onPhaseStart: (phase: ValidationPhase) => {
-      console.log(chalk.blue(`\n🔄 Running phase: ${phase.name}`));
+      log(chalk.blue(`\n🔄 Running phase: ${phase.name}`));
     },
     onPhaseComplete: (phase: ValidationPhase, result: PhaseResult) => {
       if (result.passed) {
-        console.log(chalk.green(`✅ Phase ${phase.name} completed successfully`));
+        log(chalk.green(`✅ Phase ${phase.name} completed successfully`));
       } else {
-        console.log(chalk.red(`❌ Phase ${phase.name} failed`));
+        log(chalk.red(`❌ Phase ${phase.name} failed`));
       }
     },
     onStepStart: (step: ValidationStep) => {
-      console.log(chalk.gray(`  ⏳ ${step.name}...`));
+      log(chalk.gray(`  ⏳ ${step.name}...`));
     },
     onStepComplete: (step: ValidationStep, result: StepResult) => {
       if (result.passed) {
-        console.log(chalk.green(`  ✅ ${step.name} (${result.durationSecs}s)`));
+        log(chalk.green(`  ✅ ${step.name} (${result.durationSecs}s)`));
       } else {
-        console.log(chalk.red(`  ❌ ${step.name} failed (${result.durationSecs}s)`));
+        log(chalk.red(`  ❌ ${step.name} failed (${result.durationSecs}s)`));
         if (result.output) {
-          console.log(chalk.red(`     Error: ${result.output}`));
+          log(chalk.red(`     Error: ${result.output}`));
         }
       }
     },
@@ -82,20 +89,25 @@ function createVerboseCallbacks() {
 /**
  * Create minimal callbacks (agent-friendly YAML output)
  */
-function createMinimalCallbacks() {
+function createMinimalCallbacks(yaml: boolean = false) {
   // Minimal YAML-structured progress output
+  // When yaml mode is on, write to stderr to keep stdout clean for YAML data
+  const log = yaml ?
+    (msg: string) => process.stderr.write(msg + '\n') :
+    (msg: string) => console.log(msg);
+
   return {
     onPhaseStart: (phase: ValidationPhase) => {
-      console.log(`phase_start: ${phase.name}`);
+      log(`phase_start: ${phase.name}`);
     },
     onPhaseComplete: (phase: ValidationPhase, result: PhaseResult) => {
-      console.log(`phase_complete: ${phase.name} (${result.passed ? 'passed' : 'failed'})`);
+      log(`phase_complete: ${phase.name} (${result.passed ? 'passed' : 'failed'})`);
     },
     onStepStart: (step: ValidationStep) => {
-      console.log(`  step_start: ${step.name}`);
+      log(`  step_start: ${step.name}`);
     },
     onStepComplete: (step: ValidationStep, result: StepResult) => {
-      console.log(`  step_complete: ${step.name} (${result.passed ? 'passed' : 'failed'}, ${result.durationSecs}s)`);
+      log(`  step_complete: ${step.name} (${result.passed ? 'passed' : 'failed'}, ${result.durationSecs}s)`);
     },
   };
 }

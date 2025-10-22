@@ -126,6 +126,9 @@ export interface ValidationConfig {
   /** Show verbose output (stream command stdout/stderr in real-time) */
   verbose?: boolean;
 
+  /** Output YAML result to stdout (redirects subprocess output to stderr when true) */
+  yaml?: boolean;
+
   /** Environment variables to pass to all child processes */
   env?: Record<string, string>;
 

@@ -453,4 +453,132 @@ describe('validate command', () => {
       expect(core.runValidation).not.toHaveBeenCalled();
     });
   });
+
+  describe('--yaml flag', () => {
+    beforeEach(() => {
+      // Mock valid config
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [
+                { name: 'Test Step', command: 'echo test' }
+              ]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+
+      // Spy on process.stdout.write to capture YAML output
+      vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+
+    it('should register --yaml option', () => {
+      validateCommand(program);
+
+      const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
+      const options = validateCmd?.options;
+
+      expect(options?.some(opt => opt.flags === '-y, --yaml')).toBe(true);
+    });
+
+    it('should output YAML to stdout on successful validation', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify YAML header was written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('VALIDATION RESULT'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
+    });
+
+    it('should output YAML to stdout on failed validation', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: false,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+        failedStep: 'Test Step',
+        rerunCommand: 'echo test',
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit with code 1
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(1);
+        }
+      }
+
+      // Verify YAML header and failure were written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('VALIDATION RESULT'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
+    });
+
+    it('should pass yaml flag to runner config', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify runValidation was called with yaml in config
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yaml: true
+        })
+      );
+    });
+
+    it('should work with both --yaml and --verbose flags', async () => {
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-22T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+      });
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml', '--verbose'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify both flags were passed to runner
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yaml: true,
+          verbose: true
+        })
+      );
+    });
+  });
 });

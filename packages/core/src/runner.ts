@@ -119,14 +119,20 @@ export async function runStepsInParallel(
   phaseName: string,
   enableFailFast: boolean = false,
   env: Record<string, string> = {},
-  verbose: boolean = false
+  verbose: boolean = false,
+  yaml: boolean = false
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
   outputs: Map<string, string>;
   stepResults: StepResult[];
 }> {
-  console.log(`\n🔍 Running ${phaseName} (${steps.length} steps in parallel)...`);
+  // When yaml mode is on, write progress to stderr to keep stdout clean
+  const log = yaml ?
+    (msg: string) => process.stderr.write(msg + '\n') :
+    (msg: string) => console.log(msg);
+
+  log(`\n🔍 Running ${phaseName} (${steps.length} steps in parallel)...`);
 
   // Find longest step name for alignment
   const maxNameLength = Math.max(...steps.map(s => s.name.length));
@@ -140,7 +146,7 @@ export async function runStepsInParallel(
     steps.map(step =>
       new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
         const paddedName = step.name.padEnd(maxNameLength);
-        console.log(`   ⏳ ${paddedName}  →  ${step.command}`);
+        log(`   ⏳ ${paddedName}  →  ${step.command}`);
 
         const startTime = Date.now();
         // Use shell: true for cross-platform compatibility
@@ -166,8 +172,13 @@ export async function runStepsInParallel(
           const chunk = data.toString();
           stdout += chunk;
           // Stream output in real-time when verbose mode is enabled
+          // When yaml mode is on, redirect subprocess output to stderr to keep stdout clean
           if (verbose) {
-            process.stdout.write(chunk);
+            if (yaml) {
+              process.stderr.write(chunk);
+            } else {
+              process.stdout.write(chunk);
+            }
           }
         });
         proc.stderr.on('data', data => {
@@ -187,7 +198,7 @@ export async function runStepsInParallel(
 
           const status = code === 0 ? '✅' : '❌';
           const result = code === 0 ? 'PASSED' : 'FAILED';
-          console.log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
+          log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
           stepResults.push({ name: step.name, passed: code === 0, durationSecs });
 
@@ -200,7 +211,7 @@ export async function runStepsInParallel(
             // Even if multiple failures occur, only one will be firstFailure, which is acceptable.
             if (enableFailFast && !firstFailure) {
               firstFailure = { step, output };
-              console.log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
+              log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
 
               // Kill all other running processes
               for (const { proc: otherProc, step: otherStep } of processes) {
@@ -306,7 +317,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       phase.name,
       enableFailFast,
       env,
-      config.verbose ?? false
+      config.verbose ?? false,
+      config.yaml ?? false
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
     const durationSecs = parseFloat((phaseDurationMs / 1000).toFixed(1));

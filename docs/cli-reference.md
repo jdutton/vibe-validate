@@ -45,6 +45,7 @@ Run validation with git tree hash caching
 
 - `-f, --force` - Force validation even if already passed
 - `-v, --verbose` - Show detailed progress and output
+- `-y, --yaml` - Output validation result as YAML to stdout
 - `-c, --check` - Check if validation has already passed (do not run)
 
 **Examples:**

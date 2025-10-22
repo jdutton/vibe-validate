@@ -275,45 +275,63 @@ export function generateWorkflow(
       });
     }
 
-    // Run validation with verbose flag for CI debugging
+    // Run validation with --yaml --verbose flags for structured output
+    // Redirect stdout (YAML result) to file, stderr (verbose logs) to console
+    const validateCommand = isVibeValidateRepo
+      ? 'node packages/cli/dist/bin.js validate --yaml --verbose'
+      : (packageManager === 'pnpm' ? 'pnpm validate --yaml --verbose' : 'npm run validate -- --yaml --verbose');
+
     jobSteps.push({
-      name: 'Run validation',
-      run: packageManager === 'pnpm' ? 'pnpm validate --verbose' : 'npm run validate -- --verbose',
+      name: 'Run validation (Unix)',
+      if: "runner.os != 'Windows'",
+      run: `${validateCommand} 1>validation-result.yaml || true`,
     });
 
-    // Display validation state for easier debugging and CI log extraction
-    // Platform-specific steps for Unix and Windows
-    // Use direct node path for vibe-validate monorepo (binaries built after install, not linked)
-    // Use package-manager commands for user projects (pre-built packages from npm)
-    const stateCommand = isVibeValidateRepo
-      ? 'node packages/cli/dist/bin.js state'
-      : (packageManager === 'pnpm' ? 'pnpm exec vibe-validate state' : 'npx vibe-validate state');
     jobSteps.push({
-      name: 'Display validation state (Unix)',
+      name: 'Run validation (Windows)',
+      if: "runner.os == 'Windows'",
+      shell: 'powershell',
+      run: `${validateCommand} 1>validation-result.yaml
+$exitCode = $LASTEXITCODE
+exit 0  # Always succeed to allow result display`,
+    });
+
+    // Display validation result from YAML file (always runs, even on failure)
+    jobSteps.push({
+      name: 'Display validation result (Unix)',
       if: "always() && runner.os != 'Windows'",
       run: `echo "=========================================="
-echo "📋 VALIDATION STATE"
+echo "VALIDATION RESULT"
 echo "=========================================="
-${stateCommand} || echo "❌ Could not retrieve validation state"
+cat validation-result.yaml 2>/dev/null || echo "❌ Could not read validation result"
 echo "=========================================="`,
     });
 
-    // Windows-specific display state step using PowerShell
-    // Note: Emojis removed due to PowerShell UTF-8 encoding issues on Windows
     jobSteps.push({
-      name: 'Display validation state (Windows)',
+      name: 'Display validation result (Windows)',
       if: "always() && runner.os == 'Windows'",
       shell: 'powershell',
       run: `Write-Host '=========================================='
-Write-Host 'VALIDATION STATE'
+Write-Host 'VALIDATION RESULT'
 Write-Host '=========================================='
-${stateCommand}
-if ($LASTEXITCODE -ne 0) { Write-Host 'Could not retrieve validation state' }
+if (Test-Path validation-result.yaml) { Get-Content validation-result.yaml } else { Write-Host 'Could not read validation result' }
 Write-Host '=========================================='`,
     });
 
-    // Note: Validation state is now stored in git notes and displayed above
-    // No need to upload artifacts - state is accessible via 'vibe-validate state' command
+    // Fail the job if validation failed (check YAML result - Unix)
+    jobSteps.push({
+      name: 'Check validation result (Unix)',
+      if: "always() && runner.os != 'Windows'",
+      run: `grep -q "passed: true" validation-result.yaml || exit 1`,
+    });
+
+    // Fail the job if validation failed (check YAML result - Windows)
+    jobSteps.push({
+      name: 'Check validation result (Windows)',
+      if: "always() && runner.os == 'Windows'",
+      shell: 'powershell',
+      run: `if (!(Select-String -Path validation-result.yaml -Pattern "passed: true" -Quiet)) { exit 1 }`,
+    });
 
     jobs['validate'] = {
       name: 'Run vibe-validate validation',

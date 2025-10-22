@@ -17,6 +17,7 @@ import { loadConfig } from '../utils/config-loader.js';
 import { createRunnerConfig } from '../utils/runner-adapter.js';
 import { detectContext } from '../utils/context-detector.js';
 import chalk from 'chalk';
+import { stringify as yamlStringify } from 'yaml';
 
 export function validateCommand(program: Command): void {
   program
@@ -24,6 +25,7 @@ export function validateCommand(program: Command): void {
     .description('Run validation with git tree hash caching')
     .option('-f, --force', 'Force validation even if already passed')
     .option('-v, --verbose', 'Show detailed progress and output')
+    .option('-y, --yaml', 'Output validation result as YAML to stdout')
     .option('-c, --check', 'Check if validation has already passed (do not run)')
     .action(async (options) => {
       try {
@@ -46,11 +48,13 @@ export function validateCommand(program: Command): void {
 
         // Verbose mode is ONLY enabled via explicit --verbose flag
         const verbose = options.verbose ?? false;
+        const yaml = options.yaml ?? false;
 
         // Create runner config
         const runnerConfig = createRunnerConfig(config, {
           force: options.force,
           verbose,
+          yaml,
           context,
         });
 
@@ -77,11 +81,13 @@ export function validateCommand(program: Command): void {
                 .find(run => run.passed);
 
               if (passingRun) {
-                console.log(chalk.green('✅ Validation already passed for current working tree state'));
-                console.log(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}...`));
-                console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
-                console.log(chalk.gray(`   Duration: ${passingRun.duration}ms`));
-                console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
+                // When yaml mode is on, write to stderr to keep stdout clean
+                const log = yaml ? process.stderr.write.bind(process.stderr) : console.log.bind(console);
+                log(chalk.green('✅ Validation already passed for current working tree state') + '\n');
+                log(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}...`) + '\n');
+                log(chalk.gray(`   Last validated: ${passingRun.timestamp}`) + '\n');
+                log(chalk.gray(`   Duration: ${passingRun.duration}ms`) + '\n');
+                log(chalk.gray(`   Branch: ${passingRun.branch}`) + '\n');
 
                 // Return cached result (construct from history note)
                 process.exit(0);
@@ -148,6 +154,18 @@ export function validateCommand(program: Command): void {
           if (result.fullLogFile) {
             console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
           }
+        }
+
+        // Output YAML validation result if --yaml flag is set
+        if (yaml) {
+          // Small delay to ensure stderr is flushed before writing to stdout
+          await new Promise(resolve => setTimeout(resolve, 10));
+
+          process.stdout.write('==========================================\n');
+          process.stdout.write('VALIDATION RESULT\n');
+          process.stdout.write('==========================================\n');
+          process.stdout.write(yamlStringify(result));
+          process.stdout.write('==========================================\n');
         }
 
         // Exit with appropriate code
