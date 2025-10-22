@@ -282,13 +282,14 @@ export function generateWorkflow(
 
     // Display validation state for easier debugging and CI log extraction
     // Platform-specific steps for Unix and Windows
+    const stateCommand = packageManager === 'pnpm' ? 'pnpm exec vibe-validate state' : 'npx vibe-validate state';
     jobSteps.push({
       name: 'Display validation state (Unix)',
       if: "always() && runner.os != 'Windows'",
       run: `echo "=========================================="
 echo "📋 VALIDATION STATE"
 echo "=========================================="
-npx vibe-validate state || echo "❌ Could not retrieve validation state"
+${stateCommand} || echo "❌ Could not retrieve validation state"
 echo "=========================================="`,
     });
 
@@ -301,7 +302,7 @@ echo "=========================================="`,
       run: `Write-Host '=========================================='
 Write-Host 'VALIDATION STATE'
 Write-Host '=========================================='
-npx vibe-validate state
+${stateCommand}
 if ($LASTEXITCODE -ne 0) { Write-Host 'Could not retrieve validation state' }
 Write-Host '=========================================='`,
     });
