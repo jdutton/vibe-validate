@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-10-22T16:39:48.584Z",
+  "totalFixtures": 3,
+  "overallScore": 1,
+  "byTool": {
+    "eslint": {
+      "count": 1,
+      "avgScore": 1,
+      "passed": 1,
+      "failed": 0,
+      "fixtures": [
+        {
+          "name": "lint-error",
+          "score": 1,
+          "passed": true
+        }
+      ]
+    },
+    "typescript": {
+      "count": 1,
+      "avgScore": 1,
+      "passed": 1,
+      "failed": 0,
+      "fixtures": [
+        {
+          "name": "type-error",
+          "score": 1,
+          "passed": true
+        }
+      ]
+    },
+    "vitest": {
+      "count": 1,
+      "avgScore": 1,
+      "passed": 1,
+      "failed": 0,
+      "fixtures": [
+        {
+          "name": "assertion-failure",
+          "score": 1,
+          "passed": true
+        }
+      ]
+    }
+  },
+  "byDifficulty": {
+    "easy": {
+      "count": 3,
+      "avgScore": 1,
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "failures": []
+}
