@@ -289,7 +289,7 @@ Contribute when:
    - Raw output (from `vibe-validate state`)
    - What should be extracted
    - Impact on your workflow
-4. We'll create a fixture and improve the extractor
+4. We'll create a sample and improve the extractor
 
 **Option 2: Contribute a Sample (Most Helpful)**
 
@@ -314,11 +314,11 @@ cp _template.yaml vitest/my-failure-case.yaml
 cd ../..
 pnpm test
 
-# 4. Submit PR using the fixture template
+# 4. Submit PR using the sample template
 # Choose "extractor-sample.md" when creating PR
 ```
 
-**Example Fixture Structure:**
+**Example Sample Structure:**
 
 ```yaml
 $schema: ./sample-schema.json
@@ -351,9 +351,9 @@ expected:
         AssertionError: expected 2 to equal 3
 ```
 
-### Fixture Quality Thresholds
+### Sample Quality Thresholds
 
-Your fixture must pass quality checks:
+Your sample must pass quality checks:
 
 - **Easy** (90%+): Standard output patterns (most common cases)
 - **Medium** (75%+): Complex output with nested details
@@ -374,11 +374,11 @@ If you want to improve the extractor code itself:
 
 **Process:**
 
-1. **Add fixture first** (TDD approach)
+1. **Add sample first** (TDD approach)
 2. **Run tests** - they should fail with low quality score
 3. **Improve extractor** - update regex patterns or extraction logic
 4. **Re-run tests** - quality score should improve to meet threshold
-5. **Submit PR** with both fixture and extractor improvements
+5. **Submit PR** with both sample and extractor improvements
 
 **Testing:**
 
@@ -395,7 +395,7 @@ pnpm --filter @vibe-validate/extractors test:regression
 
 ### Recognition for Contributors
 
-- ✅ **Credited** in fixture metadata
+- ✅ **Credited** in sample metadata
 - ✅ **Listed** in quality reports
 - ✅ **Mentioned** in CHANGELOG for major improvements
 - ✅ **Appreciated** by developers and LLMs worldwide! 🙏

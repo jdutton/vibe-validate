@@ -103,6 +103,10 @@ export interface PhaseResult {
 
 /**
  * Overall validation result
+ *
+ * IMPORTANT: Field order matters for YAML truncation safety!
+ * Verbose fields (failedStepOutput, phases with output) are at the END
+ * so that truncation doesn't break critical metadata (passed, timestamp, rerunCommand).
  */
 export interface ValidationResult {
   /** Did validation pass? */
@@ -114,17 +118,11 @@ export interface ValidationResult {
   /** Git tree hash (if in git repo) */
   treeHash: string;
 
-  /** Results from each phase */
-  phases?: PhaseResult[];
-
   /** Name of failed step (if any) */
   failedStep?: string;
 
   /** Command to re-run failed step */
   rerunCommand?: string;
-
-  /** Output from the failed step */
-  failedStepOutput?: string;
 
   /** Failed test names (if applicable) */
   failedTests?: string[];
@@ -134,6 +132,12 @@ export interface ValidationResult {
 
   /** Summary message */
   summary?: string;
+
+  /** Results from each phase (may contain verbose output field) */
+  phases?: PhaseResult[];
+
+  /** Output from the failed step (verbose - placed last for truncation safety) */
+  failedStepOutput?: string;
 }
 
 /**

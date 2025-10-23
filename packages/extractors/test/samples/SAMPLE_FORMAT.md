@@ -10,7 +10,7 @@ Samples are used to:
 
 ## IDE Support
 
-All fixture files include a JSON Schema reference for IDE autocomplete and validation:
+All sample files include a JSON Schema reference for IDE autocomplete and validation:
 
 ```yaml
 $schema: ../sample-schema.json
@@ -43,7 +43,7 @@ metadata:
   contributor: github-username
   contributedDate: "2025-10-22"
   sourceIssue: "#123"          # GitHub issue this came from (optional)
-  sourcePR: "#456"              # PR that added this fixture (optional)
+  sourcePR: "#456"              # PR that added this sample (optional)
 
   # Classification
   category: assertion-failure | type-error | lint-error | timeout | etc
@@ -286,18 +286,18 @@ pnpm test:extractors:regression
 ## Contributing Guidelines
 
 ### From Users
-1. File issue with test output → We create fixture
-2. Submit PR with filled-out fixture → We validate
+1. File issue with test output → We create sample
+2. Submit PR with filled-out sample → We validate
 3. Let Claude Code auto-generate → Review and merge
 
-### Creating a New Fixture
+### Creating a New Sample
 
 1. **Copy the template**:
    ```bash
    cp test/samples/_template.yaml test/samples/<tool>/<name>.yaml
    ```
 
-2. **Fill in all fields** - The JSON Schema (`sample-schema.json`) will validate your fixture automatically
+2. **Fill in all fields** - The JSON Schema (`sample-schema.json`) will validate your sample automatically
 
 3. **Ensure IDE schema support** - Your IDE should show autocomplete. If not, the `$schema` line at the top enables this.
 
@@ -306,7 +306,7 @@ pnpm test:extractors:regression
    pnpm test:extractors
    ```
 
-### Fixture Quality Checklist
+### Sample Quality Checklist
 - [ ] Includes `$schema` reference at top of file
 - [ ] Real-world output (not made-up)
 - [ ] Complete error (not truncated)

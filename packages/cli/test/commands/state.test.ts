@@ -62,7 +62,7 @@ describe('state command', () => {
   });
 
   describe('no validation state', () => {
-    it('should handle missing state (minimal output)', async () => {
+    it('should handle missing state with tree hash (minimal output)', async () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(false);
 
       stateCommand(program);
@@ -77,11 +77,13 @@ describe('state command', () => {
         }
       }
 
-      // Minimal YAML output
-      expect(console.log).toHaveBeenCalledWith('exists: false');
+      // YAML output should include tree hash for debugging
+      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+      expect(allLogCalls.some(call => call.includes('exists: false'))).toBe(true);
+      expect(allLogCalls.some(call => call.includes(`treeHash: ${mockTreeHash}`))).toBe(true);
     });
 
-    it('should handle missing state (verbose output)', async () => {
+    it('should handle missing state with tree hash (verbose output)', async () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(false);
 
       stateCommand(program);
@@ -94,12 +96,14 @@ describe('state command', () => {
         }
       }
 
-      // Verbose output includes explanatory text
-      expect(console.log).toHaveBeenCalledWith('exists: false');
+      // Verbose output includes explanatory text AND tree hash
+      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+      expect(allLogCalls.some(call => call.includes('exists: false'))).toBe(true);
+      expect(allLogCalls.some(call => call.includes(`treeHash: ${mockTreeHash}`))).toBe(true);
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No validation state found'));
     });
 
-    it('should handle empty history note', async () => {
+    it('should handle empty history note with tree hash', async () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(true);
       vi.mocked(readHistoryNote).mockResolvedValue({
         treeHash: mockTreeHash,
@@ -116,7 +120,10 @@ describe('state command', () => {
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith('exists: false');
+      // Should include tree hash even when no runs
+      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+      expect(allLogCalls.some(call => call.includes('exists: false'))).toBe(true);
+      expect(allLogCalls.some(call => call.includes(`treeHash: ${mockTreeHash}`))).toBe(true);
     });
   });
 
@@ -276,7 +283,7 @@ describe('state command', () => {
   });
 
   describe('error handling', () => {
-    it('should handle non-git repository', async () => {
+    it('should handle non-git repository with error message', async () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
 
       stateCommand(program);
@@ -289,7 +296,10 @@ describe('state command', () => {
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith('exists: false');
+      // Should include structured error message
+      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+      expect(allLogCalls.some(call => call.includes('exists: false'))).toBe(true);
+      expect(allLogCalls.some(call => call.includes('error: Not in git repository'))).toBe(true);
     });
 
     it('should handle non-git repository (verbose)', async () => {
@@ -305,7 +315,10 @@ describe('state command', () => {
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith('exists: false');
+      // Should include structured error + explanatory text
+      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+      expect(allLogCalls.some(call => call.includes('exists: false'))).toBe(true);
+      expect(allLogCalls.some(call => call.includes('error: Not in git repository'))).toBe(true);
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Not in a git repository'));
     });
 

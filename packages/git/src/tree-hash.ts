@@ -59,15 +59,29 @@ export async function getGitTreeHash(): Promise<string> {
         env: { ...process.env, GIT_INDEX_FILE: tempIndexFile }
       };
 
-      // Step 3: Mark all untracked files with --intent-to-add in temp index
+      // Step 3: Stage all changes (tracked + untracked) in temp index
+      // CRITICAL: Must use `git add --all` (NOT `--intent-to-add` or `--force`)
+      //
+      // Why NOT --intent-to-add:
+      //   - Only adds empty placeholders, not actual file content
+      //   - git write-tree skips intent-to-add entries (treats as non-existent)
+      //   - Result: unstaged modifications NOT included in tree hash
+      //
+      // Why NOT --force:
+      //   - Includes files in .gitignore (secrets, build artifacts, etc.)
+      //   - Security risk: checksums API keys, passwords, credentials
+      //   - Non-deterministic: different devs have different ignored files
+      //   - Breaks cache sharing: same code produces different hashes
+      //
+      // We need actual content staged so git write-tree includes working directory changes
       try {
-        execSync('git add --intent-to-add --all --force', {
+        execSync('git add --all', {
           ...tempIndexOptions,
           stdio: ['pipe', 'pipe', 'pipe'] // Capture stderr for error handling
         });
       } catch (addError) {
-        // If no untracked files, git add fails with "nothing to add"
-        // This is fine - just means we only have tracked files
+        // If no changes to add, git add fails with "nothing to add"
+        // This is fine - just means we have no modifications
         const errorMessage = addError instanceof Error ? addError.message : String(addError);
         if (!errorMessage.includes('nothing')) {
           // Real error - re-throw

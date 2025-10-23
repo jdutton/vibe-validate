@@ -64,7 +64,7 @@
         },
         "contributedDate": {
           "type": "string",
-          "description": "Date fixture was contributed (YYYY-MM-DD)",
+          "description": "Date sample was contributed (YYYY-MM-DD)",
           "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
         },
         "sourceIssue": {

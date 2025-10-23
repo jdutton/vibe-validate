@@ -436,9 +436,11 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       steps: result.stepResults,
     };
 
-    // If phase failed, include output
+    // If phase failed, extract and include output (LLM-optimized, not raw)
     if (!result.success && result.failedStep) {
-      phaseResult.output = result.outputs.get(result.failedStep.name);
+      const rawOutput = result.outputs.get(result.failedStep.name) || '';
+      const extracted = extractByStepName(result.failedStep.name, rawOutput);
+      phaseResult.output = extracted.cleanOutput.trim() || rawOutput;
     }
 
     phaseResults.push(phaseResult);
@@ -452,18 +454,35 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       failedStep = result.failedStep;
 
       const failedOutput = result.outputs.get(failedStep.name) || '';
-      const failures = parseFailures(failedOutput);
 
+      // Extract actionable failures from raw output (LLM-optimized, 5-10 lines instead of 100+)
+      // This reduces git notes bloat and makes errors immediately actionable
+      const extracted = extractByStepName(failedStep.name, failedOutput);
+
+      // Use cleanOutput for storage (already formatted for YAML/JSON, stripped of ANSI codes)
+      // Falls back to raw output if extraction fails
+      const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
+
+      // Use structured errors from extractor (replaces deprecated parseFailures)
+      const structuredFailures = extracted.errors.map(error => {
+        const location = error.file
+          ? `${error.file}${error.line ? `:${error.line}` : ''}`
+          : 'unknown';
+        return `${location} - ${error.message || 'No message'}`;
+      });
+
+      // IMPORTANT: Field order matches types.ts for YAML truncation safety
+      // Verbose fields (phases, failedStepOutput) at the end
       const validationResult: ValidationResult = {
         passed: false,
         timestamp: new Date().toISOString(),
         treeHash: currentTreeHash,
-        phases: phaseResults,
         failedStep: failedStep.name,
         rerunCommand: failedStep.command,
-        failedStepOutput: failedOutput,
-        failedTests: failures.length > 0 ? failures : undefined,
+        failedTests: structuredFailures.length > 0 ? structuredFailures : undefined,
         fullLogFile: logPath,
+        phases: phaseResults,  // Contains verbose output - near end
+        failedStepOutput: extractedOutput,  // Most verbose - dead last
       };
 
       // State persistence moved to validate.ts via git notes (v0.12.0+)
@@ -474,12 +493,13 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   }
 
   // All steps passed!
+  // IMPORTANT: Field order matches types.ts for YAML truncation safety
   const validationResult: ValidationResult = {
     passed: true,
     timestamp: new Date().toISOString(),
     treeHash: currentTreeHash,
-    phases: phaseResults,
     fullLogFile: logPath,
+    phases: phaseResults,  // May contain output - at end for safety
   };
 
   // State persistence moved to validate.ts via git notes (v0.12.0+)

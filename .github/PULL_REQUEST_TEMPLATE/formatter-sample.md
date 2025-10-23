@@ -1,10 +1,10 @@
-## Fixture Contribution
+## Sample Contribution
 
 <!-- Thank you for contributing test samples to improve vibe-validate's failure extraction! -->
 
-### Fixture(s) Added
+### Sample(s) Added
 
-<!-- List the fixture file(s) you're adding -->
+<!-- List the sample file(s) you're adding -->
 
 - [ ] `packages/extractors/test/samples/<tool>/<name>.yaml`
 
@@ -16,7 +16,7 @@
 
 ### Problem Being Solved
 
-<!-- What extraction issue does this fixture address? Link to issue if applicable -->
+<!-- What extraction issue does this sample address? Link to issue if applicable -->
 
 Fixes #
 Relates to #
@@ -26,8 +26,8 @@ Relates to #
 
 ### Changes Made
 
-- [ ] Added new fixture(s) with raw tool output
-- [ ] Defined expected extraction in fixture
+- [ ] Added new sample(s) with raw tool output
+- [ ] Defined expected extraction in sample
 - [ ] Improved extractor to handle this pattern (if applicable)
 - [ ] All sample tests pass
 - [ ] Quality score meets threshold for difficulty level
@@ -36,14 +36,14 @@ Relates to #
 
 **Before this PR:**
 ```
-<!-- Paste test output showing the issue, or "N/A - new fixture" -->
+<!-- Paste test output showing the issue, or "N/A - new sample" -->
 ```
 
 **After this PR:**
 ```
 <!-- Paste output from `pnpm --filter @vibe-validate/extractors test` -->
 
-✓ test/fixture-harness.test.ts
+✓ test/sample-harness.test.ts
   ✓ <tool> extractor (X samples)
     Average Score: X.X%
     Passed: X/X
@@ -83,21 +83,21 @@ By tool:
 ### Validation
 
 - [ ] `pnpm --filter @vibe-validate/extractors test` passes
-- [ ] Fixture includes `$schema` reference for IDE support
-- [ ] Fixture metadata is complete (tool, version, platform, difficulty)
+- [ ] Sample includes `$schema` reference for IDE support
+- [ ] Sample metadata is complete (tool, version, platform, difficulty)
 - [ ] Expected output includes both detailed extraction AND `llmSummary`
 - [ ] Quality score meets threshold (easy ≥90%, medium ≥75%, hard ≥60%, very-hard ≥40%)
 
 ### Documentation
 
-- [ ] Fixture is properly documented with metadata
-- [ ] Contributor name/username added to fixture metadata (optional)
+- [ ] Sample is properly documented with metadata
+- [ ] Contributor name/username added to sample metadata (optional)
 - [ ] If this is a new tool, updated `SAMPLE_FORMAT.md` if needed
 
 ### Checklist
 
 - [ ] I have searched for similar existing samples
-- [ ] The fixture uses real tool output (not synthetic/made-up examples)
+- [ ] The sample uses real tool output (not synthetic/made-up examples)
 - [ ] I have tested locally and all extractor tests pass
 - [ ] I followed the sample format specification
 - [ ] I'm willing to provide more examples if needed
@@ -107,7 +107,7 @@ By tool:
 ## Recognition
 
 Your contribution will be:
-- ✅ Credited in fixture metadata
+- ✅ Credited in sample metadata
 - ✅ Mentioned in CHANGELOG for significant improvements
 - ✅ Listed in quality reports
 - ✅ Appreciated by the community! 🙏

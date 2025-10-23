@@ -88,7 +88,8 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
 
     // Match: FAIL test/unit/config/environment.test.ts > EnvironmentConfig > test name
     // OR: ❌ packages/core/test/runner.test.ts > ValidationRunner > test name
-    const failLineMatch = line.match(/(?:FAIL|❌)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/);
+    // OR: × packages/cli/test/commands/validate.test.ts > validate command > test name
+    const failLineMatch = line.match(/(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/);
     if (failLineMatch) {
       if (currentFailure && currentFailure.file) {
         failures.push(currentFailure as TestFailure);
@@ -118,19 +119,30 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
         const isSnapshotError = !!snapshotMatch;
 
         // Capture additional lines (e.g., timeout guidance, long error messages, snapshot diffs)
-        // For snapshot errors: continue through blank lines until stack trace
-        // For other errors: stop at blank lines
+        // For snapshot errors: continue through blank lines until stack trace (no line limit)
+        // For other errors: stop at blank lines OR after 5 continuation lines (prevent verbose object dumps)
+        const MAX_CONTINUATION_LINES = 5;
         let j = i + 1;
+        let linesConsumed = 0;
+
         while (j < lines.length) {
           const nextLine = lines[j].trim();
 
           // Always stop at these markers
-          if (nextLine.startsWith('❯') || nextLine.match(/^\d+\|/) || nextLine.startsWith('FAIL') || nextLine.startsWith('✓') || nextLine.startsWith('❌') || nextLine.startsWith('⎯')) {
+          if (nextLine.startsWith('❯') || nextLine.match(/^\d+\|/) || nextLine.startsWith('FAIL') || nextLine.startsWith('✓') || nextLine.startsWith('❌') || nextLine.startsWith('×') || nextLine.startsWith('⎯')) {
             break;
           }
 
           // Stop at stack trace (starts with "at ")
           if (nextLine.startsWith('at ')) {
+            break;
+          }
+
+          // For non-snapshot errors, limit continuation lines to prevent massive object dumps
+          if (!isSnapshotError && linesConsumed >= MAX_CONTINUATION_LINES) {
+            if (nextLine) {
+              errorMessage += ' ...(truncated)';
+            }
             break;
           }
 
@@ -148,6 +160,7 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
               errorMessage += '\n' + lines[j]; // Preserve indentation for diffs
             } else {
               errorMessage += ' ' + nextLine; // Compact for normal errors
+              linesConsumed++;
             }
           }
           j++;

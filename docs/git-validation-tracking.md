@@ -51,8 +51,11 @@ TEMP_INDEX="$GIT_DIR/temp-validation-index"
 # Step 2: Copy current index
 cp "$GIT_DIR/index" "$TEMP_INDEX"
 
-# Step 3: Mark untracked files (doesn't affect real index)
-GIT_INDEX_FILE="$TEMP_INDEX" git add --intent-to-add --all --force
+# Step 3: Stage all changes in temp index (doesn't affect real index)
+# CRITICAL: Use `git add --all` WITHOUT --intent-to-add or --force
+# --intent-to-add only adds empty placeholders (git write-tree skips them)
+# --force includes .gitignore'd files (secrets, non-deterministic hashing)
+GIT_INDEX_FILE="$TEMP_INDEX" git add --all
 
 # Step 4: Calculate tree hash (deterministic, content-based only)
 TREE_HASH=$(GIT_INDEX_FILE="$TEMP_INDEX" git write-tree)
@@ -65,15 +68,17 @@ echo "Tree hash: $TREE_HASH"
 
 **Why this works**:
 - `git write-tree`: Content-based hashing (no timestamps)
-- Temporary index: No side effects on real index
-- `--intent-to-add`: Include untracked files without staging
+- Temporary index: No side effects on real index (uses GIT_INDEX_FILE)
+- `git add --all`: Stages tracked + untracked files (respects .gitignore)
 - Deterministic: Same content = same hash, always
 
 **Benefits**:
-- ✅ Includes all files (staged, unstaged, untracked)
-- ✅ Safe during git hooks (doesn't corrupt index)
-- ✅ Deterministic (same content = same hash)
+- ✅ Includes all relevant files (tracked changes + untracked non-ignored files)
+- ✅ Excludes ignored files (respects .gitignore for security and determinism)
+- ✅ Safe during git hooks (temp index doesn't corrupt real index)
+- ✅ Deterministic across developers and worktrees (same code = same hash)
 - ✅ No timestamps (pure content hash)
+- ✅ No secrets leaked (API keys, passwords in .gitignore stay out)
 
 ---
 
@@ -232,9 +237,11 @@ def calculate_deterministic_tree_hash():
         # Copy current index
         run_command(f"cp {git_dir}/index {temp_index}")
 
-        # Mark untracked files (in temp index only)
+        # Stage all changes (in temp index only)
+        # CRITICAL: Do NOT use --intent-to-add (only adds empty placeholders)
+        # CRITICAL: Do NOT use --force (includes .gitignore'd secrets)
         env = {"GIT_INDEX_FILE": temp_index}
-        run_command("git add --intent-to-add --all --force", env=env)
+        run_command("git add --all", env=env)
 
         # Calculate tree hash
         tree_hash = run_command("git write-tree", env=env).strip()
@@ -706,7 +713,7 @@ Implementing this pattern in your validation tool:
 **Git Commands**:
 - [`git write-tree`](https://git-scm.com/docs/git-write-tree) - Write tree object from index
 - [`git notes`](https://git-scm.com/docs/git-notes) - Attach metadata to objects
-- [`git add --intent-to-add`](https://git-scm.com/docs/git-add#Documentation/git-add.txt---intent-to-add) - Mark untracked files
+- [`git add --all`](https://git-scm.com/docs/git-add) - Stage all changes (respects .gitignore)
 
 **Related Patterns**:
 - Content-addressable storage (CAS)

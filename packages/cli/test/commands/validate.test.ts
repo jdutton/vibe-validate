@@ -7,6 +7,7 @@ import { validateCommand } from '../../src/commands/validate.js';
 import * as core from '@vibe-validate/core';
 import * as configLoader from '../../src/utils/config-loader.js';
 import * as history from '@vibe-validate/history';
+import * as git from '@vibe-validate/git';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
 // Mock the core validation module
@@ -33,6 +34,15 @@ vi.mock('@vibe-validate/history', async () => {
   return {
     ...actual,
     readHistoryNote: vi.fn(),
+  };
+});
+
+// Mock the git module
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual<typeof git>('@vibe-validate/git');
+  return {
+    ...actual,
+    getGitTreeHash: vi.fn(),
   };
 });
 
@@ -63,6 +73,12 @@ describe('validate command', () => {
     // Reset mocks
     vi.mocked(core.runValidation).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
+    vi.mocked(git.getGitTreeHash).mockReset();
+    vi.mocked(history.readHistoryNote).mockReset();
+
+    // Default getGitTreeHash to throw (simulating not in git repo)
+    // Tests can override this if they need git functionality
+    vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('Not in git repo'));
   });
 
   afterEach(() => {
@@ -399,6 +415,9 @@ describe('validate command', () => {
     });
 
     it('should not run validation when --check flag is used', async () => {
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
       // Mock git notes with passing validation
       vi.mocked(history.readHistoryNote).mockResolvedValue({
         treeHash: 'abc123def456',
@@ -434,6 +453,9 @@ describe('validate command', () => {
     });
 
     it('should exit with code 2 when no validation history exists', async () => {
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
       // Mock git notes with no history
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
@@ -451,6 +473,62 @@ describe('validate command', () => {
         expect.stringContaining('No validation history for current working tree')
       );
       expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('should output YAML when --check and --yaml flags are used together', async () => {
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+      // Mock git notes with passing validation
+      vi.mocked(history.readHistoryNote).mockResolvedValue({
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123def456',
+              duration: 5000,
+              branch: 'main',
+              phases: [],
+            },
+          },
+        ],
+      });
+
+      // Spy on process.stdout.write to capture YAML output
+      vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--check', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit from checkValidationStatus with code 0
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      // Verify runValidation was NOT called (using --check flag)
+      expect(core.runValidation).not.toHaveBeenCalled();
+
+      // BUG REPRODUCTION: Currently this test will FAIL because check-validation.ts
+      // doesn't respect the --yaml flag and outputs human-readable text instead
+
+      // Verify YAML was written to stdout (not human-readable text to console.log)
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('timestamp:'));
+
+      // Verify console.log was NOT called (YAML mode should only use stdout)
+      expect(console.log).not.toHaveBeenCalled();
     });
   });
 

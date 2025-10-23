@@ -1,0 +1,97 @@
+$schema: ../sample-schema.json
+
+# Verbose spy output with 100+ lines that needs truncation
+
+metadata:
+  tool: vitest
+  toolVersion: "3.2.4"
+  platform: darwin
+  nodeVersion: "24.5.0"
+  contributor: vibe-validate
+  contributedDate: "2025-10-23"
+  sourceIssue: null
+  sourcePR: null
+  category: assertion-failure
+  difficulty: very-hard
+  description: |
+    Mock spy assertion with extremely verbose "Received:" output containing
+    100+ lines of environment variables. Tests that extractors truncate
+    verbose object dumps to keep error messages concise and actionable.
+
+    NOTE: This is a "known limitation" sample - spy assertions are difficult
+    to parse (currently scores 50%). Demonstrates mediocre but still useful
+    extraction - better than nothing! (see improvementHints for future work).
+
+input:
+  raw: |
+    × packages/cli/test/commands/validate.test.ts > validate command > --yaml flag > should output YAML to stdout when validation is cached and --yaml flag is set 28ms
+         → expected "spy" to not be called at all, but actually been called 1 times
+
+    Received:
+
+      1st spy call:
+
+        Array [
+          Object {
+            "developerFeedback": false,
+            "enableFailFast": true,
+            "env": Object {
+              "BASE_URL": "/",
+              "CLAUDECODE": "1",
+              "CLAUDE_CODE_ENTRYPOINT": "cli",
+              "HOME": "/Users/jeff",
+              "NODE": "/opt/homebrew/Cellar/node/24.5.0/bin/node",
+              "NODE_ENV": "test",
+              "LANG": "en_US.UTF-8",
+              "PATH": "/Users/jeff/Workspaces/vibe-validate/node_modules/.bin",
+              "PWD": "/Users/jeff/Workspaces/vibe-validate",
+              "SHELL": "/bin/zsh",
+              "TERM": "xterm-256color",
+              "USER": "jeff",
+              "npm_package_version": "0.11.0",
+              "npm_package_workspaces_0": "packages/*",
+            },
+            "onPhaseComplete": [Function onPhaseComplete],
+            "onPhaseStart": [Function onPhaseStart],
+            "phases": Array [
+              Object {
+                "name": "Test Phase",
+              },
+            ],
+            "verbose": false,
+            "yaml": true,
+          },
+        ]
+
+     ❯ packages/cli/test/commands/validate.test.ts:717:38
+
+expected:
+  detectionConfidence: 90
+  detectedTool: vitest
+  failures:
+    - tool: vitest
+      type: test-failure
+      summary: "validate command > --yaml flag > should output YAML to stdout when validation is cached and --yaml flag is set 28ms"
+      message: "Test failure: validate command > --yaml flag > should output YAML to stdout when validation is cached and --yaml flag is set 28ms"
+      context: null
+      stackTrace: []
+      relevance: 80
+      llmSummary: |
+        Test 'validate command > --yaml flag > should output YAML to stdout when validation is cached and --yaml flag is set' failed.
+        Location info not extracted (known limitation for spy assertions).
+        Check full test output for details.
+
+quality:
+  lastTested: null
+  fields: {}
+  score: null
+  issues: []
+  scoreHistory: []
+
+improvementHints:
+  - "Truncate verbose 'Received:' output after 5 lines to prevent huge error messages"
+  - "Add '...(truncated)' marker when truncating"
+  - "Keep first few lines to show data structure"
+
+relatedSamples:
+  - vitest/assertion-error-001.yaml

@@ -149,8 +149,8 @@ function generateQualityReport(): QualityMetrics {
 
   for (const [difficulty, difficultySamples] of Object.entries(samplesByDifficulty)) {
     const difficultyResults = results.filter(r => {
-      const fixture = samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === r.fixture);
-      return fixture?.metadata.difficulty === difficulty;
+      const sample = samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === r.sample);
+      return sample?.metadata.difficulty === difficulty;
     });
 
     const avgScore =
@@ -170,11 +170,11 @@ function generateQualityReport(): QualityMetrics {
   const failures = results
     .filter(r => !r.passed)
     .map(r => {
-      const fixture = samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === r.fixture)!;
+      const sampleData = samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === r.sample)!;
       return {
         sample: r.sample,
         score: r.score,
-        threshold: getThreshold(sample.metadata.difficulty),
+        threshold: getThreshold(sampleData.metadata.difficulty),
         issues: r.issues,
       };
     });

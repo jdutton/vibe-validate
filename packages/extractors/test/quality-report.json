@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-23T03:33:14.584Z",
+  "timestamp": "2025-10-23T12:14:46.507Z",
   "totalSamples": 10,
   "overallScore": 0.95,
   "byTool": {
@@ -80,15 +80,15 @@
   },
   "byDifficulty": {
     "medium": {
-      "count": 0,
-      "avgScore": null,
-      "passed": 0,
+      "count": 5,
+      "avgScore": 0.95,
+      "passed": 5,
       "failed": 0
     },
     "easy": {
-      "count": 0,
-      "avgScore": null,
-      "passed": 0,
+      "count": 5,
+      "avgScore": 0.95,
+      "passed": 5,
       "failed": 0
     },
     "hard": {

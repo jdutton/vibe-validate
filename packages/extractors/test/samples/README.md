@@ -25,7 +25,7 @@ samples/
 
 ## Sample Format
 
-Each fixture is a YAML file with:
+Each sample is a YAML file with:
 - **$schema**: Reference to `sample-schema.json` (enables IDE autocomplete)
 - **metadata**: Tool, version, platform, contributor, difficulty
 - **input**: Raw output (exactly as captured)
@@ -93,9 +93,9 @@ cp _template.yaml vitest/my-case-001.yaml
 pnpm test:extractors
 ```
 
-4. Submit PR using the fixture template
+4. Submit PR using the sample template
 
-**Tip**: The JSON Schema (`sample-schema.json`) validates your fixture automatically. If tests fail with schema errors, your IDE should show exactly what's wrong.
+**Tip**: The JSON Schema (`sample-schema.json`) validates your sample automatically. If tests fail with schema errors, your IDE should show exactly what's wrong.
 
 ## Quality Reports
 
@@ -108,7 +108,7 @@ After running tests, check `quality-report.json` for:
 ## Recognition
 
 Contributors are credited in:
-- Fixture metadata (your GitHub username)
+- Sample metadata (your GitHub username)
 - Quality reports
 - CHANGELOG for major improvements
 

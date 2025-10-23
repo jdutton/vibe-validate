@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed Git Tree Hash Calculation** (Improved cache reliability and security)
+  - **Problem**: Unstaged file changes weren't included in tree hash, causing false cache hits
+  - **Solution**: Removed `--intent-to-add` flag that prevented content from being staged
+  - **Impact**: Cache now correctly invalidates when files change, preventing stale validation results
+
+- **SECURITY: Fixed .gitignore Handling in Tree Hash**
+  - **Problem**: `--force` flag included ignored files (secrets, credentials) in tree hash
+  - **Solution**: Removed `--force` flag to respect .gitignore rules
+  - **Impact**: Secrets no longer checksummed, cache sharing works reliably across developers
+
+### ⚡ Performance Improvements
+
+- **90% Reduction in Git Notes Storage Size**
+  - **Problem**: Failed validation output stored raw (100+ lines of environment variables, verbose test output)
+  - **Solution**: Extract actionable failures before storing (5-10 lines of clean, structured errors)
+  - **Impact**:
+    - Git notes operations are faster
+    - `vibe-validate state` shows clean, LLM-friendly errors immediately
+    - Less disk space used for validation history
+    - Critical metadata (pass/fail, recovery commands) always available even if output truncated
+
+- **Truncation-Safe YAML Output**
+  - **Problem**: If YAML output was truncated, critical recovery information could be lost
+  - **Solution**: Verbose fields (error output) placed at end of YAML structure
+  - **Impact**: YAML remains parseable and actionable even if truncated by logs or display tools
+
+### 📝 Documentation
+
+- **Consistent Terminology Throughout Codebase**
+  - Updated all references from "fixture" to "sample" for clarity
+  - Affects: Documentation, configuration templates, and contributor guides
+  - No user action required
+
 ## [0.12.0] - 2025-10-21
 
 ### 🚨 BREAKING CHANGES

@@ -38,8 +38,9 @@ export function validateCommand(program: Command): void {
 
         // If --check flag is used, only check validation state without running
         if (options.check) {
+          const yaml = options.yaml ?? false;
           const { checkValidationStatus } = await import('../utils/check-validation.js');
-          await checkValidationStatus(config);
+          await checkValidationStatus(config, yaml);
           return; // Exit handled by checkValidationStatus
         }
 
@@ -69,6 +70,12 @@ export function validateCommand(program: Command): void {
           }
         }
 
+        // Display tree hash at start (human mode only, always show for transparency)
+        if (treeHashBefore && !yaml) {
+          console.log(chalk.gray(`🌳 Working tree: ${treeHashBefore.slice(0, 12)}...`));
+          console.log(''); // Blank line for readability
+        }
+
         // Check cache: if validation already passed for this tree hash, skip re-running
         if (treeHashBefore && !options.force) {
           try {
@@ -81,16 +88,29 @@ export function validateCommand(program: Command): void {
                 .find(run => run.passed);
 
               if (passingRun) {
-                // When yaml mode is on, write to stderr to keep stdout clean
-                const log = yaml ? process.stderr.write.bind(process.stderr) : console.log.bind(console);
-                const durationSecs = (passingRun.duration / 1000).toFixed(1);
-                log(chalk.green('✅ Validation already passed for current working tree state'));
-                log(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}...`));
-                log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
-                log(chalk.gray(`   Duration: ${durationSecs}s`));
-                log(chalk.gray(`   Branch: ${passingRun.branch}`));
+                if (yaml) {
+                  // YAML mode: Output cached result as YAML to stdout
+                  await new Promise(resolve => setTimeout(resolve, 10));
+                  process.stdout.write(yamlStringify(passingRun.result));
 
-                // Return cached result (construct from history note)
+                  // Wait for stdout to flush before exiting
+                  await new Promise<void>(resolve => {
+                    if (process.stdout.write('')) {
+                      resolve();
+                    } else {
+                      process.stdout.once('drain', resolve);
+                    }
+                  });
+                } else {
+                  // Human-readable mode: Display cache hit message
+                  const durationSecs = (passingRun.duration / 1000).toFixed(1);
+                  console.log(chalk.green('✅ Validation already passed for current working tree'));
+                  console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
+                  console.log(chalk.gray(`   Duration: ${durationSecs}s`));
+                  console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
+                }
+
+                // Return cached result
                 process.exit(0);
               }
             }

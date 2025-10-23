@@ -120,7 +120,7 @@ Create `.gitleaksignore` in your project root with secret fingerprints:
 # .gitleaksignore
 # Format: <fingerprint>:<reason>
 
-8e94f38f9b8f4e3d2c1a0f6e5d4c3b2a1:Test fixture - not a real secret
+8e94f38f9b8f4e3d2c1a0f6e5d4c3b2a1:Test sample - not a real secret
 7d83e27e8a7d3c2b1a0f9e8d7c6b5a4:Example in documentation
 ```
 

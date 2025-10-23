@@ -1,6 +1,6 @@
-$schema: ./fixture-schema.json
+$schema: ./sample-schema.json
 
-# Copy this template to create a new fixture
+# Copy this template to create a new sample
 # Fill in all required fields and delete this comment
 
 metadata:
@@ -15,7 +15,7 @@ metadata:
   category: assertion-failure  # Describe the error type
   difficulty: easy  # easy | medium | hard | very-hard
   description: |
-    Describe what this fixture tests.
+    Describe what this sample tests.
     What pattern does it demonstrate?
 
 input:

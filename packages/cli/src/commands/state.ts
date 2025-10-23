@@ -25,10 +25,15 @@ export function stateCommand(program: Command): void {
         const hasHistory = await hasHistoryForTree(treeHash);
 
         if (!hasHistory) {
-          console.log('exists: false');
+          // Always show tree hash, even when no history exists (helpful for debugging)
+          const noStateOutput = {
+            exists: false,
+            treeHash: treeHash,
+          };
+          console.log(stringifyYaml(noStateOutput));
+
           if (options.verbose) {
-            console.log(chalk.gray('\nℹ️  No validation state found for current worktree'));
-            console.log(chalk.gray(`   Tree hash: ${treeHash.substring(0, 12)}...`));
+            console.log(chalk.gray('ℹ️  No validation state found for current worktree'));
             console.log(chalk.gray('   Run: vibe-validate validate'));
           }
           process.exit(0);
@@ -38,9 +43,15 @@ export function stateCommand(program: Command): void {
         const historyNote = await readHistoryNote(treeHash);
 
         if (!historyNote || historyNote.runs.length === 0) {
-          console.log('exists: false');
+          // Always show tree hash, even when no runs exist
+          const noStateOutput = {
+            exists: false,
+            treeHash: treeHash,
+          };
+          console.log(stringifyYaml(noStateOutput));
+
           if (options.verbose) {
-            console.log(chalk.gray('\nℹ️  No validation runs found for current worktree'));
+            console.log(chalk.gray('ℹ️  No validation runs found for current worktree'));
           }
           process.exit(0);
         }
@@ -74,9 +85,15 @@ export function stateCommand(program: Command): void {
         process.exit(0);
       } catch (error) {
         if (error instanceof Error && error.message.includes('not a git repository')) {
-          console.log('exists: false');
+          // Not in git repo - show structured output
+          const noGitOutput = {
+            exists: false,
+            error: 'Not in git repository',
+          };
+          console.log(stringifyYaml(noGitOutput));
+
           if (options.verbose) {
-            console.log(chalk.gray('\nℹ️  Not in a git repository'));
+            console.log(chalk.gray('ℹ️  Not in a git repository'));
             console.log(chalk.gray('   Validation history requires git'));
           }
           process.exit(0);
