@@ -8,13 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 **Target Users**: Developers using AI assistants (Claude Code, Cursor, Aider, Continue)
 
-## Project Status
-
-✅ **PUBLISHED TO NPM** - v0.9.6 released and ready for production use
-
-**Latest Version**: 0.9.6
-**npm**: `npm install -D @vibe-validate/cli`
-
 ## Repository Structure
 
 ```
@@ -49,60 +42,17 @@ pnpm dev
 pnpm lint              # ESLint checking
 pnpm typecheck         # TypeScript type checking
 
-# Validation
-pnpm validate          # Full validation pipeline
-pnpm pre-commit        # Pre-commit workflow (sync check + validation)
+# Validation (MUST pass before commit)
+pnpm validate --yaml   # Full validation with LLM-friendly output
+
+# Check cached validation without re-running
+pnpm exec vibe-validate validate --check --yaml
+
+# Pre-commit workflow
+pnpm pre-commit        # Branch sync + validation
 
 # Health checks
-pnpm exec vibe-validate doctor  # Diagnose setup issues (ALWAYS run after upgrade!)
-```
-
-## LLM-Optimized Workflow (For AI Assistants)
-
-**RECOMMENDED**: Use `--yaml` flag for optimal LLM consumption:
-
-```bash
-# Best practice for LLMs (Claude Code, Cursor, etc.)
-pnpm validate --yaml
-```
-
-**Why `--yaml` is better:**
-- ✅ **Human-readable progress** on stderr (visible during execution)
-- ✅ **Machine-parseable YAML** on stdout (easy to extract/parse)
-- ✅ **Standard separator** (`---`) marks transition from progress to data
-- ✅ **Clean extraction**: `sed -n '/^---$/,$p'` gets pure YAML
-- ✅ **90% smaller output**: Extracted failures only (not verbose logs)
-- ✅ **Context-efficient**: Critical errors first, verbose details last
-
-**Output structure:**
-```
-stderr: phase_start: Pre-Qualification
-stderr: 🔍 Running Pre-Qualification...
-stderr: ✅ TypeScript - PASSED
-stderr: phase_complete: Pre-Qualification (passed)
-stdout: ---
-stdout: passed: true
-stdout: timestamp: 2025-10-23T...
-stdout: treeHash: 2b62c71...
-```
-
-**Parsing YAML from mixed output:**
-```bash
-# Get just the YAML
-pnpm validate --yaml 2>&1 | sed -n '/^---$/,$p' | tail -n +2
-
-# Or pipe to yq for processing
-pnpm validate --yaml 2>&1 | sed -n '/^---$/,$p' | tail -n +2 | yq '.failedStep'
-```
-
-**Alternative workflows:**
-```bash
-# Two-step approach (also works)
-pnpm validate                # Run validation (human output)
-vibe-validate state          # Get YAML result (71 lines, was 683)
-
-# Check without running
-vibe-validate validate --check --yaml  # Query cached result
+pnpm exec vibe-validate doctor  # Diagnose setup issues (run after upgrade!)
 ```
 
 ## Package Management
@@ -492,23 +442,6 @@ When you identify an opportunity:
 4. **Create issue or discuss** - Raise with user or create GitHub issue
 
 **Remember**: Your experience as an AI agent IS the product validation. Every friction point you encounter is a bug to fix.
-
-## Current Focus
-
-**Latest Release**: v0.9.6 (2025-10-17)
-
-**Key Features**:
-- ✅ `generate-workflow` command for GitHub Actions workflow generation
-- ✅ `doctor` command for repository health diagnostics
-- ✅ Git tree hash-based validation caching (312x speedup)
-- ✅ Agent-friendly error formatting
-- ✅ Pre-commit workflow integration
-- ✅ Multi-OS and multi-Node.js testing support
-
-**Next Release** (v0.9.7 roadmap):
-1. CI configuration schema support
-2. Enhanced doctor checks
-3. Interactive workflow generator
 
 ## Questions?
 

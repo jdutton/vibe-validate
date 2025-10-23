@@ -694,6 +694,100 @@ describe('validate command', () => {
       );
     });
 
+    it('should display cached validation with tree hash and phase/step counts in human-readable mode', async () => {
+      // Mock valid config (required for validation to proceed)
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [{ name: 'Test Step', command: 'echo test' }]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+
+      // Mock git tree hash (override default rejection)
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+      // Mock git notes with passing validation (cached result with phases)
+      const mockHistoryNote = {
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123def456',
+              duration: 5000,
+              branch: 'main',
+              phases: [
+                {
+                  name: 'Pre-Qualification',
+                  durationSecs: 2.5,
+                  passed: true,
+                  steps: [
+                    { name: 'TypeScript', passed: true, durationSecs: 1.2 },
+                    { name: 'ESLint', passed: true, durationSecs: 1.3 }
+                  ]
+                },
+                {
+                  name: 'Testing',
+                  durationSecs: 2.5,
+                  passed: true,
+                  steps: [
+                    { name: 'Unit Tests', passed: true, durationSecs: 2.5 }
+                  ]
+                }
+              ],
+            },
+          },
+        ],
+      };
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+
+      validateCommand(program);
+
+      // Cache hit should prevent runValidation from being called
+      await program.parseAsync(['validate'], { from: 'user' });
+
+      // Verify cache check happened first
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+
+      // Main assertion: runValidation should NOT be called when cache hits
+      expect(core.runValidation).not.toHaveBeenCalled();
+
+      // Verify human-readable output includes all required fields
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Validation already passed')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Tree hash: abc123def456')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Last validated: 2025-10-22T00:00:00.000Z')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Duration: 5.0s')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Branch: main')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Phases: 2, Steps: 3')
+      );
+    });
+
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
       // Mock valid config (required for validation to proceed)
       const mockConfig: VibeValidateConfig = {

@@ -103,9 +103,15 @@ export function validateCommand(program: Command): void {
                   // Human-readable mode: Display cache hit message
                   const durationSecs = (passingRun.duration / 1000).toFixed(1);
                   console.log(chalk.green('✅ Validation already passed for current working tree'));
+                  console.log(chalk.gray(`   Tree hash: ${treeHashBefore.substring(0, 12)}...`));
                   console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
                   console.log(chalk.gray(`   Duration: ${durationSecs}s`));
                   console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
+
+                  if (passingRun.result?.phases) {
+                    const totalSteps = passingRun.result.phases.reduce((sum, phase) => sum + (phase.steps?.length || 0), 0);
+                    console.log(chalk.gray(`   Phases: ${passingRun.result.phases.length}, Steps: ${totalSteps}`));
+                  }
                 }
 
                 // Exit action handler - cached result already output
