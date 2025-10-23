@@ -17,6 +17,42 @@ interface TestFailure {
 }
 
 /**
+ * Extract runtime errors (Unhandled Rejection, ENOENT, etc.)
+ *
+ * @param output - Full test output
+ * @returns Test failure object if runtime error found
+ */
+function extractRuntimeError(output: string): TestFailure | null {
+  // Look for "Unhandled Rejection" section
+  const unhandledMatch = output.match(/⎯+\s*Unhandled Rejection\s*⎯+\s*\n\s*(Error:[^\n]+(?:\n\s*[^\n❯⎯]+)?)/);
+  if (!unhandledMatch) {
+    return null;
+  }
+
+  // Error message may span multiple lines (e.g., path on next line)
+  const errorMessage = unhandledMatch[1].trim().replace(/\n\s+/g, ' ');
+
+  // Extract location from stack trace (❯ function file:line:col)
+  // File path may contain colons (e.g., node:internal/fs/promises), so match ❯ function filepath:number:number
+  const locationMatch = output.match(/❯\s+\S+\s+([\w:/.]+):(\d+):(\d+)/);
+  let file = 'unknown';
+  let location = '';
+
+  if (locationMatch) {
+    file = locationMatch[1];
+    location = `${locationMatch[1]}:${locationMatch[2]}:${locationMatch[3]}`;
+  }
+
+  return {
+    file,
+    location,
+    testHierarchy: 'Runtime Error',
+    errorMessage,
+    sourceLine: ''
+  };
+}
+
+/**
  * Format Vitest test failures
  *
  * Extracts:
@@ -41,6 +77,12 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
   const failures: TestFailure[] = [];
   let currentFailure: Partial<TestFailure> | null = null;
 
+  // First, check for runtime errors (Unhandled Rejection, ENOENT, etc.)
+  const runtimeError = extractRuntimeError(output);
+  if (runtimeError) {
+    failures.push(runtimeError);
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -62,11 +104,57 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
     }
 
     // Match: AssertionError: expected 3000 to be 9999 // Object.is equality
-    if (currentFailure && !currentFailure.errorMessage && (line.includes('AssertionError:') || line.includes('Error:'))) {
+    // OR: Error: Test timed out in 5000ms.
+    // OR: Snapshot `name` mismatched
+    if (currentFailure && !currentFailure.errorMessage) {
+      // Check for standard error patterns
       const errorMatch = line.match(/((?:AssertionError|Error):\s*.+)/);
-      if (errorMatch) {
+      // Check for snapshot failures (doesn't have "Error:" prefix)
+      const snapshotMatch = line.match(/Snapshot\s+`([^`]+)`\s+mismatched/);
+
+      if (errorMatch || snapshotMatch) {
         // Keep the full error including the type (AssertionError: ...)
-        currentFailure.errorMessage = errorMatch[1].trim();
+        let errorMessage = errorMatch ? errorMatch[1].trim() : line.trim();
+        const isSnapshotError = !!snapshotMatch;
+
+        // Capture additional lines (e.g., timeout guidance, long error messages, snapshot diffs)
+        // For snapshot errors: continue through blank lines until stack trace
+        // For other errors: stop at blank lines
+        let j = i + 1;
+        while (j < lines.length) {
+          const nextLine = lines[j].trim();
+
+          // Always stop at these markers
+          if (nextLine.startsWith('❯') || nextLine.match(/^\d+\|/) || nextLine.startsWith('FAIL') || nextLine.startsWith('✓') || nextLine.startsWith('❌') || nextLine.startsWith('⎯')) {
+            break;
+          }
+
+          // Stop at stack trace (starts with "at ")
+          if (nextLine.startsWith('at ')) {
+            break;
+          }
+
+          // For non-snapshot errors, stop at blank lines
+          // For snapshot errors, continue through blank lines to capture diff
+          if (!nextLine && !isSnapshotError) {
+            break;
+          }
+
+          // Add line to error message
+          // For snapshots: preserve formatting with newlines and indentation
+          // For other errors: join with spaces for compact output
+          if (nextLine || isSnapshotError) {
+            if (isSnapshotError) {
+              errorMessage += '\n' + lines[j]; // Preserve indentation for diffs
+            } else {
+              errorMessage += ' ' + nextLine; // Compact for normal errors
+            }
+          }
+          j++;
+        }
+
+        currentFailure.errorMessage = errorMessage;
+        i = j - 1; // Skip the lines we just consumed
       }
       continue;
     }
@@ -143,12 +231,23 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
   }
 
   return {
-    errors: failures.slice(0, 10).map(f => ({
-      file: f.file,
-      line: f.location ? parseInt(f.location.split(':')[1]) : undefined,
-      column: f.location ? parseInt(f.location.split(':')[2]) : undefined,
-      message: f.errorMessage || `Test failure: ${f.testHierarchy}`
-    })),
+    errors: failures.slice(0, 10).map(f => {
+      // Parse line:column from end of location string (file paths may contain colons)
+      let line: number | undefined;
+      let column: number | undefined;
+      if (f.location) {
+        const parts = f.location.split(':');
+        column = parseInt(parts.pop() || '');
+        line = parseInt(parts.pop() || '');
+      }
+
+      return {
+        file: f.file,
+        line: line !== undefined && !isNaN(line) ? line : undefined,
+        column: column !== undefined && !isNaN(column) ? column : undefined,
+        message: f.errorMessage || `Test failure: ${f.testHierarchy}`
+      };
+    }),
     summary: `${failures.length} test failure(s)`,
     totalCount: failures.length,
     guidance,
