@@ -232,7 +232,7 @@ describe('checkValidationStatus', () => {
         expect.stringContaining('Last validated: 2025-10-21T10:00:00Z')
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Duration: 5000ms')
+        expect.stringContaining('Duration: 5.0s')
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('Branch: main')
@@ -302,7 +302,7 @@ describe('checkValidationStatus', () => {
         expect.stringContaining('Last validated: 2025-10-21T11:00:00Z')
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Duration: 3500ms')
+        expect.stringContaining('Duration: 3.5s')
       );
     });
 

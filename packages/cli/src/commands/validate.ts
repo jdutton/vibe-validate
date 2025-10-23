@@ -83,11 +83,12 @@ export function validateCommand(program: Command): void {
               if (passingRun) {
                 // When yaml mode is on, write to stderr to keep stdout clean
                 const log = yaml ? process.stderr.write.bind(process.stderr) : console.log.bind(console);
-                log(chalk.green('✅ Validation already passed for current working tree state') + '\n');
-                log(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}...`) + '\n');
-                log(chalk.gray(`   Last validated: ${passingRun.timestamp}`) + '\n');
-                log(chalk.gray(`   Duration: ${passingRun.duration}ms`) + '\n');
-                log(chalk.gray(`   Branch: ${passingRun.branch}`) + '\n');
+                const durationSecs = (passingRun.duration / 1000).toFixed(1);
+                log(chalk.green('✅ Validation already passed for current working tree state'));
+                log(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}...`));
+                log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
+                log(chalk.gray(`   Duration: ${durationSecs}s`));
+                log(chalk.gray(`   Branch: ${passingRun.branch}`));
 
                 // Return cached result (construct from history note)
                 process.exit(0);

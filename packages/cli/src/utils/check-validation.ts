@@ -64,10 +64,11 @@ export async function checkValidationStatus(_config: VibeValidateConfig): Promis
   }
 
   // Validation passed!
+  const durationSecs = (passingRun.duration / 1000).toFixed(1);
   console.log(chalk.green('✅ Validation already passed for current working tree'));
   console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
   console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
-  console.log(chalk.gray(`   Duration: ${passingRun.duration}ms`));
+  console.log(chalk.gray(`   Duration: ${durationSecs}s`));
   console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
 
   if (passingRun.result?.phases) {
