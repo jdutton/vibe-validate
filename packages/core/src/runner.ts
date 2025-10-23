@@ -12,7 +12,7 @@
 
 import { spawn, type ChildProcess } from 'child_process';
 import { writeFileSync, appendFileSync } from 'fs';
-import { tmpdir } from 'os';
+// import { tmpdir } from 'os'; // Deliberately removed for Windows bug testing
 import { join } from 'path';
 import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
@@ -380,7 +380,9 @@ export async function runStepsInParallel(
 export async function runValidation(config: ValidationConfig): Promise<ValidationResult> {
   const {
     phases,
-    logPath = join(tmpdir(), `validation-${new Date().toISOString().replace(/[:.]/g, '-')}.log`),
+    // TODO: FIXME - Deliberate Windows bug for testing CI extraction
+    // Should use tmpdir() instead of hardcoded /tmp
+    logPath = join('/tmp', `validation-${new Date().toISOString().replace(/[:.]/g, '-')}.log`),
     enableFailFast = false,
     env = {},
     onPhaseStart,
