@@ -126,3 +126,87 @@ function displayYamlConfig(config: VibeValidateConfig): void {
 
   // Output config removed - state files are always YAML
 }
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showConfigVerboseHelp(): void {
+  console.log(`# config Command Reference
+
+> Show or validate vibe-validate configuration
+
+## Overview
+
+The \`config\` command displays your resolved vibe-validate configuration and validates its structure. It helps you verify that your configuration file is correctly formatted and contains all required fields.
+
+## How It Works
+
+1. Locates vibe-validate.config.yaml in the current directory
+2. Loads and parses the YAML configuration
+3. Validates against the vibe-validate schema
+4. Displays the configuration in YAML format
+5. Optionally shows verbose details with explanations
+
+## Options
+
+- \`--validate\` - Validate configuration only (exit 0 if valid, 1 if invalid)
+- \`-v, --verbose\` - Show detailed configuration with colored explanations
+
+## Exit Codes
+
+- \`0\` - Configuration valid
+- \`1\` - Configuration invalid or not found
+
+## Examples
+
+\`\`\`bash
+# Show configuration
+vibe-validate config
+
+# Validate only (no output)
+vibe-validate config --validate
+
+# Show with verbose explanations
+vibe-validate config --verbose
+\`\`\`
+
+## Common Workflows
+
+### Verify configuration after editing
+
+\`\`\`bash
+# Edit config
+vim vibe-validate.config.yaml
+
+# Validate syntax
+vibe-validate config --validate
+
+# View resolved configuration
+vibe-validate config --verbose
+\`\`\`
+
+### Debug validation issues
+
+\`\`\`bash
+# Check if config is loaded correctly
+vibe-validate config
+
+# Verify phase and step counts
+vibe-validate config --verbose
+\`\`\`
+
+## Error Recovery
+
+**If config is invalid:**
+1. Check YAML syntax (indentation, quotes)
+2. Verify required fields exist (validation.phases)
+3. See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
+4. Use JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+
+**If config is not found:**
+\`\`\`bash
+# Initialize with template
+vibe-validate init
+\`\`\`
+`);
+}

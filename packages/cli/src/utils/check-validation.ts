@@ -35,6 +35,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
         exists: false,
         error: 'Not in git repository',
       };
+      process.stdout.write('---\n');
       process.stdout.write(yamlStringify(errorOutput));
     } else {
       // Human mode: Colored output
@@ -56,6 +57,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
         treeHash: currentTreeHash,
         error: 'Failed to read validation history',
       };
+      process.stdout.write('---\n');
       process.stdout.write(yamlStringify(errorOutput));
     } else {
       // Human mode: Colored output
@@ -73,6 +75,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
         exists: false,
         treeHash: currentTreeHash,
       };
+      process.stdout.write('---\n');
       process.stdout.write(yamlStringify(noHistoryOutput));
     } else {
       // Human mode: Colored output
@@ -92,6 +95,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
 
     if (yaml) {
       // YAML mode: Output failed result as YAML to stdout
+      process.stdout.write('---\n');
       process.stdout.write(yamlStringify(mostRecent.result));
 
       // Wait for stdout to flush before exiting
@@ -131,6 +135,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
   // Validation passed!
   if (yaml) {
     // YAML mode: Output validation result as YAML to stdout
+    process.stdout.write('---\n');
     process.stdout.write(yamlStringify(passingRun.result));
 
     // Wait for stdout to flush before exiting

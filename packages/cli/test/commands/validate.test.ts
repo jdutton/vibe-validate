@@ -34,6 +34,9 @@ vi.mock('@vibe-validate/history', async () => {
   return {
     ...actual,
     readHistoryNote: vi.fn(),
+    checkWorktreeStability: vi.fn(),
+    recordValidationHistory: vi.fn(),
+    checkHistoryHealth: vi.fn(),
   };
 });
 
@@ -70,15 +73,40 @@ describe('validate command', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
+    // Mock process.exit to prevent it from actually exiting during tests
+    vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      throw new Error(`process.exit(${code})`);
+    }) as any;
+
     // Reset mocks
     vi.mocked(core.runValidation).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
     vi.mocked(git.getGitTreeHash).mockReset();
     vi.mocked(history.readHistoryNote).mockReset();
+    vi.mocked(history.checkWorktreeStability).mockReset();
+    vi.mocked(history.recordValidationHistory).mockReset();
+    vi.mocked(history.checkHistoryHealth).mockReset();
 
     // Default getGitTreeHash to throw (simulating not in git repo)
     // Tests can override this if they need git functionality
     vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('Not in git repo'));
+
+    // Default history mocks to no-op
+    vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+      stable: true,
+      treeHashBefore: 'default',
+      treeHashAfter: 'default',
+    });
+    vi.mocked(history.recordValidationHistory).mockResolvedValue({
+      recorded: true,
+    });
+    vi.mocked(history.checkHistoryHealth).mockResolvedValue({
+      healthy: true,
+      totalNotes: 0,
+      totalSize: 0,
+      shouldWarn: false,
+      warningMessage: '',
+    });
   });
 
   afterEach(() => {
@@ -520,10 +548,8 @@ describe('validate command', () => {
       // Verify runValidation was NOT called (using --check flag)
       expect(core.runValidation).not.toHaveBeenCalled();
 
-      // BUG REPRODUCTION: Currently this test will FAIL because check-validation.ts
-      // doesn't respect the --yaml flag and outputs human-readable text instead
-
-      // Verify YAML was written to stdout (not human-readable text to console.log)
+      // Verify YAML separator and content were written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('timestamp:'));
 
@@ -551,7 +577,16 @@ describe('validate command', () => {
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
 
       // Spy on process.stdout.write to capture YAML output
-      vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      // Return true to indicate write succeeded (no buffering needed)
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
+        // Handle different call signatures
+        if (typeof encoding === 'function') {
+          encoding(); // encoding is actually the callback
+        } else if (typeof callback === 'function') {
+          callback();
+        }
+        return true; // Indicate write succeeded
+      });
     });
 
     it('should register --yaml option', () => {
@@ -579,7 +614,8 @@ describe('validate command', () => {
         // Expected exit
       }
 
-      // Verify pure YAML was written to stdout (no headers, workflow adds those)
+      // Verify YAML separator and content were written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
     });
 
@@ -604,7 +640,8 @@ describe('validate command', () => {
         }
       }
 
-      // Verify pure YAML was written to stdout (no headers, workflow adds those)
+      // Verify YAML separator and content were written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
     });
 
@@ -655,6 +692,202 @@ describe('validate command', () => {
           verbose: true
         })
       );
+    });
+
+    it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
+      // Mock valid config (required for validation to proceed)
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [{ name: 'Test Step', command: 'echo test' }]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+
+      // Spy on process.stdout.write to capture YAML output
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
+        if (typeof encoding === 'function') {
+          encoding();
+        } else if (typeof callback === 'function') {
+          callback();
+        }
+        return true;
+      });
+
+      // Mock git tree hash (override default rejection)
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+      // Mock git notes with passing validation (cached result)
+      const mockHistoryNote = {
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123def456',
+              duration: 5000,
+              branch: 'main',
+              phases: [],
+            },
+          },
+        ],
+      };
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+
+      validateCommand(program);
+
+      // Cache hit should prevent runValidation from being called
+      await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+
+      // Verify cache check happened first
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+
+      // Main assertion: runValidation should NOT be called when cache hits
+      expect(core.runValidation).not.toHaveBeenCalled();
+
+      // Verify YAML separator and cached result were written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith('---\n');
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('treeHash:'));
+
+      // Verify console.log was NOT called (YAML mode should only use stdout)
+      expect(console.log).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('worktree stability', () => {
+    beforeEach(() => {
+      // Mock valid config
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [
+                { name: 'Test Step', command: 'echo test' }
+              ]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+    });
+
+    it('should warn and skip history recording when worktree changes during validation', async () => {
+      const treeHashBefore = 'abc123def456';
+      const treeHashAfter = 'def456abc123';
+
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHashBefore);
+
+      // Mock worktree stability - unstable (changed during validation)
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: false,
+        treeHashBefore: treeHashBefore,
+        treeHashAfter: treeHashAfter,
+      });
+
+      // Mock successful validation
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-23T00:00:00.000Z',
+        treeHash: treeHashBefore,
+        phases: [],
+      });
+
+      // Spy on console.warn to verify warning message
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit with code 0 (validation passed)
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      // Verify warning was displayed
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('⚠️  Worktree changed during validation')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Before: abc123def456')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('After:  def456abc123')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Results valid but history not recorded (unstable state)')
+      );
+
+      // Verify validation ran successfully
+      expect(core.runValidation).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it('should record history when worktree remains stable', async () => {
+      const treeHash = 'abc123def456';
+
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHash);
+
+      // Mock worktree stability - stable (unchanged during validation)
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: true,
+        treeHashBefore: treeHash,
+        treeHashAfter: treeHash,
+      });
+
+      // Mock successful validation
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-23T00:00:00.000Z',
+        treeHash: treeHash,
+        phases: [],
+      });
+
+      // Spy on console.warn to verify NO warning message
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit with code 0 (validation passed)
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(0);
+        }
+      }
+
+      // Verify NO worktree change warning
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('⚠️  Worktree changed during validation')
+      );
+
+      // Verify validation ran successfully
+      expect(core.runValidation).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
     });
   });
 });

@@ -403,6 +403,145 @@ describe('bin.ts - CLI entry point', () => {
         ).toBe(expectedHelpOutput);
       });
     });
+
+    describe('subcommand verbose help', () => {
+      it('should show detailed Markdown documentation for "history --help --verbose"', async () => {
+        const result = await executeCLI(['history', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+
+        // Should show detailed history command documentation in Markdown
+        expect(result.stdout).toContain('# history Command Reference');
+        expect(result.stdout).toContain('> View and manage validation history stored in git notes');
+        expect(result.stdout).toContain('## Overview');
+        expect(result.stdout).toContain('## Subcommands');
+        expect(result.stdout).toContain('### `list` - List validation history');
+        expect(result.stdout).toContain('### `show` - Show detailed history for a tree hash');
+        expect(result.stdout).toContain('### `prune` - Remove old validation history');
+        expect(result.stdout).toContain('### `health` - Check history health');
+        expect(result.stdout).toContain('## Storage Details');
+        expect(result.stdout).toContain('## Exit Codes');
+        expect(result.stdout).toContain('## Common Workflows');
+        expect(result.stdout).toContain('## Integration with CI');
+
+        // Should NOT show comprehensive CLI reference (root command)
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+        expect(result.stdout).not.toContain('### `validate`');
+      });
+
+      it('should show detailed Markdown documentation for "validate --help --verbose"', async () => {
+        const result = await executeCLI(['validate', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# validate Command Reference');
+        expect(result.stdout).toContain('> Run validation with git tree hash caching');
+        expect(result.stdout).toContain('## Overview');
+        expect(result.stdout).toContain('## How It Works');
+        expect(result.stdout).toContain('## Options');
+        expect(result.stdout).toContain('## Exit Codes');
+        expect(result.stdout).toContain('## Caching Behavior');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "init --help --verbose"', async () => {
+        const result = await executeCLI(['init', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# init Command Reference');
+        expect(result.stdout).toContain('> Initialize vibe-validate configuration');
+        expect(result.stdout).toContain('## Templates');
+        expect(result.stdout).toContain('## Pre-commit Hook Setup');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "state --help --verbose"', async () => {
+        const result = await executeCLI(['state', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# state Command Reference');
+        expect(result.stdout).toContain('> View current validation state');
+        expect(result.stdout).toContain('## Overview');
+        expect(result.stdout).toContain('## When to Use');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "config --help --verbose"', async () => {
+        const result = await executeCLI(['config', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# config Command Reference');
+        expect(result.stdout).toContain('> Show or validate vibe-validate configuration');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "pre-commit --help --verbose"', async () => {
+        const result = await executeCLI(['pre-commit', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# pre-commit Command Reference');
+        expect(result.stdout).toContain('> Run branch sync check + validation (recommended before commit)');
+        expect(result.stdout).toContain('## Overview');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "sync-check --help --verbose"', async () => {
+        const result = await executeCLI(['sync-check', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# sync-check Command Reference');
+        expect(result.stdout).toContain('> Check if branch is behind remote main branch');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "cleanup --help --verbose"', async () => {
+        const result = await executeCLI(['cleanup', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# cleanup Command Reference');
+        expect(result.stdout).toContain('> Post-merge cleanup (switch to main, delete merged branches)');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "doctor --help --verbose"', async () => {
+        const result = await executeCLI(['doctor', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# doctor Command Reference');
+        expect(result.stdout).toContain('> Diagnose vibe-validate setup and environment');
+        expect(result.stdout).toContain('## Overview');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "generate-workflow --help --verbose"', async () => {
+        const result = await executeCLI(['generate-workflow', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# generate-workflow Command Reference');
+        expect(result.stdout).toContain('> Generate GitHub Actions workflow from vibe-validate config');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show detailed Markdown documentation for "watch-pr --help --verbose"', async () => {
+        const result = await executeCLI(['watch-pr', '--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('# watch-pr Command Reference');
+        expect(result.stdout).toContain('> Watch CI checks for a pull/merge request in real-time');
+        expect(result.stdout).toContain('## Overview');
+        expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
+      });
+
+      it('should show comprehensive help only for root "--help --verbose" (no subcommand)', async () => {
+        const result = await executeCLI(['--help', '--verbose']);
+
+        expect(result.code).toBe(0);
+
+        // SHOULD show comprehensive CLI reference
+        expect(result.stdout).toContain('# vibe-validate CLI Reference');
+        expect(result.stdout).toContain('## Common Workflows');
+        expect(result.stdout).toContain('## Exit Codes');
+      });
+    });
   });
 
   describe('command registration', () => {

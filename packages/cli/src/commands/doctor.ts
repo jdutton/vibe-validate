@@ -879,8 +879,24 @@ export function doctorCommand(program: Command): void {
         const result = await runDoctor({ verbose });
 
         if (options.yaml) {
-          // YAML output for programmatic use
-          console.log(stringifyYaml(result));
+          // YAML mode: Output structured result to stdout
+          // Small delay to ensure stderr is flushed
+          await new Promise(resolve => setTimeout(resolve, 10));
+
+          // RFC 4627 separator
+          process.stdout.write('---\n');
+
+          // Write pure YAML
+          process.stdout.write(stringifyYaml(result));
+
+          // CRITICAL: Wait for stdout to flush before exiting
+          await new Promise<void>(resolve => {
+            if (process.stdout.write('')) {
+              resolve();
+            } else {
+              process.stdout.once('drain', resolve);
+            }
+          });
         } else {
           // Human-friendly output
           console.log('🩺 vibe-validate Doctor\n');
@@ -924,4 +940,128 @@ export function doctorCommand(program: Command): void {
         process.exit(1);
       }
     });
+}
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showDoctorVerboseHelp(): void {
+  console.log(`# doctor Command Reference
+
+> Diagnose vibe-validate setup and environment (run after upgrading)
+
+## Overview
+
+The \`doctor\` command performs comprehensive diagnostics of your vibe-validate setup and environment. It checks Node.js version, git repository health, configuration validity, package manager availability, and CI/CD integration status.
+
+## How It Works
+
+1. Checks Node.js version (20+)
+2. Verifies git repository exists
+3. Checks package manager availability
+4. Validates configuration file
+5. Checks pre-commit hook setup
+6. Verifies GitHub Actions workflow sync
+
+## Options
+
+- \`--yaml\` - Output YAML only (no human-friendly display)
+
+## Exit Codes
+
+- \`0\` - All critical checks passed
+- \`1\` - One or more critical checks failed
+
+## Examples
+
+\`\`\`bash
+# Run diagnostics
+vibe-validate doctor
+
+# YAML output only
+vibe-validate doctor --yaml
+\`\`\`
+
+## Common Workflows
+
+### After installing vibe-validate
+
+\`\`\`bash
+# Initialize configuration
+vibe-validate init
+
+# Verify setup
+vibe-validate doctor
+\`\`\`
+
+### After upgrading vibe-validate
+
+\`\`\`bash
+# Upgrade package
+npm install -D vibe-validate@latest
+
+# CRITICAL: Always run doctor after upgrade
+vibe-validate doctor
+
+# Fix any issues reported
+\`\`\`
+
+### Troubleshooting validation issues
+
+\`\`\`bash
+# Diagnose environment
+vibe-validate doctor
+
+# Fix reported issues
+
+# Retry validation
+vibe-validate validate
+\`\`\`
+
+## Checks Performed
+
+### Critical Checks (must pass)
+
+- **Node.js version**: >=20.0.0 required
+- **Git installed**: git command available
+- **Git repository**: Current directory is a git repo
+- **Configuration file**: vibe-validate.config.yaml exists
+- **Configuration valid**: No syntax or schema errors
+
+### Advisory Checks (warnings only)
+
+- **Package manager**: npm or pnpm available
+- **Pre-commit hook**: Husky pre-commit hook configured
+- **GitHub Actions workflow**: Workflow in sync with config
+- **Validation history**: Git notes health status
+
+## Error Recovery
+
+**If Node.js version check fails:**
+\`\`\`bash
+# Upgrade Node.js to 20+
+# Via nvm:
+nvm install 20
+nvm use 20
+
+# Or download from: https://nodejs.org/
+\`\`\`
+
+**If configuration check fails:**
+\`\`\`bash
+# Reinitialize with template
+vibe-validate init --force
+
+# Or manually fix YAML syntax errors
+\`\`\`
+
+**If workflow is out of sync:**
+\`\`\`bash
+# Regenerate workflow
+vibe-validate generate-workflow
+
+# Or reinitialize
+vibe-validate init --setup-workflow
+\`\`\`
+`);
 }

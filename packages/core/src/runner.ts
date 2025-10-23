@@ -252,10 +252,10 @@ export async function runStepsInParallel(
             durationSecs,
           };
 
-          // ALWAYS run extractors on ALL steps (passing and failing)
-          // Overhead: ~10ms, Benefits: extract failures, warnings, and quality metrics
-          // This enables continuous improvement through dogfooding
-          if (output && output.trim()) {
+          // Only run extractors on FAILED steps (code !== 0)
+          // Rationale: Passing tests have no failures to extract, extraction would always produce
+          // meaningless results (score: 0, no errors). Skipping saves CPU and reduces output noise.
+          if (code !== 0 && output && output.trim()) {
             const formatted = extractByStepName(step.name, output);
 
             // Extract structured failures/tests
@@ -266,31 +266,34 @@ export async function runStepsInParallel(
               return `${location} - ${error.message || 'No message'}`;
             }) || [];
 
-            // Detect tool from step name (heuristic until extractors returns this)
-            const detectedTool = step.name.toLowerCase().includes('typescript') || step.name.toLowerCase().includes('tsc')
-              ? 'typescript'
-              : step.name.toLowerCase().includes('eslint')
-              ? 'eslint'
-              : step.name.toLowerCase().includes('test') || step.name.toLowerCase().includes('vitest')
-              ? 'vitest'
-              : 'unknown';
+            // Only include extraction quality metrics when developerFeedback is enabled
+            // This is for vibe-validate contributors to identify extraction improvement opportunities
+            if (developerFeedback) {
+              // Detect tool from step name (heuristic until extractors returns this)
+              const detectedTool = step.name.toLowerCase().includes('typescript') || step.name.toLowerCase().includes('tsc')
+                ? 'typescript'
+                : step.name.toLowerCase().includes('eslint')
+                ? 'eslint'
+                : step.name.toLowerCase().includes('test') || step.name.toLowerCase().includes('vitest')
+                ? 'vitest'
+                : 'unknown';
 
-            // Calculate extraction quality metrics
-            const score = calculateExtractionQuality(formatted);
-            stepResult.extractionQuality = {
-              detectedTool,
-              confidence: score >= 80 ? 'high' : score >= 50 ? 'medium' : 'low',
-              score,
-              warnings: formatted.errors?.filter(e => e.severity === 'warning').length || 0,
-              errorsExtracted: formatted.errors?.filter(e => e.severity !== 'warning').length || formatted.errors?.length || 0,
-              actionable: (formatted.errors?.length || 0) > 0,
-            };
+              // Calculate extraction quality metrics
+              const score = calculateExtractionQuality(formatted);
+              stepResult.extractionQuality = {
+                detectedTool,
+                confidence: score >= 80 ? 'high' : score >= 50 ? 'medium' : 'low',
+                score,
+                warnings: formatted.errors?.filter(e => e.severity === 'warning').length || 0,
+                errorsExtracted: formatted.errors?.filter(e => e.severity !== 'warning').length || formatted.errors?.length || 0,
+                actionable: (formatted.errors?.length || 0) > 0,
+              };
 
-            // Alert on poor extraction quality (for failed steps)
-            // Only show when developerFeedback is enabled (for vibe-validate contributors)
-            if (developerFeedback && code !== 0 && score < 50) {
-              log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
-              log(`         💡 Dogfooding opportunity: Improve ${detectedTool} extractor for this output`);
+              // Alert on poor extraction quality (for failed steps)
+              if (score < 50) {
+                log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
+                log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
+              }
             }
           }
 

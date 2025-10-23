@@ -1,0 +1,533 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Command } from 'commander';
+import { syncCheckCommand } from '../../src/commands/sync-check.js';
+import * as git from '@vibe-validate/git';
+import * as configLoader from '../../src/utils/config-loader.js';
+
+// Mock the git module
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual<typeof git>('@vibe-validate/git');
+  return {
+    ...actual,
+    checkBranchSync: vi.fn(),
+  };
+});
+
+// Mock the config loader
+vi.mock('../../src/utils/config-loader.js', async () => {
+  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');
+  return {
+    ...actual,
+    loadConfig: vi.fn(),
+  };
+});
+
+describe('sync-check command', () => {
+  let program: Command;
+
+  beforeEach(() => {
+    // Create fresh Commander instance
+    program = new Command();
+    program.exitOverride(); // Prevent process.exit() from killing tests
+
+    // Spy on console methods to capture output
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    // Reset mocks
+    vi.mocked(git.checkBranchSync).mockReset();
+    vi.mocked(configLoader.loadConfig).mockReset();
+
+    // Default config mock
+    vi.mocked(configLoader.loadConfig).mockResolvedValue({
+      git: {
+        mainBranch: 'main',
+        remoteOrigin: 'origin',
+      },
+      phases: [],
+    });
+  });
+
+  describe('command registration', () => {
+    it('should register sync-check command', () => {
+      syncCheckCommand(program);
+
+      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      expect(command).toBeDefined();
+    });
+
+    it('should have correct description', () => {
+      syncCheckCommand(program);
+
+      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      expect(command?.description()).toBe('Check if branch is behind remote main branch');
+    });
+
+    it('should register --main-branch option', () => {
+      syncCheckCommand(program);
+
+      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const option = command?.options.find(opt => opt.long === '--main-branch');
+      expect(option).toBeDefined();
+    });
+
+    it('should register --remote-origin option', () => {
+      syncCheckCommand(program);
+
+      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const option = command?.options.find(opt => opt.long === '--remote-origin');
+      expect(option).toBeDefined();
+    });
+
+    it('should register --yaml option', () => {
+      syncCheckCommand(program);
+
+      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const option = command?.options.find(opt => opt.long === '--yaml');
+      expect(option).toBeDefined();
+    });
+  });
+
+  describe('sync check when up to date', () => {
+    it('should exit with code 0 when up to date', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'main',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      // Mock process.exit to track exit code
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+        throw new Error(`process.exit(${code})`);
+      }) as any;
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(exitSpy).toHaveBeenCalledWith(0);
+
+      exitSpy.mockRestore();
+    });
+
+    it('should display success message when up to date', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'feature/test',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(console.log).toHaveBeenCalled();
+    });
+  });
+
+  describe('sync check when behind', () => {
+    it('should exit with code 1 when behind remote', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: false,
+        currentBranch: 'feature/test',
+        behindBy: 3,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      // Mock process.exit to track exit code
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+        throw new Error(`process.exit(${code})`);
+      }) as any;
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      exitSpy.mockRestore();
+    });
+
+    it('should display warning message when behind', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: false,
+        currentBranch: 'feature/test',
+        behindBy: 5,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(console.log).toHaveBeenCalled();
+    });
+  });
+
+  describe('sync check with no remote', () => {
+    it('should exit with code 0 when no remote', async () => {
+      const mockResult = {
+        hasRemote: false,
+        isUpToDate: true,
+        currentBranch: 'feature/new',
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      // Mock process.exit to track exit code
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+        throw new Error(`process.exit(${code})`);
+      }) as any;
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(exitSpy).toHaveBeenCalledWith(0);
+
+      exitSpy.mockRestore();
+    });
+
+    it('should display message when no remote', async () => {
+      const mockResult = {
+        hasRemote: false,
+        isUpToDate: true,
+        currentBranch: 'feature/new',
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(console.log).toHaveBeenCalled();
+    });
+  });
+
+  describe('--yaml flag', () => {
+    it('should output YAML with --- separator when up to date', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'main',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify YAML separator was written
+      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
+      const separatorCall = writeCalls.find(call => call[0] === '---\n');
+      expect(separatorCall).toBeDefined();
+
+      // Verify YAML content was written
+      const yamlCalls = writeCalls.filter(call =>
+        typeof call[0] === 'string' && call[0].includes('isUpToDate:')
+      );
+      expect(yamlCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should output YAML with --- separator when behind', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: false,
+        currentBranch: 'feature/test',
+        behindBy: 3,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify YAML separator was written
+      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
+      const separatorCall = writeCalls.find(call => call[0] === '---\n');
+      expect(separatorCall).toBeDefined();
+
+      // Verify YAML includes behind count
+      const yamlContent = writeCalls
+        .filter(call => typeof call[0] === 'string')
+        .map(call => call[0])
+        .join('');
+      expect(yamlContent).toContain('behindBy:');
+    });
+
+    it('should output YAML with --- separator when no remote', async () => {
+      const mockResult = {
+        hasRemote: false,
+        isUpToDate: true,
+        currentBranch: 'feature/new',
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify YAML separator was written
+      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
+      const separatorCall = writeCalls.find(call => call[0] === '---\n');
+      expect(separatorCall).toBeDefined();
+
+      // Verify YAML shows no remote
+      const yamlContent = writeCalls
+        .filter(call => typeof call[0] === 'string')
+        .map(call => call[0])
+        .join('');
+      expect(yamlContent).toContain('hasRemote: false');
+    });
+  });
+
+  describe('option overrides', () => {
+    it('should override main branch with --main-branch option', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'feature/test',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check', '--main-branch', 'develop'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify checkBranchSync was called with correct remote branch
+      expect(git.checkBranchSync).toHaveBeenCalledWith({
+        remoteBranch: 'origin/develop',
+      });
+    });
+
+    it('should override remote origin with --remote-origin option', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'feature/test',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check', '--remote-origin', 'upstream'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify checkBranchSync was called with correct remote
+      expect(git.checkBranchSync).toHaveBeenCalledWith({
+        remoteBranch: 'upstream/main',
+      });
+    });
+
+    it('should override both main branch and remote origin', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'feature/test',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check', '--main-branch', 'develop', '--remote-origin', 'upstream'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify checkBranchSync was called with both overrides
+      expect(git.checkBranchSync).toHaveBeenCalledWith({
+        remoteBranch: 'upstream/develop',
+      });
+    });
+  });
+
+  describe('human-readable output', () => {
+    it('should display human-friendly output when no --yaml flag', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'main',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify console.log was called for human output
+      expect(console.log).toHaveBeenCalled();
+
+      // Verify YAML separator was NOT written to stdout
+      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
+      const separatorCall = writeCalls.find(call => call[0] === '---\n');
+      expect(separatorCall).toBeUndefined();
+    });
+
+    it('should display current branch in human output', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: true,
+        currentBranch: 'feature/test',
+        behindBy: 0,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify console.log was called
+      expect(console.log).toHaveBeenCalled();
+    });
+
+    it('should display behind count in human output', async () => {
+      const mockResult = {
+        hasRemote: true,
+        isUpToDate: false,
+        currentBranch: 'feature/test',
+        behindBy: 7,
+      };
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      // Verify console.log was called
+      expect(console.log).toHaveBeenCalled();
+    });
+  });
+
+  describe('error handling', () => {
+    it('should handle sync check errors gracefully', async () => {
+      const error = new Error('Git command failed');
+      vi.mocked(git.checkBranchSync).mockRejectedValue(error);
+
+      // Mock process.exit to track exit code
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+        throw new Error(`process.exit(${code})`);
+      }) as any;
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Sync check failed with error:'),
+        error
+      );
+      expect(exitSpy).toHaveBeenCalledWith(2);
+
+      exitSpy.mockRestore();
+    });
+
+    it('should handle config loading errors gracefully', async () => {
+      const error = new Error('Config not found');
+      vi.mocked(configLoader.loadConfig).mockRejectedValue(error);
+
+      // Mock process.exit to track exit code
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+        throw new Error(`process.exit(${code})`);
+      }) as any;
+
+      syncCheckCommand(program);
+
+      try {
+        await program.parseAsync(['sync-check'], { from: 'user' });
+      } catch (error) {
+        // Expected - process.exit will throw
+      }
+
+      expect(console.error).toHaveBeenCalled();
+      expect(exitSpy).toHaveBeenCalledWith(2);
+
+      exitSpy.mockRestore();
+    });
+  });
+});

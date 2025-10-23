@@ -166,3 +166,129 @@ function displayVerboseState(state: ValidationResult, yamlContent: string, branc
 
   console.log(chalk.gray('\n💡 Tip: View full history with: vibe-validate history list'));
 }
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showStateVerboseHelp(): void {
+  console.log(`# state Command Reference
+
+> View current validation state
+
+## Overview
+
+The \`state\` command shows the current validation status without re-running validation. It reads the cached validation result from git notes.
+
+## How It Works
+
+1. **Reads validation state** from git notes (if exists)
+2. **Shows pass/fail status**
+3. **Shows git tree hash** (cache key)
+4. **Shows timestamp** of last validation
+5. **Shows error summary** (if failed)
+
+## Options
+
+- \`-v, --verbose\` - Show full error output and details
+- \`-y, --yaml\` - Output as YAML (machine-readable)
+
+## Exit Codes
+
+- \`0\` - State file found and read successfully
+- \`1\` - State file not found or invalid
+
+## Examples
+
+\`\`\`bash
+# Check current state
+vibe-validate state
+
+# See full error details
+vibe-validate state --verbose
+
+# Machine-readable output
+vibe-validate state --yaml
+\`\`\`
+
+## Output Formats
+
+### Standard Output
+\`\`\`
+✅ Validation Status: PASSED
+📅 Last validated: 2025-10-23T14:30:00Z
+🔑 Tree hash: 2b62c71a3f
+⏱️  Duration: 62.4s
+\`\`\`
+
+### Verbose Output
+Includes:
+- Full error messages
+- Stack traces (if available)
+- Failed step details
+- Recommendations for fixing
+
+### YAML Output
+\`\`\`yaml
+exists: true
+passed: true
+timestamp: 2025-10-23T14:30:00Z
+treeHash: 2b62c71a3f...
+duration: 62.4
+\`\`\`
+
+## When to Use
+
+**Use \`state\` when you want to:**
+- Check validation status without re-running
+- Debug why validation failed
+- See what tree hash is cached
+- Verify validation result before committing
+- Get machine-readable validation status
+
+**Don't use \`state\` when:**
+- You want to force fresh validation (use \`validate --force\`)
+- You want to run validation if cache is stale (use \`validate\`)
+
+## Integration with Other Commands
+
+- \`vibe-validate validate\` - Run validation (creates state)
+- \`vibe-validate validate --check\` - Same as \`state\` but with different exit codes
+- \`vibe-validate history list\` - View validation history timeline
+- \`vibe-validate history show <hash>\` - View state for specific tree hash
+
+## Common Workflows
+
+### Debug validation failure
+\`\`\`bash
+# 1. Run validation
+vibe-validate validate
+
+# 2. If fails, see details
+vibe-validate state --verbose
+
+# 3. Fix errors
+
+# 4. Re-run
+vibe-validate validate
+\`\`\`
+
+### AI agent workflow
+\`\`\`bash
+# Run validation
+vibe-validate validate --yaml > /dev/null 2>&1
+
+# Get structured result
+vibe-validate state --yaml
+\`\`\`
+
+### Pre-commit check
+\`\`\`bash
+# Check if validation already passed
+if vibe-validate state --yaml | grep -q "passed: true"; then
+  echo "Validation already passed, skipping"
+else
+  vibe-validate validate
+fi
+\`\`\`
+`);
+}

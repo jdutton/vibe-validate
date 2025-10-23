@@ -283,7 +283,9 @@ describe('checkValidationStatus', () => {
 
       // Should output YAML to stdout (not console.log)
       expect(stdoutWriteSpy).toHaveBeenCalled();
-      const yamlOutput = stdoutWriteSpy.mock.calls[0][0] as string;
+      // First call is separator, second call is YAML content
+      expect(stdoutWriteSpy.mock.calls[0][0]).toBe('---\n');
+      const yamlOutput = stdoutWriteSpy.mock.calls[1][0] as string;
       expect(yamlOutput).toContain('passed: false');
       expect(yamlOutput).toContain('treeHash: abc123def456');
 
@@ -533,7 +535,9 @@ describe('checkValidationStatus', () => {
 
       // Should output YAML to stdout (not console.log)
       expect(stdoutWriteSpy).toHaveBeenCalled();
-      const yamlOutput = stdoutWriteSpy.mock.calls[0][0] as string;
+      // First call is separator, second call is YAML content
+      expect(stdoutWriteSpy.mock.calls[0][0]).toBe('---\n');
+      const yamlOutput = stdoutWriteSpy.mock.calls[1][0] as string;
       expect(yamlOutput).toContain('exists: false');
       expect(yamlOutput).toContain('error:');
 
@@ -549,7 +553,9 @@ describe('checkValidationStatus', () => {
 
       // Should output YAML to stdout
       expect(stdoutWriteSpy).toHaveBeenCalled();
-      const yamlOutput = stdoutWriteSpy.mock.calls[0][0] as string;
+      // First call is separator, second call is YAML content
+      expect(stdoutWriteSpy.mock.calls[0][0]).toBe('---\n');
+      const yamlOutput = stdoutWriteSpy.mock.calls[1][0] as string;
       expect(yamlOutput).toContain('exists: false');
       expect(yamlOutput).toContain('treeHash: abc123def456');
       expect(yamlOutput).toContain('error:');
@@ -566,7 +572,9 @@ describe('checkValidationStatus', () => {
 
       // Should output YAML to stdout
       expect(stdoutWriteSpy).toHaveBeenCalled();
-      const yamlOutput = stdoutWriteSpy.mock.calls[0][0] as string;
+      // First call is separator, second call is YAML content
+      expect(stdoutWriteSpy.mock.calls[0][0]).toBe('---\n');
+      const yamlOutput = stdoutWriteSpy.mock.calls[1][0] as string;
       expect(yamlOutput).toContain('exists: false');
       expect(yamlOutput).toContain('treeHash: abc123def456');
 

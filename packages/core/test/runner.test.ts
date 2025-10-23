@@ -380,4 +380,108 @@ describe('runner', () => {
       expect(onSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
     });
   });
+
+  describe('extractionQuality behavior', () => {
+    describe('developerFeedback=false (default)', () => {
+      it('should NOT include extractionQuality when developerFeedback is false', async () => {
+        // TDD: This test should FAIL initially
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'Failing Step',
+                  command: 'exit 1', // Intentional failure
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+          developerFeedback: false, // Explicitly false (also the default)
+        };
+
+        const result = await runValidation(config);
+
+        // Assert: ValidationResult should NOT have extractionQuality field
+        expect(result.phases).toBeDefined();
+        expect(result.phases![0].steps).toBeDefined();
+        const failedStep = result.phases![0].steps![0];
+
+        expect(failedStep.passed).toBe(false);
+        // This should NOT exist when developerFeedback is false
+        expect(failedStep.extractionQuality).toBeUndefined();
+      });
+    });
+
+    describe('developerFeedback=true', () => {
+      it('should include extractionQuality when developerFeedback is true and test fails', async () => {
+        // TDD: This test should FAIL initially
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'Failing Step',
+                  command: 'echo "ERROR: test failed" && exit 1',
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+          developerFeedback: true, // Enable contributor mode
+        };
+
+        const result = await runValidation(config);
+
+        // Assert: ValidationResult SHOULD have extractionQuality field
+        expect(result.phases).toBeDefined();
+        expect(result.phases![0].steps).toBeDefined();
+        const failedStep = result.phases![0].steps![0];
+
+        expect(failedStep.passed).toBe(false);
+        // This SHOULD exist when developerFeedback is true and test fails
+        expect(failedStep.extractionQuality).toBeDefined();
+        expect(failedStep.extractionQuality).toHaveProperty('score');
+        expect(failedStep.extractionQuality).toHaveProperty('confidence');
+        expect(failedStep.extractionQuality).toHaveProperty('detectedTool');
+        expect(failedStep.extractionQuality).toHaveProperty('actionable');
+      });
+
+      it('should NOT include extractionQuality for passing tests', async () => {
+        // TDD: This test should FAIL initially
+        // Rationale: Passing tests have no failures to extract, score would always be 0 (meaningless)
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'Passing Step',
+                  command: 'echo "success" && exit 0',
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+          developerFeedback: true, // Even with this enabled...
+        };
+
+        const result = await runValidation(config);
+
+        // Assert: extractionQuality should NOT exist for passing tests
+        expect(result.phases).toBeDefined();
+        expect(result.phases![0].steps).toBeDefined();
+        const passingStep = result.phases![0].steps![0];
+
+        expect(passingStep.passed).toBe(true);
+        // Should NOT extract on success - no failures to extract!
+        expect(passingStep.extractionQuality).toBeUndefined();
+      });
+    });
+  });
 });

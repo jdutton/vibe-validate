@@ -158,3 +158,100 @@ export function preCommitCommand(program: Command): void {
       }
     });
 }
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showPreCommitVerboseHelp(): void {
+  console.log(`# pre-commit Command Reference
+
+> Run branch sync check + validation (recommended before commit)
+
+## Overview
+
+The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure your code is synced with the remote main branch and passes all validation checks before allowing a commit. This prevents pushing broken code or creating merge conflicts.
+
+## How It Works
+
+1. Runs sync-check (fails if branch behind origin/main)
+2. Runs validate (with caching)
+3. Reports git status (warns about unstaged files)
+
+## Options
+
+- \`--skip-sync\` - Skip branch sync check (not recommended)
+- \`-v, --verbose\` - Show detailed progress and output
+
+## Exit Codes
+
+- \`0\` - Sync OK and validation passed
+- \`1\` - Sync failed OR validation failed
+
+## Examples
+
+\`\`\`bash
+# Standard pre-commit workflow
+vibe-validate pre-commit
+
+# Skip sync check (not recommended)
+vibe-validate pre-commit --skip-sync
+\`\`\`
+
+## Common Workflows
+
+### Typical usage before committing
+
+\`\`\`bash
+# Make changes
+git add .
+
+# Run pre-commit checks
+vibe-validate pre-commit
+
+# If passed, commit
+git commit -m "Your message"
+\`\`\`
+
+### Integrate with Husky
+
+\`\`\`bash
+# Setup pre-commit hook
+npx husky init
+echo "npx vibe-validate pre-commit" > .husky/pre-commit
+
+# Now runs automatically before every commit
+git commit -m "Your message"
+\`\`\`
+
+## Error Recovery
+
+### If sync check fails
+
+**Branch is behind origin/main:**
+\`\`\`bash
+# Fetch latest changes
+git fetch origin
+
+# Merge origin/main
+git merge origin/main
+
+# Resolve conflicts if any
+
+# Retry pre-commit
+vibe-validate pre-commit
+\`\`\`
+
+### If validation fails
+
+**Fix errors shown in output:**
+\`\`\`bash
+# View detailed error info
+vibe-validate state
+
+# Fix the errors
+
+# Retry pre-commit
+vibe-validate pre-commit
+\`\`\`
+`);
+}
