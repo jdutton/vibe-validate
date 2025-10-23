@@ -423,18 +423,40 @@ async function checkVersion(): Promise<DoctorCheckResult> {
         stdio: 'pipe',
       }).trim();
 
+      // Compare versions (simple semver comparison)
+      const current = currentVersion.split('.').map(Number);
+      const latest = latestVersion.split('.').map(Number);
+
+      let isOutdated = false;
+      for (let i = 0; i < 3; i++) {
+        if (current[i] < latest[i]) {
+          isOutdated = true;
+          break;
+        } else if (current[i] > latest[i]) {
+          break; // Current is newer
+        }
+      }
+
       if (currentVersion === latestVersion) {
         return {
           name: 'vibe-validate version',
           passed: true,
           message: `Current version ${currentVersion} is up to date`,
         };
-      } else {
+      } else if (isOutdated) {
+        // Only show suggestion if current version is behind npm
         return {
           name: 'vibe-validate version',
           passed: true, // Warning only, not a failure
           message: `Current: ${currentVersion}, Latest: ${latestVersion} available`,
           suggestion: `Upgrade: npm install -D vibe-validate@latest (or pnpm add -D vibe-validate@latest)\n   💡 After upgrade: Run 'vibe-validate doctor' to verify setup`,
+        };
+      } else {
+        // Current version is ahead of npm (pre-release or unpublished)
+        return {
+          name: 'vibe-validate version',
+          passed: true,
+          message: `Current: ${currentVersion} (ahead of npm: ${latestVersion})`,
         };
       }
     } catch (_npmError) {
