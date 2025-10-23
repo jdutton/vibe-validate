@@ -168,7 +168,7 @@ title = "My Project Gitleaks Config"
 [allowlist]
 description = "Global allowlist"
 paths = [
-    '''tests/fixtures/.*''',
+    '''tests/samples/.*''',
     '''docs/examples/.*'''
 ]
 
@@ -221,7 +221,7 @@ npx vibe-validate doctor
 
 ### "Too many false positives"
 
-**Problem**: Gitleaks flags test fixtures or documentation examples
+**Problem**: Gitleaks flags test samples or documentation examples
 
 **Solutions**:
 1. Use `.gitleaksignore` with fingerprints (recommended)
@@ -231,7 +231,7 @@ npx vibe-validate doctor
 
 ### "I need to commit test data with fake secrets"
 
-**Problem**: Test fixtures contain example secrets
+**Problem**: Test samples contain example secrets
 
 **Solutions**:
 1. **Best**: Use `.gitleaksignore` with fingerprints
@@ -239,7 +239,7 @@ npx vibe-validate doctor
 3. **Acceptable**: Exclude test paths in `.gitleaks.toml`:
    ```toml
    [allowlist]
-   paths = ['''tests/fixtures/.*''']
+   paths = ['''tests/samples/.*''']
    ```
 
 ### "Scanning is too slow"

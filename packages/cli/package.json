@@ -64,7 +64,7 @@
   "dependencies": {
     "@vibe-validate/config": "workspace:*",
     "@vibe-validate/core": "workspace:*",
-    "@vibe-validate/formatters": "workspace:*",
+    "@vibe-validate/extractors": "workspace:*",
     "@vibe-validate/git": "workspace:*",
     "@vibe-validate/history": "workspace:*",
     "chalk": "^5.3.0",

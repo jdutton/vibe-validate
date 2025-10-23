@@ -30,3 +30,4 @@ ci:
   os:
     - ubuntu-latest
     - windows-latest
+developerFeedback: true

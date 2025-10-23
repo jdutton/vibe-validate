@@ -45,6 +45,7 @@ export function createRunnerConfig(
     enableFailFast: true, // Default to fail-fast (individual phases can override)
     verbose: options.verbose, // Pass verbose flag to runner for output streaming
     yaml: options.yaml, // Pass yaml flag to runner for stdout/stderr routing
+    developerFeedback: config.developerFeedback ?? false, // Enable extraction quality alerts for dogfooding
     env: envVars,
     ...callbacks,
   };

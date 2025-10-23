@@ -839,4 +839,4 @@ Validation state is stored in git notes (not files):
 - [Getting Started](getting-started.md) - Initial setup
 - [CLI Reference](cli-reference.md) - Command-line options
 - [Config Templates Guide](../config-templates/README.md) - Using and customizing templates
-- [Error Formatters Guide](error-formatters-guide.md) - Error formatting details
+- [Error Extractors Guide](error-extractors-guide.md) - Error formatting details

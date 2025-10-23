@@ -387,7 +387,7 @@ You: Great! Commit the changes.
 
 **File editing:**
 - Aider edits files based on errors
-- Uses file:line context from formatters
+- Uses file:line context from extractors
 - Applies fixes systematically
 
 **Git integration:**
@@ -857,7 +857,7 @@ vibe-validate validate --check
 vibe-validate state | grep -A 10 "Failed step"
 ```
 
-Ensure error formatters are working correctly (see [Error Formatters Guide](./error-formatters-guide.md)).
+Ensure error extractors are working correctly (see [Error Extractors Guide](./error-extractors-guide.md)).
 
 ---
 
@@ -867,7 +867,7 @@ Ensure error formatters are working correctly (see [Error Formatters Guide](./er
 - [Configuration Reference](./configuration-reference.md)
 - [CLI Reference](./cli-reference.md)
 - [Config Templates Guide](./../config-templates/README.md)
-- [Error Formatters Guide](./error-formatters-guide.md)
+- [Error Extractors Guide](./error-extractors-guide.md)
 
 ---
 

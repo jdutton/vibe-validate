@@ -163,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - getting-started.md
   - configuration-reference.md
   - agent-integration-guide.md
-  - error-formatters-guide.md
+  - error-extractors-guide.md
 
 ### 🗑️ Removed
 
@@ -483,7 +483,7 @@ Run `vibe-validate doctor` to check your config for issues.
 - **@vibe-validate/cli** - Command-line interface
 - **@vibe-validate/core** - Validation orchestration engine
 - **@vibe-validate/git** - Git workflow utilities
-- **@vibe-validate/formatters** - Error parsing & LLM optimization
+- **@vibe-validate/extractors** - Error parsing & LLM optimization
 - **@vibe-validate/config** - Configuration system with presets
 
 ### 🚀 Performance

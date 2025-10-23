@@ -36,6 +36,29 @@ export interface ValidationPhase {
 }
 
 /**
+ * Extraction quality metrics for a validation step
+ */
+export interface ExtractionQuality {
+  /** Tool detected from output (vitest, tsc, eslint, etc.) */
+  detectedTool: string;
+
+  /** Confidence level of tool detection */
+  confidence: 'high' | 'medium' | 'low';
+
+  /** Quality score (0-100) based on field extraction */
+  score: number;
+
+  /** Number of warnings extracted (even from passing tests) */
+  warnings: number;
+
+  /** Number of errors/failures extracted */
+  errorsExtracted: number;
+
+  /** Is the extraction actionable? (has structured failures/warnings) */
+  actionable: boolean;
+}
+
+/**
  * Result from executing a validation step
  */
 export interface StepResult {
@@ -50,6 +73,12 @@ export interface StepResult {
 
   /** Output from the step (stdout + stderr) */
   output?: string;
+
+  /** Extracted test failures (file:line - message) */
+  failedTests?: string[];
+
+  /** Extraction quality metrics (populated for all steps with output) */
+  extractionQuality?: ExtractionQuality;
 }
 
 /**
@@ -128,6 +157,9 @@ export interface ValidationConfig {
 
   /** Output YAML result to stdout (redirects subprocess output to stderr when true) */
   yaml?: boolean;
+
+  /** Developer feedback for continuous quality improvement (default: false) */
+  developerFeedback?: boolean;
 
   /** Environment variables to pass to all child processes */
   env?: Record<string, string>;

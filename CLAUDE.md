@@ -22,7 +22,7 @@ vibe-validate/
 ├── packages/
 │   ├── core/          # Validation orchestration engine
 │   ├── git/           # Git workflow utilities
-│   ├── formatters/    # Error parsing & LLM optimization
+│   ├── extractors/    # Error extraction & LLM optimization
 │   ├── config/        # Configuration system with schema validation
 │   └── cli/           # Command-line interface
 ├── config-templates/  # YAML configuration templates
@@ -233,7 +233,7 @@ vibe-validate init
 #### Creating Feature Branches
 1. **Always branch from main**: `git checkout main && git pull origin main`
 2. **Create descriptive branch name**:
-   - `feature/add-new-formatter` - for new features
+   - `feature/add-new-extractor` - for new features
    - `fix/git-hash-determinism` - for bug fixes
    - `docs/update-api-reference` - for documentation
    - `refactor/simplify-config` - for refactoring

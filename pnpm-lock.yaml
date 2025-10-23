@@ -44,9 +44,9 @@ importers:
       '@vibe-validate/core':
         specifier: workspace:*
         version: link:../core
-      '@vibe-validate/formatters':
+      '@vibe-validate/extractors':
         specifier: workspace:*
-        version: link:../formatters
+        version: link:../extractors
       '@vibe-validate/git':
         specifier: workspace:*
         version: link:../git
@@ -100,6 +100,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@vibe-validate/extractors':
+        specifier: workspace:*
+        version: link:../extractors
       '@vibe-validate/git':
         specifier: workspace:*
         version: link:../git
@@ -126,7 +129,7 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@20.19.21)
 
-  packages/formatters:
+  packages/extractors:
     dependencies:
       yaml:
         specifier: ^2.6.1

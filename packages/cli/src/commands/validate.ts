@@ -154,6 +154,32 @@ export function validateCommand(program: Command): void {
           if (result.fullLogFile) {
             console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
           }
+
+          // Context-aware extraction quality feedback (only when developerFeedback is enabled)
+          if (config.developerFeedback) {
+            // Check if any steps had poor extraction quality
+            const poorExtractionSteps = result.phases
+              ?.flatMap(phase => phase.steps || [])
+              .filter(step => !step.passed && step.extractionQuality && step.extractionQuality.score < 50);
+
+            if (poorExtractionSteps && poorExtractionSteps.length > 0) {
+              // Detect if we're dogfooding (in the vibe-validate project itself)
+              const isDogfooding = process.cwd().includes('vibe-validate');
+
+              console.error('');
+              console.error(chalk.yellow('⚠️  Poor extraction quality detected'));
+
+              if (isDogfooding) {
+                // Dogfooding context: we're developing vibe-validate itself
+                console.error(chalk.yellow('   💡 Dogfooding opportunity: Improve extractors in packages/extractors/'));
+                console.error(chalk.gray('   See packages/extractors/test/samples/ for how to add test cases'));
+              } else {
+                // External project: user feedback to improve vibe-validate
+                console.error(chalk.yellow('   💡 Help improve vibe-validate by reporting this extraction issue'));
+                console.error(chalk.gray('   https://github.com/anthropics/vibe-validate/issues/new?template=extractor-improvement.yml'));
+              }
+            }
+          }
         }
 
         // Output YAML validation result if --yaml flag is set

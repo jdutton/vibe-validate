@@ -133,7 +133,7 @@ for (const entry of sorted) {
 - `@vibe-validate/cli`: v0.9.2
 - `@vibe-validate/config`: v0.9.0
 - `@vibe-validate/core`: v0.9.0
-- `@vibe-validate/formatters`: v0.9.0
+- `@vibe-validate/extractors`: v0.9.0
 - `@vibe-validate/git`: v0.9.0
 
 **Impact**: Confusion for users, dependency resolution issues
@@ -148,7 +148,7 @@ pnpm -r exec npm version 0.9.2
 ### 5. Missing TypeScript Type Exports
 **Severity**: CRITICAL
 **Category**: TypeScript
-**Location**: `packages/formatters/package.json`
+**Location**: `packages/extractors/package.json`
 
 **Issue**: Missing `types` field in package.json
 
@@ -309,7 +309,7 @@ const result = await execAsync('git status', {
 ### 21-35. Code Quality & Maintainability
 - **Type safety gaps** (8 locations using `any`)
 - **Magic numbers** (15 hardcoded values)
-- **Code duplication** (formatter code repeated)
+- **Code duplication** (extractor code repeated)
 - **Complex functions** (6 functions > 50 lines)
 - **Dead code** (unused imports in 12 files)
 - **Inconsistent error handling** (mix of throw/return)

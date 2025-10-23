@@ -16,6 +16,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
+import { extractByStepName } from '@vibe-validate/extractors';
 import { stopProcessGroup } from './process-utils.js';
 import type {
   ValidationStep,
@@ -35,13 +36,49 @@ import type {
  */
 
 /**
+ * Calculate extraction quality score based on extractor output
+ *
+ * Scores extraction quality from 0-100 based on:
+ * - Number of errors extracted
+ * - Field completeness (file, line, message)
+ * - Actionability (can an LLM/human act on this?)
+ *
+ * @param formatted - Extractor output
+ * @returns Quality score (0-100)
+ *
+ * @internal
+ */
+function calculateExtractionQuality(formatted: ReturnType<typeof extractByStepName>): number {
+  let score = 0;
+
+  // Error extraction (0-60 points)
+  const errorCount = formatted.errors?.length || 0;
+  if (errorCount > 0) {
+    score += Math.min(60, errorCount * 12); // Max 60 points for 5+ errors
+  }
+
+  // Field completeness (0-40 points)
+  const errors = formatted.errors || [];
+  if (errors.length > 0) {
+    const firstError = errors[0];
+    let fieldScore = 0;
+    if (firstError.file) fieldScore += 10;
+    if (firstError.line !== undefined) fieldScore += 10;
+    if (firstError.message) fieldScore += 20;
+    score += fieldScore;
+  }
+
+  return Math.min(100, score);
+}
+
+/**
  * Parse test output to extract specific failures
  *
  * Extracts failure details from validation step output using pattern matching.
  * Supports Vitest, TypeScript, and ESLint error formats.
  *
- * Note: This is a basic implementation - the formatters package provides
- * more sophisticated parsing with tool-specific formatters.
+ * Note: This is a basic implementation - the extractors package provides
+ * more sophisticated parsing with tool-specific extractors.
  *
  * @param output - Raw stdout/stderr output from validation step
  * @returns Array of extracted failure messages (max 10 per failure type)
@@ -58,6 +95,7 @@ import type {
  * ```
  *
  * @public
+ * @deprecated Use extractByStepName() from @vibe-validate/extractors instead
  */
 export function parseFailures(output: string): string[] {
   const failures: string[] = [];
@@ -121,7 +159,8 @@ export async function runStepsInParallel(
   enableFailFast: boolean = false,
   env: Record<string, string> = {},
   verbose: boolean = false,
-  yaml: boolean = false
+  yaml: boolean = false,
+  developerFeedback: boolean = false
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
@@ -206,7 +245,56 @@ export async function runStepsInParallel(
           const result = code === 0 ? 'PASSED' : 'FAILED';
           log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
-          stepResults.push({ name: step.name, passed: code === 0, durationSecs });
+          // Create base step result
+          const stepResult: StepResult = {
+            name: step.name,
+            passed: code === 0,
+            durationSecs,
+          };
+
+          // ALWAYS run extractors on ALL steps (passing and failing)
+          // Overhead: ~10ms, Benefits: extract failures, warnings, and quality metrics
+          // This enables continuous improvement through dogfooding
+          if (output && output.trim()) {
+            const formatted = extractByStepName(step.name, output);
+
+            // Extract structured failures/tests
+            stepResult.failedTests = formatted.errors?.map(error => {
+              const location = error.file
+                ? `${error.file}${error.line ? `:${error.line}` : ''}`
+                : 'unknown';
+              return `${location} - ${error.message || 'No message'}`;
+            }) || [];
+
+            // Detect tool from step name (heuristic until extractors returns this)
+            const detectedTool = step.name.toLowerCase().includes('typescript') || step.name.toLowerCase().includes('tsc')
+              ? 'typescript'
+              : step.name.toLowerCase().includes('eslint')
+              ? 'eslint'
+              : step.name.toLowerCase().includes('test') || step.name.toLowerCase().includes('vitest')
+              ? 'vitest'
+              : 'unknown';
+
+            // Calculate extraction quality metrics
+            const score = calculateExtractionQuality(formatted);
+            stepResult.extractionQuality = {
+              detectedTool,
+              confidence: score >= 80 ? 'high' : score >= 50 ? 'medium' : 'low',
+              score,
+              warnings: formatted.errors?.filter(e => e.severity === 'warning').length || 0,
+              errorsExtracted: formatted.errors?.filter(e => e.severity !== 'warning').length || formatted.errors?.length || 0,
+              actionable: (formatted.errors?.length || 0) > 0,
+            };
+
+            // Alert on poor extraction quality (for failed steps)
+            // Only show when developerFeedback is enabled (for vibe-validate contributors)
+            if (developerFeedback && code !== 0 && score < 50) {
+              log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
+              log(`         💡 Dogfooding opportunity: Improve ${detectedTool} extractor for this output`);
+            }
+          }
+
+          stepResults.push(stepResult);
 
           if (code === 0) {
             resolve({ step, output, durationSecs });
@@ -324,7 +412,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       enableFailFast,
       env,
       config.verbose ?? false,
-      config.yaml ?? false
+      config.yaml ?? false,
+      config.developerFeedback ?? false
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
     const durationSecs = parseFloat((phaseDurationMs / 1000).toFixed(1));

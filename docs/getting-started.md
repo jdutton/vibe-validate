@@ -307,7 +307,7 @@ npx vibe-validate cleanup
 - **Learn CLI commands**: See [CLI Reference](cli-reference.md)
 - **Use config templates**: See [Config Templates Guide](../config-templates/README.md)
 - **Integrate with AI assistants**: See [Agent Integration Guide](agent-integration-guide.md)
-- **Understand error formatters**: See [Error Formatters Guide](error-formatters-guide.md)
+- **Understand error extractors**: See [Error Extractors Guide](error-extractors-guide.md)
 
 ## Troubleshooting
 

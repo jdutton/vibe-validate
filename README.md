@@ -646,7 +646,7 @@ This is a monorepo containing:
 - **[@vibe-validate/cli](packages/cli)** - Command-line interface
 - **[@vibe-validate/core](packages/core)** - Validation orchestration engine
 - **[@vibe-validate/config](packages/config)** - Configuration system with schema validation
-- **[@vibe-validate/formatters](packages/formatters)** - Error parsing & LLM optimization
+- **[@vibe-validate/extractors](packages/extractors)** - Error parsing & LLM optimization
 - **[@vibe-validate/git](packages/git)** - Git workflow utilities
 
 **For most users**: Install `vibe-validate` which automatically includes all necessary packages.

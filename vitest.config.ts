@@ -37,7 +37,7 @@ export default defineConfig({
         // Strategy:
         // - CLI commands (bin.ts, init.ts, cleanup.ts, sync-check.ts, watch-pr.ts) have 0% unit test coverage
         //   These are tested via integration tests (see packages/cli/test/integration/)
-        // - All utility modules (git-helpers, formatters/utils, etc.) have 100% coverage
+        // - All utility modules (git-helpers, extractors/utils, etc.) have 100% coverage
         // - Core validation logic (runner.ts, process-utils.ts) has 95%+ coverage
         //
         // Thresholds set to current levels to prevent regression

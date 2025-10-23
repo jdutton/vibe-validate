@@ -311,14 +311,14 @@ function displayHumanCompletion(
           console.log(`   Re-run locally: ${failure.validationResult.rerunCommand}`);
         }
 
-        // Show parsed test failures (formatted by formatters package)
+        // Show parsed test failures (extracted by extractors package)
         if (failure.validationResult.failedTests && failure.validationResult.failedTests.length > 0) {
           console.log(`\n   Failed tests:`);
           failure.validationResult.failedTests.forEach((test: string) => {
             console.log(`   ❌ ${test}`);
           });
         } else if (failure.validationResult.failedStepOutput) {
-          // Fallback: show raw output if formatter didn't extract anything
+          // Fallback: show raw output if extractor didn't extract anything
           console.log(`\n   Error output:`);
           const lines = failure.validationResult.failedStepOutput.split('\n').slice(0, 10);
           lines.forEach((line: string) => console.log(`   ${line}`));
@@ -331,10 +331,10 @@ function displayHumanCompletion(
       failure.nextSteps.forEach((step: string) => console.log(`   - ${step}`));
     }
 
-    // Suggest reporting formatter issues if extraction quality is poor
+    // Suggest reporting extractor issues if extraction quality is poor
     console.log('\n💡 Error output unclear or missing details?');
     console.log(
-      '   Help improve extraction: https://github.com/jdutton/vibe-validate/issues/new?template=formatter-improvement.yml'
+      '   Help improve extraction: https://github.com/jdutton/vibe-validate/issues/new?template=extractor-improvement.yml'
     );
   }
 

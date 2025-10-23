@@ -43,6 +43,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@vibe-validate/extractors": "workspace:*",
     "@vibe-validate/git": "workspace:*",
     "strip-ansi": "^7.1.2",
     "yaml": "^2.6.1",
