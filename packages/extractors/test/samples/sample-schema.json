@@ -312,9 +312,9 @@
         "type": "string"
       }
     },
-    "relatedFixtures": {
+    "relatedSamples": {
       "type": "array",
-      "description": "Related fixtures for learning patterns",
+      "description": "Related samples for learning patterns",
       "items": {
         "type": "string",
         "pattern": "^[a-z-]+/[a-z0-9-]+\\.yaml$"

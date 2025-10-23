@@ -1,4 +1,4 @@
-# Test Fixtures for Failure Extraction
+# Test Samples for Failure Extraction
 
 This directory contains real-world test output samples used to validate and improve failure extraction accuracy.
 
@@ -7,7 +7,7 @@ This directory contains real-world test output samples used to validate and impr
 **Extractors will never be perfect. Extractors will never be done.**
 
 This is a data problem, not a logic problem. Success comes from:
-1. **Continuous testing** - Fixtures ensure we don't regress
+1. **Continuous testing** - Samples ensure we don't regress
 2. **Community contributions** - Real-world cases from users
 3. **Graceful degradation** - Always provide something useful
 4. **Dogfooding** - vibe-validate tests itself
@@ -70,11 +70,11 @@ failureSummaries:
 
 Full extraction details only shown with `--debug` flag.
 
-## Contributing Fixtures
+## Contributing Samples
 
 We need your help! See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for how to:
 1. File an issue with test output
-2. Submit a PR with a fixture
+2. Submit a PR with a sample
 3. Let Claude Code do it for you
 
 ### Quick Start
@@ -101,8 +101,8 @@ pnpm test:extractors
 
 After running tests, check `quality-report.json` for:
 - Overall extraction accuracy
-- Regressions (fixtures that got worse)
-- Improvements (fixtures that got better)
+- Regressions (samples that got worse)
+- Improvements (samples that got better)
 - Common issues to fix
 
 ## Recognition

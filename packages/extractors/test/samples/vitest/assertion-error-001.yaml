@@ -82,5 +82,5 @@ improvementHints:
   - "Stack trace ends at separator line (⎯⎯⎯) or blank line"
   - "First stack frame usually has the actual error location"
 
-relatedFixtures:
+relatedSamples:
   - vitest/assertion-error-002.yaml

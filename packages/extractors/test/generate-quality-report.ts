@@ -35,7 +35,7 @@ interface QualityMetrics {
       avgScore: number;
       passed: number;
       failed: number;
-      fixtures: Array<{
+      samples: Array<{
         name: string;
         score: number;
         passed: boolean;
@@ -79,7 +79,7 @@ function generateQualityReport(): QualityMetrics {
     throw new Error('No samples found! Add samples to test/samples/');
   }
 
-  console.log(`📦 Loaded ${samples.length} fixtures`);
+  console.log(`📦 Loaded ${samples.length} samples`);
   console.log('⚙️  Running extractors...\n');
 
   const results: SampleTestResult[] = [];
@@ -124,7 +124,7 @@ function generateQualityReport(): QualityMetrics {
   const samplesByTool = groupSamplesBy(samples, 'tool');
   const byTool: QualityMetrics['byTool'] = {};
 
-  for (const [tool, toolSamples] of Object.entries(fixturesByTool)) {
+  for (const [tool, toolSamples] of Object.entries(samplesByTool)) {
     const toolResults = results.filter(r => r.sample.startsWith(`${tool}/`));
     const avgScore = toolResults.reduce((sum, r) => sum + r.score, 0) / toolResults.length;
     const passed = toolResults.filter(r => r.passed).length;
@@ -135,7 +135,7 @@ function generateQualityReport(): QualityMetrics {
       avgScore,
       passed,
       failed,
-      fixtures: toolResults.map(r => ({
+      samples: toolResults.map(r => ({
         name: r.sample.replace(`${tool}/`, ''),
         score: r.score,
         passed: r.passed,
@@ -147,7 +147,7 @@ function generateQualityReport(): QualityMetrics {
   const samplesByDifficulty = groupSamplesBy(samples, 'difficulty');
   const byDifficulty: QualityMetrics['byDifficulty'] = {};
 
-  for (const [difficulty, difficultySamples] of Object.entries(fixturesByDifficulty)) {
+  for (const [difficulty, difficultySamples] of Object.entries(samplesByDifficulty)) {
     const difficultyResults = results.filter(r => {
       const fixture = samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === r.fixture);
       return fixture?.metadata.difficulty === difficulty;
@@ -197,12 +197,12 @@ function detectRegressions(current: QualityMetrics, previous: QualityMetrics): v
   current.improvements = [];
   current.regressions = [];
 
-  // Compare each tool's fixtures
+  // Compare each tool's samples
   for (const [tool, toolStats] of Object.entries(current.byTool)) {
     const prevToolStats = previous.byTool[tool];
     if (!prevToolStats) continue;
 
-    for (const sample of toolStats.fixtures) {
+    for (const sample of toolStats.samples) {
       const prevSample = prevToolStats.samples.find(f => f.name === sample.name);
       if (!prevSample) continue;
 
@@ -238,7 +238,7 @@ function displaySummary(metrics: QualityMetrics, checkOnly: boolean = false) {
   console.log('📊 Quality Report Summary');
   console.log('='.repeat(60));
   console.log(`Generated: ${new Date(metrics.timestamp).toLocaleString()}`);
-  console.log(`Total Fixtures: ${metrics.totalFixtures}`);
+  console.log(`Total Samples: ${metrics.totalSamples}`);
   console.log(`Overall Score: ${(metrics.overallScore * 100).toFixed(1)}%`);
 
   console.log('\nBy Tool:');
@@ -253,7 +253,7 @@ function displaySummary(metrics: QualityMetrics, checkOnly: boolean = false) {
   }
 
   if (metrics.failures.length > 0) {
-    console.log('\n❌ Failed Fixtures:');
+    console.log('\n❌ Failed Samples:');
     for (const failure of metrics.failures) {
       console.log(
         `  ${failure.sample}: ${(failure.score * 100).toFixed(1)}% (need ${(failure.threshold * 100).toFixed(0)}%)`

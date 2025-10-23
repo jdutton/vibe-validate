@@ -9,6 +9,51 @@
 import type { ErrorExtractorResult, FormattedError } from './types.js';
 
 /**
+ * Deduplicate ESLint errors by file:line:column
+ *
+ * When multiple rules report the same error at the same location,
+ * prefer @typescript-eslint/* rules over base ESLint rules.
+ *
+ * @param errors - Array of parsed ESLint errors
+ * @returns Deduplicated array of errors
+ */
+function deduplicateESLintErrors(errors: FormattedError[]): FormattedError[] {
+  // Group errors by file:line:column
+  const errorMap = new Map<string, FormattedError[]>();
+
+  for (const error of errors) {
+    const key = `${error.file}:${error.line}:${error.column}`;
+    if (!errorMap.has(key)) {
+      errorMap.set(key, []);
+    }
+    const locationErrors = errorMap.get(key);
+    if (locationErrors) {
+      locationErrors.push(error);
+    }
+  }
+
+  // For each location, pick the best error
+  const deduplicated: FormattedError[] = [];
+  for (const [_key, locationErrors] of errorMap) {
+    if (locationErrors.length === 1) {
+      deduplicated.push(locationErrors[0]);
+      continue;
+    }
+
+    // Prefer @typescript-eslint/* rules over base ESLint rules
+    const typescriptEslintError = locationErrors.find(e => e.code?.startsWith('@typescript-eslint/'));
+    if (typescriptEslintError) {
+      deduplicated.push(typescriptEslintError);
+    } else {
+      // No typescript-eslint rule, just take the first one
+      deduplicated.push(locationErrors[0]);
+    }
+  }
+
+  return deduplicated;
+}
+
+/**
  * Format ESLint errors
  *
  * Parses ESLint output format: `file:line:col - severity message [rule-name]`
@@ -69,20 +114,23 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
     }
   }
 
-  const errorCount = errors.filter(e => e.severity === 'error').length;
-  const warningCount = errors.filter(e => e.severity === 'warning').length;
+  // Deduplicate errors (prefer @typescript-eslint/* rules over base ESLint rules)
+  const deduplicatedErrors = deduplicateESLintErrors(errors);
+
+  const errorCount = deduplicatedErrors.filter(e => e.severity === 'error').length;
+  const warningCount = deduplicatedErrors.filter(e => e.severity === 'warning').length;
 
   // Build clean output (limit to first 10 for token efficiency)
-  const cleanOutput = errors
+  const cleanOutput = deduplicatedErrors
     .slice(0, 10)
     .map(e => `${e.file}:${e.line}:${e.column} - ${e.message} [${e.code}]`)
     .join('\n');
 
   return {
-    errors: errors.slice(0, 10),
+    errors: deduplicatedErrors.slice(0, 10),
     summary: `${errorCount} ESLint error(s), ${warningCount} warning(s)`,
-    totalCount: errors.length,
-    guidance: getESLintGuidance(errors),
+    totalCount: deduplicatedErrors.length,
+    guidance: getESLintGuidance(deduplicatedErrors),
     cleanOutput
   };
 }

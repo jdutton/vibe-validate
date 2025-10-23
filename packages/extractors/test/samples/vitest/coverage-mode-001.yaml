@@ -101,5 +101,5 @@ improvementHints:
   - "Stack trace in coverage mode shows file:line:column in '❯ file:line:column' format"
   - "Use both the inline '× test' marker AND the 'FAIL' section for complete extraction"
 
-relatedFixtures:
+relatedSamples:
   - vitest/assertion-error-001.yaml

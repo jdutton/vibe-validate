@@ -291,9 +291,9 @@ Contribute when:
    - Impact on your workflow
 4. We'll create a fixture and improve the extractor
 
-**Option 2: Contribute a Fixture (Most Helpful)**
+**Option 2: Contribute a Sample (Most Helpful)**
 
-Fixtures are YAML files containing:
+Samples are YAML files containing:
 - Real tool output (input)
 - What should be extracted (expected)
 - Quality thresholds
@@ -302,7 +302,7 @@ Fixtures are YAML files containing:
 
 ```bash
 # 1. Copy the template
-cd packages/extractors/test/fixtures
+cd packages/extractors/test/samples
 cp _template.yaml vitest/my-failure-case.yaml
 
 # 2. Fill in the YAML

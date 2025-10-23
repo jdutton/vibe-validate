@@ -1,0 +1,114 @@
+$schema: ../sample-schema.json
+
+# TypeScript compiler with multiple errors in same file
+
+metadata:
+  tool: typescript
+  toolVersion: "5.3.3"
+  platform: darwin
+  nodeVersion: "22.0.0"
+  contributor: vibe-validate
+  contributedDate: "2025-10-23"
+  sourceIssue: null
+  sourcePR: null
+  category: type-error
+  difficulty: medium
+  description: |
+    TypeScript compiler showing multiple type errors in a single file.
+    Common scenario: refactoring breaks multiple call sites.
+
+    Tests extractor's ability to:
+    - Extract all errors (not just first one)
+    - Handle different error types (type mismatch, missing property, etc.)
+    - Preserve all error locations
+
+input:
+  raw: |
+    packages/core/src/user-manager.ts:15:7 - error TS2322: Type 'string' is not assignable to type 'number'.
+
+    15   age: "25",
+             ~~~
+
+    packages/core/src/user-manager.ts:23:18 - error TS2339: Property 'email' does not exist on type 'User'.
+
+    23   const email = user.email;
+                         ~~~~~~~~~~
+
+    packages/core/src/user-manager.ts:31:5 - error TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.
+
+    31     updateUser(null);
+           ~~~~~~~~~~~~~~~~
+
+
+    Found 3 errors in the same file, starting at: packages/core/src/user-manager.ts:15
+
+expected:
+  detectionConfidence: 95
+  detectedTool: typescript
+  failures:
+    - tool: typescript
+      type: type-error
+      summary: "Type 'string' is not assignable to type 'number'"
+      message: "Type 'string' is not assignable to type 'number'"
+      location:
+        file: packages/core/src/user-manager.ts
+        line: 15
+        column: 7
+      context: |
+        15   age: "25",
+                   ~~~
+      stackTrace: []
+      relevance: 100
+
+      llmSummary: |
+        TypeScript error in packages/core/src/user-manager.ts:15 - Type 'string' is not assignable to type 'number'
+
+    - tool: typescript
+      type: type-error
+      summary: "Property 'email' does not exist on type 'User'"
+      message: "Property 'email' does not exist on type 'User'"
+      location:
+        file: packages/core/src/user-manager.ts
+        line: 23
+        column: 18
+      context: |
+        23   const email = user.email;
+                              ~~~~~~~~~~
+      stackTrace: []
+      relevance: 100
+
+      llmSummary: |
+        TypeScript error in packages/core/src/user-manager.ts:23 - Property 'email' does not exist on type 'User'
+
+    - tool: typescript
+      type: type-error
+      summary: "Argument of type 'null' is not assignable to parameter of type 'string'"
+      message: "Argument of type 'null' is not assignable to parameter of type 'string'"
+      location:
+        file: packages/core/src/user-manager.ts
+        line: 31
+        column: 5
+      context: |
+        31     updateUser(null);
+               ~~~~~~~~~~~~~~~~
+      stackTrace: []
+      relevance: 100
+
+      llmSummary: |
+        TypeScript error in packages/core/src/user-manager.ts:31 - Argument of type 'null' is not assignable to parameter of type 'string'
+
+quality:
+  lastTested: null
+  fields: {}
+  score: null
+  issues: []
+  scoreHistory: []
+
+improvementHints:
+  - "Extract all errors, not just the first one"
+  - "Each error starts with file:line:col pattern"
+  - "Summary line shows total: 'Found 3 errors in the same file'"
+  - "This is common during refactoring - show all errors to fix them all at once"
+
+relatedSamples:
+  - typescript/type-error-001.yaml

@@ -104,7 +104,7 @@ describe('Sample-Driven Extractor Tests', () => {
         // Show failures
         const failures = results.filter(r => !r.passed);
         if (failures.length > 0) {
-          console.log(`\n    Failed Fixtures:`);
+          console.log(`\n    Failed Samples:`);
           for (const failure of failures) {
             console.log(
               `      - ${failure.sample}: ${(failure.score * 100).toFixed(1)}% (threshold: ${(getThreshold(samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === failure.fixture)!.metadata.difficulty) * 100).toFixed(0)}%)`

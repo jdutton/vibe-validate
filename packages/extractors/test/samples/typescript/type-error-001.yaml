@@ -54,5 +54,5 @@ improvementHints:
   - "Extract error code (TS####) for categorization"
   - "Location is always at start of line"
 
-relatedFixtures:
+relatedSamples:
   - typescript/type-error-002.yaml

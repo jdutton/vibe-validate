@@ -26,11 +26,15 @@ import type { ErrorExtractorResult, FormattedError } from './types.js';
 export function extractTypeScriptErrors(output: string): ErrorExtractorResult {
   const errors: FormattedError[] = [];
 
-  // TypeScript error pattern: file(line,col): error TSxxxx: message
-  const tsErrorPattern = /^(.+?)\((\d+),(\d+)\):\s*(error|warning)\s+(TS\d+):\s+(.+)$/gm;
+  // TypeScript error patterns - support both old and new formats:
+  // Old: file(line,col): error TSxxxx: message
+  // New: file:line:col - error TSxxxx: message
+  const oldPattern = /^(.+?)\((\d+),(\d+)\):\s*(error|warning)\s+(TS\d+):\s+(.+)$/gm;
+  const newPattern = /^(.+?):(\d+):(\d+)\s+-\s*(error|warning)\s+(TS\d+):\s+(.+)$/gm;
 
+  // Try new format first (more common in modern tsc)
   let match;
-  while ((match = tsErrorPattern.exec(output)) !== null) {
+  while ((match = newPattern.exec(output)) !== null) {
     errors.push({
       file: match[1].trim(),
       line: parseInt(match[2]),
@@ -39,6 +43,20 @@ export function extractTypeScriptErrors(output: string): ErrorExtractorResult {
       code: match[5],
       message: match[6].trim()
     });
+  }
+
+  // Try old format if no matches yet
+  if (errors.length === 0) {
+    while ((match = oldPattern.exec(output)) !== null) {
+      errors.push({
+        file: match[1].trim(),
+        line: parseInt(match[2]),
+        column: parseInt(match[3]),
+        severity: match[4] as 'error' | 'warning',
+        code: match[5],
+        message: match[6].trim()
+      });
+    }
   }
 
   const errorCount = errors.filter(e => e.severity === 'error').length;

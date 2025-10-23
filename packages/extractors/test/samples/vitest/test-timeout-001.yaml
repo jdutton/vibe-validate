@@ -1,0 +1,92 @@
+$schema: ../sample-schema.json
+
+# Vitest test timeout - async operation never completes
+
+metadata:
+  tool: vitest
+  toolVersion: "3.2.4"
+  platform: darwin
+  nodeVersion: "22.0.0"
+  contributor: vibe-validate
+  contributedDate: "2025-10-23"
+  sourceIssue: null
+  sourcePR: null
+  category: timeout
+  difficulty: easy
+  description: |
+    Test timeout occurs when async operation doesn't complete within timeout period.
+
+    Common causes:
+    - Missing await on async function
+    - Promise never resolves
+    - Infinite loop
+    - Network call without timeout
+
+    This is distinct from assertion failures - the test code never finishes executing.
+
+input:
+  raw: |
+    RUN  v3.2.4 /Users/jeff/Workspaces/vibe-validate
+
+    ✓ packages/core/test/validation.test.ts (12 tests) 156ms
+    ✓ packages/core/test/config.test.ts (8 tests) 89ms
+    ❯ packages/core/test/async-operations.test.ts (3 tests | 1 failed) 5012ms
+      ✓ Async Operations > should handle successful async call 45ms
+      ✓ Async Operations > should handle rejected promises 23ms
+      × Async Operations > should wait for database connection 5001ms
+        → Test timed out in 5000ms.
+
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+    FAIL  packages/core/test/async-operations.test.ts > Async Operations > should wait for database connection
+    Error: Test timed out in 5000ms.
+    If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+     ❯ packages/core/test/async-operations.test.ts:45:5
+
+    Test Files  1 failed | 2 passed (3)
+         Tests  1 failed | 14 passed (15)
+
+expected:
+  detectionConfidence: 95
+  detectedTool: vitest
+  failures:
+    - tool: vitest
+      type: timeout
+      summary: "Async Operations > should wait for database connection"
+      message: "Error: Test timed out in 5000ms. If this is a long-running test, pass a timeout value as the last argument or configure it globally with \"testTimeout\"."
+      location:
+        file: packages/core/test/async-operations.test.ts
+        line: 45
+        column: 5
+      context: null
+      stackTrace: []
+      relevance: 100
+
+      llmSummary: |
+        Test 'Async Operations > should wait for database connection' timed out after 5000ms
+        Location: packages/core/test/async-operations.test.ts:45
+
+        Common causes:
+        - Missing await on async operation
+        - Promise never resolves/rejects
+        - Infinite loop in test
+
+        Fix: Check for missing await, add explicit timeout, or mock slow operations
+
+quality:
+  lastTested: null
+  fields: {}
+  score: null
+  issues: []
+  scoreHistory: []
+
+improvementHints:
+  - "Look for 'Test timed out in Xms' pattern"
+  - "Extract timeout duration (5000ms) for context"
+  - "Provide actionable guidance: missing await, infinite loop, etc."
+  - "Different from assertion failure - test never completes"
+  - "Suggest increasing timeout or mocking slow operations"
+
+relatedSamples:
+  - vitest/assertion-error-001.yaml
+  - vitest/runtime-error-enoent-001.yaml

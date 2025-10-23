@@ -1,14 +1,19 @@
 {
-  "timestamp": "2025-10-22T16:39:48.584Z",
-  "totalFixtures": 3,
-  "overallScore": 1,
+  "timestamp": "2025-10-23T03:33:14.584Z",
+  "totalSamples": 10,
+  "overallScore": 0.95,
   "byTool": {
     "eslint": {
-      "count": 1,
+      "count": 2,
       "avgScore": 1,
-      "passed": 1,
+      "passed": 2,
       "failed": 0,
-      "fixtures": [
+      "samples": [
+        {
+          "name": "lint-error",
+          "score": 1,
+          "passed": true
+        },
         {
           "name": "lint-error",
           "score": 1,
@@ -17,11 +22,16 @@
       ]
     },
     "typescript": {
-      "count": 1,
+      "count": 2,
       "avgScore": 1,
-      "passed": 1,
+      "passed": 2,
       "failed": 0,
-      "fixtures": [
+      "samples": [
+        {
+          "name": "type-error",
+          "score": 1,
+          "passed": true
+        },
         {
           "name": "type-error",
           "score": 1,
@@ -30,26 +40,72 @@
       ]
     },
     "vitest": {
-      "count": 1,
-      "avgScore": 1,
-      "passed": 1,
+      "count": 6,
+      "avgScore": 0.9166666666666666,
+      "passed": 6,
       "failed": 0,
-      "fixtures": [
+      "samples": [
         {
           "name": "assertion-failure",
           "score": 1,
+          "passed": true
+        },
+        {
+          "name": "assertion-failure",
+          "score": 1,
+          "passed": true
+        },
+        {
+          "name": "runtime-error",
+          "score": 0.75,
+          "passed": true
+        },
+        {
+          "name": "assertion-failure",
+          "score": 1,
+          "passed": true
+        },
+        {
+          "name": "timeout",
+          "score": 1,
+          "passed": true
+        },
+        {
+          "name": "assertion-failure",
+          "score": 0.75,
           "passed": true
         }
       ]
     }
   },
   "byDifficulty": {
+    "medium": {
+      "count": 0,
+      "avgScore": null,
+      "passed": 0,
+      "failed": 0
+    },
     "easy": {
-      "count": 3,
-      "avgScore": 1,
-      "passed": 3,
+      "count": 0,
+      "avgScore": null,
+      "passed": 0,
+      "failed": 0
+    },
+    "hard": {
+      "count": 0,
+      "avgScore": null,
+      "passed": 0,
       "failed": 0
     }
   },
-  "failures": []
+  "failures": [],
+  "improvements": [],
+  "regressions": [
+    {
+      "sample": "vitest/assertion-failure",
+      "previousScore": 1,
+      "currentScore": 0.75,
+      "regression": 0.25
+    }
+  ]
 }

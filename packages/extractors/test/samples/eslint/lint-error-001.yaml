@@ -58,6 +58,6 @@ improvementHints:
   - "Summary line shows total problems"
   - "Rule name is important for categorization"
 
-relatedFixtures:
+relatedSamples:
   - eslint/lint-error-002.yaml
   - eslint/lint-warning-001.yaml

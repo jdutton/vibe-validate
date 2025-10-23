@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Fixtures are used to:
+Samples are used to:
 1. **Test extraction accuracy** - Validate extractors work correctly
 2. **Prevent regressions** - Ensure changes don't break existing cases
 3. **Document patterns** - Show what output looks like from each tool
@@ -167,7 +167,7 @@ improvementHints:
   - "Extract Expected/Received from assertion output"
 
 # Related samples (for learning patterns)
-relatedFixtures:
+relatedSamples:
   - vitest/assertion-error-002.yaml
   - vitest/assertion-error-003.yaml
 ```
@@ -202,7 +202,7 @@ relatedFixtures:
 
 ### Testing vs Production
 
-**In Test Fixtures (this file):**
+**In Test Samples (this file):**
 ```yaml
 # We test ALL extraction details for accuracy
 expected:
@@ -267,7 +267,7 @@ The detailed extraction validates our parsing accuracy. The `llmSummary` is what
 - Minimal structure
 - **Example**: Unknown tools, custom test runners
 
-## Testing Fixtures
+## Testing Samples
 
 ```bash
 # Run all sample tests
