@@ -129,29 +129,47 @@ npx vibe-validate --help
 
 ## 🚀 Step 5: Publish to npm
 
-**IMPORTANT**: Publish in dependency order to avoid "dependency not found" errors.
+**CRITICAL**: Use `pnpm publish` (NOT `npm publish`) to correctly resolve `workspace:*` dependencies.
+
+**Why pnpm publish?**
+- `npm publish` leaves `workspace:*` in dependencies → uninstallable packages
+- `pnpm publish` converts `workspace:*` to actual version numbers → correct dependencies
 
 ### Manual Publishing (Recommended for First Release)
 
 ```bash
+# CRITICAL: Use pnpm publish with --no-git-checks flag
+
 # 1. Publish packages with no dependencies (parallel order)
-cd packages/extractors && npm publish
-cd packages/git && npm publish
-cd packages/config && npm publish
+cd packages/extractors && pnpm publish --no-git-checks
+cd packages/git && pnpm publish --no-git-checks
+cd packages/config && pnpm publish --no-git-checks
 
-# 2. Publish core (depends on extractors, git via external deps if any)
-cd packages/core && npm publish
+# 2. Publish core (depends on extractors)
+cd packages/core && pnpm publish --no-git-checks
 
-# 3. Publish CLI (depends on core, git, config)
-cd packages/cli && npm publish
+# 3. Publish history (depends on config)
+cd packages/history && pnpm publish --no-git-checks
+
+# 4. Publish CLI (depends on all above)
+cd packages/cli && pnpm publish --no-git-checks
 ```
 
-### Automated Publishing (Use After Testing Manual Process)
+### Automated Publishing (Alternative - Use pnpm -r)
 
 ```bash
-# Publish all packages in correct order
-npm run publish:all
+# Publish all packages recursively with pnpm
+pnpm -r publish --no-git-checks
 ```
+
+### ⚠️ Common Mistake: Using npm publish
+
+**DO NOT USE `npm publish`** - it will create broken packages with `workspace:*` dependencies.
+
+If you accidentally publish with `npm publish`:
+1. Deprecate broken version: `npm deprecate @vibe-validate/cli@X.Y.Z "message"`
+2. Bump to patch version (e.g., 0.12.0 → 0.12.1)
+3. Re-publish using `pnpm publish --no-git-checks`
 
 ## ✅ Step 6: Verify Published Packages
 

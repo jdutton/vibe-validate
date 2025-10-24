@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2025-10-23
+## [0.12.1] - 2025-10-24
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed npm publish process** - v0.12.0 publishing issue
+  - **Problem**: Packages published with `npm publish` didn't resolve `workspace:*` dependencies, making them uninstallable
+  - **Solution**: Re-published using `pnpm publish -r` which correctly resolves workspace dependencies to versioned dependencies
+  - **Impact**: Packages are now installable via `npm install @vibe-validate/cli@0.12.1`
+  - **v0.12.0 deprecated**: Do not use v0.12.0 - it has broken dependencies
+
+## [0.12.0] - 2025-10-23 [DEPRECATED - Use 0.12.1]
 
 ### 🚨 BREAKING CHANGES
 
