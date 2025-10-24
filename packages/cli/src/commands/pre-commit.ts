@@ -6,12 +6,11 @@
  */
 
 import type { Command } from 'commander';
-import { runValidation } from '@vibe-validate/core';
 import { checkBranchSync } from '@vibe-validate/git';
 import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
-import { createRunnerConfig } from '../utils/runner-adapter.js';
 import { detectContext } from '../utils/context-detector.js';
+import { runValidateWorkflow } from '../utils/validate-workflow.js';
 import { execSync } from 'child_process';
 import chalk from 'chalk';
 
@@ -57,10 +56,13 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
-        // Step 3: Verbose mode is ONLY enabled via explicit --verbose flag
+        // Step 3: Detect context
+        const context = detectContext();
+
+        // Step 4: Verbose mode is ONLY enabled via explicit --verbose flag
         const verbose = options.verbose ?? false;
 
-        // Step 4: Run secret scanning if enabled
+        // Step 5: Run secret scanning if enabled
         const secretScanning = config.hooks?.preCommit?.secretScanning;
         if (secretScanning?.enabled && secretScanning?.scanCommand) {
           console.log(chalk.blue('\n🔒 Running secret scanning...'));
@@ -118,21 +120,18 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
-        // Step 5: Detect context
-        const context = detectContext();
-
-        // Step 6: Run validation
+        // Step 6: Run validation with caching
         console.log(chalk.blue('\n🔄 Running validation...'));
 
-        const runnerConfig = createRunnerConfig(config, {
+        const result = await runValidateWorkflow(config, {
           force: false, // Respect cache by default
           verbose,
+          yaml: false, // Pre-commit uses human-readable output
+          check: false,
           context,
         });
 
-        const result = await runValidation(runnerConfig);
-
-        // Step 6: Report results
+        // Step 7: Report results
         if (result.passed) {
           console.log(chalk.green('\n✅ Pre-commit checks passed!'));
           console.log(chalk.gray('   Safe to commit.'));

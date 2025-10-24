@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { preCommitCommand } from '../../src/commands/pre-commit.js';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
+import * as history from '@vibe-validate/history';
 import * as configLoader from '../../src/utils/config-loader.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
@@ -24,6 +25,19 @@ vi.mock('@vibe-validate/git', async () => {
   return {
     ...actual,
     checkBranchSync: vi.fn(),
+    getGitTreeHash: vi.fn(),
+  };
+});
+
+// Mock the history module
+vi.mock('@vibe-validate/history', async () => {
+  const actual = await vi.importActual<typeof history>('@vibe-validate/history');
+  return {
+    ...actual,
+    readHistoryNote: vi.fn(),
+    recordValidationHistory: vi.fn(),
+    checkWorktreeStability: vi.fn(),
+    checkHistoryHealth: vi.fn(),
   };
 });
 
@@ -515,6 +529,132 @@ describe('pre-commit command', () => {
       const errorCalls = vi.mocked(console.error).mock.calls;
       const errorOutput = errorCalls.map(call => call.join(' ')).join('\n');
       expect(errorOutput).toContain('secret');
+    });
+  });
+
+  describe('validation caching integration', () => {
+    it('should use shared workflow which provides caching', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [
+            {
+              name: 'Test',
+              steps: [{ name: 'Test Step', command: 'echo test' }]
+            }
+          ]
+        }
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        hasRemote: true,
+        behindBy: 0,
+        aheadBy: 0,
+      });
+
+      // Mock cache HIT scenario
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+      const mockHistoryNote = {
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            timestamp: '2025-10-23T20:00:00Z',
+            duration: 30000,
+            passed: true,
+            branch: 'feature/test',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-23T20:00:00Z',
+              treeHash: 'abc123def456',
+              duration: 30000,
+              phases: [
+                {
+                  name: 'Test',
+                  passed: true,
+                  steps: [{ name: 'Test Step', passed: true, duration: 1000 }]
+                }
+              ],
+            },
+          },
+        ],
+      };
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // CRITICAL: Verify runValidation was NOT called (cache hit)
+      expect(core.runValidation).not.toHaveBeenCalled();
+
+      // Verify cache hit message was displayed
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Validation already passed for current working tree')
+      );
+    });
+
+    it('should run validation when cache misses', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [
+            {
+              name: 'Test',
+              steps: [{ name: 'Test Step', command: 'echo test' }]
+            }
+          ]
+        }
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        hasRemote: true,
+        behindBy: 0,
+        aheadBy: 0,
+      });
+
+      // Mock cache MISS scenario
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null); // No cache
+
+      // Mock successful validation
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: true,
+        treeHashBefore: 'abc123def456',
+        treeHashAfter: 'abc123def456',
+      });
+
+      vi.mocked(history.recordValidationHistory).mockResolvedValue({
+        recorded: true,
+      });
+
+      preCommitCommand(program);
+
+      try {
+        await program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify runValidation WAS called on cache miss
+      expect(core.runValidation).toHaveBeenCalledOnce();
     });
   });
 });
