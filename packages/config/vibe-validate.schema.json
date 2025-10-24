@@ -184,6 +184,10 @@
               "command": "npx vibe-validate pre-commit"
             }
           }
+        },
+        "developerFeedback": {
+          "type": "boolean",
+          "default": false
         }
       },
       "required": [

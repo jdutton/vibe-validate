@@ -5,19 +5,11 @@
  */
 
 import type { Command } from 'commander';
-import { runValidation } from '@vibe-validate/core';
-import { getGitTreeHash } from '@vibe-validate/git';
-import {
-  recordValidationHistory,
-  checkWorktreeStability,
-  checkHistoryHealth,
-  readHistoryNote,
-} from '@vibe-validate/history';
+import type { ValidationResult } from '@vibe-validate/core';
 import { loadConfig } from '../utils/config-loader.js';
-import { createRunnerConfig } from '../utils/runner-adapter.js';
 import { detectContext } from '../utils/context-detector.js';
+import { runValidateWorkflow } from '../utils/validate-workflow.js';
 import chalk from 'chalk';
-import { stringify as yamlStringify } from 'yaml';
 
 export function validateCommand(program: Command): void {
   program
@@ -36,143 +28,198 @@ export function validateCommand(program: Command): void {
           process.exit(1);
         }
 
-        // If --check flag is used, only check validation state without running
-        if (options.check) {
-          const { checkValidationStatus } = await import('../utils/check-validation.js');
-          await checkValidationStatus(config);
-          return; // Exit handled by checkValidationStatus
-        }
-
         // Detect context (Claude Code, CI, etc.)
         const context = detectContext();
 
-        // Verbose mode is ONLY enabled via explicit --verbose flag
-        const verbose = options.verbose ?? false;
-        const yaml = options.yaml ?? false;
-
-        // Create runner config
-        const runnerConfig = createRunnerConfig(config, {
+        // Run shared validation workflow
+        const result = await runValidateWorkflow(config, {
           force: options.force,
-          verbose,
-          yaml,
+          verbose: options.verbose,
+          yaml: options.yaml,
+          check: options.check,
           context,
         });
 
-        // Get tree hash BEFORE validation (for caching and stability check)
-        let treeHashBefore: string | null = null;
-        try {
-          treeHashBefore = await getGitTreeHash();
-        } catch (_error) {
-          // Not in git repo or git command failed - continue without history
-          if (verbose) {
-            console.warn(chalk.yellow('⚠️  Could not get git tree hash - history recording disabled'));
-          }
+        // Only call process.exit for non-cached results
+        // Cache hits return early without calling process.exit (to support testing)
+        const resultWithCache = result as ValidationResult & { _fromCache?: boolean };
+        if (!resultWithCache._fromCache) {
+          process.exit(result.passed ? 0 : 1);
         }
-
-        // Check cache: if validation already passed for this tree hash, skip re-running
-        if (treeHashBefore && !options.force) {
-          try {
-            const historyNote = await readHistoryNote(treeHashBefore);
-
-            if (historyNote && historyNote.runs.length > 0) {
-              // Find most recent passing run
-              const passingRun = [...historyNote.runs]
-                .reverse()
-                .find(run => run.passed);
-
-              if (passingRun) {
-                // When yaml mode is on, write to stderr to keep stdout clean
-                const log = yaml ? process.stderr.write.bind(process.stderr) : console.log.bind(console);
-                log(chalk.green('✅ Validation already passed for current working tree state') + '\n');
-                log(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}...`) + '\n');
-                log(chalk.gray(`   Last validated: ${passingRun.timestamp}`) + '\n');
-                log(chalk.gray(`   Duration: ${passingRun.duration}ms`) + '\n');
-                log(chalk.gray(`   Branch: ${passingRun.branch}`) + '\n');
-
-                // Return cached result (construct from history note)
-                process.exit(0);
-              }
-            }
-          } catch (_error) {
-            // Cache check failed - proceed with validation
-            // This is expected for first-time validation
-          }
-        }
-
-        // Run validation
-        const result = await runValidation(runnerConfig);
-
-        // Record validation history (if in git repo and stability check passes)
-        if (treeHashBefore) {
-          try {
-            // Check if worktree changed during validation
-            const stability = await checkWorktreeStability(treeHashBefore);
-
-            if (!stability.stable) {
-              console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));
-              console.warn(chalk.yellow(`   Before: ${stability.treeHashBefore.slice(0, 12)}...`));
-              console.warn(chalk.yellow(`   After:  ${stability.treeHashAfter.slice(0, 12)}...`));
-              console.warn(chalk.yellow('   Results valid but history not recorded (unstable state)'));
-            } else {
-              // Record to git notes
-              const recordResult = await recordValidationHistory(treeHashBefore, result);
-
-              if (recordResult.recorded) {
-                if (verbose) {
-                  console.log(chalk.gray(`\n📝 History recorded (tree: ${treeHashBefore.slice(0, 12)})`));
-                }
-              } else if (verbose) {
-                console.warn(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason}`));
-              }
-            }
-          } catch (error) {
-            // Silent failure - don't block validation
-            if (verbose) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              console.warn(chalk.yellow(`⚠️  History recording error: ${errorMessage}`));
-            }
-          }
-        }
-
-        // Proactive health check (non-blocking)
-        try {
-          const health = await checkHistoryHealth();
-          if (health.shouldWarn) {
-            console.log('');
-            console.log(chalk.blue(health.warningMessage));
-          }
-        } catch {
-          // Silent failure - don't block validation
-        }
-
-        // If validation failed, show agent-friendly error details
-        if (!result.passed) {
-          console.error(chalk.blue('\n📋 View error details:'), chalk.white('vibe-validate state'));
-          if (result.rerunCommand) {
-            console.error(chalk.blue('🔄 To retry:'), chalk.white(result.rerunCommand));
-          }
-          if (result.fullLogFile) {
-            console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
-          }
-        }
-
-        // Output YAML validation result if --yaml flag is set
-        if (yaml) {
-          // Small delay to ensure stderr is flushed before writing to stdout
-          await new Promise(resolve => setTimeout(resolve, 10));
-
-          process.stdout.write('==========================================\n');
-          process.stdout.write('VALIDATION RESULT\n');
-          process.stdout.write('==========================================\n');
-          process.stdout.write(yamlStringify(result));
-          process.stdout.write('==========================================\n');
-        }
-
-        // Exit with appropriate code
-        process.exit(result.passed ? 0 : 1);
+        // For cache hits, return normally and let Commander exit with code 0
       } catch (error) {
-        console.error(chalk.red('❌ Validation failed with error:'), error);
+        // Re-throw process.exit errors (for testing)
+        if (error instanceof Error && error.message.startsWith('process.exit')) {
+          throw error;
+        }
+        // Error already logged by runValidateWorkflow
         process.exit(1);
       }
     });
+}
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showValidateVerboseHelp(): void {
+  console.log(`# validate Command Reference
+
+> Run validation with git tree hash caching
+
+## Overview
+
+The \`validate\` command is the core of vibe-validate. It executes your validation pipeline (linting, testing, type-checking, etc.) and uses git tree hashes for intelligent caching.
+
+## How It Works
+
+1. **Calculates git tree hash** of working directory (includes all tracked and untracked files)
+2. **Checks if hash matches cached state** (from previous run)
+3. **If match:** Exits immediately with cached result (~288ms)
+4. **If no match:** Runs validation pipeline (~60-90s depending on your project)
+5. **Caches result** in git notes for next run
+6. **Records history** for analysis via \`vibe-validate history\`
+
+## Options
+
+- \`-f, --force\` - Force validation even if already passed (bypasses cache)
+- \`-v, --verbose\` - Show detailed progress and output
+- \`-y, --yaml\` - Output validation result as YAML to stdout (LLM-friendly)
+- \`-c, --check\` - Check if validation has already passed without running
+
+## Exit Codes
+
+- \`0\` - Validation passed (or cached pass)
+- \`1\` - Validation failed
+- \`2\` - Configuration error
+
+## Examples
+
+\`\`\`bash
+# Standard usage (uses cache if available)
+vibe-validate validate
+
+# Force re-validation (bypass cache)
+vibe-validate validate --force
+
+# Check status without running
+vibe-validate validate --check
+
+# YAML output for AI agents
+vibe-validate validate --yaml
+
+# Verbose output with YAML result
+vibe-validate validate --verbose --yaml
+\`\`\`
+
+## Caching Behavior
+
+### Cache Key
+- Based on **git tree hash** (not commit SHA)
+- Includes **all files** (tracked + untracked)
+- Deterministic: same content = same hash
+
+### Cache Hit
+- Validation result found for current tree hash
+- Exits in ~288ms
+- Shows: "✓ Validation already passed for tree <hash>"
+
+### Cache Miss
+- No result found for current tree hash
+- Runs full validation pipeline
+- Typical duration: 60-90s
+
+### Cache Invalidation
+- ANY file change (content or path)
+- Adding/removing files
+- Modifying .gitignore
+
+## YAML Output Mode
+
+When using \`--yaml\`, output is split:
+
+**stderr** (human-readable progress):
+\`\`\`
+phase_start: Pre-Qualification
+🔍 Running Pre-Qualification...
+✅ TypeScript - PASSED
+phase_complete: Pre-Qualification (passed)
+\`\`\`
+
+**stdout** (machine-parseable YAML):
+\`\`\`yaml
+---
+passed: true
+timestamp: 2025-10-23T14:30:00Z
+treeHash: 2b62c71a3f...
+duration: 62.4
+\`\`\`
+
+This design:
+- ✅ Humans see progress in real-time (stderr)
+- ✅ LLMs parse structured result (stdout)
+- ✅ 90% smaller than verbose logs
+
+## Integration with Other Commands
+
+- \`vibe-validate state\` - View cached result
+- \`vibe-validate state --verbose\` - See full error details
+- \`vibe-validate history list\` - View validation timeline
+- \`vibe-validate pre-commit\` - Runs sync-check + validate
+
+## Common Workflows
+
+### Development workflow
+\`\`\`bash
+# Make changes
+# ...
+
+# Run validation (uses cache if no changes)
+vibe-validate validate
+
+# If fails, fix errors and retry
+vibe-validate validate
+\`\`\`
+
+### Debugging workflow
+\`\`\`bash
+# Why did validation fail?
+vibe-validate state --verbose
+
+# View history
+vibe-validate history list
+
+# Force fresh validation
+vibe-validate validate --force
+\`\`\`
+
+### AI agent workflow
+\`\`\`bash
+# Run validation
+vibe-validate validate --yaml 2>&1 | sed -n '/^---$/,$p' | tail -n +2
+
+# Or use state command
+vibe-validate validate
+vibe-validate state --yaml
+\`\`\`
+
+## Performance
+
+| Scenario | Duration | Notes |
+|----------|----------|-------|
+| Cache hit | ~288ms | Cached result found |
+| Cache miss | ~60-90s | Full validation run |
+| Force flag | ~60-90s | Cache bypassed |
+
+## Files Created/Modified
+
+- \`refs/notes/vibe-validate/runs\` - Validation history (git notes, auto-created)
+
+## Error Recovery
+
+If validation fails:
+1. Check error details: \`vibe-validate state --verbose\`
+2. Fix errors shown in output
+3. Re-run: \`vibe-validate validate\`
+4. Verify: \`vibe-validate state\`
+`);
 }

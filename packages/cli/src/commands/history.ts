@@ -106,7 +106,24 @@ async function listHistory(options: {
     const limitedRuns = filteredRuns.slice(0, limit);
 
     if (options.yaml) {
-      console.log(stringifyYaml(limitedRuns));
+      // YAML mode: Output structured result to stdout
+      // Small delay to ensure stderr is flushed
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // RFC 4627 separator
+      process.stdout.write('---\n');
+
+      // Write pure YAML
+      process.stdout.write(stringifyYaml(limitedRuns));
+
+      // CRITICAL: Wait for stdout to flush before exiting
+      await new Promise<void>(resolve => {
+        if (process.stdout.write('')) {
+          resolve();
+        } else {
+          process.stdout.once('drain', resolve);
+        }
+      });
     } else {
       // Pretty table output
       console.log(`\nValidation History (showing ${limitedRuns.length} most recent)\n`);
@@ -152,7 +169,24 @@ async function showHistory(
     }
 
     if (options.yaml) {
-      console.log(stringifyYaml(note));
+      // YAML mode: Output structured result to stdout
+      // Small delay to ensure stderr is flushed
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // RFC 4627 separator
+      process.stdout.write('---\n');
+
+      // Write pure YAML
+      process.stdout.write(stringifyYaml(note));
+
+      // CRITICAL: Wait for stdout to flush before exiting
+      await new Promise<void>(resolve => {
+        if (process.stdout.write('')) {
+          resolve();
+        } else {
+          process.stdout.once('drain', resolve);
+        }
+      });
     } else {
       // Pretty print
       console.log(`\nValidation History for Tree Hash: ${note.treeHash}`);
@@ -270,4 +304,171 @@ async function healthCheck(): Promise<void> {
     console.error(`Error checking history health: ${errorMessage}`);
     process.exit(1);
   }
+}
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showHistoryVerboseHelp(): void {
+  console.log(`# history Command Reference
+
+> View and manage validation history stored in git notes
+
+## Overview
+
+The \`history\` command provides tools to inspect, manage, and maintain validation history records stored in git notes. Each validation run is tracked using the git tree hash as a key, allowing you to see when code states were validated and with what results.
+
+## Subcommands
+
+### \`list\` - List validation history
+
+List all validation runs, sorted by timestamp (newest first).
+
+**Options:**
+- \`-l, --limit <number>\` - Limit results (default: 20)
+- \`-b, --branch <name>\` - Filter by branch name
+- \`--yaml\` - Output as YAML
+
+**Examples:**
+\`\`\`bash
+vibe-validate history list                    # Last 20 runs
+vibe-validate history list --limit 50         # Last 50 runs
+vibe-validate history list --branch main      # Only main branch
+vibe-validate history list --yaml             # Machine-readable output
+\`\`\`
+
+**Output fields:**
+- Timestamp - When validation ran
+- Tree hash - First 7 chars of git tree hash
+- Branch - Branch name
+- Status - PASSED or FAILED
+- Duration - How long validation took
+
+---
+
+### \`show\` - Show detailed history for a tree hash
+
+Display all validation runs for a specific git tree hash.
+
+**Arguments:**
+- \`<tree-hash>\` - Git tree hash (full or abbreviated)
+
+**Options:**
+- \`--yaml\` - Output as YAML
+
+**Examples:**
+\`\`\`bash
+vibe-validate history show abc123d            # Show history for tree
+vibe-validate history show abc123d --yaml     # Machine-readable
+\`\`\`
+
+**What you'll see:**
+- All runs for this tree hash
+- Timestamps and durations
+- Pass/fail status
+- Phase breakdown
+- Uncommitted changes flag
+
+---
+
+### \`prune\` - Remove old validation history
+
+Delete validation history to reduce git notes storage.
+
+**Options:**
+- \`--older-than <days>\` - Remove notes older than N days (default: 90)
+- \`--all\` - Remove ALL history (use with caution)
+- \`--dry-run\` - Preview what would be deleted
+
+**Examples:**
+\`\`\`bash
+vibe-validate history prune                           # Remove >90 day old
+vibe-validate history prune --older-than 30           # Remove >30 days
+vibe-validate history prune --dry-run                 # Preview only
+vibe-validate history prune --all --dry-run           # Preview full cleanup
+\`\`\`
+
+**What gets pruned:**
+- Entire git notes (tree hash level) where ALL runs are older than threshold
+- Partial runs are NOT pruned (keeps notes with any recent runs)
+
+---
+
+### \`health\` - Check history health
+
+Check for history storage bloat and maintenance recommendations.
+
+**Examples:**
+\`\`\`bash
+vibe-validate history health
+\`\`\`
+
+**Health indicators:**
+- Total tree hashes tracked
+- Notes older than 90 days
+- Recommendations for pruning
+
+## Storage Details
+
+**Where history lives:**
+- Git notes under \`refs/notes/vibe-validate/runs\`
+- Keyed by git tree hash (content-based)
+- Stored as YAML with full validation results
+
+**Storage impact:**
+- Each tree hash: ~1-5KB (depends on validation detail)
+- Typical project: 50-200 tree hashes
+- Total overhead: Usually <1MB
+
+**When to prune:**
+- Storage > 1MB
+- Many old notes (>100 notes older than 90 days)
+- Switching to new validation approach
+
+## Exit Codes
+
+- \`0\` - Success
+- \`1\` - Error (git command failed, tree hash not found, etc.)
+
+## Common Workflows
+
+### View recent validation activity
+\`\`\`bash
+vibe-validate history list --limit 10
+\`\`\`
+
+### Investigate specific tree hash
+\`\`\`bash
+# From validation output, copy tree hash, then:
+vibe-validate history show <tree-hash>
+\`\`\`
+
+### Clean up old history
+\`\`\`bash
+# Preview first
+vibe-validate history prune --older-than 60 --dry-run
+
+# If looks good, execute
+vibe-validate history prune --older-than 60
+\`\`\`
+
+### Check storage health
+\`\`\`bash
+vibe-validate history health
+\`\`\`
+
+## Integration with CI
+
+History is stored in git notes which are NOT pushed by default. To share validation history across team:
+
+\`\`\`bash
+# Push notes (one-time or in CI)
+git push origin refs/notes/vibe-validate/runs
+
+# Fetch notes (team members)
+git fetch origin refs/notes/vibe-validate/runs:refs/notes/vibe-validate/runs
+\`\`\`
+
+**Recommendation:** Keep history local for development, don't push to remote unless team wants shared validation tracking.
+`);
 }

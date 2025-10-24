@@ -189,6 +189,17 @@ export const VibeValidateConfigSchema = z.object({
       command: 'npx vibe-validate pre-commit',
     },
   }),
+
+  /**
+   * Developer feedback for continuous quality improvement (optional, default: false)
+   *
+   * When enabled, provides additional alerts about extraction quality failures
+   * to help improve extractors through dogfooding. Useful for:
+   * - vibe-validate contributors
+   * - Projects building custom extractors
+   * - Teams wanting to improve validation feedback
+   */
+  developerFeedback: z.boolean().optional().default(false),
 }).strict();
 
 export type VibeValidateConfig = z.infer<typeof VibeValidateConfigSchema>;

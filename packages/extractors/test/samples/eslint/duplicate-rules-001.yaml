@@ -1,0 +1,82 @@
+$schema: ../sample-schema.json
+
+# ESLint reports same error twice with overlapping rules
+
+metadata:
+  tool: eslint
+  toolVersion: "8.0.0"
+  platform: darwin
+  nodeVersion: "22.0.0"
+  contributor: vibe-validate
+  contributedDate: "2025-10-23"
+  sourceIssue: null
+  sourcePR: null
+  category: lint-error
+  difficulty: medium
+  description: |
+    ESLint reports duplicate errors when both no-unused-vars and
+    @typescript-eslint/no-unused-vars are enabled. Same location,
+    same message, different rule names.
+
+    This doubles the error count and wastes tokens. Should deduplicate.
+    Original dogfooding score: 64%
+
+input:
+  raw: |
+    /Users/jeff/Workspaces/vibe-validate/packages/core/src/eslint-test-unused.ts
+      6:9  error  'unusedVariable' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+      6:9  error  'unusedVariable' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+      7:9  error  'anotherUnused' is assigned a value but never used. Allowed unused vars must match /^_/u   no-unused-vars
+      7:9  error  'anotherUnused' is assigned a value but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+
+    ✖ 4 problems (4 errors, 0 warnings)
+
+expected:
+  detectionConfidence: 95
+  detectedTool: eslint
+  failures:
+    - tool: eslint
+      type: lint-error
+      summary: "'unusedVariable' is assigned a value but never used"
+      message: "'unusedVariable' is assigned a value but never used (@typescript-eslint/no-unused-vars)"
+      location:
+        file: packages/core/src/eslint-test-unused.ts
+        line: 6
+        column: 9
+      context: null
+      stackTrace: []
+      relevance: 100
+
+      llmSummary: |
+        ESLint error in packages/core/src/eslint-test-unused.ts:6 - 'unusedVariable' is assigned but never used (@typescript-eslint/no-unused-vars)
+
+    - tool: eslint
+      type: lint-error
+      summary: "'anotherUnused' is assigned a value but never used"
+      message: "'anotherUnused' is assigned a value but never used (@typescript-eslint/no-unused-vars)"
+      location:
+        file: packages/core/src/eslint-test-unused.ts
+        line: 7
+        column: 9
+      context: null
+      stackTrace: []
+      relevance: 100
+
+      llmSummary: |
+        ESLint error in packages/core/src/eslint-test-unused.ts:7 - 'anotherUnused' is assigned but never used (@typescript-eslint/no-unused-vars)
+
+quality:
+  lastTested: null
+  fields: {}
+  score: null
+  issues: []
+  scoreHistory: []
+
+improvementHints:
+  - "Deduplicate errors: same file:line:column = same error"
+  - "Prefer @typescript-eslint/* rules over base ESLint rules for TS files"
+  - "Report 2 unique errors, not 4 duplicate errors"
+  - "This reduces token count by 50% for TypeScript projects"
+
+relatedSamples:
+  - eslint/lint-error.yaml

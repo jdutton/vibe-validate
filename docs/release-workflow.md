@@ -9,7 +9,7 @@ vibe-validate uses a **monorepo structure** with 5 independently publishable npm
 - `@vibe-validate/cli` - Command-line interface
 - `@vibe-validate/config` - Configuration management
 - `@vibe-validate/core` - Validation orchestration engine
-- `@vibe-validate/formatters` - Output formatting
+- `@vibe-validate/extractors` - Output formatting
 - `@vibe-validate/git` - Git integration utilities
 
 All packages are versioned together and released simultaneously.
@@ -146,10 +146,10 @@ pnpm publish:all
 
 This runs `pnpm pre-publish` first (validation check), then publishes all 5 packages to npm in the correct dependency order:
 
-1. `@vibe-validate/formatters` (no dependencies)
+1. `@vibe-validate/extractors` (no dependencies)
 2. `@vibe-validate/git` (no dependencies)
-3. `@vibe-validate/config` (depends on formatters)
-4. `@vibe-validate/core` (depends on formatters, git)
+3. `@vibe-validate/config` (depends on extractors)
+4. `@vibe-validate/core` (depends on extractors, git)
 5. `@vibe-validate/cli` (depends on all other packages)
 
 ## Dry Run Testing

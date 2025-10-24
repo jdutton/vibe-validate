@@ -13,7 +13,7 @@ Before publishing any new version, ensure:
   - Root package.json
   - @vibe-validate/core
   - @vibe-validate/git
-  - @vibe-validate/formatters
+  - @vibe-validate/extractors
   - @vibe-validate/config
   - @vibe-validate/cli
 
@@ -89,7 +89,7 @@ Test publishing without actually uploading to npm:
 npm run publish:dry-run
 
 # Or test individual packages
-cd packages/formatters && npm publish --dry-run
+cd packages/extractors && npm publish --dry-run
 cd packages/git && npm publish --dry-run
 cd packages/config && npm publish --dry-run
 cd packages/core && npm publish --dry-run
@@ -108,7 +108,7 @@ Test local installation before publishing:
 
 ```bash
 # Create tarballs for all packages
-cd packages/formatters && npm pack
+cd packages/extractors && npm pack
 cd packages/git && npm pack
 cd packages/config && npm pack
 cd packages/core && npm pack
@@ -135,11 +135,11 @@ npx vibe-validate --help
 
 ```bash
 # 1. Publish packages with no dependencies (parallel order)
-cd packages/formatters && npm publish
+cd packages/extractors && npm publish
 cd packages/git && npm publish
 cd packages/config && npm publish
 
-# 2. Publish core (depends on formatters, git via external deps if any)
+# 2. Publish core (depends on extractors, git via external deps if any)
 cd packages/core && npm publish
 
 # 3. Publish CLI (depends on core, git, config)
@@ -159,7 +159,7 @@ After publishing, verify packages are available:
 
 ```bash
 # Check each package on npm
-npm view @vibe-validate/formatters
+npm view @vibe-validate/extractors
 npm view @vibe-validate/git
 npm view @vibe-validate/config
 npm view @vibe-validate/core

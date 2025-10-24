@@ -53,6 +53,7 @@ export type {
   ValidationResult,
   StepResult,
   PhaseResult,
+  ExtractionQuality,
 } from './types.js';
 
 // Export core runner functions

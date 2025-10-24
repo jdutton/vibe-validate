@@ -58,7 +58,7 @@ vibe-validate/
 │   ├── cli/           # Command-line interface
 │   ├── config/        # Configuration system
 │   ├── core/          # Validation runner engine
-│   ├── formatters/    # Error formatters
+│   ├── extractors/    # Error extractors
 │   └── git/           # Git operations
 ├── docs/              # Documentation
 ├── CONTRIBUTING.md    # This file
@@ -73,14 +73,14 @@ vibe-validate/
   └── @vibe-validate/core
   └── @vibe-validate/config
   └── @vibe-validate/git
-  └── @vibe-validate/formatters
+  └── @vibe-validate/extractors
 
 @vibe-validate/core
   └── @vibe-validate/git
-  └── @vibe-validate/formatters
+  └── @vibe-validate/extractors
 
 @vibe-validate/config (standalone)
-@vibe-validate/formatters (standalone)
+@vibe-validate/extractors (standalone)
 @vibe-validate/git (standalone)
 ```
 
@@ -264,6 +264,147 @@ pnpm will automatically resolve to the local workspace.
 
 For detailed setup instructions, see [docs/local-development.md](docs/local-development.md).
 
+## Contributing Extractor Improvements
+
+### Why Extractors Matter
+
+vibe-validate extracts errors from tool output (vitest, eslint, tsc, etc.) to provide actionable summaries for developers and LLMs. Extractors are **never perfect** and **never done** - they improve through community contributions of real-world test cases.
+
+### When to Contribute an Extractor Improvement
+
+Contribute when:
+- ✅ vibe-validate fails to extract key error details (file, line, message)
+- ✅ Extraction is incomplete or inaccurate
+- ✅ You have real tool output that doesn't parse correctly
+- ✅ You're using a tool we don't support yet
+
+### How to Report Extraction Issues
+
+**Option 1: File an Issue (Easiest)**
+
+1. Go to [Issues](https://github.com/jdutton/vibe-validate/issues/new/choose)
+2. Select "Extractor Improvement"
+3. Fill in:
+   - Tool name and version
+   - Raw output (from `vibe-validate state`)
+   - What should be extracted
+   - Impact on your workflow
+4. We'll create a sample and improve the extractor
+
+**Option 2: Contribute a Sample (Most Helpful)**
+
+Samples are YAML files containing:
+- Real tool output (input)
+- What should be extracted (expected)
+- Quality thresholds
+
+**Quick Start:**
+
+```bash
+# 1. Copy the template
+cd packages/extractors/test/samples
+cp _template.yaml vitest/my-failure-case.yaml
+
+# 2. Fill in the YAML
+# - Your IDE will autocomplete fields (thanks to JSON Schema!)
+# - Add raw output under 'input.rawOutput'
+# - Define expected extraction under 'expected'
+
+# 3. Run tests
+cd ../..
+pnpm test
+
+# 4. Submit PR using the sample template
+# Choose "extractor-sample.md" when creating PR
+```
+
+**Example Sample Structure:**
+
+```yaml
+$schema: ./sample-schema.json
+metadata:
+  name: vitest-assertion-error-001
+  tool: vitest
+  version: 3.2.0
+  difficulty: easy
+  contributor: your-github-username
+
+input:
+  rawOutput: |
+    ❌ FAIL test/example.test.ts > should work
+    AssertionError: expected 2 to equal 3
+      at /path/to/test.ts:45:12
+
+expected:
+  detectionConfidence: high
+  detectedTool: vitest
+  failures:
+    - tool: vitest
+      summary: "should work"
+      message: "AssertionError: expected 2 to equal 3"
+      location:
+        file: "test/example.test.ts"
+        line: 45
+        column: 12
+      llmSummary: |
+        Test 'should work' failed in test/example.test.ts:45
+        AssertionError: expected 2 to equal 3
+```
+
+### Sample Quality Thresholds
+
+Your sample must pass quality checks:
+
+- **Easy** (90%+): Standard output patterns (most common cases)
+- **Medium** (75%+): Complex output with nested details
+- **Hard** (60%+): Unusual formats or edge cases
+- **Very Hard** (40%+): Experimental or rare patterns
+
+Quality is auto-calculated by comparing extracted data to expected values.
+
+### Improving Extractors
+
+If you want to improve the extractor code itself:
+
+**Files:**
+- `packages/extractors/src/vitest-extractor.ts` - Vitest test failures
+- `packages/extractors/src/typescript-extractor.ts` - TypeScript errors
+- `packages/extractors/src/eslint-extractor.ts` - ESLint violations
+- `packages/extractors/src/smart-extractor.ts` - Auto-detection logic
+
+**Process:**
+
+1. **Add sample first** (TDD approach)
+2. **Run tests** - they should fail with low quality score
+3. **Improve extractor** - update regex patterns or extraction logic
+4. **Re-run tests** - quality score should improve to meet threshold
+5. **Submit PR** with both sample and extractor improvements
+
+**Testing:**
+
+```bash
+# Run extractor tests
+pnpm --filter @vibe-validate/extractors test
+
+# Generate quality report
+pnpm --filter @vibe-validate/extractors test:report
+
+# Check for regressions
+pnpm --filter @vibe-validate/extractors test:regression
+```
+
+### Recognition for Contributors
+
+- ✅ **Credited** in sample metadata
+- ✅ **Listed** in quality reports
+- ✅ **Mentioned** in CHANGELOG for major improvements
+- ✅ **Appreciated** by developers and LLMs worldwide! 🙏
+
+For detailed sample format specification, see:
+- `packages/extractors/test/samples/README.md`
+- `packages/extractors/test/samples/SAMPLE_FORMAT.md`
+- `packages/extractors/test/samples/sample-schema.json`
+
 ## Code Quality Standards
 
 ### Pre-Commit Checklist
@@ -297,7 +438,7 @@ Before committing, ensure:
   - Git tree hash calculation
   - Config validation
   - Process cleanup
-  - Error formatters
+  - Error extractors
 
 ## Submitting Changes
 

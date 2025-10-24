@@ -39,9 +39,26 @@ export function syncCheckCommand(program: Command): void {
           remoteBranch,
         });
 
-        // Output based on quiet flag
+        // Output based on yaml flag
         if (options.yaml) {
-          console.log(stringifyYaml(result));
+          // YAML mode: Output structured result to stdout
+          // Small delay to ensure stderr is flushed
+          await new Promise(resolve => setTimeout(resolve, 10));
+
+          // RFC 4627 separator
+          process.stdout.write('---\n');
+
+          // Write pure YAML
+          process.stdout.write(stringifyYaml(result));
+
+          // CRITICAL: Wait for stdout to flush before exiting
+          await new Promise<void>(resolve => {
+            if (process.stdout.write('')) {
+              resolve();
+            } else {
+              process.stdout.once('drain', resolve);
+            }
+          });
         } else {
           // Human-friendly format
           displayHumanSyncCheck(result, mainBranch);
@@ -90,4 +107,86 @@ function displayHumanSyncCheck(
   }
 
   console.log(chalk.gray('─'.repeat(50)));
+}
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showSyncCheckVerboseHelp(): void {
+  console.log(`# sync-check Command Reference
+
+> Check if branch is behind remote main branch
+
+## Overview
+
+The \`sync-check\` command verifies that your current branch is up to date with the remote main branch (usually origin/main). It compares local and remote commit histories without making any changes to your repository.
+
+## How It Works
+
+1. Checks if current branch has a remote tracking branch
+2. Compares local and remote commit histories
+3. Reports sync status (up to date, behind, or no remote)
+
+## Options
+
+- \`--main-branch <branch>\` - Main branch name (overrides config, default: main)
+- \`--remote-origin <remote>\` - Remote origin name (overrides config, default: origin)
+- \`--yaml\` - Output YAML only (no human-friendly display)
+
+## Exit Codes
+
+- \`0\` - Up to date or no remote tracking
+- \`1\` - Branch is behind (needs merge)
+- \`2\` - Git command failed
+
+## Examples
+
+\`\`\`bash
+# Check sync with default main branch
+vibe-validate sync-check
+
+# Check sync with custom main branch
+vibe-validate sync-check --main-branch develop
+
+# YAML output only
+vibe-validate sync-check --yaml
+\`\`\`
+
+## Common Workflows
+
+### Before starting work
+
+\`\`\`bash
+# Check if your branch is behind
+vibe-validate sync-check
+
+# If behind, merge latest
+git merge origin/main
+\`\`\`
+
+### In CI/CD pipeline
+
+\`\`\`bash
+# Check sync as YAML for parsing
+vibe-validate sync-check --yaml
+\`\`\`
+
+## Error Recovery
+
+### If branch is behind (exit 1)
+
+**Merge the remote branch:**
+\`\`\`bash
+# Fetch latest changes
+git fetch origin
+
+# Merge origin/main (or git rebase origin/main)
+git merge origin/main
+
+# Resolve conflicts if any
+
+# Retry sync check
+vibe-validate sync-check
+\`\`\`
+`);
 }

@@ -306,3 +306,185 @@ function generateYamlConfig(templateName: string, gitConfig: DetectedGitConfig):
   });
 }
 
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showInitVerboseHelp(): void {
+  console.log(`# init Command Reference
+
+> Initialize vibe-validate configuration
+
+## Overview
+
+The \`init\` command sets up vibe-validate in your project by creating configuration files, optionally setting up pre-commit hooks, and generating GitHub Actions workflows.
+
+## How It Works
+
+1. **Creates vibe-validate.config.yaml** in project root (required)
+2. **Optionally sets up pre-commit hooks** via Husky (with \`--setup-hooks\`)
+3. **Optionally creates GitHub Actions workflow** (with \`--setup-workflow\`)
+4. **Optionally updates .gitignore** to exclude validation state (with \`--fix-gitignore\`)
+
+## Options
+
+- \`-t, --template <name>\` - Template to use (default: "minimal")
+  - Available: \`minimal\`, \`typescript-library\`, \`typescript-nodejs\`, \`typescript-react\`
+- \`--setup-hooks\` - Install Husky pre-commit hook
+- \`--setup-workflow\` - Generate GitHub Actions workflow
+- \`--fix-gitignore\` - Add validation state to .gitignore
+- \`-f, --force\` - Overwrite existing config file
+
+## Exit Codes
+
+- \`0\` - Configuration created successfully
+- \`1\` - Failed (config exists without --force, or invalid template)
+
+## Files Created/Modified
+
+- \`vibe-validate.config.yaml\` (always created)
+- \`.husky/pre-commit\` (with \`--setup-hooks\`)
+- \`.github/workflows/validate.yml\` (with \`--setup-workflow\`)
+- \`.gitignore\` (with \`--fix-gitignore\`)
+
+## Examples
+
+\`\`\`bash
+# Minimal setup (just config file)
+vibe-validate init
+
+# Full setup for TypeScript project
+vibe-validate init --template typescript-nodejs --setup-workflow --setup-hooks
+
+# React project with all features
+vibe-validate init --template typescript-react --setup-workflow --setup-hooks --fix-gitignore
+
+# Overwrite existing config
+vibe-validate init --force --template typescript-library
+\`\`\`
+
+## Templates
+
+### \`minimal\`
+- Basic validation phases (build, test, lint)
+- No TypeScript-specific checks
+- Good starting point for customization
+
+### \`typescript-library\`
+- TypeScript type checking
+- ESLint with TypeScript rules
+- Jest/Vitest testing
+- NPM package publishing checks
+
+### \`typescript-nodejs\`
+- TypeScript for Node.js applications
+- API testing
+- Security checks
+- Docker build validation
+
+### \`typescript-react\`
+- React-specific linting
+- Component testing
+- Build size checks
+- Accessibility validation
+
+## Common Workflows
+
+### First-time setup
+\`\`\`bash
+# 1. Initialize with template
+vibe-validate init --template typescript-nodejs --setup-workflow
+
+# 2. Review generated config
+cat vibe-validate.config.yaml
+
+# 3. Customize as needed
+# Edit vibe-validate.config.yaml
+
+# 4. Commit
+git add vibe-validate.config.yaml .github/workflows/validate.yml
+git commit -m "feat: add vibe-validate"
+\`\`\`
+
+### Migrating from another tool
+\`\`\`bash
+# 1. Initialize with minimal template
+vibe-validate init
+
+# 2. Manually configure validation phases
+# Edit vibe-validate.config.yaml to match your existing workflow
+
+# 3. Test locally
+vibe-validate validate
+
+# 4. If successful, commit
+git add vibe-validate.config.yaml
+git commit -m "feat: migrate to vibe-validate"
+\`\`\`
+
+### Updating existing config
+\`\`\`bash
+# Regenerate config (backs up old one)
+vibe-validate init --force --template typescript-nodejs
+
+# Compare old vs new
+git diff vibe-validate.config.yaml
+
+# Keep customizations, restore if needed
+\`\`\`
+
+## Pre-commit Hook Setup
+
+When using \`--setup-hooks\`, init:
+1. Installs Husky (if not already installed)
+2. Creates \`.husky/pre-commit\` with:
+   \`\`\`bash
+   #!/bin/sh
+   npx vibe-validate pre-commit
+   \`\`\`
+3. Ensures hook is executable
+
+The hook runs \`vibe-validate pre-commit\` before every commit, which:
+- Checks sync with origin/main
+- Runs validation (with caching)
+- Blocks commit if validation fails
+
+## GitHub Actions Workflow
+
+When using \`--setup-workflow\`, init creates \`.github/workflows/validate.yml\`:
+- Runs on push and PR
+- Matrix testing (multiple Node versions, OS)
+- Caches validation results using git tree hashes
+- Posts results as PR comments
+
+## Error Recovery
+
+**If config already exists:**
+\`\`\`bash
+# Option 1: Use --force to overwrite
+vibe-validate init --force
+
+# Option 2: Manually delete and re-init
+rm vibe-validate.config.yaml
+vibe-validate init
+\`\`\`
+
+**If template not found:**
+\`\`\`bash
+# List available templates (check error message)
+# Use one of: minimal, typescript-library, typescript-nodejs, typescript-react
+
+vibe-validate init --template typescript-nodejs
+\`\`\`
+
+**If Husky install fails:**
+\`\`\`bash
+# Manually install Husky
+npm install --save-dev husky
+npx husky install
+
+# Then retry
+vibe-validate init --setup-hooks
+\`\`\`
+`);
+}
+

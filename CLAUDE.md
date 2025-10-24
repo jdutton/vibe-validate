@@ -8,13 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 **Target Users**: Developers using AI assistants (Claude Code, Cursor, Aider, Continue)
 
-## Project Status
-
-✅ **PUBLISHED TO NPM** - v0.9.6 released and ready for production use
-
-**Latest Version**: 0.9.6
-**npm**: `npm install -D @vibe-validate/cli`
-
 ## Repository Structure
 
 ```
@@ -22,7 +15,7 @@ vibe-validate/
 ├── packages/
 │   ├── core/          # Validation orchestration engine
 │   ├── git/           # Git workflow utilities
-│   ├── formatters/    # Error parsing & LLM optimization
+│   ├── extractors/    # Error extraction & LLM optimization
 │   ├── config/        # Configuration system with schema validation
 │   └── cli/           # Command-line interface
 ├── config-templates/  # YAML configuration templates
@@ -49,12 +42,17 @@ pnpm dev
 pnpm lint              # ESLint checking
 pnpm typecheck         # TypeScript type checking
 
-# Validation
-pnpm validate          # Full validation pipeline
-pnpm pre-commit        # Pre-commit workflow (sync check + validation)
+# Validation (MUST pass before commit)
+pnpm validate --yaml   # Full validation with LLM-friendly output
+
+# Check cached validation without re-running
+pnpm exec vibe-validate validate --check --yaml
+
+# Pre-commit workflow
+pnpm pre-commit        # Branch sync + validation
 
 # Health checks
-pnpm exec vibe-validate doctor  # Diagnose setup issues (ALWAYS run after upgrade!)
+pnpm exec vibe-validate doctor  # Diagnose setup issues (run after upgrade!)
 ```
 
 ## Package Management
@@ -233,7 +231,7 @@ vibe-validate init
 #### Creating Feature Branches
 1. **Always branch from main**: `git checkout main && git pull origin main`
 2. **Create descriptive branch name**:
-   - `feature/add-new-formatter` - for new features
+   - `feature/add-new-extractor` - for new features
    - `fix/git-hash-determinism` - for bug fixes
    - `docs/update-api-reference` - for documentation
    - `refactor/simplify-config` - for refactoring
@@ -444,23 +442,6 @@ When you identify an opportunity:
 4. **Create issue or discuss** - Raise with user or create GitHub issue
 
 **Remember**: Your experience as an AI agent IS the product validation. Every friction point you encounter is a bug to fix.
-
-## Current Focus
-
-**Latest Release**: v0.9.6 (2025-10-17)
-
-**Key Features**:
-- ✅ `generate-workflow` command for GitHub Actions workflow generation
-- ✅ `doctor` command for repository health diagnostics
-- ✅ Git tree hash-based validation caching (312x speedup)
-- ✅ Agent-friendly error formatting
-- ✅ Pre-commit workflow integration
-- ✅ Multi-OS and multi-Node.js testing support
-
-**Next Release** (v0.9.7 roadmap):
-1. CI configuration schema support
-2. Enhanced doctor checks
-3. Interactive workflow generator
 
 ## Questions?
 

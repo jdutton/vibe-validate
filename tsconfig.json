@@ -24,7 +24,7 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/git" },
-    { "path": "./packages/formatters" },
+    { "path": "./packages/extractors" },
     { "path": "./packages/config" },
     { "path": "./packages/cli" }
   ]

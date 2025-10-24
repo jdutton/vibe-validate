@@ -305,5 +305,69 @@ invalid: yaml: content: [
 
       expect(result).toBeNull();
     });
+
+    it('should extract validation result from real GitHub Actions CI log', () => {
+      // Real CI log sample from GitHub Actions run 18716369496
+      // Format: "Job Name\tStep Name\tTimestamp Content"
+      const logs = `
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4488358Z ==========================================
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4488753Z VALIDATION RESULT
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4489009Z ==========================================
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4498802Z passed: false
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4499371Z timestamp: 2025-10-22T12:37:45.190Z
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4500032Z treeHash: b131b1a1aa6eb1cf4bd4b23a71fd21560df01970
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4500551Z phases:
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4500886Z   - name: Pre-Qualification
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4501265Z     durationSecs: 3.1
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4501589Z     passed: true
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4501881Z     steps:
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4502219Z       - name: TypeScript Type Check
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4502627Z         passed: true
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4502965Z         durationSecs: 2.6
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4503367Z       - name: ESLint Code Quality
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4503981Z         passed: true
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504305Z         durationSecs: 3.1
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504607Z   - name: Testing
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504805Z     durationSecs: 33.3
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505013Z     passed: false
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4682467Z failedStep: Unit Tests with Coverage
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4682754Z rerunCommand: pnpm test:coverage
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4812713Z ==========================================
+`;
+
+      const result = provider.extractValidationResult(logs);
+
+      expect(result).not.toBeNull();
+      expect(result?.passed).toBe(false);
+      expect(result?.timestamp).toBe('2025-10-22T12:37:45.190Z');
+      expect(result?.treeHash).toBe('b131b1a1aa6eb1cf4bd4b23a71fd21560df01970');
+      expect(result?.failedStep).toBe('Unit Tests with Coverage');
+      expect(result?.rerunCommand).toBe('pnpm test:coverage');
+      expect(result?.phases).toHaveLength(2);
+      expect(result?.phases?.[0].name).toBe('Pre-Qualification');
+      expect(result?.phases?.[0].passed).toBe(true);
+      expect(result?.phases?.[1].name).toBe('Testing');
+      expect(result?.phases?.[1].passed).toBe(false);
+    });
+
+    it('should use concise error summary when validation result is available', () => {
+      // Real CI log with validation result
+      const logs = `
+Some other log lines
+Run validation\tValidate\t2025-10-22T12:37:45.000Z ==========================================
+Run validation\tValidate\t2025-10-22T12:37:45.001Z VALIDATION RESULT
+Run validation\tValidate\t2025-10-22T12:37:45.002Z ==========================================
+Run validation\tValidate\t2025-10-22T12:37:45.003Z passed: false
+Run validation\tValidate\t2025-10-22T12:37:45.004Z failedStep: TypeScript Type Check
+Run validation\tValidate\t2025-10-22T12:37:45.005Z rerunCommand: pnpm typecheck
+Run validation\tValidate\t2025-10-22T12:37:45.006Z ==========================================
+##[error]Process completed with exit code 1.
+`;
+
+      // Call the private method via type assertion to test it directly
+      const result = (provider as any).extractErrorSummary(logs);
+
+      expect(result).toBe('Failed step: TypeScript Type Check\nRerun: pnpm typecheck');
+    });
   });
 });

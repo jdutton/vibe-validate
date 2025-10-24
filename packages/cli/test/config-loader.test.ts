@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFileSync, unlinkSync, existsSync, mkdirSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { loadConfig, configExists, findConfigPath } from '../src/utils/config-loader.js';
+import { loadConfig, configExists, findConfigPath, loadConfigWithErrors } from '../src/utils/config-loader.js';
 
 describe('config-loader', () => {
   let testDir: string;
@@ -128,6 +128,18 @@ describe('config-loader', () => {
 
       // Should return null for invalid directory (no config found)
       expect(config).toBeNull();
+    });
+  });
+
+  describe('loadConfigWithErrors', () => {
+    it('should return null values when no config file exists', async () => {
+      const result = await loadConfigWithErrors(testDir);
+
+      expect(result).toEqual({
+        config: null,
+        errors: null,
+        filePath: null,
+      });
     });
   });
 });

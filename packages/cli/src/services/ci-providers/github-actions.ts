@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
+import { extractByStepName } from '@vibe-validate/extractors';
 import type {
   CIProvider,
   PullRequest,
@@ -160,15 +161,9 @@ export class GitHubActionsProvider implements CIProvider {
     }
 
     // Extract YAML content (skip the header separator line, start from actual YAML)
-    // Note: The header is sometimes duplicated, so find where "passed:" actually starts
-    let yamlStartIdx = startIdx + 2;
-    for (let i = startIdx + 2; i < endIdx; i++) {
-      const content = extractContent(lines[i]).trim();
-      if (content.startsWith('passed:')) {
-        yamlStartIdx = i;
-        break;
-      }
-    }
+    // The workflow outputs: ==== / VALIDATION RESULT / ==== / <YAML> / ====
+    // So YAML starts at startIdx + 2 (skip "VALIDATION RESULT" and separator)
+    const yamlStartIdx = startIdx + 2;
 
     const yamlLines: string[] = [];
     for (let i = yamlStartIdx; i < endIdx; i++) {
@@ -179,7 +174,25 @@ export class GitHubActionsProvider implements CIProvider {
 
     try {
       const stateYaml = yamlLines.join('\n').trim();
-      return parseYaml(stateYaml) as ValidationResultContents;
+      const result = parseYaml(stateYaml) as ValidationResultContents;
+
+      // If validation failed and we have step output, run it through extractors
+      // to extract structured failure details (test names, file locations, etc.)
+      if (!result.passed && result.failedStep && result.failedStepOutput) {
+        const extractorResult = extractByStepName(result.failedStep, result.failedStepOutput);
+
+        // Extract failed tests in "file:line" format from extractor errors
+        if (extractorResult.errors && extractorResult.errors.length > 0) {
+          result.failedTests = extractorResult.errors
+            .filter((e: { file?: string; line?: number }) => e.file && e.line)
+            .map((e: { file?: string; line?: number; column?: number; message?: string }) =>
+              `${e.file}:${e.line}${e.column ? `:${e.column}` : ''} - ${e.message || 'Test failed'}`
+            )
+            .slice(0, 10); // Limit to first 10 for display
+        }
+      }
+
+      return result;
     } catch (_error) {
       // Failed to parse YAML, return null
       return null;
@@ -331,39 +344,27 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   /**
-   * Extract concise error summary from logs
+   * Extract concise error summary from logs (LLM-friendly format)
    *
-   * Prioritizes validation result extraction for most actionable errors.
+   * Returns just the failed step name and command - keeps output minimal.
+   * Full details are in the validationResult field.
    */
   private extractErrorSummary(logs: string): string | undefined {
-    // First, try to extract the full validation result (most detailed)
+    // Use the validation result which already has parsed failures
     const validationResult = this.extractValidationResult(logs);
 
-    if (validationResult && !validationResult.passed && validationResult.phases) {
-      // Find the first failed phase
-      const failedPhase = validationResult.phases.find(p => !p.passed);
-
-      if (failedPhase && failedPhase.steps) {
-        // Find the first failed step in that phase
-        const failedStep = failedPhase.steps.find(s => !s.passed);
-
-        if (failedStep && failedPhase.output) {
-          // Return a concise summary with the failed step and its output
-          const outputPreview = failedPhase.output
-            .split('\n')
-            .slice(0, 20) // First 20 lines of output
-            .join('\n');
-
-          return `Phase: ${failedPhase.name}\nFailed Step: ${failedStep.name}\n\n${outputPreview}`;
-        }
+    if (validationResult && !validationResult.passed) {
+      // Show concise summary: just the failed step and how to rerun
+      if (validationResult.failedStep) {
+        return `Failed step: ${validationResult.failedStep}\nRerun: ${validationResult.rerunCommand || 'see full logs'}`;
       }
     }
 
-    // Fallback: Look for ##[error] lines
+    // Fallback: Look for ##[error] lines (for non-validation failures)
     const errorLines = logs
       .split('\n')
       .filter((line) => line.includes('##[error]'))
-      .slice(0, 10) // First 10 error lines
+      .slice(0, 5) // First 5 error lines
       .map((line) => line.replace(/##\[error\]/g, '').trim())
       .join('\n');
 

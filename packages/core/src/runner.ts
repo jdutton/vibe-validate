@@ -14,7 +14,9 @@ import { spawn, type ChildProcess } from 'child_process';
 import { writeFileSync, appendFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
+import { extractByStepName } from '@vibe-validate/extractors';
 import { stopProcessGroup } from './process-utils.js';
 import type {
   ValidationStep,
@@ -34,13 +36,49 @@ import type {
  */
 
 /**
+ * Calculate extraction quality score based on extractor output
+ *
+ * Scores extraction quality from 0-100 based on:
+ * - Number of errors extracted
+ * - Field completeness (file, line, message)
+ * - Actionability (can an LLM/human act on this?)
+ *
+ * @param formatted - Extractor output
+ * @returns Quality score (0-100)
+ *
+ * @internal
+ */
+function calculateExtractionQuality(formatted: ReturnType<typeof extractByStepName>): number {
+  let score = 0;
+
+  // Error extraction (0-60 points)
+  const errorCount = formatted.errors?.length || 0;
+  if (errorCount > 0) {
+    score += Math.min(60, errorCount * 12); // Max 60 points for 5+ errors
+  }
+
+  // Field completeness (0-40 points)
+  const errors = formatted.errors || [];
+  if (errors.length > 0) {
+    const firstError = errors[0];
+    let fieldScore = 0;
+    if (firstError.file) fieldScore += 10;
+    if (firstError.line !== undefined) fieldScore += 10;
+    if (firstError.message) fieldScore += 20;
+    score += fieldScore;
+  }
+
+  return Math.min(100, score);
+}
+
+/**
  * Parse test output to extract specific failures
  *
  * Extracts failure details from validation step output using pattern matching.
  * Supports Vitest, TypeScript, and ESLint error formats.
  *
- * Note: This is a basic implementation - the formatters package provides
- * more sophisticated parsing with tool-specific formatters.
+ * Note: This is a basic implementation - the extractors package provides
+ * more sophisticated parsing with tool-specific extractors.
  *
  * @param output - Raw stdout/stderr output from validation step
  * @returns Array of extracted failure messages (max 10 per failure type)
@@ -57,6 +95,7 @@ import type {
  * ```
  *
  * @public
+ * @deprecated Use extractByStepName() from @vibe-validate/extractors instead
  */
 export function parseFailures(output: string): string[] {
   const failures: string[] = [];
@@ -120,7 +159,8 @@ export async function runStepsInParallel(
   enableFailFast: boolean = false,
   env: Record<string, string> = {},
   verbose: boolean = false,
-  yaml: boolean = false
+  yaml: boolean = false,
+  developerFeedback: boolean = false
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
@@ -170,23 +210,28 @@ export async function runStepsInParallel(
 
         proc.stdout.on('data', data => {
           const chunk = data.toString();
-          stdout += chunk;
+          // Strip ANSI escape codes to make output readable for humans and LLMs
+          // These codes (e.g., \e[32m for colors) are noise in logs, YAML, and git notes
+          const cleanChunk = stripAnsi(chunk);
+          stdout += cleanChunk;
           // Stream output in real-time when verbose mode is enabled
           // When yaml mode is on, redirect subprocess output to stderr to keep stdout clean
           if (verbose) {
             if (yaml) {
-              process.stderr.write(chunk);
+              process.stderr.write(chunk);  // Keep colors for terminal viewing
             } else {
-              process.stdout.write(chunk);
+              process.stdout.write(chunk);  // Keep colors for terminal viewing
             }
           }
         });
         proc.stderr.on('data', data => {
           const chunk = data.toString();
-          stderr += chunk;
+          // Strip ANSI escape codes from stderr as well
+          const cleanChunk = stripAnsi(chunk);
+          stderr += cleanChunk;
           // Stream errors in real-time when verbose mode is enabled
           if (verbose) {
-            process.stderr.write(chunk);
+            process.stderr.write(chunk);  // Keep colors for terminal viewing
           }
         });
 
@@ -200,7 +245,59 @@ export async function runStepsInParallel(
           const result = code === 0 ? 'PASSED' : 'FAILED';
           log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
-          stepResults.push({ name: step.name, passed: code === 0, durationSecs });
+          // Create base step result
+          const stepResult: StepResult = {
+            name: step.name,
+            passed: code === 0,
+            durationSecs,
+          };
+
+          // Only run extractors on FAILED steps (code !== 0)
+          // Rationale: Passing tests have no failures to extract, extraction would always produce
+          // meaningless results (score: 0, no errors). Skipping saves CPU and reduces output noise.
+          if (code !== 0 && output && output.trim()) {
+            const formatted = extractByStepName(step.name, output);
+
+            // Extract structured failures/tests
+            stepResult.failedTests = formatted.errors?.map(error => {
+              const location = error.file
+                ? `${error.file}${error.line ? `:${error.line}` : ''}`
+                : 'unknown';
+              return `${location} - ${error.message || 'No message'}`;
+            }) || [];
+
+            // Only include extraction quality metrics when developerFeedback is enabled
+            // This is for vibe-validate contributors to identify extraction improvement opportunities
+            if (developerFeedback) {
+              // Detect tool from step name (heuristic until extractors returns this)
+              const detectedTool = step.name.toLowerCase().includes('typescript') || step.name.toLowerCase().includes('tsc')
+                ? 'typescript'
+                : step.name.toLowerCase().includes('eslint')
+                ? 'eslint'
+                : step.name.toLowerCase().includes('test') || step.name.toLowerCase().includes('vitest')
+                ? 'vitest'
+                : 'unknown';
+
+              // Calculate extraction quality metrics
+              const score = calculateExtractionQuality(formatted);
+              stepResult.extractionQuality = {
+                detectedTool,
+                confidence: score >= 80 ? 'high' : score >= 50 ? 'medium' : 'low',
+                score,
+                warnings: formatted.errors?.filter(e => e.severity === 'warning').length || 0,
+                errorsExtracted: formatted.errors?.filter(e => e.severity !== 'warning').length || formatted.errors?.length || 0,
+                actionable: (formatted.errors?.length || 0) > 0,
+              };
+
+              // Alert on poor extraction quality (for failed steps)
+              if (score < 50) {
+                log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
+                log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
+              }
+            }
+          }
+
+          stepResults.push(stepResult);
 
           if (code === 0) {
             resolve({ step, output, durationSecs });
@@ -318,7 +415,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       enableFailFast,
       env,
       config.verbose ?? false,
-      config.yaml ?? false
+      config.yaml ?? false,
+      config.developerFeedback ?? false
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
     const durationSecs = parseFloat((phaseDurationMs / 1000).toFixed(1));
@@ -339,9 +437,11 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       steps: result.stepResults,
     };
 
-    // If phase failed, include output
+    // If phase failed, extract and include output (LLM-optimized, not raw)
     if (!result.success && result.failedStep) {
-      phaseResult.output = result.outputs.get(result.failedStep.name);
+      const rawOutput = result.outputs.get(result.failedStep.name) || '';
+      const extracted = extractByStepName(result.failedStep.name, rawOutput);
+      phaseResult.output = extracted.cleanOutput.trim() || rawOutput;
     }
 
     phaseResults.push(phaseResult);
@@ -355,18 +455,35 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       failedStep = result.failedStep;
 
       const failedOutput = result.outputs.get(failedStep.name) || '';
-      const failures = parseFailures(failedOutput);
 
+      // Extract actionable failures from raw output (LLM-optimized, 5-10 lines instead of 100+)
+      // This reduces git notes bloat and makes errors immediately actionable
+      const extracted = extractByStepName(failedStep.name, failedOutput);
+
+      // Use cleanOutput for storage (already formatted for YAML/JSON, stripped of ANSI codes)
+      // Falls back to raw output if extraction fails
+      const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
+
+      // Use structured errors from extractor (replaces deprecated parseFailures)
+      const structuredFailures = extracted.errors.map(error => {
+        const location = error.file
+          ? `${error.file}${error.line ? `:${error.line}` : ''}`
+          : 'unknown';
+        return `${location} - ${error.message || 'No message'}`;
+      });
+
+      // IMPORTANT: Field order matches types.ts for YAML truncation safety
+      // Verbose fields (phases, failedStepOutput) at the end
       const validationResult: ValidationResult = {
         passed: false,
         timestamp: new Date().toISOString(),
         treeHash: currentTreeHash,
-        phases: phaseResults,
         failedStep: failedStep.name,
         rerunCommand: failedStep.command,
-        failedStepOutput: failedOutput,
-        failedTests: failures.length > 0 ? failures : undefined,
+        failedTests: structuredFailures.length > 0 ? structuredFailures : undefined,
         fullLogFile: logPath,
+        phases: phaseResults,  // Contains verbose output - near end
+        failedStepOutput: extractedOutput,  // Most verbose - dead last
       };
 
       // State persistence moved to validate.ts via git notes (v0.12.0+)
@@ -377,12 +494,13 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   }
 
   // All steps passed!
+  // IMPORTANT: Field order matches types.ts for YAML truncation safety
   const validationResult: ValidationResult = {
     passed: true,
     timestamp: new Date().toISOString(),
     treeHash: currentTreeHash,
-    phases: phaseResults,
     fullLogFile: logPath,
+    phases: phaseResults,  // May contain output - at end for safety
   };
 
   // State persistence moved to validate.ts via git notes (v0.12.0+)

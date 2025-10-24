@@ -38,7 +38,7 @@ Documentation is generated from:
 - `packages/cli/src/**/*.ts`
 - `packages/config/src/**/*.ts`
 - `packages/core/src/**/*.ts`
-- `packages/formatters/src/**/*.ts`
+- `packages/extractors/src/**/*.ts`
 - `packages/git/src/**/*.ts`
 
 Test files and internal implementations are excluded.

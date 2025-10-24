@@ -50,7 +50,7 @@ The vibe-validate ecosystem consists of:
 - **[@vibe-validate/cli](https://www.npmjs.com/package/@vibe-validate/cli)** - Command-line interface
 - **[@vibe-validate/core](https://www.npmjs.com/package/@vibe-validate/core)** - Validation orchestration engine
 - **[@vibe-validate/config](https://www.npmjs.com/package/@vibe-validate/config)** - Configuration system
-- **[@vibe-validate/formatters](https://www.npmjs.com/package/@vibe-validate/formatters)** - Error formatting
+- **[@vibe-validate/extractors](https://www.npmjs.com/package/@vibe-validate/extractors)** - Error formatting
 - **[@vibe-validate/git](https://www.npmjs.com/package/@vibe-validate/git)** - Git utilities
 
 ## Why vibe-validate?

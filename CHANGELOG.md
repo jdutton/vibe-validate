@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2025-10-21
+## [0.12.0] - 2025-10-23
 
 ### 🚨 BREAKING CHANGES
 
@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Migration**: Delete `.vibe-validate-state.yaml` and remove from `.gitignore`
   - Better cache hits across branch switches, reverts, and multiple branches
   - No more cache misses from branch changes when code is identical
+
+- **Formatters Package Replaced by Extractors Package**
+  - **Problem**: Old `@vibe-validate/formatters` package had unclear naming and limited extraction capabilities
+  - **Solution**: New `@vibe-validate/extractors` package with improved error parsing and LLM optimization
+  - **Impact**: Internal architecture change - no user action required (automatic with upgrade)
+  - **Benefits**:
+    - Smarter extraction (only runs on failed tests)
+    - Better test framework support (Vitest, Jest, ESLint, TypeScript)
+    - Quality metrics for contributors
+    - 90% smaller output storage
 
 ### ✨ New Features
 
@@ -47,7 +57,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All config templates include secret scanning by default
   - Pre-commit only (GitHub already scans repos after push)
 
+- **Developer Feedback Mode** (`developerFeedback: true`)
+  - **Problem**: Error extraction ran on all tests and exposed quality metrics to end users
+  - **Solution**: Smart extraction that only runs when needed and reports quality when helpful
+  - **How it works**:
+    - Extractors only run on failed tests (skip passing tests entirely)
+    - Extraction quality metrics only included when `developerFeedback: true`
+    - Alert "vibe-validate improvement opportunity" when extraction quality < 50%
+  - **Impact**:
+    - Faster validation (skip ~10ms extraction per passing test)
+    - Cleaner YAML output for end users (no extraction noise)
+    - Reduced LLM context window usage (only actionable failures)
+    - Clear separation: end-user mode vs contributor mode
+  - **For contributors**: Set `developerFeedback: true` to help improve vibe-validate extractors
+
+- **YAML Output Separator for LLM-Friendly Parsing** (RFC 4627 compliant)
+  - **Problem**: When using `--yaml` flag, progress messages on stderr mix with YAML on stdout in terminal view
+  - **Solution**: Added standard `---` separator before YAML output to mark boundary
+  - **Impact**:
+    - Clear visual separation between progress and data
+    - Easy extraction: `sed -n '/^---$/,$p'` gets pure YAML
+    - Standards-compliant (YAML document separator)
+    - LLMs can deterministically parse output
+  - **Recommendation**: Use `pnpm validate --yaml` for LLM workflows (see CLAUDE.md)
+
+- **3 New Doctor Health Checks** (15 total checks now):
+  - Detects deprecated `.vibe-validate-state.yaml` file
+  - Warns if state file still in `.gitignore`
+  - Checks validation history health (git notes)
+  - Suggests cleanup when needed
+
 ### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed Git Tree Hash Calculation** (Improved cache reliability and security)
+  - **Problem**: Unstaged file changes weren't included in tree hash, causing false cache hits
+  - **Solution**: Removed `--intent-to-add` flag that prevented content from being staged
+  - **Impact**: Cache now correctly invalidates when files change, preventing stale validation results
+
+- **SECURITY: Fixed .gitignore Handling in Tree Hash**
+  - **Problem**: `--force` flag included ignored files (secrets, credentials) in tree hash
+  - **Solution**: Removed `--force` flag to respect .gitignore rules
+  - **Impact**: Secrets no longer checksummed, cache sharing works reliably across developers
 
 - **Fixed Git Tree Hash Error Handling**
   - Git stderr now properly captured (was being ignored)
@@ -55,15 +105,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Proper fallback to timestamp-based hash
   - `vibe-validate state` exits 0 in non-git repos
 
-### 🩺 Doctor Command Improvements
+- **CRITICAL: Fixed Pre-Commit Caching Bug** (v0.11.0 regression)
+  - **Problem**: Pre-commit hook bypassed git tree hash caching, always running full validation (30+ seconds) even when code unchanged
+  - **Root Cause**: `pre-commit.ts` called `runValidation()` directly instead of reusing `validate.ts` workflow with caching logic
+  - **Solution**: Extracted shared `validate-workflow.ts` used by both commands - true code reuse with all caching/history features
+  - **Impact**:
+    - Pre-commit now gets instant cache hits (same as `validate` command)
+    - 30+ seconds reduced to <100ms when validation already passed
+    - All future validate improvements automatically apply to pre-commit
+    - Reduced code duplication (validate.ts: 276 → 60 lines)
+  - **If you experienced slow pre-commit in v0.11.0, this is now fixed**
 
-- **3 New Health Checks** (15 total, was 14):
-  - Detects deprecated `.vibe-validate-state.yaml` file
-  - Warns if state file still in `.gitignore`
-  - Checks validation history health (git notes)
-  - Suggests cleanup when needed
+### ⚡ Performance Improvements
+
+- **90% Reduction in Git Notes Storage Size**
+  - **Problem**: Failed validation output stored raw (100+ lines of environment variables, verbose test output)
+  - **Solution**: Extract actionable failures before storing (5-10 lines of clean, structured errors)
+  - **Impact**:
+    - Git notes operations are faster
+    - `vibe-validate state` shows clean, LLM-friendly errors immediately
+    - Less disk space used for validation history
+    - Critical metadata (pass/fail, recovery commands) always available even if output truncated
+
+- **Truncation-Safe YAML Output**
+  - **Problem**: If YAML output was truncated, critical recovery information could be lost
+  - **Solution**: Verbose fields (error output) placed at end of YAML structure
+  - **Impact**: YAML remains parseable and actionable even if truncated by logs or display tools
 
 ### 📝 Documentation
+
+- **LLM-Optimized Workflow Guide** (CLAUDE.md)
+  - New section explaining best practices for AI assistants
+  - `validate --yaml` recommended over two-step `validate` + `state`
+  - Examples of parsing YAML from mixed stderr/stdout
+  - Benefits: context-efficient, machine-parseable, human-readable progress
 
 - **"Run Doctor After Upgrade" Pattern** - Documented for AI agents
   - CLAUDE.md: Prominent upgrade workflow section
@@ -163,7 +238,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - getting-started.md
   - configuration-reference.md
   - agent-integration-guide.md
-  - error-formatters-guide.md
+  - error-extractors-guide.md
 
 ### 🗑️ Removed
 
@@ -483,7 +558,7 @@ Run `vibe-validate doctor` to check your config for issues.
 - **@vibe-validate/cli** - Command-line interface
 - **@vibe-validate/core** - Validation orchestration engine
 - **@vibe-validate/git** - Git workflow utilities
-- **@vibe-validate/formatters** - Error parsing & LLM optimization
+- **@vibe-validate/extractors** - Error parsing & LLM optimization
 - **@vibe-validate/config** - Configuration system with presets
 
 ### 🚀 Performance

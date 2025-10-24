@@ -57,18 +57,97 @@ doctorCommand(program);               // vibe-validate doctor
 registerWatchPRCommand(program);      // vibe-validate watch-pr
 historyCommand(program);              // vibe-validate history
 
-// Custom help handler: --help --verbose shows all subcommand options
-const args = process.argv;
-const hasHelp = args.includes('--help') || args.includes('-h');
-const hasVerbose = args.includes('--verbose');
+/**
+ * Registry mapping command names to their verbose help loaders
+ *
+ * Commands can optionally export a `show<CommandName>VerboseHelp()` function.
+ * If not present, Commander.js handles --help normally.
+ */
+type VerboseHelpLoader = () => Promise<() => void>;
 
-if (hasHelp && hasVerbose) {
-  showComprehensiveHelp(program);
-  process.exit(0);
+const verboseHelpRegistry: Record<string, VerboseHelpLoader> = {
+  'history': async () => {
+    const { showHistoryVerboseHelp } = await import('./commands/history.js');
+    return showHistoryVerboseHelp;
+  },
+  'validate': async () => {
+    const { showValidateVerboseHelp } = await import('./commands/validate.js');
+    return showValidateVerboseHelp;
+  },
+  'init': async () => {
+    const { showInitVerboseHelp } = await import('./commands/init.js');
+    return showInitVerboseHelp;
+  },
+  'pre-commit': async () => {
+    const { showPreCommitVerboseHelp } = await import('./commands/pre-commit.js');
+    return showPreCommitVerboseHelp;
+  },
+  'state': async () => {
+    const { showStateVerboseHelp } = await import('./commands/state.js');
+    return showStateVerboseHelp;
+  },
+  'sync-check': async () => {
+    const { showSyncCheckVerboseHelp } = await import('./commands/sync-check.js');
+    return showSyncCheckVerboseHelp;
+  },
+  'cleanup': async () => {
+    const { showCleanupVerboseHelp } = await import('./commands/cleanup.js');
+    return showCleanupVerboseHelp;
+  },
+  'config': async () => {
+    const { showConfigVerboseHelp } = await import('./commands/config.js');
+    return showConfigVerboseHelp;
+  },
+  'generate-workflow': async () => {
+    const { showGenerateWorkflowVerboseHelp } = await import('./commands/generate-workflow.js');
+    return showGenerateWorkflowVerboseHelp;
+  },
+  'doctor': async () => {
+    const { showDoctorVerboseHelp } = await import('./commands/doctor.js');
+    return showDoctorVerboseHelp;
+  },
+  'watch-pr': async () => {
+    const { showWatchPRVerboseHelp } = await import('./commands/watch-pr.js');
+    return showWatchPRVerboseHelp;
+  },
+};
+
+/**
+ * Handle --help --verbose flag combination
+ *
+ * Returns true if help was shown and program should exit, false otherwise
+ */
+async function handleVerboseHelp(args: string[], program: Command): Promise<boolean> {
+  const hasHelp = args.includes('--help') || args.includes('-h');
+  const hasVerbose = args.includes('--verbose');
+
+  if (!hasHelp || !hasVerbose) {
+    return false;
+  }
+
+  // Check if a subcommand is specified
+  const knownCommands = Object.keys(verboseHelpRegistry);
+  const subcommandIndex = args.findIndex(arg => knownCommands.includes(arg));
+
+  if (subcommandIndex === -1) {
+    // Root level: show comprehensive CLI reference
+    showComprehensiveHelp(program);
+    return true;
+  }
+
+  // Subcommand level: show detailed docs if available
+  const subcommand = args[subcommandIndex];
+  const helpLoader = verboseHelpRegistry[subcommand];
+
+  if (helpLoader) {
+    const helpFn = await helpLoader();
+    helpFn();
+    return true;
+  }
+
+  // No verbose help available, let Commander.js handle it
+  return false;
 }
-
-// Parse command line arguments
-program.parse();
 
 /**
  * Show comprehensive help with all subcommand options
@@ -427,3 +506,12 @@ function showComprehensiveHelp(program: Command): void {
   console.log('---\n');
   console.log('For more details: https://github.com/jdutton/vibe-validate');
 }
+
+// Custom help handler: --help --verbose shows detailed documentation
+const didHandleVerboseHelp = await handleVerboseHelp(process.argv, program);
+if (didHandleVerboseHelp) {
+  process.exit(0);
+}
+
+// Parse command line arguments
+program.parse();

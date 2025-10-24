@@ -126,14 +126,20 @@ npx vibe-validate validate
 # Diagnose vibe-validate configuration and environment
 npx vibe-validate doctor
 
-# Generate GitHub Actions workflow
-npx vibe-validate generate-workflow
-
 # Pre-commit workflow (recommended before every commit)
 npx vibe-validate pre-commit
 
-# View validation state
+# View validation state for current tree
 npx vibe-validate state
+
+# View validation history across all commits
+npx vibe-validate history list
+
+# Monitor PR CI checks in real-time
+npx vibe-validate watch-pr
+
+# Generate GitHub Actions workflow
+npx vibe-validate generate-workflow
 
 # Force re-validation (bypass cache)
 npx vibe-validate validate --force
@@ -357,6 +363,120 @@ jobs:
 **Exit Codes**:
 - `0` - Success (workflow generated or in sync)
 - `1` - Failure (generation failed or workflow out of sync)
+
+### `vibe-validate doctor`
+
+Diagnose vibe-validate setup and environment health.
+
+```bash
+# Run all health checks
+npx vibe-validate doctor
+
+# Output as YAML for programmatic access
+npx vibe-validate doctor --yaml
+```
+
+**What it checks**:
+- Node.js version (>= 20 required)
+- Git repository initialization
+- Package manager availability
+- Configuration file existence and validity
+- Git notes history health
+- Deprecated state file detection
+- Pre-commit hook installation
+- GitHub Actions workflow sync
+- Secret scanning configuration
+
+**Recommended usage**:
+- After installation: `npx @vibe-validate/cli@latest doctor`
+- After upgrades: Always run doctor to detect deprecated files
+- Before troubleshooting: Check for configuration issues
+
+**Exit Codes**:
+- `0` - All checks passed or only advisory warnings
+- `1` - Critical issues found (blocking validation)
+
+### `vibe-validate history`
+
+View and manage validation history stored in git notes.
+
+```bash
+# List all validation runs
+npx vibe-validate history list
+
+# List with YAML output
+npx vibe-validate history list --yaml
+
+# Filter by branch
+npx vibe-validate history list --branch main
+
+# Limit results
+npx vibe-validate history list --limit 10
+
+# Show specific validation result
+npx vibe-validate history show <tree-hash>
+npx vibe-validate history show abc123def
+
+# Check history storage health
+npx vibe-validate history health
+
+# Cleanup old history
+npx vibe-validate history prune --older-than 30
+npx vibe-validate history prune --all
+npx vibe-validate history prune --dry-run
+```
+
+**Subcommands**:
+- `list` - View validation timeline across all tree hashes
+- `show <hash>` - Inspect specific validation result in detail
+- `health` - Check git notes storage health and size
+- `prune` - Remove old validation history (by age or all)
+
+**Use cases**:
+- Debug validation issues: See what passed/failed previously
+- Track validation trends: Monitor test stability over time
+- Manage storage: Clean up old validation history
+- Compare results: See how validation changes between commits
+
+### `vibe-validate watch-pr`
+
+Monitor GitHub Actions CI checks for a pull request in real-time.
+
+```bash
+# Auto-detect PR from current branch
+npx vibe-validate watch-pr
+
+# Specify PR number
+npx vibe-validate watch-pr 123
+
+# YAML output (for scripting)
+npx vibe-validate watch-pr 123 --yaml
+
+# Custom timeout and fail-fast
+npx vibe-validate watch-pr --timeout 600 --fail-fast
+
+# Different CI provider (future)
+npx vibe-validate watch-pr --provider gitlab-ci
+```
+
+**Features**:
+- Auto-detects PR number from current branch
+- Live status updates of all CI checks
+- Extracts vibe-validate state from failed runs
+- Provides actionable recovery commands
+- Supports fail-fast mode (exit on first failure)
+- Configurable timeout
+
+**Exit Codes**:
+- `0` - All checks passed
+- `1` - One or more checks failed
+- `2` - Timeout or unable to fetch PR status
+
+**Use cases**:
+- Monitor CI without switching to browser
+- Debug CI failures with extracted state
+- Automate PR merge workflows
+- Get immediate feedback on PR status
 
 ## Configuration
 
@@ -646,7 +766,7 @@ This is a monorepo containing:
 - **[@vibe-validate/cli](packages/cli)** - Command-line interface
 - **[@vibe-validate/core](packages/core)** - Validation orchestration engine
 - **[@vibe-validate/config](packages/config)** - Configuration system with schema validation
-- **[@vibe-validate/formatters](packages/formatters)** - Error parsing & LLM optimization
+- **[@vibe-validate/extractors](packages/extractors)** - Error parsing & LLM optimization
 - **[@vibe-validate/git](packages/git)** - Git workflow utilities
 
 **For most users**: Install `vibe-validate` which automatically includes all necessary packages.

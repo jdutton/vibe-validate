@@ -57,7 +57,7 @@ describe('getGitTreeHash', () => {
     );
     expect(mockExecSync).toHaveBeenNthCalledWith(
       4,
-      'git add --intent-to-add --all --force',
+      'git add --all',
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_INDEX_FILE: expect.stringContaining('vibe-validate-temp-index')

@@ -319,20 +319,20 @@ Write-Host '=========================================='`,
     });
 
     // Fail the job if validation failed (check YAML result - Unix)
-    // Use grep with line-start anchor to match only root-level "passed:" field
+    // Match "passed: true" anywhere in file (YAML now has --- separator on line 1)
     jobSteps.push({
       name: 'Check validation result (Unix)',
       if: "always() && runner.os != 'Windows'",
-      run: `grep -q "^passed: true" validation-result.yaml || exit 1`,
+      run: `grep -q "passed: true" validation-result.yaml || exit 1`,
     });
 
     // Fail the job if validation failed (check YAML result - Windows)
-    // Use PowerShell regex with line-start anchor to match only root-level "passed:" field
+    // Match "passed: true" anywhere in file (YAML now has --- separator on line 1)
     jobSteps.push({
       name: 'Check validation result (Windows)',
       if: "always() && runner.os == 'Windows'",
       shell: 'powershell',
-      run: `if (!(Select-String -Path validation-result.yaml -Pattern "^passed: true" -Quiet)) { exit 1 }`,
+      run: `if (!(Select-String -Path validation-result.yaml -Pattern "passed: true" -Quiet)) { exit 1 }`,
     });
 
     jobs['validate'] = {
@@ -685,4 +685,123 @@ export function generateWorkflowCommand(program: Command): void {
         process.exit(1);
       }
     });
+}
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showGenerateWorkflowVerboseHelp(): void {
+  console.log(`# generate-workflow Command Reference
+
+> Generate GitHub Actions workflow from vibe-validate config
+
+## Overview
+
+The \`generate-workflow\` command generates a \`.github/workflows/validate.yml\` file from your vibe-validate configuration. It ensures perfect sync between local validation and CI validation by using the same configuration source.
+
+## How It Works
+
+1. Reads vibe-validate.config.yaml configuration
+2. Generates GitHub Actions workflow with proper job dependencies
+3. Supports matrix mode (multiple Node/OS versions)
+4. Supports non-matrix mode (separate jobs per phase)
+5. Can check if workflow is in sync with config
+
+## Options
+
+- \`--check\` - Check if workflow is in sync with config (exit 0 if in sync, 1 if not)
+- \`--dry-run\` - Show generated workflow without writing to file
+- \`--coverage\` - Enable coverage reporting (Codecov)
+- \`--node-versions <versions>\` - Node.js versions to test (comma-separated, default: "20,22")
+- \`--os <systems>\` - Operating systems to test (comma-separated, default: "ubuntu-latest")
+- \`--fail-fast\` - Fail fast in matrix strategy (default: false)
+
+## Exit Codes
+
+- \`0\` - Workflow generated (or in sync with --check)
+- \`1\` - Generation failed (or out of sync with --check)
+
+## Examples
+
+\`\`\`bash
+# Generate workflow from config
+vibe-validate generate-workflow
+
+# Generate with custom Node.js versions
+vibe-validate generate-workflow --node-versions 20,22
+
+# Generate with multiple OS and Node.js versions
+vibe-validate generate-workflow --node-versions 20,22 --os ubuntu-latest,macos-latest
+
+# Check if workflow is up to date
+vibe-validate generate-workflow --check
+
+# Preview without writing
+vibe-validate generate-workflow --dry-run
+\`\`\`
+
+## Common Workflows
+
+### Initial workflow setup
+
+\`\`\`bash
+# Initialize config
+vibe-validate init
+
+# Generate workflow
+vibe-validate generate-workflow
+
+# Commit workflow
+git add .github/workflows/validate.yml
+git commit -m "Add CI validation workflow"
+\`\`\`
+
+### Update workflow after config changes
+
+\`\`\`bash
+# Edit config
+vim vibe-validate.config.yaml
+
+# Check if workflow is in sync
+vibe-validate generate-workflow --check
+
+# If out of sync, regenerate
+vibe-validate generate-workflow
+
+# Review changes
+git diff .github/workflows/validate.yml
+
+# Commit if looks good
+git add .github/workflows/validate.yml
+git commit -m "Update CI workflow"
+\`\`\`
+
+### Multi-OS testing
+
+\`\`\`bash
+# Generate workflow for Ubuntu, macOS, and Windows
+vibe-validate generate-workflow \\
+  --node-versions 20,22 \\
+  --os ubuntu-latest,macos-latest,windows-latest
+
+# Review generated workflow
+cat .github/workflows/validate.yml
+\`\`\`
+
+## Error Recovery
+
+**If generation fails:**
+1. Check configuration is valid: \`vibe-validate config --validate\`
+2. Ensure .github/workflows directory exists
+3. Verify file permissions
+
+**If workflow is out of sync:**
+\`\`\`bash
+# Regenerate workflow
+vibe-validate generate-workflow
+
+# Or use init command
+vibe-validate init --setup-workflow
+\`\`\`
+`);
 }

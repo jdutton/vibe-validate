@@ -68,7 +68,9 @@ export function registerWatchPRCommand(program: Command): void {
         if (!options.yaml) {
           console.error('❌ Error:', error instanceof Error ? error.message : String(error));
         } else {
-          console.log(
+          // YAML mode: Output error to stdout
+          process.stdout.write('---\n');
+          process.stdout.write(
             stringifyYaml({
               error: error instanceof Error ? error.message : String(error),
             })
@@ -155,7 +157,9 @@ async function watchPR(
             url: c.url,
           })),
         };
-        console.log(stringifyYaml(result));
+        // YAML mode: Output timeout result to stdout
+        process.stdout.write('---\n');
+        process.stdout.write(stringifyYaml(result));
       } else {
         console.log('\n⏱️  Timeout reached. Checks still pending.');
       }
@@ -245,7 +249,9 @@ async function handleCompletion(
       })),
       failures: failureDetails.length > 0 ? failureDetails : undefined,
     };
-    console.log(stringifyYaml(result));
+    // YAML mode: Output completion result to stdout
+    process.stdout.write('---\n');
+    process.stdout.write(stringifyYaml(result));
   } else {
     displayHumanCompletion(status, failureDetails, elapsedMs);
   }
@@ -310,7 +316,15 @@ function displayHumanCompletion(
         if (failure.validationResult.rerunCommand) {
           console.log(`   Re-run locally: ${failure.validationResult.rerunCommand}`);
         }
-        if (failure.validationResult.failedStepOutput) {
+
+        // Show parsed test failures (extracted by extractors package)
+        if (failure.validationResult.failedTests && failure.validationResult.failedTests.length > 0) {
+          console.log(`\n   Failed tests:`);
+          failure.validationResult.failedTests.forEach((test: string) => {
+            console.log(`   ❌ ${test}`);
+          });
+        } else if (failure.validationResult.failedStepOutput) {
+          // Fallback: show raw output if extractor didn't extract anything
           console.log(`\n   Error output:`);
           const lines = failure.validationResult.failedStepOutput.split('\n').slice(0, 10);
           lines.forEach((line: string) => console.log(`   ${line}`));
@@ -322,6 +336,12 @@ function displayHumanCompletion(
       console.log(`\n   Next steps:`);
       failure.nextSteps.forEach((step: string) => console.log(`   - ${step}`));
     }
+
+    // Suggest reporting extractor issues if extraction quality is poor
+    console.log('\n💡 Error output unclear or missing details?');
+    console.log(
+      '   Help improve extraction: https://github.com/jdutton/vibe-validate/issues/new?template=extractor-improvement.yml'
+    );
   }
 
   console.log('='.repeat(60));
@@ -377,4 +397,149 @@ function formatDuration(ms: number): string {
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showWatchPRVerboseHelp(): void {
+  console.log(`# watch-pr Command Reference
+
+> Watch CI checks for a pull/merge request in real-time
+
+## Overview
+
+The \`watch-pr\` command monitors CI provider (GitHub Actions) check status in real-time after pushing to a PR. It provides live progress updates, extracts validation results from CI logs on failure, and provides actionable recovery commands. This is especially useful for AI agents waiting for CI completion.
+
+## How It Works
+
+1. Detects PR from current branch (or uses provided PR number)
+2. Polls CI provider (GitHub Actions) for check status
+3. Shows real-time progress of all matrix jobs
+4. On failure: fetches logs and extracts vibe-validate state file
+5. Provides actionable recovery commands
+6. Exits when all checks complete or timeout reached
+
+## Options
+
+- \`--provider <name>\` - Force specific CI provider (github-actions, gitlab-ci)
+- \`--yaml\` - Output YAML only (no interactive display)
+- \`--timeout <seconds>\` - Maximum time to wait in seconds (default: 3600)
+- \`--poll-interval <seconds>\` - Polling frequency in seconds (default: 10)
+- \`--fail-fast\` - Exit immediately on first check failure
+
+## Exit Codes
+
+- \`0\` - All checks passed
+- \`1\` - One or more checks failed
+- \`2\` - Timeout reached before completion
+
+## Examples
+
+\`\`\`bash
+# Push to PR and watch
+git push origin my-branch
+vibe-validate watch-pr              # Auto-detect PR
+
+# Watch specific PR
+vibe-validate watch-pr 42
+
+# YAML output only
+vibe-validate watch-pr --yaml
+
+# Exit on first failure
+vibe-validate watch-pr --fail-fast
+
+# Custom timeout (10 minutes)
+vibe-validate watch-pr --timeout 600
+\`\`\`
+
+## Common Workflows
+
+### Standard workflow after pushing PR
+
+\`\`\`bash
+# Push changes
+git push origin feature/my-work
+
+# Create PR (if not exists)
+gh pr create
+
+# Watch CI checks
+vibe-validate watch-pr
+
+# If passes: merge
+gh pr merge
+
+# Cleanup
+vibe-validate cleanup
+\`\`\`
+
+### CI dogfooding workflow (for vibe-validate developers)
+
+\`\`\`bash
+# Push changes
+git push origin my-branch
+
+# Watch with fail-fast (exit on first failure for quick feedback)
+vibe-validate watch-pr --fail-fast
+
+# If fails: view validation result from YAML
+vibe-validate watch-pr 42 --yaml | yq '.failures[0].validationResult'
+
+# Fix errors and re-run
+gh run rerun <run-id> --failed
+\`\`\`
+
+### AI agent workflow
+
+\`\`\`bash
+# AI agent pushes code
+git push origin feature/ai-generated
+
+# AI agent watches PR (YAML mode for parsing)
+vibe-validate watch-pr --yaml --timeout 600
+
+# AI agent parses YAML result
+# - If passed: proceed with merge
+# - If failed: extract error details and fix
+\`\`\`
+
+## Error Recovery
+
+### If check fails
+
+**View validation result from YAML output:**
+\`\`\`bash
+# View validation result from YAML output
+vibe-validate watch-pr 42 --yaml | yq '.failures[0].validationResult'
+
+# Re-run failed check
+gh run rerun <run-id> --failed
+\`\`\`
+
+### If no PR found
+
+**Create PR first:**
+\`\`\`bash
+# Create PR first
+gh pr create
+
+# Or specify PR number explicitly
+vibe-validate watch-pr 42
+\`\`\`
+
+## CI Provider Support
+
+### GitHub Actions (default)
+
+- **Requirements**: \`gh\` CLI installed and github.com remote
+- **Auto-detection**: Checks for .github/workflows and github.com remote
+- **Features**: Matrix job support, log extraction, vibe-validate state parsing
+
+### GitLab CI (planned)
+
+- **Status**: Not yet implemented
+- **Tracking**: https://github.com/jdutton/vibe-validate/issues
+`);
 }

@@ -73,6 +73,8 @@ export interface ValidationResultContents {
   rerunCommand?: string;
   /** Output from failed step */
   failedStepOutput?: string;
+  /** Parsed list of test failures (file:line format) */
+  failedTests?: string[];
   /** All phases (if available) */
   phases?: Array<{
     name: string;

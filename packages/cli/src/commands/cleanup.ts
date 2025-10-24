@@ -24,9 +24,26 @@ export function cleanupCommand(program: Command): void {
           dryRun: options.dryRun,
         });
 
-        // Output based on quiet flag
+        // Output based on yaml flag
         if (options.yaml) {
-          console.log(stringifyYaml(result));
+          // YAML mode: Output structured result to stdout
+          // Small delay to ensure stderr is flushed
+          await new Promise(resolve => setTimeout(resolve, 10));
+
+          // RFC 4627 separator
+          process.stdout.write('---\n');
+
+          // Write pure YAML
+          process.stdout.write(stringifyYaml(result));
+
+          // CRITICAL: Wait for stdout to flush before exiting
+          await new Promise<void>(resolve => {
+            if (process.stdout.write('')) {
+              resolve();
+            } else {
+              process.stdout.once('drain', resolve);
+            }
+          });
         } else {
           // Human-friendly format
           displayHumanCleanup(result, options.dryRun);
@@ -98,4 +115,82 @@ function displayHumanCleanup(
   } else if (result.success && result.branchesDeleted.length > 0) {
     console.log(chalk.green('\n✅ Cleanup complete!'));
   }
+}
+
+/**
+ * Show verbose help with detailed documentation
+ */
+export function showCleanupVerboseHelp(): void {
+  console.log(`# cleanup Command Reference
+
+> Post-merge cleanup (switch to main, delete merged branches)
+
+## Overview
+
+The \`cleanup\` command automates post-merge branch cleanup. After a PR is merged, this command switches to the main branch, pulls the latest changes, identifies merged branches, and deletes them locally.
+
+## How It Works
+
+1. Switches to main branch
+2. Pulls latest from origin/main
+3. Identifies merged branches (via git log)
+4. Deletes confirmed-merged branches
+5. Reports cleanup summary
+
+## Options
+
+- \`--main-branch <branch>\` - Main branch name (default: main)
+- \`--dry-run\` - Show what would be deleted without actually deleting
+- \`--yaml\` - Output YAML only (no human-friendly display)
+
+## Exit Codes
+
+- \`0\` - Cleanup successful
+- \`1\` - Failed (not on deletable branch, git errors)
+
+## Examples
+
+\`\`\`bash
+# Preview what would be cleaned up
+vibe-validate cleanup --dry-run
+
+# Execute cleanup
+vibe-validate cleanup
+
+# Cleanup with custom main branch
+vibe-validate cleanup --main-branch develop
+\`\`\`
+
+## Common Workflows
+
+### After PR merge
+
+\`\`\`bash
+# Merge PR on GitHub
+
+# Switch to main and cleanup
+vibe-validate cleanup
+
+# Start new feature
+git checkout -b feature/new-work
+\`\`\`
+
+### Preview before cleanup
+
+\`\`\`bash
+# See what would be deleted
+vibe-validate cleanup --dry-run
+
+# If looks good, execute
+vibe-validate cleanup
+\`\`\`
+
+## Error Recovery
+
+**If cleanup fails:**
+1. Ensure you're not on the main branch
+2. Verify remote connection: \`git fetch origin\`
+3. Check for uncommitted changes: \`git status\`
+4. Manually delete branches if needed: \`git branch -d <branch-name>\`
+`);
 }
