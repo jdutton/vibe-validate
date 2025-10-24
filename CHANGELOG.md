@@ -105,6 +105,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Proper fallback to timestamp-based hash
   - `vibe-validate state` exits 0 in non-git repos
 
+- **CRITICAL: Fixed Pre-Commit Caching Bug** (v0.11.0 regression)
+  - **Problem**: Pre-commit hook bypassed git tree hash caching, always running full validation (30+ seconds) even when code unchanged
+  - **Root Cause**: `pre-commit.ts` called `runValidation()` directly instead of reusing `validate.ts` workflow with caching logic
+  - **Solution**: Extracted shared `validate-workflow.ts` used by both commands - true code reuse with all caching/history features
+  - **Impact**:
+    - Pre-commit now gets instant cache hits (same as `validate` command)
+    - 30+ seconds reduced to <100ms when validation already passed
+    - All future validate improvements automatically apply to pre-commit
+    - Reduced code duplication (validate.ts: 276 → 60 lines)
+  - **If you experienced slow pre-commit in v0.11.0, this is now fixed**
+
 ### ⚡ Performance Improvements
 
 - **90% Reduction in Git Notes Storage Size**
