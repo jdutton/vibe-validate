@@ -421,6 +421,41 @@ describe('validate command', () => {
         expect.any(Error)
       );
     });
+
+    it('should output YAML error result when validation crashes with --yaml flag', async () => {
+      // Mock validation throwing an error
+      const testError = new Error('Validation crashed: /tmp write failed');
+      vi.mocked(core.runValidation).mockRejectedValue(testError);
+
+      // Spy on stdout.write to capture YAML output
+      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      validateCommand(program);
+
+      try {
+        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'exitCode' in error) {
+          expect(error.exitCode).toBe(1);
+        }
+      }
+
+      // Verify error logged to stderr
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Validation failed with error'),
+        expect.any(Error)
+      );
+
+      // Verify YAML output to stdout
+      const stdoutCalls = stdoutSpy.mock.calls.map(call => call[0]).join('');
+      expect(stdoutCalls).toContain('---\n'); // YAML document separator
+      expect(stdoutCalls).toContain('passed: false');
+      expect(stdoutCalls).toContain('timestamp:');
+      // Error message will be quoted in YAML output
+      expect(stdoutCalls).toContain('Validation crashed: /tmp write failed');
+
+      stdoutSpy.mockRestore();
+    });
   });
 
   describe('--check flag', () => {

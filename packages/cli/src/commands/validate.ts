@@ -245,6 +245,33 @@ export function validateCommand(program: Command): void {
         process.exit(result.passed ? 0 : 1);
       } catch (error) {
         console.error(chalk.red('❌ Validation failed with error:'), error);
+
+        // If YAML mode, output error as YAML to stdout for CI extraction
+        if (options.yaml) {
+          const errorResult = {
+            passed: false,
+            timestamp: new Date().toISOString(),
+            error: error instanceof Error ? error.message : String(error),
+            errorStack: error instanceof Error ? error.stack : undefined,
+          };
+
+          // Small delay to ensure stderr is flushed before writing to stdout
+          await new Promise(resolve => setTimeout(resolve, 10));
+
+          // Output YAML document separator
+          process.stdout.write('---\n');
+          process.stdout.write(yamlStringify(errorResult));
+
+          // Wait for stdout to flush before exiting
+          await new Promise<void>(resolve => {
+            if (process.stdout.write('')) {
+              resolve();
+            } else {
+              process.stdout.once('drain', resolve);
+            }
+          });
+        }
+
         process.exit(1);
       }
     });
