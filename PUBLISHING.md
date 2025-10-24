@@ -80,27 +80,59 @@ npm org create vibe-validate
 npm org ls vibe-validate
 ```
 
-## 🧪 Step 3: Dry-Run Testing
+## 🧪 Step 3: Verify All Packages
+
+**CRITICAL:** Check ALL packages before publishing (easy to miss the umbrella package).
+
+### List All Packages
+
+```bash
+# List all package directories
+ls -d packages/*/
+
+# Expected output:
+# packages/cli/
+# packages/config/
+# packages/core/
+# packages/extractors/
+# packages/git/
+# packages/history/
+# packages/vibe-validate/  ← UMBRELLA PACKAGE (not scoped!)
+```
+
+**Package Checklist (7 total):**
+- [ ] @vibe-validate/extractors
+- [ ] @vibe-validate/git
+- [ ] @vibe-validate/config
+- [ ] @vibe-validate/core
+- [ ] @vibe-validate/history
+- [ ] @vibe-validate/cli
+- [ ] **vibe-validate** (umbrella package - NOT scoped)
+
+### Dry-Run Testing
 
 Test publishing without actually uploading to npm:
 
 ```bash
-# Test all packages
-npm run publish:dry-run
+# IMPORTANT: Default dry-run MISSES the umbrella package!
+# npm run publish:dry-run  # ← Only tests @vibe-validate/* (scoped)
 
-# Or test individual packages
-cd packages/extractors && npm publish --dry-run
-cd packages/git && npm publish --dry-run
-cd packages/config && npm publish --dry-run
-cd packages/core && npm publish --dry-run
-cd packages/cli && npm publish --dry-run
+# Test ALL packages individually with pnpm:
+cd packages/extractors && pnpm publish --dry-run --no-git-checks
+cd packages/git && pnpm publish --dry-run --no-git-checks
+cd packages/config && pnpm publish --dry-run --no-git-checks
+cd packages/core && pnpm publish --dry-run --no-git-checks
+cd packages/history && pnpm publish --dry-run --no-git-checks
+cd packages/cli && pnpm publish --dry-run --no-git-checks
+cd packages/vibe-validate && pnpm publish --dry-run --no-git-checks  # ← DON'T FORGET!
 ```
 
-**Verify output includes:**
+**Verify output for EACH package includes:**
 - ✅ Package name and version
 - ✅ Files that will be published (dist/, README.md, LICENSE)
 - ✅ No errors or warnings
 - ✅ Tarball size is reasonable (< 1MB per package)
+- ✅ Dependencies show version numbers (NOT `workspace:*`)
 
 ## 📦 Step 4: Create Package Tarballs (Optional)
 
@@ -153,13 +185,22 @@ cd packages/history && pnpm publish --no-git-checks
 
 # 4. Publish CLI (depends on all above)
 cd packages/cli && pnpm publish --no-git-checks
+
+# 5. Publish umbrella package (depends on CLI)
+cd packages/vibe-validate && pnpm publish --no-git-checks
 ```
 
 ### Automated Publishing (Alternative - Use pnpm -r)
 
 ```bash
-# Publish all packages recursively with pnpm
-pnpm -r publish --no-git-checks
+# WARNING: This may miss packages not matching the workspace pattern
+# Prefer manual publishing to ensure all packages are published
+
+# Publish scoped packages
+pnpm -r --filter='@vibe-validate/*' publish --no-git-checks
+
+# THEN publish umbrella package separately
+cd packages/vibe-validate && pnpm publish --no-git-checks
 ```
 
 ### ⚠️ Common Mistake: Using npm publish
@@ -173,20 +214,40 @@ If you accidentally publish with `npm publish`:
 
 ## ✅ Step 6: Verify Published Packages
 
-After publishing, verify packages are available:
+After publishing, verify **ALL 7 packages** are available:
 
 ```bash
-# Check each package on npm
-npm view @vibe-validate/extractors
-npm view @vibe-validate/git
-npm view @vibe-validate/config
-npm view @vibe-validate/core
-npm view @vibe-validate/cli
+# Check each package on npm (use pnpm view for consistency)
+pnpm view @vibe-validate/extractors version
+pnpm view @vibe-validate/git version
+pnpm view @vibe-validate/config version
+pnpm view @vibe-validate/core version
+pnpm view @vibe-validate/history version
+pnpm view @vibe-validate/cli version
+pnpm view vibe-validate version  # ← UMBRELLA PACKAGE
 
-# Expected output for each:
-# - version: 0.9.0
-# - description, keywords, repository
-# - dist.tarball URL
+# All should show the same version (e.g., 0.12.1)
+```
+
+**Verify dependencies resolved correctly:**
+
+```bash
+# Check CLI dependencies are version numbers (NOT workspace:*)
+pnpm view @vibe-validate/cli dependencies
+
+# Should show:
+# {
+#   '@vibe-validate/config': '0.12.1',
+#   '@vibe-validate/core': '0.12.1',
+#   ...
+# }
+# NOT workspace:*
+
+# Check umbrella package dependency
+pnpm view vibe-validate dependencies
+
+# Should show:
+# { '@vibe-validate/cli': '0.12.1' }
 ```
 
 ## 🧪 Step 7: Test Installation from npm
