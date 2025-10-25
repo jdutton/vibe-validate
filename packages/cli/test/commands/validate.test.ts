@@ -8,6 +8,8 @@ import * as core from '@vibe-validate/core';
 import * as configLoader from '../../src/utils/config-loader.js';
 import * as history from '@vibe-validate/history';
 import * as git from '@vibe-validate/git';
+import * as pidLock from '../../src/utils/pid-lock.js';
+import * as projectId from '../../src/utils/project-id.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
 // Mock the core validation module
@@ -49,6 +51,21 @@ vi.mock('@vibe-validate/git', async () => {
   };
 });
 
+// Mock the pid-lock module
+vi.mock('../../src/utils/pid-lock.js', () => ({
+  acquireLock: vi.fn(),
+  releaseLock: vi.fn(),
+  checkLock: vi.fn(),
+  waitForLock: vi.fn(),
+}));
+
+// Mock the project-id module
+vi.mock('../../src/utils/project-id.js', () => ({
+  detectProjectId: vi.fn(),
+  getProjectIdFromGit: vi.fn(),
+  getProjectIdFromPackageJson: vi.fn(),
+}));
+
 describe('validate command', () => {
   let testDir: string;
   let originalCwd: string;
@@ -86,10 +103,30 @@ describe('validate command', () => {
     vi.mocked(history.checkWorktreeStability).mockReset();
     vi.mocked(history.recordValidationHistory).mockReset();
     vi.mocked(history.checkHistoryHealth).mockReset();
+    vi.mocked(pidLock.acquireLock).mockReset();
+    vi.mocked(pidLock.releaseLock).mockReset();
+    vi.mocked(pidLock.checkLock).mockReset();
+    vi.mocked(pidLock.waitForLock).mockReset();
+    vi.mocked(projectId.detectProjectId).mockReset();
 
-    // Default getGitTreeHash to throw (simulating not in git repo)
-    // Tests can override this if they need git functionality
-    vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('Not in git repo'));
+    // Default getGitTreeHash to return a hash
+    vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+    // Default lock mocks - lock acquired successfully
+    vi.mocked(pidLock.acquireLock).mockResolvedValue({
+      acquired: true,
+      lockFile: join(tmpdir(), 'test.lock'),
+    });
+    vi.mocked(pidLock.releaseLock).mockResolvedValue(undefined);
+    vi.mocked(pidLock.checkLock).mockResolvedValue(null);
+    vi.mocked(pidLock.waitForLock).mockResolvedValue({
+      released: true,
+      timedOut: false,
+      finalLock: null,
+    });
+
+    // Default project ID detection
+    vi.mocked(projectId.detectProjectId).mockReturnValue('test-project');
 
     // Default history mocks to no-op
     vi.mocked(history.checkWorktreeStability).mockResolvedValue({
