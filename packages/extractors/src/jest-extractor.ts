@@ -48,7 +48,8 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
     const line = lines[i];
 
     // Match: FAIL test/integration/extraction-with-mocks.test.ts
-    const failMatch = line.match(/^FAIL\s+([\w/-]+\.test\.\w+)/);
+    // OR: FAIL project-name tests/jest/calculator.test.ts
+    const failMatch = line.match(/^FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/);
     if (failMatch) {
       currentFile = failMatch[1];
       continue;
