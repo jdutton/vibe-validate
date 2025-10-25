@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="15" failures="14" errors="0" time="0.54">
+  <testsuite name="Vibe-Validate Integration Failures" errors="0" failures="14" skipped="0" timestamp="2025-10-25T02:46:47" time="0.421" tests="15">
+    <testcase classname="Vibe-Validate Integration Failures Extractors › Assertion Errors should extract TypeScript errors correctly" name="Vibe-Validate Integration Failures Extractors › Assertion Errors should extract TypeScript errors correctly" time="0.006">
+      <failure>Error: Cannot find module &apos;@vibe-validate/extractors&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:24:43
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:24:43)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Extractors › Assertion Errors should parse ESLint errors from real output" name="Vibe-Validate Integration Failures Extractors › Assertion Errors should parse ESLint errors from real output" time="0">
+      <failure>Error: Cannot find module &apos;@vibe-validate/extractors&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:35:39
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:35:39)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Config › Type Errors should fail when passing invalid config type" name="Vibe-Validate Integration Failures Config › Type Errors should fail when passing invalid config type" time="0">
+      <failure>Error: Cannot find module &apos;@vibe-validate/config&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:48:38
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:48:38)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Config › Type Errors should fail when extractors receive wrong input type" name="Vibe-Validate Integration Failures Config › Type Errors should fail when extractors receive wrong input type" time="0">
+      <failure>Error: Cannot find module &apos;@vibe-validate/extractors&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:58:39
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:58:39)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Core › Runtime Type Errors should fail when calling method on undefined" name="Vibe-Validate Integration Failures Core › Runtime Type Errors should fail when calling method on undefined" time="0">
+      <failure>Error: Cannot find module &apos;@vibe-validate/extractors&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:71:37
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:71:37)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Extractors › Snapshot Testing should match extractor output snapshot" name="Vibe-Validate Integration Failures Extractors › Snapshot Testing should match extractor output snapshot" time="0.001">
+      <failure>Error: Cannot find module &apos;@vibe-validate/extractors&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:84:39
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:84:39)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Core › Async Errors should handle async function that rejects" name="Vibe-Validate Integration Failures Core › Async Errors should handle async function that rejects" time="0">
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Packages › Import Errors should fail when importing non-existent export" name="Vibe-Validate Integration Failures Packages › Import Errors should fail when importing non-existent export" time="0">
+      <failure>Error: Cannot find module &apos;@vibe-validate/core&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:123:39
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:123:39)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Packages › Import Errors should fail when importing from wrong package" name="Vibe-Validate Integration Failures Packages › Import Errors should fail when importing from wrong package" time="0.001">
+      <failure>Error: Cannot find module &apos;@vibe-validate/nonexistent-package&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:134:24
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:134:24)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Extractors › Multiple Errors should handle multiple assertion failures" name="Vibe-Validate Integration Failures Extractors › Multiple Errors should handle multiple assertion failures" time="0">
+      <failure>Error: Cannot find module &apos;@vibe-validate/extractors&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:147:64
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:147:64)</failure>
+    </testcase>
+    <testcase classname="Vibe-Validate Integration Failures Deep Nesting Level 1 Level 2 Level 3 should test deeply nested vibe-validate usage" name="Vibe-Validate Integration Failures Deep Nesting Level 1 Level 2 Level 3 should test deeply nested vibe-validate usage" time="0">
+      <failure>Error: Cannot find module &apos;@vibe-validate/extractors&apos; from &apos;tests/jest/comprehensive-failures.test.ts&apos;
+    at Resolver._throwModNotFoundError (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:427:11)
+    at Resolver.resolveModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:358:10)
+    at Resolver._getVirtualMockPath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:619:14)
+    at Resolver._getAbsolutePath (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:587:14)
+    at Resolver.getModuleID (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-resolve@29.7.0/node_modules/jest-resolve/build/resolver.js:530:31)
+    at Runtime._shouldMockCjs (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1713:37)
+    at Runtime.requireModuleOrMock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1045:16)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:166:40
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:166:40)</failure>
+    </testcase>
+    <testcase classname="Edge Cases (Simple Code) Calculator › Assertions should add numbers correctly" name="Edge Cases (Simple Code) Calculator › Assertions should add numbers correctly" time="0.001">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 13
+Received: 14
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:196:22)
+    at Promise.then.completed (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname="Edge Cases (Simple Code) File System › ENOENT should read config file" name="Edge Cases (Simple Code) File System › ENOENT should read config file" time="0.001">
+      <failure>Error: Validation failed: Config schema mismatch
+    at asyncValidation (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:106:15)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:110:7)
+    at Promise.then.completed (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+      <failure>Error: ENOENT: no such file or directory, open &apos;/this/file/does/not/exist.json&apos;
+    at open (node:internal/fs/promises:640:25)
+    at Object.readFile (node:internal/fs/promises:1277:14)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:205:22)</failure>
+    </testcase>
+    <testcase classname="Edge Cases (Simple Code) Performance › Timeout should complete within timeout" name="Edge Cases (Simple Code) Performance › Timeout should complete within timeout" time="0.011">
+      <failure>Error: thrown: &quot;Exceeded timeout of 10 ms for a test.
+Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout.&quot;
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:212:5
+    at _dispatchDescribe (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/index.js:91:26)
+    at describe (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/index.js:55:5)
+    at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:211:3
+    at _dispatchDescribe (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/index.js:91:26)
+    at describe (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/index.js:55:5)
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:184:1)
+    at Runtime._execModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1439:24)
+    at Runtime._loadModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1022:12)
+    at Runtime.requireModule (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:882:12)
+    at jestAdapter (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:77:13)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runTestInternal (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname="Edge Cases (Simple Code) Calculator › Type Errors should return version as string" name="Edge Cases (Simple Code) Calculator › Type Errors should return version as string" time="0.001">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: &quot;string&quot;
+Received: &quot;number&quot;
+    at Object.&lt;anonymous&gt; (/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts:223:30)
+    at Promise.then.completed (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:121:9)
+    at run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-circus@29.7.0/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

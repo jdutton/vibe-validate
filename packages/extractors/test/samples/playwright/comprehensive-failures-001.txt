@@ -1,0 +1,255 @@
+
+Running 11 tests using 1 worker
+
+  ✘   1 tests/playwright/comprehensive-failures.spec.ts:26:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with assertion error (toBe) (146ms)
+  ✘   2 tests/playwright/comprehensive-failures.spec.ts:33:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with assertion error (toContain) (80ms)
+  ✘   3 tests/playwright/comprehensive-failures.spec.ts:40:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail when element not found (30.0s)
+  ✘   4 tests/playwright/comprehensive-failures.spec.ts:46:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with visibility assertion (5.1s)
+  ✘   5 tests/playwright/comprehensive-failures.spec.ts:53:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with timeout (2.0s)
+  ✘   6 tests/playwright/comprehensive-failures.spec.ts:62:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with text content mismatch (162ms)
+  ✘   7 tests/playwright/comprehensive-failures.spec.ts:70:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with multiple assertions (111ms)
+  ✘   8 tests/playwright/comprehensive-failures.spec.ts:78:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with navigation error (1.2s)
+  ✘   9 tests/playwright/comprehensive-failures.spec.ts:84:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with input value assertion (5.1s)
+  ✘  10 tests/playwright/comprehensive-failures.spec.ts:91:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with count assertion (5.1s)
+  ✘  11 tests/playwright/comprehensive-failures.spec.ts:102:5 › Playwright Vibe-Validate Integration Failures › Nested Describe › should fail in nested describe block (74ms)
+
+
+  1) tests/playwright/comprehensive-failures.spec.ts:26:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with assertion error (toBe) 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"Wrong Title"[39m
+    Received: [31m"Playwright Test Application"[39m
+
+      27 |       await page.goto(TEST_APP_PATH);
+      28 |       const title = await page.textContent('h1');
+    > 29 |       expect(title).toBe('Wrong Title'); // Intentional failure
+         |                     ^
+      30 |     });
+      31 |
+      32 |     // 2. Assertion Error with toContain
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:29:21
+
+    Error Context: test-results/tests-playwright-comprehen-d3db7--with-assertion-error-toBe-/error-context.md
+
+  2) tests/playwright/comprehensive-failures.spec.ts:33:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with assertion error (toContain) 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected substring: [32m"Unexpected Content"[39m
+    Received string:    [31m"Expected Text"[39m
+
+      34 |       await page.goto(TEST_APP_PATH);
+      35 |       const text = await page.textContent('#textElement');
+    > 36 |       expect(text).toContain('Unexpected Content'); // Intentional failure
+         |                    ^
+      37 |     });
+      38 |
+      39 |     // 3. Element Not Found Error
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:36:20
+
+    Error Context: test-results/tests-playwright-comprehen-0d91d--assertion-error-toContain-/error-context.md
+
+  3) tests/playwright/comprehensive-failures.spec.ts:40:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail when element not found 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#nonexistentButton')[22m
+
+
+      40 |     test('should fail when element not found', async ({ page }) => {
+      41 |       await page.goto(TEST_APP_PATH);
+    > 42 |       await page.click('#nonexistentButton'); // Element doesn't exist
+         |                  ^
+      43 |     });
+      44 |
+      45 |     // 4. Visibility Assertion Failure
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:42:18
+
+    Error Context: test-results/tests-playwright-comprehen-163b5-fail-when-element-not-found/error-context.md
+
+  4) tests/playwright/comprehensive-failures.spec.ts:46:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with visibility assertion 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator:  locator('#hiddenElement')
+    Expected: visible
+    Received: hidden
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('#hiddenElement')[22m
+    [2m    9 × locator resolved to <div class="hidden" id="hiddenElement">I am hidden</div>[22m
+    [2m      - unexpected value "hidden"[22m
+
+
+      47 |       await page.goto(TEST_APP_PATH);
+      48 |       // Hidden element should not be visible
+    > 49 |       await expect(page.locator('#hiddenElement')).toBeVisible(); // Intentional failure
+         |                                                    ^
+      50 |     });
+      51 |
+      52 |     // 5. Timeout Error
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:49:52
+
+    Error Context: test-results/tests-playwright-comprehen-75402-l-with-visibility-assertion/error-context.md
+
+  5) tests/playwright/comprehensive-failures.spec.ts:53:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with timeout 
+
+    [31mTest timeout of 2000ms exceeded.[39m
+
+    Error: page.waitForSelector: Test timeout of 2000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#output:has-text("Finally done!")') to be visible[22m
+
+
+      56 |       await page.click('#timeoutBtn');
+      57 |       // This will take 5 seconds but we only allow 2 seconds
+    > 58 |       await page.waitForSelector('#output:has-text("Finally done!")'); // Will timeout
+         |                  ^
+      59 |     });
+      60 |
+      61 |     // 6. Text Content Mismatch
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:58:18
+
+    Error Context: test-results/tests-playwright-comprehen-b8f91-rs-should-fail-with-timeout/error-context.md
+
+  6) tests/playwright/comprehensive-failures.spec.ts:62:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with text content mismatch 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"Wrong text"[39m
+    Received: [31m"Button clicked!"[39m
+
+      64 |       await page.click('#clickBtn');
+      65 |       const output = await page.textContent('#output');
+    > 66 |       expect(output).toBe('Wrong text'); // Intentional failure
+         |                      ^
+      67 |     });
+      68 |
+      69 |     // 7. Multiple Assertions (first passes, second fails)
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:66:22
+
+    Error Context: test-results/tests-playwright-comprehen-e2809--with-text-content-mismatch/error-context.md
+
+  7) tests/playwright/comprehensive-failures.spec.ts:70:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with multiple assertions 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"[7mCompletely Wr[27mon[7mg[27m"[39m
+    Received: [31m"[7mPlaywright Test Applicati[27mon"[39m
+
+      72 |       const title = await page.textContent('h1');
+      73 |       expect(title).toContain('Playwright'); // This passes
+    > 74 |       expect(title).toBe('Completely Wrong'); // This fails
+         |                     ^
+      75 |     });
+      76 |
+      77 |     // 8. Navigation Error
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:74:21
+
+    Error Context: test-results/tests-playwright-comprehen-ffd74-il-with-multiple-assertions/error-context.md
+
+  8) tests/playwright/comprehensive-failures.spec.ts:78:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with navigation error 
+
+    Error: page.goto: net::ERR_FILE_NOT_FOUND at file:///nonexistent/path/to/file.html
+    Call log:
+    [2m  - navigating to "file:///nonexistent/path/to/file.html", waiting until "load"[22m
+
+
+      78 |     test('should fail with navigation error', async ({ page }) => {
+      79 |       // Try to navigate to non-existent file
+    > 80 |       await page.goto('file:///nonexistent/path/to/file.html');
+         |                  ^
+      81 |     });
+      82 |
+      83 |     // 9. Input Value Assertion Failure
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:80:18
+
+  9) tests/playwright/comprehensive-failures.spec.ts:84:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with input value assertion 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveValue[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('#testInput')
+    Expected: [32m"[7mwrong[27m value"[39m
+    Received: [31m"[7mtest[27m value"[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveValue" with timeout 5000ms[22m
+    [2m  - waiting for locator('#testInput')[22m
+    [2m    9 × locator resolved to <input type="text" id="testInput" placeholder="Enter text"/>[22m
+    [2m      - unexpected value "test value"[22m
+
+
+      85 |       await page.goto(TEST_APP_PATH);
+      86 |       await page.fill('#testInput', 'test value');
+    > 87 |       await expect(page.locator('#testInput')).toHaveValue('wrong value'); // Intentional failure
+         |                                                ^
+      88 |     });
+      89 |
+      90 |     // 10. Count Assertion Failure
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:87:48
+
+    Error Context: test-results/tests-playwright-comprehen-cd479--with-input-value-assertion/error-context.md
+
+  10) tests/playwright/comprehensive-failures.spec.ts:91:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with count assertion 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('button')
+    Expected: [32m10[39m
+    Received: [31m4[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for locator('button')[22m
+    [2m    9 × locator resolved to 4 elements[22m
+    [2m      - unexpected value "4"[22m
+
+
+      92 |       await page.goto(TEST_APP_PATH);
+      93 |       // There are only 4 buttons, but we expect 10
+    > 94 |       await expect(page.locator('button')).toHaveCount(10); // Intentional failure
+         |                                            ^
+      95 |     });
+      96 |
+      97 |   });
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:94:44
+
+    Error Context: test-results/tests-playwright-comprehen-b8c18-d-fail-with-count-assertion/error-context.md
+
+  11) tests/playwright/comprehensive-failures.spec.ts:102:5 › Playwright Vibe-Validate Integration Failures › Nested Describe › should fail in nested describe block 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"[7mWrong nested valu[27me"[39m
+    Received: [31m"[7mI am visibl[27me"[39m
+
+      103 |       await page.goto(TEST_APP_PATH);
+      104 |       const output = await page.textContent('#visibleElement');
+    > 105 |       expect(output).toBe('Wrong nested value'); // Intentional failure
+          |                      ^
+      106 |     });
+      107 |
+      108 |   });
+        at /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/playwright/comprehensive-failures.spec.ts:105:22
+
+    Error Context: test-results/tests-playwright-comprehen-829e0-il-in-nested-describe-block/error-context.md
+
+  11 failed
+    tests/playwright/comprehensive-failures.spec.ts:26:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with assertion error (toBe) 
+    tests/playwright/comprehensive-failures.spec.ts:33:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with assertion error (toContain) 
+    tests/playwright/comprehensive-failures.spec.ts:40:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail when element not found 
+    tests/playwright/comprehensive-failures.spec.ts:46:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with visibility assertion 
+    tests/playwright/comprehensive-failures.spec.ts:53:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with timeout 
+    tests/playwright/comprehensive-failures.spec.ts:62:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with text content mismatch 
+    tests/playwright/comprehensive-failures.spec.ts:70:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with multiple assertions 
+    tests/playwright/comprehensive-failures.spec.ts:78:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with navigation error 
+    tests/playwright/comprehensive-failures.spec.ts:84:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with input value assertion 
+    tests/playwright/comprehensive-failures.spec.ts:91:5 › Playwright Vibe-Validate Integration Failures › Extractors › should fail with count assertion 
+    tests/playwright/comprehensive-failures.spec.ts:102:5 › Playwright Vibe-Validate Integration Failures › Nested Describe › should fail in nested describe block 

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playwright Test App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      min-height: 50px;
+      background: #f5f5f5;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Playwright Test Application</h1>
+  <p>This minimal HTML app is used for generating Playwright test failures.</p>
+
+  <!-- Test elements for various failure scenarios -->
+  <div>
+    <button id="clickBtn">Click Me</button>
+    <button id="asyncBtn">Async Operation</button>
+    <button id="errorBtn">Trigger Error</button>
+    <button id="timeoutBtn">Slow Operation</button>
+  </div>
+
+  <div id="output"></div>
+
+  <!-- Elements that will be tested for visibility/presence -->
+  <div id="visibleElement">I am visible</div>
+  <div id="hiddenElement" class="hidden">I am hidden</div>
+
+  <!-- Element with specific text content -->
+  <div id="textElement">Expected Text</div>
+
+  <!-- Input for form testing -->
+  <input type="text" id="testInput" placeholder="Enter text" />
+
+  <script>
+    const output = document.getElementById('output');
+
+    document.getElementById('clickBtn').addEventListener('click', () => {
+      output.textContent = 'Button clicked!';
+    });
+
+    document.getElementById('asyncBtn').addEventListener('click', async () => {
+      output.textContent = 'Loading...';
+      await new Promise(resolve => setTimeout(resolve, 100));
+      output.textContent = 'Async operation complete!';
+    });
+
+    document.getElementById('errorBtn').addEventListener('click', () => {
+      // Intentionally cause an error for testing
+      throw new Error('Intentional test error');
+    });
+
+    document.getElementById('timeoutBtn').addEventListener('click', async () => {
+      output.textContent = 'This will take a while...';
+      // Very long operation (5 seconds) to trigger timeout in tests
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      output.textContent = 'Finally done!';
+    });
+  </script>
+</body>
+</html>

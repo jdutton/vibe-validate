@@ -11,10 +11,22 @@ LLM-optimized error extractors for validation output.
 
 ## Supported Extractors
 
+### Test Frameworks
+- **Vitest**: Dual format support (Format 1 & 2), assertion errors, test hierarchy
+- **Jest**: Comprehensive error extraction, all failure types supported
+- **Mocha**: Native Mocha output format, stack trace parsing
+- **Jasmine**: Angular ecosystem support, Message:/Stack: section parsing
+- **TAP (Test Anything Protocol)**: Covers Tape, node-tap, YAML diagnostics parsing
+- **Ava**: Node.js community favorite, detailed block parsing with quality metadata
+- **Playwright**: Modern E2E testing, numbered failure blocks, stack trace extraction
+- **JUnit XML**: Universal test format for any framework with XML output
+
+### Code Quality Tools
 - **TypeScript (tsc)**: Parses `file(line,col): error TSxxxx: message` format
 - **ESLint**: Parses `file:line:col - severity message [rule]` format
-- **Vitest/Jest**: Extracts test hierarchy, assertion errors, expected vs actual
 - **OpenAPI**: Filters validation errors from specification validators
+
+### Fallback
 - **Generic**: Fallback for unknown tools (removes npm noise)
 
 ## Installation
@@ -42,18 +54,49 @@ console.log(result.errors);       // Structured error array
 
 ### Direct Extractor Usage
 
-For explicit control:
+Use direct extractors when:
+- You know the exact tool being used
+- You want explicit control over extraction
+- You need tool-specific options
+
+**Example: Using Jest extractor directly**
+
+```typescript
+import { extractJestErrors } from '@vibe-validate/extractors';
+import { execSync } from 'child_process';
+
+const jestOutput = execSync('npx jest --no-coverage').toString();
+const result = extractJestErrors(jestOutput);
+
+console.log(`Found ${result.errors.length} test failures`);
+console.log(`Quality: ${result.metadata?.confidence}% confidence`);
+result.errors.forEach(error => {
+  console.log(`  ${error.file}:${error.line} - ${error.message}`);
+});
+```
+
+**All available extractors:**
 
 ```typescript
 import {
+  // Test framework extractors
+  extractVitestErrors,
+  extractJestErrors,
+  extractMochaErrors,
+  extractJasmineErrors,
+  extractTAPErrors,
+  extractAvaErrors,
+  extractPlaywrightErrors,
+  extractJUnitErrors,
+
+  // Code quality extractors
   extractTypeScriptErrors,
   extractESLintErrors,
-  extractVitestErrors,
-  formatOpenAPIErrors,
-  formatGenericErrors
-} from '@vibe-validate/extractors';
+  extractOpenAPIErrors,
 
-const result = extractTypeScriptErrors(tscOutput);
+  // Fallback
+  extractGenericErrors
+} from '@vibe-validate/extractors';
 ```
 
 ### Utilities
@@ -74,7 +117,14 @@ Smart extractor with auto-detection.
 **Detection rules:**
 - TypeScript: Step name contains "TypeScript" or "typecheck"
 - ESLint: Step name contains "ESLint" or "lint"
-- Vitest/Jest: Step name contains "test" (but not "OpenAPI")
+- Vitest: Output contains `❯` marker or `FAIL` keyword
+- Jest: Output contains `FAIL` or `●` bullet pattern
+- Mocha: Output contains Mocha's passing/failing summary format
+- Jasmine: Output contains "Failures:" header
+- TAP: Output contains "TAP version" or "not ok" format
+- Ava: Output contains `✘ [fail]:` pattern
+- Playwright: Output contains `✘` with `.spec.ts` references
+- JUnit XML: Output starts with `<?xml` and contains `<testsuite>`
 - OpenAPI: Step name contains "OpenAPI"
 - Generic: Fallback for unknown types
 
@@ -82,13 +132,21 @@ Smart extractor with auto-detection.
 
 ```typescript
 interface FormattedError {
-  file: string;
+  file?: string;
   line?: number;
   column?: number;
   message: string;
   code?: string;
   severity?: 'error' | 'warning';
   context?: string;
+  guidance?: string;
+}
+
+interface ExtractionMetadata {
+  confidence: number;              // 0-100: Based on pattern match quality
+  completeness: number;            // % of failures with file + line + message
+  issues: string[];                // Problems encountered during extraction
+  suggestions?: string[];          // For developerFeedback mode only
 }
 
 interface ErrorExtractorResult {
@@ -97,6 +155,7 @@ interface ErrorExtractorResult {
   totalCount: number;              // Total error count
   guidance?: string;               // Actionable fixing guidance
   cleanOutput: string;             // Clean formatted output for YAML/JSON
+  metadata?: ExtractionMetadata;   // Extraction quality metadata
 }
 ```
 

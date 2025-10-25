@@ -1,0 +1,237 @@
+
+> @vibe-validate/extractors-test-bed@0.1.0 test:ava
+> ava tests/ava/**/*.test.js
+
+
+  ✘ [fail]: Core › File System › should fail when reading non-existent file Error thrown in test
+  ✘ [fail]: Edge Cases › Nested describe blocks › Level 1 › Level 2 › should handle deep nesting 2+2 should equal 5
+  ✘ [fail]: Edge Cases › Multiple assertions › should fail on second assertion second assertion fails
+  ✘ [fail]: Edge Cases › Null pointer › should fail when accessing property on null Error thrown in test
+  ✘ [fail]: Edge Cases › Async rejections › should handle promise rejection Rejected promise returned by test
+  ✘ [fail]: Extractors › Import Error › should fail when importing non-existent module Rejected promise returned by test
+  ✘ [fail]: Extractors › Assertion Errors › should extract TypeScript errors correctly should have 5 errors
+  ✘ [fail]: Extractors › Assertion Errors › should parse ESLint errors from real output should have 0 errors
+  ✘ [fail]: Core › Runtime Type Errors › should fail when calling method on undefined Rejected promise returned by test
+  ✘ [fail]: Config › Type Errors › should fail when passing invalid config type Rejected promise returned by test
+  ✘ [fail]: Git › Timeout simulation › should timeout waiting for git command Test timeout exceeded
+  ─
+
+  Core › File System › should fail when reading non-existent file
+
+  Error thrown in test:
+
+  Error {
+    code: 'ENOENT',
+    errno: -2,
+    path: '/this/path/does/not/exist.txt',
+    syscall: 'open',
+    message: 'ENOENT: no such file or directory, open \'/this/path/does/not/exist.txt\'',
+  }
+
+  Error: ENOENT: no such file or directory, open '/this/path/does/not/exist.txt'
+      at readFileSync (node:fs:435:20)
+      at file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js:65:19
+      at Test.callFn (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/test.js:525:26)
+      at Test.run (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/test.js:534:33)
+      at Runner.runSingle (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:280:33)
+      at Runner.runTest (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:362:30)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Promise.all (index 4)
+      at async file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:515:21
+      at async Runner.start (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:523:15)
+
+
+
+  Edge Cases › Nested describe blocks › Level 1 › Level 2 › should handle deep nesting
+
+  tests/ava/comprehensive-failures.test.js:96
+
+   95:   // INTENTIONAL FAILURE: Simple assertion
+   96:   t.is(2 + 2, 5, '2+2 should equal 5');   
+   97: });                                       
+
+  2+2 should equal 5
+
+  Difference (- actual, + expected):
+
+  - 4
+  + 5
+
+  › file://tests/ava/comprehensive-failures.test.js:96:5
+
+
+
+  Edge Cases › Multiple assertions › should fail on second assertion
+
+  tests/ava/comprehensive-failures.test.js:103
+
+   102:   t.is(1 + 1, 2, 'first assertion passes');         
+   103:   t.is(2 + 2, 5, 'second assertion fails'); // FAILS
+   104:   t.is(3 + 3, 7, 'third assertion fails'); // FAILS 
+
+  second assertion fails
+
+  Difference (- actual, + expected):
+
+  - 4
+  + 5
+
+  › file://tests/ava/comprehensive-failures.test.js:103:5
+
+
+
+  Edge Cases › Null pointer › should fail when accessing property on null
+
+  Error thrown in test:
+
+  TypeError {
+    message: 'Cannot read properties of null (reading \'someProperty\')',
+  }
+
+  TypeError: Cannot read properties of null (reading 'someProperty')
+      at file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js:118:21
+      at Test.callFn (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/test.js:525:26)
+      at Test.run (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/test.js:534:33)
+      at Runner.runSingle (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:280:33)
+      at Runner.runTest (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:362:30)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Promise.all (index 10)
+      at async file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:515:21
+      at async Runner.start (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:523:15)
+
+
+
+  Edge Cases › Async rejections › should handle promise rejection
+
+  Rejected promise returned by test. Reason:
+
+  Error {
+    message: 'Intentional async rejection',
+  }
+
+  Error: Intentional async rejection
+      at file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js:110:24
+      at Test.callFn (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/test.js:525:26)
+      at Test.run (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/test.js:534:33)
+      at Runner.runSingle (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:280:33)
+      at Runner.runTest (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:362:30)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Promise.all (index 9)
+      at async file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:515:21
+      at async Runner.start (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/runner.js:523:15)
+
+
+
+  Extractors › Import Error › should fail when importing non-existent module
+
+  Rejected promise returned by test. Reason:
+
+  Error {
+    code: 'ERR_MODULE_NOT_FOUND',
+    url: 'file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/this-module-does-not-exist.js',
+    message: 'Cannot find module \'/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/this-module-does-not-exist.js\' imported from /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js',
+  }
+
+  Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/this-module-does-not-exist.js' imported from /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js
+      at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+      at moduleResolve (node:internal/modules/esm/resolve:864:10)
+      at defaultResolve (node:internal/modules/esm/resolve:990:11)
+      at #cachedDefaultResolve (node:internal/modules/esm/loader:735:20)
+      at ModuleLoader.resolve (node:internal/modules/esm/loader:712:38)
+      at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+      at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:663:36)
+      at TracingChannel.tracePromise (node:diagnostics_channel:344:14)
+      at ModuleLoader.import (node:internal/modules/esm/loader:662:21)
+      at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:229:31)
+
+
+
+  Extractors › Assertion Errors › should extract TypeScript errors correctly
+
+  tests/ava/comprehensive-failures.test.js:28
+
+   27:   // Expected: 1 error, but we assert 5 (INTENTIONAL FAILURE)
+   28:   t.is(result.errors.length, 5, 'should have 5 errors');     
+   29: });                                                          
+
+  should have 5 errors
+
+  Difference (- actual, + expected):
+
+  - 1
+  + 5
+
+  › file://tests/ava/comprehensive-failures.test.js:28:5
+
+
+
+  Extractors › Assertion Errors › should parse ESLint errors from real output
+
+  tests/ava/comprehensive-failures.test.js:39
+
+   38:                                                                          
+   39:   t.is(result.summary, '0 error(s)', 'should have 0 errors'); // Actuall…
+   40: });                                                                      
+
+  should have 0 errors
+
+  Difference (- actual, + expected):
+
+  - '1 ESLint error(s), 0 warning(s)'
+  + '0 error(s)'
+
+  › file://tests/ava/comprehensive-failures.test.js:39:5
+
+
+
+  Core › Runtime Type Errors › should fail when calling method on undefined
+
+  Rejected promise returned by test. Reason:
+
+  TypeError {
+    message: 'Cannot read properties of undefined (reading \'includes\')',
+  }
+
+  TypeError: Cannot read properties of undefined (reading 'includes')
+      at extractByStepName (/Users/jeff/Workspaces/vibe-validate/packages/extractors/src/smart-extractor.ts:65:14)
+      at file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js:58:18
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+
+
+  Config › Type Errors › should fail when passing invalid config type
+
+  Rejected promise returned by test. Reason:
+
+  TypeError {
+    code: 'ERR_INVALID_ARG_TYPE',
+    message: 'The "paths[0]" argument must be of type string. Received type number (12345)',
+  }
+
+  TypeError [ERR_INVALID_ARG_TYPE]: The "paths[0]" argument must be of type string. Received type number (12345)
+      at resolve (node:path:1218:7)
+      at loadConfigFromFile (file:///Users/jeff/Workspaces/vibe-validate/packages/config/dist/loader.js:24:26)
+      at file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js:48:24
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+
+
+  Git › Timeout simulation › should timeout waiting for git command
+
+  Error: Test timeout exceeded
+
+  Error: Test timeout exceeded
+      at Timeout.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/ava@6.4.1_rollup@4.52.4/node_modules/ava/lib/test.js:439:24)
+      at listOnTimeout (node:internal/timers:608:17)
+      at process.processTimers (node:internal/timers:543:7)
+
+  ─
+
+  11 tests failed
+npm error Lifecycle script `test:ava` failed with error:
+npm error code 1
+npm error path /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed
+npm error workspace @vibe-validate/extractors-test-bed@0.1.0
+npm error location /Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed
+npm error command failed
+npm error command sh -c ava tests/ava/**/*.test.js

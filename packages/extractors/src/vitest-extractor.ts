@@ -6,7 +6,15 @@
  * @package @vibe-validate/extractors
  */
 
-import type { ErrorExtractorResult } from './types.js';
+import type { ErrorExtractorResult, ExtractionMetadata } from './types.js';
+
+/**
+ * Options for error extraction
+ */
+export interface ExtractorOptions {
+  /** Include quality metadata and suggestions for improving extraction */
+  developerFeedback?: boolean;
+}
 
 interface TestFailure {
   file: string;
@@ -63,6 +71,7 @@ function extractRuntimeError(output: string): TestFailure | null {
  * - Expected vs actual values (when available)
  *
  * @param output - Raw Vitest/Jest command output
+ * @param options - Extraction options (e.g., developerFeedback for quality metadata)
  * @returns Structured error information with test-specific guidance
  *
  * @example
@@ -72,10 +81,15 @@ function extractRuntimeError(output: string): TestFailure | null {
  * console.log(result.guidance); // "Fix each failing test individually..."
  * ```
  */
-export function extractVitestErrors(output: string): ErrorExtractorResult {
+export function extractVitestErrors(
+  output: string,
+  options?: ExtractorOptions
+): ErrorExtractorResult {
   const lines = output.split('\n');
   const failures: TestFailure[] = [];
   let currentFailure: Partial<TestFailure> | null = null;
+  let currentFile = ''; // Track file from ❯ lines for Format 2
+  let hasFormat2 = false; // Track if we found Format 2 file headers
 
   // First, check for runtime errors (Unhandled Rejection, ENOENT, etc.)
   const runtimeError = extractRuntimeError(output);
@@ -86,36 +100,75 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Match: FAIL test/unit/config/environment.test.ts > EnvironmentConfig > test name
-    // OR: ❌ packages/core/test/runner.test.ts > ValidationRunner > test name
-    // OR: × packages/cli/test/commands/validate.test.ts > validate command > test name
-    const failLineMatch = line.match(/(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/);
-    if (failLineMatch) {
+    // Match Format 2: ❯ file.test.ts (N tests | M failed) 123ms
+    // This line declares the file for subsequent × failures
+    // NOTE: Must have parentheses to distinguish from location lines (❯ file.test.ts:57:30)
+    const fileHeaderMatch = line.match(/❯\s+([^\s]+\.test\.ts)\s+\(/);
+    if (fileHeaderMatch) {
+      currentFile = fileHeaderMatch[1];
+      hasFormat2 = true; // We found Format 2, so skip Format 1 to avoid duplicates
+      continue;
+    }
+
+    // Match Format 1: FAIL file.test.ts > test hierarchy
+    // OR: ❌ file.test.ts > test hierarchy
+    // OR: × file.test.ts > test hierarchy
+    // BUT: Skip if we've seen Format 2 headers (to avoid processing duplicate FAIL lines)
+    const format1Match = !hasFormat2 && line.match(/(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/);
+
+    // Match Format 2: × test hierarchy (without file path)
+    // Use currentFile tracked from ❯ line above
+    const format2Match = !format1Match && line.match(/(?:×)\s+(.+?)(?:\s+\d+ms)?$/);
+
+    if (format1Match || (format2Match && currentFile)) {
       if (currentFailure && currentFailure.file) {
         failures.push(currentFailure as TestFailure);
       }
-      currentFailure = {
-        file: failLineMatch[1],
-        testHierarchy: failLineMatch[2].trim(),
-        errorMessage: '',
-        sourceLine: '',
-        location: ''
-      };
+
+      if (format1Match) {
+        // Format 1: file path is in the × line itself
+        currentFailure = {
+          file: format1Match[1],
+          testHierarchy: format1Match[2].trim(),
+          errorMessage: '',
+          sourceLine: '',
+          location: ''
+        };
+      } else if (format2Match && currentFile) {
+        // Format 2: use file from previous ❯ line
+        currentFailure = {
+          file: currentFile,
+          testHierarchy: format2Match[1].trim(),
+          errorMessage: '',
+          sourceLine: '',
+          location: ''
+        };
+      }
       continue;
     }
 
     // Match: AssertionError: expected 3000 to be 9999 // Object.is equality
     // OR: Error: Test timed out in 5000ms.
     // OR: Snapshot `name` mismatched
+    // OR: → expected 1 to be 5 // Object.is equality (Format 2 error message)
     if (currentFailure && !currentFailure.errorMessage) {
       // Check for standard error patterns
       const errorMatch = line.match(/((?:AssertionError|Error):\s*.+)/);
       // Check for snapshot failures (doesn't have "Error:" prefix)
       const snapshotMatch = line.match(/Snapshot\s+`([^`]+)`\s+mismatched/);
+      // Check for Format 2 error messages (→ prefix)
+      const format2ErrorMatch = line.match(/→\s+(.+)/);
 
-      if (errorMatch || snapshotMatch) {
+      if (errorMatch || snapshotMatch || format2ErrorMatch) {
         // Keep the full error including the type (AssertionError: ...)
-        let errorMessage = errorMatch ? errorMatch[1].trim() : line.trim();
+        let errorMessage: string;
+        if (errorMatch) {
+          errorMessage = errorMatch[1].trim();
+        } else if (format2ErrorMatch) {
+          errorMessage = format2ErrorMatch[1].trim();
+        } else {
+          errorMessage = line.trim();
+        }
         const isSnapshotError = !!snapshotMatch;
 
         // Capture additional lines (e.g., timeout guidance, long error messages, snapshot diffs)
@@ -243,7 +296,7 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
     guidance += 'Fix each failing test individually. Run: npm test -- <test-file> to test each file.';
   }
 
-  return {
+  const result: ErrorExtractorResult = {
     errors: failures.slice(0, 10).map(f => {
       // Parse line:column from end of location string (file paths may contain colons)
       let line: number | undefined;
@@ -265,6 +318,74 @@ export function extractVitestErrors(output: string): ErrorExtractorResult {
     totalCount: failures.length,
     guidance,
     cleanOutput
+  };
+
+  // Add quality metadata if developer feedback enabled
+  if (options?.developerFeedback) {
+    result.metadata = calculateExtractionQuality(failures, options);
+  }
+
+  return result;
+}
+
+/**
+ * Calculate extraction quality metadata
+ *
+ * Reports what the extractor knows about its own extraction quality.
+ * Does NOT know expected count - test infrastructure does the comparison.
+ *
+ * @param failures - Extracted test failures
+ * @param options - Extractor options
+ * @returns Quality metadata
+ */
+function calculateExtractionQuality(
+  failures: TestFailure[],
+  options: ExtractorOptions
+): ExtractionMetadata {
+  const withFile = failures.filter(f => f.file && f.file !== 'unknown').length;
+  const withLocation = failures.filter(f => f.location).length;
+  const withMessage = failures.filter(f => f.errorMessage).length;
+
+  // Completeness: percentage with file + location + message
+  const complete = failures.filter(
+    f => f.file && f.file !== 'unknown' && f.location && f.errorMessage
+  ).length;
+  const completeness = failures.length > 0
+    ? Math.round((complete / failures.length) * 100)
+    : 100;
+
+  // Confidence: based on how well patterns matched
+  // High confidence if most failures have complete data
+  const confidence = completeness >= 80 ? 90 : (completeness >= 50 ? 70 : 50);
+
+  // Issues encountered
+  const issues: string[] = [];
+  if (withFile < failures.length) {
+    issues.push(`${failures.length - withFile} failure(s) missing file path`);
+  }
+  if (withLocation < failures.length) {
+    issues.push(`${failures.length - withLocation} failure(s) missing line numbers`);
+  }
+  if (withMessage < failures.length) {
+    issues.push(`${failures.length - withMessage} failure(s) missing error messages`);
+  }
+
+  // Suggestions (only if developer feedback enabled)
+  const suggestions: string[] = [];
+  if (options.developerFeedback) {
+    if (completeness < 80) {
+      suggestions.push('Try running Vitest with --reporter=verbose for more complete output');
+    }
+    if (failures.length > 20) {
+      suggestions.push(`Extracted ${failures.length} failures - verify this matches actual test output`);
+    }
+  }
+
+  return {
+    confidence,
+    completeness,
+    issues,
+    ...(suggestions.length > 0 && { suggestions })
   };
 }
 

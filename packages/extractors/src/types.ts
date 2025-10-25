@@ -10,8 +10,8 @@
  * Structured error information extracted from validation output
  */
 export interface FormattedError {
-  /** File path where the error occurred */
-  file: string;
+  /** File path where the error occurred (undefined if location cannot be determined) */
+  file?: string;
 
   /** Line number (1-indexed) */
   line?: number;
@@ -30,6 +30,28 @@ export interface FormattedError {
 
   /** Additional context (surrounding code, stack trace excerpt) */
   context?: string;
+
+  /** Guidance for fixing the error */
+  guidance?: string;
+}
+
+/**
+ * Metadata about extraction quality (what the extractor knows about its own extraction)
+ *
+ * Note: Extractor doesn't know expected count - test infrastructure compares against ground truth
+ */
+export interface ExtractionMetadata {
+  /** Extraction confidence (0-100) based on pattern match quality */
+  confidence: number;
+
+  /** Percentage of extracted errors with complete data (file + line + message) */
+  completeness: number;
+
+  /** Issues encountered during extraction (e.g., "ambiguous patterns", "missing line numbers") */
+  issues: string[];
+
+  /** Suggestions for improving extraction quality (only included when developerFeedback: true) */
+  suggestions?: string[];
 }
 
 /**
@@ -50,6 +72,9 @@ export interface ErrorExtractorResult {
 
   /** Clean, formatted output for YAML/JSON embedding */
   cleanOutput: string;
+
+  /** Extraction quality metadata (only included when developerFeedback: true) */
+  metadata?: ExtractionMetadata;
 }
 
 /**
