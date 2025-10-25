@@ -10,6 +10,7 @@ import type { ErrorExtractorResult } from './types.js';
 import { extractTypeScriptErrors } from './typescript-extractor.js';
 import { extractESLintErrors } from './eslint-extractor.js';
 import { extractVitestErrors } from './vitest-extractor.js';
+import { extractJUnitErrors } from './junit-extractor.js';
 import { extractOpenAPIErrors } from './openapi-extractor.js';
 import { extractGenericErrors } from './generic-extractor.js';
 
@@ -19,6 +20,7 @@ import { extractGenericErrors } from './generic-extractor.js';
  * Auto-detection rules:
  * - TypeScript: Step name contains "TypeScript" or "typecheck"
  * - ESLint: Step name contains "ESLint" or "lint"
+ * - JUnit XML: Output contains JUnit XML format (<?xml + <testsuite)
  * - Vitest/Jest: Step name contains "test" (but not "OpenAPI")
  * - OpenAPI: Step name contains "OpenAPI"
  * - Generic: Fallback for unknown step types
@@ -34,6 +36,9 @@ import { extractGenericErrors } from './generic-extractor.js';
  *
  * const result2 = extractByStepName('ESLint', eslintOutput);
  * // Uses extractESLintErrors automatically
+ *
+ * const result3 = extractByStepName('Test', junitXmlOutput);
+ * // Auto-detects JUnit XML and uses extractJUnitErrors
  * ```
  */
 export function extractByStepName(stepName: string, output: string): ErrorExtractorResult {
@@ -45,6 +50,11 @@ export function extractByStepName(stepName: string, output: string): ErrorExtrac
 
   if (lowerStepName.includes('eslint') || lowerStepName.includes('lint')) {
     return extractESLintErrors(output);
+  }
+
+  // Auto-detect JUnit XML format (before test keyword check)
+  if (output.includes('<?xml') && output.includes('<testsuite')) {
+    return extractJUnitErrors(output);
   }
 
   if (lowerStepName.includes('test') && !lowerStepName.includes('openapi')) {
