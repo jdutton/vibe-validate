@@ -91,6 +91,7 @@ npx @vibe-validate/cli@latest doctor
 - **312x faster cached validation** (288ms vs 90s when code unchanged)
 - **Git tree hash caching** - Content-based, deterministic (includes untracked files)
 - **Parallel phase execution** - Run independent checks simultaneously
+- **Smart concurrency control** - Prevents duplicate runs, wait-for-completion mode for hooks
 - **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue
 - **Branch sync enforcement** - Pre-commit hook ensures branches stay current
 - **GitHub Actions generator** - CI/CD workflow auto-generated from config

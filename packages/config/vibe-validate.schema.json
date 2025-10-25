@@ -185,6 +185,31 @@
             }
           }
         },
+        "locking": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "concurrencyScope": {
+              "type": "string",
+              "enum": [
+                "directory",
+                "project"
+              ],
+              "default": "directory"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "enabled": true,
+            "concurrencyScope": "directory"
+          }
+        },
         "developerFeedback": {
           "type": "boolean",
           "default": false

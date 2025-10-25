@@ -33,6 +33,25 @@ export interface FormattedError {
 }
 
 /**
+ * Metadata about extraction quality (what the extractor knows about its own extraction)
+ *
+ * Note: Extractor doesn't know expected count - test infrastructure compares against ground truth
+ */
+export interface ExtractionMetadata {
+  /** Extraction confidence (0-100) based on pattern match quality */
+  confidence: number;
+
+  /** Percentage of extracted errors with complete data (file + line + message) */
+  completeness: number;
+
+  /** Issues encountered during extraction (e.g., "ambiguous patterns", "missing line numbers") */
+  issues: string[];
+
+  /** Suggestions for improving extraction quality (only included when developerFeedback: true) */
+  suggestions?: string[];
+}
+
+/**
  * Result of error extraction operation
  */
 export interface ErrorExtractorResult {
@@ -50,6 +69,9 @@ export interface ErrorExtractorResult {
 
   /** Clean, formatted output for YAML/JSON embedding */
   cleanOutput: string;
+
+  /** Extraction quality metadata (only included when developerFeedback: true) */
+  metadata?: ExtractionMetadata;
 }
 
 /**

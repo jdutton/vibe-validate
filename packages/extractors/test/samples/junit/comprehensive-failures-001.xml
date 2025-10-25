@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="12" failures="11" errors="0" time="0.111747417">
+    <testsuite name="junit-comprehensive.test.ts" timestamp="2025-10-25T15:56:58.391Z" hostname="Jeffs-Air.attlocal.net" tests="12" failures="11" errors="0" skipped="0" time="0.111747417">
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 1: Assertion Errors &gt; should match expected value" time="0.002550917">
+            <failure message="expected 4 to be 5 // Object.is equality" type="AssertionError">
+AssertionError: expected 4 to be 5 // Object.is equality
+
+- Expected
++ Received
+
+- 5
++ 4
+
+ ❯ junit-comprehensive.test.ts:14:21
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 2: Type Errors (TypeScript) &gt; should have correct types" time="0.000650541">
+            <failure message="expected &apos;number&apos; to be &apos;string&apos; // Object.is equality" type="AssertionError">
+AssertionError: expected &apos;number&apos; to be &apos;string&apos; // Object.is equality
+
+Expected: &quot;string&quot;
+Received: &quot;number&quot;
+
+ ❯ junit-comprehensive.test.ts:22:28
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 3: Runtime Error (ENOENT) &gt; should read file" time="0.000522834">
+            <failure message="ENOENT: no such file or directory, open &apos;/nonexistent/path/file.txt&apos;" type="Error">
+Error: ENOENT: no such file or directory, open &apos;/nonexistent/path/file.txt&apos;
+ ❯ junit-comprehensive.test.ts:30:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { errno: -2, code: &apos;ENOENT&apos;, syscall: &apos;open&apos;, path: &apos;/nonexistent/path/file.txt&apos; }
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 4: Runtime Error (TypeError) &gt; should handle null values" time="0.000134125">
+            <failure message="Cannot read properties of null (reading &apos;foo&apos;)" type="TypeError">
+TypeError: Cannot read properties of null (reading &apos;foo&apos;)
+ ❯ junit-comprehensive.test.ts:38:18
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 5: Timeout &gt; should complete within timeout" time="0.101160291">
+            <failure message="Test timed out in 100ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 100ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+ ❯ junit-comprehensive.test.ts:43:5
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 6: Snapshot Mismatch &gt; should match snapshot" time="0.000732125">
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 7: Async Rejection &gt; should handle async operations" time="0.000150084">
+            <failure message="Async operation failed" type="Error">
+Error: Async operation failed
+ ❯ junit-comprehensive.test.ts:59:28
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 8: Import Error &gt; should import module" time="0.003755625">
+            <failure message="Cannot find package &apos;this-module-does-not-exist&apos; imported from &apos;/private/tmp/junit-comprehensive.test.ts&apos;" type="Error">
+Error: Cannot find package &apos;this-module-does-not-exist&apos; imported from &apos;/private/tmp/junit-comprehensive.test.ts&apos;
+ ❯ junit-comprehensive.test.ts:66:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: &apos;ERR_MODULE_NOT_FOUND&apos; }
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 9: Multiple Failures in Suite &gt; should pass test 1" time="0.000308208">
+            <failure message="expected true to be false // Object.is equality" type="AssertionError">
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ junit-comprehensive.test.ts:72:20
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 9: Multiple Failures in Suite &gt; should pass test 2" time="0.000220375">
+            <failure message="expected 1 to be 2 // Object.is equality" type="AssertionError">
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ junit-comprehensive.test.ts:76:17
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 9: Multiple Failures in Suite &gt; should pass test 3" time="0.000201042">
+            <failure message="expected &apos;foo&apos; to be &apos;bar&apos; // Object.is equality" type="AssertionError">
+AssertionError: expected &apos;foo&apos; to be &apos;bar&apos; // Object.is equality
+
+Expected: &quot;bar&quot;
+Received: &quot;foo&quot;
+
+ ❯ junit-comprehensive.test.ts:80:21
+            </failure>
+        </testcase>
+        <testcase classname="junit-comprehensive.test.ts" name="Vibe-Validate JUnit XML Test Matrix &gt; Failure Type 10: Nested Describe Blocks &gt; Level 2 &gt; Level 3 &gt; should work at deep nesting" time="0.000758083">
+            <failure message="expected [ 1, 2, 3 ] to have a length of 5 but got 3" type="AssertionError">
+AssertionError: expected [ 1, 2, 3 ] to have a length of 5 but got 3
+
+- Expected
++ Received
+
+- 5
++ 3
+
+ ❯ junit-comprehensive.test.ts:89:29
+            </failure>
+        </testcase>
+    </testsuite>
+</testsuites>

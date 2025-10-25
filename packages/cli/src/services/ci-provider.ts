@@ -56,9 +56,6 @@ export interface CheckStatus {
 
 /**
  * Validation result extracted from CI logs
- *
- * Note: This is NOT about the deprecated .vibe-validate-state.yaml file.
- * This represents the validation result that's displayed in CI logs.
  */
 export interface ValidationResultContents {
   /** Whether validation passed */

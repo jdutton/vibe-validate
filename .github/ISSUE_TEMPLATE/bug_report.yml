@@ -73,11 +73,12 @@ body:
       required: false
 
   - type: textarea
-    id: state-file
+    id: validation-state
     attributes:
-      label: Validation State File
+      label: Validation State
       description: |
-        If relevant, please share the contents of `.vibe-validate-state.yaml`.
+        If relevant, please share the output of `vibe-validate state --yaml`.
+        This shows the current validation state from git notes.
         Remove any sensitive information before sharing.
       render: yaml
     validations:

@@ -130,10 +130,6 @@ importers:
         version: 2.1.9(@types/node@20.19.21)
 
   packages/extractors:
-    dependencies:
-      yaml:
-        specifier: ^2.6.1
-        version: 2.8.1
     devDependencies:
       '@types/node':
         specifier: ^20.19.21
@@ -153,6 +149,9 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.21)(tsx@4.20.6)(yaml@2.8.1)
+      yaml:
+        specifier: ^2.8.1
+        version: 2.8.1
 
   packages/git:
     devDependencies:

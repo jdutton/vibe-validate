@@ -342,6 +342,163 @@ describe('HooksConfigSchema', () => {
   });
 });
 
+describe('LockingConfigSchema', () => {
+  it('should validate config with locking enabled (default)', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      locking: {
+        enabled: true,
+        concurrencyScope: 'directory'
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.locking?.enabled).toBe(true);
+    expect(result.data?.locking?.concurrencyScope).toBe('directory');
+  });
+
+  it('should validate config with locking disabled', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      locking: {
+        enabled: false
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.locking?.enabled).toBe(false);
+  });
+
+  it('should validate config with project scope', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      locking: {
+        enabled: true,
+        concurrencyScope: 'project',
+        projectId: 'my-app'
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.locking?.concurrencyScope).toBe('project');
+    expect(result.data?.locking?.projectId).toBe('my-app');
+  });
+
+  it('should validate config with directory scope (default)', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      locking: {
+        enabled: true,
+        concurrencyScope: 'directory'
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.locking?.concurrencyScope).toBe('directory');
+  });
+
+  it('should apply defaults when locking not specified', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.locking?.enabled).toBe(true);
+    expect(result.data?.locking?.concurrencyScope).toBe('directory');
+  });
+
+  it('should reject invalid concurrencyScope values', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      locking: {
+        enabled: true,
+        concurrencyScope: 'invalid-scope'
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('concurrencyScope') || e.includes('Invalid enum'))).toBe(true);
+  });
+
+  it('should allow project scope without explicit projectId (auto-detect)', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      locking: {
+        enabled: true,
+        concurrencyScope: 'project'
+        // projectId will be auto-detected
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.locking?.concurrencyScope).toBe('project');
+    expect(result.data?.locking?.projectId).toBeUndefined();
+  });
+
+  it('should reject unknown properties in locking config', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      locking: {
+        enabled: true,
+        unknownProperty: 'should fail'
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+  });
+});
+
 describe('Strict Schema Validation', () => {
   it('should reject unknown properties in config root', () => {
     const config = {

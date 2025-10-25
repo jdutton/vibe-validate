@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ New Features
+
+- **Smart Locking System for Concurrency Control**
+  - **Problem**: Multiple validation runs (different terminals, worktrees) could conflict with shared resources like ports or databases
+  - **Solution**: Configurable locking system with wait-for-completion mode
+  - **Impact**: Prevents duplicate validation runs and resource conflicts
+  - **Key capabilities**:
+    - Enabled by default - only one validation runs at a time
+    - Wait mode (default): New runs wait for existing validation to complete
+    - Project-scoped locking: Share locks across worktrees when using fixed ports/databases
+    - Directory-scoped locking (default): Each directory has its own lock for parallel worktrees
+    - Auto-detection of project ID from git remote or package.json
+    - CLI flags: `--no-lock`, `--no-wait`, `--wait-timeout <seconds>`
+  - **Configuration**:
+    ```yaml
+    locking:
+      enabled: true  # Default: true
+      concurrencyScope: directory  # "directory" (default) or "project"
+      projectId: my-app  # Optional: auto-detected
+    ```
+  - **Use cases**:
+    - Directory scope: No shared resources, parallel worktrees OK
+    - Project scope: Tests use fixed ports (3000, 8080) or shared databases
+    - Disable: CI environments with isolated containers
+  - See [Locking Configuration Guide](docs/locking-configuration.md) for details
+
 ## [0.12.1] - 2025-10-24
 
 ### 🐛 Bug Fixes

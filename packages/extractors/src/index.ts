@@ -6,7 +6,8 @@
  * Provides intelligent error parsing and formatting for common development tools:
  * - TypeScript (tsc)
  * - ESLint
- * - Vitest/Jest
+ * - Vitest/Jest/Mocha/Jasmine
+ * - JUnit XML (auto-detected)
  * - OpenAPI validators
  * - Generic fallback
  *
@@ -35,6 +36,10 @@ export type {
 export { extractTypeScriptErrors } from './typescript-extractor.js';
 export { extractESLintErrors } from './eslint-extractor.js';
 export { extractVitestErrors } from './vitest-extractor.js';
+export { extractJestErrors } from './jest-extractor.js';
+export { extractJUnitErrors } from './junit-extractor.js';
+export { extractMochaErrors } from './mocha-extractor.js';
+export { extractJasmineErrors } from './jasmine-extractor.js';
 export { extractOpenAPIErrors } from './openapi-extractor.js';
 export { extractGenericErrors } from './generic-extractor.js';
 
