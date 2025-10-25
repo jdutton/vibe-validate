@@ -45,7 +45,6 @@
     "clean": "pnpm -r clean && rm -rf node_modules",
     "dev": "pnpm -r --parallel dev",
     "validate": "node packages/cli/dist/bin.js validate",
-    "validate:force": "rm -f .vibe-validate-state.yaml && npm run validate",
     "pre-commit": "node packages/cli/dist/bin.js pre-commit",
     "state": "node packages/cli/dist/bin.js state",
     "history": "node packages/cli/dist/bin.js history",

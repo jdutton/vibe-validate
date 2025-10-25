@@ -153,7 +153,6 @@ if (untracked) {
     /node_modules/,
     /dist/,
     /\.DS_Store/,
-    /\.vibe-validate-state\.yaml/,
     /TODO\.md/,
   ];
 
