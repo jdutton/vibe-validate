@@ -11,13 +11,15 @@
     "test:vitest:junit": "vitest run --reporter=junit --reporter=default",
     "test:mocha": "mocha 'tests/mocha/**/*.test.js'",
     "test:mocha:junit": "mocha 'tests/mocha/**/*.test.js' --reporter mocha-junit-reporter --reporter-options mochaFile=./junit-output/mocha-results.xml",
+    "test:ava": "ava tests/ava/**/*.test.js",
     "capture:all": "bash scripts/capture-samples.sh",
     "capture:jest:text": "npm run test:jest 2>&1 | tee ../extractors/test/samples/jest/extraction-test-bed.txt || true",
     "capture:jest:junit": "npm run test:jest:junit && cp junit-output/junit.xml ../extractors/test/samples/jest/extraction-test-bed.junit.xml || true",
     "capture:vitest:text": "npm run test:vitest 2>&1 | tee ../extractors/test/samples/vitest/extraction-test-bed.txt || true",
     "capture:vitest:junit": "npm run test:vitest:junit && cp junit-output/vitest-results.xml ../extractors/test/samples/vitest/extraction-test-bed.junit.xml || true",
     "capture:mocha:text": "npm run test:mocha 2>&1 | tee ../extractors/test/samples/mocha/extraction-test-bed.txt || true",
-    "capture:mocha:junit": "npm run test:mocha:junit && cp junit-output/mocha-results.xml ../extractors/test/samples/mocha/extraction-test-bed.junit.xml || true"
+    "capture:mocha:junit": "npm run test:mocha:junit && cp junit-output/mocha-results.xml ../extractors/test/samples/mocha/extraction-test-bed.junit.xml || true",
+    "capture:ava:text": "npm run test:ava 2>&1 | tee ../extractors/test/samples/ava/comprehensive-failures-001.txt || true"
   },
   "dependencies": {
     "@vibe-validate/config": "workspace:*",
@@ -25,10 +27,12 @@
     "@vibe-validate/extractors": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.18.10",
     "@types/tape": "^5.8.1",
+    "ava": "^6.4.1",
     "jest": "^29.7.0",
     "jest-junit": "^16.0.0",
     "mocha": "^10.8.2",

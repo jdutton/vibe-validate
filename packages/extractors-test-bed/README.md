@@ -17,11 +17,13 @@ This package contains **intentionally failing tests** designed to:
 
 | Framework | Text Output | JUnit XML | Status |
 |-----------|-------------|-----------|--------|
-| **Jest** | ✅ Supported | ✅ Supported | Implemented |
-| **Vitest** | ✅ Supported | ✅ Supported | Implemented |
-| **Mocha** | 🚧 Planned | 🚧 Planned | TODO |
-| **Playwright** | 🚧 Planned | 🚧 Planned | TODO |
-| **AVA** | 🤔 Consider | 🤔 Consider | Future |
+| **Jest** | ✅ Supported | ✅ Supported | ✅ Implemented |
+| **Vitest** | ✅ Supported | ✅ Supported | ✅ Implemented |
+| **Mocha** | ✅ Supported | ✅ Supported | ✅ Implemented |
+| **Jasmine** | ✅ Supported | ✅ Supported | ✅ Implemented |
+| **TAP/Tape** | ✅ Supported | ❌ No XML | ✅ Implemented |
+| **Ava** | ✅ Supported | ❌ No XML | ✅ Implemented |
+| **Playwright** | ✅ Supported | ❌ Custom | ✅ Implemented |
 | **uvu** | 🤔 Consider | ❌ No XML | Future |
 
 ### Output Formats
@@ -50,27 +52,24 @@ This package contains **intentionally failing tests** designed to:
 
 ## Failure Types Matrix
 
-Each failure type should be tested across all supported frameworks:
+Each failure type tested across all supported frameworks:
 
-| Failure Type | Jest | Vitest | Mocha | Playwright | Example |
-|--------------|------|--------|-------|------------|---------|
-| **Assertion Error** | ✅ | ✅ | 🚧 | 🚧 | `expect(2).toBe(3)` |
-| **Type Error (TS)** | ✅ | ✅ | 🚧 | N/A | `Type 'number' not assignable to 'string'` |
-| **Runtime Error (ENOENT)** | ✅ | ✅ | 🚧 | 🚧 | `readFile('/nonexistent')` |
-| **Runtime Error (TypeError)** | ✅ | ✅ | 🚧 | 🚧 | `null.foo()` |
-| **Timeout** | ✅ | ✅ | 🚧 | 🚧 | Test exceeds time limit |
-| **Snapshot Mismatch** | ✅ | ✅ | N/A | ✅ | `toMatchSnapshot()` fails |
-| **Async Rejection** | ✅ | ✅ | 🚧 | 🚧 | Unhandled promise rejection |
-| **Import Error** | ✅ | ✅ | 🚧 | 🚧 | Module not found |
-| **Multiple Failures** | ✅ | ✅ | 🚧 | 🚧 | Several tests fail in one suite |
-| **Nested Describe Blocks** | ✅ | ✅ | 🚧 | N/A | Deep test hierarchy (Level 3+) |
+| Failure Type | Jest | Vitest | Mocha | Jasmine | TAP | Ava | Playwright | Example |
+|--------------|------|--------|-------|---------|-----|-----|------------|---------|
+| **Assertion Error** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `expect(2).toBe(3)` |
+| **Type Error (TS)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | `Type 'number' not assignable to 'string'` |
+| **Runtime Error (ENOENT)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `readFile('/nonexistent')` |
+| **Runtime Error (TypeError)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `null.foo()` |
+| **Timeout** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Test exceeds time limit |
+| **Snapshot Mismatch** | ✅ | ✅ | N/A | N/A | N/A | ✅ | ✅ | `toMatchSnapshot()` fails |
+| **Async Rejection** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Unhandled promise rejection |
+| **Import Error** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Module not found |
+| **Multiple Failures** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Several tests fail in one suite |
+| **Nested Describe Blocks** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Deep test hierarchy (Level 3+) |
 
 **Legend:**
-- ✅ Implemented
-- 🚧 Planned
-- 🤔 Under consideration
-- ❌ Not applicable
-- N/A Framework doesn't support this
+- ✅ Implemented and tested
+- N/A Framework doesn't support this feature
 
 ## Test Strategy
 

@@ -10,10 +10,13 @@ import type { ErrorExtractorResult } from './types.js';
 import { extractTypeScriptErrors } from './typescript-extractor.js';
 import { extractESLintErrors } from './eslint-extractor.js';
 import { extractVitestErrors } from './vitest-extractor.js';
+import { extractJestErrors } from './jest-extractor.js';
 import { extractJUnitErrors } from './junit-extractor.js';
 import { extractMochaErrors } from './mocha-extractor.js';
 import { extractJasmineErrors } from './jasmine-extractor.js';
 import { extractTAPErrors } from './tap-extractor.js';
+import { extractAvaErrors } from './ava-extractor.js';
+import { extractPlaywrightErrors } from './playwright-extractor.js';
 import { extractOpenAPIErrors } from './openapi-extractor.js';
 import { extractGenericErrors } from './generic-extractor.js';
 
@@ -27,7 +30,10 @@ import { extractGenericErrors } from './generic-extractor.js';
  * - TAP: Output contains "TAP version 13" or "not ok N" pattern
  * - Jasmine: Output contains "Failures:" header
  * - Mocha: Output contains "X passing" or "X failing" format
- * - Vitest/Jest: Step name contains "test" (but not "OpenAPI")
+ * - Ava: Output contains ✘ [fail]: pattern with › hierarchy
+ * - Playwright: Output contains ✘ symbol and .spec.ts files
+ * - Jest: Output contains "FAIL" keyword and "●" bullet pattern
+ * - Vitest: Step name contains "test" (but not "OpenAPI") - fallback for test frameworks
  * - OpenAPI: Step name contains "OpenAPI"
  * - Generic: Fallback for unknown step types
  *
@@ -80,6 +86,21 @@ export function extractByStepName(stepName: string, output: string): ErrorExtrac
   if ((output.includes(' passing') || output.includes(' failing')) &&
       output.match(/\s+\d+\)\s+/)) {
     return extractMochaErrors(output);
+  }
+
+  // Auto-detect Ava format (✘ [fail]: pattern with › hierarchy)
+  if (output.includes('✘') && output.includes('[fail]:') && output.includes('›')) {
+    return extractAvaErrors(output);
+  }
+
+  // Auto-detect Playwright format (✘ symbol with .spec.ts files)
+  if (output.includes('✘') && output.includes('.spec.ts')) {
+    return extractPlaywrightErrors(output);
+  }
+
+  // Auto-detect Jest format (FAIL keyword and ● bullet pattern)
+  if (output.includes('FAIL') && output.includes('●')) {
+    return extractJestErrors(output);
   }
 
   if (lowerStepName.includes('test') && !lowerStepName.includes('openapi')) {
