@@ -13,6 +13,7 @@ import { extractVitestErrors } from './vitest-extractor.js';
 import { extractJUnitErrors } from './junit-extractor.js';
 import { extractMochaErrors } from './mocha-extractor.js';
 import { extractJasmineErrors } from './jasmine-extractor.js';
+import { extractTAPErrors } from './tap-extractor.js';
 import { extractOpenAPIErrors } from './openapi-extractor.js';
 import { extractGenericErrors } from './generic-extractor.js';
 
@@ -23,6 +24,7 @@ import { extractGenericErrors } from './generic-extractor.js';
  * - TypeScript: Step name contains "TypeScript" or "typecheck"
  * - ESLint: Step name contains "ESLint" or "lint"
  * - JUnit XML: Output contains JUnit XML format (<?xml + <testsuite)
+ * - TAP: Output contains "TAP version 13" or "not ok N" pattern
  * - Jasmine: Output contains "Failures:" header
  * - Mocha: Output contains "X passing" or "X failing" format
  * - Vitest/Jest: Step name contains "test" (but not "OpenAPI")
@@ -62,6 +64,11 @@ export function extractByStepName(stepName: string, output: string): ErrorExtrac
   // Auto-detect JUnit XML format (before test keyword check)
   if (output.includes('<?xml') && output.includes('<testsuite')) {
     return extractJUnitErrors(output);
+  }
+
+  // Auto-detect TAP format (distinctive "TAP version 13" header or "not ok N" pattern)
+  if (output.includes('TAP version') || output.match(/^not ok \d+/m)) {
+    return extractTAPErrors(output);
   }
 
   // Auto-detect Jasmine format (distinctive "Failures:" header)

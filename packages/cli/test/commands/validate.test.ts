@@ -55,6 +55,9 @@ describe('validate command', () => {
   let program: Command;
 
   beforeEach(() => {
+    // Clear all mock calls from previous tests (prevents test pollution across test files)
+    vi.clearAllMocks();
+
     // Create temp directory for test files
     testDir = join(tmpdir(), `vibe-validate-validate-test-${Date.now()}`);
     if (!existsSync(testDir)) {
@@ -824,9 +827,6 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
-      // Clear all mock calls from previous tests (prevents test pollution)
-      vi.clearAllMocks();
-
       // Mock valid config (required for validation to proceed)
       const mockConfig: VibeValidateConfig = {
         validation: {
