@@ -54,7 +54,7 @@
     "watch-pr": "node packages/cli/dist/bin.js watch-pr",
     "generate-workflow": "node packages/cli/dist/bin.js generate-workflow",
     "generate-cli-docs": "node tools/generate-cli-docs.js",
-    "pre-publish": "./tools/pre-publish-check.sh",
+    "pre-publish": "node tools/pre-publish-check.js",
     "publish:dry-run": "pnpm -r --filter='@vibe-validate/*' exec npm publish --dry-run",
     "publish:extractors": "cd packages/extractors && pnpm publish --no-git-checks",
     "publish:git": "cd packages/git && pnpm publish --no-git-checks",
