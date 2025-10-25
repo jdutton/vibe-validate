@@ -5,22 +5,6 @@
 [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## What's New in 0.12.2
-
-**Comprehensive Test Framework Support** - 9 test framework extractors now available:
-- ✅ Vitest (dual format support)
-- ✅ Jest (comprehensive error extraction)
-- ✅ Playwright (modern E2E testing)
-- ✅ Mocha (Node.js unit testing)
-- ✅ Jasmine (Angular ecosystem)
-- ✅ AVA (Node.js community favorite)
-- ✅ TAP/Tape (Test Anything Protocol)
-- ✅ JUnit XML (universal format)
-
-All extractors support quality metadata and provide LLM-optimized output.
-
----
-
 **What it does**: Caches your validation results (tests, lint, typecheck) using git tree hashes. When code hasn't changed, validation completes in ~288ms instead of minutes.
 
 **Who it's for**: TypeScript/JavaScript developers, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
