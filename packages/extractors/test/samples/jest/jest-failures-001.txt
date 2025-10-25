@@ -1,0 +1,1318 @@
+Jest Suite	Run npm test	﻿2025-10-24T02:45:11.9244157Z ##[group]Run npm test
+Jest Suite	Run npm test	2025-10-24T02:45:11.9244652Z [36;1mnpm test[0m
+Jest Suite	Run npm test	2025-10-24T02:45:11.9277537Z shell: /usr/bin/bash -e {0}
+Jest Suite	Run npm test	2025-10-24T02:45:11.9277813Z ##[endgroup]
+Jest Suite	Run npm test	2025-10-24T02:45:12.2606495Z 
+Jest Suite	Run npm test	2025-10-24T02:45:12.2607163Z > askjan-kb-agent@1.0.0 test
+Jest Suite	Run npm test	2025-10-24T02:45:12.2607829Z > jest --coverage
+Jest Suite	Run npm test	2025-10-24T02:45:12.2608099Z 
+Jest Suite	Run npm test	2025-10-24T02:45:20.6627463Z PASS test/unit/schema-registry.test.ts (7.566 s)
+Jest Suite	Run npm test	2025-10-24T02:45:20.6807487Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:20.6808211Z 
+Jest Suite	Run npm test	2025-10-24T02:45:20.6809116Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:20.6810010Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:20.6811590Z 
+Jest Suite	Run npm test	2025-10-24T02:45:20.6812246Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:20.6813695Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:20.6815529Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:20.6817453Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:20.6818490Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:20.6819727Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:20.6820736Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:20.6821838Z 
+Jest Suite	Run npm test	2025-10-24T02:45:20.6822443Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:20.6823495Z 
+Jest Suite	Run npm test	2025-10-24T02:45:22.1197439Z PASS test/unit/neo4j-graph-store.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:22.1204902Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:22.1205362Z 
+Jest Suite	Run npm test	2025-10-24T02:45:22.1205581Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:22.1206091Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:22.1206500Z 
+Jest Suite	Run npm test	2025-10-24T02:45:22.1206823Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:22.1207449Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:22.1208566Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:22.1209535Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:22.1210163Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:22.1210584Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:22.1211154Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:22.1211507Z 
+Jest Suite	Run npm test	2025-10-24T02:45:22.1211775Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:22.1212116Z 
+Jest Suite	Run npm test	2025-10-24T02:45:23.5883242Z PASS test/unit/content-normalizer.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:23.5904573Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:23.5905002Z 
+Jest Suite	Run npm test	2025-10-24T02:45:23.5905327Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:23.5905828Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:23.5906228Z 
+Jest Suite	Run npm test	2025-10-24T02:45:23.5906578Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:23.5907235Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:23.5908390Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:23.5909376Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:23.5909919Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:23.5910394Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:23.5910990Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:23.5911349Z 
+Jest Suite	Run npm test	2025-10-24T02:45:23.5911640Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:23.5912015Z 
+Jest Suite	Run npm test	2025-10-24T02:45:24.2135566Z PASS test/unit/processing-metadata.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:24.2144834Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:24.2148841Z 
+Jest Suite	Run npm test	2025-10-24T02:45:24.2152954Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:24.2156321Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:24.2158799Z 
+Jest Suite	Run npm test	2025-10-24T02:45:24.2161309Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:24.2164062Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:24.2167580Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:24.2170533Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:24.2172679Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:24.2185049Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:24.2185870Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:24.2186239Z 
+Jest Suite	Run npm test	2025-10-24T02:45:24.2186514Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:24.2186879Z 
+Jest Suite	Run npm test	2025-10-24T02:45:25.8136929Z PASS test/unit/crawl-queue.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:25.8151475Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:25.8151902Z 
+Jest Suite	Run npm test	2025-10-24T02:45:25.8153338Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:25.8154965Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:25.8156905Z 
+Jest Suite	Run npm test	2025-10-24T02:45:25.8157742Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:25.8158533Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:25.8159646Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:25.8160613Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:25.8161175Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:25.8161628Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:25.8162238Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:25.8162603Z 
+Jest Suite	Run npm test	2025-10-24T02:45:25.8162887Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:25.8163245Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.1572384Z {"level":"INFO","time":"2025-10-24T02:45:25.797Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","oldStrategy":"fifo","newStrategy":"depth-first","msg":"Changing prioritization strategy"}
+Jest Suite	Run npm test	2025-10-24T02:45:26.1577642Z {"level":"INFO","time":"2025-10-24T02:45:25.798Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","oldStrategy":"fifo","newStrategy":"pagerank","msg":"Changing prioritization strategy"}
+Jest Suite	Run npm test	2025-10-24T02:45:26.1646193Z PASS test/unit/page-classifier.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:26.1661424Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:26.1663792Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.1666399Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:26.1669062Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:26.1671228Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.1672868Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.1675774Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:26.1676913Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.1679197Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.1685079Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:26.1687466Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.1689656Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:26.1691847Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.1692197Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:26.1692573Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.4335067Z PASS test/extractors/extraction-utils.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:26.4346294Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:26.4348327Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.4348503Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:26.4348982Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:26.4349351Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.4349667Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.4350291Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:26.4351363Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.4352307Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.4352794Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:26.4353204Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.4353774Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:26.4354114Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.4354374Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:26.4354764Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.9738995Z PASS test/unit/entity-registry.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:26.9766934Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:26.9767356Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.9767732Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:26.9768409Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:26.9768771Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.9769095Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.9770062Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:26.9771088Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.9772050Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.9772581Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:26.9772994Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:26.9773542Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:26.9773875Z 
+Jest Suite	Run npm test	2025-10-24T02:45:26.9774121Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:26.9774735Z 
+Jest Suite	Run npm test	2025-10-24T02:45:27.3642028Z {"level":"INFO","time":"2025-10-24T02:45:27.263Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:27.3646366Z {"level":"INFO","time":"2025-10-24T02:45:27.264Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":500,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:27.3649159Z {"level":"INFO","time":"2025-10-24T02:45:27.264Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":5,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:27.3650838Z {"level":"INFO","time":"2025-10-24T02:45:27.265Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":100,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:27.3652087Z {"level":"INFO","time":"2025-10-24T02:45:27.265Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":200,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:27.3653236Z {"level":"INFO","time":"2025-10-24T02:45:27.266Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:27.3654330Z {"level":"INFO","time":"2025-10-24T02:45:27.266Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":100,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:27.4682115Z {"level":"INFO","time":"2025-10-24T02:45:27.368Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":2,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:31.4708642Z {"level":"INFO","time":"2025-10-24T02:45:31.370Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:31.4710408Z {"level":"INFO","time":"2025-10-24T02:45:31.370Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:33.4726299Z {"level":"INFO","time":"2025-10-24T02:45:33.372Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:33.4729224Z {"level":"INFO","time":"2025-10-24T02:45:33.373Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:33.4732194Z {"level":"INFO","time":"2025-10-24T02:45:33.373Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:33.4735034Z {"level":"INFO","time":"2025-10-24T02:45:33.392Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":100,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:33.5943557Z {"level":"INFO","time":"2025-10-24T02:45:33.493Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":2,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.5954902Z {"level":"INFO","time":"2025-10-24T02:45:35.494Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":500,"maxConcurrent":3,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.5957366Z {"level":"INFO","time":"2025-10-24T02:45:35.495Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.5972479Z {"level":"INFO","time":"2025-10-24T02:45:35.496Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":1000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.5973872Z {"level":"INFO","time":"2025-10-24T02:45:35.496Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","oldDelay":1000,"newDelay":500,"msg":"Updating rate limit delay"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.5975509Z {"level":"INFO","time":"2025-10-24T02:45:35.496Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":100,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.5977008Z {"level":"INFO","time":"2025-10-24T02:45:35.496Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","oldDelay":100,"newDelay":200,"msg":"Updating rate limit delay"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.7982961Z {"level":"INFO","time":"2025-10-24T02:45:35.698Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":100,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.7985803Z {"level":"INFO","time":"2025-10-24T02:45:35.698Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","oldDelay":100,"newDelay":500,"msg":"Updating rate limit delay"}
+Jest Suite	Run npm test	2025-10-24T02:45:35.7987508Z {"level":"INFO","time":"2025-10-24T02:45:35.699Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:39.8000316Z {"level":"INFO","time":"2025-10-24T02:45:39.700Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:45.8027046Z {"level":"INFO","time":"2025-10-24T02:45:45.702Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:45.8028718Z {"level":"INFO","time":"2025-10-24T02:45:45.702Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:45.8030213Z {"level":"INFO","time":"2025-10-24T02:45:45.703Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":1,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:45.8031750Z {"level":"INFO","time":"2025-10-24T02:45:45.704Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":100,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:47.8117517Z {"level":"INFO","time":"2025-10-24T02:45:47.707Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:47.8123139Z {"level":"INFO","time":"2025-10-24T02:45:47.708Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":1000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:49.8119180Z {"level":"INFO","time":"2025-10-24T02:45:49.711Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":3,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:51.8151252Z {"level":"INFO","time":"2025-10-24T02:45:51.714Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":50,"maxConcurrent":2,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:45:51.8736462Z PASS test/unit/rate-limiter.test.ts (24.887 s)
+Jest Suite	Run npm test	2025-10-24T02:45:51.8776210Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:51.8781986Z 
+Jest Suite	Run npm test	2025-10-24T02:45:51.8782310Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:51.8782809Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:51.8783166Z 
+Jest Suite	Run npm test	2025-10-24T02:45:51.8783493Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:51.8784029Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:51.8785114Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:51.8786299Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:51.8786859Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:51.8787271Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:51.8787844Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:51.8788649Z 
+Jest Suite	Run npm test	2025-10-24T02:45:51.8788917Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:51.8789266Z 
+Jest Suite	Run npm test	2025-10-24T02:45:53.1451841Z PASS test/unit/limitation-extractor.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:53.1513112Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:53.1516827Z 
+Jest Suite	Run npm test	2025-10-24T02:45:53.1520248Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:53.1523935Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:53.1527587Z 
+Jest Suite	Run npm test	2025-10-24T02:45:53.1531153Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:53.1534903Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:53.1539952Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:53.1541089Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:53.1542780Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:53.1544821Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:53.1545900Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:53.1547315Z 
+Jest Suite	Run npm test	2025-10-24T02:45:53.1547681Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:53.1549055Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3066702Z FAIL test/integration/extraction-with-mocks.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:54.3075121Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:54.3079174Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3082776Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:54.3087022Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:54.3091635Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3095774Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3100017Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3104777Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3109532Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3114067Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3118509Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3123168Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3127129Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3131008Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3135105Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3139912Z   ● UniversalMentionExtractor (Mocked Integration) › Primary Entity Detection › extracts primary entity from disability page
+Jest Suite	Run npm test	2025-10-24T02:45:54.3143105Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3144135Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3144749Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3146519Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3148373Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3160527Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3161706Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3162302Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3162762Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3163648Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3164192Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3164595Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3165823Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3166956Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3167548Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3168624Z   ● UniversalMentionExtractor (Mocked Integration) › Primary Entity Detection › does NOT extract primary entity from article page
+Jest Suite	Run npm test	2025-10-24T02:45:54.3169512Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3169831Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3170244Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3171414Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3173419Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3175015Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3177285Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3177858Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3178573Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3179412Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3179955Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3180340Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3181345Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3182455Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3183008Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3183993Z   ● UniversalMentionExtractor (Mocked Integration) › Primary Entity Detection › extracts primary entity from solution page
+Jest Suite	Run npm test	2025-10-24T02:45:54.3184828Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3185374Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3185797Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3187007Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3188555Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3190086Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3191246Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3191800Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3192199Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3193068Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3193626Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3193994Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3194989Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3196417Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3196984Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3198033Z   ● UniversalMentionExtractor (Mocked Integration) › Entity Mention Extraction › extracts all entity types from disability page
+Jest Suite	Run npm test	2025-10-24T02:45:54.3198888Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3199195Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3199597Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3200780Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3202278Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3203805Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3204968Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3205757Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3206176Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3207021Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3207585Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3207959Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3208949Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3210318Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3210868Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3211787Z   ● UniversalMentionExtractor (Mocked Integration) › Entity Mention Extraction › adds type field to all mentions
+Jest Suite	Run npm test	2025-10-24T02:45:54.3212557Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3212870Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3213269Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3214446Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3216387Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3217918Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3219187Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3219818Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3220285Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3221150Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3221717Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3222101Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3223084Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3224137Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3224675Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3225805Z   ● UniversalMentionExtractor (Mocked Integration) › Entity Mention Extraction › preserves context and confidence
+Jest Suite	Run npm test	2025-10-24T02:45:54.3226563Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3226866Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3227257Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3228410Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3229932Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3231472Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3232641Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3233248Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3233703Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3234698Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3235433Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3235813Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3236800Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3237883Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3238442Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3239494Z   ● UniversalMentionExtractor (Mocked Integration) › Relationship Extraction › extracts CAUSES relationships in entity mentions
+Jest Suite	Run npm test	2025-10-24T02:45:54.3240358Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3240676Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3241165Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3242342Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3243889Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3245607Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3247068Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3247623Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3248054Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3248861Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3249376Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3249753Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3250744Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3252098Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3252615Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3253667Z   ● UniversalMentionExtractor (Mocked Integration) › Relationship Extraction › extracts ADDRESSED_BY relationships in entity mentions
+Jest Suite	Run npm test	2025-10-24T02:45:54.3254538Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3254876Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3259527Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3260678Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3262072Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3263521Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3264602Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3265398Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3265852Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3266690Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3267214Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3267557Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3268486Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3269544Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3270060Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3271125Z   ● UniversalMentionExtractor (Mocked Integration) › Relationship Extraction › normalizes relationships into result.relationships array
+Jest Suite	Run npm test	2025-10-24T02:45:54.3272016Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3272308Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3272661Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3273752Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3275492Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3277038Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3278203Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3278729Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3279160Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3280035Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3280583Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3280957Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3281941Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3283037Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3283601Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3284537Z   ● UniversalMentionExtractor (Mocked Integration) › BaseEntity Compliance › populates required BaseEntity fields
+Jest Suite	Run npm test	2025-10-24T02:45:54.3285533Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3285868Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3286660Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3287843Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3289274Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3290722Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3291990Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3292497Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3292894Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3293707Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3294213Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3294552Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3297842Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3299025Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3299594Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3300474Z   ● UniversalMentionExtractor (Mocked Integration) › BaseEntity Compliance › uses pageId as fallback for id
+Jest Suite	Run npm test	2025-10-24T02:45:54.3301217Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3301521Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3301906Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3303052Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3304550Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3306286Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3307361Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3307863Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3308255Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3309072Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3309576Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3309915Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3310813Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3311805Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3312301Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3313141Z   ● UniversalMentionExtractor (Mocked Integration) › BaseEntity Compliance › uses URL as fallback when pageId missing
+Jest Suite	Run npm test	2025-10-24T02:45:54.3313875Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3314140Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3314499Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3315747Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3317100Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3318518Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3319541Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3320020Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3320398Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3321166Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3321653Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3321988Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3323527Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3324532Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3325035Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3325953Z   ● UniversalMentionExtractor (Mocked Integration) › Error Handling › handles empty HTML gracefully
+Jest Suite	Run npm test	2025-10-24T02:45:54.3326648Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3326961Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3327356Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3328563Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3330384Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3331925Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3333116Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3333686Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3334123Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3334964Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3335695Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3336071Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3337047Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3338132Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3338680Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3339414Z   ● UniversalMentionExtractor (Mocked Integration) › Error Handling › handles malformed HTML
+Jest Suite	Run npm test	2025-10-24T02:45:54.3340051Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3340370Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3340776Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3341993Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3343504Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3344998Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3346284Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3346795Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3347173Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3347941Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3348429Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3348762Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3349653Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3350622Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3351121Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3351854Z   ● UniversalMentionExtractor (Mocked Integration) › Extraction Confidence › calculates confidence score
+Jest Suite	Run npm test	2025-10-24T02:45:54.3352501Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3352766Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:45:54.3353113Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3354185Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3355707Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:45:54.3357117Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3358387Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3358868Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:54.3359255Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3360026Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.3360518Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.3360851Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3361754Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3362932Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:45:54.3363432Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.8900057Z PASS test/unit/solution-extractor.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:54.8901581Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:54.8902033Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.8902950Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:54.8903621Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:54.8904140Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.8904572Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.8905487Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:54.8906704Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.8907823Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.8908455Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:54.8908961Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:54.8910481Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:54.8910856Z 
+Jest Suite	Run npm test	2025-10-24T02:45:54.8911113Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:54.8911451Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.3566915Z PASS test/unit/disability-extractor.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:55.3572304Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:55.3582685Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.3584446Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:55.3586787Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:55.3588342Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.3589389Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.3590238Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:55.3591484Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.3592570Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.3593418Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:55.3602890Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.3603625Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:55.3604154Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.3604517Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:55.3604978Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.6795922Z PASS test/unit/url-canonicalizer.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:55.6808240Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:55.6809529Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.6810930Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:55.6812159Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:55.6813650Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.6814065Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.6814647Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:55.6816105Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.6817071Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.6817569Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:55.6817970Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:55.6818518Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:55.6818862Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.6819142Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:55.6819489Z 
+Jest Suite	Run npm test	2025-10-24T02:45:55.8984975Z {"level":"WARN","time":"2025-10-24T02:45:55.651Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","urlString":"not a url","error":{"type":"TypeError","message":"Invalid URL","stack":"TypeError: Invalid URL\n    at new URL (node:internal/url:825:25)\n    at URLCanonicalizer.canonicalize (/home/runner/work/askjan-kb-agent/askjan-kb-agent/src/crawler/url-canonicalizer.ts:134:19)\n    at Object.<anonymous> (/home/runner/work/askjan-kb-agent/askjan-kb-agent/test/unit/url-canonicalizer.test.ts:239:36)\n    at Promise.finally.completed (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)\n    at _callCircusTest (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)\n    at _runTest (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:947:3)\n    at /home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:849:7\n    at _runTestsForDescribeBlock (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:862:11)\n    at _runTestsForDescribeBlock (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:857:11)\n    at _runTestsForDescribeBlock (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:857:11)\n    at run (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:761:3)\n    at runAndTransformResultsToJestFormat (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)\n    at jestAdapter (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-circus/build/runner.js:101:19)\n    at runTestInternal (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-runner/build/index.js:275:16)\n    at runTest (/home/runner/work/askjan-kb-agent/askjan-kb-agent/node_modules/jest-runner/build/index.js:343:7)","code":"ERR_INVALID_URL","input":"not a url"},"msg":"Failed to canonicalize URL"}
+Jest Suite	Run npm test	2025-10-24T02:45:56.4062905Z PASS test/unit/base-extractor.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:56.4086141Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:56.4087037Z 
+Jest Suite	Run npm test	2025-10-24T02:45:56.4087465Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:56.4088591Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:56.4089278Z 
+Jest Suite	Run npm test	2025-10-24T02:45:56.4090244Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:56.4091149Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:56.4092978Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:56.4094275Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:56.4095669Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:56.4096417Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:56.4097705Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:56.4098338Z 
+Jest Suite	Run npm test	2025-10-24T02:45:56.4099233Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:56.4099849Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.2417864Z PASS test/extractors/relationship-normalizer.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:57.2427944Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:57.2429477Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.2429650Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:57.2430120Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:57.2430461Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.2430793Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.2431375Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:57.2432455Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.2433430Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.2433930Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:57.2434333Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.2434863Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:57.2435427Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.2435689Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:57.2436032Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.5487759Z PASS test/unit/entity-resolver.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:57.5505387Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:57.5505650Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.5505791Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:57.5506273Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:57.5506638Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.5506957Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.5507542Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:57.5508624Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.5509559Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.5510397Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:57.5510803Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.5511347Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:57.5511689Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.5511937Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:57.5512275Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.8712876Z {"level":"INFO","time":"2025-10-24T02:45:57.526Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity type cache initialized with defaults","entries":14}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8716046Z {"level":"WARN","time":"2025-10-24T02:45:57.527Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"Screen-Reading Software!","entityType":"solution","normalizedName":"screenreading software","generatedId":"solution:screen-reading-software"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8720026Z {"level":"INFO","time":"2025-10-24T02:45:57.528Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity ID resolved via partial match","entityName":"Screen Reading","entityType":"solution","normalizedName":"screen reading","cachedName":"screen reading software","resolvedId":"solution:screen-reading-software"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8724022Z {"level":"INFO","time":"2025-10-24T02:45:57.529Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity ID resolved via partial match","entityName":"Ergonomic Keyboard Stand","entityType":"solution","normalizedName":"ergonomic keyboard stand","cachedName":"keyboard","resolvedId":"solution:keyboard"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8727880Z {"level":"WARN","time":"2025-10-24T02:45:57.530Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, using fallback","entityName":"Unknown Entity","entityType":"solution","normalizedName":"unknown entity","fallbackId":"solution:fallback"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8731421Z {"level":"WARN","time":"2025-10-24T02:45:57.535Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"Brand New Solution","entityType":"solution","normalizedName":"brand new solution","generatedId":"solution:brand-new-solution"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8735008Z {"level":"WARN","time":"2025-10-24T02:45:57.536Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"Solution #1: Best!","entityType":"solution","normalizedName":"solution 1 best","generatedId":"solution:solution-1-best"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8761019Z {"level":"WARN","time":"2025-10-24T02:45:57.537Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"Multi Word Entity Name","entityType":"limitation","normalizedName":"multi word entity name","generatedId":"limitation:multi-word-entity-name"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8764620Z {"level":"WARN","time":"2025-10-24T02:45:57.538Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"New Disability","entityType":"disability","normalizedName":"new disability","generatedId":"disability:new-disability"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8768151Z {"level":"WARN","time":"2025-10-24T02:45:57.538Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"New Solution","entityType":"solution","normalizedName":"new solution","generatedId":"solution:new-solution"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8771899Z {"level":"WARN","time":"2025-10-24T02:45:57.538Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"New Limitation","entityType":"limitation","normalizedName":"new limitation","generatedId":"limitation:new-limitation"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8775806Z {"level":"WARN","time":"2025-10-24T02:45:57.538Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"New Work Function","entityType":"work_function","normalizedName":"new work function","generatedId":"work_function:new-work-function"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8779719Z {"level":"INFO","time":"2025-10-24T02:45:57.539Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity ID resolved via partial match","entityName":"","entityType":"solution","normalizedName":"","cachedName":"screen reading software","resolvedId":"solution:screen-reading-software"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8783335Z {"level":"INFO","time":"2025-10-24T02:45:57.539Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity ID resolved via partial match","entityName":"!!!","entityType":"solution","normalizedName":"","cachedName":"screen reading software","resolvedId":"solution:screen-reading-software"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8786882Z {"level":"WARN","time":"2025-10-24T02:45:57.540Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity not found in cache, generated ID","entityName":"Some Entity","entityType":"solution","normalizedName":"some entity","generatedId":"solution:some-entity"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.8790636Z {"level":"INFO","time":"2025-10-24T02:45:57.541Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity ID resolved via partial match","entityName":"Screen Reading","entityType":"solution","normalizedName":"screen reading","cachedName":"screen reading software","resolvedId":"solution:screen-reading-software"}
+Jest Suite	Run npm test	2025-10-24T02:45:57.9122841Z PASS test/unit/golden-dataset.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:57.9145373Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:57.9148691Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9150950Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:57.9153171Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:57.9155693Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9156108Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.9158708Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:57.9161338Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.9163954Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.9165706Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:57.9166129Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:57.9166684Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:57.9167042Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9167306Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:57.9167648Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9167796Z     console.log
+Jest Suite	Run npm test	2025-10-24T02:45:57.9168114Z       
+Jest Suite	Run npm test	2025-10-24T02:45:57.9168604Z       📊 Golden Dataset Statistics:
+Jest Suite	Run npm test	2025-10-24T02:45:57.9168945Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9169333Z       at Object.<anonymous> (test/unit/golden-dataset.test.ts:291:15)
+Jest Suite	Run npm test	2025-10-24T02:45:57.9169786Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9169934Z     console.log
+Jest Suite	Run npm test	2025-10-24T02:45:57.9170284Z          Total entries: 10
+Jest Suite	Run npm test	2025-10-24T02:45:57.9170544Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9170913Z       at Object.<anonymous> (test/unit/golden-dataset.test.ts:292:15)
+Jest Suite	Run npm test	2025-10-24T02:45:57.9171370Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9171507Z     console.log
+Jest Suite	Run npm test	2025-10-24T02:45:57.9171859Z          By persona: {
+Jest Suite	Run npm test	2025-10-24T02:45:57.9172236Z         HR_MANAGER: 2,
+Jest Suite	Run npm test	2025-10-24T02:45:57.9172608Z         EMPLOYEE: 3,
+Jest Suite	Run npm test	2025-10-24T02:45:57.9172982Z         LEGAL_COMPLIANCE: 2,
+Jest Suite	Run npm test	2025-10-24T02:45:57.9173391Z         RECRUITER: 1,
+Jest Suite	Run npm test	2025-10-24T02:45:57.9173760Z         DIRECT_MANAGER: 2
+Jest Suite	Run npm test	2025-10-24T02:45:57.9174118Z       }
+Jest Suite	Run npm test	2025-10-24T02:45:57.9174284Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9174644Z       at Object.<anonymous> (test/unit/golden-dataset.test.ts:293:15)
+Jest Suite	Run npm test	2025-10-24T02:45:57.9175080Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9175830Z     console.log
+Jest Suite	Run npm test	2025-10-24T02:45:57.9176344Z          By difficulty: { simple: 3, moderate: 5, complex: 2 }
+Jest Suite	Run npm test	2025-10-24T02:45:57.9176732Z 
+Jest Suite	Run npm test	2025-10-24T02:45:57.9177148Z       at Object.<anonymous> (test/unit/golden-dataset.test.ts:294:15)
+Jest Suite	Run npm test	2025-10-24T02:45:57.9177581Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.1410563Z PASS test/unit/embedding-generator.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:59.1419757Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:59.1420236Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.1421598Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:59.1422853Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:59.1423441Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.1426493Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.1427105Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:59.1428198Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.1429129Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.1429649Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:59.1430102Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.1430643Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.1430981Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.1431237Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:59.1431575Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5482695Z FAIL test/unit/scoring-engine.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:59.5483708Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:59.5484032Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5484199Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:59.5484784Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:59.5485382Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5485889Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5486539Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5487553Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5488497Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5488994Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5489367Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5489901Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5490248Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5490497Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5490818Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5491235Z   ● ScoringEngine › should return a score between 0 and 100
+Jest Suite	Run npm test	2025-10-24T02:45:59.5491624Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5491959Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:45:59.5492368Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5493138Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5494099Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5495935Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5497150Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5497715Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5498119Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5498954Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5499486Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5500058Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5501214Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5502156Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5502998Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5503431Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5503875Z   ● ScoringEngine › should include all score breakdowns
+Jest Suite	Run npm test	2025-10-24T02:45:59.5504238Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5504580Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:45:59.5505014Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5511665Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5512729Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5514187Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5535583Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5536248Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5537024Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5537918Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5538481Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5539057Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5540139Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5541114Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5541968Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5542413Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5542973Z   ● ScoringEngine › should include detailed results for each scorer
+Jest Suite	Run npm test	2025-10-24T02:45:59.5543461Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5543827Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:45:59.5544276Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5545100Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5546416Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5547892Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5549092Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5549673Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5550130Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5551015Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5551570Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5552190Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5553363Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5554396Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5555505Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5555970Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5556483Z   ● ScoringEngine › should sum individual scores to total
+Jest Suite	Run npm test	2025-10-24T02:45:59.5556875Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5557213Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:45:59.5557625Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5558421Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5559370Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5560777Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5561990Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5562547Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5563021Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5563933Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5564489Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5565102Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5569952Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5571330Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5572123Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5572541Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5572994Z   ● ScoringEngine › should handle responses with no sources
+Jest Suite	Run npm test	2025-10-24T02:45:59.5573373Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5573711Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:45:59.5574112Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5574866Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5576404Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5577868Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5579113Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5579680Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5580098Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5580998Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5581634Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5582307Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5583422Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5584450Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5585650Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5586111Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5586697Z   ● ScoringEngine › should handle responses with must-avoid violations
+Jest Suite	Run npm test	2025-10-24T02:45:59.5587201Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5587564Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:45:59.5588016Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5588838Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5589883Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5591328Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5592497Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5593053Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5593484Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5594368Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5594956Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5595768Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5596975Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5597988Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5598836Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5599288Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5599860Z   ● ScoringEngine › should reward responses with multiple AskJAN sources
+Jest Suite	Run npm test	2025-10-24T02:45:59.5600358Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5600699Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:45:59.5601140Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5601979Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5603022Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:45:59.5604483Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5606203Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5606751Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:45:59.5607203Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5608120Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.5608679Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.5609292Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5610468Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5611744Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5612630Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:45:59.5613096Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.7791601Z PASS test/unit/entity-inserter.test.ts
+Jest Suite	Run npm test	2025-10-24T02:45:59.7957111Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:45:59.7975746Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.7996593Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:45:59.7997278Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:45:59.7999801Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.8016025Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.8036311Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:45:59.8037477Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.8056086Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.8136375Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:45:59.8136833Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:45:59.8137353Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:45:59.8137675Z 
+Jest Suite	Run npm test	2025-10-24T02:45:59.8137904Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:45:59.8138208Z 
+Jest Suite	Run npm test	2025-10-24T02:46:00.4120585Z {"level":"WARN","time":"2025-10-24T02:45:59.752Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Mention \"lightbox\" is inside an HTML tag or attribute (skipping)"}
+Jest Suite	Run npm test	2025-10-24T02:46:00.4124442Z {"level":"WARN","time":"2025-10-24T02:45:59.753Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Mention \"shades\" is inside an HTML tag or attribute (skipping)"}
+Jest Suite	Run npm test	2025-10-24T02:46:00.4126180Z {"level":"WARN","time":"2025-10-24T02:45:59.754Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Mention \"diabetes\" is inside an HTML tag or attribute (skipping)"}
+Jest Suite	Run npm test	2025-10-24T02:46:00.4145622Z {"level":"WARN","time":"2025-10-24T02:45:59.762Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Could not find mention text in HTML: \"diabetes\""}
+Jest Suite	Run npm test	2025-10-24T02:46:00.4147444Z {"level":"INFO","time":"2025-10-24T02:46:00.405Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:46:00.4148879Z {"level":"INFO","time":"2025-10-24T02:46:00.409Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:46:02.5133182Z {"level":"INFO","time":"2025-10-24T02:46:02.413Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:46:02.5134999Z {"level":"INFO","time":"2025-10-24T02:46:02.413Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":100,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:46:02.6322847Z PASS test/integration/crawl-normalize-flow.test.ts
+Jest Suite	Run npm test	2025-10-24T02:46:02.6330098Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:46:02.6331206Z 
+Jest Suite	Run npm test	2025-10-24T02:46:02.6331414Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:46:02.6331856Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:46:02.6332198Z 
+Jest Suite	Run npm test	2025-10-24T02:46:02.6332490Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.6333052Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:46:02.6334157Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.6335781Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.6336289Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:46:02.6336691Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.6337214Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:46:02.6337550Z 
+Jest Suite	Run npm test	2025-10-24T02:46:02.6337808Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:46:02.6338145Z 
+Jest Suite	Run npm test	2025-10-24T02:46:02.8428683Z {"level":"INFO","time":"2025-10-24T02:46:02.617Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:46:02.8431652Z {"level":"INFO","time":"2025-10-24T02:46:02.620Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","minDelayMs":2000,"maxConcurrent":1,"msg":"Rate limiter initialized"}
+Jest Suite	Run npm test	2025-10-24T02:46:02.8433364Z {"level":"INFO","time":"2025-10-24T02:46:02.820Z","pid":2018,"hostname":"runnervmwhb2z","context":"app","msg":"Entity type cache initialized with defaults","entries":14}
+Jest Suite	Run npm test	2025-10-24T02:46:02.8472912Z PASS test/unit/entity-ids.test.ts
+Jest Suite	Run npm test	2025-10-24T02:46:02.8510138Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:46:02.8510356Z 
+Jest Suite	Run npm test	2025-10-24T02:46:02.8510495Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:46:02.8510946Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:46:02.8511292Z 
+Jest Suite	Run npm test	2025-10-24T02:46:02.8511597Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.8512154Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:46:02.8513188Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.8514119Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.8514633Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:46:02.8515052Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:02.8515796Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:46:02.8516126Z 
+Jest Suite	Run npm test	2025-10-24T02:46:02.8516378Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:46:02.8516709Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.1874897Z PASS test/unit/content-hash.test.ts
+Jest Suite	Run npm test	2025-10-24T02:46:03.1883366Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:46:03.1887473Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.1891228Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:46:03.1895383Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:46:03.1899198Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.1903439Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.1908011Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:46:03.1913377Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.1917182Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.1919760Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:46:03.1922298Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.1925060Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:46:03.1927695Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.1929388Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:46:03.1931740Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.6423770Z PASS test/unit/config.test.ts
+Jest Suite	Run npm test	2025-10-24T02:46:03.6442847Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:46:03.6443729Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.6444059Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:46:03.6445060Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:46:03.6445892Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.6447968Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.6448717Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:46:03.6450079Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.6451304Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.6452308Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:46:03.6454666Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.6457321Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:46:03.6458147Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.6458542Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:46:03.6459104Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.8604933Z PASS test/unit/evaluators.test.ts
+Jest Suite	Run npm test	2025-10-24T02:46:03.8612569Z   ● Console
+Jest Suite	Run npm test	2025-10-24T02:46:03.8613361Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.8613836Z     console.warn
+Jest Suite	Run npm test	2025-10-24T02:46:03.8614929Z       Warning: Could not load .env file for tests
+Jest Suite	Run npm test	2025-10-24T02:46:03.8615698Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.8616174Z     [0m [90m 21 |[39m   })[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.8617843Z      [90m 22 |[39m } [36mcatch[39m {
+Jest Suite	Run npm test	2025-10-24T02:46:03.8618963Z     [31m[1m>[22m[39m[90m 23 |[39m   console[33m.[39mwarn([32m'Warning: Could not load .env file for tests'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.8619947Z      [90m    |[39m           [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.8620872Z      [90m 24 |[39m }
+Jest Suite	Run npm test	2025-10-24T02:46:03.8621344Z      [90m 25 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:03.8621936Z      [90m 26 |[39m [90m// Global test setup[39m[0m
+Jest Suite	Run npm test	2025-10-24T02:46:03.8622297Z 
+Jest Suite	Run npm test	2025-10-24T02:46:03.8622606Z       at Object.<anonymous> (test/setup.ts:23:11)
+Jest Suite	Run npm test	2025-10-24T02:46:03.8622967Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.7798072Z ----------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------
+Jest Suite	Run npm test	2025-10-24T02:46:06.7805553Z File                              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                       
+Jest Suite	Run npm test	2025-10-24T02:46:06.7807089Z ----------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------
+Jest Suite	Run npm test	2025-10-24T02:46:06.7817340Z All files                         |   31.78 |    28.27 |   32.04 |   31.82 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7823504Z  config                           |   22.85 |     3.22 |   26.66 |   22.38 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7824512Z   environment.ts                  |   61.53 |       25 |      50 |    62.5 | 116-118,126-136,197                                                     
+Jest Suite	Run npm test	2025-10-24T02:46:06.7825701Z   url-filters.ts                  |       0 |        0 |       0 |       0 | 8-340                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7826611Z  content                          |       0 |        0 |       0 |       0 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7827507Z   change-detector.ts              |       0 |        0 |       0 |       0 | 1-177                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7828465Z   file-organizer.ts               |       0 |        0 |       0 |       0 | 1-188                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7829424Z   git-manager.ts                  |       0 |        0 |       0 |       0 | 1-275                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7830323Z  crawler                          |   46.08 |    34.05 |   49.21 |   46.61 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7831967Z   content-normalizer.ts           |      97 |    85.71 |     100 |   96.96 | 143,156,202                                                             
+Jest Suite	Run npm test	2025-10-24T02:46:06.7833603Z   crawl-queue.ts                  |    78.8 |    52.77 |      75 |   78.52 | 85-91,96-106,119-121,231,289-303,351,390,396,422,450-490                
+Jest Suite	Run npm test	2025-10-24T02:46:06.7835425Z   deterministic-crawler.ts        |       0 |        0 |       0 |       0 | 1-568                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7836780Z   link-extractor.ts               |       0 |        0 |       0 |       0 | 1-154                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7837931Z   rate-limiter.ts                 |     100 |    93.33 |     100 |     100 | 72                                                                      
+Jest Suite	Run npm test	2025-10-24T02:46:06.7839176Z   robots-parser.ts                |       0 |        0 |       0 |       0 | 1-185                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7841085Z   url-canonicalizer.ts            |   97.05 |    86.95 |     100 |   97.01 | 145,151                                                                 
+Jest Suite	Run npm test	2025-10-24T02:46:06.7843205Z   url-classifier.ts               |   35.61 |    40.62 |   38.46 |   36.11 | 68-88,118,173-316                                                       
+Jest Suite	Run npm test	2025-10-24T02:46:06.7849876Z   url-taxonomy.ts                 |    72.5 |      100 |    8.33 |   76.31 | 492-494,501,508,515,522,529,536                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7858210Z  extractors                       |   39.66 |    37.76 |   39.63 |   39.08 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7861360Z   base-extractor.ts               |     100 |    86.95 |     100 |     100 | 77-197                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7862455Z   chunk-relationship-extractor.ts |       0 |        0 |       0 |       0 | 14-579                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7863594Z   disability-extractor.ts         |     100 |     82.6 |     100 |     100 | 33,102-135                                                              
+Jest Suite	Run npm test	2025-10-24T02:46:06.7864645Z   entity-tagger.ts                |       0 |        0 |       0 |       0 | 20-578                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7865884Z   extraction-utils.ts             |     100 |    96.72 |     100 |     100 | 105,272                                                                 
+Jest Suite	Run npm test	2025-10-24T02:46:06.7866897Z   index.ts                        |       0 |      100 |       0 |       0 | 1-6                                                                     
+Jest Suite	Run npm test	2025-10-24T02:46:06.7867926Z   limitation-extractor.ts         |    96.2 |    80.64 |     100 |   95.77 | 241,248,255                                                             
+Jest Suite	Run npm test	2025-10-24T02:46:06.7869100Z   relationship-extractor.ts       |       0 |        0 |       0 |       0 | 27-587                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7870279Z   relationship-normalizer.ts      |     100 |    83.33 |     100 |     100 | 111-112                                                                 
+Jest Suite	Run npm test	2025-10-24T02:46:06.7871444Z   solution-extractor.ts           |   97.01 |    78.26 |     100 |   96.61 | 231,238                                                                 
+Jest Suite	Run npm test	2025-10-24T02:46:06.7872636Z   universal-mention-extractor.ts  |   15.55 |        0 |    7.69 |   16.66 | 94-238                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7873734Z  processors                       |    4.38 |      2.6 |    1.13 |    4.48 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7874765Z   attestation-aggregator.ts       |    5.94 |        0 |       0 |    6.31 | 80-437                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7876107Z   description-synthesizer.ts      |       0 |        0 |       0 |       0 | 10-277                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7877241Z   embedding-generator.ts          |   24.05 |       15 |    9.09 |   24.32 | 26-221                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7878312Z   entity-processor.ts             |       0 |        0 |       0 |       0 | 1-491                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7879217Z   file-storage.ts                 |       0 |        0 |       0 |       0 | 1-316                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7880242Z   relationship-storage.ts         |       0 |        0 |       0 |       0 | 1-283                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7881212Z  services                         |       0 |        0 |       0 |       0 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7882523Z   accommodation-query-service.ts  |       0 |        0 |       0 |       0 | 14-333                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7883579Z   query-expander.ts               |       0 |        0 |       0 |       0 | 13-218                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7884589Z   rag-answer-service.ts           |       0 |        0 |       0 |       0 | 14-349                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7886027Z  storage                          |   18.25 |     16.5 |   21.62 |   18.16 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7887017Z   entity-alias-index.ts           |       0 |        0 |       0 |       0 | 21-457                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7888129Z   neo4j-graph-store.ts            |   35.74 |    29.41 |   45.45 |   35.23 | 112-145,227-231,355-383,472-581,592,601-605,610,622,626-824,859,883-888 
+Jest Suite	Run npm test	2025-10-24T02:46:06.7889356Z   pinecone-vector-store.ts        |    7.91 |    10.47 |       5 |     8.2 | 52-473,524-529                                                          
+Jest Suite	Run npm test	2025-10-24T02:46:06.7890403Z  utils                            |   55.48 |    49.75 |      60 |   55.69 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7891347Z   content-hash.ts                 |   78.57 |      100 |      50 |   78.57 | 60-62                                                                   
+Jest Suite	Run npm test	2025-10-24T02:46:06.7892400Z   entity-ids.ts                   |   63.33 |    61.11 |   42.85 |   60.41 | 41-44,76-78,98-107,120-129                                              
+Jest Suite	Run npm test	2025-10-24T02:46:06.7893560Z   entity-inserter.ts              |   58.33 |    37.77 |      80 |   59.25 | 30-61,89-91,108-109,179,188,210-213                                     
+Jest Suite	Run npm test	2025-10-24T02:46:06.7894752Z   entity-registry.ts              |   69.06 |    56.86 |   74.07 |   71.11 | 103-109,278-281,296-319,380-423                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7896103Z   entity-resolver.ts              |   47.45 |     25.8 |   66.66 |   48.27 | 53-162                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7897125Z   entity-tag-validator.ts         |       0 |        0 |       0 |       0 | 25-379                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7898348Z   entity-type-normalizer.ts       |      40 |       20 |    37.5 |   38.98 | 53-55,67-71,81-88,106-156,178,195-224,231,238-239                       
+Jest Suite	Run npm test	2025-10-24T02:46:06.7899544Z   entity-type-schema.ts           |       0 |        0 |       0 |       0 | 38-154                                                                  
+Jest Suite	Run npm test	2025-10-24T02:46:06.7900579Z   page-classifier.ts              |     100 |    95.23 |     100 |     100 | 44                                                                      
+Jest Suite	Run npm test	2025-10-24T02:46:06.7901764Z   processing-metadata.ts          |   60.37 |    47.05 |      50 |   61.53 | 134-135,249-251,280-388                                                 
+Jest Suite	Run npm test	2025-10-24T02:46:06.7902850Z   schema-registry.ts              |     100 |      100 |     100 |     100 |                                                                         
+Jest Suite	Run npm test	2025-10-24T02:46:06.7904082Z ----------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------
+Jest Suite	Run npm test	2025-10-24T02:46:06.9208931Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9211234Z Summary of all failing tests
+Jest Suite	Run npm test	2025-10-24T02:46:06.9214280Z FAIL test/integration/extraction-with-mocks.test.ts
+Jest Suite	Run npm test	2025-10-24T02:46:06.9235973Z   ● UniversalMentionExtractor (Mocked Integration) › Primary Entity Detection › extracts primary entity from disability page
+Jest Suite	Run npm test	2025-10-24T02:46:06.9236818Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9237124Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9237852Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9239032Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9240473Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9243297Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9248405Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9253060Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9257499Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9262351Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9263142Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9267683Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9268991Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9270233Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9270994Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9272188Z   ● UniversalMentionExtractor (Mocked Integration) › Primary Entity Detection › does NOT extract primary entity from article page
+Jest Suite	Run npm test	2025-10-24T02:46:06.9273259Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9273768Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9274259Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9283145Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9291094Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9300094Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9301581Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9303351Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9305931Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9308705Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9310705Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9311293Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9316545Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9321621Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9322171Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9337091Z   ● UniversalMentionExtractor (Mocked Integration) › Primary Entity Detection › extracts primary entity from solution page
+Jest Suite	Run npm test	2025-10-24T02:46:06.9338744Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9340546Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9340978Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9342173Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9346845Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9353997Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9415893Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9495877Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9496506Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9497498Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9498174Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9498589Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9500094Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9501274Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9501925Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9503057Z   ● UniversalMentionExtractor (Mocked Integration) › Entity Mention Extraction › extracts all entity types from disability page
+Jest Suite	Run npm test	2025-10-24T02:46:06.9503932Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9504250Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9504652Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9506464Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9508152Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9509837Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9511176Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9511856Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9512396Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9513354Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9514034Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9514834Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9516112Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9517334Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9518002Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9536505Z   ● UniversalMentionExtractor (Mocked Integration) › Entity Mention Extraction › adds type field to all mentions
+Jest Suite	Run npm test	2025-10-24T02:46:06.9537432Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9537776Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9538191Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9539489Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9541143Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9542750Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9543945Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9544561Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9545056Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9546157Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9546785Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9547194Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9548168Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9549207Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9549728Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9550610Z   ● UniversalMentionExtractor (Mocked Integration) › Entity Mention Extraction › preserves context and confidence
+Jest Suite	Run npm test	2025-10-24T02:46:06.9551341Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9551740Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9552208Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9553404Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9554924Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9556659Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9558159Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9558772Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9559283Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9560217Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9560846Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9561240Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9562209Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9563535Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9564071Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9565329Z   ● UniversalMentionExtractor (Mocked Integration) › Relationship Extraction › extracts CAUSES relationships in entity mentions
+Jest Suite	Run npm test	2025-10-24T02:46:06.9566279Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9566642Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9567027Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9568269Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9569805Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9571372Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9572582Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9573194Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9573698Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9574596Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9575923Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9577127Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9581577Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9583360Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9583884Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9587975Z   ● UniversalMentionExtractor (Mocked Integration) › Relationship Extraction › extracts ADDRESSED_BY relationships in entity mentions
+Jest Suite	Run npm test	2025-10-24T02:46:06.9588851Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9589155Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9589548Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9592744Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9594188Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9602974Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9604110Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9604627Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9605046Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9606036Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9606554Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9606918Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9607881Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9608914Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9609439Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9612057Z   ● UniversalMentionExtractor (Mocked Integration) › Relationship Extraction › normalizes relationships into result.relationships array
+Jest Suite	Run npm test	2025-10-24T02:46:06.9613199Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9613495Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9613871Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9615025Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9616600Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9618062Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9619328Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9621605Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9622754Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9623585Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9624113Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9624472Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9625569Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9626622Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9627148Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9628012Z   ● UniversalMentionExtractor (Mocked Integration) › BaseEntity Compliance › populates required BaseEntity fields
+Jest Suite	Run npm test	2025-10-24T02:46:06.9628765Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9629050Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9629437Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9633680Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9635124Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9636739Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9637801Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9638300Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9638712Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9639534Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9640050Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9640409Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9643914Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9644984Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9645634Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9646455Z   ● UniversalMentionExtractor (Mocked Integration) › BaseEntity Compliance › uses pageId as fallback for id
+Jest Suite	Run npm test	2025-10-24T02:46:06.9647176Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9647461Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9647847Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9648968Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9650376Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9653019Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9654120Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9654629Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9655087Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9656059Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9656788Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9657145Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9658091Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9659146Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9659672Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9664488Z   ● UniversalMentionExtractor (Mocked Integration) › BaseEntity Compliance › uses URL as fallback when pageId missing
+Jest Suite	Run npm test	2025-10-24T02:46:06.9665414Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9665712Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9666287Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9667436Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9668850Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9670311Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9671373Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9671877Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9672288Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9680908Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9681456Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9681828Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9682792Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9683829Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9684355Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9685103Z   ● UniversalMentionExtractor (Mocked Integration) › Error Handling › handles empty HTML gracefully
+Jest Suite	Run npm test	2025-10-24T02:46:06.9685962Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9686253Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9686635Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9687762Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9691321Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9692806Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9693902Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9694426Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9694835Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9695810Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9696345Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9696701Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9697657Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9698734Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9699244Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9699938Z   ● UniversalMentionExtractor (Mocked Integration) › Error Handling › handles malformed HTML
+Jest Suite	Run npm test	2025-10-24T02:46:06.9700555Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9700847Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9701238Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9702361Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9703766Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9710705Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9712043Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9712562Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9712968Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9713797Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9714330Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9714686Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9715978Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9716983Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9717495Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9718267Z   ● UniversalMentionExtractor (Mocked Integration) › Extraction Confidence › calculates confidence score
+Jest Suite	Run npm test	2025-10-24T02:46:06.9718987Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9719276Z     ANTHROPIC_API_KEY is required for entity extraction
+Jest Suite	Run npm test	2025-10-24T02:46:06.9719660Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9720778Z     [0m [90m 30 |[39m   constructor(version[33m:[39m string[33m,[39m extractorConfig[33m?[39m[33m:[39m [33mPartial[39m[33m<[39m[33mExtractorConfig[39m[33m>[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9722183Z      [90m 31 |[39m     [36mif[39m ([33m![39mconfig[33m.[39m[33mANTHROPIC_API_KEY[39m) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9728844Z     [31m[1m>[22m[39m[90m 32 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for entity extraction'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9729971Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9730494Z      [90m 33 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9730899Z      [90m 34 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9731721Z      [90m 35 |[39m     [36mthis[39m[33m.[39mclient [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9732241Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9732600Z       at new BaseExtractor (src/extractors/base-extractor.ts:32:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9733544Z       at new UniversalMentionExtractor (src/extractors/universal-mention-extractor.ts:89:5)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9734582Z       at Object.<anonymous> (test/integration/extraction-with-mocks.test.ts:135:17)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9735100Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9735493Z FAIL test/unit/scoring-engine.test.ts
+Jest Suite	Run npm test	2025-10-24T02:46:06.9736221Z   ● ScoringEngine › should return a score between 0 and 100
+Jest Suite	Run npm test	2025-10-24T02:46:06.9736625Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9736964Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:46:06.9737404Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9738189Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9739156Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9741914Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9743064Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9743573Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9743985Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9744825Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9745515Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9746112Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9747257Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9748237Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9749067Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9749502Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9749892Z   ● ScoringEngine › should include all score breakdowns
+Jest Suite	Run npm test	2025-10-24T02:46:06.9750505Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9750846Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:46:06.9751276Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9752065Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9755957Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9757888Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9759223Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9759729Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9760141Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9761003Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9761536Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9762131Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9763292Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9764256Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9765085Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9765919Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9766409Z   ● ScoringEngine › should include detailed results for each scorer
+Jest Suite	Run npm test	2025-10-24T02:46:06.9766859Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9767220Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:46:06.9767638Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9769331Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9770317Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9771703Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9772815Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9773325Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9773738Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9774586Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9775120Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9775850Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9776988Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9777961Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9778789Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9779212Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9780661Z   ● ScoringEngine › should sum individual scores to total
+Jest Suite	Run npm test	2025-10-24T02:46:06.9781076Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9781432Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:46:06.9781855Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9782658Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9783636Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9785019Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9786288Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9786800Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9787212Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9788062Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9788596Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9789387Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9794081Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9795107Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9796086Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9796511Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9796957Z   ● ScoringEngine › should handle responses with no sources
+Jest Suite	Run npm test	2025-10-24T02:46:06.9797558Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9797909Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:46:06.9798332Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9799178Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9800153Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9801537Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9802654Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9803163Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9803572Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9808126Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9808702Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9809301Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9810462Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9811452Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9812307Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9812738Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9813268Z   ● ScoringEngine › should handle responses with must-avoid violations
+Jest Suite	Run npm test	2025-10-24T02:46:06.9813742Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9814086Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:46:06.9814518Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9815442Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9816432Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9818820Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9819984Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9820506Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9820916Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9821770Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9822331Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9822913Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9824039Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9825010Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9826342Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9826775Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9827292Z   ● ScoringEngine › should reward responses with multiple AskJAN sources
+Jest Suite	Run npm test	2025-10-24T02:46:06.9827784Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9828123Z     ANTHROPIC_API_KEY is required for semantic criteria checking
+Jest Suite	Run npm test	2025-10-24T02:46:06.9828547Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9830516Z     [0m [90m 25 |[39m     [36mconst[39m apiKey [33m=[39m process[33m.[39menv[33m.[39m[33mANTHROPIC_API_KEY[39m[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9831428Z      [90m 26 |[39m     [36mif[39m ([33m![39mapiKey) {
+Jest Suite	Run npm test	2025-10-24T02:46:06.9832961Z     [31m[1m>[22m[39m[90m 27 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m'ANTHROPIC_API_KEY is required for semantic criteria checking'[39m)[33m;[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9834068Z      [90m    |[39m             [31m[1m^[22m[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9834583Z      [90m 28 |[39m     }
+Jest Suite	Run npm test	2025-10-24T02:46:06.9834995Z      [90m 29 |[39m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9836040Z      [90m 30 |[39m     [36mthis[39m[33m.[39manthropic [33m=[39m [36mnew[39m [33mAnthropic[39m({[0m
+Jest Suite	Run npm test	2025-10-24T02:46:06.9836581Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9837388Z       at new SemanticCriteriaChecker (test/kb-evaluation/scoring/semantic-criteria-checker.ts:27:13)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9838529Z       at new CompletenessScorer (test/kb-evaluation/scoring/completeness-scorer.ts:16:28)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9840049Z       at new ScoringEngine (test/kb-evaluation/scoring/scoring-engine.ts:23:31)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9840839Z       at Object.<anonymous> (test/unit/scoring-engine.test.ts:13:14)
+Jest Suite	Run npm test	2025-10-24T02:46:06.9841271Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9841285Z 
+Jest Suite	Run npm test	2025-10-24T02:46:06.9843507Z Test Suites: 2 failed, 4 skipped, 24 passed, 26 of 30 total
+Jest Suite	Run npm test	2025-10-24T02:46:06.9845357Z Tests:       22 failed, 49 skipped, 481 passed, 552 total
+Jest Suite	Run npm test	2025-10-24T02:46:06.9845942Z Snapshots:   0 total
+Jest Suite	Run npm test	2025-10-24T02:46:06.9846339Z Time:        54.212 s
+Jest Suite	Run npm test	2025-10-24T02:46:06.9846717Z Ran all test suites.
+Jest Suite	Run npm test	2025-10-24T02:46:07.1140134Z ##[error]Process completed with exit code 1.
+All Validation Passed	Check all validation jobs	﻿2025-10-24T02:46:18.5063025Z ##[group]Run if [ "success" != "success" ] || \
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5064434Z [36;1mif [ "success" != "success" ] || \[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5065554Z [36;1m             [ "success" != "success" ] || \[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5066781Z [36;1m             [ "success" != "success" ] || \[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5067965Z [36;1m             [ "failure" != "success" ] || \[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5069101Z [36;1m             [ "skipped" != "success" ]; then[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5071000Z [36;1m            echo "❌ Some validation checks failed"[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5072180Z [36;1m            exit 1[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5073044Z [36;1m          fi[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.5074304Z [36;1m          echo "✅ All validation checks passed!"[0m
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.6221864Z shell: /usr/bin/bash -e {0}
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.6223118Z ##[endgroup]
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.6535197Z ❌ Some validation checks failed
+All Validation Passed	Check all validation jobs	2025-10-24T02:46:18.6554351Z ##[error]Process completed with exit code 1.
