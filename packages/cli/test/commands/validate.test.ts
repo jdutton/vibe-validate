@@ -824,6 +824,9 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
+      // Clear all mock calls from previous tests (prevents test pollution)
+      vi.clearAllMocks();
+
       // Mock valid config (required for validation to proceed)
       const mockConfig: VibeValidateConfig = {
         validation: {

@@ -167,7 +167,69 @@ pnpm test:vitest
 pnpm test:vitest:junit
 ```
 
+### Health Checks - Prevent Bit Rot
+
+**Problem**: Test-bed is excluded from main validation to avoid polluting test results. But this creates bit-rot risk - code could break and we wouldn't notice until we need to regenerate samples months later.
+
+**Solution**: Health checks validate the **infrastructure works** and **extraction quality is high**, without checking exact output.
+
+```bash
+# Run all health checks (parallel for speed)
+pnpm run health-check
+
+# Run individual framework health checks
+pnpm run health-check:vitest
+pnpm run health-check:jest
+pnpm run health-check:junit
+```
+
+**What Health Checks Validate**:
+
+| Check | Purpose | Pass Criteria |
+|-------|---------|--------------|
+| **Tests Run** | Infrastructure works | Tests execute (even if they fail) |
+| **Extraction Quality** | Extractors produce high-quality results | `completeness >= 90%`, `confidence >= 90%` |
+| **Error Count Range** | Reasonable number of errors extracted | `10 <= errors.length <= 15` |
+| **Dependencies** | All packages install correctly | `pnpm install` succeeds |
+
+**What Health Checks DON'T Validate**:
+- ❌ Exact file/line numbers (those change as code evolves)
+- ❌ Exact error messages (those change with framework versions)
+- ❌ Specific error order (not guaranteed by frameworks)
+
+**Why This Approach Works**:
+- ✅ **Unit tests** (in `packages/extractors/test/`) verify exact correctness with static samples
+- ✅ **Health checks** (here) verify infrastructure remains functional and produces quality results
+- ✅ **Manual regeneration** (when needed) produces new samples for unit tests
+
+**Integration with Validation**:
+
+Health checks run as a **parallel phase** in `vibe-validate.config.yaml`:
+
+```yaml
+phases:
+  - name: test-bed-health
+    parallel: true  # All frameworks run in parallel for speed
+    steps:
+      - name: vitest-test-bed
+        command: cd packages/extractors-test-bed && pnpm health-check:vitest
+      - name: jest-test-bed
+        command: cd packages/extractors-test-bed && pnpm health-check:jest
+      - name: junit-test-bed
+        command: cd packages/extractors-test-bed && pnpm health-check:junit
+```
+
+This ensures test-bed infrastructure is validated on every commit, preventing bit rot while keeping the main test suite clean.
+
 ### Capture Samples for Extractor Testing
+
+**When to Regenerate Samples**:
+- Test framework version changes (e.g., Vitest 2.0 → 3.0)
+- Output format changes (e.g., new error message format)
+- Adding new failure types to the matrix
+- Major vibe-validate API changes
+
+**How to Regenerate**:
 
 ```bash
 # Capture all samples (text + JUnit XML for all frameworks)
@@ -181,6 +243,12 @@ pnpm run capture:vitest:junit
 ```
 
 Samples are saved to: `../extractors/test/samples/`
+
+**After Regenerating**:
+1. Review sample diffs to understand format changes
+2. Update extractors if patterns changed
+3. Run unit tests: `cd ../extractors && pnpm test`
+4. Commit updated samples with clear explanation
 
 ### Test Extractors Against Samples
 
