@@ -56,6 +56,9 @@ describe('pre-commit command', () => {
   let program: Command;
 
   beforeEach(() => {
+    // Clear all mock calls from previous tests (prevents test pollution across test files)
+    vi.clearAllMocks();
+
     // Create temp directory for test files
     testDir = join(tmpdir(), `vibe-validate-pre-commit-test-${Date.now()}`);
     if (!existsSync(testDir)) {

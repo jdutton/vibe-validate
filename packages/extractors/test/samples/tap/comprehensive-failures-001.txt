@@ -1,0 +1,200 @@
+TAP version 13
+# Extractors › Assertion Errors › should extract TypeScript errors correctly
+not ok 1 should have 5 errors
+  ---
+    operator: equal
+    expected: 5
+    actual:   1
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:28:5)
+    stack: |-
+      Error: should have 5 errors
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.strictEqual (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:670:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:28:5)
+          at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ...
+# Extractors › Assertion Errors › should parse ESLint errors from real output
+not ok 2 should have 0 errors
+  ---
+    operator: equal
+    expected: '0 error(s)'
+    actual:   '1 ESLint error(s), 0 warning(s)'
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:40:5)
+    stack: |-
+      Error: should have 0 errors
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.strictEqual (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:670:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:40:5)
+          at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ...
+# Config › Type Errors › should fail when passing invalid config type
+not ok 3 should not throw error
+  ---
+    operator: fail
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:54:7)
+    stack: |-
+      Error: should not throw error
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:54:7)
+          at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ...
+# Core › Runtime Type Errors › should fail when calling method on undefined
+not ok 4 Cannot read properties of undefined (reading 'includes')
+  ---
+    operator: fail
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:69:7)
+    stack: |-
+      Error: Cannot read properties of undefined (reading 'includes')
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:69:7)
+          at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ...
+# Core › File System › should fail when reading non-existent file
+not ok 5 ENOENT: no such file or directory, open '/this/path/does/not/exist.txt'
+  ---
+    operator: fail
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:81:7)
+    stack: |-
+      Error: ENOENT: no such file or directory, open '/this/path/does/not/exist.txt'
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:81:7)
+          at Test.run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:126:28)
+          at Immediate.next [as _onImmediate] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/results.js:158:7)
+          at process.processImmediate (node:internal/timers:505:21)
+  ...
+# Git › Timeout simulation › should timeout waiting for git command
+not ok 6 Git › Timeout simulation › should timeout waiting for git command timed out after 50ms
+  ---
+    operator: fail
+    stack: |-
+      Error: Git › Timeout simulation › should timeout waiting for git command timed out after 50ms
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Timeout._onTimeout (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:194:8)
+          at listOnTimeout (node:internal/timers:608:17)
+          at process.processTimers (node:internal/timers:543:7)
+  ...
+# Extractors › Import Error › should fail when importing non-existent module
+not ok 7 should not throw error
+  ---
+    operator: fail
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:108:7)
+    stack: |-
+      Error: should not throw error
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:108:7)
+          at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ...
+# Edge Cases › Nested describe blocks › Level 1 › Level 2 › should handle deep nesting
+not ok 8 2+2 should equal 5
+  ---
+    operator: equal
+    expected: 5
+    actual:   4
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:120:5)
+    stack: |-
+      Error: 2+2 should equal 5
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.strictEqual (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:670:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:120:5)
+          at Test.run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:126:28)
+          at Immediate.next [as _onImmediate] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/results.js:158:7)
+          at process.processImmediate (node:internal/timers:505:21)
+  ...
+# Edge Cases › Multiple assertions › should fail on second assertion
+ok 9 first assertion passes
+not ok 10 second assertion fails
+  ---
+    operator: equal
+    expected: 5
+    actual:   4
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:128:5)
+    stack: |-
+      Error: second assertion fails
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.strictEqual (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:670:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:128:5)
+          at Test.run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:126:28)
+          at Immediate.next [as _onImmediate] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/results.js:158:7)
+          at process.processImmediate (node:internal/timers:505:21)
+  ...
+not ok 11 third assertion fails
+  ---
+    operator: equal
+    expected: 7
+    actual:   6
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:129:5)
+    stack: |-
+      Error: third assertion fails
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.strictEqual (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:670:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:129:5)
+          at Test.run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:126:28)
+          at Immediate.next [as _onImmediate] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/results.js:158:7)
+          at process.processImmediate (node:internal/timers:505:21)
+  ...
+# Edge Cases › Async rejections › should handle promise rejection
+not ok 12 Intentional async rejection
+  ---
+    operator: fail
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:140:7)
+    stack: |-
+      Error: Intentional async rejection
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:140:7)
+          at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ...
+# Edge Cases › Null pointer › should fail when accessing property on null
+not ok 13 Cannot read properties of null (reading 'someProperty')
+  ---
+    operator: fail
+    at: Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:153:7)
+    stack: |-
+      Error: Cannot read properties of null (reading 'someProperty')
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.<anonymous> (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:153:7)
+          at Test.run (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:126:28)
+          at Immediate.next [as _onImmediate] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/results.js:158:7)
+          at process.processImmediate (node:internal/timers:505:21)
+  ...
+not ok 14 .end() already called: operation completed
+  ---
+    operator: fail
+    at: Timeout._onTimeout (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:96:7)
+    stack: |-
+      Error: .end() already called: operation completed
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:470:8)
+          at Test.pass (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:608:7)
+          at Timeout._onTimeout (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:96:7)
+          at listOnTimeout (node:internal/timers:608:17)
+          at process.processTimers (node:internal/timers:543:7)
+  ...
+not ok 15 plan != count
+  ---
+    operator: fail
+    expected: 1
+    actual:   2
+    at: Timeout._onTimeout (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:96:7)
+    stack: |-
+      Error: plan != count
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:492:48)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:592:8)
+          at Test.fail (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:600:7)
+          at Test.assert [as _assert] (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:470:8)
+          at Test.pass (/Users/jeff/Workspaces/vibe-validate/node_modules/.pnpm/tape@5.9.0/node_modules/tape/lib/test.js:608:7)
+          at Timeout._onTimeout (file:///Users/jeff/Workspaces/vibe-validate/packages/extractors-test-bed/tests/tape/comprehensive-failures.test.js:96:7)
+          at listOnTimeout (node:internal/timers:608:17)
+          at process.processTimers (node:internal/timers:543:7)
+  ...
+not ok 16 .end() already called
+  ---
+    operator: fail

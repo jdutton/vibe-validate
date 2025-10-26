@@ -1,0 +1,179 @@
+npm warn exec The following package was not found and will be installed: mocha@11.7.4
+
+
+  Vibe-Validate Mocha Test Matrix
+    Failure Type 1: Assertion Errors
+      1) should match expected value
+    Failure Type 2: Type Errors (TypeScript)
+      2) should have correct types
+    Failure Type 3: Runtime Error (ENOENT)
+      3) should read file
+    Failure Type 4: Runtime Error (TypeError)
+      4) should handle null values
+    Failure Type 5: Timeout
+      5) should complete within timeout
+    Failure Type 7: Async Rejection
+      6) should handle async operations
+    Failure Type 8: Import Error
+      7) should import module
+    Failure Type 9: Multiple Failures in Suite
+      8) should pass test 1
+      9) should pass test 2
+      10) should pass test 3
+    Failure Type 10: Nested Describe Blocks
+      Level 2
+        Level 3
+          11) should work at deep nesting
+
+
+  0 passing (106ms)
+  11 failing
+
+  1) Vibe-Validate Mocha Test Matrix
+       Failure Type 1: Assertion Errors
+         should match expected value:
+
+      AssertionError [ERR_ASSERTION]: Expected 4 to equal 5
+
+4 !== 5
+
+      + expected - actual
+
+      -4
+      +5
+      
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:16:14)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  2) Vibe-Validate Mocha Test Matrix
+       Failure Type 2: Type Errors (TypeScript)
+         should have correct types:
+
+      AssertionError [ERR_ASSERTION]: Expected number to be string
+
+'number' !== 'string'
+
+      + expected - actual
+
+      -number
+      +string
+      
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:24:14)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  3) Vibe-Validate Mocha Test Matrix
+       Failure Type 3: Runtime Error (ENOENT)
+         should read file:
+     Error: ENOENT: no such file or directory, open '/nonexistent/path/file.txt'
+      at Object.readFileSync (node:fs:435:20)
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:31:10)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  4) Vibe-Validate Mocha Test Matrix
+       Failure Type 4: Runtime Error (TypeError)
+         should handle null values:
+     TypeError: Cannot read properties of null (reading 'foo')
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:39:25)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  5) Vibe-Validate Mocha Test Matrix
+       Failure Type 5: Timeout
+         should complete within timeout:
+     Error: Timeout of 100ms exceeded. For async tests and hooks, ensure "done()" is called; if returning a Promise, ensure it resolves. (/private/tmp/mocha-comprehensive.test.js)
+      at listOnTimeout (node:internal/timers:608:17)
+      at process.processTimers (node:internal/timers:543:7)
+
+  6) Vibe-Validate Mocha Test Matrix
+       Failure Type 7: Async Rejection
+         should handle async operations:
+     Error: Async operation failed
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:59:28)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  7) Vibe-Validate Mocha Test Matrix
+       Failure Type 8: Import Error
+         should import module:
+     Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'this-module-does-not-exist' imported from /private/tmp/mocha-comprehensive.test.js
+      at Object.getPackageJSONURL (node:internal/modules/package_json_reader:268:9)
+      at packageResolve (node:internal/modules/esm/resolve:768:81)
+      at moduleResolve (node:internal/modules/esm/resolve:858:18)
+      at defaultResolve (node:internal/modules/esm/resolve:990:11)
+      at #cachedDefaultResolve (node:internal/modules/esm/loader:735:20)
+      at ModuleLoader.resolve (node:internal/modules/esm/loader:712:38)
+      at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+      at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:663:36)
+      at TracingChannel.tracePromise (node:diagnostics_channel:344:14)
+      at ModuleLoader.import (node:internal/modules/esm/loader:662:21)
+      at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:229:31)
+      at importModuleDynamicallyCallback (node:internal/modules/esm/utils:271:12)
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:66:7)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  8) Vibe-Validate Mocha Test Matrix
+       Failure Type 9: Multiple Failures in Suite
+         should pass test 1:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+true !== false
+
+      + expected - actual
+
+      -true
+      +false
+      
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:73:14)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  9) Vibe-Validate Mocha Test Matrix
+       Failure Type 9: Multiple Failures in Suite
+         should pass test 2:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 2
+
+      + expected - actual
+
+      -1
+      +2
+      
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:78:14)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  10) Vibe-Validate Mocha Test Matrix
+       Failure Type 9: Multiple Failures in Suite
+         should pass test 3:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'foo' !== 'bar'
+
+      + expected - actual
+
+      -foo
+      +bar
+      
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:83:14)
+      at process.processImmediate (node:internal/timers:505:21)
+
+  11) Vibe-Validate Mocha Test Matrix
+       Failure Type 10: Nested Describe Blocks
+         Level 2
+           Level 3
+             should work at deep nesting:
+
+      AssertionError [ERR_ASSERTION]: Expected array to have length 5
+
+3 !== 5
+
+      + expected - actual
+
+      -3
+      +5
+      
+      at Context.<anonymous> (file:///private/tmp/mocha-comprehensive.test.js:93:18)
+      at process.processImmediate (node:internal/timers:505:21)
+
+
+

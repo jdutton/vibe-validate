@@ -1,0 +1,11 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Calculator (Jest) Snapshot Mismatch should match snapshot 1`] = `
+{
+  "errors": [
+    "Something went wrong",
+  ],
+  "status": "failed",
+  "timestamp": 1761334186218,
+}
+`;

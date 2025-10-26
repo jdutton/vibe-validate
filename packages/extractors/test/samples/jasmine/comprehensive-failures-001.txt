@@ -1,0 +1,106 @@
+npm warn exec The following package was not found and will be installed: jasmine@5.12.0
+Randomized with seed 90332
+Started
+FFFFFFFFFFF
+
+Failures:
+1) Vibe-Validate Jasmine Test Matrix Failure Type 2: Type Errors (TypeScript) should have correct types
+  Message:
+    Expected 'number' to equal 'string'.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:16:28)
+        at <Jasmine>
+
+2) Vibe-Validate Jasmine Test Matrix Failure Type 7: Async Rejection should handle async operations
+  Message:
+    Error: Async operation failed
+  Stack:
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:44:13)
+        at <Jasmine>
+
+3) Vibe-Validate Jasmine Test Matrix Failure Type 5: Timeout should complete within timeout
+  Message:
+    Error: Timeout - Async function did not complete within 100ms (custom timeout)
+  Stack:
+        at <Jasmine>
+        at listOnTimeout (node:internal/timers:608:17)
+        at process.processTimers (node:internal/timers:543:7)
+
+4) Vibe-Validate Jasmine Test Matrix Failure Type 1: Assertion Errors should match expected value
+  Message:
+    Expected 4 to equal 5.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:9:17)
+        at <Jasmine>
+
+5) Vibe-Validate Jasmine Test Matrix Failure Type 10: Nested Describe Blocks Level 2 Level 3 should work at deep nesting
+  Message:
+    Expected true to be false.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:72:24)
+        at <Jasmine>
+
+6) Vibe-Validate Jasmine Test Matrix Failure Type 4: Runtime Error (TypeError) should handle null values
+  Message:
+    TypeError: Cannot read properties of null (reading 'foo')
+  Stack:
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:29:26)
+        at <Jasmine>
+
+7) Vibe-Validate Jasmine Test Matrix Failure Type 3: Runtime Error (ENOENT) should read file
+  Message:
+    Error: ENOENT: no such file or directory, open '/nonexistent/path/file.txt'
+  Stack:
+    error properties: Object({ errno: -2, code: 'ENOENT', syscall: 'open', path: '/nonexistent/path/file.txt' })
+        at Object.readFileSync (node:fs:435:20)
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:22:10)
+        at <Jasmine>
+
+8) Vibe-Validate Jasmine Test Matrix Failure Type 8: Import Error should import module
+  Message:
+    Error: Cannot find module '/nonexistent/module'
+    Require stack:
+    - /private/tmp/jasmine-comprehensive.test.js
+  Stack:
+    error properties: Object({ code: 'MODULE_NOT_FOUND', requireStack: [ '/private/tmp/jasmine-comprehensive.test.js' ] })
+        at Module._resolveFilename (node:internal/modules/cjs/loader:1410:15)
+        at defaultResolveImpl (node:internal/modules/cjs/loader:1051:19)
+        at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1056:22)
+        at Module._load (node:internal/modules/cjs/loader:1219:37)
+        at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+        at wrapModuleLoad (node:internal/modules/cjs/loader:238:24)
+        at Module.require (node:internal/modules/cjs/loader:1493:12)
+        at require (node:internal/modules/helpers:152:16)
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:50:7)
+        at <Jasmine>
+
+9) Vibe-Validate Jasmine Test Matrix Failure Type 9: Multiple Failures in Suite should pass test 3
+  Message:
+    Expected 5 to equal 6.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:64:17)
+        at <Jasmine>
+
+10) Vibe-Validate Jasmine Test Matrix Failure Type 9: Multiple Failures in Suite should pass test 2
+  Message:
+    Expected 3 to equal 4.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:60:17)
+        at <Jasmine>
+
+11) Vibe-Validate Jasmine Test Matrix Failure Type 9: Multiple Failures in Suite should pass test 1
+  Message:
+    Expected 1 to equal 2.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (/private/tmp/jasmine-comprehensive.test.js:56:17)
+        at <Jasmine>
+
+11 specs, 11 failures
+Finished in 0.106 seconds
+Randomized with seed 90332 (jasmine --random=true --seed=90332)
