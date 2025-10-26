@@ -32,15 +32,16 @@ pnpm install
 # Build all packages
 pnpm build
 
-# Run tests
-pnpm test
+# Run tests (LLM-optimized by default)
+pnpm test              # Uses vibe-validate run (YAML + rawOutput)
+pnpm test:watch        # Interactive watch mode (use npx vitest for raw output)
 
 # Development mode (watch)
 pnpm dev
 
-# Code quality
-pnpm lint              # ESLint checking
-pnpm typecheck         # TypeScript type checking
+# Code quality (LLM-optimized by default)
+pnpm lint              # Uses vibe-validate run
+pnpm typecheck         # Uses vibe-validate run
 
 # Validation (MUST pass before commit)
 pnpm validate --yaml   # Full validation with LLM-friendly output
@@ -81,9 +82,10 @@ vibe-validate run "pnpm typecheck"
 # Linting (instead of: pnpm lint)
 vibe-validate run "pnpm lint"
 
-# Use test:llm scripts (see package.json)
-pnpm test:llm    # Wraps pnpm test with run
-pnpm lint:llm    # Wraps pnpm lint with run
+# Standard scripts are LLM-optimized by default
+pnpm test        # Wraps vitest with run
+pnpm lint        # Wraps eslint with run
+pnpm typecheck   # Wraps tsc with run
 ```
 
 ### Output Format (YAML)
@@ -180,6 +182,25 @@ pnpm build
 - Include examples in comments
 - Document edge cases and limitations
 - Keep docs up-to-date with code
+
+### CLI Documentation
+**CRITICAL**: When modifying CLI commands or help text:
+
+1. **Always use the doc generator tool**:
+   ```bash
+   node tools/generate-cli-docs.js
+   # OR
+   pnpm generate-cli-docs
+   ```
+
+2. **Never manually edit `docs/cli-reference.md`**
+   - This file is auto-generated from `--help --verbose` output
+   - Manual edits will be overwritten
+   - A test enforces this (will fail if docs don't match CLI output)
+
+3. **Update command-specific docs in `docs/commands/`**
+   - These are generated from verbose help functions
+   - Example: `run --help --verbose` → `docs/commands/run.md`
 
 ## Contributing Guidelines
 

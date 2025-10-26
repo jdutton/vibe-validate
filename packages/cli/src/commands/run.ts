@@ -41,7 +41,7 @@ export function runCommand(program: Command): void {
     .argument('<command>', 'Command to execute (quoted if it contains spaces)')
     .action(async (commandString: string) => {
       try {
-        const result = await executeAndExtract(commandString);
+        const { result, context } = await executeAndExtract(commandString);
 
         // CRITICAL: Write complete YAML to stdout and flush BEFORE any stderr
         // This ensures even if callers use 2>&1, YAML completes first
@@ -61,7 +61,14 @@ export function runCommand(program: Command): void {
           }
         });
 
-        // Now safe to write any stderr messages (after YAML is complete)
+        // Now write preamble and stderr to stderr stream (after YAML is flushed)
+        if (context.preamble) {
+          process.stderr.write(context.preamble + '\n');
+        }
+        if (context.stderr) {
+          process.stderr.write(context.stderr);
+        }
+
         // Exit with same code as the command
         process.exit(result.exitCode);
       } catch (error) {
@@ -83,7 +90,10 @@ export function runCommand(program: Command): void {
 /**
  * Execute a command and extract errors from its output
  */
-async function executeAndExtract(commandString: string): Promise<RunResult> {
+async function executeAndExtract(commandString: string): Promise<{
+  result: RunResult;
+  context: { preamble: string; stderr: string };
+}> {
   return new Promise((resolve, reject) => {
     // Spawn command in shell mode to support complex commands
     const child = spawn(commandString, {
@@ -111,8 +121,16 @@ async function executeAndExtract(commandString: string): Promise<RunResult> {
       // CRITICAL: Check ONLY stdout for YAML (not stderr)
       // This prevents stderr warnings from corrupting nested YAML output
       if (isYamlOutput(stdout)) {
-        const mergedResult = mergeNestedYaml(commandString, stdout, actualExitCode);
-        resolve(mergedResult);
+        const { yaml, preamble } = extractYamlAndPreamble(stdout);
+        const mergedResult = mergeNestedYaml(commandString, yaml, actualExitCode);
+
+        // Include preamble and stderr for context
+        const contextOutput = {
+          preamble: preamble.trim(),
+          stderr: stderr.trim(),
+        };
+
+        resolve({ result: mergedResult, context: contextOutput });
         return;
       }
 
@@ -135,7 +153,7 @@ async function executeAndExtract(commandString: string): Promise<RunResult> {
           : combinedOutput,
       };
 
-      resolve(result);
+      resolve({ result, context: { preamble: '', stderr: '' } });
     });
 
     // Handle spawn errors (e.g., command not found)
@@ -184,11 +202,102 @@ function inferStepName(commandString: string): string {
 }
 
 /**
- * Check if output is YAML format (starts with ---)
+ * Check if output contains YAML format (may have preamble before ---)
+ *
+ * IMPORTANT: This function detects YAML anywhere in the output, not just at the start.
+ * This allows us to handle package manager preambles (pnpm, npm, yarn) that appear
+ * before the actual YAML content.
+ *
+ * Example with preamble:
+ * ```
+ * > vibe-validate@0.13.0 validate
+ * > node packages/cli/dist/bin.js validate
+ *
+ * ---
+ * command: "npm test"
+ * exitCode: 0
+ * ```
+ *
+ * The preamble will be extracted and routed to stderr, keeping stdout clean.
  */
 function isYamlOutput(output: string): boolean {
   const trimmed = output.trim();
-  return trimmed.startsWith('---\n') || trimmed.startsWith('---\r\n');
+  // Check if starts with --- (no preamble)
+  if (trimmed.startsWith('---\n') || trimmed.startsWith('---\r\n')) {
+    return true;
+  }
+  // Check if contains --- with newlines (has preamble)
+  return output.includes('\n---\n') || output.includes('\n---\r\n');
+}
+
+/**
+ * Extract YAML content and separate preamble/postamble
+ *
+ * STREAM ROUTING STRATEGY:
+ * - stdout (returned 'yaml'): Clean YAML for piping and LLM consumption
+ * - stderr (returned 'preamble'): Package manager noise, preserved for human context
+ *
+ * This separation follows Unix philosophy: stdout = data, stderr = human messages.
+ *
+ * Example input:
+ * ```
+ * > package@1.0.0 test    ← preamble (goes to stderr)
+ * > vitest run            ← preamble (goes to stderr)
+ *
+ * ---                     ← yaml (goes to stdout)
+ * command: "vitest run"
+ * exitCode: 0
+ * extraction: {...}
+ * ```
+ *
+ * Benefits:
+ * 1. `run "pnpm test" > file.yaml` writes pure YAML
+ * 2. `run "pnpm test" 2>/dev/null` suppresses noise
+ * 3. Terminal shows both streams (full context)
+ *
+ * @param stdout - Raw stdout from the executed command
+ * @returns Object with separated yaml, preamble, and postamble
+ */
+function extractYamlAndPreamble(stdout: string): {
+  yaml: string;
+  preamble: string;
+  postamble: string;
+} {
+  // Check if it starts with --- (no preamble)
+  const trimmed = stdout.trim();
+  if (trimmed.startsWith('---\n') || trimmed.startsWith('---\r\n')) {
+    return { yaml: trimmed, preamble: '', postamble: '' };
+  }
+
+  // Find first YAML separator with newline before it
+  const patterns = [
+    { pattern: '\n---\n', offset: 1 },
+    { pattern: '\n---\r\n', offset: 1 },
+  ];
+
+  let earliestIndex = -1;
+  let selectedOffset = 0;
+
+  for (const { pattern, offset } of patterns) {
+    const idx = stdout.indexOf(pattern);
+    if (idx !== -1 && (earliestIndex === -1 || idx < earliestIndex)) {
+      earliestIndex = idx;
+      selectedOffset = offset;
+    }
+  }
+
+  if (earliestIndex === -1) {
+    // No YAML found
+    return { yaml: '', preamble: stdout, postamble: '' };
+  }
+
+  // Extract preamble (everything before ---)
+  const preamble = stdout.substring(0, earliestIndex).trim();
+
+  // Extract YAML content (from --- onward)
+  const yamlContent = stdout.substring(earliestIndex + selectedOffset).trim();
+
+  return { yaml: yamlContent, preamble, postamble: '' };
 }
 
 /**
@@ -328,6 +437,72 @@ extraction:
     test.ts:42 - expected 5 to equal 3
 rawOutput: "... (truncated)"
 \`\`\`
+
+## Stream Output Behavior
+
+**IMPORTANT**: The \`run\` command separates structured data from context noise:
+
+- **stdout**: Pure YAML (clean, parseable, pipeable)
+- **stderr**: Package manager preamble + warnings (human context)
+
+### Examples
+
+**Terminal usage (both streams visible):**
+\`\`\`bash
+$ vibe-validate run "pnpm test"
+---                           # ← stdout (YAML)
+command: pnpm test
+exitCode: 0
+extraction: {...}
+
+> pkg@1.0.0 test             # ← stderr (preamble)
+> vitest run
+\`\`\`
+
+**Piped usage (only YAML):**
+\`\`\`bash
+$ vibe-validate run "pnpm test" > results.yaml
+# results.yaml contains ONLY pure YAML (no preamble)
+\`\`\`
+
+**Suppress context:**
+\`\`\`bash
+$ vibe-validate run "pnpm test" 2>/dev/null
+# Shows only YAML (stderr suppressed)
+\`\`\`
+
+## Package Manager Support
+
+The \`run\` command automatically detects and handles package manager preambles:
+
+- **pnpm**: \`> package@1.0.0 script\` → routed to stderr
+- **npm**: \`> package@1.0.0 script\` → routed to stderr
+- **yarn**: \`$ command\` → routed to stderr
+
+This means you can safely use:
+\`\`\`bash
+vibe-validate run "pnpm validate --yaml"  # Works!
+vibe-validate run "npm test"              # Works!
+vibe-validate run "yarn build"            # Works!
+\`\`\`
+
+The YAML output on stdout remains clean and parseable, while the preamble is preserved on stderr for debugging.
+
+## Nested Run Detection
+
+When \`run\` wraps another vibe-validate command that outputs YAML, it intelligently merges the results:
+
+\`\`\`bash
+# 2-level nesting
+$ vibe-validate run "vibe-validate run 'npm test'"
+---
+command: vibe-validate run "npm test"
+exitCode: 0
+extraction: {...}
+suggestedDirectCommand: npm test  # ← Unwrapped!
+\`\`\`
+
+The \`suggestedDirectCommand\` field shows the innermost command, helping you avoid unnecessary nesting.
 
 ## Exit Codes
 

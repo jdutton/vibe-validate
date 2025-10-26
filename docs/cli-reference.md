@@ -1,10 +1,10 @@
 # CLI Reference
 
-This document is automatically generated from `vibe-validate --help --verbose`.
-
-**DO NOT EDIT MANUALLY** - any edits will be overwritten.
-
-To update: `node packages/cli/dist/bin.js --help --verbose`
+> **Complete command-line reference for vibe-validate**
+>
+> **This document is auto-synced with `vibe-validate --help --verbose` output**
+>
+> The content below is the exact output from running `vibe-validate --help --verbose`. This ensures perfect accuracy between CLI and documentation.
 
 ---
 # vibe-validate CLI Reference

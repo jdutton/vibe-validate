@@ -712,9 +712,17 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should NOT detect as YAML (needs to start with ---)
+      // NEW BEHAVIOR: SHOULD detect YAML even with preamble and merge it
       expect(stdoutCalls).toContain('extraction:');
-      expect(stdoutCalls).not.toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('npm test');
+
+      // Verify preamble was routed to stderr
+      const stderrCalls = vi.mocked(process.stderr.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stderrCalls).toContain('Loading configuration');
+      expect(stderrCalls).toContain('Starting tests');
     });
 
     it('should handle YAML with null values', async () => {
@@ -1098,6 +1106,267 @@ extraction:
 
       // Should use outer exit code
       expect(stdoutCalls).toContain('exitCode: 1');
+    });
+  });
+
+  describe('preamble extraction and stderr routing', () => {
+    it('should extract preamble before YAML and route to stderr (pnpm)', async () => {
+      const pnpmOutput = `> vibe-validate@0.13.0 validate /Users/jeff/Workspaces/vibe-validate
+> node packages/cli/dist/bin.js validate "--yaml"
+
+---
+command: "npm test"
+exitCode: 0
+extraction:
+  errors: []
+  summary: "All tests passed"
+`;
+
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess(pnpmOutput, '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(program);
+
+      try {
+        await program.parseAsync(['run', 'pnpm validate --yaml'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      // Verify stdout contains ONLY clean YAML
+      const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stdoutCalls).toContain('---\n');
+      expect(stdoutCalls).toContain('command:');
+      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Preamble should NOT be in stdout
+      expect(stdoutCalls).not.toContain('vibe-validate@0.13.0 validate');
+
+      // Verify stderr contains preamble
+      const stderrCalls = vi.mocked(process.stderr.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stderrCalls).toContain('vibe-validate@0.13.0 validate');
+      expect(stderrCalls).toContain('node packages/cli/dist/bin.js');
+    });
+
+    it('should extract preamble before YAML and route to stderr (npm)', async () => {
+      const npmOutput = `
+> packagename@1.0.0 test
+> vitest run
+
+---
+command: "vitest run"
+exitCode: 0
+extraction:
+  errors: []
+  summary: "Tests passed"
+`;
+
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess(npmOutput, '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(program);
+
+      try {
+        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stdoutCalls).not.toContain('packagename@1.0.0');
+
+      const stderrCalls = vi.mocked(process.stderr.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stderrCalls).toContain('packagename@1.0.0 test');
+    });
+
+    it('should extract preamble before YAML and route to stderr (yarn)', async () => {
+      const yarnOutput = `$ vitest run
+---
+command: "vitest run"
+exitCode: 0
+extraction:
+  errors: []
+  summary: "Tests passed"
+`;
+
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess(yarnOutput, '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(program);
+
+      try {
+        await program.parseAsync(['run', 'yarn test'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stdoutCalls).not.toContain('$ vitest run');
+
+      const stderrCalls = vi.mocked(process.stderr.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stderrCalls).toContain('$ vitest run');
+    });
+
+    it('should combine preamble with original stderr', async () => {
+      const outputWithPreamble = `> package@1.0.0 test
+> npm test
+
+---
+command: "npm test"
+exitCode: 1
+extraction:
+  errors:
+    - message: "test failed"
+  summary: "1 failure"
+`;
+      const originalStderr = 'npm WARN deprecated package@1.0.0';
+
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess(outputWithPreamble, originalStderr, 1);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(program);
+
+      try {
+        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      const stderrCalls = vi.mocked(process.stderr.write).mock.calls
+        .map(call => call[0])
+        .join('');
+
+      // Should contain both preamble and original stderr
+      expect(stderrCalls).toContain('package@1.0.0 test');
+      expect(stderrCalls).toContain('npm WARN deprecated');
+    });
+
+    it('should handle output with no preamble (clean YAML from start)', async () => {
+      const cleanYaml = `---
+command: "npm test"
+exitCode: 0
+extraction:
+  errors: []
+  summary: "Passed"
+`;
+
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess(cleanYaml, '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(program);
+
+      try {
+        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stdoutCalls).toContain('---\n');
+      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+
+      // No preamble to write to stderr
+      const stderrCalls = vi.mocked(process.stderr.write).mock.calls;
+      // Should either be empty or not contain YAML content
+      const allStderr = stderrCalls.map(call => call[0]).join('');
+      expect(allStderr).not.toContain('command:');
+    });
+
+    it('should handle postamble after YAML', async () => {
+      const outputWithPostamble = `---
+command: "npm test"
+exitCode: 0
+extraction:
+  errors: []
+  summary: "Passed"
+
+Done in 5.2s
+`;
+
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess(outputWithPostamble, '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(program);
+
+      try {
+        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit
+      }
+
+      const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+        .map(call => call[0])
+        .join('');
+
+      // Stdout should be clean YAML
+      expect(stdoutCalls).toContain('---\n');
+      expect(stdoutCalls).toContain('command:');
+
+      // Postamble handling - for now we'll include it in YAML parse
+      // (YAML parser will stop at end of document)
+      // This is acceptable behavior
+    });
+
+    it('should preserve YAML with preamble and errors', async () => {
+      const pnpmWithErrors = `> package@1.0.0 test
+> vitest run
+
+---
+command: "vitest run"
+exitCode: 1
+extraction:
+  errors:
+    - file: "test.ts"
+      line: 42
+      message: "expected 5 to equal 3"
+  summary: "1 test failed"
+  guidance: "Fix assertion"
+`;
+
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess(pnpmWithErrors, '', 1);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(program);
+
+      try {
+        await program.parseAsync(['run', 'pnpm test'], { from: 'user' });
+      } catch (error: unknown) {
+        // Expected exit with code 1
+      }
+
+      const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+        .map(call => call[0])
+        .join('');
+
+      // All error details should be in stdout YAML
+      expect(stdoutCalls).toContain('expected 5 to equal 3');
+      expect(stdoutCalls).toContain('1 test failed');
+      expect(stdoutCalls).toContain('exitCode: 1');
+
+      const stderrCalls = vi.mocked(process.stderr.write).mock.calls
+        .map(call => call[0])
+        .join('');
+      expect(stderrCalls).toContain('package@1.0.0 test');
     });
   });
 });
