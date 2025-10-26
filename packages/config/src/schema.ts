@@ -163,6 +163,32 @@ export const HooksConfigSchema = z.object({
 export type HooksConfig = z.infer<typeof HooksConfigSchema>;
 
 /**
+ * Locking Configuration Schema
+ *
+ * Controls concurrent validation behavior and lock scoping.
+ */
+export const LockingConfigSchema = z.object({
+  /** Enable locking to prevent concurrent validations (default: true) */
+  enabled: z.boolean().default(true),
+
+  /**
+   * Concurrency scope for lock files (default: 'directory')
+   * - 'directory': Each working directory has its own lock (allows parallel worktrees)
+   * - 'project': All directories for the same project share a lock (prevents port/DB conflicts)
+   */
+  concurrencyScope: z.enum(['directory', 'project']).default('directory'),
+
+  /**
+   * Project identifier for project-scoped locking (optional)
+   * Auto-detected from git remote URL or package.json if not specified.
+   * Required when concurrencyScope is 'project' and cannot be auto-detected.
+   */
+  projectId: z.string().optional(),
+}).strict();
+
+export type LockingConfig = z.infer<typeof LockingConfigSchema>;
+
+/**
  * Full Configuration Schema
  *
  * Root configuration object for vibe-validate.
@@ -188,6 +214,12 @@ export const VibeValidateConfigSchema = z.object({
       enabled: true,
       command: 'npx vibe-validate pre-commit',
     },
+  }),
+
+  /** Locking configuration (concurrency control) */
+  locking: LockingConfigSchema.optional().default({
+    enabled: true,
+    concurrencyScope: 'directory',
   }),
 
   /**

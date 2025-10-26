@@ -14,5 +14,19 @@
       "Bash(gh run view:*)",
       "Bash(git commit:*)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm validate --no-wait --yaml",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
   }
 }

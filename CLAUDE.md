@@ -450,3 +450,4 @@ If Claude Code encounters ambiguity:
 2. Check existing test files for examples
 3. Follow the design principles above
 4. Ask the user if unclear
+- Never ever ask to commit partially completed work with failing tests - all tests and validate must pass to commit
