@@ -55,6 +55,50 @@ pnpm pre-commit        # Branch sync + validation
 pnpm exec vibe-validate doctor  # Diagnose setup issues (run after upgrade!)
 ```
 
+## LLM-Optimized Testing (Use This!)
+
+**CRITICAL for AI agents**: Use `vibe-validate run` to wrap test/validation commands. Saves 90-95% of context window by extracting only errors.
+
+### Quick Pattern
+```bash
+vibe-validate run "<any-command>"
+```
+
+### Common Examples
+```bash
+# Test single file (instead of: npx vitest <file>)
+vibe-validate run "npx vitest packages/cli/test/commands/run.test.ts"
+
+# Test specific case (instead of: npx vitest -t "...")
+vibe-validate run "npx vitest -t 'should extract errors'"
+
+# Package tests (instead of: pnpm --filter @pkg test)
+vibe-validate run "pnpm --filter @vibe-validate/core test"
+
+# Type checking (instead of: pnpm typecheck)
+vibe-validate run "pnpm typecheck"
+
+# Linting (instead of: pnpm lint)
+vibe-validate run "pnpm lint"
+
+# Use test:llm scripts (see package.json)
+pnpm test:llm    # Wraps pnpm test with run
+pnpm lint:llm    # Wraps pnpm lint with run
+```
+
+### Output Format (YAML)
+- `exitCode`: 0 (pass) or 1+ (fail)
+- `errors[]`: File/line/message for each failure
+- `summary`: "2 test failures"
+- `guidance`: "Fix assertion at line 42"
+
+**Token savings**: 1500 tokens → 75 tokens (95% reduction)
+
+### When NOT to Use
+- Watch modes (`pnpm test:watch`, `pnpm dev`)
+- Already-extracted output (`pnpm validate`, `pnpm state`)
+- Interactive commands (`git log`, `npm init`)
+
 ## Package Management
 
 This is a **pnpm monorepo**. Each package in `packages/` is independently versioned and publishable.

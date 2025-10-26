@@ -20,6 +20,7 @@ import { generateWorkflowCommand } from './commands/generate-workflow.js';
 import { doctorCommand } from './commands/doctor.js';
 import { registerWatchPRCommand } from './commands/watch-pr.js';
 import { historyCommand } from './commands/history.js';
+import { runCommand } from './commands/run.js';
 
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation
@@ -56,6 +57,7 @@ generateWorkflowCommand(program);     // vibe-validate generate-workflow
 doctorCommand(program);               // vibe-validate doctor
 registerWatchPRCommand(program);      // vibe-validate watch-pr
 historyCommand(program);              // vibe-validate history
+runCommand(program);                  // vibe-validate run
 
 /**
  * Registry mapping command names to their verbose help loaders
@@ -109,6 +111,10 @@ const verboseHelpRegistry: Record<string, VerboseHelpLoader> = {
   'watch-pr': async () => {
     const { showWatchPRVerboseHelp } = await import('./commands/watch-pr.js');
     return showWatchPRVerboseHelp;
+  },
+  'run': async () => {
+    const { showRunVerboseHelp } = await import('./commands/run.js');
+    return showRunVerboseHelp;
   },
 };
 
@@ -382,6 +388,28 @@ function showComprehensiveHelp(program: Command): void {
           'vibe-validate watch-pr 42'
         ]
       }
+    },
+    run: {
+      whatItDoes: [
+        '1. Executes command in shell subprocess',
+        '2. Captures stdout and stderr output',
+        '3. Auto-detects format (vitest, jest, tsc, eslint, etc.)',
+        '4. Extracts errors using appropriate extractor',
+        '5. Outputs structured YAML with error details',
+        '6. Passes through exit code from command'
+      ],
+      exitCodes: {
+        0: 'Command succeeded',
+        1: 'Command failed (same code as original command)'
+      },
+      whenToUse: 'Run individual tests or validation steps with LLM-friendly error extraction',
+      examples: [
+        'vibe-validate run "npx vitest test.ts"           # Single test file',
+        'vibe-validate run "npx vitest -t \'test name\'"    # Specific test',
+        'vibe-validate run "pnpm --filter @pkg test"    # Package tests',
+        'vibe-validate run "npx tsc --noEmit"           # Type check',
+        'vibe-validate run "pnpm lint"                  # Lint'
+      ]
     }
   };
 
