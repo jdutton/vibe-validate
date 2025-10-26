@@ -132,7 +132,7 @@ packages/extractors-test-bed/
 │   └── playwright/
 │       └── (planned)
 ├── scripts/
-│   └── capture-samples.sh       # Generate all samples
+│   └── capture-samples.ts       # Generate all samples (cross-platform)
 ├── junit-output/                # JUnit XML output directory
 │   ├── junit.xml                # Jest JUnit
 │   ├── vitest-results.xml       # Vitest JUnit

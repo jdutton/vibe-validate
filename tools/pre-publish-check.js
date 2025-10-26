@@ -48,7 +48,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--allow-branch' && args[i + 1]) {
     allowedBranch = args[i + 1];
     allowCustomBranch = true;
-    i++; // Skip next arg
+    i++; // NOSONAR - Intentionally skip next arg (consumed as --allow-branch value)
   } else if (args[i] === '--help' || args[i] === '-h') {
     console.log(`
 Pre-Publish Validation Check
