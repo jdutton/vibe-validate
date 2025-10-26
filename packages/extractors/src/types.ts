@@ -10,8 +10,8 @@
  * Structured error information extracted from validation output
  */
 export interface FormattedError {
-  /** File path where the error occurred */
-  file: string;
+  /** File path where the error occurred (undefined if location cannot be determined) */
+  file?: string;
 
   /** Line number (1-indexed) */
   line?: number;
@@ -30,6 +30,9 @@ export interface FormattedError {
 
   /** Additional context (surrounding code, stack trace excerpt) */
   context?: string;
+
+  /** Guidance for fixing the error */
+  guidance?: string;
 }
 
 /**

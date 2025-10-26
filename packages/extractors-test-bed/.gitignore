@@ -1,0 +1,10 @@
+# Playwright test results
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Test coverage
+coverage/
+
+# Node modules (if accidentally installed)
+node_modules/
