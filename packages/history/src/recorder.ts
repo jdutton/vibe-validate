@@ -93,7 +93,7 @@ export async function recordValidationHistory(
     const newRun: ValidationRun = {
       id: `run-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      duration: result.passed ? 0 : 0, // Will be calculated from result if available
+      duration: 0, // Will be calculated from result if available
       passed: result.passed,
       branch: await getCurrentBranch(),
       headCommit: await getHeadCommit(),

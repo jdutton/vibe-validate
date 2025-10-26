@@ -115,6 +115,6 @@ test('Edge Cases › Null pointer › should fail when accessing property on nul
   // FAILURE TYPE 4: Runtime TypeError (additional)
   // INTENTIONAL FAILURE: Null pointer
   const obj = null;
-  const value = obj.someProperty;
+  const value = obj.someProperty; // NOSONAR - Intentional null access for error extractor testing
   t.truthy(value, 'value should exist');
 });

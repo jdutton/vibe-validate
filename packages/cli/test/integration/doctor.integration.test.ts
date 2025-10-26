@@ -113,11 +113,11 @@ describe('Doctor Command Integration', () => {
     // Per docs: "Exit code 0 - All critical checks passed"
     const stdout = expectDoctorSuccess();
 
-    // With secret scanning now configured in this repo, no recommendations shown
+    // In non-verbose mode, only shows checks with recommendations
     expect(stdout).toContain('checks passed');
     const checkMatches = stdout.match(/✅/g);
     const checkCount = checkMatches ? checkMatches.length : 0;
-    expect(checkCount).toBe(0); // No recommendations (secret scanning is configured)
+    expect(checkCount).toBeLessThanOrEqual(1); // May show history check if >100 notes
   }, 30000);
 
   it('should show all checks in verbose mode', () => {
