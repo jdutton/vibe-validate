@@ -147,7 +147,7 @@ test('Edge Cases › Null pointer › should fail when accessing property on nul
   // INTENTIONAL FAILURE: Null pointer
   try {
     const obj = null;
-    const value = obj.someProperty;
+    const value = obj.someProperty; // NOSONAR - Intentional null access for error extractor testing
     t.ok(value, 'value should exist');
   } catch (err) {
     t.fail(`${err.message}`);

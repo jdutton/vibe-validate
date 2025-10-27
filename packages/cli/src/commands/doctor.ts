@@ -558,10 +558,10 @@ async function checkHistoryHealth(): Promise<DoctorCheckResult> {
       };
     }
 
-    // Has warnings
+    // Has warnings - advisory only, not a critical failure
     return {
       name: 'Validation history',
-      passed: false,
+      passed: true, // Advisory: large history is a warning, not a failure
       message: `${health.totalNotes} tree hashes tracked (${health.oldNotesCount} older than 90 days)`,
       suggestion: 'Prune old history: vibe-validate history prune --older-than "90 days"',
     };

@@ -161,7 +161,7 @@ describe('Vibe-Validate Integration Failures', () => {
   describe('Deep Nesting', () => {
     describe('Level 1', () => {
       describe('Level 2', () => {
-        describe('Level 3', () => {
+        describe('Level 3', () => { // NOSONAR - Intentional deep nesting to test error extractor handling of nested test structures
           it('should test deeply nested vibe-validate usage', async () => {
             // INTENTIONAL FAILURE: Deep in hierarchy
             

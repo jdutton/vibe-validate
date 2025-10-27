@@ -121,6 +121,15 @@ pnpm test
 pnpm build
 ```
 
+## Code Quality Monitoring
+
+### SonarCloud
+
+- **Dashboard**: https://sonarcloud.io/project/issues?id=jdutton_vibe-validate
+- **API**: https://sonarcloud.io/api/issues/search?componentKeys=jdutton_vibe-validate&types=BUG,VULNERABILITY,CODE_SMELL&resolved=false
+
+Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR` comments with explanations to suppress invalid warnings.
+
 ## Key Design Principles
 
 ### 1. Language-Agnostic Core

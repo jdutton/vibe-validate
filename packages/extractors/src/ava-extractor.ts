@@ -189,7 +189,7 @@ function extractFailures(output: string): FailureInfo[] {
 /**
  * Parse a detailed error block to extract file, line, and message
  */
-function parseDetailedBlock(lines: string[], startIndex: number, failure: FailureInfo): void {
+function parseDetailedBlock(lines: string[], startIndex: number, failure: FailureInfo): void { // NOSONAR - High complexity is inherent to parsing diverse AVA output formats (state machine with multiple patterns)
   let i = startIndex;
   let foundCodeSnippet = false;
   let inErrorObject = false;
