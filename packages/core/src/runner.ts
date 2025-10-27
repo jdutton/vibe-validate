@@ -189,8 +189,29 @@ export async function runStepsInParallel(
         log(`   ⏳ ${paddedName}  →  ${step.command}`);
 
         const startTime = Date.now();
-        // Use shell: true for cross-platform compatibility
-        // Node.js automatically selects cmd.exe on Windows, sh on Unix
+
+        // SECURITY: shell: true is REQUIRED and SAFE in this context
+        //
+        // WHY REQUIRED:
+        // - Users expect full shell features: "npm test && npm run build"
+        // - Shell operators needed: &&, ||, |, >, <
+        // - Environment variables: "NODE_ENV=test vitest"
+        // - Cross-platform compatibility (cmd.exe on Windows, sh on Unix)
+        //
+        // THREAT MODEL:
+        // - Commands come from user's config file (vibe-validate.config.yaml)
+        // - User controls the config file (same trust level as package.json scripts)
+        // - No external/untrusted input is executed
+        // - Commands are NOT constructed from CLI arguments or environment variables
+        //
+        // SECURITY CONTROLS:
+        // - Commands defined in user-controlled config files only
+        // - Same trust model as npm/pnpm scripts in package.json
+        // - Users warned in SECURITY.md to review all commands
+        // - No dynamic command construction from external input
+        //
+        // @see SECURITY.md - Security Considerations > Command Execution
+        // NOSONAR - Intentional shell execution of user-defined commands
         const proc = spawn(step.command, [], {
           stdio: 'pipe',
           shell: true,  // Cross-platform: cmd.exe on Windows, sh on Unix

@@ -47,19 +47,58 @@ This information will help us triage your report more quickly.
 
 ### Command Execution
 
-vibe-validate executes user-defined commands from configuration files. Users should:
+vibe-validate executes user-defined commands from configuration files using `shell: true` by design.
+
+**Threat Model:**
+
+vibe-validate's command execution follows the same trust model as npm/pnpm scripts:
+
+- **Command Source**: Commands are defined in `vibe-validate.config.yaml` (user-controlled file in the repository)
+- **Trust Level**: Same as `scripts` in package.json - users control what commands execute
+- **Attack Surface**: Commands are NOT constructed from:
+  - CLI arguments
+  - Environment variables from untrusted sources
+  - External user input
+  - Network responses
+
+**Why `shell: true` is Used:**
+
+vibe-validate requires `shell: true` to provide the features users expect:
+
+1. **Shell Operators**: Support for `&&`, `||`, `|`, `>`, `<` in commands
+   - Example: `"npm test && npm run build"`
+2. **Environment Variables**: Users can set variables inline
+   - Example: `"NODE_ENV=test vitest"`
+3. **Cross-Platform**: Automatically uses `cmd.exe` on Windows, `sh` on Unix
+4. **Command Chaining**: Multiple commands in a single validation step
+
+**Not Vulnerable To:**
+
+- ❌ CLI injection (commands not from command-line arguments)
+- ❌ External input injection (no user input in command construction)
+- ❌ Environment variable injection (no untrusted $VAR expansion)
+- ❌ Third-party API injection (no network-based command construction)
+
+**User Responsibilities:**
+
+Users should:
 
 - Only use configuration files from trusted sources
 - Review all validation step commands before running validation
 - Be cautious with third-party templates that execute arbitrary commands
+- Treat `vibe-validate.config.yaml` like `package.json` (code review required)
 
 ### Git Operations
 
 vibe-validate interacts with git repositories. Security features:
 
 - All git branch names are sanitized to prevent command injection
-- Git commands use array-based `spawn()` to avoid shell injection
+- Git commands use array-based `spawn()` to avoid shell injection (see git package tests)
 - No arbitrary git commands are executed - only specific safe operations
+- **File Operations**: Tree hash calculation uses Node.js `fs` module (not shell commands)
+  - `fs.copyFileSync()` instead of `cp` command (prevents injection in file paths)
+  - `fs.unlinkSync()` instead of `rm` command (prevents injection in file paths)
+  - No string interpolation in shell commands for file operations
 
 ### File System Access
 
