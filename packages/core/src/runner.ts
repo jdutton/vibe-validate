@@ -190,27 +190,8 @@ export async function runStepsInParallel(
 
         const startTime = Date.now();
 
-        // SECURITY: shell: true is REQUIRED and SAFE in this context
-        //
-        // WHY REQUIRED:
-        // - Users expect full shell features: "npm test && npm run build"
-        // - Shell operators needed: &&, ||, |, >, <
-        // - Environment variables: "NODE_ENV=test vitest"
-        // - Cross-platform compatibility (cmd.exe on Windows, sh on Unix)
-        //
-        // THREAT MODEL:
-        // - Commands come from user's config file (vibe-validate.config.yaml)
-        // - User controls the config file (same trust level as package.json scripts)
-        // - No external/untrusted input is executed
-        // - Commands are NOT constructed from CLI arguments or environment variables
-        //
-        // SECURITY CONTROLS:
-        // - Commands defined in user-controlled config files only
-        // - Same trust model as npm/pnpm scripts in package.json
-        // - Users warned in SECURITY.md to review all commands
-        // - No dynamic command construction from external input
-        //
-        // @see SECURITY.md - Security Considerations > Command Execution
+        // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
+        // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
         // NOSONAR - Intentional shell execution of user-defined commands
         const proc = spawn(step.command, [], {
           stdio: 'pipe',
