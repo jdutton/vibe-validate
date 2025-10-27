@@ -11,7 +11,7 @@
     "test:vitest:junit": "vitest run --reporter=junit --reporter=default",
     "test:mocha": "mocha 'tests/mocha/**/*.test.js'",
     "test:mocha:junit": "mocha 'tests/mocha/**/*.test.js' --reporter mocha-junit-reporter --reporter-options mochaFile=./junit-output/mocha-results.xml",
-    "capture:all": "bash scripts/capture-samples.sh",
+    "capture:all": "tsx scripts/capture-samples.ts",
     "capture:jest:text": "npm run test:jest 2>&1 | tee ../extractors/test/samples/jest/extraction-test-bed.txt || true",
     "capture:jest:junit": "npm run test:jest:junit && cp junit-output/junit.xml ../extractors/test/samples/jest/extraction-test-bed.junit.xml || true",
     "capture:vitest:text": "npm run test:vitest 2>&1 | tee ../extractors/test/samples/vitest/extraction-test-bed.txt || true",
@@ -34,6 +34,7 @@
     "mocha-junit-reporter": "^2.2.1",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
   }
