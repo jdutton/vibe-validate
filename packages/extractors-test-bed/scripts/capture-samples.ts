@@ -41,6 +41,9 @@ function warning(message: string): void {
 
 function runCommand(command: string, outputFile?: string): void {
   try {
+    // NOSONAR: S4721 - execSync is safe here. This is a build-time script that only executes
+    // hardcoded npm commands (e.g., 'npm run test:jest') with no user input. All calls to
+    // runCommand use literal strings defined in this file.
     const output = execSync(command, {
       cwd: ROOT_DIR,
       encoding: 'utf8',
