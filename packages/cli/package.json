@@ -17,11 +17,12 @@
   },
   "files": [
     "dist",
+    "config-templates",
     "watch-pr-result.schema.json",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && node dist/scripts/generate-watch-pr-schema.js",
+    "build": "tsc && node dist/scripts/generate-watch-pr-schema.js && node scripts/copy-templates.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

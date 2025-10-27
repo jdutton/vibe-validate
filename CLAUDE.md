@@ -84,9 +84,42 @@ vibe-validate run "pnpm lint"
 
 # Standard scripts are LLM-optimized by default
 pnpm test        # Wraps vitest with run
+pnpm test:system # Wraps system tests with run
 pnpm lint        # Wraps eslint with run
 pnpm typecheck   # Wraps tsc with run
+
+# Ad-hoc commands (use the run script!)
+pnpm run "npx vitest path/to/test.ts"
+pnpm run "pnpm --filter @pkg test"
 ```
+
+### Dogfooding During Development (CRITICAL!)
+
+**AI agents and developers MUST use `vibe-validate run` while working on vibe-validate itself.**
+
+**Why this matters:**
+- You're building a tool to save context window for AI agents
+- You ARE an AI agent working on this codebase
+- Using the tool validates it works AND saves YOUR context window
+- If you instinctively reach for raw commands, users will too
+
+**Anti-pattern (what NOT to do):**
+```bash
+# ❌ Don't do this during development
+npx vitest packages/cli/test/packaging.test.ts
+pnpm --filter @vibe-validate/cli test
+vitest run test/packaging.system.test.ts
+```
+
+**Correct pattern (use the tool you're building):**
+```bash
+# ✅ Always wrap with run during development
+pnpm run "npx vitest packages/cli/test/packaging.test.ts"
+pnpm run "pnpm --filter @vibe-validate/cli test"
+pnpm test:system  # Already wrapped!
+```
+
+**When you catch yourself typing raw vitest/npm/pnpm commands, STOP and use run instead.**
 
 ### Output Format (YAML)
 - `exitCode`: 0 (pass) or 1+ (fail)

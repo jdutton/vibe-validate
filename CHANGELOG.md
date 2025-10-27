@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2025-10-27
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed broken `init` command (Issue #36)**
+  - **Problem**: `vibe-validate init` was completely broken for new users installing from npm
+    - Error: "template 'minimal' not found"
+    - Available templates: empty list
+  - **Solution**: Config templates are now properly packaged with the CLI. Added comprehensive packaging tests (unit + system) to prevent regression.
+  - **Impact**: `vibe-validate init` now works correctly for all users
+
 ## [0.14.0] - 2025-10-27
 
 ### ✨ New Features
