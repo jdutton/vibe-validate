@@ -8,7 +8,6 @@
       "mcp__github__get_pull_request_status",
       "mcp__github__list_issues"
     ],
-    "deny": [],
     "ask": [
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",

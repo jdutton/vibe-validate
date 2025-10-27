@@ -8,7 +8,6 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
-import { stripAnsiCodes } from './utils.js';
 
 /**
  * Extract errors from TAP test output
@@ -24,10 +23,10 @@ import { stripAnsiCodes } from './utils.js';
  * ```
  */
 export function extractTAPErrors(output: string): ErrorExtractorResult {
-  const cleanOutput = stripAnsiCodes(output);
+  // Note: ANSI codes are stripped centrally in smart-extractor.ts
 
   // Extract all failures
-  const failures = extractFailures(cleanOutput);
+  const failures = extractFailures(output);
 
   if (failures.length === 0) {
     return {

@@ -5,6 +5,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['packages/*/test/**/*.test.ts'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/*.system.test.ts', // System tests run separately with pnpm test:system
+    ],
     // Prevent Vitest worker timeouts by limiting concurrency
     maxConcurrency: 5,
     fileParallelism: false,

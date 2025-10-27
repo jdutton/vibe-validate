@@ -12,6 +12,7 @@
  */
 
 import { execSync } from 'child_process';
+import { copyFileSync, unlinkSync } from 'fs';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 const GIT_OPTIONS = {
@@ -51,7 +52,9 @@ export async function getGitTreeHash(): Promise<string> {
     try {
       // Step 1: Copy current index to temp index
       const currentIndex = `${gitDir}/index`;
-      execSync(`cp "${currentIndex}" "${tempIndexFile}"`, GIT_OPTIONS);
+      // SECURITY: Use Node.js fs.copyFileSync instead of shell cp command
+      // Prevents potential command injection if gitDir contains malicious characters
+      copyFileSync(currentIndex, tempIndexFile);
 
       // Step 2: Use temp index for all operations (doesn't affect real index)
       const tempIndexOptions: typeof GIT_OPTIONS & { env: NodeJS.ProcessEnv } = {
@@ -97,9 +100,12 @@ export async function getGitTreeHash(): Promise<string> {
     } finally {
       // Step 5: Always clean up temp index file
       try {
-        execSync(`rm -f "${tempIndexFile}"`, GIT_OPTIONS);
+        // SECURITY: Use Node.js fs.unlinkSync instead of shell rm command
+        // Prevents potential command injection if tempIndexFile contains malicious characters
+        unlinkSync(tempIndexFile);
       } catch (_cleanupError) {
         // Ignore cleanup errors - temp file cleanup is best effort
+        // unlinkSync throws if file doesn't exist (same as rm -f behavior)
       }
     }
 

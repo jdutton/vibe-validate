@@ -32,15 +32,16 @@ pnpm install
 # Build all packages
 pnpm build
 
-# Run tests
-pnpm test
+# Run tests (LLM-optimized by default)
+pnpm test              # Uses vibe-validate run (YAML + rawOutput)
+pnpm test:watch        # Interactive watch mode (use npx vitest for raw output)
 
 # Development mode (watch)
 pnpm dev
 
-# Code quality
-pnpm lint              # ESLint checking
-pnpm typecheck         # TypeScript type checking
+# Code quality (LLM-optimized by default)
+pnpm lint              # Uses vibe-validate run
+pnpm typecheck         # Uses vibe-validate run
 
 # Validation (MUST pass before commit)
 pnpm validate --yaml   # Full validation with LLM-friendly output
@@ -54,6 +55,51 @@ pnpm pre-commit        # Branch sync + validation
 # Health checks
 pnpm exec vibe-validate doctor  # Diagnose setup issues (run after upgrade!)
 ```
+
+## LLM-Optimized Testing (Use This!)
+
+**CRITICAL for AI agents**: Use `vibe-validate run` to wrap test/validation commands. Saves 90-95% of context window by extracting only errors.
+
+### Quick Pattern
+```bash
+vibe-validate run "<any-command>"
+```
+
+### Common Examples
+```bash
+# Test single file (instead of: npx vitest <file>)
+vibe-validate run "npx vitest packages/cli/test/commands/run.test.ts"
+
+# Test specific case (instead of: npx vitest -t "...")
+vibe-validate run "npx vitest -t 'should extract errors'"
+
+# Package tests (instead of: pnpm --filter @pkg test)
+vibe-validate run "pnpm --filter @vibe-validate/core test"
+
+# Type checking (instead of: pnpm typecheck)
+vibe-validate run "pnpm typecheck"
+
+# Linting (instead of: pnpm lint)
+vibe-validate run "pnpm lint"
+
+# Standard scripts are LLM-optimized by default
+pnpm test        # Wraps vitest with run
+pnpm lint        # Wraps eslint with run
+pnpm typecheck   # Wraps tsc with run
+```
+
+### Output Format (YAML)
+- `exitCode`: 0 (pass) or 1+ (fail)
+- `errors[]`: File/line/message for each failure
+- `summary`: "2 test failures"
+- `guidance`: "Fix assertion at line 42"
+
+**Token savings**: 1500 tokens → 75 tokens (95% reduction)
+
+### When NOT to Use
+- Watch modes (`pnpm test:watch`, `pnpm dev`)
+- Already-extracted output (`pnpm validate`, `pnpm state`)
+- Interactive commands (`git log`, `npm init`)
 
 ## Package Management
 
@@ -145,6 +191,25 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 - Include examples in comments
 - Document edge cases and limitations
 - Keep docs up-to-date with code
+
+### CLI Documentation
+**CRITICAL**: When modifying CLI commands or help text:
+
+1. **Always use the doc generator tool**:
+   ```bash
+   node tools/generate-cli-docs.js
+   # OR
+   pnpm generate-cli-docs
+   ```
+
+2. **Never manually edit `docs/cli-reference.md`**
+   - This file is auto-generated from `--help --verbose` output
+   - Manual edits will be overwritten
+   - A test enforces this (will fail if docs don't match CLI output)
+
+3. **Update command-specific docs in `docs/commands/`**
+   - These are generated from verbose help functions
+   - Example: `run --help --verbose` → `docs/commands/run.md`
 
 ## Contributing Guidelines
 

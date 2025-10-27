@@ -7,6 +7,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2025-10-27
+
+### ✨ New Features
+
+- **NEW: `run` Command for AI Agents** (Issue #32)
+  - **Problem**: AI agents (Claude Code, Cursor, Aider) were overwhelmed by verbose test output, wasting 90-95% of their context window on noise
+  - **Solution**: New `vibe-validate run "<command>"` wraps any command and extracts only the errors in clean YAML format
+  - **Impact**:
+    - Saves 90-95% of AI agent context window (1500 tokens → 75 tokens)
+    - Works with ANY command, not just validation steps
+    - Automatic tool detection (Jest, Vitest, Playwright, TypeScript, ESLint, etc.)
+    - Detects nested `vibe-validate run` calls and merges YAML output (2-10+ levels deep)
+    - Routes package manager noise (pnpm/npm/yarn) to stderr, keeps stdout pure YAML
+  - **Example**:
+    ```bash
+    # Instead of overwhelming output:
+    npx vitest failing-test.ts
+    # 200+ lines of verbose output...
+
+    # Get clean, LLM-friendly errors:
+    vibe-validate run "npx vitest failing-test.ts"
+    # Output: 4-5 lines showing what failed and next steps
+    ```
+  - **Use cases**:
+    - Test single file: `vibe-validate run "npx vitest <file>"`
+    - Type checking: `vibe-validate run "pnpm typecheck"`
+    - Linting: `vibe-validate run "pnpm lint"`
+    - Any command that outputs errors
+  - See `vibe-validate run --help` for details
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed Jest, Vitest, and Playwright Error Extraction**
+  - **Problem**: Test failure extraction was broken for three major test frameworks
+    - Jest: Only extracting 1 error when 27 failures present
+    - Vitest: Extracting 0 errors due to missing ANSI stripping
+    - Playwright: Detection completely missing from smart-extractor
+  - **Root causes**:
+    - ANSI color codes (e.g., `\x1b[31m`) were breaking regex pattern matching
+    - Wrong Unicode symbols used (× vs ✕) causing misrouting between Jest/Vitest
+    - Test framework detection was missing or using incorrect patterns
+    - Source code in stack traces triggered false positive detections
+  - **Solution**: Complete extractor detection overhaul
+    - **Central ANSI stripping**: All extractors now receive clean, parseable input (DRY, fail-safe)
+    - **Pattern-based detection**: Tool detection based on actual output patterns, not step names
+    - **Correct symbol detection**: Vitest uses × (U+00D7), Jest uses ✕ (U+2715)
+    - **Detection order matters**: More specific patterns checked first (Playwright `.spec.ts` before Jest/Vitest `.test.ts`)
+    - **Multi-pattern requirement**: Requires multiple patterns together to prevent false positives
+  - **Impact**:
+    - ✅ Jest: Now correctly extracts all 27 errors
+    - ✅ Vitest: Now correctly extracts all 14 errors
+    - ✅ Playwright: Now correctly extracts all 11 errors
+    - ✅ Extraction works reliably with real command output (not just clean test fixtures)
+
+- **Detection Metadata for Transparency**
+  - **Problem**: No way to verify which error extractor was actually used
+  - **Solution**: Every extraction now includes metadata showing:
+    - Which extractor was chosen (jest, vitest, playwright, etc.)
+    - Detection confidence level (0-100)
+    - Patterns that matched
+    - Reason for detection
+  - **Impact**: Makes debugging extraction issues much easier
+
+### ♻️ Refactoring
+
+- **Function rename**: `extractByStepName` → `autoDetectAndExtract`
+  - **Problem**: Old name suggested step names controlled routing (they don't - detection is 100% pattern-based)
+  - **Solution**: Renamed to accurately reflect auto-detection from output patterns
+  - **Impact**: Clearer API, better documentation
+
+### 🔒 Security
+
+- **SonarCloud Security Hotspots Resolved**
+  - **Problem**: Shell command execution in file operations flagged as security risk
+  - **Solution**:
+    - Replaced `execSync('cp ...')` with `fs.copyFileSync()` in tree-hash calculation
+    - Replaced `execSync('rm -f ...')` with `fs.unlinkSync()`
+    - Added comprehensive NOSONAR justifications documenting threat model
+    - Enhanced SECURITY.md with command execution security model
+  - **Impact**:
+    - Prevents potential command injection in file paths
+    - All security hotspots reviewed and resolved
+    - Clear documentation of security design decisions
+
+- **SonarCloud Configuration Added**
+  - **Problem**: Test files flagged for code duplication (28.4%)
+  - **Solution**: Created `sonar-project.properties` to exclude test files from duplication checks
+  - **Rationale**: Test code duplication is acceptable and often necessary for test clarity and independence
+  - **Impact**: Quality gate focuses on production code quality, not test patterns
+
+### 🧪 Testing
+
+- **System Test Infrastructure** (3-tier strategy)
+  - **Problem**: Unit tests passed but extractors failed with real command output
+  - **Solution**: Added system test layer that runs actual commands (Jest, Vitest, Playwright, TypeScript)
+  - **Impact**: Catches real-world extraction bugs that unit tests miss
+  - **Test tiers**:
+    - **Unit tests** (pnpm test): Fast (10s), mocked, pre-commit
+    - **Integration tests** (included): Medium (30s), fast real commands
+    - **System tests** (pnpm test:system): Slow (3-5min), full real commands, pre-release
+  - **Coverage**: 211 unit tests + 15 system tests + 7 sample tests (all passing)
+
 ## [0.13.0] - 2025-10-26
 
 ### ✨ New Features

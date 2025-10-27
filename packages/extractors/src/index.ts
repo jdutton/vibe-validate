@@ -8,14 +8,13 @@
  * - ESLint
  * - Vitest/Jest/Mocha/Jasmine
  * - JUnit XML (auto-detected)
- * - OpenAPI validators
- * - Generic fallback
+ * - Generic fallback for all other formats
  *
  * @example
  * ```typescript
- * import { extractByStepName } from '@vibe-validate/extractors';
+ * import { autoDetectAndExtract } from '@vibe-validate/extractors';
  *
- * const result = extractByStepName('TypeScript Type Checking', tscOutput);
+ * const result = autoDetectAndExtract('TypeScript Type Checking', tscOutput);
  * console.log(result.summary); // "3 type error(s), 0 warning(s)"
  * console.log(result.guidance); // "Type mismatch - check variable/parameter types"
  * console.log(result.cleanOutput); // Clean, formatted error list
@@ -40,11 +39,10 @@ export { extractJestErrors } from './jest-extractor.js';
 export { extractJUnitErrors } from './junit-extractor.js';
 export { extractMochaErrors } from './mocha-extractor.js';
 export { extractJasmineErrors } from './jasmine-extractor.js';
-export { extractOpenAPIErrors } from './openapi-extractor.js';
 export { extractGenericErrors } from './generic-extractor.js';
 
 // Smart extractor (auto-detection - recommended)
-export { extractByStepName } from './smart-extractor.js';
+export { autoDetectAndExtract } from './smart-extractor.js';
 
 // Utilities
 export { stripAnsiCodes, extractErrorLines } from './utils.js';

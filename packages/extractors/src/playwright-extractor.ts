@@ -37,11 +37,9 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
   const errors: FormattedError[] = [];
   const issues: string[] = [];
 
-  // Strip ANSI codes for clean parsing
-  const cleanOutput = stripAnsiCodes(output);
-
+  // Note: ANSI codes are stripped centrally in smart-extractor.ts
   // Split into lines for processing
-  const lines = cleanOutput.split('\n');
+  const lines = output.split('\n');
 
   // Parse numbered failure blocks: "  1) tests/path/test.spec.ts:10:5 › test name"
   let i = 0;

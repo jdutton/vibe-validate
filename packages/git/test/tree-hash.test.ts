@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'child_process';
+import { copyFileSync, unlinkSync } from 'fs';
 import { getGitTreeHash } from '../src/tree-hash.js';
 
 // Mock execSync
@@ -14,7 +15,15 @@ vi.mock('child_process', () => ({
   execSync: vi.fn(),
 }));
 
+// Mock fs operations (SECURITY: We use fs instead of shell commands)
+vi.mock('fs', () => ({
+  copyFileSync: vi.fn(),
+  unlinkSync: vi.fn(),
+}));
+
 const mockExecSync = execSync as ReturnType<typeof vi.fn>;
+const mockCopyFileSync = copyFileSync as ReturnType<typeof vi.fn>;
+const mockUnlinkSync = unlinkSync as ReturnType<typeof vi.fn>;
 
 describe('getGitTreeHash', () => {
   beforeEach(() => {
@@ -29,15 +38,22 @@ describe('getGitTreeHash', () => {
     // Mock git commands (return strings since encoding: 'utf8' is set)
     mockExecSync.mockReturnValueOnce('');  // git rev-parse --is-inside-work-tree
     mockExecSync.mockReturnValueOnce('.git');  // git rev-parse --git-dir
-    mockExecSync.mockReturnValueOnce('');  // cp index to temp
-    mockExecSync.mockReturnValueOnce('');  // git add --intent-to-add (with temp index)
+    mockExecSync.mockReturnValueOnce('');  // git add --all (with temp index)
     mockExecSync.mockReturnValueOnce('abc123def456\n');  // git write-tree (with temp index)
-    mockExecSync.mockReturnValueOnce('');  // rm temp index
 
     const hash = await getGitTreeHash();
 
     expect(hash).toBe('abc123def456');
-    expect(mockExecSync).toHaveBeenCalledTimes(6);
+
+    // Verify correct git commands were called (4 times, not 6 - fs operations not via execSync)
+    expect(mockExecSync).toHaveBeenCalledTimes(4);
+
+    // Verify fs.copyFileSync was called (SECURITY: replaces cp shell command)
+    expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
+    expect(mockCopyFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('index'),
+      expect.stringContaining('vibe-validate-temp-index')
+    );
 
     // Verify correct git commands were called
     expect(mockExecSync).toHaveBeenNthCalledWith(
@@ -52,11 +68,6 @@ describe('getGitTreeHash', () => {
     );
     expect(mockExecSync).toHaveBeenNthCalledWith(
       3,
-      expect.stringContaining('cp'),
-      expect.any(Object)
-    );
-    expect(mockExecSync).toHaveBeenNthCalledWith(
-      4,
       'git add --all',
       expect.objectContaining({
         env: expect.objectContaining({
@@ -65,7 +76,7 @@ describe('getGitTreeHash', () => {
       })
     );
     expect(mockExecSync).toHaveBeenNthCalledWith(
-      5,
+      4,
       'git write-tree',
       expect.objectContaining({
         env: expect.objectContaining({
@@ -73,10 +84,11 @@ describe('getGitTreeHash', () => {
         })
       })
     );
-    expect(mockExecSync).toHaveBeenNthCalledWith(
-      6,
-      expect.stringContaining('rm -f'),
-      expect.any(Object)
+
+    // Verify fs.unlinkSync was called (SECURITY: replaces rm shell command)
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+    expect(mockUnlinkSync).toHaveBeenCalledWith(
+      expect.stringContaining('vibe-validate-temp-index')
     );
   });
 
@@ -85,16 +97,12 @@ describe('getGitTreeHash', () => {
     mockExecSync
       .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree (1st run)
       .mockReturnValueOnce('.git')  // git rev-parse --git-dir (1st run)
-      .mockReturnValueOnce('')  // cp (1st run)
       .mockReturnValueOnce('')  // git add (1st run)
       .mockReturnValueOnce('sameHash123\n')  // git write-tree (1st run)
-      .mockReturnValueOnce('')  // rm (1st run)
       .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree (2nd run)
       .mockReturnValueOnce('.git')  // git rev-parse --git-dir (2nd run)
-      .mockReturnValueOnce('')  // cp (2nd run)
       .mockReturnValueOnce('')  // git add (2nd run)
-      .mockReturnValueOnce('sameHash123\n')  // git write-tree (2nd run)
-      .mockReturnValueOnce('');  // rm (2nd run)
+      .mockReturnValueOnce('sameHash123\n');  // git write-tree (2nd run)
 
     const hash1 = await getGitTreeHash();
     const hash2 = await getGitTreeHash();
@@ -102,6 +110,10 @@ describe('getGitTreeHash', () => {
     expect(hash1).toBe('sameHash123');
     expect(hash2).toBe('sameHash123');
     expect(hash1).toBe(hash2);
+
+    // Verify fs operations were called twice (once per run)
+    expect(mockCopyFileSync).toHaveBeenCalledTimes(2);
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(2);
   });
 
   it('should use temporary index file to avoid corrupting real index', async () => {
@@ -117,12 +129,12 @@ describe('getGitTreeHash', () => {
 
     await getGitTreeHash();
 
-    // Verify temp index is created (cp command)
-    const cpCall = mockExecSync.mock.calls.find(
-      ([cmd]) => typeof cmd === 'string' && cmd.includes('cp')
+    // Verify temp index is created (SECURITY: fs.copyFileSync instead of cp)
+    expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
+    expect(mockCopyFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('index'),
+      expect.stringContaining('vibe-validate-temp-index')
     );
-    expect(cpCall).toBeDefined();
-    expect(cpCall?.[0]).toContain('vibe-validate-temp-index');
 
     // Verify GIT_INDEX_FILE is used for git operations
     const writeTreeCall = mockExecSync.mock.calls.find(
@@ -131,22 +143,19 @@ describe('getGitTreeHash', () => {
     expect(writeTreeCall?.[1]).toHaveProperty('env');
     expect((writeTreeCall?.[1] as any).env).toHaveProperty('GIT_INDEX_FILE');
 
-    // Verify temp index is cleaned up (rm command)
-    const rmCall = mockExecSync.mock.calls.find(
-      ([cmd]) => typeof cmd === 'string' && cmd.includes('rm -f')
+    // Verify temp index is cleaned up (SECURITY: fs.unlinkSync instead of rm)
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+    expect(mockUnlinkSync).toHaveBeenCalledWith(
+      expect.stringContaining('vibe-validate-temp-index')
     );
-    expect(rmCall).toBeDefined();
-    expect(rmCall?.[0]).toContain('vibe-validate-temp-index');
   });
 
   it('should trim whitespace from hash', async () => {
     mockExecSync
       .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree
       .mockReturnValueOnce('.git')  // git rev-parse --git-dir
-      .mockReturnValueOnce('')  // cp
       .mockReturnValueOnce('')  // git add
-      .mockReturnValueOnce('  abc123  \n\n')  // git write-tree
-      .mockReturnValueOnce('');  // rm
+      .mockReturnValueOnce('  abc123  \n\n');  // git write-tree
 
     const hash = await getGitTreeHash();
 
@@ -165,10 +174,8 @@ describe('getGitTreeHash', () => {
     mockExecSync
       .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree
       .mockReturnValueOnce('.git')  // git rev-parse --git-dir
-      .mockReturnValueOnce('')  // cp
       .mockReturnValueOnce('')  // git add
-      .mockReturnValueOnce('4b825dc642cb6eb9a060e54bf8d69288fbee4904\n')  // git write-tree (empty tree)
-      .mockReturnValueOnce('');  // rm
+      .mockReturnValueOnce('4b825dc642cb6eb9a060e54bf8d69288fbee4904\n');  // git write-tree (empty tree)
 
     const hash = await getGitTreeHash();
 
@@ -201,19 +208,17 @@ describe('getGitTreeHash', () => {
     mockExecSync
       .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree
       .mockReturnValueOnce('.git')  // git rev-parse --git-dir
-      .mockReturnValueOnce('')  // cp
       .mockReturnValueOnce('')  // git add
       .mockImplementationOnce(() => {  // git write-tree throws
         throw new Error('write-tree failed');
-      })
-      .mockReturnValueOnce('');  // rm (should still be called in finally block)
+      });
 
     await expect(getGitTreeHash()).rejects.toThrow();
 
-    // Verify cleanup happened despite error
-    const rmCall = mockExecSync.mock.calls.find(
-      ([cmd]) => typeof cmd === 'string' && cmd.includes('rm -f')
+    // Verify cleanup happened despite error (SECURITY: fs.unlinkSync in finally block)
+    expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+    expect(mockUnlinkSync).toHaveBeenCalledWith(
+      expect.stringContaining('vibe-validate-temp-index')
     );
-    expect(rmCall).toBeDefined();
   });
 });

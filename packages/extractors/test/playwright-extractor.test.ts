@@ -286,7 +286,10 @@ Running 5 tests using 2 workers
       expect(result.metadata.issues[0]).toContain('No stack trace');
     });
 
-    it('should strip ANSI color codes', () => {
+    it('should handle ANSI color codes in error messages', () => {
+      // NOTE: ANSI stripping is now done centrally in smart-extractor.ts
+      // Individual extractors receive pre-stripped input from smart-extractor
+      // This test verifies extractor doesn't break when ANSI codes are present
       const output = `
   1) tests/test.spec.ts:10:5 › test
 
@@ -297,7 +300,8 @@ Running 5 tests using 2 workers
 
       const result = extractPlaywrightErrors(output);
 
-      expect(result.errors[0].message).not.toContain('\x1b[');
+      // Should still extract the error even with ANSI codes present
+      expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('expect');
     });
   });

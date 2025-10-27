@@ -426,6 +426,38 @@ View and manage validation history stored in git notes
 
 ---
 
+### `run`
+
+Run a command and extract LLM-friendly errors from output
+
+**What it does:**
+
+1. Executes command in shell subprocess
+2. Captures stdout and stderr output
+3. Auto-detects format (vitest, jest, tsc, eslint, etc.)
+4. Extracts errors using appropriate extractor
+5. Outputs structured YAML with error details
+6. Passes through exit code from command
+
+**Exit codes:**
+
+- `0` - Command succeeded
+- `1` - Command failed (same code as original command)
+
+**When to use:** Run individual tests or validation steps with LLM-friendly error extraction
+
+**Examples:**
+
+```bash
+vibe-validate run "npx vitest test.ts"           # Single test file
+vibe-validate run "npx vitest -t 'test name'"    # Specific test
+vibe-validate run "pnpm --filter @pkg test"    # Package tests
+vibe-validate run "npx tsc --noEmit"           # Type check
+vibe-validate run "pnpm lint"                  # Lint
+```
+
+---
+
 ## Global Options
 
 - `-V, --version` - Show vibe-validate version

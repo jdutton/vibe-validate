@@ -10,6 +10,14 @@
  */
 
 import { Calculator } from '../../src/calculator.js';
+import {
+  extractTypeScriptErrors,
+  extractVitestErrors,
+  extractESLintErrors,
+  autoDetectAndExtract,
+  stripAnsiCodes
+} from '@vibe-validate/extractors';
+import { loadConfigFromFile } from '@vibe-validate/config';
 
 // ============================================================================
 // REAL VIBE-VALIDATE USAGE (80%)
@@ -19,10 +27,8 @@ describe('Vibe-Validate Integration Failures', () => {
 
   // FAILURE TYPE 1: Assertion Error
   describe('Extractors › Assertion Errors', () => {
-    it('should extract TypeScript errors correctly', async () => {
+    it('should extract TypeScript errors correctly', () => {
       // INTENTIONAL FAILURE: Test extractor against known output, expect wrong count
-      const { extractTypeScriptErrors } = await import('@vibe-validate/extractors');
-
       const tsOutput = 'src/runner.ts(45,10): error TS2345: Type mismatch.';
       const result = extractTypeScriptErrors(tsOutput);
 
@@ -30,10 +36,8 @@ describe('Vibe-Validate Integration Failures', () => {
       expect(result.errors.length).toBe(5);
     });
 
-    it('should parse ESLint errors from real output', async () => {
+    it('should parse ESLint errors from real output', () => {
       // INTENTIONAL FAILURE: Wrong expected summary
-      const { extractESLintErrors } = await import('@vibe-validate/extractors');
-
       const eslintOutput = 'src/foo.ts\n  45:10  error  Unused variable  no-unused-vars';
       const result = extractESLintErrors(eslintOutput);
 
@@ -45,7 +49,6 @@ describe('Vibe-Validate Integration Failures', () => {
   describe('Config › Type Errors', () => {
     it('should fail when passing invalid config type', async () => {
       // INTENTIONAL FAILURE: TypeScript type error - passing wrong type
-      const { loadConfigFromFile } = await import('@vibe-validate/config');
 
       // Pass invalid path type (runtime type error)
       const config = await loadConfigFromFile(12345 as any);
@@ -55,7 +58,7 @@ describe('Vibe-Validate Integration Failures', () => {
 
     it('should fail when extractors receive wrong input type', async () => {
       // INTENTIONAL FAILURE: Pass number instead of string to extractor
-      const { extractVitestErrors } = await import('@vibe-validate/extractors');
+      
 
       // @ts-expect-error - INTENTIONAL TYPE ERROR
       const result = extractVitestErrors(12345); // Should be string
@@ -68,10 +71,10 @@ describe('Vibe-Validate Integration Failures', () => {
   describe('Core › Runtime Type Errors', () => {
     it('should fail when calling method on undefined', async () => {
       // INTENTIONAL FAILURE: Runtime TypeError
-      const { extractByStepName } = await import('@vibe-validate/extractors');
+      
 
       // Pass undefined as output (runtime TypeError)
-      const result = extractByStepName('test', undefined as any);
+      const result = autoDetectAndExtract('test', undefined as any);
 
       expect(result.cleanOutput.length).toBeGreaterThan(0);
     });
@@ -79,10 +82,8 @@ describe('Vibe-Validate Integration Failures', () => {
 
   // FAILURE TYPE 6: Snapshot Mismatch
   describe('Extractors › Snapshot Testing', () => {
-    it('should match extractor output snapshot', async () => {
+    it('should match extractor output snapshot', () => {
       // INTENTIONAL FAILURE: Snapshot will change due to dynamic data
-      const { extractVitestErrors } = await import('@vibe-validate/extractors');
-
       const vitestOutput = `
 ❌ packages/core/test/runner.test.ts > ValidationRunner > should fail
   AssertionError: expected 2 to equal 3
@@ -144,7 +145,7 @@ describe('Vibe-Validate Integration Failures', () => {
   describe('Extractors › Multiple Errors', () => {
     it('should handle multiple assertion failures', async () => {
       // INTENTIONAL FAILURE: Multiple assertions fail
-      const { extractTypeScriptErrors, extractESLintErrors } = await import('@vibe-validate/extractors');
+      
 
       const tsResult = extractTypeScriptErrors('');
       const eslintResult = extractESLintErrors('');
@@ -163,7 +164,7 @@ describe('Vibe-Validate Integration Failures', () => {
         describe('Level 3', () => { // NOSONAR - Intentional deep nesting to test error extractor handling of nested test structures
           it('should test deeply nested vibe-validate usage', async () => {
             // INTENTIONAL FAILURE: Deep in hierarchy
-            const { stripAnsiCodes } = await import('@vibe-validate/extractors');
+            
 
             const input = '\x1b[31mError\x1b[0m';
             const result = stripAnsiCodes(input);

@@ -7,7 +7,6 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
-import { stripAnsiCodes } from './utils.js';
 
 /**
  * Extract errors from Mocha test output
@@ -23,15 +22,15 @@ import { stripAnsiCodes } from './utils.js';
  * ```
  */
 export function extractMochaErrors(output: string): ErrorExtractorResult {
-  const cleanOutput = stripAnsiCodes(output);
+  // Note: ANSI codes are stripped centrally in smart-extractor.ts
 
   // Check if this looks like Mocha output
-  if (!cleanOutput.includes('failing') && !cleanOutput.includes('passing')) {
+  if (!output.includes('failing') && !output.includes('passing')) {
     return {
       summary: 'Unable to parse Mocha output - invalid format',
       errors: [],
       totalCount: 0,
-      cleanOutput: cleanOutput.trim(),
+      cleanOutput: output.trim(),
       guidance: 'Ensure the input is valid Mocha test output',
       metadata: {
         confidence: 0,
@@ -42,7 +41,7 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   }
 
   // Extract failure count
-  const failingMatch = cleanOutput.match(/(\d+) failing/);
+  const failingMatch = output.match(/(\d+) failing/);
   const failureCount = failingMatch ? parseInt(failingMatch[1], 10) : 0;
 
   if (failureCount === 0) {
@@ -61,7 +60,7 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   }
 
   // Extract all failures
-  const failures = extractFailures(cleanOutput);
+  const failures = extractFailures(output);
   const errors: FormattedError[] = [];
 
   let completeCount = 0;
@@ -137,7 +136,7 @@ function extractFailures(output: string): FailureInfo[] {
     const failureMatch = line.match(/^ {2}(\d+)\)\s+(.*)$/);
 
     if (failureMatch) {
-      const _failureNumber = failureMatch[1]; // Extracted but not used (test name is more important)
+      // failureMatch[1] contains the failure number (not used - test name is more important)
       const firstPart = failureMatch[2].trim();
 
       // Collect test hierarchy lines

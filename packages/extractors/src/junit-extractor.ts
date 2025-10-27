@@ -8,7 +8,6 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
-import { stripAnsiCodes } from './utils.js';
 
 /**
  * Extract errors from JUnit XML test output
@@ -24,19 +23,19 @@ import { stripAnsiCodes } from './utils.js';
  * ```
  */
 export function extractJUnitErrors(output: string): ErrorExtractorResult {
-  const cleanOutput = stripAnsiCodes(output);
+  // Note: ANSI codes are stripped centrally in smart-extractor.ts
 
   // Try to parse XML
   let isValidXml = false;
   try {
     // Simple XML parsing - look for <testsuite> and <testcase> elements
-    isValidXml = parseSimpleXML(cleanOutput);
+    isValidXml = parseSimpleXML(output);
   } catch (_error) {
     return {
       summary: 'Unable to parse JUnit XML - invalid format',
       errors: [],
       totalCount: 0,
-      cleanOutput: cleanOutput.trim(),
+      cleanOutput: output.trim(),
       guidance: 'Ensure the input is valid JUnit XML format',
       metadata: {
         confidence: 0,
@@ -62,7 +61,7 @@ export function extractJUnitErrors(output: string): ErrorExtractorResult {
   }
 
   // Extract all failure elements
-  const failures = extractFailures(cleanOutput);
+  const failures = extractFailures(output);
   const errors: FormattedError[] = [];
 
   let completeCount = 0;

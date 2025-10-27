@@ -6,6 +6,10 @@ export default {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    // Map workspace packages to their source files for Jest
+    '^@vibe-validate/extractors$': '<rootDir>/../extractors/src/index.ts',
+    '^@vibe-validate/config$': '<rootDir>/../config/src/index.ts',
+    '^@vibe-validate/core$': '<rootDir>/../core/src/index.ts',
   },
   transform: {
     '^.+\\.tsx?$': [
