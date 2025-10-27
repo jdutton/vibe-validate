@@ -95,7 +95,8 @@ export function autoDetectAndExtract(context: string, output: string): ErrorExtr
   }
 
   // Auto-detect JUnit XML format
-  if (cleanOutput.includes('<?xml') && cleanOutput.includes('<testsuite')) {
+  // Must have both <?xml at start of line AND <testsuite tag (not just mentioned in text)
+  if (cleanOutput.match(/^<\?xml\s+/m) && cleanOutput.includes('<testsuite')) {
     const result = extractJUnitErrors(cleanOutput);
     return addDetectionMetadata(result, 'junit', 100, ['<?xml header', '<testsuite> tag'], 'JUnit XML format detected');
   }
@@ -116,18 +117,19 @@ export function autoDetectAndExtract(context: string, output: string): ErrorExtr
   // Playwright detection: Check for Playwright-specific patterns
   // - .spec.ts files (Playwright convention, Jest/Vitest use .test.ts)
   // - Numbered failures with › separator: "1) file.spec.ts:26:5 › test name"
-  // - ✘ symbol for failures
+  // - ✘ symbol followed by .spec.ts file path
+  // IMPORTANT: Require .spec.ts with › separator OR ✘ + .spec.ts (not just mentioned in text)
   // Must check BEFORE Jest/Vitest to avoid misdetection
   const hasPlaywrightMarkers = (cleanOutput.includes('.spec.ts') &&
-                                 cleanOutput.match(/\d+\)\s+.*\.spec\.ts:\d+:\d+\s+›/)) ||
-                                (cleanOutput.includes('✘') && cleanOutput.includes('.spec.ts'));
+                                 (cleanOutput.match(/\d+\)\s+.*\.spec\.ts:\d+:\d+\s+›/) ||
+                                  cleanOutput.match(/✘.*\.spec\.ts/)));
 
   if (hasPlaywrightMarkers) {
     const result = extractPlaywrightErrors(cleanOutput);
     const patterns = [];
     if (cleanOutput.includes('.spec.ts')) patterns.push('.spec.ts files');
     if (cleanOutput.match(/\d+\)\s+.*\.spec\.ts:\d+:\d+\s+›/)) patterns.push('numbered failures with › separator');
-    if (cleanOutput.includes('✘')) patterns.push('✘ failure symbol');
+    if (cleanOutput.match(/✘.*\.spec\.ts/)) patterns.push('✘ failure with .spec.ts file');
     return addDetectionMetadata(result, 'playwright', 95, patterns, 'Playwright test output format detected');
   }
 
@@ -153,21 +155,25 @@ export function autoDetectAndExtract(context: string, output: string): ErrorExtr
 
   // Vitest detection: Check output for Vitest-specific patterns
   // - "×" symbol (U+00D7 multiplication, Vitest-specific - Jest uses ✕ U+2715)
+  // - "❌" cross mark symbol (Vitest failure marker in some formats)
   // - " ❯ " arrow symbol (Vitest-specific file marker)
   // - "Test Files" summary line (Vitest-specific, Jest uses "Test Suites:")
   // - "FAIL N test files" pattern (Vitest-specific)
+  // - ".test.ts" file extension (Vitest convention, Playwright uses .spec.ts)
   // NOTE: Both Vitest and Jest use ✓ (check mark), so we don't check for it alone
   // IMPORTANT: Require MULTIPLE patterns together to avoid false positives
   // (e.g., ❯ can appear in Jest stack traces from source code comments)
-  const hasVitestMarkers = (cleanOutput.includes('×') || cleanOutput.includes(' ❯ ')) &&
-                          (cleanOutput.includes('Test Files') || cleanOutput.match(/FAIL\s+\d+\s+test\s+(file|case)/i));
+  const hasVitestMarkers = (cleanOutput.includes('×') || cleanOutput.includes(' ❯ ') || cleanOutput.includes('❌')) &&
+                          (cleanOutput.includes('Test Files') || cleanOutput.match(/FAIL\s+\d+\s+test\s+(file|case)/i) || cleanOutput.includes('.test.ts'));
 
   if (hasVitestMarkers) {
     const result = extractVitestErrors(cleanOutput);
     const patterns = [];
     if (cleanOutput.includes('×')) patterns.push('× symbol (U+00D7)');
+    if (cleanOutput.includes('❌')) patterns.push('❌ cross mark');
     if (cleanOutput.includes(' ❯ ')) patterns.push('❯ arrow marker');
     if (cleanOutput.includes('Test Files')) patterns.push('Test Files summary');
+    if (cleanOutput.includes('.test.ts')) patterns.push('.test.ts files');
     if (cleanOutput.match(/FAIL\s+\d+\s+test\s+(file|case)/i)) patterns.push('FAIL N test files/cases pattern');
     return addDetectionMetadata(result, 'vitest', 90, patterns, 'Vitest test output format detected');
   }

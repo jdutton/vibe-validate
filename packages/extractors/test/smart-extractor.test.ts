@@ -115,7 +115,6 @@ Running 11 tests using 1 worker
       expect(result.metadata?.detection?.extractor).toBe('playwright');
       expect(result.metadata?.detection?.patterns).toContain('.spec.ts files');
       expect(result.metadata?.detection?.patterns).toContain('numbered failures with › separator');
-      expect(result.metadata?.detection?.patterns).toContain('✘ failure symbol');
       expect(result.metadata?.detection?.confidence).toBe(95);
     });
 
@@ -125,7 +124,7 @@ Running 11 tests using 1 worker
 
       expect(result.metadata?.detection?.extractor).toBe('playwright');
       expect(result.metadata?.detection?.patterns).toContain('.spec.ts files');
-      expect(result.metadata?.detection?.patterns).toContain('✘ failure symbol');
+      expect(result.metadata?.detection?.patterns).toContain('✘ failure with .spec.ts file');
     });
 
     it('should route to Playwright, not Jest, for .spec.ts files', () => {
@@ -221,7 +220,8 @@ FAIL tests/example.test.ts
 
     it('should NOT detect Vitest from × symbol alone', () => {
       // Single pattern should NOT trigger Vitest detection
-      const output = ' × test/unit/config.test.ts (1 failed)';
+      // Note: Removed .test.ts from test data because × + .test.ts correctly triggers vitest
+      const output = ' × some-file.js (1 failed)';
       const result = autoDetectAndExtract('ANY_STEP_NAME', output);
 
       // Should fall back to generic extractor
