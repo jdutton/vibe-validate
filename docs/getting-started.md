@@ -119,7 +119,7 @@ validation:
 - `typescript-nodejs` - Full validation for Node.js apps
 - `typescript-react` - Optimized for React applications
 
-View all templates at: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+View all templates at: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 
 ### Key Concepts
 

@@ -499,7 +499,7 @@ npx vibe-validate init --template typescript-nodejs
 npx vibe-validate init --template typescript-react
 ```
 
-All templates are available in the [config-templates directory](https://github.com/jdutton/vibe-validate/tree/main/config-templates).
+All templates are available in the [config-templates directory](https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates).
 
 ### Configuration File Example
 

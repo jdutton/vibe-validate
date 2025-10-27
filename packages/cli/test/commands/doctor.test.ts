@@ -219,7 +219,7 @@ describe('doctor command', () => {
       expect(configCheck?.message).toContain('validation.phases.0.name: Required');
       expect(configCheck?.suggestion).toContain('Fix validation errors shown above');
       expect(configCheck?.suggestion).toContain('https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json');
-      expect(configCheck?.suggestion).toContain('https://github.com/jdutton/vibe-validate/tree/main/config-templates');
+      expect(configCheck?.suggestion).toContain('https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates');
     });
 
     it('should run all checks even when config has validation errors', async () => {

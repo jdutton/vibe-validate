@@ -546,7 +546,7 @@ Start with a template and customize as needed.
 - **`typescript-nodejs`**: For Node.js applications and servers
 - **`typescript-react`**: For React/Next.js applications
 
-All templates are available at: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+All templates are available at: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 
 ### Using a Template
 

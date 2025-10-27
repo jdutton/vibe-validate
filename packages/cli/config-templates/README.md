@@ -96,7 +96,7 @@ curl -o vibe-validate.config.yaml \
 
 ### Option 2: Manual Copy
 
-1. Browse templates: [`config-templates/`](https://github.com/jdutton/vibe-validate/tree/main/config-templates)
+1. Browse templates: [`config-templates/`](https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates)
 2. Open the template that fits your project
 3. Click "Raw" button
 4. Copy the content

@@ -406,7 +406,7 @@ npx vibe-validate init --template typescript-nodejs
 - `typescript-nodejs` - Node.js application with TypeScript
 - `typescript-react` - React application with TypeScript
 
-All templates available at: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+All templates available at: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 
 ## Caching
 
@@ -557,7 +557,7 @@ vv config
 
 - [Full Documentation](https://github.com/jdutton/vibe-validate#readme)
 - [Configuration Reference](https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md)
-- [Config Templates Guide](https://github.com/jdutton/vibe-validate/blob/main/config-templates/README.md)
+- [Config Templates Guide](https://github.com/jdutton/vibe-validate/blob/main/packages/cli/config-templates/README.md)
 - [Getting Started](https://github.com/jdutton/vibe-validate/blob/main/docs/getting-started.md)
 
 ## License

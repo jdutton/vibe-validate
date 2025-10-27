@@ -16,6 +16,7 @@ import { execSync } from 'child_process';
 import { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
+import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 import { formatTemplateList } from '../utils/template-discovery.js';
@@ -176,19 +177,16 @@ async function checkConfigValid(
       // Check if we have detailed error information
       if (configWithErrors?.errors && configWithErrors.filePath) {
         const fileName = configWithErrors.filePath.split('/').pop() || 'vibe-validate.config.yaml';
-        const errorList = configWithErrors.errors.slice(0, 5); // Show first 5 errors
-        const errorMessages = errorList.map(err => `     • ${err}`).join('\n');
+        const { message, suggestion } = formatDoctorConfigError({
+          fileName,
+          errors: configWithErrors.errors
+        });
 
         return {
           name: 'Configuration valid',
           passed: false,
-          message: `Found ${fileName} but it contains validation errors:\n${errorMessages}`,
-          suggestion: [
-            'Fix validation errors shown above',
-            'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
-            'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
-            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/config-templates'
-          ].join('\n   '),
+          message,
+          suggestion,
         };
       }
 
@@ -204,7 +202,7 @@ async function checkConfigValid(
             `Fix syntax/validation errors in ${fileName}`,
             'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
             'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
-            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/config-templates'
+            'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates'
           ].join('\n   '),
         };
       } else {
@@ -216,7 +214,7 @@ async function checkConfigValid(
           message: 'No configuration file found',
           suggestion: [
             'Copy a config template from GitHub:',
-            'https://github.com/jdutton/vibe-validate/tree/main/config-templates',
+            'https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates',
             '',
             'Available templates:',
             ...templateList.map(line => line),

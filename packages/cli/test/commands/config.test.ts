@@ -13,6 +13,7 @@ vi.mock('../../src/utils/config-loader.js', async () => {
   return {
     ...actual,
     loadConfig: vi.fn(),
+    loadConfigWithErrors: vi.fn(),
     findConfigPath: vi.fn(),
   };
 });
@@ -43,6 +44,7 @@ describe('config command', () => {
 
     // Reset mocks
     vi.mocked(configLoader.loadConfig).mockReset();
+    vi.mocked(configLoader.loadConfigWithErrors).mockReset();
     vi.mocked(configLoader.findConfigPath).mockReset();
   });
 
@@ -131,6 +133,7 @@ describe('config command', () => {
 
       vi.mocked(configLoader.findConfigPath).mockReturnValue(join(testDir, 'vibe-validate.config.js'));
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithErrors).mockResolvedValue({ config: mockConfig, errors: [] });
     });
 
     it('should validate config successfully with --validate flag', async () => {
@@ -144,15 +147,22 @@ describe('config command', () => {
         }
       }
 
+      // With the new error reporting, success message goes to stdout
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Configuration is valid'));
     });
   });
 
   describe('invalid config file', () => {
     beforeEach(() => {
-      // Mock findConfigPath returning a path but loadConfig returning null (invalid config)
-      vi.mocked(configLoader.findConfigPath).mockReturnValue(join(testDir, 'vibe-validate.config.js'));
+      // Mock findConfigPath returning a path and loadConfigWithErrors returning errors
+      const configPath = join(testDir, 'vibe-validate.config.js');
+      vi.mocked(configLoader.findConfigPath).mockReturnValue(configPath);
       vi.mocked(configLoader.loadConfig).mockResolvedValue(null);
+      vi.mocked(configLoader.loadConfigWithErrors).mockResolvedValue({
+        config: null,
+        errors: ['validation.phases: Required'],
+        filePath: configPath
+      });
     });
 
     it('should exit with error for invalid config', async () => {
@@ -189,6 +199,7 @@ describe('config command', () => {
 
       vi.mocked(configLoader.findConfigPath).mockReturnValue(join(testDir, 'vibe-validate.config.yaml'));
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithErrors).mockResolvedValue({ config: mockConfig, errors: [] });
     });
 
     it('should display config in minimal YAML format by default', async () => {

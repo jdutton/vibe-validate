@@ -7,12 +7,10 @@ build/
 *.tsbuildinfo
 *.tgz
 
-# CLI package build artifacts (copied from root config-templates/)
-packages/cli/config-templates/
-
 # Testing
 coverage/
 .vitest/
+packages/extractors-test-bed/junit-output/
 
 # Documentation (generated)
 docs/api/
