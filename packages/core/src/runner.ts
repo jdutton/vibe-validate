@@ -16,7 +16,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
-import { extractByStepName } from '@vibe-validate/extractors';
+import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { stopProcessGroup } from './process-utils.js';
 import type {
   ValidationStep,
@@ -48,7 +48,7 @@ import type {
  *
  * @internal
  */
-function calculateExtractionQuality(formatted: ReturnType<typeof extractByStepName>): number {
+function calculateExtractionQuality(formatted: ReturnType<typeof autoDetectAndExtract>): number {
   let score = 0;
 
   // Error extraction (0-60 points)
@@ -95,7 +95,7 @@ function calculateExtractionQuality(formatted: ReturnType<typeof extractByStepNa
  * ```
  *
  * @public
- * @deprecated Use extractByStepName() from @vibe-validate/extractors instead
+ * @deprecated Use autoDetectAndExtract() from @vibe-validate/extractors instead
  */
 export function parseFailures(output: string): string[] {
   const failures: string[] = [];
@@ -256,7 +256,7 @@ export async function runStepsInParallel(
           // Rationale: Passing tests have no failures to extract, extraction would always produce
           // meaningless results (score: 0, no errors). Skipping saves CPU and reduces output noise.
           if (code !== 0 && output && output.trim()) {
-            const formatted = extractByStepName(step.name, output);
+            const formatted = autoDetectAndExtract(step.name, output);
 
             // Extract structured failures/tests
             stepResult.failedTests = formatted.errors?.map(error => {
@@ -440,7 +440,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     // If phase failed, extract and include output (LLM-optimized, not raw)
     if (!result.success && result.failedStep) {
       const rawOutput = result.outputs.get(result.failedStep.name) || '';
-      const extracted = extractByStepName(result.failedStep.name, rawOutput);
+      const extracted = autoDetectAndExtract(result.failedStep.name, rawOutput);
       phaseResult.output = extracted.cleanOutput.trim() || rawOutput;
     }
 
@@ -458,7 +458,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
 
       // Extract actionable failures from raw output (LLM-optimized, 5-10 lines instead of 100+)
       // This reduces git notes bloat and makes errors immediately actionable
-      const extracted = extractByStepName(failedStep.name, failedOutput);
+      const extracted = autoDetectAndExtract(failedStep.name, failedOutput);
 
       // Use cleanOutput for storage (already formatted for YAML/JSON, stripped of ANSI codes)
       // Falls back to raw output if extraction fails

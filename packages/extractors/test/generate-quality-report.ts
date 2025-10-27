@@ -19,7 +19,7 @@ import {
   getThreshold,
   computeQualityScore,
 } from './sample-loader.js';
-import { extractByStepName } from '../src/smart-extractor.js';
+import { autoDetectAndExtract } from '../src/smart-extractor.js';
 import type { Sample, SampleTestResult, ActualExtraction } from './sample-types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -87,7 +87,7 @@ function generateQualityReport(): QualityMetrics {
   // Run extractor on each sample
   for (const sample of samples) {
     const stepName = `${sample.metadata.tool} validation`;
-    const extractorResult = extractByStepName(stepName, sample.input.raw);
+    const extractorResult = autoDetectAndExtract(stepName, sample.input.raw);
 
     const actual: ActualExtraction = {
       detectedTool: sample.metadata.tool,

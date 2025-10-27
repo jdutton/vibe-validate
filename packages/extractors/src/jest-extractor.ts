@@ -7,7 +7,6 @@
  */
 
 import type { ErrorExtractorResult } from './types.js';
-import { stripAnsiCodes } from './utils.js';
 
 interface JestFailure {
   file: string;
@@ -36,70 +35,79 @@ interface JestFailure {
  * ```
  */
 export function extractJestErrors(output: string): ErrorExtractorResult {
-  const cleanOutput = stripAnsiCodes(output);
-  const lines = cleanOutput.split('\n');
+  // Note: ANSI codes are stripped centrally in smart-extractor.ts
+  const lines = output.split('\n');
   const failures: JestFailure[] = [];
 
   let currentFile = '';
-  let currentTest: string | null = null;
-  let currentError: string | null = null;
+  const hierarchyStack: string[] = []; // Track test suite hierarchy by indentation
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
     // Match: FAIL test/integration/extraction-with-mocks.test.ts
-    // OR: FAIL project-name tests/jest/calculator.test.ts
-    const failMatch = line.match(/^FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/);
+    // OR: FAIL project-name tests/jest/comprehensive-failures.test.ts
+    // OR:   FAIL extraction-test-bed tests/jest/comprehensive-failures.test.ts (with leading spaces)
+    const failMatch = line.match(/^\s*FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/);
     if (failMatch) {
       currentFile = failMatch[1];
+      hierarchyStack.length = 0; // Reset hierarchy for new file
       continue;
     }
 
-    // Match: ● TestSuite › Sub Suite › test name
-    const testMatch = line.match(/^\s*●\s+(.+)$/);
-    if (testMatch && currentFile) {
-      // Save previous test if we have one
-      if (currentTest && currentError) {
-        failures.push({
-          file: currentFile,
-          location: currentFile, // Jest doesn't always show line numbers in error section
-          testHierarchy: currentTest,
-          errorMessage: currentError.trim()
-        });
-      }
+    if (!currentFile) continue; // Skip lines before FAIL
 
-      currentTest = testMatch[1].trim();
-      currentError = null;
+    // Calculate indentation level (number of leading spaces)
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1].length : 0;
+
+    // Match: ✕ test name (6 ms) - inline failure
+    const failureMatch = line.match(/^\s+✕\s+(.+?)(?:\s+\(\d+\s*ms\))?$/);
+    if (failureMatch) {
+      const testName = failureMatch[1].trim();
+
+      // Build full hierarchy: parent suites + test name
+      const fullHierarchy = hierarchyStack.length > 0
+        ? [...hierarchyStack, testName].join(' › ')
+        : testName;
+
+      failures.push({
+        file: currentFile,
+        location: currentFile,
+        testHierarchy: fullHierarchy,
+        errorMessage: 'Test failed'
+      });
       continue;
     }
 
-    // Extract error message (first non-empty line after test name, before source code)
-    if (currentTest && !currentError && line.trim() && !line.includes('|')) {
-      // Skip empty lines and source code lines (contain |)
-      // Look for plain error message
-      if (!line.match(/^\s*at\s/) && !line.match(/^\s*\d+\s*\|/)) {
-        currentError = line.trim();
-      }
+    // Match: ● TestSuite › Sub Suite › test name (detailed error format)
+    const detailedTestMatch = line.match(/^\s*●\s+(.+)$/);
+    if (detailedTestMatch) {
+      const fullHierarchy = detailedTestMatch[1].trim();
+      failures.push({
+        file: currentFile,
+        location: currentFile,
+        testHierarchy: fullHierarchy,
+        errorMessage: 'Test failed'
+      });
+      continue;
     }
 
-    // Extract location from stack trace: at ... (file:line:col)
-    const locationMatch = line.match(/at\s+.+?\((.+?):(\d+):(\d+)\)/);
-    if (locationMatch && currentTest && failures.length > 0) {
-      const lastFailure = failures[failures.length - 1];
-      if (lastFailure.testHierarchy === currentTest) {
-        lastFailure.location = `${locationMatch[1]}:${locationMatch[2]}:${locationMatch[3]}`;
-      }
-    }
-  }
+    // Track test suite hierarchy (lines that are just text, no symbols)
+    // These are describe blocks like "Vibe-Validate Integration Failures"
+    const suiteMatch = line.match(/^\s+([A-Z][\w\s›-]+)$/);
+    if (suiteMatch && !line.includes('✕') && !line.includes('✓') && !line.includes('ms)')) {
+      const suiteName = suiteMatch[1].trim();
 
-  // Save last test
-  if (currentTest && currentError) {
-    failures.push({
-      file: currentFile || 'unknown',
-      location: currentFile || 'unknown',
-      testHierarchy: currentTest,
-      errorMessage: currentError.trim()
-    });
+      // Adjust hierarchy stack based on indentation
+      // If indent decreased, pop suites until we're at the right level
+      while (hierarchyStack.length > 0 && indent <= hierarchyStack.length * 2) {
+        hierarchyStack.pop();
+      }
+
+      // Add this suite to the stack
+      hierarchyStack.push(suiteName);
+    }
   }
 
   // Build formatted errors

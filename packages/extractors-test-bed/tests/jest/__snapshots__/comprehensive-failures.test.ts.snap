@@ -1,0 +1,20 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Vibe-Validate Integration Failures Extractors › Snapshot Testing should match extractor output snapshot 1`] = `
+{
+  "cleanOutput": "[Test 1/1] packages/core/test/runner.test.ts:45:12
+Test: ValidationRunner > should fail
+Error: AssertionError: expected 2 to equal 3",
+  "errors": [
+    {
+      "column": 12,
+      "file": "packages/core/test/runner.test.ts",
+      "line": 45,
+      "message": "AssertionError: expected 2 to equal 3",
+    },
+  ],
+  "guidance": "1 test(s) failed. Fix the assertion in the test file at the location shown. Run: npm test -- <test-file> to verify the fix.",
+  "summary": "1 test failure(s)",
+  "totalCount": 1,
+}
+`;

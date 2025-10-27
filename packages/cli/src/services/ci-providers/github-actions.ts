@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
-import { extractByStepName } from '@vibe-validate/extractors';
+import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type {
   CIProvider,
   PullRequest,
@@ -179,7 +179,7 @@ export class GitHubActionsProvider implements CIProvider {
       // If validation failed and we have step output, run it through extractors
       // to extract structured failure details (test names, file locations, etc.)
       if (!result.passed && result.failedStep && result.failedStepOutput) {
-        const extractorResult = extractByStepName(result.failedStep, result.failedStepOutput);
+        const extractorResult = autoDetectAndExtract(result.failedStep, result.failedStepOutput);
 
         // Extract failed tests in "file:line" format from extractor errors
         if (extractorResult.errors && extractorResult.errors.length > 0) {

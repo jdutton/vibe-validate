@@ -72,10 +72,10 @@ describe('Vibe-Validate Integration Failures', () => {
   describe('Core › Runtime Type Errors', () => {
     it('should fail when calling method on undefined', async () => {
       // INTENTIONAL FAILURE: Runtime TypeError
-      const { extractByStepName } = await import('@vibe-validate/extractors');
+      const { autoDetectAndExtract } = await import('@vibe-validate/extractors');
 
       // Pass undefined as output (runtime TypeError)
-      const result = extractByStepName('test', undefined as any);
+      const result = autoDetectAndExtract('test', undefined as any);
 
       expect(result.cleanOutput.length).toBeGreaterThan(0);
     });

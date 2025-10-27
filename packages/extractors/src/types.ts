@@ -36,11 +36,31 @@ export interface FormattedError {
 }
 
 /**
+ * Metadata about which extractor was selected and why
+ */
+export interface DetectionMetadata {
+  /** Which extractor was used (e.g., "jest", "vitest", "typescript", "generic") */
+  extractor: string;
+
+  /** Confidence in detection (0-100) */
+  confidence: number;
+
+  /** Patterns that matched (e.g., ["FAIL pattern", "✕ symbols found"]) */
+  patterns: string[];
+
+  /** Why this extractor was chosen */
+  reason: string;
+}
+
+/**
  * Metadata about extraction quality (what the extractor knows about its own extraction)
  *
  * Note: Extractor doesn't know expected count - test infrastructure compares against ground truth
  */
 export interface ExtractionMetadata {
+  /** Detection information (which extractor, why) - only included when developerFeedback: true */
+  detection?: DetectionMetadata;
+
   /** Extraction confidence (0-100) based on pattern match quality */
   confidence: number;
 

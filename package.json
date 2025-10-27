@@ -40,6 +40,8 @@
     "test": "node packages/cli/dist/bin.js run \"vitest run\"",
     "test:watch": "vitest",
     "test:coverage": "node packages/cli/dist/bin.js run \"vitest run --coverage\"",
+    "test:system": "vitest run --config vitest.config.system.ts",
+    "test:system:watch": "vitest --config vitest.config.system.ts",
     "lint": "node packages/cli/dist/bin.js run \"eslint \\\"packages/*/src/**/*.ts\\\" --max-warnings 0\"",
     "typecheck": "node packages/cli/dist/bin.js run \"pnpm -r typecheck\"",
     "clean": "pnpm -r clean && rm -rf node_modules",

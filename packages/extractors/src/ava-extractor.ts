@@ -8,7 +8,6 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
-import { stripAnsiCodes } from './utils.js';
 
 /**
  * Extract errors from Ava test output
@@ -24,12 +23,12 @@ import { stripAnsiCodes } from './utils.js';
  * ```
  */
 export function extractAvaErrors(output: string): ErrorExtractorResult {
-  const cleanOutput = stripAnsiCodes(output);
+  // Note: ANSI codes are stripped centrally in smart-extractor.ts
 
   // Extract all failures using two-pass approach:
   // 1. Parse summary lines to get test names
   // 2. Parse detailed blocks to get file locations and messages
-  const failures = extractFailures(cleanOutput);
+  const failures = extractFailures(output);
 
   if (failures.length === 0) {
     return {

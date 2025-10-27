@@ -18,7 +18,7 @@ import {
   getThreshold,
   computeQualityScore,
 } from './sample-loader.js';
-import { extractByStepName } from '../src/smart-extractor.js';
+import { autoDetectAndExtract } from '../src/smart-extractor.js';
 import type { Sample, SampleTestResult, ActualExtraction } from './sample-types.js';
 
 describe('Sample-Driven Extractor Tests', () => {
@@ -47,7 +47,7 @@ describe('Sample-Driven Extractor Tests', () => {
           // Run extractor on raw input
           // Use tool name as step name hint for smart routing
           const stepName = `${sample.metadata.tool} validation`;
-          const extractorResult = extractByStepName(stepName, sample.input.raw);
+          const extractorResult = autoDetectAndExtract(stepName, sample.input.raw);
 
           // Build actual extraction result
           const actual: ActualExtraction = {

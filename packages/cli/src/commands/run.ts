@@ -7,7 +7,7 @@
 
 import type { Command } from 'commander';
 import { spawn } from 'child_process';
-import { extractByStepName } from '@vibe-validate/extractors';
+import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import yaml from 'yaml';
 
@@ -141,7 +141,7 @@ async function executeAndExtract(commandString: string): Promise<{
       const stepName = inferStepName(commandString);
 
       // Extract errors using smart extractor
-      const extraction = extractByStepName(stepName, combinedOutput);
+      const extraction = autoDetectAndExtract(stepName, combinedOutput);
 
       const result: RunResult = {
         command: commandString,
@@ -332,7 +332,7 @@ function mergeNestedYaml(
     console.error('Warning: Failed to parse nested YAML output:', error);
 
     const stepName = inferStepName(outerCommand);
-    const extraction = extractByStepName(stepName, yamlOutput);
+    const extraction = autoDetectAndExtract(stepName, yamlOutput);
 
     return {
       command: outerCommand,

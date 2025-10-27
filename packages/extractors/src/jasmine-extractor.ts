@@ -7,7 +7,6 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
-import { stripAnsiCodes } from './utils.js';
 
 /**
  * Extract errors from Jasmine test output
@@ -23,15 +22,15 @@ import { stripAnsiCodes } from './utils.js';
  * ```
  */
 export function extractJasmineErrors(output: string): ErrorExtractorResult {
-  const cleanOutput = stripAnsiCodes(output);
+  // Note: ANSI codes are stripped centrally in smart-extractor.ts
 
   // Check if this looks like Jasmine output
-  if (!cleanOutput.includes('spec') && !cleanOutput.includes('Failures:')) {
+  if (!output.includes('spec') && !output.includes('Failures:')) {
     return {
       summary: 'Unable to parse Jasmine output - invalid format',
       errors: [],
       totalCount: 0,
-      cleanOutput: cleanOutput.trim(),
+      cleanOutput: output.trim(),
       guidance: 'Ensure the input is valid Jasmine test output',
       metadata: {
         confidence: 0,
@@ -42,7 +41,7 @@ export function extractJasmineErrors(output: string): ErrorExtractorResult {
   }
 
   // Extract failure count
-  const failureMatch = cleanOutput.match(/(\d+) spec(?:s)?, (\d+) failure(?:s)?/);
+  const failureMatch = output.match(/(\d+) spec(?:s)?, (\d+) failure(?:s)?/);
   const failureCount = failureMatch ? parseInt(failureMatch[2], 10) : 0;
 
   if (failureCount === 0) {
@@ -61,7 +60,7 @@ export function extractJasmineErrors(output: string): ErrorExtractorResult {
   }
 
   // Extract all failures
-  const failures = extractFailures(cleanOutput);
+  const failures = extractFailures(output);
   const errors: FormattedError[] = [];
 
   let completeCount = 0;
@@ -136,7 +135,7 @@ function extractFailures(output: string): FailureInfo[] {
     const failureMatch = line.match(/^(\d+)\)\s+(.+)$/);
 
     if (failureMatch) {
-      const _failureNumber = failureMatch[1]; // Extracted but not used (line number extracted from stack trace instead)
+      // failureMatch[1] contains the failure number (not used - line number extracted from stack trace instead)
       const testName = failureMatch[2].trim();
 
       let j = i + 1;

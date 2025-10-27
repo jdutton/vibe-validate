@@ -59,11 +59,11 @@ test('Config › Type Errors › should fail when passing invalid config type', 
 test('Core › Runtime Type Errors › should fail when calling method on undefined', async (t) => {
   // FAILURE TYPE 4: Runtime TypeError
   // INTENTIONAL FAILURE: Runtime TypeError
-  const { extractByStepName } = await import('@vibe-validate/extractors');
+  const { autoDetectAndExtract } = await import('@vibe-validate/extractors');
 
   // Pass undefined as output (runtime TypeError)
   try {
-    const result = extractByStepName('test', undefined);
+    const result = autoDetectAndExtract('test', undefined);
     t.ok(result.cleanOutput.length > 0, 'should have clean output');
   } catch (err) {
     t.fail(`${err.message}`);
