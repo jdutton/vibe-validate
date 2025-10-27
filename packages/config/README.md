@@ -31,7 +31,7 @@ npx vibe-validate init --template typescript-nodejs
 - `typescript-nodejs` - Node.js applications
 - `typescript-react` - React/Next.js applications
 
-All templates: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+All templates: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 
 ### Example YAML Configuration
 

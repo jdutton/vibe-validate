@@ -93,7 +93,7 @@ Next steps:
 <!-- config:example -->
 ```yaml
 # vibe-validate.config.yaml
-# Reference: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+# Reference: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 git:
   mainBranch: main
 validation:

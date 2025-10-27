@@ -14,7 +14,8 @@ import { parse as parseYaml } from 'yaml';
 import { resolve } from 'path';
 import { safeValidateConfig } from '@vibe-validate/config';
 
-const TEMPLATES_DIR = resolve(__dirname, '../../../config-templates');
+// Templates moved to packages/cli/config-templates (permanent location)
+const TEMPLATES_DIR = resolve(__dirname, '../config-templates');
 
 const TEMPLATE_FILES = [
   'typescript-library.yaml',
@@ -25,7 +26,7 @@ const TEMPLATE_FILES = [
 
 describe('config-templates/', () => {
   describe('directory structure', () => {
-    it('should have config-templates directory at repo root', () => {
+    it('should have config-templates directory in CLI package', () => {
       expect(existsSync(TEMPLATES_DIR)).toBe(true);
     });
 

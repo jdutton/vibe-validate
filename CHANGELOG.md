@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2025-10-27
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed broken `init` command** (Issue #36 - complete fix)
+  - **Problem**: `vibe-validate init` still failed with "template not found" despite v0.14.1 fix
+  - **Solution**: Moved templates permanently to `packages/cli/config-templates/` and fixed path resolution in both `init.ts` and `template-discovery.ts`
+  - **Impact**: `vibe-validate init` now works reliably for all users
+
+### ✨ Improvements
+
+- **Enhanced `config` command error reporting**
+  - Config command now shows detailed validation errors with field names, expected types, and helpful suggestions
+  - Consistent error messages across `config` and `doctor` commands
+
+### 🧪 Testing
+
+- Added 23 comprehensive regression tests covering `init`, `config`, and `doctor` commands
+- Added end-to-end packaging test that validates template discovery at runtime
+
 ## [0.14.1] - 2025-10-27
 
 ### 🐛 Bug Fixes
@@ -460,7 +480,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Four YAML templates available in `config-templates/` directory
   - Templates are transparent (everything visible, no hidden defaults)
   - Anyone can contribute templates (no TypeScript knowledge needed)
-  - Browse on GitHub: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+  - Browse on GitHub: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
   - Copy template → customize → done
 
 - **Strict Validation Prevents Configuration Drift**
@@ -537,7 +557,7 @@ Run `vibe-validate doctor` to check your config for issues.
     - `typescript-react.yaml` - For React SPAs and Next.js applications
     - `minimal.yaml` - Bare-bones template for custom projects
   - Each template includes descriptive comments and JSON Schema URL for IDE autocomplete
-  - Browse templates on GitHub: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+  - Browse templates on GitHub: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 
 ### 🐛 Bug Fixes
 
