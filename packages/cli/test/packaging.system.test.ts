@@ -23,17 +23,22 @@ describe('npm package tarball (system test)', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'vibe-validate-pack-test-'));
     extractDir = join(tempDir, 'extracted');
 
-    // Run npm pack in packages/cli
+    // Run pnpm pack in packages/cli (resolves workspace:* dependencies)
     const cliDir = join(__dirname, '..');
-    const output = execSync('npm pack --pack-destination ' + tempDir, {
+    const output = execSync('pnpm pack --pack-destination ' + tempDir, {
       cwd: cliDir,
       encoding: 'utf-8',
     });
 
-    // Extract tarball filename from output
-    const tarballName = output.trim().split('\n').pop()?.trim();
+    // Extract tarball filename from pnpm pack output
+    // pnpm outputs the full path on the last line
+    const lines = output.trim().split('\n');
+    const tarballFullPath = lines[lines.length - 1].trim();
+
+    // Get just the filename
+    const tarballName = tarballFullPath.split('/').pop() || '';
     if (!tarballName) {
-      throw new Error('Failed to get tarball name from npm pack output');
+      throw new Error('Failed to get tarball name from pnpm pack output');
     }
 
     tarballPath = join(tempDir, tarballName);
@@ -41,7 +46,7 @@ describe('npm package tarball (system test)', () => {
     // Extract tarball
     execSync(`tar -xzf "${tarballPath}" -C "${tempDir}"`, { encoding: 'utf-8' });
 
-    // npm pack creates a "package/" subdirectory
+    // pnpm pack creates a "package/" subdirectory
     const packageDir = join(tempDir, 'package');
     if (existsSync(packageDir)) {
       extractDir = packageDir;
@@ -155,6 +160,71 @@ describe('npm package tarball (system test)', () => {
       const { size } = require('fs').statSync(tarballPath);
       const sizeMB = size / (1024 * 1024);
       expect(sizeMB, 'Tarball should be < 5MB').toBeLessThan(5);
+    });
+  });
+
+  describe('end-to-end init command (runtime path resolution)', () => {
+    let installDir: string;
+
+    beforeAll(() => {
+      // Create a fresh temp directory to simulate a user install
+      installDir = mkdtempSync(join(tmpdir(), 'vibe-validate-e2e-test-'));
+
+      // Initialize a package.json
+      execSync('npm init -y', {
+        cwd: installDir,
+        stdio: 'ignore',
+      });
+
+      // Install the tarball
+      execSync(`npm install "${tarballPath}"`, {
+        cwd: installDir,
+        stdio: 'ignore',
+      });
+    });
+
+    afterAll(() => {
+      // Cleanup install directory
+      if (installDir && existsSync(installDir)) {
+        rmSync(installDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should be able to run init command without errors', () => {
+      // Run init with --dry-run to test template discovery
+      // This is the critical test: can the init command FIND the templates at runtime?
+      const output = execSync('npx vibe-validate init --dry-run', {
+        cwd: installDir,
+        encoding: 'utf-8',
+      });
+
+      // Should not contain error message
+      expect(
+        output.includes('Template') && output.includes('not found'),
+        'Init command should not report template not found'
+      ).toBe(false);
+
+      // Should show successful preview
+      expect(
+        output.includes('Configuration preview') || output.includes('Would create'),
+        'Init command should show configuration preview'
+      ).toBe(true);
+    });
+
+    it('should discover templates from installed package location', () => {
+      // Run init with --help to list available templates
+      const output = execSync('npx vibe-validate init --help', {
+        cwd: installDir,
+        encoding: 'utf-8',
+      });
+
+      // Should list templates
+      expect(
+        output.includes('minimal') ||
+          output.includes('typescript-library') ||
+          output.includes('typescript-nodejs'),
+        'Init help should list available templates'
+      ).toBe(true);
     });
   });
 });

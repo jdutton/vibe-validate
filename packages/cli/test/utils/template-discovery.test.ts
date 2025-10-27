@@ -30,16 +30,11 @@ describe('template-discovery', () => {
 
     it('should match actual files in config-templates directory', () => {
       const templates = discoverTemplates();
-      const templatesDir = join(process.cwd(), 'config-templates');
+      // Templates are now at packages/cli/config-templates
+      // From test at packages/cli/test/utils, that's ../../config-templates
+      const templatesDir = join(__dirname, '../../config-templates');
 
-      // Check if directory exists
-      if (!existsSync(templatesDir)) {
-        // If running from packages/cli, try going up
-        const altPath = join(process.cwd(), '../../config-templates');
-        if (existsSync(altPath)) {
-          return; // Skip test if in wrong directory
-        }
-      }
+      expect(existsSync(templatesDir)).toBe(true);
 
       const actualFiles = readdirSync(templatesDir)
         .filter(file => file.endsWith('.yaml'))

@@ -29,27 +29,20 @@ export interface TemplateMetadata {
  * @returns Absolute path to config-templates directory
  */
 function getTemplatesDir(): string {
-  // In production (npm package), templates are at <package-root>/config-templates
-  // In development, templates are at <repo-root>/config-templates
+  // Templates are at packages/cli/config-templates (permanent location)
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
 
-  // Try paths in order:
-  // 1. Development: packages/cli/src/utils/../../../config-templates
-  const devPath = join(__dirname, '../../../../config-templates');
-  if (existsSync(devPath)) {
-    return devPath;
+  // Path is the same for both dev and production:
+  // Development: packages/cli/src/utils/../../config-templates
+  // Production:  packages/cli/dist/utils/../../config-templates
+  const templatesPath = join(__dirname, '../../config-templates');
+
+  if (!existsSync(templatesPath)) {
+    throw new Error(`Config templates directory not found at ${templatesPath}`);
   }
 
-  // 2. Production: packages/cli/dist/utils/../../config-templates
-  const prodPath = join(__dirname, '../../../config-templates');
-  if (existsSync(prodPath)) {
-    return prodPath;
-  }
-
-  // 3. Fallback: assume monorepo root
-  const fallbackPath = join(process.cwd(), 'config-templates');
-  return fallbackPath;
+  return templatesPath;
 }
 
 /**

@@ -226,6 +226,7 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
 /**
  * Get the path to the config-templates directory
  *
+ * Templates are located at packages/cli/config-templates/ (permanent location).
  * Works both in development (from source) and when installed as npm package.
  *
  * @returns Absolute path to config-templates directory
@@ -234,22 +235,20 @@ function getTemplatesDir(): string {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
 
-  // Try paths in order:
-  // 1. Development: packages/cli/src/commands/../../config-templates
-  const devPath = join(__dirname, '../../../../config-templates');
-  if (existsSync(devPath)) {
-    return devPath;
+  // Both development and production use the same relative path:
+  // - Development: packages/cli/src/commands/../../config-templates
+  // - Production: packages/cli/dist/commands/../../config-templates
+  const templatesPath = join(__dirname, '../../config-templates');
+
+  if (!existsSync(templatesPath)) {
+    throw new Error(
+      `Config templates directory not found at ${templatesPath}. ` +
+      `This should not happen - please report this bug at ` +
+      `https://github.com/jdutton/vibe-validate/issues`
+    );
   }
 
-  // 2. Production: packages/cli/dist/commands/../config-templates
-  const prodPath = join(__dirname, '../../../config-templates');
-  if (existsSync(prodPath)) {
-    return prodPath;
-  }
-
-  // 3. Fallback: assume monorepo root
-  const fallbackPath = join(process.cwd(), 'config-templates');
-  return fallbackPath;
+  return templatesPath;
 }
 
 /**

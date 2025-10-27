@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2025-10-27
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed broken `init` command with architectural improvement** (Issue #36 - proper fix)
+  - **Problem**: v0.14.1 fix was incomplete - `vibe-validate init` still failed with "template 'minimal' not found"
+    - Templates were packaged but path resolution was still wrong
+    - Build-time template copying added complexity and failure points
+  - **Root Cause**: Fragile two-location architecture (root + copied to CLI package)
+  - **Solution**: **Moved templates permanently to `packages/cli/config-templates/`** (single source of truth)
+    - ✅ No copy step = no copy failures
+    - ✅ Simpler path resolution (one path works for dev + prod)
+    - ✅ Templates only exist in one place
+    - ✅ Removed `copy-templates.js` script entirely
+  - **Impact**: `vibe-validate init` now actually works for all users
+
+### ♻️ Refactoring
+
+- **Simplified template architecture**
+  - Moved templates from `config-templates/` to `packages/cli/config-templates/` permanently
+  - Removed build-time template copying
+  - Simplified `getTemplatesDir()` function (one path instead of fallback chain)
+  - Updated all GitHub URLs to new location
+  - Cleaner, more maintainable codebase
+
+### ✨ Improvements
+
+- **Enhanced `config` command error reporting**
+  - **Problem**: Config command didn't show detailed validation errors like doctor command
+  - **Solution**: Added comprehensive error reporting with specific field-level errors
+  - **Impact**: Users now see exactly what's wrong with their config
+  - Example output shows:
+    - Specific validation errors (field names, expected vs actual types)
+    - Helpful suggestions with links to docs and examples
+    - Consistent error format across all commands
+
+- **Shared configuration error reporting**
+  - Created `config-error-reporter.ts` utility for DRY error handling
+  - Both `config` and `doctor` commands use shared logic
+  - Ensures consistent error messages and suggestions across all commands
+  - Easier to maintain and test
+
+### 🧪 Testing Improvements
+
+- **Added comprehensive regression test suites** (23 new tests total)
+  - `config-error-reporting.test.ts` (6 tests)
+    - Validates config command shows detailed errors for invalid configs
+    - Tests type mismatches, unknown fields, missing required fields, YAML syntax errors
+    - Verifies error message limits (max 5 errors with "and X more")
+  - `doctor-config-errors.test.ts` (4 tests)
+    - Ensures doctor shows same detailed errors as config command
+    - Tests invalid configs, valid configs, and missing config file scenarios
+  - `init-execution.test.ts` (13 tests)
+    - Tests dry-run mode for all 4 templates
+    - Validates actual config file creation and schema compliance
+    - Tests --force flag, template discovery, and error messages
+    - Ensures all templates listed in help output and error messages
+
+- **Added end-to-end packaging test**
+  - **Problem**: Existing tests verified templates were packaged, but didn't test if init command could FIND them at runtime
+  - **Solution**: New system test that:
+    1. Packs CLI with pnpm (resolves `workspace:*` dependencies)
+    2. Installs tarball in fresh temp directory
+    3. Runs `vibe-validate init --dry-run` to verify template discovery works
+  - **Impact**: Prevents future regressions - test would have caught v0.14.0, v0.14.1, and this bug
+
+- **Fixed template discovery path resolution**
+  - Updated `template-discovery.ts` to use new template location (same bug as init.ts)
+  - Fixed all existing tests to reference `packages/cli/config-templates/` instead of root
+  - All tests now pass with new architecture
+
+- **Fixed packaging test to use pnpm pack**
+  - Changed from `npm pack` (leaves `workspace:*` unresolved) to `pnpm pack` (resolves dependencies)
+  - Tests now validate actual publishable packages
+
+- **Validated all config templates**
+  - All 4 templates (minimal, typescript-library, typescript-nodejs, typescript-react) pass schema validation
+  - Ensures templates are always valid and ready to use
+
 ## [0.14.1] - 2025-10-27
 
 ### 🐛 Bug Fixes
@@ -460,7 +539,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Four YAML templates available in `config-templates/` directory
   - Templates are transparent (everything visible, no hidden defaults)
   - Anyone can contribute templates (no TypeScript knowledge needed)
-  - Browse on GitHub: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+  - Browse on GitHub: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
   - Copy template → customize → done
 
 - **Strict Validation Prevents Configuration Drift**
@@ -537,7 +616,7 @@ Run `vibe-validate doctor` to check your config for issues.
     - `typescript-react.yaml` - For React SPAs and Next.js applications
     - `minimal.yaml` - Bare-bones template for custom projects
   - Each template includes descriptive comments and JSON Schema URL for IDE autocomplete
-  - Browse templates on GitHub: https://github.com/jdutton/vibe-validate/tree/main/config-templates
+  - Browse templates on GitHub: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 
 ### 🐛 Bug Fixes
 

@@ -5,7 +5,8 @@
  */
 
 import type { Command } from 'commander';
-import { loadConfig, findConfigPath } from '../utils/config-loader.js';
+import { loadConfigWithErrors, findConfigPath } from '../utils/config-loader.js';
+import { displayConfigErrors } from '../utils/config-error-reporter.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 
@@ -25,8 +26,17 @@ export function configCommand(program: Command): void {
           process.exit(1);
         }
 
-        // Load and validate config
-        const config = await loadConfig();
+        // Load and validate config with detailed error reporting
+        const result = await loadConfigWithErrors();
+
+        // Show detailed validation errors if config is invalid
+        if (!result.config && result.errors) {
+          const fileName = result.filePath?.split('/').pop() || 'vibe-validate.config.yaml';
+          displayConfigErrors({ fileName, errors: result.errors });
+          process.exit(1);
+        }
+
+        const config = result.config;
         if (!config) {
           console.error(chalk.red('❌ Configuration is invalid'));
           process.exit(1);
