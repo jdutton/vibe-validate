@@ -200,7 +200,7 @@ function extractFailures(output: string): FailureInfo[] {
         // Pattern 3: "     TypeError: Cannot read..."
         if (!message) {
           // Match plain "Error" or prefixed errors like "TypeError", "AssertionError"
-          const errorMatch = nextLine.match(/^\s+([A-Za-z]*Error)(?:\s\[[\w_]+\])?\s*:\s*(.+)/);
+          const errorMatch = nextLine.match(/^\s+([A-Za-z]*Error)(?:\s\[\w+\])?\s*:\s*(.+)/);
           if (errorMatch) {
             errorType = errorMatch[1];
             message = errorMatch[2].trim();

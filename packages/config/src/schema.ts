@@ -127,10 +127,7 @@ export const SecretScanningSchema = z.object({
 }).strict().refine(
   (data) => {
     // If enabled is true, scanCommand must be provided
-    if (data.enabled && !data.scanCommand) {
-      return false;
-    }
-    return true;
+    return !data.enabled || !!data.scanCommand;
   },
   {
     message: 'scanCommand is required when secret scanning is enabled',

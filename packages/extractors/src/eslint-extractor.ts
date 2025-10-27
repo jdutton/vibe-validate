@@ -34,7 +34,7 @@ function deduplicateESLintErrors(errors: FormattedError[]): FormattedError[] {
 
   // For each location, pick the best error
   const deduplicated: FormattedError[] = [];
-  for (const [_key, locationErrors] of errorMap) {
+  for (const locationErrors of errorMap.values()) {
     if (locationErrors.length === 1) {
       deduplicated.push(locationErrors[0]);
       continue;

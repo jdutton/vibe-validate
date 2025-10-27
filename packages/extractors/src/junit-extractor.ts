@@ -208,8 +208,8 @@ function extractFailures(xml: string): FailureInfo[] {
 
     // Extract location from failure text (❯ file:line:column)
     // Note: We strip column number to keep format consistent (file:line)
-    // Pattern allows word chars, forward slashes, dots, hyphens, and underscores in paths
-    const locationPattern = /❯\s+([\w/._-]+):(\d+)(?::\d+)?/;
+    // Pattern allows word chars, forward slashes, dots, and hyphens in paths
+    const locationPattern = /❯\s+([\w/.-]+):(\d+)(?::\d+)?/;
     const locationMatch = failureText.match(locationPattern);
 
     let location: string | undefined;
