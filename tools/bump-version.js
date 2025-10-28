@@ -18,9 +18,9 @@
  *   1 - Error (invalid version, file not found, etc.)
  */
 
-import { readFileSync, writeFileSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -74,7 +74,7 @@ const versionArg = args[0];
 // Helper to increment version
 function incrementVersion(currentVersion, type) {
   const parts = currentVersion.split('.').map(Number);
-  if (parts.length !== 3 || parts.some(isNaN)) {
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
     throw new Error(`Invalid current version: ${currentVersion}`);
   }
 
@@ -210,9 +210,12 @@ try {
     try {
       const result = updatePackageVersion(pkgPath, newVersion);
       if (result.skipped) {
-        const reasonText = result.reason === 'no-version'
-          ? 'no version field'
-          : `${result.reason}${result.version ? ', v' + result.version : ''}`;
+        let reasonText;
+        if (result.reason === 'no-version') {
+          reasonText = 'no version field';
+        } else {
+          reasonText = result.version ? `${result.reason}, v${result.version}` : result.reason;
+        }
         log(`  - ${result.name}: skipped (${reasonText})`, 'yellow');
         skippedCount++;
       } else if (result.updated) {
