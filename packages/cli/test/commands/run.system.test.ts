@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'child_process';
-import yaml from 'yaml';
+import { executeCommandWithYaml } from '../helpers/test-command-runner.js';
 
 /**
  * SYSTEM TESTS for the run command
@@ -60,26 +59,13 @@ describe('run command system tests', () => {
       // Instead: run → npx vitest single-file
       const command = `${CLI_PATH} run "npx vitest packages/extractors/test/typescript-extractor.test.ts --run"`;
 
-      let output: string;
-      let exitCode = 0;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          timeout: 30000, // 30 seconds (much faster - single test file)
-        });
-      } catch (error: any) {
-        output = error.stdout || error.stderr || '';
-        exitCode = error.status || 1;
-      }
-
-      const parsed = yaml.parse(output);
+      const result = executeCommandWithYaml(command, { timeout: 30000 });
 
       // Should successfully extract errors (if any) from the test run
-      expect(parsed).toBeDefined();
-      expect(parsed.exitCode).toBeDefined();
+      expect(result.parsed).toBeDefined();
+      expect(result.parsed.exitCode).toBeDefined();
       // This test file should pass, so exitCode should be 0
-      expect(parsed.exitCode).toBe(0);
+      expect(result.parsed.exitCode).toBe(0);
     });
   });
 
@@ -90,22 +76,12 @@ describe('run command system tests', () => {
       // NOTE: Must run from extractors-test-bed directory for paths to work
       const command = `node ../../packages/cli/dist/bin.js run "npx vitest tests/vitest/comprehensive-failures.test.ts --run"`;
 
-      let output: string;
-      let exitCode = 0;
+      const result = executeCommandWithYaml(command, {
+        cwd: 'packages/extractors-test-bed',
+        timeout: 60000,
+      });
 
-      try {
-        output = execSync(command, {
-          cwd: 'packages/extractors-test-bed', // Run from extractors-test-bed directory
-          encoding: 'utf-8',
-          timeout: 60000, // 60 seconds for real vitest execution
-        });
-      } catch (error: any) {
-        // Command failed - capture output from error object
-        output = error.stdout || error.stderr || '';
-        exitCode = error.status || 1;
-      }
-
-      const parsed = yaml.parse(output);
+      const parsed = result.parsed;
 
       // Debug: Show extraction results
       console.log('\nDEBUG: Vitest extraction results:');
@@ -140,22 +116,12 @@ describe('run command system tests', () => {
       // NOTE: Jest is slower than other runners - needs longer timeout
       const command = `node ../../packages/cli/dist/bin.js run "npx jest tests/jest/comprehensive-failures.test.ts"`;
 
-      let output: string;
-      let exitCode = 0;
+      const result = executeCommandWithYaml(command, {
+        cwd: 'packages/extractors-test-bed',
+        timeout: 120000,
+      });
 
-      try {
-        output = execSync(command, {
-          cwd: 'packages/extractors-test-bed', // Run from extractors-test-bed directory
-          encoding: 'utf-8',
-          timeout: 120000, // Jest needs 2 minutes
-        });
-      } catch (error: any) {
-        // Command failed - capture output from error object
-        output = error.stdout || error.stderr || '';
-        exitCode = error.status || 1;
-      }
-
-      const parsed = yaml.parse(output);
+      const parsed = result.parsed;
 
       // Debug: Show extraction results
       console.log('\nDEBUG: Jest extraction results:');
@@ -189,22 +155,12 @@ describe('run command system tests', () => {
       // NOTE: Must run from extractors-test-bed directory for paths to work
       const command = `node ../../packages/cli/dist/bin.js run "npx playwright test tests/playwright/comprehensive-failures.spec.ts"`;
 
-      let output: string;
-      let exitCode = 0;
+      const result = executeCommandWithYaml(command, {
+        cwd: 'packages/extractors-test-bed',
+        timeout: 120000,
+      });
 
-      try {
-        output = execSync(command, {
-          cwd: 'packages/extractors-test-bed', // Run from extractors-test-bed directory
-          encoding: 'utf-8',
-          timeout: 120000, // Playwright needs 2 minutes (browser startup + test timeouts)
-        });
-      } catch (error: any) {
-        // Command failed - capture output from error object
-        output = error.stdout || error.stderr || '';
-        exitCode = error.status || 1;
-      }
-
-      const parsed = yaml.parse(output);
+      const parsed = result.parsed;
 
       // Debug: Show extraction results
       console.log('\nDEBUG: Playwright extraction results:');
@@ -237,29 +193,15 @@ describe('run command system tests', () => {
       // This creates a file with a type error and runs tsc on it
       const command = `${CLI_PATH} run "pnpm typecheck"`;
 
-      let output: string;
-      let exitCode = 0;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          timeout: 60000,
-        });
-      } catch (error: any) {
-        // vibe-validate run outputs to stdout, but with stdio: ['pipe', 'pipe', 'pipe']
-        // and non-zero exit, output may be in stderr. Check both.
-        output = error.stdout || error.stderr || '';
-        exitCode = error.status || 1;
-      }
-
-      const parsed = yaml.parse(output);
+      const result = executeCommandWithYaml(command, { timeout: 60000 });
+      const parsed = result.parsed;
 
       // Should detect as TypeScript and extract (even if no errors)
       expect(parsed.extraction).toBeDefined();
       expect(parsed.command).toBeDefined();
 
       // If there are TypeScript errors, they should be extracted
-      if (exitCode !== 0) {
+      if (result.exitCode !== 0) {
         expect(parsed.extraction.errors.length).toBeGreaterThan(0);
       }
     });

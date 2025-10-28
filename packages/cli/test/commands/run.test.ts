@@ -3,7 +3,8 @@ import { Command } from 'commander';
 import { runCommand } from '../../src/commands/run.js';
 import * as childProcess from 'child_process';
 import type { ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import { createMockChildProcess } from '../helpers/mock-helpers.js';
 
 // Mock child_process.spawn
 vi.mock('child_process', () => ({
@@ -1371,30 +1372,3 @@ extraction:
   });
 });
 
-/**
- * Helper to create a mock ChildProcess that emits data and exits
- */
-function createMockChildProcess(
-  stdoutData: string,
-  stderrData: string,
-  exitCode: number
-): ChildProcess {
-  const mockProcess = new EventEmitter() as any;
-  mockProcess.stdout = new EventEmitter();
-  mockProcess.stderr = new EventEmitter();
-
-  // Emit data and close events asynchronously
-  process.nextTick(() => {
-    if (stdoutData) {
-      mockProcess.stdout.emit('data', Buffer.from(stdoutData));
-    }
-    if (stderrData) {
-      mockProcess.stderr.emit('data', Buffer.from(stderrData));
-    }
-    mockProcess.stdout.emit('end');
-    mockProcess.stderr.emit('end');
-    mockProcess.emit('close', exitCode);
-  });
-
-  return mockProcess;
-}
