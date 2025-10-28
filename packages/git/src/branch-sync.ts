@@ -82,8 +82,8 @@ export class BranchSyncChecker {
   private readonly gitExecutor: GitExecutor;
 
   constructor(options: SyncCheckOptions = {}) {
-    this.remoteBranch = options.remoteBranch || 'origin/main';
-    this.gitExecutor = options.gitExecutor || execGit;
+    this.remoteBranch = options.remoteBranch ?? 'origin/main';
+    this.gitExecutor = options.gitExecutor ?? execGit;
   }
 
   /**
@@ -147,7 +147,9 @@ export class BranchSyncChecker {
     try {
       await this.gitExecutor(['rev-parse', '--verify', this.remoteBranch]);
       return true;
-    } catch (_error) {
+    } catch (error) {
+      // Expected when remote branch doesn't exist
+      console.debug(`Remote branch ${this.remoteBranch} not found: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }

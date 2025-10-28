@@ -30,9 +30,10 @@ export function extractJUnitErrors(output: string): ErrorExtractorResult {
   try {
     // Simple XML parsing - look for <testsuite> and <testcase> elements
     isValidXml = parseSimpleXML(output);
-  } catch (_error) {
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     return {
-      summary: 'Unable to parse JUnit XML - invalid format',
+      summary: `Unable to parse JUnit XML - invalid format: ${errorMsg}`,
       errors: [],
       totalCount: 0,
       cleanOutput: output.trim(),
@@ -67,10 +68,10 @@ export function extractJUnitErrors(output: string): ErrorExtractorResult {
   let completeCount = 0;
 
   for (const failure of failures) {
-    const file = failure.file || 'unknown';
-    const location = failure.location || `${file}:0`;
-    const message = failure.message || 'Test failed';
-    const context = failure.testName || '';
+    const file = failure.file ?? 'unknown';
+    const location = failure.location ?? `${file}:0`;
+    const message = failure.message ?? 'Test failed';
+    const context = failure.testName ?? '';
 
     const isComplete = file !== 'unknown' && failure.location && message;
     if (isComplete) {
@@ -166,7 +167,7 @@ function extractFailures(xml: string): FailureInfo[] {
     }
 
     // Extract attributes from testcase opening tag using more reliable string extraction
-    const testcaseTagMatch = testcaseContent.match(/<testcase([^>]*)>/);
+    const testcaseTagMatch = /<testcase([^>]*)>/.exec(testcaseContent);
     const testcaseTag = testcaseTagMatch ? testcaseTagMatch[1] : '';
 
     // Extract classname using indexOf/substring (more reliable than regex for attributes with special chars)
@@ -189,7 +190,7 @@ function extractFailures(xml: string): FailureInfo[] {
 
     // Extract failure element
     const failurePattern = /<failure[^>]*>([\s\S]*?)<\/failure>/;
-    const failureMatch = testcaseInner.match(failurePattern);
+    const failureMatch = failurePattern.exec(testcaseInner);
 
     if (!failureMatch) {
       continue;
@@ -199,18 +200,18 @@ function extractFailures(xml: string): FailureInfo[] {
     const failureText = failureMatch[1];
 
     // Extract message attribute
-    const messageMatch = failureContent.match(/message="([^"]+)"/);
+    const messageMatch = /message="([^"]+)"/.exec(failureContent);
     const message = messageMatch ? messageMatch[1] : undefined;
 
     // Extract error type
-    const typeMatch = failureContent.match(/type="([^"]+)"/);
+    const typeMatch = /type="([^"]+)"/.exec(failureContent);
     const errorType = typeMatch ? typeMatch[1] : undefined;
 
     // Extract location from failure text (❯ file:line:column)
     // Note: We strip column number to keep format consistent (file:line)
-    // Pattern allows word chars, forward slashes, dots, hyphens, and underscores in paths
-    const locationPattern = /❯\s+([\w/._-]+):(\d+)(?::\d+)?/;
-    const locationMatch = failureText.match(locationPattern);
+    // Pattern allows word chars, forward slashes, dots, and hyphens in paths
+    const locationPattern = /❯\s+([\w/.-]+):(\d+)(?::\d+)?/;
+    const locationMatch = locationPattern.exec(failureText);
 
     let location: string | undefined;
     let extractedFile: string | undefined;
@@ -223,7 +224,7 @@ function extractFailures(xml: string): FailureInfo[] {
     // No fallback - if no location found in failure text, leave location undefined
 
     failures.push({
-      file: extractedFile || file,
+      file: extractedFile ?? file,
       location,
       message,
       testName,
@@ -249,12 +250,13 @@ function decodeHtmlEntities(text: string): string {
 /**
  * Generate guidance based on failure types
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 16 acceptable for guidance generation (categorizes multiple error types and generates actionable suggestions)
 function generateGuidance(failures: FailureInfo[]): string {
   const guidances: string[] = [];
   const seen = new Set<string>();
 
   for (const failure of failures) {
-    const message = failure.message || '';
+    const message = failure.message ?? '';
     const errorType = failure.errorType;
 
     // Assertion errors

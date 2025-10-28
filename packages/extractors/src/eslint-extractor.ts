@@ -34,7 +34,7 @@ function deduplicateESLintErrors(errors: FormattedError[]): FormattedError[] {
 
   // For each location, pick the best error
   const deduplicated: FormattedError[] = [];
-  for (const [_key, locationErrors] of errorMap) {
+  for (const locationErrors of errorMap.values()) {
     if (locationErrors.length === 1) {
       deduplicated.push(locationErrors[0]);
       continue;
@@ -75,7 +75,8 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
 
   for (const line of lines) {
     // Try modern format first: file:line:col: severity message [rule-name]
-    const modernMatch = line.match(/^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s+(\S+)$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses ESLint output (controlled linter output), not user input
+    const modernMatch = /^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s+(\S+)$/.exec(line);
     if (modernMatch) {
       const ruleMessage = modernMatch[5].trim();
       const ruleName = modernMatch[6].replace(/[[\]]/g, ''); // Remove brackets if present
@@ -91,7 +92,8 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
     }
 
     // Stylish format: spaces + line:col + spaces + severity + spaces + message + spaces + rule
-    const stylishMatch = line.match(/^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s+(\S+)\s*$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses ESLint output (controlled linter output), not user input
+    const stylishMatch = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s+(\S+)\s*$/.exec(line);
     if (stylishMatch && currentFile) {
       const ruleMessage = stylishMatch[4].trim();
       const ruleName = stylishMatch[5];
@@ -110,7 +112,6 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
     if (line && !line.includes(':') && !line.startsWith(' ') && !line.startsWith('\t') && (line.includes('/') || line.includes('\\'))) {
       // Potential file path for stylish format
       currentFile = line.trim();
-      continue;
     }
   }
 

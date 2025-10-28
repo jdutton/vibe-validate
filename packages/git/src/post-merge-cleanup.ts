@@ -64,9 +64,9 @@ export class PostPRMergeCleanup {
   private readonly dryRun: boolean;
 
   constructor(options: CleanupOptions = {}) {
-    this.mainBranch = options.mainBranch || 'main';
-    this.remoteName = options.remoteName || 'origin';
-    this.dryRun = options.dryRun || false;
+    this.mainBranch = options.mainBranch ?? 'main';
+    this.remoteName = options.remoteName ?? 'origin';
+    this.dryRun = options.dryRun ?? false;
   }
 
   /**
@@ -163,40 +163,91 @@ export class PostPRMergeCleanup {
    */
   private deleteMergedBranches(): string[] {
     try {
-      // Get list of local branches (excluding main)
-      const allBranches = execGitSync(['branch', '--format=%(refname:short)'])
-        .trim()
-        .split('\n')
-        .filter(branch => branch && branch !== this.mainBranch && !branch.startsWith('*'));
+      const branchesToCheck = this.getLocalBranchesToCheck();
+      return this.processMergedBranches(branchesToCheck);
+    } catch (error) {
+      console.debug(`Error deleting merged branches: ${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
+  }
 
-      const deletedBranches: string[] = [];
+  /**
+   * Get list of local branches to check (excluding main branch)
+   */
+  private getLocalBranchesToCheck(): string[] {
+    const allBranches = execGitSync(['branch', '--format=%(refname:short)'])
+      .trim()
+      .split('\n')
+      .filter(branch => branch && branch !== this.mainBranch && !branch.startsWith('*'));
 
-      for (const branch of allBranches) {
-        if (this.isBranchMerged(branch)) {
-          if (this.dryRun) {
-            deletedBranches.push(branch);
-            continue;
-          }
+    return allBranches;
+  }
 
-          try {
-            execGitSync(['branch', '-d', branch]);
-            deletedBranches.push(branch);
-          } catch (_deleteError) {
-            // Try force delete if regular delete fails
-            try {
-              execGitSync(['branch', '-D', branch]);
-              deletedBranches.push(branch);
-            } catch (_forceDeleteError) {
-              // Couldn't delete - skip this branch
-            }
-          }
+  /**
+   * Process list of branches and delete merged ones
+   */
+  private processMergedBranches(branches: string[]): string[] {
+    const deletedBranches: string[] = [];
+
+    for (const branch of branches) {
+      if (this.isBranchMerged(branch)) {
+        const deleted = this.handleBranchDeletion(branch);
+        if (deleted) {
+          deletedBranches.push(branch);
         }
       }
+    }
 
-      return deletedBranches;
+    return deletedBranches;
+  }
 
-    } catch (_error) {
-      return [];
+  /**
+   * Handle deletion of a single branch (dry run or actual deletion)
+   */
+  private handleBranchDeletion(branch: string): boolean {
+    if (this.dryRun) {
+      return true;
+    }
+
+    return this.tryDeleteBranch(branch);
+  }
+
+  /**
+   * Try to delete a branch (with fallback to force delete)
+   */
+  private tryDeleteBranch(branch: string): boolean {
+    // Try regular delete first
+    if (this.attemptRegularDelete(branch)) {
+      return true;
+    }
+
+    // Fallback to force delete
+    return this.attemptForceDelete(branch);
+  }
+
+  /**
+   * Attempt regular branch deletion (git branch -d)
+   */
+  private attemptRegularDelete(branch: string): boolean {
+    try {
+      execGitSync(['branch', '-d', branch]);
+      return true;
+    } catch (error) {
+      console.debug(`Regular delete failed for ${branch}: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Attempt force branch deletion (git branch -D)
+   */
+  private attemptForceDelete(branch: string): boolean {
+    try {
+      execGitSync(['branch', '-D', branch]);
+      return true;
+    } catch (error) {
+      console.debug(`Force delete also failed for ${branch}: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
     }
   }
 
@@ -209,8 +260,9 @@ export class PostPRMergeCleanup {
 
       return mergedBranches.includes(branch);
 
-    } catch (_error) {
-      // If we can't determine merge status, don't delete the branch
+    } catch (error) {
+      // If we can't determine merge status, don't delete the branch (safer to keep)
+      console.debug(`Error checking merge status for ${branch}: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -221,8 +273,9 @@ export class PostPRMergeCleanup {
   private pruneRemoteReferences(): void {
     try {
       execGitSync(['remote', 'prune', this.remoteName]);
-    } catch (_error) {
+    } catch (error) {
       // Non-critical operation - don't fail on error
+      console.debug(`Error pruning remote ${this.remoteName}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }

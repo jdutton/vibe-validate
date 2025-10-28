@@ -41,7 +41,8 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   }
 
   // Extract failure count
-  const failingMatch = output.match(/(\d+) failing/);
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Mocha test framework summary (controlled output), not user input
+  const failingMatch = /(\d+) failing/.exec(output);
   const failureCount = failingMatch ? parseInt(failingMatch[1], 10) : 0;
 
   if (failureCount === 0) {
@@ -66,9 +67,9 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   let completeCount = 0;
 
   for (const failure of failures) {
-    const file = failure.file || 'unknown';
-    const message = failure.message || 'Test failed';
-    const context = failure.testName || '';
+    const file = failure.file ?? 'unknown';
+    const message = failure.message ?? 'Test failed';
+    const context = failure.testName ?? '';
 
     const isComplete = file !== 'unknown' && failure.line && message;
     if (isComplete) {
@@ -123,6 +124,7 @@ interface FailureInfo {
 /**
  * Extract failure information from Mocha output
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 30 acceptable for Mocha output parsing (handles test hierarchies, error messages, and stack trace extraction)
 function extractFailures(output: string): FailureInfo[] {
   const failures: FailureInfo[] = [];
   const lines = output.split('\n');
@@ -133,7 +135,8 @@ function extractFailures(output: string): FailureInfo[] {
 
     // Look for numbered failure markers (e.g., "  1) ")
     // Only match detailed format (2 spaces), not summary format (6+ spaces)
-    const failureMatch = line.match(/^ {2}(\d+)\)\s+(.*)$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Mocha test framework output (controlled output), not user input
+    const failureMatch = /^ {2}(\d+)\)\s+(.*)$/.exec(line);
 
     if (failureMatch) {
       // failureMatch[1] contains the failure number (not used - test name is more important)
@@ -163,12 +166,12 @@ function extractFailures(output: string): FailureInfo[] {
           }
 
           // Error line marks end of hierarchy
-          if (nextLine.match(/^\s+(Error|AssertionError|TypeError)/)) {
+          if (/^\s+(Error|AssertionError|TypeError)/.exec(nextLine)) {
             break;
           }
 
           // Indented lines are part of hierarchy (at least 5 spaces for Mocha)
-          if (nextLine.match(/^\s{5,}\S/)) {
+          if (/^\s{5,}\S/.exec(nextLine)) {
             const part = nextLine.trim().replace(/:$/, ''); // Remove trailing colon
             testNameParts.push(part);
           }
@@ -190,7 +193,7 @@ function extractFailures(output: string): FailureInfo[] {
         const nextLine = lines[j];
 
         // Stop if we hit the next failure
-        if (nextLine.match(/^\s+\d+\)\s+/)) {
+        if (/^\s+\d+\)\s+/.exec(nextLine)) {
           break;
         }
 
@@ -200,7 +203,7 @@ function extractFailures(output: string): FailureInfo[] {
         // Pattern 3: "     TypeError: Cannot read..."
         if (!message) {
           // Match plain "Error" or prefixed errors like "TypeError", "AssertionError"
-          const errorMatch = nextLine.match(/^\s+([A-Za-z]*Error)(?:\s\[[\w_]+\])?\s*:\s*(.+)/);
+          const errorMatch = /^\s+([A-Za-z]*Error)(?:\s\[\w+\])?\s*:\s*(.+)/.exec(nextLine);
           if (errorMatch) {
             errorType = errorMatch[1];
             message = errorMatch[2].trim();
@@ -213,7 +216,7 @@ function extractFailures(output: string): FailureInfo[] {
           // - file:///path/to/file.js:10:20
           // - /absolute/path/file.js:10:20
           // - relative/path/file.js:10:20
-          const locationMatch = nextLine.match(/at Context\.<anonymous> \((?:file:\/\/)?([^:)]+):(\d+)(?::(\d+))?\)/);
+          const locationMatch = /at Context\.<anonymous> \((?:file:\/\/)?([^:)]+):(\d+)(?::(\d+))?\)/.exec(nextLine);
           if (locationMatch) {
             file = locationMatch[1];
             lineNumber = parseInt(locationMatch[2], 10);
@@ -221,8 +224,9 @@ function extractFailures(output: string): FailureInfo[] {
         }
 
         // Extract file from timeout error messages: "Error: Timeout... (/path/to/file.js)"
-        if (!file && message && message.includes('Timeout')) {
-          const timeoutFileMatch = message.match(/\(([^)]+\.(?:js|ts|mjs|cjs))\)/);
+        if (!file && message?.includes('Timeout')) {
+          // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Mocha test framework timeout messages (controlled output), not user input
+          const timeoutFileMatch = /\(([^)]+\.(?:js|ts|mjs|cjs))\)/.exec(message);
           if (timeoutFileMatch) {
             file = timeoutFileMatch[1];
           }
@@ -251,12 +255,13 @@ function extractFailures(output: string): FailureInfo[] {
 /**
  * Generate guidance based on failure types
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 16 acceptable for guidance generation (categorizes multiple error types and generates actionable suggestions)
 function generateGuidance(failures: FailureInfo[]): string {
   const guidances: string[] = [];
   const seen = new Set<string>();
 
   for (const failure of failures) {
-    const message = failure.message || '';
+    const message = failure.message ?? '';
     const errorType = failure.errorType;
 
     // Assertion errors

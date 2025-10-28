@@ -25,7 +25,8 @@ export function validateCommand(program: Command): void {
     .option('--no-lock', 'Allow concurrent validation runs (disables single-instance mode)')
     .option('--no-wait', 'Exit immediately if validation is already running (for background hooks)')
     .option('--wait-timeout <seconds>', 'Maximum time to wait for running validation (default: 300)', '300')
-    .action(async (options) => { // NOSONAR - High complexity is appropriate for main validation command handler (orchestrates options, locking, caching, and validation)
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 50 acceptable for main validation command handler (orchestrates options, locking, caching, and validation)
+    .action(async (options) => {
 
       let lockFile: string | null = null;
       try {

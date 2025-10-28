@@ -38,6 +38,7 @@ export interface ValidateWorkflowOptions {
  * @returns Validation result
  * @throws Error if validation encounters fatal error
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 81 acceptable for main validation orchestration function (coordinates caching, validation execution, and result recording in a clear workflow)
 export async function runValidateWorkflow(
   config: VibeValidateConfig,
   options: ValidateWorkflowOptions
@@ -68,10 +69,11 @@ export async function runValidateWorkflow(
     let treeHashBefore: string | null = null;
     try {
       treeHashBefore = await getGitTreeHash();
-    } catch (_error) {
+    } catch (error) {
       // Not in git repo or git command failed - continue without history
+      const errorMsg = error instanceof Error ? error.message : String(error);
       if (verbose) {
-        console.warn(chalk.yellow('⚠️  Could not get git tree hash - history recording disabled'));
+        console.warn(chalk.yellow(`⚠️  Could not get git tree hash - history recording disabled: ${errorMsg}`));
       }
     }
 
@@ -113,8 +115,8 @@ export async function runValidateWorkflow(
               console.log(chalk.gray(`   Duration: ${durationSecs}s`));
               console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
 
-              if (passingRun.result?.phases) {
-                const totalSteps = passingRun.result.phases.reduce((sum, phase) => sum + (phase.steps?.length || 0), 0);
+              if (passingRun.result.phases) {
+                const totalSteps = passingRun.result.phases.reduce((sum, phase) => sum + phase.steps.length, 0);
                 console.log(chalk.gray(`   Phases: ${passingRun.result.phases.length}, Steps: ${totalSteps}`));
               }
             }
@@ -128,9 +130,10 @@ export async function runValidateWorkflow(
             return result;
           }
         }
-      } catch (_error) {
+      } catch (error) {
         // Cache check failed - proceed with validation
         // This is expected for first-time validation
+        console.debug(`Cache check failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -203,7 +206,7 @@ export async function runValidateWorkflow(
       if (config.developerFeedback) {
         // Check if any steps had poor extraction quality
         const poorExtractionSteps = result.phases
-          ?.flatMap(phase => phase.steps || [])
+          ?.flatMap(phase => phase.steps)
           .filter(step => !step.passed && step.extractionQuality && step.extractionQuality.score < 50);
 
         if (poorExtractionSteps && poorExtractionSteps.length > 0) {

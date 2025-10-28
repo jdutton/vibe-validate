@@ -28,7 +28,8 @@ function extractProjectFromGitUrl(remoteUrl: string): string | null {
   // Extract repo name from various formats
   // HTTPS: https://github.com/user/repo
   // SSH: git@github.com:user/repo
-  const match = cleaned.match(/[/:]([^/]+)$/);
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: [^/]+ is a negated character class (no backtracking), only parses git remote URLs (controlled input)
+  const match = /[/:]([^/]+)$/.exec(cleaned);
 
   return match ? match[1] : null;
 }
@@ -56,8 +57,9 @@ export function getProjectIdFromGit(cwd: string = process.cwd()): string | null 
     }
 
     return extractProjectFromGitUrl(remoteUrl);
-  } catch (_err) {
+  } catch (err) {
     // Not a git repo or no remote configured
+    console.debug(`Failed to get project from git: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }
@@ -88,7 +90,8 @@ export function getProjectIdFromPackageJson(cwd: string = process.cwd()): string
 
     // Remove scope prefix (@scope/package → package)
     return name.replace(/^@[^/]+\//, '');
-  } catch (_err) {
+  } catch (err) {
+    console.debug(`Failed to get project from package.json: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }

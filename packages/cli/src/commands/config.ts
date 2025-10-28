@@ -31,6 +31,7 @@ export function configCommand(program: Command): void {
 
         // Show detailed validation errors if config is invalid
         if (!result.config && result.errors) {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
           const fileName = result.filePath?.split('/').pop() || 'vibe-validate.config.yaml';
           displayConfigErrors({ fileName, errors: result.errors });
           process.exit(1);
@@ -93,7 +94,7 @@ function displayVerboseConfig(config: VibeValidateConfig, configPath: string): v
       console.log(chalk.gray(`  Phases: ${config.validation.phases.length}`));
       config.validation.phases.forEach((phase, index: number) => {
         const parallelIcon = phase.parallel ? '⚡' : '→';
-        console.log(chalk.gray(`    ${index + 1}. ${parallelIcon} ${phase.name} (${phase.steps?.length || 0} steps)`));
+        console.log(chalk.gray(`    ${index + 1}. ${parallelIcon} ${phase.name} (${phase.steps?.length ?? 0} steps)`));
       });
     }
 
@@ -103,7 +104,7 @@ function displayVerboseConfig(config: VibeValidateConfig, configPath: string): v
   // Git settings
   if (config.git) {
     console.log(chalk.blue('Git:'));
-    console.log(chalk.gray(`  Main Branch: ${config.git.mainBranch || 'main'}`));
+    console.log(chalk.gray(`  Main Branch: ${config.git.mainBranch ?? 'main'}`));
     console.log(chalk.gray(`  Auto Sync: ${config.git.autoSync ? 'enabled' : 'disabled'}`));
     console.log();
   }
@@ -124,14 +125,14 @@ function displayYamlConfig(config: VibeValidateConfig): void {
     config.validation.phases.forEach((phase) => {
       console.log(`    - name: ${phase.name}`);
       console.log(`      parallel: ${phase.parallel}`);
-      console.log(`      steps: ${phase.steps?.length || 0}`);
+      console.log(`      steps: ${phase.steps?.length ?? 0}`);
     });
   }
 
   if (config.git) {
     console.log('git:');
-    console.log(`  mainBranch: ${config.git.mainBranch || 'main'}`);
-    console.log(`  autoSync: ${config.git.autoSync || false}`);
+    console.log(`  mainBranch: ${config.git.mainBranch ?? 'main'}`);
+    console.log(`  autoSync: ${config.git.autoSync ?? false}`);
   }
 
   // Output config removed - state files are always YAML

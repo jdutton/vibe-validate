@@ -70,7 +70,7 @@ function parseTemplateMetadata(filename: string, content: string): TemplateMetad
   let displayName = filename.replace('.yaml', '');
   const titleLine = lines.find(line => line.includes('CONFIGURATION TEMPLATE -'));
   if (titleLine) {
-    const match = titleLine.match(/CONFIGURATION TEMPLATE\s*-\s*(.+)/);
+    const match = /CONFIGURATION TEMPLATE\s*-\s*(.+)/.exec(titleLine);
     if (match) {
       displayName = match[1].trim();
       // Remove "vibe-validate for " prefix if present
@@ -115,6 +115,7 @@ export function discoverTemplates(): TemplateMetadata[] {
   // Read all .yaml files
   const files = readdirSync(templatesDir)
     .filter(file => file.endsWith('.yaml'))
+    // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Alphabetical sorting is intentional for template list display
     .sort();
 
   // Parse metadata from each template

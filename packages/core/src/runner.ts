@@ -52,13 +52,13 @@ function calculateExtractionQuality(formatted: ReturnType<typeof autoDetectAndEx
   let score = 0;
 
   // Error extraction (0-60 points)
-  const errorCount = formatted.errors?.length || 0;
+  const errorCount = formatted.errors?.length ?? 0;
   if (errorCount > 0) {
     score += Math.min(60, errorCount * 12); // Max 60 points for 5+ errors
   }
 
   // Field completeness (0-40 points)
-  const errors = formatted.errors || [];
+  const errors = formatted.errors ?? [];
   if (errors.length > 0) {
     const firstError = errors[0];
     let fieldScore = 0;
@@ -107,12 +107,14 @@ export function parseFailures(output: string): string[] {
   }
 
   // TypeScript errors - extract file:line
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TypeScript compiler output (controlled tool output), not user input
   const tsErrors = output.match(/[^(]+\(\d+,\d+\): error TS\d+:.+/g);
   if (tsErrors) {
     failures.push(...tsErrors.slice(0, 10).map(e => e.trim()));
   }
 
   // ESLint errors - extract file:line
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses ESLint output (controlled linter output), not user input
   const eslintErrors = output.match(/\S+\.ts\(\d+,\d+\): .+/g);
   if (eslintErrors) {
     failures.push(...eslintErrors.slice(0, 10).map(e => e.trim()));
@@ -182,6 +184,16 @@ export async function runStepsInParallel(
   const processes: Array<{ proc: ChildProcess; step: ValidationStep }> = [];
   let firstFailure: { step: ValidationStep; output: string } | null = null;
 
+  // Helper functions (extracted to reduce nesting depth)
+  const formatError = (error: { file?: string; line?: number; message?: string }) => {
+    const linePart = error.line ? `:${error.line}` : '';
+    const location = error.file ? `${error.file}${linePart}` : 'unknown';
+    return `${location} - ${error.message ?? 'No message'}`;
+  };
+  const isWarning = (e: { severity?: string }) => e.severity === 'warning';
+  const isNotWarning = (e: { severity?: string }) => e.severity !== 'warning';
+  const ignoreStopErrors = () => { /* Process may have already exited */ };
+
   const results = await Promise.allSettled(
     steps.map(step =>
       new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
@@ -237,6 +249,7 @@ export async function runStepsInParallel(
           }
         });
 
+        // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 37 acceptable for process completion handler (manages output capture, extraction, quality metrics, and fail-fast coordination)
         proc.on('close', code => {
           const durationMs = Date.now() - startTime;
           const durationSecs = parseFloat((durationMs / 1000).toFixed(1));
@@ -257,38 +270,47 @@ export async function runStepsInParallel(
           // Only run extractors on FAILED steps (code !== 0)
           // Rationale: Passing tests have no failures to extract, extraction would always produce
           // meaningless results (score: 0, no errors). Skipping saves CPU and reduces output noise.
+          // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
           if (code !== 0 && output && output.trim()) {
             const formatted = autoDetectAndExtract(step.name, output);
 
             // Extract structured failures/tests
-            stepResult.failedTests = formatted.errors?.map(error => {
-              const location = error.file
-                ? `${error.file}${error.line ? `:${error.line}` : ''}`
-                : 'unknown';
-              return `${location} - ${error.message || 'No message'}`;
-            }) || [];
+            stepResult.failedTests = formatted.errors?.map(formatError) ?? [];
 
             // Only include extraction quality metrics when developerFeedback is enabled
             // This is for vibe-validate contributors to identify extraction improvement opportunities
             if (developerFeedback) {
               // Detect tool from step name (heuristic until extractors returns this)
-              const detectedTool = step.name.toLowerCase().includes('typescript') || step.name.toLowerCase().includes('tsc')
-                ? 'typescript'
-                : step.name.toLowerCase().includes('eslint')
-                ? 'eslint'
-                : step.name.toLowerCase().includes('test') || step.name.toLowerCase().includes('vitest')
-                ? 'vitest'
-                : 'unknown';
+              const stepLower = step.name.toLowerCase();
+              let detectedTool: string;
+              if (stepLower.includes('typescript') || stepLower.includes('tsc')) {
+                detectedTool = 'typescript';
+              } else if (stepLower.includes('eslint')) {
+                detectedTool = 'eslint';
+              } else if (stepLower.includes('test') || stepLower.includes('vitest')) {
+                detectedTool = 'vitest';
+              } else {
+                detectedTool = 'unknown';
+              }
 
               // Calculate extraction quality metrics
+              // eslint-disable-next-line sonarjs/deprecation -- calculateExtractionQuality is deprecated but still used for backwards compatibility
               const score = calculateExtractionQuality(formatted);
+              let confidence: 'high' | 'medium' | 'low';
+              if (score >= 80) {
+                confidence = 'high';
+              } else if (score >= 50) {
+                confidence = 'medium';
+              } else {
+                confidence = 'low';
+              }
               stepResult.extractionQuality = {
                 detectedTool,
-                confidence: score >= 80 ? 'high' : score >= 50 ? 'medium' : 'low',
+                confidence,
                 score,
-                warnings: formatted.errors?.filter(e => e.severity === 'warning').length || 0,
-                errorsExtracted: formatted.errors?.filter(e => e.severity !== 'warning').length || formatted.errors?.length || 0,
-                actionable: (formatted.errors?.length || 0) > 0,
+                warnings: formatted.errors?.filter(isWarning).length ?? 0,
+                errorsExtracted: formatted.errors?.filter(isNotWarning).length ?? formatted.errors?.length ?? 0,
+                actionable: (formatted.errors?.length ?? 0) > 0,
               };
 
               // Alert on poor extraction quality (for failed steps)
@@ -315,9 +337,7 @@ export async function runStepsInParallel(
               // Kill all other running processes
               for (const { proc: otherProc, step: otherStep } of processes) {
                 if (otherStep !== step && otherProc.exitCode === null) {
-                  stopProcessGroup(otherProc, otherStep.name).catch(() => {
-                    // Process may have already exited, ignore errors
-                  });
+                  stopProcessGroup(otherProc, otherStep.name).catch(ignoreStopErrors);
                 }
               }
             }
@@ -441,6 +461,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
 
     // If phase failed, extract and include output (LLM-optimized, not raw)
     if (!result.success && result.failedStep) {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
       const rawOutput = result.outputs.get(result.failedStep.name) || '';
       const extracted = autoDetectAndExtract(result.failedStep.name, rawOutput);
       phaseResult.output = extracted.cleanOutput.trim() || rawOutput;
@@ -456,6 +477,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     if (!result.success && result.failedStep) {
       failedStep = result.failedStep;
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
       const failedOutput = result.outputs.get(failedStep.name) || '';
 
       // Extract actionable failures from raw output (LLM-optimized, 5-10 lines instead of 100+)
@@ -468,10 +490,11 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
 
       // Use structured errors from extractor (replaces deprecated parseFailures)
       const structuredFailures = extracted.errors.map(error => {
+        const linePart = error.line ? `:${error.line}` : '';
         const location = error.file
-          ? `${error.file}${error.line ? `:${error.line}` : ''}`
+          ? `${error.file}${linePart}`
           : 'unknown';
-        return `${location} - ${error.message || 'No message'}`;
+        return `${location} - ${error.message ?? 'No message'}`;
       });
 
       // IMPORTANT: Field order matches types.ts for YAML truncation safety
@@ -534,7 +557,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
  * @public
  */
 export function setupSignalHandlers(activeProcesses: Set<ChildProcess>): void {
-  const cleanup = async (signal: string) => {
+  const cleanup = async (signal: string): Promise<void> => {
     console.log(`\n⚠️  Received ${signal}, cleaning up ${activeProcesses.size} active processes...`);
 
     // Kill all active processes
@@ -546,6 +569,10 @@ export function setupSignalHandlers(activeProcesses: Set<ChildProcess>): void {
     process.exit(1);
   };
 
-  process.on('SIGTERM', () => cleanup('SIGTERM'));
-  process.on('SIGINT', () => cleanup('SIGINT'));
+  process.on('SIGTERM', () => {
+    void cleanup('SIGTERM');
+  });
+  process.on('SIGINT', () => {
+    void cleanup('SIGINT');
+  });
 }

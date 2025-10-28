@@ -61,7 +61,7 @@ export const ValidationPhaseSchema = z.object({
   failFast: z.boolean().optional().default(true),
 }).strict();
 
-// Use input type which makes fields with defaults optional
+// Use input type (before defaults applied) to maintain optional field semantics
 export type ValidationPhase = z.input<typeof ValidationPhaseSchema>;
 
 /**
@@ -75,7 +75,8 @@ export const ValidationConfigSchema = z.object({
   failFast: z.boolean().optional().default(true),
 }).strict();
 
-export type ValidationConfig = z.infer<typeof ValidationConfigSchema>;
+// Use input type (before defaults applied) to maintain optional field semantics
+export type ValidationConfig = z.input<typeof ValidationConfigSchema>;
 
 /**
  * Git Config Schema
@@ -127,10 +128,7 @@ export const SecretScanningSchema = z.object({
 }).strict().refine(
   (data) => {
     // If enabled is true, scanCommand must be provided
-    if (data.enabled && !data.scanCommand) {
-      return false;
-    }
-    return true;
+    return !data.enabled || !!data.scanCommand;
   },
   {
     message: 'scanCommand is required when secret scanning is enabled',
@@ -234,7 +232,8 @@ export const VibeValidateConfigSchema = z.object({
   developerFeedback: z.boolean().optional().default(false),
 }).strict();
 
-export type VibeValidateConfig = z.infer<typeof VibeValidateConfigSchema>;
+// Use input type (before defaults applied) to maintain optional field semantics
+export type VibeValidateConfig = z.input<typeof VibeValidateConfigSchema>;
 
 /**
  * Validate configuration object

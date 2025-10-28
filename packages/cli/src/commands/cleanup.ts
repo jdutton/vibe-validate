@@ -59,6 +59,37 @@ export function cleanupCommand(program: Command): void {
 }
 
 /**
+ * Get icon based on dry-run mode
+ */
+function getIcon(dryRun: boolean): string {
+  // eslint-disable-next-line sonarjs/no-selector-parameter -- dryRun is idiomatic for preview mode in CLI tools
+  return dryRun ? '→' : '✅';
+}
+
+/**
+ * Display header for cleanup results
+ */
+function displayHeader(dryRun: boolean): void {
+  const title = dryRun ? '🔍 Cleanup Preview (Dry Run)' : '🧹 Post-Merge Cleanup';
+  console.log(chalk.blue(title));
+  console.log(chalk.gray('─'.repeat(50)));
+}
+
+/**
+ * Display footer message based on cleanup results
+ */
+function displayFooter(dryRun: boolean, success: boolean, branchesDeleted: number): void {
+  console.log(chalk.gray('─'.repeat(50)));
+
+  if (dryRun) {
+    console.log(chalk.yellow('\n💡 This was a dry run. To actually clean up:'));
+    console.log(chalk.gray('   vibe-validate cleanup'));
+  } else if (success && branchesDeleted > 0) {
+    console.log(chalk.green('\n✅ Cleanup complete!'));
+  }
+}
+
+/**
  * Display cleanup results in human-friendly format
  */
 function displayHumanCleanup(
@@ -71,28 +102,22 @@ function displayHumanCleanup(
   },
   dryRun: boolean
 ): void {
-  if (dryRun) {
-    console.log(chalk.blue('🔍 Cleanup Preview (Dry Run)'));
-  } else {
-    console.log(chalk.blue('🧹 Post-Merge Cleanup'));
-  }
-  console.log(chalk.gray('─'.repeat(50)));
+  displayHeader(dryRun);
+
+  const icon = getIcon(dryRun);
 
   // Current branch
   if (result.currentBranch) {
-    const icon = dryRun ? '→' : '✅';
     console.log(chalk.green(`${icon} Current branch: ${result.currentBranch}`));
   }
 
   // Synced with remote
   if (result.mainSynced) {
-    const icon = dryRun ? '→' : '✅';
     console.log(chalk.green(`${icon} Synced with remote`));
   }
 
   // Deleted branches
   if (result.branchesDeleted.length > 0) {
-    const icon = dryRun ? '→' : '✅';
     console.log(chalk.green(`\n${icon} Deleted branches:`));
     result.branchesDeleted.forEach(branch => {
       console.log(chalk.gray(`   • ${branch}`));
@@ -107,14 +132,7 @@ function displayHumanCleanup(
     console.log(chalk.red(`   ${result.error}`));
   }
 
-  console.log(chalk.gray('─'.repeat(50)));
-
-  if (dryRun) {
-    console.log(chalk.yellow('\n💡 This was a dry run. To actually clean up:'));
-    console.log(chalk.gray('   vibe-validate cleanup'));
-  } else if (result.success && result.branchesDeleted.length > 0) {
-    console.log(chalk.green('\n✅ Cleanup complete!'));
-  }
+  displayFooter(dryRun, result.success, result.branchesDeleted.length);
 }
 
 /**

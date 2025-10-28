@@ -32,7 +32,8 @@ interface TestFailure {
  */
 function extractRuntimeError(output: string): TestFailure | null {
   // Look for "Unhandled Rejection" section
-  const unhandledMatch = output.match(/⎯+\s*Unhandled Rejection\s*⎯+\s*\n\s*(Error:[^\n]+(?:\n\s*[^\n❯⎯]+)?)/);
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework runtime errors (controlled output), not user input
+  const unhandledMatch = /⎯+\s*Unhandled Rejection\s*⎯+\s*\n\s*(Error:[^\n]+(?:\n\s*[^\n❯⎯]+)?)/.exec(output);
   if (!unhandledMatch) {
     return null;
   }
@@ -42,7 +43,7 @@ function extractRuntimeError(output: string): TestFailure | null {
 
   // Extract location from stack trace (❯ function file:line:col)
   // File path may contain colons (e.g., node:internal/fs/promises), so match ❯ function filepath:number:number
-  const locationMatch = output.match(/❯\s+\S+\s+([\w:/.]+):(\d+):(\d+)/);
+  const locationMatch = /❯\s+\S+\s+([\w:/.]+):(\d+):(\d+)/.exec(output);
   let file = 'unknown';
   let location = '';
 
@@ -81,6 +82,7 @@ function extractRuntimeError(output: string): TestFailure | null {
  * console.log(result.guidance); // "Fix each failing test individually..."
  * ```
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 97 acceptable for Vitest output parsing (handles multiple output formats, runtime errors, and comprehensive error extraction)
 export function extractVitestErrors(
   output: string,
   options?: ExtractorOptions
@@ -97,13 +99,15 @@ export function extractVitestErrors(
     failures.push(runtimeError);
   }
 
-  for (let i = 0; i < lines.length; i++) {
+  let i = -1;
+  while (i < lines.length - 1) {
+    i++; // Increment at start so 'continue' statements don't bypass it
     const line = lines[i];
 
     // Match Format 2: ❯ file.test.ts (N tests | M failed) 123ms
     // This line declares the file for subsequent × failures
     // NOTE: Must have parentheses to distinguish from location lines (❯ file.test.ts:57:30)
-    const fileHeaderMatch = line.match(/❯\s+([^\s]+\.test\.ts)\s+\(/);
+    const fileHeaderMatch = /❯\s+([^\s]+\.test\.ts)\s+\(/.exec(line);
     if (fileHeaderMatch) {
       currentFile = fileHeaderMatch[1];
       hasFormat2 = true; // We found Format 2, so skip Format 1 to avoid duplicates
@@ -114,14 +118,15 @@ export function extractVitestErrors(
     // OR: ❌ file.test.ts > test hierarchy
     // OR: × file.test.ts > test hierarchy
     // BUT: Skip if we've seen Format 2 headers (to avoid processing duplicate FAIL lines)
-    const format1Match = !hasFormat2 && line.match(/(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/);
+    const format1Match = !hasFormat2 && /(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/.exec(line);
 
     // Match Format 2: × test hierarchy (without file path)
     // Use currentFile tracked from ❯ line above
-    const format2Match = !format1Match && line.match(/(?:×)\s+(.+?)(?:\s+\d+ms)?$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework output (controlled output), limited line length
+    const format2Match = !format1Match && /(?:×)\s+(.+?)(?:\s+\d+ms)?$/.exec(line);
 
     if (format1Match || (format2Match && currentFile)) {
-      if (currentFailure && currentFailure.file) {
+      if (currentFailure?.file) {
         failures.push(currentFailure as TestFailure);
       }
 
@@ -153,11 +158,11 @@ export function extractVitestErrors(
     // OR: → expected 1 to be 5 // Object.is equality (Format 2 error message)
     if (currentFailure && !currentFailure.errorMessage) {
       // Check for standard error patterns
-      const errorMatch = line.match(/((?:AssertionError|Error):\s*.+)/);
+      const errorMatch = /((?:AssertionError|Error):\s*.+)/.exec(line);
       // Check for snapshot failures (doesn't have "Error:" prefix)
-      const snapshotMatch = line.match(/Snapshot\s+`([^`]+)`\s+mismatched/);
+      const snapshotMatch = /Snapshot\s+`([^`]+)`\s+mismatched/.exec(line);
       // Check for Format 2 error messages (→ prefix)
-      const format2ErrorMatch = line.match(/→\s+(.+)/);
+      const format2ErrorMatch = /→\s+(.+)/.exec(line);
 
       if (errorMatch || snapshotMatch || format2ErrorMatch) {
         // Keep the full error including the type (AssertionError: ...)
@@ -182,7 +187,7 @@ export function extractVitestErrors(
           const nextLine = lines[j].trim();
 
           // Always stop at these markers
-          if (nextLine.startsWith('❯') || nextLine.match(/^\d+\|/) || nextLine.startsWith('FAIL') || nextLine.startsWith('✓') || nextLine.startsWith('❌') || nextLine.startsWith('×') || nextLine.startsWith('⎯')) {
+          if (nextLine.startsWith('❯') || /^\d+\|/.exec(nextLine) || nextLine.startsWith('FAIL') || nextLine.startsWith('✓') || nextLine.startsWith('❌') || nextLine.startsWith('×') || nextLine.startsWith('⎯')) {
             break;
           }
 
@@ -220,7 +225,7 @@ export function extractVitestErrors(
         }
 
         currentFailure.errorMessage = errorMessage;
-        i = j - 1; // Skip the lines we just consumed
+        i = j - 1; // Will be incremented at next iteration start
       }
       continue;
     }
@@ -229,14 +234,16 @@ export function extractVitestErrors(
     // OR stack trace: at Object.<anonymous> (packages/core/test/runner.test.ts:45:12)
     if (currentFailure && !currentFailure.location) {
       // Try vitest location marker first
-      const vitestLocation = line.match(/❯\s*(.+\.test\.ts):(\d+):(\d+)/);
+      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework location markers (controlled output), not user input
+      const vitestLocation = /❯\s*(.+\.test\.ts):(\d+):(\d+)/.exec(line);
       if (vitestLocation) {
         currentFailure.location = `${vitestLocation[1]}:${vitestLocation[2]}:${vitestLocation[3]}`;
         continue;
       }
 
       // Try stack trace pattern
-      const stackLocation = line.match(/at\s+.+\(([^\s]+\.test\.ts):(\d+):(\d+)\)/);
+      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework stack traces (controlled output), not user input
+      const stackLocation = /at\s+.+\(([^\s]+\.test\.ts):(\d+):(\d+)\)/.exec(line);
       if (stackLocation) {
         currentFailure.location = `${stackLocation[1]}:${stackLocation[2]}:${stackLocation[3]}`;
         continue;
@@ -244,17 +251,16 @@ export function extractVitestErrors(
     }
 
     // Match source line: 57|     expect(config.HTTP_PORT).toBe(9999);
-    if (currentFailure && line.match(/^\s*\d+\|\s+/)) {
-      const sourceMatch = line.match(/^\s*(\d+)\|\s*(.+)/);
+    if (currentFailure && /^\s*\d+\|\s+/.exec(line)) {
+      const sourceMatch = /^\s*(\d+)\|\s*(.+)/.exec(line);
       if (sourceMatch) {
         currentFailure.sourceLine = `${sourceMatch[1]}| ${sourceMatch[2].trim()}`;
       }
-      continue;
     }
   }
 
   // Add last failure
-  if (currentFailure && currentFailure.file) {
+  if (currentFailure?.file) {
     failures.push(currentFailure as TestFailure);
   }
 
@@ -266,7 +272,7 @@ export function extractVitestErrors(
     .slice(0, 10)
     .map((f, idx) => {
       const parts = [
-        `[Test ${idx + 1}/${failures.length}] ${f.location || f.file}`,
+        `[Test ${idx + 1}/${failures.length}] ${f.location ?? f.file}`,
         '',
         `Test: ${f.testHierarchy}`,
         `Error: ${f.errorMessage}`,
@@ -303,7 +309,9 @@ export function extractVitestErrors(
       let column: number | undefined;
       if (f.location) {
         const parts = f.location.split(':');
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings for parseInt, not just null/undefined
         column = parseInt(parts.pop() || '');
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings for parseInt, not just null/undefined
         line = parseInt(parts.pop() || '');
       }
 
@@ -311,7 +319,7 @@ export function extractVitestErrors(
         file: f.file,
         line: line !== undefined && !isNaN(line) ? line : undefined,
         column: column !== undefined && !isNaN(column) ? column : undefined,
-        message: f.errorMessage || `Test failure: ${f.testHierarchy}`
+        message: f.errorMessage
       };
     }),
     summary: `${failures.length} test failure(s)`,
@@ -356,7 +364,14 @@ function calculateExtractionQuality(
 
   // Confidence: based on how well patterns matched
   // High confidence if most failures have complete data
-  const confidence = completeness >= 80 ? 90 : (completeness >= 50 ? 70 : 50);
+  let confidence: number;
+  if (completeness >= 80) {
+    confidence = 90;
+  } else if (completeness >= 50) {
+    confidence = 70;
+  } else {
+    confidence = 50;
+  }
 
   // Issues encountered
   const issues: string[] = [];
@@ -396,8 +411,8 @@ function calculateExtractionQuality(
  * @returns Expected and actual values (if found)
  */
 function extractExpectedActual(fullOutput: string): { expected?: string; actual?: string } {
-  const expectedMatch = fullOutput.match(/- Expected[^\n]*\n[^\n]*\n- (.+)/);
-  const actualMatch = fullOutput.match(/\+ Received[^\n]*\n[^\n]*\n\+ (.+)/);
+  const expectedMatch = /- Expected[^\n]*\n[^\n]*\n- (.+)/.exec(fullOutput);
+  const actualMatch = /\+ Received[^\n]*\n[^\n]*\n\+ (.+)/.exec(fullOutput);
   return {
     expected: expectedMatch ? expectedMatch[1].trim() : undefined,
     actual: actualMatch ? actualMatch[1].trim() : undefined

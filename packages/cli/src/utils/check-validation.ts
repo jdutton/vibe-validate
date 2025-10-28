@@ -23,23 +23,26 @@ import { stringify as yamlStringify } from 'yaml';
  * @param _config - vibe-validate configuration (unused, kept for API compatibility)
  * @param yaml - If true, output YAML to stdout instead of human-readable text
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 36 acceptable for validation state checking (handles multiple output formats, git state retrieval, and comprehensive error scenarios)
 export async function checkValidationStatus(_config: VibeValidateConfig, yaml = false): Promise<void> {
   // Get current tree hash
   let currentTreeHash: string;
   try {
     currentTreeHash = await getGitTreeHash();
-  } catch (_error) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     if (yaml) {
       // YAML mode: Output structured error
       const errorOutput = {
         exists: false,
-        error: 'Not in git repository',
+        error: `Not in git repository: ${errorMessage}`,
       };
       process.stdout.write('---\n');
       process.stdout.write(yamlStringify(errorOutput));
     } else {
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  Not in git repository'));
+      console.log(chalk.gray(`   ${errorMessage}`));
       console.log(chalk.blue('\n💡 Run validation:'), chalk.white('npx vibe-validate validate'));
     }
     process.exit(2);
@@ -49,13 +52,14 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
   let historyNote;
   try {
     historyNote = await readHistoryNote(currentTreeHash);
-  } catch (_error) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     if (yaml) {
       // YAML mode: Output structured error
       const errorOutput = {
         exists: false,
         treeHash: currentTreeHash,
-        error: 'Failed to read validation history',
+        error: `Failed to read validation history: ${errorMessage}`,
       };
       process.stdout.write('---\n');
       process.stdout.write(yamlStringify(errorOutput));
@@ -156,7 +160,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
     console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
 
     if (passingRun.result?.phases) {
-      const totalSteps = passingRun.result.phases.reduce((sum, phase) => sum + (phase.steps?.length || 0), 0);
+      const totalSteps = passingRun.result.phases.reduce((sum, phase) => sum + (phase.steps?.length ?? 0), 0);
       console.log(chalk.gray(`   Phases: ${passingRun.result.phases.length}, Steps: ${totalSteps}`));
     }
   }

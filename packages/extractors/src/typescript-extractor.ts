@@ -29,7 +29,9 @@ export function extractTypeScriptErrors(output: string): ErrorExtractorResult {
   // TypeScript error patterns - support both old and new formats:
   // Old: file(line,col): error TSxxxx: message
   // New: file:line:col - error TSxxxx: message
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TypeScript compiler output (controlled tool output), not user input
   const oldPattern = /^(.+?)\((\d+),(\d+)\):\s*(error|warning)\s+(TS\d+):\s+(.+)$/gm;
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TypeScript compiler output (controlled tool output), not user input
   const newPattern = /^(.+?):(\d+):(\d+)\s+-\s*(error|warning)\s+(TS\d+):\s+(.+)$/gm;
 
   // Try new format first (more common in modern tsc)
