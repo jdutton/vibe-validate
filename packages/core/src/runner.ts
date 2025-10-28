@@ -124,6 +124,140 @@ export function parseFailures(output: string): string[] {
 }
 
 /**
+ * Detect tool type from step name
+ *
+ * Uses heuristics to determine which validation tool is running based on the step name.
+ * This is a temporary solution until extractors package returns detected tool type.
+ *
+ * @param stepName - Name of the validation step
+ * @returns Detected tool identifier (typescript, eslint, vitest, or unknown)
+ *
+ * @internal
+ */
+function detectToolFromStepName(stepName: string): string {
+  const stepLower = stepName.toLowerCase();
+  if (stepLower.includes('typescript') || stepLower.includes('tsc')) {
+    return 'typescript';
+  }
+  if (stepLower.includes('eslint')) {
+    return 'eslint';
+  }
+  if (stepLower.includes('test') || stepLower.includes('vitest')) {
+    return 'vitest';
+  }
+  return 'unknown';
+}
+
+/**
+ * Calculate confidence level from extraction quality score
+ *
+ * Maps numeric quality scores to confidence levels for easier interpretation.
+ *
+ * @param score - Quality score (0-100)
+ * @returns Confidence level (high >= 80, medium >= 50, low < 50)
+ *
+ * @internal
+ */
+function calculateConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
+  if (score >= 80) {
+    return 'high';
+  }
+  if (score >= 50) {
+    return 'medium';
+  }
+  return 'low';
+}
+
+/**
+ * Process developer feedback for failed step
+ *
+ * Analyzes extraction quality and provides feedback for improving extractors.
+ * Only called when developerFeedback mode is enabled.
+ *
+ * @param stepResult - Step result to augment with extraction quality data
+ * @param stepName - Name of the validation step
+ * @param formatted - Formatted extractor output
+ * @param log - Logging function for output
+ * @param isWarning - Helper to check if error is a warning
+ * @param isNotWarning - Helper to check if error is not a warning
+ *
+ * @internal
+ */
+function processDeveloperFeedback(
+  stepResult: StepResult,
+  stepName: string,
+  formatted: ReturnType<typeof autoDetectAndExtract>,
+  log: (_msg: string) => void,
+  isWarning: (_e: { severity?: string }) => boolean,
+  isNotWarning: (_e: { severity?: string }) => boolean
+): void {
+  const detectedTool = detectToolFromStepName(stepName);
+
+  // eslint-disable-next-line sonarjs/deprecation -- calculateExtractionQuality is deprecated but still used for backwards compatibility
+  const score = calculateExtractionQuality(formatted);
+  const confidence = calculateConfidenceLevel(score);
+
+  stepResult.extractionQuality = {
+    detectedTool,
+    confidence,
+    score,
+    warnings: formatted.errors?.filter(isWarning).length ?? 0,
+    errorsExtracted: formatted.errors?.filter(isNotWarning).length ?? formatted.errors?.length ?? 0,
+    actionable: (formatted.errors?.length ?? 0) > 0,
+  };
+
+  // Alert on poor extraction quality (for failed steps)
+  if (score < 50) {
+    log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
+    log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
+  }
+}
+
+/**
+ * Handle fail-fast process coordination
+ *
+ * Kills all other running processes when fail-fast is enabled and a step fails.
+ * Thread-safe due to JavaScript's single-threaded event loop.
+ *
+ * @param enableFailFast - Whether fail-fast mode is enabled
+ * @param firstFailure - Reference to first failure tracking object
+ * @param step - The failed step
+ * @param output - Output from failed step
+ * @param processes - Array of all running processes
+ * @param log - Logging function for output
+ * @param ignoreStopErrors - Callback to ignore already-stopped process errors
+ * @returns Updated firstFailure reference
+ *
+ * @internal
+ */
+function handleFailFast(
+  enableFailFast: boolean,
+  firstFailure: { step: ValidationStep; output: string } | null,
+  step: ValidationStep,
+  output: string,
+  processes: Array<{ proc: ChildProcess; step: ValidationStep }>,
+  log: (_msg: string) => void,
+  ignoreStopErrors: () => void
+): { step: ValidationStep; output: string } | null {
+  // RACE CONDITION SAFE: While multiple processes could fail simultaneously,
+  // JavaScript's single-threaded event loop ensures atomic assignment.
+  // Even if multiple failures occur, only one will be firstFailure, which is acceptable.
+  if (enableFailFast && !firstFailure) {
+    const failure = { step, output };
+    log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
+
+    // Kill all other running processes
+    for (const { proc: otherProc, step: otherStep } of processes) {
+      if (otherStep !== step && otherProc.exitCode === null) {
+        stopProcessGroup(otherProc, otherStep.name).catch(ignoreStopErrors);
+      }
+    }
+    return failure;
+  }
+  return firstFailure;
+}
+
+/**
  * Run validation steps in parallel with smart fail-fast
  *
  * Executes multiple validation steps concurrently, capturing output and
@@ -249,7 +383,6 @@ export async function runStepsInParallel(
           }
         });
 
-        // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 37 acceptable for process completion handler (manages output capture, extraction, quality metrics, and fail-fast coordination)
         proc.on('close', code => {
           const durationMs = Date.now() - startTime;
           const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
@@ -280,44 +413,7 @@ export async function runStepsInParallel(
             // Only include extraction quality metrics when developerFeedback is enabled
             // This is for vibe-validate contributors to identify extraction improvement opportunities
             if (developerFeedback) {
-              // Detect tool from step name (heuristic until extractors returns this)
-              const stepLower = step.name.toLowerCase();
-              let detectedTool: string;
-              if (stepLower.includes('typescript') || stepLower.includes('tsc')) {
-                detectedTool = 'typescript';
-              } else if (stepLower.includes('eslint')) {
-                detectedTool = 'eslint';
-              } else if (stepLower.includes('test') || stepLower.includes('vitest')) {
-                detectedTool = 'vitest';
-              } else {
-                detectedTool = 'unknown';
-              }
-
-              // Calculate extraction quality metrics
-              // eslint-disable-next-line sonarjs/deprecation -- calculateExtractionQuality is deprecated but still used for backwards compatibility
-              const score = calculateExtractionQuality(formatted);
-              let confidence: 'high' | 'medium' | 'low';
-              if (score >= 80) {
-                confidence = 'high';
-              } else if (score >= 50) {
-                confidence = 'medium';
-              } else {
-                confidence = 'low';
-              }
-              stepResult.extractionQuality = {
-                detectedTool,
-                confidence,
-                score,
-                warnings: formatted.errors?.filter(isWarning).length ?? 0,
-                errorsExtracted: formatted.errors?.filter(isNotWarning).length ?? formatted.errors?.length ?? 0,
-                actionable: (formatted.errors?.length ?? 0) > 0,
-              };
-
-              // Alert on poor extraction quality (for failed steps)
-              if (score < 50) {
-                log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
-                log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
-              }
+              processDeveloperFeedback(stepResult, step.name, formatted, log, isWarning, isNotWarning);
             }
           }
 
@@ -327,20 +423,7 @@ export async function runStepsInParallel(
             resolve({ step, output, durationSecs });
           } else {
             // On first failure, kill other processes if fail-fast enabled
-            // RACE CONDITION SAFE: While multiple processes could fail simultaneously,
-            // JavaScript's single-threaded event loop ensures atomic assignment.
-            // Even if multiple failures occur, only one will be firstFailure, which is acceptable.
-            if (enableFailFast && !firstFailure) {
-              firstFailure = { step, output };
-              log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
-
-              // Kill all other running processes
-              for (const { proc: otherProc, step: otherStep } of processes) {
-                if (otherStep !== step && otherProc.exitCode === null) {
-                  stopProcessGroup(otherProc, otherStep.name).catch(ignoreStopErrors);
-                }
-              }
-            }
+            firstFailure = handleFailFast(enableFailFast, firstFailure, step, output, processes, log, ignoreStopErrors);
             reject({ step, output, durationSecs });
           }
         });
