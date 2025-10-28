@@ -89,5 +89,10 @@
     "typedoc": "^0.28.14",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild@<=0.24.2": ">=0.25.0"
+    }
   }
 }
