@@ -41,7 +41,7 @@ export function createRunnerConfig(
     : createMinimalCallbacks(options.yaml);
 
   return {
-    phases: config.validation?.phases || [],
+    phases: (config.validation?.phases ?? []) as ValidationPhase[],
     enableFailFast: true, // Default to fail-fast (individual phases can override)
     verbose: options.verbose, // Pass verbose flag to runner for output streaming
     yaml: options.yaml, // Pass yaml flag to runner for stdout/stderr routing
@@ -54,7 +54,7 @@ export function createRunnerConfig(
 /**
  * Create verbose console callbacks (colorful, detailed progress)
  */
-function createVerboseCallbacks(yaml: boolean = false) {
+function createVerboseCallbacks(yaml: boolean = false): Pick<ValidationConfig, 'onPhaseStart' | 'onPhaseComplete' | 'onStepStart' | 'onStepComplete'> {
   // When yaml mode is on, write to stderr to keep stdout clean for YAML data
   const log = yaml ?
     (msg: string) => process.stderr.write(msg + '\n') :
@@ -90,7 +90,7 @@ function createVerboseCallbacks(yaml: boolean = false) {
 /**
  * Create minimal callbacks (agent-friendly YAML output)
  */
-function createMinimalCallbacks(yaml: boolean = false) {
+function createMinimalCallbacks(yaml: boolean = false): Pick<ValidationConfig, 'onPhaseStart' | 'onPhaseComplete' | 'onStepStart' | 'onStepComplete'> {
   // Minimal YAML-structured progress output
   // When yaml mode is on, write to stderr to keep stdout clean for YAML data
   const log = yaml ?

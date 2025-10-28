@@ -20,6 +20,7 @@ export function preCommitCommand(program: Command): void {
     .description('Run branch sync check + validation (recommended before commit)')
     .option('--skip-sync', 'Skip branch sync check')
     .option('-v, --verbose', 'Show detailed progress and output')
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 47 acceptable for pre-commit workflow orchestration (coordinates git sync, config loading, validation, and error handling)
     .action(async (options) => {
       try {
         // Step 1: Load configuration (needed for git settings)

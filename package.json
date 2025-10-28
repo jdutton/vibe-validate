@@ -43,7 +43,7 @@
     "test:system": "node packages/cli/dist/bin.js run \"vitest run --config vitest.config.system.ts\"",
     "test:system:watch": "vitest --config vitest.config.system.ts",
     "run": "node packages/cli/dist/bin.js run",
-    "lint": "node packages/cli/dist/bin.js run \"eslint \\\"packages/*/src/**/*.ts\\\"\"",
+    "lint": "node packages/cli/dist/bin.js run \"eslint --max-warnings=0 \\\"packages/*/src/**/*.ts\\\"\"",
     "typecheck": "node packages/cli/dist/bin.js run \"pnpm -r typecheck\"",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "dev": "pnpm -r --parallel dev",

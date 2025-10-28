@@ -35,7 +35,7 @@ jobs:
       - name: Run validation (Unix)
         if: runner.os != 'Windows'
         run: node packages/cli/dist/bin.js validate --yaml --verbose
-          1>validation-result.yaml || true
+          1>validation-result.yaml ?? true
       - name: Run validation (Windows)
         if: runner.os == 'Windows'
         shell: powershell
@@ -55,7 +55,7 @@ jobs:
 
           echo "=========================================="
 
-          cat validation-result.yaml 2>/dev/null || echo "❌ Could not read
+          cat validation-result.yaml 2>/dev/null ?? echo "❌ Could not read
           validation result"
 
           echo "=========================================="
@@ -76,7 +76,7 @@ jobs:
           Write-Host '=========================================='
       - name: Check validation result (Unix)
         if: always() && runner.os != 'Windows'
-        run: 'grep -q "passed: true" validation-result.yaml || exit 1'
+        run: 'grep -q "passed: true" validation-result.yaml ?? exit 1'
       - name: Check validation result (Windows)
         if: always() && runner.os == 'Windows'
         shell: powershell

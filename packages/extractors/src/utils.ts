@@ -19,7 +19,8 @@
  * ```
  */
 export function stripAnsiCodes(text: string): string {
-  // eslint-disable-next-line no-control-regex
+  // Control character \x1b is intentionally used to match ANSI escape codes
+  // eslint-disable-next-line no-control-regex, sonarjs/no-control-regex -- \x1b is intentional for ANSI escape codes
   return text.replace(/\x1b\[[0-9;]*m/g, '');
 }
 

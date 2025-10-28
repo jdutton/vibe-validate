@@ -29,7 +29,7 @@ export async function checkHistoryHealth(
   const warnAfterCount = (mergedConfig.retention.warnAfterCount ?? DEFAULT_HISTORY_CONFIG.retention.warnAfterCount) as number;
 
   const allNotes = await getAllHistoryNotes(
-    mergedConfig.gitNotes?.ref || DEFAULT_HISTORY_CONFIG.gitNotes.ref
+    mergedConfig.gitNotes.ref
   );
 
   const totalNotes = allNotes.length;
@@ -38,7 +38,7 @@ export async function checkHistoryHealth(
   let oldNotesCount = 0;
 
   for (const note of allNotes) {
-    if (!note.runs || note.runs.length === 0) {
+    if (note.runs.length === 0) {
       continue;
     }
 

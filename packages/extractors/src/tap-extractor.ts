@@ -47,9 +47,9 @@ export function extractTAPErrors(output: string): ErrorExtractorResult {
   let completeCount = 0;
 
   for (const failure of failures) {
-    const file = failure.file || undefined;
-    const message = failure.message || 'Test failed';
-    const context = failure.testName || '';
+    const file = failure.file ?? undefined;
+    const message = failure.message ?? 'Test failed';
+    const context = failure.testName ?? '';
 
     const isComplete = file && failure.line && message;
     if (isComplete) {
@@ -106,6 +106,7 @@ interface FailureInfo {
 /**
  * Extract all failures from TAP output
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 17 acceptable for TAP output parsing (handles test comments, failure markers, and YAML diagnostic blocks)
 function extractFailures(output: string): FailureInfo[] {
   const failures: FailureInfo[] = [];
   const lines = output.split('\n');
@@ -124,7 +125,8 @@ function extractFailures(output: string): FailureInfo[] {
     }
 
     // Look for failures: "not ok N message"
-    const failureMatch = line.match(/^not ok\s+\d+\s+(.+)$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TAP test framework output (controlled output), not user input
+    const failureMatch = /^not ok\s+\d+\s+(.+)$/.exec(line);
     if (failureMatch) {
       const message = failureMatch[1].trim();
       const failure: FailureInfo = {
@@ -143,7 +145,8 @@ function extractFailures(output: string): FailureInfo[] {
           // Extract location from "at:" field
           // Format: "at: Test.<anonymous> (file:///path/to/file.js:line:col)"
           // or: "at: file.js:line:col"
-          const atMatch = yamlLine.match(/^\s+at:\s+(.+)$/);
+          // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TAP test framework YAML diagnostics (controlled output), not user input
+          const atMatch = /^\s+at:\s+(.+)$/.exec(yamlLine);
           if (atMatch) {
             const location = atMatch[1];
             const { file, line } = parseLocation(location);
@@ -179,7 +182,8 @@ function extractFailures(output: string): FailureInfo[] {
  */
 function parseLocation(location: string): { file?: string; line?: number } {
   // Try to extract from parentheses first: (file:///path:line:col) or (path:line:col)
-  const parenMatch = location.match(/\(([^)]+)\)/);
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TAP test framework location strings (controlled output), not user input
+  const parenMatch = /\(([^)]+)\)/.exec(location);
   const pathString = parenMatch ? parenMatch[1] : location;
 
   // Remove file:// protocol if present
@@ -187,7 +191,7 @@ function parseLocation(location: string): { file?: string; line?: number } {
 
   // Extract file path and line number
   // Format: /path/to/file.js:line:col or path/to/file.js:line:col
-  const match = cleanPath.match(/^(.+):(\d+):\d+$/);
+  const match = /^(.+):(\d+):\d+$/.exec(cleanPath);
   if (match) {
     return {
       file: match[1],
@@ -267,8 +271,9 @@ function formatCleanOutput(errors: FormattedError[]): string {
 
   return errors
     .map(error => {
+      const linePart = error.line ? `:${error.line}` : '';
       const location = error.file
-        ? `${error.file}${error.line ? `:${error.line}` : ''}`
+        ? `${error.file}${linePart}`
         : 'unknown location';
 
       const context = error.context ? `[${error.context}] ` : '';

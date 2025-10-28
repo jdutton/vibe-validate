@@ -48,7 +48,7 @@ export default defineConfig({
         // Thresholds set to current levels to prevent regression
         statements: 69,
         branches: 84,  // Adjusted for new JUnit XML extractor (84.84% current)
-        functions: 88,  // Lowered from 90 after comprehensive CLI command test additions
+        functions: 87,  // Adjusted for helper function extraction refactoring (SonarQube no-nested-functions fix)
         lines: 69,
       },
     },

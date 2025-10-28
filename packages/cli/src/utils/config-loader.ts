@@ -99,14 +99,14 @@ export async function loadConfigWithErrors(cwd?: string): Promise<{
     if (!validation.success) {
       return {
         config: null,
-        errors: validation.errors || ['Unknown validation error'],
+        errors: validation.errors ?? ['Unknown validation error'],
         filePath: configPath
       };
     }
 
     // Validation succeeded
     return {
-      config: validation.data || null,
+      config: validation.data ?? null,
       errors: null,
       filePath: configPath
     };

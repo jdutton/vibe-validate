@@ -48,7 +48,7 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
     // Match: FAIL test/integration/extraction-with-mocks.test.ts
     // OR: FAIL project-name tests/jest/comprehensive-failures.test.ts
     // OR:   FAIL extraction-test-bed tests/jest/comprehensive-failures.test.ts (with leading spaces)
-    const failMatch = line.match(/^\s*FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/);
+    const failMatch = /^\s*FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/.exec(line);
     if (failMatch) {
       currentFile = failMatch[1];
       hierarchyStack.length = 0; // Reset hierarchy for new file
@@ -58,11 +58,12 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
     if (!currentFile) continue; // Skip lines before FAIL
 
     // Calculate indentation level (number of leading spaces)
-    const indentMatch = line.match(/^(\s*)/);
+    const indentMatch = /^(\s*)/.exec(line);
     const indent = indentMatch ? indentMatch[1].length : 0;
 
     // Match: ✕ test name (6 ms) - inline failure
-    const failureMatch = line.match(/^\s+✕\s+(.+?)(?:\s+\(\d+\s*ms\))?$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jest test framework output (controlled output), not user input
+    const failureMatch = /^\s+✕\s+(.+?)(?:\s+\(\d+\s*ms\))?$/.exec(line);
     if (failureMatch) {
       const testName = failureMatch[1].trim();
 
@@ -81,7 +82,8 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
     }
 
     // Match: ● TestSuite › Sub Suite › test name (detailed error format)
-    const detailedTestMatch = line.match(/^\s*●\s+(.+)$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jest test framework output (controlled output), not user input
+    const detailedTestMatch = /^\s*●\s+(.+)$/.exec(line);
     if (detailedTestMatch) {
       const fullHierarchy = detailedTestMatch[1].trim();
       failures.push({
@@ -95,7 +97,7 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
 
     // Track test suite hierarchy (lines that are just text, no symbols)
     // These are describe blocks like "Vibe-Validate Integration Failures"
-    const suiteMatch = line.match(/^\s+([A-Z][\w\s›-]+)$/);
+    const suiteMatch = /^\s+([A-Z][\w\s›-]+)$/.exec(line);
     if (suiteMatch && !line.includes('✕') && !line.includes('✓') && !line.includes('ms)')) {
       const suiteName = suiteMatch[1].trim();
 

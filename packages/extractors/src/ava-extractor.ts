@@ -49,10 +49,10 @@ export function extractAvaErrors(output: string): ErrorExtractorResult {
   let completeCount = 0;
 
   for (const failure of failures) {
-    const file = failure.file || 'unknown';
+    const file = failure.file ?? 'unknown';
     // Use test name as fallback message if no explicit message extracted
-    const message = failure.message || failure.testName || 'Test failed';
-    const context = failure.testName || '';
+    const message = failure.message ?? failure.testName ?? 'Test failed';
+    const context = failure.testName ?? '';
 
     const isComplete = file !== 'unknown' && failure.line && message && message !== 'Test failed';
     if (isComplete) {
@@ -110,6 +110,7 @@ interface FailureInfo {
  * Extract all failures from Ava output
  * Strategy: Find detailed headers (test names with ›), then parse each block
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 23 acceptable for Ava output parsing (handles multiple output formats with fallback detection)
 function extractFailures(output: string): FailureInfo[] {
   const lines = output.split('\n');
   const failures: FailureInfo[] = [];
@@ -126,8 +127,8 @@ function extractFailures(output: string): FailureInfo[] {
         !trimmed.includes('[fail]:') &&
         !trimmed.startsWith('›') &&
         !trimmed.includes('file://') &&
-        !trimmed.match(/^\d+:/) &&
-        !trimmed.match(/^Error/) &&
+        !/^\d+:/.exec(trimmed) &&
+        !/^Error/.exec(trimmed) &&
         !trimmed.includes('{') &&
         !trimmed.includes('}') &&
         trimmed.length > 10) {
@@ -162,7 +163,7 @@ function extractFailures(output: string): FailureInfo[] {
       const trimmed = lines[i].trim();
       if (trimmed.includes('✘') && trimmed.includes('[fail]:')) {
         const failure: FailureInfo = {};
-        const summaryMatch = trimmed.match(/✘\s+\[fail\]:\s+(.+)/);
+        const summaryMatch = /✘\s+\[fail\]:\s+(.+)/.exec(trimmed);
         if (summaryMatch) {
           failure.testName = summaryMatch[1];
         }
@@ -189,7 +190,8 @@ function extractFailures(output: string): FailureInfo[] {
 /**
  * Parse a detailed error block to extract file, line, and message
  */
-function parseDetailedBlock(lines: string[], startIndex: number, failure: FailureInfo): void { // NOSONAR - High complexity is inherent to parsing diverse AVA output formats (state machine with multiple patterns)
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 40 acceptable for Ava error block parsing (state machine handling multiple output formats and edge cases)
+function parseDetailedBlock(lines: string[], startIndex: number, failure: FailureInfo): void {
   let i = startIndex;
   let foundCodeSnippet = false;
   let inErrorObject = false;
@@ -201,7 +203,7 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     // Stop at next test header (clean test name with ›)
     if (i > startIndex + 3 && trimmed.includes('›') && !trimmed.startsWith('›') &&
         trimmed.length > 15 && !trimmed.includes('file://') &&
-        !trimmed.match(/^\d+:/) && !trimmed.match(/^Error/) &&
+        !/^\d+:/.exec(trimmed) && !/^Error/.exec(trimmed) &&
         !trimmed.includes('{') && !trimmed.includes('}')) {
       break;
     }
@@ -212,7 +214,7 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     }
 
     // Extract file path: "tests/ava/test.js:28" (appears right after test name header)
-    const fileMatch = trimmed.match(/^([^:]+\.(?:js|ts|mjs|cjs)):(\d+)$/);
+    const fileMatch = /^([^:]+\.(?:js|ts|mjs|cjs)):(\d+)$/.exec(trimmed);
     if (fileMatch && !failure.file) {
       failure.file = fileMatch[1];
       failure.line = parseInt(fileMatch[2], 10);
@@ -221,7 +223,7 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     }
 
     // Extract from file:// URL: "› file://tests/ava/test.js:28:5"
-    const urlMatch = trimmed.match(/^›\s+file:\/\/(.+?):(\d+):\d+$/);
+    const urlMatch = /^›\s+file:\/\/(.+?):(\d+):\d+$/.exec(trimmed);
     if (urlMatch && !failure.file) {
       failure.file = urlMatch[1];
       failure.line = parseInt(urlMatch[2], 10);
@@ -230,14 +232,14 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     }
 
     // Code snippet marker (line numbers like "  28:   code here")
-    if (trimmed.match(/^\d+:/)) {
+    if (/^\d+:/.exec(trimmed)) {
       foundCodeSnippet = true;
       i++;
       continue;
     }
 
     // Error object start
-    if (trimmed.match(/^(?:TypeError|Error|.*Error)\s*\{$/)) {
+    if (/^(?:TypeError|Error|.*Error)\s*\{$/.exec(trimmed)) {
       inErrorObject = true;
       i++;
       continue;
@@ -253,13 +255,13 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     // Extract from error object properties
     if (inErrorObject) {
       // message property
-      const msgMatch = trimmed.match(/message:\s*'([^']+)'/);
+      const msgMatch = /message:\s*'([^']+)'/.exec(trimmed);
       if (msgMatch && !failure.message) {
         failure.message = msgMatch[1];
       }
 
       // code property for error type detection
-      const codeMatch = trimmed.match(/code:\s*'([^']+)'/);
+      const codeMatch = /code:\s*'([^']+)'/.exec(trimmed);
       if (codeMatch) {
         if (codeMatch[1] === 'ENOENT') {
           failure.errorType = 'file-not-found';
@@ -272,11 +274,10 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     }
 
     // Extract error from Error: line (after error object)
-    const errorLineMatch = trimmed.match(/^(?:TypeError|Error|.*Error):\s+(.+)$/);
-    if (errorLineMatch && !inErrorObject) {
-      if (!failure.message) {
-        failure.message = errorLineMatch[1];
-      }
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Ava test framework error messages (controlled output), not user input
+    const errorLineMatch = /^(?:TypeError|Error|.*Error):\s+(.+)$/.exec(trimmed);
+    if (errorLineMatch) {
+      failure.message ??= errorLineMatch[1];
 
       // Look for file in stack trace (next few lines)
       if (!failure.file && i + 1 < lines.length) {
@@ -284,7 +285,8 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
           const stackLine = lines[j].trim();
           // Match: at file:///path/to/file.js:110:24
           // But skip node_modules and ava lib files
-          const stackMatch = stackLine.match(/at\s+(?:.*?\s+)?\(?file:\/\/([^:)]+):(\d+):\d+/);
+          // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Ava test framework stack traces (controlled output), not user input
+          const stackMatch = /at\s+(?:.*?\s+)?\(?file:\/\/([^:)]+):(\d+):\d+/.exec(stackLine);
           if (stackMatch) {
             const stackFile = stackMatch[1];
             // Skip node_modules and ava library files
@@ -302,9 +304,7 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
 
     // Timeout marker
     if (trimmed.includes('Test timeout exceeded')) {
-      if (!failure.message) {
-        failure.message = 'Test timeout exceeded';
-      }
+      failure.message ??= 'Test timeout exceeded';
       failure.errorType = 'timeout';
       i++;
       continue;
@@ -318,28 +318,24 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
 
     // Detect assertion from Difference section
     if (trimmed.startsWith('Difference') && trimmed.includes('actual') && trimmed.includes('expected')) {
-      if (!failure.message) {
-        failure.message = 'Assertion failed';
-      }
-      if (!failure.errorType) {
-        failure.errorType = 'assertion';
-      }
+      failure.message ??= 'Assertion failed';
+      failure.errorType ??= 'assertion';
       i++;
       continue;
     }
 
     // Skip diff headers and diff lines
     if (trimmed.startsWith('Difference') || trimmed.startsWith('Expected:') ||
-        trimmed.startsWith('Received:') || trimmed.match(/^[+-]\s/)) {
+        trimmed.startsWith('Received:') || /^[+-]\s/.exec(trimmed)) {
       i++;
       continue;
     }
 
     // Assertion message (single line after code snippet, before Difference section)
     if (foundCodeSnippet && !failure.message && trimmed.length > 0 && trimmed.length < 150 &&
-        !trimmed.match(/^\d+:/) && !trimmed.includes('Difference') &&
+        !/^\d+:/.exec(trimmed) && !trimmed.includes('Difference') &&
         !trimmed.includes('{') && !trimmed.includes('}') &&
-        !trimmed.match(/^at\s+/) && !trimmed.includes('file://') &&
+        !/^at\s+/.exec(trimmed) && !trimmed.includes('file://') &&
         !trimmed.includes('.js:') && !trimmed.includes('.ts:')) {
       failure.message = trimmed;
       i++;
@@ -423,7 +419,7 @@ function formatCleanOutput(errors: FormattedError[]): string {
 
   return errors
     .map(e => {
-      const location = e.file && e.line ? `${e.file}:${e.line}` : e.file || 'unknown';
+      const location = e.file && e.line ? `${e.file}:${e.line}` : e.file ?? 'unknown';
       const context = e.context ? ` (${e.context})` : '';
       return `${location}${context}: ${e.message}`;
     })

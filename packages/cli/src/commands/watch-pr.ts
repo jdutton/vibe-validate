@@ -130,8 +130,8 @@ async function watchPR(
   prId: string,
   options: WatchPROptions
 ): Promise<number> {
-  const timeoutMs = parseInt(options.timeout || '3600') * 1000;
-  const pollIntervalMs = parseInt(options.pollInterval || '10') * 1000;
+  const timeoutMs = parseInt(options.timeout ?? '3600') * 1000;
+  const pollIntervalMs = parseInt(options.pollInterval ?? '10') * 1000;
   const startTime = Date.now();
 
   let lastStatus: CheckStatus | null = null;
@@ -278,8 +278,8 @@ function displayHumanStatus(status: CheckStatus, isFirst: boolean): void {
   // Display checks
   for (const check of status.checks) {
     const icon = getCheckIcon(check);
-    const statusStr = check.conclusion || check.status;
-    const duration = check.duration || '';
+    const statusStr = check.conclusion ?? check.status;
+    const duration = check.duration ?? '';
     console.log(`${icon} ${check.name.padEnd(40)} ${statusStr.padEnd(12)} ${duration}`);
   }
 

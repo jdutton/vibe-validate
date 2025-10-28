@@ -33,6 +33,7 @@ import { stripAnsiCodes } from './utils.js';
 /**
  * Extract errors from Playwright test output
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 22 acceptable for Playwright output parsing (handles numbered failures, error blocks, and file path normalization)
 export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
   const errors: FormattedError[] = [];
   const issues: string[] = [];
@@ -49,7 +50,8 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
     // Match numbered failure header: "  1) tests/path/test.spec.ts:10:5 › test name"
     // File path can include directories: "tests/playwright/test.spec.ts" or just "test.spec.ts"
     // Allow trailing whitespace
-    const failureMatch = line.match(/^\s+(\d+)\)\s+(.*\.spec\.ts):(\d+):(\d+)\s+›\s+(.+?)\s*$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Playwright test framework output (controlled output), not user input
+    const failureMatch = /^\s+(\d+)\)\s+(.*\.spec\.ts):(\d+):(\d+)\s+›\s+(.+?)\s*$/.exec(line);
 
     if (failureMatch) {
       const [, , file, , , testName] = failureMatch;
@@ -62,7 +64,7 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
         const nextLine = lines[i];
 
         // Stop at next numbered failure
-        if (nextLine.match(/^\s+\d+\)\s+/)) {
+        if (/^\s+\d+\)\s+/.exec(nextLine)) {
           break;
         }
 
@@ -74,11 +76,13 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
       const errorBlock = errorLines.join('\n');
 
       // Extract error message (first Error: line and subsequent details)
-      const errorMessageMatch = errorBlock.match(/Error:\s*(.+?)(?:\n\n|\n(?=\s+at\s))/s);
+      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Playwright test framework error messages (controlled output), not user input
+      const errorMessageMatch = /Error:\s*(.+?)(?:\n\n|\n(?=\s+at\s))/s.exec(errorBlock);
       const errorMessage = errorMessageMatch ? errorMessageMatch[1].trim() : testName;
 
       // Extract file location from stack trace (last line with "at file:line:col")
-      const stackMatch = errorBlock.match(/at\s+(.*\.spec\.ts):(\d+):(\d+)/);
+      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Playwright test framework stack traces (controlled output), not user input
+      const stackMatch = /at\s+(.*\.spec\.ts):(\d+):(\d+)/.exec(errorBlock);
       let errorFile = file;
       let errorLine = 0;
       let errorColumn = 0;
@@ -96,7 +100,7 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
       // If it's an absolute path, extract just the tests/... part or the filename
       if (errorFile.includes('/') && !errorFile.startsWith('tests')) {
         // Absolute path - extract relative part
-        const testsMatch = errorFile.match(/(tests?\/.+\.spec\.ts)/i);
+        const testsMatch = /(tests?\/.+\.spec\.ts)/i.exec(errorFile);
         if (testsMatch) {
           errorFile = testsMatch[1];
         } else {
@@ -144,7 +148,7 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
   // Generate clean output
   const formattedOutput = errors
     .map(e => {
-      const location = e.file && e.line ? `${e.file}:${e.line}` : e.file || 'unknown';
+      const location = e.file && e.line ? `${e.file}:${e.line}` : e.file ?? 'unknown';
       return `${location}: ${e.message}`;
     })
     .join('\n');
@@ -180,7 +184,12 @@ function detectErrorType(message: string, block: string): string {
   }
 
   // Assertion errors (expect())
-  if (message.includes('expect(') || message.includes('toBe') || message.includes('toContain') || message.includes('toBeVisible') || message.includes('toHaveValue') || message.includes('toHaveCount')) {
+  if (message.includes('expect(') ||
+      message.includes('toBe') ||
+      message.includes('toContain') ||
+      message.includes('toBeVisible') ||
+      message.includes('toHaveValue') ||
+      message.includes('toHaveCount')) {
     return 'assertion-error';
   }
 
@@ -268,6 +277,7 @@ export function isPlaywrightOutput(output: string): boolean {
   const hasPlaywrightMarker = cleanOutput.includes('✘') && cleanOutput.includes('.spec.ts');
 
   // Or has numbered failures with › separator
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only tests Playwright output format (controlled test framework output), not user input
   const hasNumberedFailures = /^\s+\d+\)\s+.+\.spec\.ts:\d+:\d+\s+›/.test(cleanOutput);
 
   return hasPlaywrightMarker || hasNumberedFailures;

@@ -207,6 +207,7 @@ function detectNodeVersion(cwd: string = process.cwd()): string {
 /**
  * Generate GitHub Actions workflow from validation config
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 69 acceptable for workflow generation (converts config phases/steps into GitHub Actions YAML with proper dependency management and caching logic)
 export function generateWorkflow(
   config: VibeValidateConfig,
   options: GenerateWorkflowOptions = {}
@@ -277,14 +278,19 @@ export function generateWorkflow(
 
     // Run validation with --yaml --verbose flags for structured output
     // Redirect stdout (YAML result) to file, stderr (verbose logs) to console
-    const validateCommand = isVibeValidateRepo
-      ? 'node packages/cli/dist/bin.js validate --yaml --verbose'
-      : (packageManager === 'pnpm' ? 'pnpm validate --yaml --verbose' : 'npm run validate -- --yaml --verbose');
+    let validateCommand: string;
+    if (isVibeValidateRepo) {
+      validateCommand = 'node packages/cli/dist/bin.js validate --yaml --verbose';
+    } else if (packageManager === 'pnpm') {
+      validateCommand = 'pnpm validate --yaml --verbose';
+    } else {
+      validateCommand = 'npm run validate -- --yaml --verbose';
+    }
 
     jobSteps.push({
       name: 'Run validation (Unix)',
       if: "runner.os != 'Windows'",
-      run: `${validateCommand} 1>validation-result.yaml || true`,
+      run: `${validateCommand} 1>validation-result.yaml ?? true`,
     });
 
     jobSteps.push({
@@ -303,7 +309,7 @@ exit 0  # Always succeed to allow result display`,
       run: `echo "=========================================="
 echo "VALIDATION RESULT"
 echo "=========================================="
-cat validation-result.yaml 2>/dev/null || echo "❌ Could not read validation result"
+cat validation-result.yaml 2>/dev/null ?? echo "❌ Could not read validation result"
 echo "=========================================="`,
     });
 
@@ -323,7 +329,7 @@ Write-Host '=========================================='`,
     jobSteps.push({
       name: 'Check validation result (Unix)',
       if: "always() && runner.os != 'Windows'",
-      run: `grep -q "passed: true" validation-result.yaml || exit 1`,
+      run: `grep -q "passed: true" validation-result.yaml ?? exit 1`,
     });
 
     // Fail the job if validation failed (check YAML result - Windows)
@@ -495,11 +501,12 @@ Write-Host '=========================================='`,
   }
 
   // Add gate job - all validation must pass
-  const allJobs = useMatrix
-    ? enableCoverage
-      ? ['validate', 'validate-coverage']
-      : ['validate']
-    : getAllJobIds(phases);
+  let allJobs: string[];
+  if (useMatrix) {
+    allJobs = enableCoverage ? ['validate', 'validate-coverage'] : ['validate'];
+  } else {
+    allJobs = getAllJobIds(phases);
+  }
 
   jobs['all-validation-passed'] = {
     name: 'All Validation Passed',
@@ -518,10 +525,10 @@ Write-Host '=========================================='`,
     name: 'Validation Pipeline',
     on: {
       push: {
-        branches: [config.git?.mainBranch || 'main'],
+        branches: [config.git?.mainBranch ?? 'main'],
       },
       pull_request: {
-        branches: [config.git?.mainBranch || 'main'],
+        branches: [config.git?.mainBranch ?? 'main'],
       },
     },
     jobs,

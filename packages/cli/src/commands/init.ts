@@ -52,10 +52,10 @@ export function initCommand(program: Command): void {
     .action(async (options) => {
       try {
         const cwd = process.cwd();
-        const isDryRun = options.dryRun || false;
+        const isDryRun = options.dryRun ?? false;
 
         // Check if this is a focused operation
-        const isFocusedOperation = options.setupHooks || options.setupWorkflow || options.fixGitignore;
+        const isFocusedOperation = options.setupHooks ?? options.setupWorkflow ?? options.fixGitignore;
 
         // Handle focused operations
         if (isFocusedOperation) {
@@ -84,6 +84,7 @@ export function initCommand(program: Command): void {
  * @param isDryRun - Preview mode (no file modifications)
  * @throws Error if setup check fails
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 33 acceptable for init workflow coordination (manages multiple optional setup operations: gitignore, package.json, workflow generation)
 async function handleFocusedOperations(cwd: string, options: InitOptions, isDryRun: boolean): Promise<void> {
   const fixOptions = { cwd, dryRun: isDryRun, force: options.force };
   const operations: SetupOperation[] = [];
@@ -176,7 +177,7 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
   }
 
   // Get template name (defaults to 'minimal')
-  const templateName = options.template || 'minimal';
+  const templateName = options.template ?? 'minimal';
 
   // Detect git configuration
   const gitConfig = detectGitConfig();

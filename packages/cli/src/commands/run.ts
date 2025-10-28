@@ -106,13 +106,13 @@ async function executeAndExtract(commandString: string): Promise<{
     let stdout = '';
     let stderr = '';
 
-    // Capture stdout
-    child.stdout?.on('data', (data: Buffer) => {
+    // Capture stdout (stdio: 'pipe' configuration guarantees these are Readable streams)
+    child.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
     });
 
-    // Capture stderr
-    child.stderr?.on('data', (data: Buffer) => {
+    // Capture stderr (stdio: 'pipe' configuration guarantees these are Readable streams)
+    child.stderr.on('data', (data: Buffer) => {
       stderr += data.toString();
     });
 

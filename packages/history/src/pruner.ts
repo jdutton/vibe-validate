@@ -47,7 +47,7 @@ export async function pruneHistoryByAge(
   const notesRemaining = allNotes.length;
 
   for (const note of allNotes) {
-    if (!note.runs || note.runs.length === 0) {
+    if (note.runs?.length === 0) {
       continue;
     }
 
@@ -122,7 +122,7 @@ export async function pruneAllHistory(
     }
 
     notesPruned++;
-    runsPruned += note.runs?.length || 0;
+    runsPruned += note.runs?.length ?? 0;
     prunedTreeHashes.push(note.treeHash);
   }
 

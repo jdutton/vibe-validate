@@ -155,6 +155,7 @@ async function listHistory(options: {
 /**
  * Show history for specific tree hash
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 16 acceptable for history display command (coordinates YAML vs pretty-print output, error handling, and metadata formatting)
 async function showHistory(
   treeHash: string,
   options: { yaml?: boolean }
@@ -227,13 +228,14 @@ async function showHistory(
 /**
  * Prune validation history
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 18 acceptable for history prune command (handles multiple pruning modes, dry-run logic, and result formatting)
 async function pruneHistory(options: {
   olderThan?: string;
   all?: boolean;
   dryRun?: boolean;
 }): Promise<void> {
   try {
-    const dryRun = options.dryRun || false;
+    const dryRun = options.dryRun ?? false;
 
     if (options.all) {
       console.log(dryRun ? 'Pruning all history (DRY RUN)...\n' : 'Pruning all history...\n');

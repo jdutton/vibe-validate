@@ -104,7 +104,7 @@ export async function recordValidationHistory(
     // Calculate duration from result phases if available (convert to milliseconds)
     if (result.phases && result.phases.length > 0) {
       newRun.duration = result.phases.reduce(
-        (total, phase) => total + (phase.durationSecs || 0) * 1000,
+        (total, phase) => total + phase.durationSecs * 1000,
         0
       );
     }

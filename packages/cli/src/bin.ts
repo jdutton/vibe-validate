@@ -32,9 +32,10 @@ let version = '0.9.2'; // Fallback version
 try {
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
   version = packageJson.version;
-} catch (_error) {
+} catch (error) {
   // If package.json can't be read (shouldn't happen in production), use fallback
-  console.warn('Warning: Could not read package.json version, using fallback');
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  console.warn(`Warning: Could not read package.json version (${errorMessage}), using fallback`);
 }
 
 const program = new Command();
@@ -67,7 +68,7 @@ runCommand(program);                  // vibe-validate run
  */
 type VerboseHelpLoader = () => Promise<() => void>;
 
-const verboseHelpRegistry: Record<string, VerboseHelpLoader> = {
+const verboseHelpRegistry: Partial<Record<string, VerboseHelpLoader>> = {
   'history': async () => {
     const { showHistoryVerboseHelp } = await import('./commands/history.js');
     return showHistoryVerboseHelp;
@@ -171,14 +172,14 @@ function showComprehensiveHelp(program: Command): void {
   console.log('## Commands\n');
 
   // Detailed command descriptions with exit codes, examples, etc.
-  const commandDetails: Record<string, {
+  const commandDetails: Partial<Record<string, {
     whatItDoes?: string[];
     exitCodes?: Record<number, string>;
     creates?: string[];
     examples?: string[];
     whenToUse?: string;
     errorGuidance?: Record<string, string[]>;
-  }> = {
+  }>> = {
     validate: {
       whatItDoes: [
         '1. Calculates git tree hash of working directory',

@@ -64,9 +64,9 @@ export class PostPRMergeCleanup {
   private readonly dryRun: boolean;
 
   constructor(options: CleanupOptions = {}) {
-    this.mainBranch = options.mainBranch || 'main';
-    this.remoteName = options.remoteName || 'origin';
-    this.dryRun = options.dryRun || false;
+    this.mainBranch = options.mainBranch ?? 'main';
+    this.remoteName = options.remoteName ?? 'origin';
+    this.dryRun = options.dryRun ?? false;
   }
 
   /**
@@ -181,13 +181,15 @@ export class PostPRMergeCleanup {
           try {
             execGitSync(['branch', '-d', branch]);
             deletedBranches.push(branch);
-          } catch (_deleteError) {
+          } catch (deleteError) {
             // Try force delete if regular delete fails
+            console.debug(`Regular delete failed for ${branch}: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
             try {
               execGitSync(['branch', '-D', branch]);
               deletedBranches.push(branch);
-            } catch (_forceDeleteError) {
+            } catch (forceDeleteError) {
               // Couldn't delete - skip this branch
+              console.debug(`Force delete also failed for ${branch}: ${forceDeleteError instanceof Error ? forceDeleteError.message : String(forceDeleteError)}`);
             }
           }
         }
@@ -195,7 +197,8 @@ export class PostPRMergeCleanup {
 
       return deletedBranches;
 
-    } catch (_error) {
+    } catch (error) {
+      console.debug(`Error deleting merged branches: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }
@@ -209,8 +212,9 @@ export class PostPRMergeCleanup {
 
       return mergedBranches.includes(branch);
 
-    } catch (_error) {
-      // If we can't determine merge status, don't delete the branch
+    } catch (error) {
+      // If we can't determine merge status, don't delete the branch (safer to keep)
+      console.debug(`Error checking merge status for ${branch}: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -221,8 +225,9 @@ export class PostPRMergeCleanup {
   private pruneRemoteReferences(): void {
     try {
       execGitSync(['remote', 'prune', this.remoteName]);
-    } catch (_error) {
+    } catch (error) {
       // Non-critical operation - don't fail on error
+      console.debug(`Error pruning remote ${this.remoteName}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }

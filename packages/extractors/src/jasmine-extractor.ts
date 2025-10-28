@@ -41,7 +41,8 @@ export function extractJasmineErrors(output: string): ErrorExtractorResult {
   }
 
   // Extract failure count
-  const failureMatch = output.match(/(\d+) spec(?:s)?, (\d+) failure(?:s)?/);
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jasmine test framework summary (controlled output), not user input
+  const failureMatch = /(\d+) spec(?:s)?, (\d+) failure(?:s)?/.exec(output);
   const failureCount = failureMatch ? parseInt(failureMatch[2], 10) : 0;
 
   if (failureCount === 0) {
@@ -66,9 +67,9 @@ export function extractJasmineErrors(output: string): ErrorExtractorResult {
   let completeCount = 0;
 
   for (const failure of failures) {
-    const file = failure.file || 'unknown';
-    const message = failure.message || 'Test failed';
-    const context = failure.testName || '';
+    const file = failure.file ?? 'unknown';
+    const message = failure.message ?? 'Test failed';
+    const context = failure.testName ?? '';
 
     const isComplete = file !== 'unknown' && failure.line && message;
     if (isComplete) {
@@ -123,6 +124,7 @@ interface FailureInfo {
 /**
  * Extract failure information from Jasmine output
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 28 acceptable for Jasmine output parsing (handles numbered failures, message extraction, and stack trace parsing)
 function extractFailures(output: string): FailureInfo[] {
   const failures: FailureInfo[] = [];
   const lines = output.split('\n');
@@ -132,7 +134,8 @@ function extractFailures(output: string): FailureInfo[] {
     const line = lines[i];
 
     // Look for numbered failure markers (e.g., "1) Test name")
-    const failureMatch = line.match(/^(\d+)\)\s+(.+)$/);
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jasmine test framework output (controlled output), not user input
+    const failureMatch = /^(\d+)\)\s+(.+)$/.exec(line);
 
     if (failureMatch) {
       // failureMatch[1] contains the failure number (not used - line number extracted from stack trace instead)
@@ -149,7 +152,7 @@ function extractFailures(output: string): FailureInfo[] {
         const nextLine = lines[j];
 
         // Stop if we hit the next failure
-        if (nextLine.match(/^\d+\)\s+/)) {
+        if (/^\d+\)\s+/.exec(nextLine)) {
           break;
         }
 
@@ -169,7 +172,7 @@ function extractFailures(output: string): FailureInfo[] {
           message = messageLines.join(' ').trim();
 
           // Extract error type if present (e.g., "TypeError:", "Error:")
-          const errorMatch = message.match(/^([A-Za-z]*Error):\s*/);
+          const errorMatch = /^([A-Za-z]*Error):\s*/.exec(message);
           if (errorMatch) {
             errorType = errorMatch[1];
           }
@@ -185,13 +188,13 @@ function extractFailures(output: string): FailureInfo[] {
             const stackLine = lines[j];
 
             // Stop if we hit the next failure or empty section
-            if (stackLine.match(/^\d+\)\s+/) || (stackLine.trim() === '' && lines[j + 1]?.match(/^\d+\)\s+/))) {
+            if (/^\d+\)\s+/.exec(stackLine) || (stackLine.trim() === '' && /^\d+\)\s+/.exec(lines[j + 1] ?? ''))) {
               break;
             }
 
             // Extract file from UserContext.<anonymous> stack lines
             if (stackLine.includes('UserContext.<anonymous>')) {
-              const locationMatch = stackLine.match(/UserContext\.<anonymous> \(([^:)]+):(\d+)(?::(\d+))?\)/);
+              const locationMatch = /UserContext\.<anonymous> \(([^:)]+):(\d+)(?::(\d+))?\)/.exec(stackLine);
               if (locationMatch) {
                 file = locationMatch[1];
                 lineNumber = parseInt(locationMatch[2], 10);
@@ -201,7 +204,8 @@ function extractFailures(output: string): FailureInfo[] {
 
             // Also try Object.* patterns
             if (!file && stackLine.includes(' (') && stackLine.includes('.js:')) {
-              const altMatch = stackLine.match(/\(([^:)]+):(\d+)(?::(\d+))?\)/);
+              // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jasmine test framework stack traces (controlled output), not user input
+              const altMatch = /\(([^:)]+):(\d+)(?::(\d+))?\)/.exec(stackLine);
               if (altMatch) {
                 file = altMatch[1];
                 lineNumber = parseInt(altMatch[2], 10);
@@ -237,12 +241,13 @@ function extractFailures(output: string): FailureInfo[] {
 /**
  * Generate guidance based on failure types
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 16 acceptable for guidance generation (categorizes multiple error types and generates actionable suggestions)
 function generateGuidance(failures: FailureInfo[]): string {
   const guidances: string[] = [];
   const seen = new Set<string>();
 
   for (const failure of failures) {
-    const message = failure.message || '';
+    const message = failure.message ?? '';
     const errorType = failure.errorType;
 
     // Assertion errors

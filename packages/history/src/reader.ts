@@ -32,8 +32,9 @@ export async function readHistoryNote(
 
     const note = parseYaml(yaml) as HistoryNote;
     return note;
-  } catch (_error) {
-    // Note doesn't exist - this is fine
+  } catch (error) {
+    // Note doesn't exist - this is expected for first-time validation
+    console.debug(`No history note for ${treeHash}: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
@@ -65,8 +66,9 @@ export async function listHistoryTreeHashes(
       .filter(Boolean);
 
     return treeHashes;
-  } catch (_error) {
-    // No notes exist yet
+  } catch (error) {
+    // No notes exist yet - expected for new repos
+    console.debug(`No history notes found: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   }
 }
