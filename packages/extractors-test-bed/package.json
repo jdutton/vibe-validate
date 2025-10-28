@@ -1,6 +1,5 @@
 {
   "name": "@vibe-validate/extractors-test-bed",
-  "version": "0.1.0",
   "private": true,
   "description": "Self-hosted test bed for validating @vibe-validate/extractors across multiple test frameworks and output formats",
   "type": "module",
