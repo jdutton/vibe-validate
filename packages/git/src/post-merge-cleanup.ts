@@ -163,43 +163,91 @@ export class PostPRMergeCleanup {
    */
   private deleteMergedBranches(): string[] {
     try {
-      // Get list of local branches (excluding main)
-      const allBranches = execGitSync(['branch', '--format=%(refname:short)'])
-        .trim()
-        .split('\n')
-        .filter(branch => branch && branch !== this.mainBranch && !branch.startsWith('*'));
-
-      const deletedBranches: string[] = [];
-
-      for (const branch of allBranches) {
-        if (this.isBranchMerged(branch)) {
-          if (this.dryRun) {
-            deletedBranches.push(branch);
-            continue;
-          }
-
-          try {
-            execGitSync(['branch', '-d', branch]);
-            deletedBranches.push(branch);
-          } catch (deleteError) {
-            // Try force delete if regular delete fails
-            console.debug(`Regular delete failed for ${branch}: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
-            try {
-              execGitSync(['branch', '-D', branch]);
-              deletedBranches.push(branch);
-            } catch (forceDeleteError) {
-              // Couldn't delete - skip this branch
-              console.debug(`Force delete also failed for ${branch}: ${forceDeleteError instanceof Error ? forceDeleteError.message : String(forceDeleteError)}`);
-            }
-          }
-        }
-      }
-
-      return deletedBranches;
-
+      const branchesToCheck = this.getLocalBranchesToCheck();
+      return this.processMergedBranches(branchesToCheck);
     } catch (error) {
       console.debug(`Error deleting merged branches: ${error instanceof Error ? error.message : String(error)}`);
       return [];
+    }
+  }
+
+  /**
+   * Get list of local branches to check (excluding main branch)
+   */
+  private getLocalBranchesToCheck(): string[] {
+    const allBranches = execGitSync(['branch', '--format=%(refname:short)'])
+      .trim()
+      .split('\n')
+      .filter(branch => branch && branch !== this.mainBranch && !branch.startsWith('*'));
+
+    return allBranches;
+  }
+
+  /**
+   * Process list of branches and delete merged ones
+   */
+  private processMergedBranches(branches: string[]): string[] {
+    const deletedBranches: string[] = [];
+
+    for (const branch of branches) {
+      if (this.isBranchMerged(branch)) {
+        const deleted = this.handleBranchDeletion(branch);
+        if (deleted) {
+          deletedBranches.push(branch);
+        }
+      }
+    }
+
+    return deletedBranches;
+  }
+
+  /**
+   * Handle deletion of a single branch (dry run or actual deletion)
+   */
+  private handleBranchDeletion(branch: string): boolean {
+    if (this.dryRun) {
+      return true;
+    }
+
+    return this.tryDeleteBranch(branch);
+  }
+
+  /**
+   * Try to delete a branch (with fallback to force delete)
+   */
+  private tryDeleteBranch(branch: string): boolean {
+    // Try regular delete first
+    if (this.attemptRegularDelete(branch)) {
+      return true;
+    }
+
+    // Fallback to force delete
+    return this.attemptForceDelete(branch);
+  }
+
+  /**
+   * Attempt regular branch deletion (git branch -d)
+   */
+  private attemptRegularDelete(branch: string): boolean {
+    try {
+      execGitSync(['branch', '-d', branch]);
+      return true;
+    } catch (error) {
+      console.debug(`Regular delete failed for ${branch}: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Attempt force branch deletion (git branch -D)
+   */
+  private attemptForceDelete(branch: string): boolean {
+    try {
+      execGitSync(['branch', '-D', branch]);
+      return true;
+    } catch (error) {
+      console.debug(`Force delete also failed for ${branch}: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
     }
   }
 

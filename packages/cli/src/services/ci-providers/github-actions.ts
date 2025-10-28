@@ -114,33 +114,67 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   extractValidationResult(logs: string): ValidationResultContents | null {
-    // GitHub Actions logs have format: "Run name\tStep name\tTimestamp <content>"
-    // We need to strip prefixes to get actual output
     const lines = logs.split('\n');
+    const extractContent = this.createContentExtractor();
 
-    // Helper to extract content from a GitHub Actions log line
-    const extractContent = (line: string): string => {
+    const boundaries = this.findValidationResultBoundaries(lines, extractContent);
+    if (!boundaries) {
+      return null;
+    }
+
+    const yamlContent = this.extractYamlContent(lines, boundaries, extractContent);
+    return this.parseAndEnrichValidationResult(yamlContent);
+  }
+
+  /**
+   * Create a function to extract content from GitHub Actions log lines
+   * Format: "Run name\tStep name\tTimestamp <content>"
+   */
+  private createContentExtractor(): (_line: string) => string {
+    return (line: string): string => {
       const parts = line.split('\t');
       if (parts.length < 3) return '';
       const contentWithTimestamp = parts.slice(2).join('\t');
       // Strip timestamp (format: "2025-10-21T00:56:24.8654285Z <content>")
       return contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '').replace(/^[0-9T:.Z-]+$/, '');
     };
+  }
 
-    // Find the start: line containing "VALIDATION RESULT"
-    // (This header is from the CI workflow displaying the validation result)
-    // Skip lines with ANSI codes (those are the commands being echoed, not the output)
+  /**
+   * Find the start and end indices of validation result YAML in logs
+   */
+  private findValidationResultBoundaries(
+    lines: string[],
+    extractContent: (_line: string) => string
+  ): { startIdx: number; endIdx: number } | null {
+    // Find start: line containing "VALIDATION RESULT" (skip ANSI-coded lines)
     const startIdx = lines.findIndex(l => {
       return l.includes('VALIDATION RESULT') && !l.includes('[36;1m') && !l.includes('[0m');
     });
+
     if (startIdx < 0) {
       return null;
     }
 
-    // Find the closing separator (next line with ==== that comes after some YAML content)
-    // Look for a line with just ========== (40+ chars) after we've seen some YAML (passed:, timestamp:, etc.)
-    let endIdx = -1;
+    // Find end: closing separator after YAML content
+    const endIdx = this.findClosingSeparator(lines, startIdx, extractContent);
+    if (endIdx < 0) {
+      return null;
+    }
+
+    return { startIdx, endIdx };
+  }
+
+  /**
+   * Find the closing separator (====) after YAML content
+   */
+  private findClosingSeparator(
+    lines: string[],
+    startIdx: number,
+    extractContent: (_line: string) => string
+  ): number {
     let foundYamlContent = false;
+
     for (let i = startIdx + 1; i < lines.length; i++) {
       const content = extractContent(lines[i]).trim();
 
@@ -149,55 +183,75 @@ export class GitHubActionsProvider implements CIProvider {
         foundYamlContent = true;
       }
 
-      // Look for closing separator after we've seen YAML content
+      // Look for closing separator (40+ equals signs) after YAML content
       if (foundYamlContent && /^={40,}$/.exec(content)) {
-        endIdx = i;
-        break;
+        return i;
       }
     }
 
-    if (endIdx < 0) {
-      return null;
-    }
+    return -1;
+  }
 
-    // Extract YAML content (skip the header separator line, start from actual YAML)
-    // The workflow outputs: ==== / VALIDATION RESULT / ==== / <YAML> / ====
-    // So YAML starts at startIdx + 2 (skip "VALIDATION RESULT" and separator)
-    const yamlStartIdx = startIdx + 2;
-
+  /**
+   * Extract YAML content between boundaries
+   */
+  private extractYamlContent(
+    lines: string[],
+    boundaries: { startIdx: number; endIdx: number },
+    extractContent: (_line: string) => string
+  ): string {
+    // YAML starts at startIdx + 2 (skip "VALIDATION RESULT" and separator)
+    const yamlStartIdx = boundaries.startIdx + 2;
     const yamlLines: string[] = [];
-    for (let i = yamlStartIdx; i < endIdx; i++) {
-      // Strip the prefix (job name + step + timestamp) to get actual content
-      const content = extractContent(lines[i]);
-      yamlLines.push(content);
+
+    for (let i = yamlStartIdx; i < boundaries.endIdx; i++) {
+      yamlLines.push(extractContent(lines[i]));
     }
 
+    return yamlLines.join('\n').trim();
+  }
+
+  /**
+   * Parse YAML and enrich with extractor results
+   */
+  private parseAndEnrichValidationResult(yamlContent: string): ValidationResultContents | null {
     try {
-      const stateYaml = yamlLines.join('\n').trim();
-      const result = parseYaml(stateYaml) as ValidationResultContents;
+      const result = parseYaml(yamlContent) as ValidationResultContents;
 
-      // If validation failed and we have step output, run it through extractors
-      // to extract structured failure details (test names, file locations, etc.)
+      // Enrich with structured failure details if validation failed
       if (!result.passed && result.failedStep && result.failedStepOutput) {
-        const extractorResult = autoDetectAndExtract(result.failedStep, result.failedStepOutput);
-
-        // Extract failed tests in "file:line" format from extractor errors
-        if (extractorResult.errors.length > 0) {
-          result.failedTests = extractorResult.errors
-            .filter((e: { file?: string; line?: number }) => e.file && e.line)
-            .map((e: { file?: string; line?: number; column?: number; message?: string }) => {
-              const columnPart = e.column ? `:${e.column}` : '';
-              return `${e.file}:${e.line}${columnPart} - ${e.message ?? 'Test failed'}`;
-            })
-            .slice(0, 10); // Limit to first 10 for display
-        }
+        this.enrichWithFailedTests(result);
       }
 
       return result;
     } catch (error) {
-      // Failed to parse YAML, return null
       console.debug(`Failed to parse validation YAML: ${error instanceof Error ? error.message : String(error)}`);
       return null;
+    }
+  }
+
+  /**
+   * Enrich validation result with failed test details from extractors
+   */
+  private enrichWithFailedTests(result: ValidationResultContents): void {
+    // Type narrowing: we know these are defined due to the check in parseAndEnrichValidationResult
+    const failedStep = result.failedStep;
+    const failedStepOutput = result.failedStepOutput;
+
+    if (!failedStep || !failedStepOutput) {
+      return;
+    }
+
+    const extractorResult = autoDetectAndExtract(failedStep, failedStepOutput);
+
+    if (extractorResult.errors.length > 0) {
+      result.failedTests = extractorResult.errors
+        .filter((e: { file?: string; line?: number }) => e.file && e.line)
+        .map((e: { file?: string; line?: number; column?: number; message?: string }) => {
+          const columnPart = e.column ? `:${e.column}` : '';
+          return `${e.file}:${e.line}${columnPart} - ${e.message ?? 'Test failed'}`;
+        })
+        .slice(0, 10); // Limit to first 10 for display
     }
   }
 
