@@ -290,7 +290,7 @@ export function generateWorkflow(
     jobSteps.push({
       name: 'Run validation (Unix)',
       if: "runner.os != 'Windows'",
-      run: `${validateCommand} 1>validation-result.yaml ?? true`,
+      run: `${validateCommand} 1>validation-result.yaml || true`,
     });
 
     jobSteps.push({
@@ -309,7 +309,7 @@ exit 0  # Always succeed to allow result display`,
       run: `echo "=========================================="
 echo "VALIDATION RESULT"
 echo "=========================================="
-cat validation-result.yaml 2>/dev/null ?? echo "❌ Could not read validation result"
+cat validation-result.yaml 2>/dev/null || echo "❌ Could not read validation result"
 echo "=========================================="`,
     });
 
@@ -329,7 +329,7 @@ Write-Host '=========================================='`,
     jobSteps.push({
       name: 'Check validation result (Unix)',
       if: "always() && runner.os != 'Windows'",
-      run: `grep -q "passed: true" validation-result.yaml ?? exit 1`,
+      run: `grep -q "passed: true" validation-result.yaml || exit 1`,
     });
 
     // Fail the job if validation failed (check YAML result - Windows)
