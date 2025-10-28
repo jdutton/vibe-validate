@@ -2,7 +2,7 @@
  * History pruning utilities
  */
 
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import type { PruneResult, HistoryConfig } from './types.js';
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
 import { getAllHistoryNotes } from './reader.js';

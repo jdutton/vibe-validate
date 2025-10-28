@@ -82,7 +82,7 @@ export function extractJUnitErrors(output: string): ErrorExtractorResult {
     let line: number | undefined;
     if (location) {
       const locationParts = location.split(':');
-      line = locationParts[1] ? parseInt(locationParts[1], 10) : undefined;
+      line = locationParts[1] ? Number.parseInt(locationParts[1], 10) : undefined;
     }
 
     errors.push({

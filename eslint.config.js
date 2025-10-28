@@ -2,6 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import sonarjs from 'eslint-plugin-sonarjs';
+import unicorn from 'eslint-plugin-unicorn';
 
 export default [
   eslint.configs.recommended,
@@ -25,6 +26,7 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tseslint,
+      unicorn,
     },
     rules: {
       // TypeScript-specific rules
@@ -75,6 +77,16 @@ export default [
       'sonarjs/duplicates-in-character-class': 'error', // Promoted from warn
       'sonarjs/prefer-single-boolean-return': 'error', // Promoted from warn
       'sonarjs/no-unused-vars': 'warn', // Keep as warn (duplicate of @typescript-eslint/no-unused-vars)
+
+      // Unicorn rules - modern JavaScript best practices
+      'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)
+      'unicorn/prefer-number-properties': 'error', // Prefer Number.isNaN over global isNaN (reliability)
+      'unicorn/throw-new-error': 'error', // Require 'new' when throwing Error
+      'unicorn/prefer-module': 'error', // Prefer ESM over CommonJS
+      'unicorn/prefer-top-level-await': 'error', // Modern async patterns
+      'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach
+      'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined
+      'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability
     },
   },
   {

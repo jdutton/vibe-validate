@@ -310,15 +310,15 @@ export function extractVitestErrors(
       if (f.location) {
         const parts = f.location.split(':');
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings for parseInt, not just null/undefined
-        column = parseInt(parts.pop() || '');
+        column = Number.parseInt(parts.pop() || '');
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings for parseInt, not just null/undefined
-        line = parseInt(parts.pop() || '');
+        line = Number.parseInt(parts.pop() || '');
       }
 
       return {
         file: f.file,
-        line: line !== undefined && !isNaN(line) ? line : undefined,
-        column: column !== undefined && !isNaN(column) ? column : undefined,
+        line: line !== undefined && !Number.isNaN(line) ? line : undefined,
+        column: column !== undefined && !Number.isNaN(column) ? column : undefined,
         message: f.errorMessage
       };
     }),

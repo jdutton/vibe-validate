@@ -89,8 +89,8 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
 
       if (stackMatch) {
         errorFile = stackMatch[1];
-        errorLine = parseInt(stackMatch[2], 10);
-        errorColumn = parseInt(stackMatch[3], 10);
+        errorLine = Number.parseInt(stackMatch[2], 10);
+        errorColumn = Number.parseInt(stackMatch[3], 10);
       } else {
         // No stack trace found - track as an issue
         issues.push(`No stack trace found for failure: ${testName}`);

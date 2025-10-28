@@ -11,7 +11,7 @@ import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import chalk from 'chalk';
 
 export function preCommitCommand(program: Command): void {

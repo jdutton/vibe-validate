@@ -10,10 +10,10 @@
  * @packageDocumentation
  */
 
-import { spawn, type ChildProcess } from 'child_process';
-import { writeFileSync, appendFileSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { writeFileSync, appendFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
@@ -252,7 +252,7 @@ export async function runStepsInParallel(
         // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 37 acceptable for process completion handler (manages output capture, extraction, quality metrics, and fail-fast coordination)
         proc.on('close', code => {
           const durationMs = Date.now() - startTime;
-          const durationSecs = parseFloat((durationMs / 1000).toFixed(1));
+          const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
           const output = stdout + stderr;
           outputs.set(step.name, output);
 
@@ -441,7 +441,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       config.developerFeedback ?? false
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
-    const durationSecs = parseFloat((phaseDurationMs / 1000).toFixed(1));
+    const durationSecs = Number.parseFloat((phaseDurationMs / 1000).toFixed(1));
 
     // Append all outputs to log file
     for (const [stepName, output] of result.outputs) {

@@ -2,7 +2,7 @@
  * Git notes reader
  */
 
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
 import type { HistoryNote } from './types.js';
 

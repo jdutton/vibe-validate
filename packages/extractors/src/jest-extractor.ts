@@ -115,8 +115,8 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
   // Build formatted errors
   const errors = failures.map(f => ({
     file: f.file,
-    line: parseInt(f.location.split(':')[1] || '0'),
-    column: parseInt(f.location.split(':')[2] || '0'),
+    line: Number.parseInt(f.location.split(':')[1] || '0'),
+    column: Number.parseInt(f.location.split(':')[2] || '0'),
     message: `${f.testHierarchy}: ${f.errorMessage}`,
     severity: 'error' as const
   }));

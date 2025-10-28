@@ -15,8 +15,8 @@
  * @packageDocumentation
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { stringify as yamlStringify } from 'yaml';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';

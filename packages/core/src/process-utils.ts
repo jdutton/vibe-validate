@@ -5,7 +5,7 @@
  * Used by validation runner for signal handling and fail-fast behavior.
  */
 
-import { ChildProcess, execSync } from 'child_process';
+import { ChildProcess, execSync } from 'node:child_process';
 
 /**
  * Stop a child process and its entire process group (cross-platform)

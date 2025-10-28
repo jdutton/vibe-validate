@@ -69,7 +69,7 @@ async function listHistory(options: {
   yaml?: boolean;
 }): Promise<void> {
   try {
-    const limit = parseInt(options.limit, 10);
+    const limit = Number.parseInt(options.limit, 10);
     const allNotes = await getAllHistoryNotes();
 
     if (allNotes.length === 0) {
@@ -254,7 +254,7 @@ async function pruneHistory(options: {
         console.log(`\nRun without --dry-run to execute: vibe-validate history prune --all`);
       }
     } else {
-      const days = options.olderThan ? parseInt(options.olderThan, 10) : 90;
+      const days = options.olderThan ? Number.parseInt(options.olderThan, 10) : 90;
 
       console.log(
         dryRun

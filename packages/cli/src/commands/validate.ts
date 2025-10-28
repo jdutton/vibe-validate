@@ -91,7 +91,7 @@ export function validateCommand(program: Command): void {
           const existingLock = await checkLock(cwd, lockOptions);
 
           if (existingLock) {
-            const waitTimeout = parseInt(options.waitTimeout, 10) || 300;
+            const waitTimeout = Number.parseInt(options.waitTimeout, 10) || 300;
 
             if (!options.yaml) {
               console.log(chalk.yellow('⏳ Waiting for running validation to complete...'));

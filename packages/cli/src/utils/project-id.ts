@@ -6,9 +6,9 @@
  * multiple directories (worktrees, clones) share the same lock.
  */
 
-import { execSync } from 'child_process';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { execSync } from 'node:child_process';
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 /**
  * Extract project name from git remote URL

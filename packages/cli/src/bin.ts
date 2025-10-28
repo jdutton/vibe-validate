@@ -6,9 +6,9 @@
  */
 
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { validateCommand } from './commands/validate.js';
 import { initCommand } from './commands/init.js';
 import { preCommitCommand } from './commands/pre-commit.js';
@@ -162,6 +162,7 @@ async function handleVerboseHelp(args: string[], program: Command): Promise<bool
  *
  * Outputs in Markdown format for better LLM parsing and perfect docs sync
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complex display logic, documented technical debt
 function showComprehensiveHelp(program: Command): void {
   console.log('# vibe-validate CLI Reference\n');
   console.log('> Agent-friendly validation framework with git tree hash caching\n');
@@ -414,7 +415,7 @@ function showComprehensiveHelp(program: Command): void {
     }
   };
 
-  program.commands.forEach((cmd) => {
+  for (const cmd of program.commands) {
     const cmdName = cmd.name();
     const details = commandDetails[cmdName];
 
@@ -423,21 +424,21 @@ function showComprehensiveHelp(program: Command): void {
 
     if (details?.whatItDoes) {
       console.log('**What it does:**\n');
-      details.whatItDoes.forEach(step => console.log(`${step}`));
+      for (const step of details.whatItDoes) console.log(`${step}`);
       console.log('');
     }
 
     if (details?.exitCodes) {
       console.log('**Exit codes:**\n');
-      Object.entries(details.exitCodes).forEach(([code, desc]) => {
+      for (const [code, desc] of Object.entries(details.exitCodes)) {
         console.log(`- \`${code}\` - ${desc}`);
-      });
+      }
       console.log('');
     }
 
     if (details?.creates) {
       console.log('**Creates/modifies:**\n');
-      details.creates.forEach(file => console.log(`- ${file}`));
+      for (const file of details.creates) console.log(`- ${file}`);
       console.log('');
     }
 
@@ -448,31 +449,31 @@ function showComprehensiveHelp(program: Command): void {
     const options = cmd.options.filter(opt => !opt.flags.includes('--help'));
     if (options.length > 0) {
       console.log('**Options:**\n');
-      options.forEach((opt) => {
+      for (const opt of options) {
         console.log(`- \`${opt.flags}\` - ${opt.description}`);
-      });
+      }
       console.log('');
     }
 
     if (details?.errorGuidance) {
       console.log('**Error recovery:**\n');
-      Object.entries(details.errorGuidance).forEach(([scenario, steps]) => {
+      for (const [scenario, steps] of Object.entries(details.errorGuidance)) {
         console.log(`If **${scenario}**:`);
         console.log('```bash');
-        steps.forEach(step => console.log(step));
+        for (const step of steps) console.log(step);
         console.log('```\n');
-      });
+      }
     }
 
     if (details?.examples) {
       console.log('**Examples:**\n');
       console.log('```bash');
-      details.examples.forEach(ex => console.log(ex));
+      for (const ex of details.examples) console.log(ex);
       console.log('```\n');
     }
 
     console.log('---\n');
-  });
+  }
 
   console.log('## Global Options\n');
   console.log('- `-V, --version` - Show vibe-validate version');

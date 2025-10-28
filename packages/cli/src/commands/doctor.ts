@@ -11,8 +11,8 @@
  * @packageDocumentation
  */
 
-import { existsSync, readFileSync } from 'fs';
-import { execSync } from 'child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
@@ -71,22 +71,18 @@ export interface DoctorOptions {
 function checkNodeVersion(): DoctorCheckResult {
   try {
     const version = execSync('node --version', { encoding: 'utf8' }).trim();
-    const majorVersion = parseInt(version.replace('v', '').split('.')[0]);
+    const majorVersion = Number.parseInt(version.replace('v', '').split('.')[0]);
 
-    if (majorVersion >= 20) {
-      return {
+    return majorVersion >= 20 ? {
         name: 'Node.js version',
         passed: true,
         message: `${version} (meets requirement: >=20.0.0)`,
-      };
-    } else {
-      return {
+      } : {
         name: 'Node.js version',
         passed: false,
         message: `${version} is too old. Node.js 20+ required.`,
         suggestion: 'Upgrade Node.js: https://nodejs.org/ or use nvm',
       };
-    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
@@ -148,20 +144,16 @@ function checkGitRepository(): DoctorCheckResult {
 function checkConfigFile(): DoctorCheckResult {
   const yamlConfig = 'vibe-validate.config.yaml';
 
-  if (existsSync(yamlConfig)) {
-    return {
+  return existsSync(yamlConfig) ? {
       name: 'Configuration file',
       passed: true,
       message: `Found: ${yamlConfig}`,
-    };
-  } else {
-    return {
+    } : {
       name: 'Configuration file',
       passed: false,
       message: 'Configuration file not found',
       suggestion: 'Run: npx vibe-validate init',
     };
-  }
 }
 
 
@@ -324,20 +316,16 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
 
     const { inSync, diff } = checkSync(config, generateOptions);
 
-    if (inSync) {
-      return {
+    return inSync ? {
         name: 'GitHub Actions workflow',
         passed: true,
         message: 'Workflow is in sync with config',
-      };
-    } else {
-      return {
+      } : {
         name: 'GitHub Actions workflow',
         passed: false,
         message: `Workflow is out of sync: ${diff ?? 'differs from config'}`,
         suggestion: 'Manual: npx vibe-validate generate-workflow\n   💡 Or run: vibe-validate init --setup-workflow',
       };
-    }
   } catch (error) {
     return {
       name: 'GitHub Actions workflow',

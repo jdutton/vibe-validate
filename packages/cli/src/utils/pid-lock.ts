@@ -5,9 +5,9 @@
  * Cross-platform (Node.js), works on Windows, macOS, Linux.
  */
 
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /**
  * Lock file information

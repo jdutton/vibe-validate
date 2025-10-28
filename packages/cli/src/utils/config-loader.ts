@@ -4,8 +4,8 @@
  * Loads and validates vibe-validate configuration from project root.
  */
 
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { findAndLoadConfig } from '@vibe-validate/config';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
@@ -83,7 +83,7 @@ export async function loadConfigWithErrors(cwd?: string): Promise<{
 
   // Always parse and validate to get detailed errors
   try {
-    const { readFileSync } = await import('fs');
+    const { readFileSync } = await import('node:fs');
     const { parse: parseYaml } = await import('yaml');
     const { safeValidateConfig } = await import('@vibe-validate/config');
 

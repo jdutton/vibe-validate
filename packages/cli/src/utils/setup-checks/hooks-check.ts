@@ -9,9 +9,9 @@
  * install husky manually via `npm install -D husky` or `pnpm add -D husky`.
  */
 
-import { readFile, writeFile, mkdir, chmod } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { readFile, writeFile, mkdir, chmod } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type {
   SetupCheck,
   CheckResult,

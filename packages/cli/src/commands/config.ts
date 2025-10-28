@@ -92,10 +92,12 @@ function displayVerboseConfig(config: VibeValidateConfig, configPath: string): v
 
     if (config.validation.phases) {
       console.log(chalk.gray(`  Phases: ${config.validation.phases.length}`));
-      config.validation.phases.forEach((phase, index: number) => {
+      let index = 0;
+      for (const phase of config.validation.phases) {
         const parallelIcon = phase.parallel ? '⚡' : '→';
         console.log(chalk.gray(`    ${index + 1}. ${parallelIcon} ${phase.name} (${phase.steps?.length ?? 0} steps)`));
-      });
+        index++;
+      }
     }
 
     console.log();
@@ -122,11 +124,11 @@ function displayYamlConfig(config: VibeValidateConfig): void {
 
   if (config.validation?.phases) {
     console.log('  phases:');
-    config.validation.phases.forEach((phase) => {
+    for (const phase of config.validation.phases) {
       console.log(`    - name: ${phase.name}`);
       console.log(`      parallel: ${phase.parallel}`);
       console.log(`      steps: ${phase.steps?.length ?? 0}`);
-    });
+    }
   }
 
   if (config.git) {
