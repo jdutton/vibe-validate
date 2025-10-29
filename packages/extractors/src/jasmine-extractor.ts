@@ -43,7 +43,7 @@ export function extractJasmineErrors(output: string): ErrorExtractorResult {
   // Extract failure count
   // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jasmine test framework summary (controlled output), not user input
   const failureMatch = /(\d+) spec(?:s)?, (\d+) failure(?:s)?/.exec(output);
-  const failureCount = failureMatch ? parseInt(failureMatch[2], 10) : 0;
+  const failureCount = failureMatch ? Number.parseInt(failureMatch[2], 10) : 0;
 
   if (failureCount === 0) {
     return {
@@ -197,7 +197,7 @@ function extractFailures(output: string): FailureInfo[] {
               const locationMatch = /UserContext\.<anonymous> \(([^:)]+):(\d+)(?::(\d+))?\)/.exec(stackLine);
               if (locationMatch) {
                 file = locationMatch[1];
-                lineNumber = parseInt(locationMatch[2], 10);
+                lineNumber = Number.parseInt(locationMatch[2], 10);
                 break;
               }
             }
@@ -208,7 +208,7 @@ function extractFailures(output: string): FailureInfo[] {
               const altMatch = /\(([^:)]+):(\d+)(?::(\d+))?\)/.exec(stackLine);
               if (altMatch) {
                 file = altMatch[1];
-                lineNumber = parseInt(altMatch[2], 10);
+                lineNumber = Number.parseInt(altMatch[2], 10);
                 break;
               }
             }

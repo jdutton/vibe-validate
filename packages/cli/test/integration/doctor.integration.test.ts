@@ -23,7 +23,7 @@ describe('Doctor Command Integration', () => {
         stdio: 'pipe',
       });
       return { stdout, stderr: '', exitCode: 0 };
-    } catch (error: any) {
+    } catch (_error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
       // execSync throws on non-zero exit, but we want to see the output
       return {
         stdout: error.stdout || '',
@@ -126,7 +126,7 @@ describe('Doctor Command Integration', () => {
 
     // Verbose mode shows all checks
     expect(stdout).toContain('checks passed');
-    const checkMatches = stdout.match(/✅|❌/g);
+    const checkMatches = stdout.match(/[✅❌]/g);
     const checkCount = checkMatches ? checkMatches.length : 0;
     expect(checkCount).toBeGreaterThan(10); // Should show most/all of 15 checks
 

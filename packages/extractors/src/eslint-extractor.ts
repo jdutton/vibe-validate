@@ -82,8 +82,8 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
       const ruleName = modernMatch[6].replace(/[[\]]/g, ''); // Remove brackets if present
       errors.push({
         file: modernMatch[1].trim(),
-        line: parseInt(modernMatch[2]),
-        column: parseInt(modernMatch[3]),
+        line: Number.parseInt(modernMatch[2]),
+        column: Number.parseInt(modernMatch[3]),
         severity: modernMatch[4] as 'error' | 'warning',
         message: `${ruleMessage} (${ruleName})`,
         code: ruleName
@@ -99,8 +99,8 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
       const ruleName = stylishMatch[5];
       errors.push({
         file: currentFile,
-        line: parseInt(stylishMatch[1]),
-        column: parseInt(stylishMatch[2]),
+        line: Number.parseInt(stylishMatch[1]),
+        column: Number.parseInt(stylishMatch[2]),
         severity: stylishMatch[3] as 'error' | 'warning',
         message: `${ruleMessage} (${ruleName})`,
         code: ruleName

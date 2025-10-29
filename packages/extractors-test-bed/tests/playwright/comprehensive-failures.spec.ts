@@ -8,8 +8,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);

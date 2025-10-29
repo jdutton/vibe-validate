@@ -138,6 +138,44 @@ export function getThreshold(difficulty: Sample['metadata']['difficulty']): numb
 }
 
 /**
+ * Check if individual failures match between actual and expected
+ */
+function checkFailureMatches(
+  actual: SampleTestResult['actualExtraction'],
+  expected: Sample['expected']
+): { locationMatches: number; messageMatches: number; minLength: number } {
+  const minLength = Math.min(actual.failures.length, expected.failures.length);
+  let locationMatches = 0;
+  let messageMatches = 0;
+
+  for (let i = 0; i < minLength; i++) {
+    const actualFailure = actual.failures[i];
+    const expectedFailure = expected.failures[i];
+
+    // Check location
+    if (actualFailure.file && expectedFailure.location) {
+      const fileMatch = actualFailure.file.includes(expectedFailure.location.file);
+      const lineMatch =
+        !expectedFailure.location.line || actualFailure.line === expectedFailure.location.line;
+
+      if (fileMatch && lineMatch) {
+        locationMatches++;
+      }
+    }
+
+    // Check message
+    if (actualFailure.message && expectedFailure.message) {
+      const messageMatch = actualFailure.message.includes(expectedFailure.message.slice(0, 50));
+      if (messageMatch) {
+        messageMatches++;
+      }
+    }
+  }
+
+  return { locationMatches, messageMatches, minLength };
+}
+
+/**
  * Compute quality score comparing actual vs expected
  */
 export function computeQualityScore(
@@ -184,34 +222,8 @@ export function computeQualityScore(
     );
   }
 
-  // Check individual failures (first N)
-  const minLength = Math.min(actual.failures.length, expected.failures.length);
-  let locationMatches = 0;
-  let messageMatches = 0;
-
-  for (let i = 0; i < minLength; i++) {
-    const actualFailure = actual.failures[i];
-    const expectedFailure = expected.failures[i];
-
-    // Check location
-    if (actualFailure.file && expectedFailure.location) {
-      const fileMatch = actualFailure.file.includes(expectedFailure.location.file);
-      const lineMatch =
-        !expectedFailure.location.line || actualFailure.line === expectedFailure.location.line;
-
-      if (fileMatch && lineMatch) {
-        locationMatches++;
-      }
-    }
-
-    // Check message
-    if (actualFailure.message && expectedFailure.message) {
-      const messageMatch = actualFailure.message.includes(expectedFailure.message.slice(0, 50));
-      if (messageMatch) {
-        messageMatches++;
-      }
-    }
-  }
+  // Check individual failures
+  const { locationMatches, messageMatches, minLength } = checkFailureMatches(actual, expected);
 
   fieldScores.location = minLength > 0 ? locationMatches / minLength : 0;
   fieldScores.message = minLength > 0 ? messageMatches / minLength : 0;

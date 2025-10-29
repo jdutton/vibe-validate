@@ -127,6 +127,7 @@ describe('Vibe-Validate Integration Failures', () => {
       const { nonExistentFunction } = await import('@vibe-validate/core');
 
       nonExistentFunction();
+      expect(nonExistentFunction).toBeDefined(); // Unreachable - function call will throw
     });
 
     it('should fail when importing from wrong package', async () => {
@@ -211,6 +212,7 @@ describe('Edge Cases (Simple Code)', () => {
     it('should complete within timeout', async () => {
       // INTENTIONAL FAILURE: Test times out
       await new Promise(resolve => setTimeout(resolve, 100000));
+      expect(true).toBe(true); // Unreachable - test will timeout before this
     }, 10); // 10ms timeout
   });
 

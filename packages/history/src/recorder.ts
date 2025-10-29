@@ -2,10 +2,10 @@
  * Git notes recorder
  */
 
-import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { execSync } from 'node:child_process';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
 import { getGitTreeHash, hasWorkingTreeChanges } from '@vibe-validate/git';
 import type { ValidationResult } from '@vibe-validate/core';

@@ -93,12 +93,12 @@ describe('History Integration', () => {
     // 1. Get tree hash before
     const before = await getGitTreeHash();
 
-    // 2. Simulate validation
-    const result: ValidationResult = {
-      passed: true,
-      timestamp: new Date().toISOString(),
-      treeHash: before,
-    };
+    // 2. Simulate validation (result would be recorded in real code)
+    // const result: ValidationResult = {
+    //   passed: true,
+    //   timestamp: new Date().toISOString(),
+    //   treeHash: before,
+    // };
 
     // 3. Check stability (should detect change)
     const stability = await checkWorktreeStability(before);

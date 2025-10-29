@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { spawnSync } from 'child_process';
-import { PostPRMergeCleanup, cleanupMergedBranches, type CleanupResult } from '../src/post-merge-cleanup.js';
+import { PostPRMergeCleanup, cleanupMergedBranches } from '../src/post-merge-cleanup.js';
 
 // Mock child_process
 vi.mock('child_process', () => ({

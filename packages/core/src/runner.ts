@@ -10,10 +10,10 @@
  * @packageDocumentation
  */
 
-import { spawn, type ChildProcess } from 'child_process';
-import { writeFileSync, appendFileSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { writeFileSync, appendFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
@@ -121,6 +121,140 @@ export function parseFailures(output: string): string[] {
   }
 
   return failures;
+}
+
+/**
+ * Detect tool type from step name
+ *
+ * Uses heuristics to determine which validation tool is running based on the step name.
+ * This is a temporary solution until extractors package returns detected tool type.
+ *
+ * @param stepName - Name of the validation step
+ * @returns Detected tool identifier (typescript, eslint, vitest, or unknown)
+ *
+ * @internal
+ */
+function detectToolFromStepName(stepName: string): string {
+  const stepLower = stepName.toLowerCase();
+  if (stepLower.includes('typescript') || stepLower.includes('tsc')) {
+    return 'typescript';
+  }
+  if (stepLower.includes('eslint')) {
+    return 'eslint';
+  }
+  if (stepLower.includes('test') || stepLower.includes('vitest')) {
+    return 'vitest';
+  }
+  return 'unknown';
+}
+
+/**
+ * Calculate confidence level from extraction quality score
+ *
+ * Maps numeric quality scores to confidence levels for easier interpretation.
+ *
+ * @param score - Quality score (0-100)
+ * @returns Confidence level (high >= 80, medium >= 50, low < 50)
+ *
+ * @internal
+ */
+function calculateConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
+  if (score >= 80) {
+    return 'high';
+  }
+  if (score >= 50) {
+    return 'medium';
+  }
+  return 'low';
+}
+
+/**
+ * Process developer feedback for failed step
+ *
+ * Analyzes extraction quality and provides feedback for improving extractors.
+ * Only called when developerFeedback mode is enabled.
+ *
+ * @param stepResult - Step result to augment with extraction quality data
+ * @param stepName - Name of the validation step
+ * @param formatted - Formatted extractor output
+ * @param log - Logging function for output
+ * @param isWarning - Helper to check if error is a warning
+ * @param isNotWarning - Helper to check if error is not a warning
+ *
+ * @internal
+ */
+function processDeveloperFeedback(
+  stepResult: StepResult,
+  stepName: string,
+  formatted: ReturnType<typeof autoDetectAndExtract>,
+  log: (_msg: string) => void,
+  isWarning: (_e: { severity?: string }) => boolean,
+  isNotWarning: (_e: { severity?: string }) => boolean
+): void {
+  const detectedTool = detectToolFromStepName(stepName);
+
+  // eslint-disable-next-line sonarjs/deprecation -- calculateExtractionQuality is deprecated but still used for backwards compatibility
+  const score = calculateExtractionQuality(formatted);
+  const confidence = calculateConfidenceLevel(score);
+
+  stepResult.extractionQuality = {
+    detectedTool,
+    confidence,
+    score,
+    warnings: formatted.errors?.filter(isWarning).length ?? 0,
+    errorsExtracted: formatted.errors?.filter(isNotWarning).length ?? formatted.errors?.length ?? 0,
+    actionable: (formatted.errors?.length ?? 0) > 0,
+  };
+
+  // Alert on poor extraction quality (for failed steps)
+  if (score < 50) {
+    log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
+    log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
+  }
+}
+
+/**
+ * Handle fail-fast process coordination
+ *
+ * Kills all other running processes when fail-fast is enabled and a step fails.
+ * Thread-safe due to JavaScript's single-threaded event loop.
+ *
+ * @param enableFailFast - Whether fail-fast mode is enabled
+ * @param firstFailure - Reference to first failure tracking object
+ * @param step - The failed step
+ * @param output - Output from failed step
+ * @param processes - Array of all running processes
+ * @param log - Logging function for output
+ * @param ignoreStopErrors - Callback to ignore already-stopped process errors
+ * @returns Updated firstFailure reference
+ *
+ * @internal
+ */
+function handleFailFast(
+  enableFailFast: boolean,
+  firstFailure: { step: ValidationStep; output: string } | null,
+  step: ValidationStep,
+  output: string,
+  processes: Array<{ proc: ChildProcess; step: ValidationStep }>,
+  log: (_msg: string) => void,
+  ignoreStopErrors: () => void
+): { step: ValidationStep; output: string } | null {
+  // RACE CONDITION SAFE: While multiple processes could fail simultaneously,
+  // JavaScript's single-threaded event loop ensures atomic assignment.
+  // Even if multiple failures occur, only one will be firstFailure, which is acceptable.
+  if (enableFailFast && !firstFailure) {
+    const failure = { step, output };
+    log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
+
+    // Kill all other running processes
+    for (const { proc: otherProc, step: otherStep } of processes) {
+      if (otherStep !== step && otherProc.exitCode === null) {
+        stopProcessGroup(otherProc, otherStep.name).catch(ignoreStopErrors);
+      }
+    }
+    return failure;
+  }
+  return firstFailure;
 }
 
 /**
@@ -249,10 +383,9 @@ export async function runStepsInParallel(
           }
         });
 
-        // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 37 acceptable for process completion handler (manages output capture, extraction, quality metrics, and fail-fast coordination)
         proc.on('close', code => {
           const durationMs = Date.now() - startTime;
-          const durationSecs = parseFloat((durationMs / 1000).toFixed(1));
+          const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
           const output = stdout + stderr;
           outputs.set(step.name, output);
 
@@ -280,44 +413,7 @@ export async function runStepsInParallel(
             // Only include extraction quality metrics when developerFeedback is enabled
             // This is for vibe-validate contributors to identify extraction improvement opportunities
             if (developerFeedback) {
-              // Detect tool from step name (heuristic until extractors returns this)
-              const stepLower = step.name.toLowerCase();
-              let detectedTool: string;
-              if (stepLower.includes('typescript') || stepLower.includes('tsc')) {
-                detectedTool = 'typescript';
-              } else if (stepLower.includes('eslint')) {
-                detectedTool = 'eslint';
-              } else if (stepLower.includes('test') || stepLower.includes('vitest')) {
-                detectedTool = 'vitest';
-              } else {
-                detectedTool = 'unknown';
-              }
-
-              // Calculate extraction quality metrics
-              // eslint-disable-next-line sonarjs/deprecation -- calculateExtractionQuality is deprecated but still used for backwards compatibility
-              const score = calculateExtractionQuality(formatted);
-              let confidence: 'high' | 'medium' | 'low';
-              if (score >= 80) {
-                confidence = 'high';
-              } else if (score >= 50) {
-                confidence = 'medium';
-              } else {
-                confidence = 'low';
-              }
-              stepResult.extractionQuality = {
-                detectedTool,
-                confidence,
-                score,
-                warnings: formatted.errors?.filter(isWarning).length ?? 0,
-                errorsExtracted: formatted.errors?.filter(isNotWarning).length ?? formatted.errors?.length ?? 0,
-                actionable: (formatted.errors?.length ?? 0) > 0,
-              };
-
-              // Alert on poor extraction quality (for failed steps)
-              if (score < 50) {
-                log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
-                log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
-              }
+              processDeveloperFeedback(stepResult, step.name, formatted, log, isWarning, isNotWarning);
             }
           }
 
@@ -327,20 +423,7 @@ export async function runStepsInParallel(
             resolve({ step, output, durationSecs });
           } else {
             // On first failure, kill other processes if fail-fast enabled
-            // RACE CONDITION SAFE: While multiple processes could fail simultaneously,
-            // JavaScript's single-threaded event loop ensures atomic assignment.
-            // Even if multiple failures occur, only one will be firstFailure, which is acceptable.
-            if (enableFailFast && !firstFailure) {
-              firstFailure = { step, output };
-              log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
-
-              // Kill all other running processes
-              for (const { proc: otherProc, step: otherStep } of processes) {
-                if (otherStep !== step && otherProc.exitCode === null) {
-                  stopProcessGroup(otherProc, otherStep.name).catch(ignoreStopErrors);
-                }
-              }
-            }
+            firstFailure = handleFailFast(enableFailFast, firstFailure, step, output, processes, log, ignoreStopErrors);
             reject({ step, output, durationSecs });
           }
         });
@@ -357,6 +440,56 @@ export async function runStepsInParallel(
   }
 
   return { success: true, outputs, stepResults };
+}
+
+/**
+ * Append step outputs to log file
+ */
+function appendStepOutputsToLog(
+  logPath: string,
+  outputs: Map<string, string>,
+  failedStepName?: string
+): void {
+  for (const [stepName, output] of outputs) {
+    appendFileSync(logPath, `\n${'='.repeat(60)}\n`);
+    appendFileSync(logPath, `${stepName}${failedStepName === stepName ? ' - FAILED' : ''}\n`);
+    appendFileSync(logPath, `${'='.repeat(60)}\n`);
+    appendFileSync(logPath, output);
+  }
+}
+
+/**
+ * Create failed validation result with extracted errors
+ */
+function createFailedValidationResult(
+  failedStep: ValidationStep,
+  failedOutput: string,
+  currentTreeHash: string,
+  logPath: string,
+  phaseResults: PhaseResult[]
+): ValidationResult {
+  // Extract actionable failures (LLM-optimized)
+  const extracted = autoDetectAndExtract(failedStep.name, failedOutput);
+  const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
+
+  // Use structured errors from extractor
+  const structuredFailures = extracted.errors.map(error => {
+    const linePart = error.line ? `:${error.line}` : '';
+    const location = error.file ? `${error.file}${linePart}` : 'unknown';
+    return `${location} - ${error.message ?? 'No message'}`;
+  });
+
+  return {
+    passed: false,
+    timestamp: new Date().toISOString(),
+    treeHash: currentTreeHash,
+    failedStep: failedStep.name,
+    rerunCommand: failedStep.command,
+    failedTests: structuredFailures.length > 0 ? structuredFailures : undefined,
+    fullLogFile: logPath,
+    phases: phaseResults,
+    failedStepOutput: extractedOutput,
+  };
 }
 
 /**
@@ -421,7 +554,6 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   // Initialize log file
   writeFileSync(logPath, `Validation started at ${new Date().toISOString()}\n\n`);
 
-  let failedStep: ValidationStep | null = null;
   const phaseResults: PhaseResult[] = [];
 
   // Run each phase
@@ -441,15 +573,10 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       config.developerFeedback ?? false
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
-    const durationSecs = parseFloat((phaseDurationMs / 1000).toFixed(1));
+    const durationSecs = Number.parseFloat((phaseDurationMs / 1000).toFixed(1));
 
     // Append all outputs to log file
-    for (const [stepName, output] of result.outputs) {
-      appendFileSync(logPath, `\n${'='.repeat(60)}\n`);
-      appendFileSync(logPath, `${stepName}${result.failedStep?.name === stepName ? ' - FAILED' : ''}\n`);
-      appendFileSync(logPath, `${'='.repeat(60)}\n`);
-      appendFileSync(logPath, output);
-    }
+    appendStepOutputsToLog(logPath, result.outputs, result.failedStep?.name);
 
     // Record phase result
     const phaseResult: PhaseResult = {
@@ -473,48 +600,17 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       onPhaseComplete(phase, phaseResult);
     }
 
-    // If phase failed, stop here
+    // If phase failed, stop here and return failure result
     if (!result.success && result.failedStep) {
-      failedStep = result.failedStep;
-
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-      const failedOutput = result.outputs.get(failedStep.name) || '';
-
-      // Extract actionable failures from raw output (LLM-optimized, 5-10 lines instead of 100+)
-      // This reduces git notes bloat and makes errors immediately actionable
-      const extracted = autoDetectAndExtract(failedStep.name, failedOutput);
-
-      // Use cleanOutput for storage (already formatted for YAML/JSON, stripped of ANSI codes)
-      // Falls back to raw output if extraction fails
-      const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
-
-      // Use structured errors from extractor (replaces deprecated parseFailures)
-      const structuredFailures = extracted.errors.map(error => {
-        const linePart = error.line ? `:${error.line}` : '';
-        const location = error.file
-          ? `${error.file}${linePart}`
-          : 'unknown';
-        return `${location} - ${error.message ?? 'No message'}`;
-      });
-
-      // IMPORTANT: Field order matches types.ts for YAML truncation safety
-      // Verbose fields (phases, failedStepOutput) at the end
-      const validationResult: ValidationResult = {
-        passed: false,
-        timestamp: new Date().toISOString(),
-        treeHash: currentTreeHash,
-        failedStep: failedStep.name,
-        rerunCommand: failedStep.command,
-        failedTests: structuredFailures.length > 0 ? structuredFailures : undefined,
-        fullLogFile: logPath,
-        phases: phaseResults,  // Contains verbose output - near end
-        failedStepOutput: extractedOutput,  // Most verbose - dead last
-      };
-
-      // State persistence moved to validate.ts via git notes (v0.12.0+)
-      // The state file is deprecated - git notes are now the source of truth
-
-      return validationResult;
+      const failedOutput = result.outputs.get(result.failedStep.name) || '';
+      return createFailedValidationResult(
+        result.failedStep,
+        failedOutput,
+        currentTreeHash,
+        logPath,
+        phaseResults
+      );
     }
   }
 

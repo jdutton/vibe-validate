@@ -8,9 +8,9 @@
  * generate-workflow command to create a standard GitHub Actions workflow.
  */
 
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type {
   SetupCheck,
   CheckResult,

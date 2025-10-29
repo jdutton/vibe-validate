@@ -195,7 +195,7 @@ function parseLocation(location: string): { file?: string; line?: number } {
   if (match) {
     return {
       file: match[1],
-      line: parseInt(match[2], 10)
+      line: Number.parseInt(match[2], 10)
     };
   }
 

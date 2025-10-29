@@ -10,7 +10,11 @@ import {
   pruneHistoryByAge,
   pruneAllHistory,
   checkHistoryHealth,
+  type HistoryNote,
 } from '@vibe-validate/history';
+
+// Type for flattened validation run with tree hash
+type ValidationRun = HistoryNote['runs'][0] & { treeHash: string };
 
 /**
  * Register history command
@@ -61,6 +65,59 @@ export function historyCommand(program: Command): void {
 }
 
 /**
+ * Output history in YAML format
+ */
+async function outputHistoryYaml(runs: ValidationRun[]): Promise<void> {
+  // Small delay to ensure stderr is flushed
+  await new Promise(resolve => setTimeout(resolve, 10));
+
+  // RFC 4627 separator
+  process.stdout.write('---\n');
+
+  // Write pure YAML
+  process.stdout.write(stringifyYaml(runs));
+
+  // CRITICAL: Wait for stdout to flush before exiting
+  await new Promise<void>(resolve => {
+    if (process.stdout.write('')) {
+      resolve();
+    } else {
+      process.stdout.once('drain', resolve);
+    }
+  });
+}
+
+/**
+ * Output history in pretty table format
+ */
+function outputHistoryTable(
+  runs: ValidationRun[],
+  allRunsCount: number,
+  notesCount: number,
+  filteredCount: number,
+  branchFilter?: string
+): void {
+  console.log(`\nValidation History (showing ${runs.length} most recent)\n`);
+
+  for (const run of runs) {
+    const timestamp = new Date(run.timestamp).toLocaleString();
+    const hash = run.treeHash.slice(0, 7);
+    const status = run.passed ? '✓ PASSED' : '✗ FAILED';
+    const duration = (run.duration / 1000).toFixed(1);
+
+    console.log(`${timestamp}  ${hash}  ${run.branch.padEnd(20)}  ${status}  (${duration}s)`);
+  }
+
+  console.log(`\nTotal validation runs: ${allRunsCount}`);
+  console.log(`Tree hashes tracked: ${notesCount}`);
+
+  if (filteredCount < allRunsCount && !branchFilter) {
+    console.log(`\nShowing ${runs.length} of ${filteredCount} runs`);
+    console.log(`Use --limit to see more: vibe-validate history list --limit 50`);
+  }
+}
+
+/**
  * List validation history
  */
 async function listHistory(options: {
@@ -69,7 +126,7 @@ async function listHistory(options: {
   yaml?: boolean;
 }): Promise<void> {
   try {
-    const limit = parseInt(options.limit, 10);
+    const limit = Number.parseInt(options.limit, 10);
     const allNotes = await getAllHistoryNotes();
 
     if (allNotes.length === 0) {
@@ -106,44 +163,9 @@ async function listHistory(options: {
     const limitedRuns = filteredRuns.slice(0, limit);
 
     if (options.yaml) {
-      // YAML mode: Output structured result to stdout
-      // Small delay to ensure stderr is flushed
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // RFC 4627 separator
-      process.stdout.write('---\n');
-
-      // Write pure YAML
-      process.stdout.write(stringifyYaml(limitedRuns));
-
-      // CRITICAL: Wait for stdout to flush before exiting
-      await new Promise<void>(resolve => {
-        if (process.stdout.write('')) {
-          resolve();
-        } else {
-          process.stdout.once('drain', resolve);
-        }
-      });
+      await outputHistoryYaml(limitedRuns);
     } else {
-      // Pretty table output
-      console.log(`\nValidation History (showing ${limitedRuns.length} most recent)\n`);
-
-      for (const run of limitedRuns) {
-        const timestamp = new Date(run.timestamp).toLocaleString();
-        const hash = run.treeHash.slice(0, 7);
-        const status = run.passed ? '✓ PASSED' : '✗ FAILED';
-        const duration = (run.duration / 1000).toFixed(1);
-
-        console.log(`${timestamp}  ${hash}  ${run.branch.padEnd(20)}  ${status}  (${duration}s)`);
-      }
-
-      console.log(`\nTotal validation runs: ${allRuns.length}`);
-      console.log(`Tree hashes tracked: ${allNotes.length}`);
-
-      if (filteredRuns.length < allRuns.length && !options.branch) {
-        console.log(`\nShowing ${limitedRuns.length} of ${filteredRuns.length} runs`);
-        console.log(`Use --limit to see more: vibe-validate history list --limit 50`);
-      }
+      outputHistoryTable(limitedRuns, allRuns.length, allNotes.length, filteredRuns.length, options.branch);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -254,7 +276,7 @@ async function pruneHistory(options: {
         console.log(`\nRun without --dry-run to execute: vibe-validate history prune --all`);
       }
     } else {
-      const days = options.olderThan ? parseInt(options.olderThan, 10) : 90;
+      const days = options.olderThan ? Number.parseInt(options.olderThan, 10) : 90;
 
       console.log(
         dryRun

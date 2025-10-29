@@ -6,26 +6,24 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
-import { execSync } from 'child_process';
+import { join } from 'node:path';
+import {
+  createTempTestDir,
+  cleanupTempTestDir,
+  writeTestConfig,
+} from '../helpers/test-fixtures.js';
+import { executeCommand } from '../helpers/test-command-runner.js';
 
 describe('config command error reporting (regression tests)', () => {
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-config-errors-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
+    testDir = createTempTestDir('vibe-validate-config-errors');
   });
 
   afterEach(() => {
-    // Clean up test files
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    cleanupTempTestDir(testDir);
   });
 
   describe('invalid config with missing required fields', () => {
@@ -37,34 +35,25 @@ validation:
 git:
   mainBranch: main
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), invalidConfig);
+      writeTestConfig(testDir, invalidConfig);
 
-      try {
-        execSync(`node "${cliPath}" config --validate`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error for invalid config');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+      const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
 
-        // Should show error header
-        expect(output).toContain('Configuration is invalid');
-        expect(output).toContain('vibe-validate.config.yaml');
+      // Should show error header
+      expect(result.output).toContain('Configuration is invalid');
+      expect(result.output).toContain('vibe-validate.config.yaml');
 
-        // Should show specific validation error
-        expect(output).toContain('Validation errors:');
-        expect(output).toContain('validation');
+      // Should show specific validation error
+      expect(result.output).toContain('Validation errors:');
+      expect(result.output).toContain('validation');
 
-        // Should show helpful suggestions
-        expect(output).toContain('Suggestions:');
-        expect(output).toContain('YAML syntax');
-        expect(output).toContain('config-templates');
+      // Should show helpful suggestions
+      expect(result.output).toContain('Suggestions:');
+      expect(result.output).toContain('YAML syntax');
+      expect(result.output).toContain('config-templates');
 
-        // Should exit with error code
-        expect(error.status).toBe(1);
-      }
+      // Should exit with error code
+      expect(result.exitCode).toBe(1);
     });
   });
 
@@ -81,23 +70,14 @@ git:
   mainBranch: 123  # Should be string
   autoSync: "yes"  # Should be boolean
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), invalidConfig);
+      writeTestConfig(testDir, invalidConfig);
 
-      try {
-        execSync(`node "${cliPath}" config --validate`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error for type mismatch');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+      const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
 
-        // Should show specific field errors
-        expect(output).toContain('git.mainBranch');
-        expect(output).toContain('Expected string, received number');
-        expect(error.status).toBe(1);
-      }
+      // Should show specific field errors
+      expect(result.output).toContain('git.mainBranch');
+      expect(result.output).toContain('Expected string, received number');
+      expect(result.exitCode).toBe(1);
     });
   });
 
@@ -111,23 +91,14 @@ git:
   mainBranch: main
   unknownField: value  # Not in schema
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), invalidConfig);
+      writeTestConfig(testDir, invalidConfig);
 
-      try {
-        execSync(`node "${cliPath}" config --validate`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error for unknown field');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+      const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
 
-        // Should show unrecognized key error
-        expect(output).toContain('Unrecognized key');
-        expect(output).toContain('unknownField');
-        expect(error.status).toBe(1);
-      }
+      // Should show unrecognized key error
+      expect(result.output).toContain('Unrecognized key');
+      expect(result.output).toContain('unknownField');
+      expect(result.exitCode).toBe(1);
     });
   });
 
@@ -141,22 +112,13 @@ validation:
       parallel true  # Missing colon
       steps: []
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), invalidYaml);
+      writeTestConfig(testDir, invalidYaml);
 
-      try {
-        execSync(`node "${cliPath}" config --validate`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error for YAML syntax');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+      const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
 
-        // Should mention YAML syntax error
-        expect(output).toContain('Configuration is invalid');
-        expect(error.status).toBe(1);
-      }
+      // Should mention YAML syntax error
+      expect(result.output).toContain('Configuration is invalid');
+      expect(result.exitCode).toBe(1);
     });
   });
 
@@ -172,14 +134,12 @@ validation:
         - name: Echo
           command: echo test
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), validConfig);
+      writeTestConfig(testDir, validConfig);
 
-      const output = execSync(`node "${cliPath}" config --validate`, {
-        cwd: testDir,
-        encoding: 'utf-8',
-      });
+      const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
 
-      expect(output).toContain('Configuration is valid');
+      expect(result.output).toContain('Configuration is valid');
+      expect(result.exitCode).toBe(0);
     });
   });
 
@@ -199,35 +159,28 @@ git:
   unknownField2: val
   unknownField3: val
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), invalidConfig);
+      writeTestConfig(testDir, invalidConfig);
 
-      try {
-        execSync(`node "${cliPath}" config --validate`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+      const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
 
-        // Count actual error bullet lines (not suggestions which also use bullets)
-        const lines = output.split('\n');
-        const validationErrorsIndex = lines.findIndex(l => l.includes('Validation errors:'));
-        const suggestionsIndex = lines.findIndex(l => l.includes('Suggestions:'));
+      // Count actual error bullet lines (not suggestions which also use bullets)
+      const lines = result.output.split('\n');
+      const validationErrorsIndex = lines.findIndex(l => l.includes('Validation errors:'));
+      const suggestionsIndex = lines.findIndex(l => l.includes('Suggestions:'));
 
-        // Only count bullets between "Validation errors:" and "Suggestions:"
-        const errorSection = lines.slice(validationErrorsIndex + 1, suggestionsIndex > 0 ? suggestionsIndex : lines.length);
-        const errorLines = errorSection.filter((line: string) => line.includes('•'));
+      // Only count bullets between "Validation errors:" and "Suggestions:"
+      const errorSection = lines.slice(validationErrorsIndex + 1, suggestionsIndex > 0 ? suggestionsIndex : lines.length);
+      const errorLines = errorSection.filter((line: string) => line.includes('•'));
 
-        expect(errorLines.length).toBeLessThanOrEqual(6); // 5 errors + "and X more" line
+      expect(errorLines.length).toBeLessThanOrEqual(6); // 5 errors + "and X more" line
 
-        // May show "and X more" if there are more than 5 errors
-        if (errorLines.length === 6) {
-          expect(output).toContain('and');
-          expect(output).toContain('more');
-        }
+      // May show "and X more" if there are more than 5 errors
+      if (errorLines.length === 6) {
+        expect(result.output).toContain('and');
+        expect(result.output).toContain('more');
       }
+
+      expect(result.exitCode).toBe(1);
     });
   });
 });

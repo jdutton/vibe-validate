@@ -123,6 +123,38 @@ async function watchPRCommand(
 }
 
 /**
+ * Handle timeout scenario
+ */
+function handleTimeout(
+  lastStatus: CheckStatus | null,
+  elapsed: number,
+  yaml: boolean
+): number {
+  if (yaml && lastStatus) {
+    const result: WatchPRResult = {
+      pr: lastStatus.pr,
+      status: 'timeout',
+      result: 'unknown',
+      duration: formatDuration(elapsed),
+      summary: 'Timed out waiting for checks to complete',
+      checks: lastStatus.checks.map((c) => ({
+        name: c.name,
+        status: c.status,
+        conclusion: c.conclusion,
+        duration: c.duration,
+        url: c.url,
+      })),
+    };
+    // YAML mode: Output timeout result to stdout
+    process.stdout.write('---\n');
+    process.stdout.write(stringifyYaml(result));
+  } else {
+    console.log('\n⏱️  Timeout reached. Checks still pending.');
+  }
+  return 2;
+}
+
+/**
  * Watch PR until completion or timeout
  */
 async function watchPR(
@@ -130,8 +162,8 @@ async function watchPR(
   prId: string,
   options: WatchPROptions
 ): Promise<number> {
-  const timeoutMs = parseInt(options.timeout ?? '3600') * 1000;
-  const pollIntervalMs = parseInt(options.pollInterval ?? '10') * 1000;
+  const timeoutMs = Number.parseInt(options.timeout ?? '3600') * 1000;
+  const pollIntervalMs = Number.parseInt(options.pollInterval ?? '10') * 1000;
   const startTime = Date.now();
 
   let lastStatus: CheckStatus | null = null;
@@ -142,28 +174,7 @@ async function watchPR(
 
     // Check timeout
     if (elapsed >= timeoutMs) {
-      if (options.yaml && lastStatus) {
-        const result: WatchPRResult = {
-          pr: lastStatus.pr,
-          status: 'timeout',
-          result: 'unknown',
-          duration: formatDuration(elapsed),
-          summary: 'Timed out waiting for checks to complete',
-          checks: lastStatus.checks.map((c) => ({
-            name: c.name,
-            status: c.status,
-            conclusion: c.conclusion,
-            duration: c.duration,
-            url: c.url,
-          })),
-        };
-        // YAML mode: Output timeout result to stdout
-        process.stdout.write('---\n');
-        process.stdout.write(stringifyYaml(result));
-      } else {
-        console.log('\n⏱️  Timeout reached. Checks still pending.');
-      }
-      return 2;
+      return handleTimeout(lastStatus, elapsed, options.yaml ?? false);
     }
 
     // Fetch current status
@@ -176,11 +187,9 @@ async function watchPR(
     }
 
     // Check if we should fail fast
-    if (options.failFast) {
-      const anyFailure = status.checks.some((c) => c.conclusion === 'failure');
-      if (anyFailure) {
-        return await handleCompletion(provider, status, options, elapsed);
-      }
+    const shouldFailFast = options.failFast && status.checks.some((c) => c.conclusion === 'failure');
+    if (shouldFailFast) {
+      return await handleCompletion(provider, status, options, elapsed);
     }
 
     // Check if all checks are complete
@@ -293,6 +302,7 @@ function displayHumanStatus(status: CheckStatus, isFirst: boolean): void {
 /**
  * Display human-friendly completion message
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complex display logic, documented technical debt
 function displayHumanCompletion(
   status: CheckStatus,
   failures: FailureDetail[],
@@ -320,21 +330,21 @@ function displayHumanCompletion(
         // Show parsed test failures (extracted by extractors package)
         if (failure.validationResult.failedTests && failure.validationResult.failedTests.length > 0) {
           console.log(`\n   Failed tests:`);
-          failure.validationResult.failedTests.forEach((test: string) => {
+          for (const test of failure.validationResult.failedTests) {
             console.log(`   ❌ ${test}`);
-          });
+          }
         } else if (failure.validationResult.failedStepOutput) {
           // Fallback: show raw output if extractor didn't extract anything
           console.log(`\n   Error output:`);
           const lines = failure.validationResult.failedStepOutput.split('\n').slice(0, 10);
-          lines.forEach((line: string) => console.log(`   ${line}`));
+          for (const line of lines) console.log(`   ${line}`);
         }
       } else if (failure.errorSummary) {
         console.log(`   ${failure.errorSummary}`);
       }
 
       console.log(`\n   Next steps:`);
-      failure.nextSteps.forEach((step: string) => console.log(`   - ${step}`));
+      for (const step of failure.nextSteps) console.log(`   - ${step}`);
     }
 
     // Suggest reporting extractor issues if extraction quality is poor

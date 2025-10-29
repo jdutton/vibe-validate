@@ -13,7 +13,7 @@
  * - Provides clear feedback on all actions taken
  */
 
-import { spawnSync } from 'child_process';
+import { spawnSync } from 'node:child_process';
 
 const TIMEOUT = 30000; // 30 seconds timeout for git operations
 

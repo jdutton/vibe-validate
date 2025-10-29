@@ -61,16 +61,19 @@ describe('config-templates/', () => {
           const raw = parseYaml(content);
 
           // Remove $schema property before validation (not part of config schema)
+          let config = raw;
           if (raw && typeof raw === 'object' && '$schema' in raw) {
-            const { $schema, ...config } = raw as any;
-            const result = safeValidateConfig(config);
-
-            if (!result.success) {
-              console.error(`Validation errors in ${filename}:`, result.errors);
-            }
-
-            expect(result.success).toBe(true);
+            // eslint-disable-next-line sonarjs/no-unused-vars -- NOSONAR - Unused variable intentional, destructured only to exclude $schema
+            const { $schema: _$schema, ...rest } = raw as any;
+            config = rest;
           }
+          const result = safeValidateConfig(config);
+
+          if (!result.success) {
+            console.error(`Validation errors in ${filename}:`, result.errors);
+          }
+
+          expect(result.success).toBe(true);
         });
       });
     });

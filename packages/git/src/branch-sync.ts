@@ -11,7 +11,7 @@
  * - Cross-platform compatibility
  */
 
-import { spawn } from 'child_process';
+import { spawn } from 'node:child_process';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
@@ -167,8 +167,8 @@ export class BranchSyncChecker {
   private async getCommitsBehind(): Promise<number> {
     try {
       const { stdout } = await this.gitExecutor(['rev-list', '--count', `HEAD..${this.remoteBranch}`]);
-      const count = parseInt(stdout.trim(), 10);
-      return isNaN(count) ? 0 : count;
+      const count = Number.parseInt(stdout.trim(), 10);
+      return Number.isNaN(count) ? 0 : count;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to check commits behind: ${errorMessage}`);

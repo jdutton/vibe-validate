@@ -129,15 +129,9 @@ describe('Vibe-Validate Integration Failures', () => {
     it('should fail when importing from wrong package', async () => {
       // INTENTIONAL FAILURE: Wrong package path
 
-      // Use try/catch to prevent TypeScript compile error
-      try {
-        // @ts-ignore - Intentionally importing non-existent package
-        const module = await import('@vibe-validate/nonexistent-package');
-        expect(module.something).toBeDefined();
-      } catch (e) {
-        // Jest will catch this as a runtime error
-        throw e;
-      }
+      // @ts-ignore - Intentionally importing non-existent package
+      const module = await import('@vibe-validate/nonexistent-package');
+      expect(module.something).toBeDefined();
     });
   });
 

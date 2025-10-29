@@ -243,10 +243,9 @@ describe('doctor command', () => {
         if (cmd.includes('git symbolic-ref refs/remotes/origin/HEAD')) return 'refs/remotes/origin/main' as any;
         return '' as any;
       });
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString() === DEPRECATED_STATE_FILE) return false; // No deprecated state file
-        return true; // Everything else exists
-      });
+      vi.mocked(existsSync).mockImplementation((path: string) =>
+        path.toString() !== DEPRECATED_STATE_FILE
+      );
       vi.mocked(loadConfig).mockResolvedValue(null); // Config failed validation
       vi.mocked(findConfigPath).mockReturnValue('/path/to/vibe-validate.config.yaml');
       vi.mocked(loadConfigWithErrors).mockResolvedValue({
@@ -298,10 +297,7 @@ describe('doctor command', () => {
 
     it('should detect workflow out of sync', async () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString().includes('.github/workflows/validate.yml')) return true;
-        return true;
-      });
+      vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
       // Mock checkSync to return out of sync
@@ -444,10 +440,9 @@ describe('doctor command', () => {
         return '' as any;
       });
 
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString() === DEPRECATED_STATE_FILE) return false; // Healthy: no deprecated state file
-        return true;
-      });
+      vi.mocked(existsSync).mockImplementation((path: string) =>
+        path.toString() !== DEPRECATED_STATE_FILE
+      );
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -599,10 +594,9 @@ describe('doctor command', () => {
         return '' as any;
       });
 
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString() === DEPRECATED_STATE_FILE) return false; // No deprecated state file
-        return true; // Everything else exists
-      });
+      vi.mocked(existsSync).mockImplementation((path: string) =>
+        path.toString() !== DEPRECATED_STATE_FILE
+      );
       vi.mocked(loadConfig).mockResolvedValue(configWithDisabledHook);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -616,11 +610,9 @@ describe('doctor command', () => {
     });
 
     it('should fail when pre-commit hook is enabled (default) but not installed', async () => {
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        const pathStr = path.toString();
-        if (pathStr.includes('.husky/pre-commit')) return false; // Hook not installed
-        return true; // Other files exist
-      });
+      vi.mocked(existsSync).mockImplementation((path: string) =>
+        !path.toString().includes('.husky/pre-commit')
+      );
       vi.mocked(loadConfig).mockResolvedValue(mockConfig); // Default: hooks.preCommit.enabled = true
 
       const result = await runDoctor({ verbose: true });
@@ -644,10 +636,9 @@ describe('doctor command', () => {
         }
         return 'npx vibe-validate pre-commit' as any; // Pre-commit hook content
       });
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString() === DEPRECATED_STATE_FILE) return false; // No deprecated state file
-        return true;
-      });
+      vi.mocked(existsSync).mockImplementation((path: string) =>
+        path.toString() !== DEPRECATED_STATE_FILE
+      );
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
       const result = await runDoctor({ verbose: true });
@@ -936,10 +927,9 @@ describe('doctor command', () => {
 
     it('should pass when .gitignore does not exist (state file deprecated)', async () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString().includes('.gitignore')) return false;
-        return true;
-      });
+      vi.mocked(existsSync).mockImplementation((path: string) =>
+        !path.toString().includes('.gitignore')
+      );
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -1040,28 +1030,30 @@ describe('doctor command', () => {
   describe('config format migration check', () => {
     it('should pass when using YAML format', async () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString() === 'vibe-validate.config.yaml') return true;
-        return true;
-      });
+      vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue({
         validation: { phases: [] },
       } as any);
 
-      const result = await runDoctor({ verbose: true }); // Verbose to see all checks
+      const result = await runDoctor({ verbose: true });
 
+      expect(result).toBeDefined();
+      const formatCheck = result.checks.find(c => c.name === 'Configuration file');
+      expect(formatCheck?.message).toContain('vibe-validate.config.yaml');
     });
 
     it('should skip check when no config file exists', async () => {
       vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        if (path.toString() === 'vibe-validate.config.yaml') return false;
-        return true;
-      });
+      vi.mocked(existsSync).mockImplementation((path: string) =>
+        path.toString() !== 'vibe-validate.config.yaml'
+      );
       vi.mocked(loadConfig).mockResolvedValue(null);
 
-      const result = await runDoctor({ verbose: true }); // Verbose to see all checks
+      const result = await runDoctor({ verbose: true });
 
+      expect(result).toBeDefined();
+      const configCheck = result.checks.find(c => c.name === 'Configuration file');
+      expect(configCheck?.passed).toBe(false);
     });
   });
 

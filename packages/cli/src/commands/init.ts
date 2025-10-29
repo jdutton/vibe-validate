@@ -5,9 +5,9 @@
  */
 
 import type { Command } from 'commander';
-import { writeFileSync, existsSync, readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
 import chalk from 'chalk';
 import { configExists } from '../utils/config-loader.js';

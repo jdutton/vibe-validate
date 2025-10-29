@@ -16,6 +16,9 @@ vi.mock('@vibe-validate/history', async () => {
   };
 });
 
+// Type alias for process.exit mock parameter
+type ProcessExitCode = string | number | null | undefined;
+
 describe('history command', () => {
   let program: Command;
 
@@ -368,7 +371,7 @@ describe('history command', () => {
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -376,8 +379,8 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'show', 'nonexistent'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('No validation history found for tree hash: nonexistent');
@@ -549,7 +552,7 @@ describe('history command', () => {
       vi.mocked(history.getAllHistoryNotes).mockRejectedValue(error);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -557,8 +560,8 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'list'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error listing history: Git command failed');
@@ -572,7 +575,7 @@ describe('history command', () => {
       vi.mocked(history.readHistoryNote).mockRejectedValue(error);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -580,8 +583,8 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error showing history: Git command failed');
@@ -595,7 +598,7 @@ describe('history command', () => {
       vi.mocked(history.pruneHistoryByAge).mockRejectedValue(error);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -603,8 +606,8 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'prune'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error pruning history: Git command failed');
@@ -618,7 +621,7 @@ describe('history command', () => {
       vi.mocked(history.checkHistoryHealth).mockRejectedValue(error);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -626,8 +629,8 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'health'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error checking history health: Git command failed');

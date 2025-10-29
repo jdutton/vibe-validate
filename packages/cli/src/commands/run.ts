@@ -6,7 +6,7 @@
  */
 
 import type { Command } from 'commander';
-import { spawn } from 'child_process';
+import { spawn } from 'node:child_process';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import yaml from 'yaml';

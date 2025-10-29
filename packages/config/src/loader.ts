@@ -4,8 +4,8 @@
  * Loads and resolves vibe-validate configuration from YAML files.
  */
 
-import { resolve, dirname } from 'path';
-import { readFileSync } from 'fs';
+import { resolve, dirname } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { validateConfig, type VibeValidateConfig } from './schema.js';
 

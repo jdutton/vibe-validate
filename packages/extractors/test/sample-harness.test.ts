@@ -19,13 +19,14 @@ import {
   computeQualityScore,
 } from './sample-loader.js';
 import { autoDetectAndExtract } from '../src/smart-extractor.js';
-import type { Sample, SampleTestResult, ActualExtraction } from './sample-types.js';
+import type { SampleTestResult, ActualExtraction } from './sample-types.js';
 
 describe('Sample-Driven Extractor Tests', () => {
   const samples = loadAllSamples();
 
   if (samples.length === 0) {
     it('should have at least one sample', () => {
+      expect(samples.length).toBeGreaterThan(0);
       throw new Error('No samples found! Add samples to test/samples/');
     });
     return;

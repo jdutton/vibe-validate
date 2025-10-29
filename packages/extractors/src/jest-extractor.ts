@@ -16,6 +16,135 @@ interface JestFailure {
 }
 
 /**
+ * Result of processing a single output line
+ */
+interface ProcessLineResult {
+  failure?: JestFailure;
+  newFile?: string;
+  newSuite?: { name: string; indent: number };
+}
+
+/**
+ * Match FAIL line and extract file path
+ */
+function matchFailLine(line: string): string | null {
+  const failMatch = /^\s*FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/.exec(line);
+  return failMatch ? failMatch[1] : null;
+}
+
+/**
+ * Match inline failure (✕) and extract test name
+ */
+function matchInlineFailure(line: string): string | null {
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jest test framework output (controlled output), not user input
+  const failureMatch = /^\s+✕\s+(.+?)(?:\s+\(\d+\s*ms\))?$/.exec(line);
+  return failureMatch ? failureMatch[1].trim() : null;
+}
+
+/**
+ * Match detailed test format (●) and extract hierarchy
+ */
+function matchDetailedTest(line: string): string | null {
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jest test framework output (controlled output), not user input
+  const detailedTestMatch = /^\s*●\s+(.+)$/.exec(line);
+  return detailedTestMatch ? detailedTestMatch[1].trim() : null;
+}
+
+/**
+ * Match test suite line and extract suite info
+ */
+function matchSuiteLine(line: string): { name: string; indent: number } | null {
+  const suiteMatch = /^\s+([A-Z][\w\s›-]+)$/.exec(line);
+  if (!suiteMatch || line.includes('✕') || line.includes('✓') || line.includes('ms)')) {
+    return null;
+  }
+  const indentMatch = /^(\s*)/.exec(line);
+  const indent = indentMatch ? indentMatch[1].length : 0;
+  return { name: suiteMatch[1].trim(), indent };
+}
+
+/**
+ * Adjust hierarchy stack based on indentation level
+ */
+function adjustHierarchyForIndent(hierarchyStack: string[], indent: number): void {
+  while (hierarchyStack.length > 0 && indent <= hierarchyStack.length * 2) {
+    hierarchyStack.pop();
+  }
+}
+
+/**
+ * Process a single line of Jest output
+ */
+function processLine(
+  line: string,
+  currentFile: string,
+  hierarchyStack: string[]
+): ProcessLineResult {
+  const result: ProcessLineResult = {};
+
+  // Check for FAIL line
+  const newFile = matchFailLine(line);
+  if (newFile) {
+    result.newFile = newFile;
+    return result;
+  }
+
+  // Skip lines before we have a file
+  if (!currentFile) {
+    return result;
+  }
+
+  // Check for inline failure (✕)
+  const inlineTest = matchInlineFailure(line);
+  if (inlineTest) {
+    const fullHierarchy = hierarchyStack.length > 0
+      ? [...hierarchyStack, inlineTest].join(' › ')
+      : inlineTest;
+    result.failure = {
+      file: currentFile,
+      location: currentFile,
+      testHierarchy: fullHierarchy,
+      errorMessage: 'Test failed'
+    };
+    return result;
+  }
+
+  // Check for detailed test format (●)
+  const detailedHierarchy = matchDetailedTest(line);
+  if (detailedHierarchy) {
+    result.failure = {
+      file: currentFile,
+      location: currentFile,
+      testHierarchy: detailedHierarchy,
+      errorMessage: 'Test failed'
+    };
+    return result;
+  }
+
+  // Check for suite line
+  const suiteInfo = matchSuiteLine(line);
+  if (suiteInfo) {
+    result.newSuite = suiteInfo;
+  }
+
+  return result;
+}
+
+/**
+ * Format failures into clean output string
+ */
+function formatJestFailures(failures: JestFailure[]): string {
+  const cleanOutputLines: string[] = [];
+  for (const failure of failures) {
+    cleanOutputLines.push(`● ${failure.testHierarchy}`);
+    cleanOutputLines.push(`  ${failure.errorMessage}`);
+    cleanOutputLines.push(`  Location: ${failure.location}`);
+    cleanOutputLines.push('');
+  }
+  return cleanOutputLines.join('\n');
+}
+
+/**
  * Extract Jest test failures
  *
  * Parses Jest output format:
@@ -40,83 +169,33 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
   const failures: JestFailure[] = [];
 
   let currentFile = '';
-  const hierarchyStack: string[] = []; // Track test suite hierarchy by indentation
+  const hierarchyStack: string[] = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (const line of lines) {
+    const result = processLine(line, currentFile, hierarchyStack);
 
-    // Match: FAIL test/integration/extraction-with-mocks.test.ts
-    // OR: FAIL project-name tests/jest/comprehensive-failures.test.ts
-    // OR:   FAIL extraction-test-bed tests/jest/comprehensive-failures.test.ts (with leading spaces)
-    const failMatch = /^\s*FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/.exec(line);
-    if (failMatch) {
-      currentFile = failMatch[1];
-      hierarchyStack.length = 0; // Reset hierarchy for new file
+    if (result.newFile) {
+      currentFile = result.newFile;
+      hierarchyStack.length = 0;
       continue;
     }
 
-    if (!currentFile) continue; // Skip lines before FAIL
-
-    // Calculate indentation level (number of leading spaces)
-    const indentMatch = /^(\s*)/.exec(line);
-    const indent = indentMatch ? indentMatch[1].length : 0;
-
-    // Match: ✕ test name (6 ms) - inline failure
-    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jest test framework output (controlled output), not user input
-    const failureMatch = /^\s+✕\s+(.+?)(?:\s+\(\d+\s*ms\))?$/.exec(line);
-    if (failureMatch) {
-      const testName = failureMatch[1].trim();
-
-      // Build full hierarchy: parent suites + test name
-      const fullHierarchy = hierarchyStack.length > 0
-        ? [...hierarchyStack, testName].join(' › ')
-        : testName;
-
-      failures.push({
-        file: currentFile,
-        location: currentFile,
-        testHierarchy: fullHierarchy,
-        errorMessage: 'Test failed'
-      });
+    if (result.failure) {
+      failures.push(result.failure);
       continue;
     }
 
-    // Match: ● TestSuite › Sub Suite › test name (detailed error format)
-    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jest test framework output (controlled output), not user input
-    const detailedTestMatch = /^\s*●\s+(.+)$/.exec(line);
-    if (detailedTestMatch) {
-      const fullHierarchy = detailedTestMatch[1].trim();
-      failures.push({
-        file: currentFile,
-        location: currentFile,
-        testHierarchy: fullHierarchy,
-        errorMessage: 'Test failed'
-      });
-      continue;
-    }
-
-    // Track test suite hierarchy (lines that are just text, no symbols)
-    // These are describe blocks like "Vibe-Validate Integration Failures"
-    const suiteMatch = /^\s+([A-Z][\w\s›-]+)$/.exec(line);
-    if (suiteMatch && !line.includes('✕') && !line.includes('✓') && !line.includes('ms)')) {
-      const suiteName = suiteMatch[1].trim();
-
-      // Adjust hierarchy stack based on indentation
-      // If indent decreased, pop suites until we're at the right level
-      while (hierarchyStack.length > 0 && indent <= hierarchyStack.length * 2) {
-        hierarchyStack.pop();
-      }
-
-      // Add this suite to the stack
-      hierarchyStack.push(suiteName);
+    if (result.newSuite) {
+      adjustHierarchyForIndent(hierarchyStack, result.newSuite.indent);
+      hierarchyStack.push(result.newSuite.name);
     }
   }
 
   // Build formatted errors
   const errors = failures.map(f => ({
     file: f.file,
-    line: parseInt(f.location.split(':')[1] || '0'),
-    column: parseInt(f.location.split(':')[2] || '0'),
+    line: Number.parseInt(f.location.split(':')[1] || '0'),
+    column: Number.parseInt(f.location.split(':')[2] || '0'),
     message: `${f.testHierarchy}: ${f.errorMessage}`,
     severity: 'error' as const
   }));
@@ -129,19 +208,11 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
     ? 'Fix each failing test individually. Check test setup, mocks, and assertions.'
     : '';
 
-  const cleanOutputLines: string[] = [];
-  for (const failure of failures) {
-    cleanOutputLines.push(`● ${failure.testHierarchy}`);
-    cleanOutputLines.push(`  ${failure.errorMessage}`);
-    cleanOutputLines.push(`  Location: ${failure.location}`);
-    cleanOutputLines.push('');
-  }
-
   return {
     errors,
     summary,
     totalCount: failures.length,
     guidance,
-    cleanOutput: cleanOutputLines.join('\n')
+    cleanOutput: formatJestFailures(failures)
   };
 }

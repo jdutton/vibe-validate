@@ -39,8 +39,8 @@ export function extractTypeScriptErrors(output: string): ErrorExtractorResult {
   while ((match = newPattern.exec(output)) !== null) {
     errors.push({
       file: match[1].trim(),
-      line: parseInt(match[2]),
-      column: parseInt(match[3]),
+      line: Number.parseInt(match[2]),
+      column: Number.parseInt(match[3]),
       severity: match[4] as 'error' | 'warning',
       code: match[5],
       message: match[6].trim()
@@ -52,8 +52,8 @@ export function extractTypeScriptErrors(output: string): ErrorExtractorResult {
     while ((match = oldPattern.exec(output)) !== null) {
       errors.push({
         file: match[1].trim(),
-        line: parseInt(match[2]),
-        column: parseInt(match[3]),
+        line: Number.parseInt(match[2]),
+        column: Number.parseInt(match[3]),
         severity: match[4] as 'error' | 'warning',
         code: match[5],
         message: match[6].trim()

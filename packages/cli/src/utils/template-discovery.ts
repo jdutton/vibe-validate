@@ -4,9 +4,9 @@
  * Discovers and reads metadata from config templates in the config-templates/ directory.
  */
 
-import { readdirSync, readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { splitLines } from './normalize-line-endings.js';
 
 /**

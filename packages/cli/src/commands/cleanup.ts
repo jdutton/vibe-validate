@@ -119,9 +119,9 @@ function displayHumanCleanup(
   // Deleted branches
   if (result.branchesDeleted.length > 0) {
     console.log(chalk.green(`\n${icon} Deleted branches:`));
-    result.branchesDeleted.forEach(branch => {
+    for (const branch of result.branchesDeleted) {
       console.log(chalk.gray(`   • ${branch}`));
-    });
+    }
   } else {
     console.log(chalk.gray('\nℹ️  No merged branches to delete'));
   }

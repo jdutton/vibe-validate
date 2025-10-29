@@ -11,6 +11,10 @@
 
 import { describe, it, expect } from 'vitest';
 import { autoDetectAndExtract } from '../src/smart-extractor.js';
+import {
+  expectExtractorDetection,
+  expectCompleteDetectionMetadata,
+} from './helpers/assertion-helpers.js';
 
 describe('Smart Extractor - Pattern-Based Detection', () => {
   describe('TypeScript Detection', () => {
@@ -18,9 +22,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
       const output = 'src/index.ts(10,5): error TS2322: Type error.';
       const result = autoDetectAndExtract('ANY_STEP_NAME', output);
 
-      // Verify correct extractor was chosen
-      expect(result.metadata?.detection?.extractor).toBe('typescript');
-      expect(result.metadata?.detection?.patterns).toContain('error TS#### pattern');
+      expectExtractorDetection(result, 'typescript', ['error TS#### pattern']);
       expect(result.summary).toContain('type error');
     });
 
@@ -32,9 +34,10 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
       const result2 = autoDetectAndExtract('Compile', output);
       const result3 = autoDetectAndExtract('Check Types', output);
 
-      expect(result1.metadata?.detection?.extractor).toBe('typescript');
-      expect(result2.metadata?.detection?.extractor).toBe('typescript');
-      expect(result3.metadata?.detection?.extractor).toBe('typescript');
+      expect(result1).toBeDefined();
+      expectExtractorDetection(result1, 'typescript');
+      expectExtractorDetection(result2, 'typescript');
+      expectExtractorDetection(result3, 'typescript');
     });
   });
 
@@ -43,16 +46,16 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
       const output = '✖ 5 problems (3 errors, 2 warnings)';
       const result = autoDetectAndExtract('ANY_STEP_NAME', output);
 
-      expect(result.metadata?.detection?.extractor).toBe('eslint');
-      expect(result.metadata?.detection?.patterns).toContain('✖ X problems summary');
+      expect(result).toBeDefined();
+      expectExtractorDetection(result, 'eslint', ['✖ X problems summary']);
     });
 
     it('should detect ESLint from line:col error/warning format', () => {
       const output = 'src/index.ts:10:5: error Error message rule-name';
       const result = autoDetectAndExtract('ANY_STEP_NAME', output);
 
-      expect(result.metadata?.detection?.extractor).toBe('eslint');
-      expect(result.metadata?.detection?.patterns).toContain('line:col error/warning format');
+      expect(result).toBeDefined();
+      expectExtractorDetection(result, 'eslint', ['line:col error/warning format']);
     });
   });
 
@@ -289,12 +292,12 @@ FAIL tests/example.spec.ts
       expect(result.metadata?.detection?.patterns.length).toBeGreaterThan(0);
     });
 
-    it('should include reason for detection', () => {
+    it('should include complete metadata', () => {
       const output = 'src/index.ts(10,5): error TS2322: Type error.';
       const result = autoDetectAndExtract('Build', output);
 
-      expect(result.metadata?.detection?.reason).toBeDefined();
-      expect(result.metadata?.detection?.reason).toContain('detected');
+      expect(result).toBeDefined();
+      expectCompleteDetectionMetadata(result);
     });
   });
 });

@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateWorkflow, checkSync, toJobId, getAllJobIds, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { parse as parseYaml } from 'yaml';
 
 // Mock fs module
@@ -652,12 +652,7 @@ describe('generate-workflow command', () => {
 
       it('should prioritize packageManager field over lockfile detection', () => {
         // Mock both lockfiles existing
-        vi.mocked(existsSync).mockImplementation((path: any) => {
-          const pathStr = path.toString();
-          if (pathStr.endsWith('package-lock.json')) return true;
-          if (pathStr.endsWith('pnpm-lock.yaml')) return true;
-          return true;
-        });
+        vi.mocked(existsSync).mockReturnValue(true);
 
         // Mock package.json with explicit pnpm packageManager
         vi.mocked(readFileSync).mockImplementation((path: any) => {

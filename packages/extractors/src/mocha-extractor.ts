@@ -43,7 +43,7 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   // Extract failure count
   // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Mocha test framework summary (controlled output), not user input
   const failingMatch = /(\d+) failing/.exec(output);
-  const failureCount = failingMatch ? parseInt(failingMatch[1], 10) : 0;
+  const failureCount = failingMatch ? Number.parseInt(failingMatch[1], 10) : 0;
 
   if (failureCount === 0) {
     return {
@@ -219,7 +219,7 @@ function extractFailures(output: string): FailureInfo[] {
           const locationMatch = /at Context\.<anonymous> \((?:file:\/\/)?([^:)]+):(\d+)(?::(\d+))?\)/.exec(nextLine);
           if (locationMatch) {
             file = locationMatch[1];
-            lineNumber = parseInt(locationMatch[2], 10);
+            lineNumber = Number.parseInt(locationMatch[2], 10);
           }
         }
 

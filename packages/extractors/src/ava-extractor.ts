@@ -217,7 +217,7 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     const fileMatch = /^([^:]+\.(?:js|ts|mjs|cjs)):(\d+)$/.exec(trimmed);
     if (fileMatch && !failure.file) {
       failure.file = fileMatch[1];
-      failure.line = parseInt(fileMatch[2], 10);
+      failure.line = Number.parseInt(fileMatch[2], 10);
       i++;
       continue;
     }
@@ -226,7 +226,7 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     const urlMatch = /^›\s+file:\/\/(.+?):(\d+):\d+$/.exec(trimmed);
     if (urlMatch && !failure.file) {
       failure.file = urlMatch[1];
-      failure.line = parseInt(urlMatch[2], 10);
+      failure.line = Number.parseInt(urlMatch[2], 10);
       i++;
       continue;
     }
@@ -292,7 +292,7 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
             // Skip node_modules and ava library files
             if (!stackFile.includes('node_modules') && !stackFile.includes('/ava/lib/')) {
               failure.file = stackFile;
-              failure.line = parseInt(stackMatch[2], 10);
+              failure.line = Number.parseInt(stackMatch[2], 10);
               break;
             }
           }

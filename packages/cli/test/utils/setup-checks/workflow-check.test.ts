@@ -17,6 +17,7 @@ describe('WorkflowSetupCheck', () => {
 
   beforeEach(async () => {
     // Create unique temp directory for each test
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
     testDir = join(tmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);
     await mkdir(testDir, { recursive: true });
     workflowCheck = new WorkflowSetupCheck();

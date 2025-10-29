@@ -31,6 +31,7 @@ describe('extractMochaErrors', () => {
       expect(result.summary).toBe('1 test(s) failed');
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toMatchObject({
+        // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture path, not actual file operation
         file: '/tmp/test.js',
         line: 16,
         message: 'Expected 4 to equal 5'

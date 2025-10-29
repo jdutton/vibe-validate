@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
-import { detectGitConfig, type DetectedGitConfig } from '../../src/utils/git-detection.js';
+import { detectGitConfig } from '../../src/utils/git-detection.js';
 
 // Mock child_process
 vi.mock('child_process');

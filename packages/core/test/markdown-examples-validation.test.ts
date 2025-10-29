@@ -27,7 +27,7 @@ import { safeValidateConfig } from '../../config/src/schema.js';
 interface SchemaValidator {
   name: string;
   tags: string[]; // Tags that trigger this validator
-  validate: (data: unknown) => { success: true; data: unknown } | { success: false; errors: string[] };
+  validate: (_input: unknown) => { success: true; data: unknown } | { success: false; errors: string[] };
   description: string;
 }
 
@@ -109,7 +109,6 @@ function extractTaggedExamples(
   const codeBlockEnd = /^```\s*$/;
 
   let currentTag: string | null = null;
-  let currentTagLine = 0;
   let inCodeBlock = false;
   let codeBlockContent: string[] = [];
   let codeBlockStartLine = 0;
@@ -122,7 +121,6 @@ function extractTaggedExamples(
     if (tagMatch) {
       const [, category, type] = tagMatch;
       currentTag = `${category}:${type}`;
-      currentTagLine = i + 1;
       continue;
     }
 

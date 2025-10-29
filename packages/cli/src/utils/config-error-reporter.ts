@@ -29,9 +29,9 @@ export function formatConfigErrors(
 
   // Show up to maxErrors errors
   const errorList = details.errors.slice(0, maxErrors);
-  errorList.forEach(err => {
+  for (const err of errorList) {
     messages.push(chalk.gray(`  • ${err}`));
-  });
+  }
 
   if (details.errors.length > maxErrors) {
     messages.push(chalk.gray(`  ... and ${details.errors.length - maxErrors} more`));
@@ -71,12 +71,12 @@ export function displayConfigErrors(
   console.error();
 
   const errorMessages = formatConfigErrors(details, maxErrors);
-  errorMessages.forEach(msg => console.error(msg));
+  for (const msg of errorMessages) console.error(msg);
 
   console.error();
 
   const suggestions = formatConfigSuggestions();
-  suggestions.forEach(msg => console.error(msg));
+  for (const msg of suggestions) console.error(msg);
 }
 
 /**
@@ -97,9 +97,9 @@ export function getPlainConfigErrors(
 
   // Show up to maxErrors errors
   const errorList = details.errors.slice(0, maxErrors);
-  errorList.forEach(err => {
+  for (const err of errorList) {
     messages.push(`  • ${err}`);
-  });
+  }
 
   if (details.errors.length > maxErrors) {
     messages.push(`  ... and ${details.errors.length - maxErrors} more`);

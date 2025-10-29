@@ -32,6 +32,7 @@ Finished in 0.037 seconds
       expect(result.summary).toBe('1 test(s) failed');
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toMatchObject({
+        // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture path, not actual file operation
         file: '/private/tmp/jasmine-comprehensive.test.js',
         line: 9,
         message: 'Expected 4 to equal 5.'

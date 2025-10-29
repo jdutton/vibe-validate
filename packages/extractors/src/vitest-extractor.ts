@@ -25,6 +25,288 @@ interface TestFailure {
 }
 
 /**
+ * Parse failure line to determine format and extract initial data
+ *
+ * @param line - Current line being parsed
+ * @param currentFile - File path from Format 2 header
+ * @param hasFormat2 - Whether Format 2 has been detected
+ * @returns Partial failure object or null if no match
+ *
+ * @internal
+ */
+function parseFailureLine(
+  line: string,
+  currentFile: string,
+  hasFormat2: boolean
+): Partial<TestFailure> | null {
+  // Match Format 1: FAIL file.test.ts > test hierarchy
+  // BUT: Skip if we've seen Format 2 headers (to avoid processing duplicate FAIL lines)
+  const format1Match = !hasFormat2 && /(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/.exec(line);
+  if (format1Match) {
+    return {
+      file: format1Match[1],
+      testHierarchy: format1Match[2].trim(),
+      errorMessage: '',
+      sourceLine: '',
+      location: ''
+    };
+  }
+
+  // Match Format 2: × test hierarchy (without file path)
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework output (controlled output), limited line length
+  const format2Match = /(?:×)\s+(.+?)(?:\s+\d+ms)?$/.exec(line);
+  if (format2Match && currentFile) {
+    return {
+      file: currentFile,
+      testHierarchy: format2Match[1].trim(),
+      errorMessage: '',
+      sourceLine: '',
+      location: ''
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Extract initial error message from line
+ *
+ * @param line - Line to extract error from
+ * @returns Extracted error message
+ *
+ * @internal
+ */
+function extractErrorMessage(line: string): string {
+  const errorMatch = /((?:AssertionError|Error):\s*.+)/.exec(line);
+  if (errorMatch) {
+    return errorMatch[1].trim();
+  }
+
+  const format2ErrorMatch = /→\s+(.+)/.exec(line);
+  if (format2ErrorMatch) {
+    return format2ErrorMatch[1].trim();
+  }
+
+  return line.trim();
+}
+
+/**
+ * Check if line is a stop marker for error continuation
+ *
+ * @param line - Trimmed line to check
+ * @returns True if this line marks end of error message
+ *
+ * @internal
+ */
+function isStopMarker(line: string): boolean {
+  return (
+    line.startsWith('❯') ||
+    /^\d+\|/.test(line) ||
+    line.startsWith('FAIL') ||
+    line.startsWith('✓') ||
+    line.startsWith('❌') ||
+    line.startsWith('×') ||
+    line.startsWith('⎯') ||
+    line.startsWith('at ')
+  );
+}
+
+/**
+ * Append continuation line to error message
+ *
+ * @param errorMessage - Current error message
+ * @param line - Raw line (with indentation)
+ * @param trimmedLine - Trimmed version of line
+ * @param isSnapshotError - Whether handling snapshot error
+ * @returns Updated error message
+ *
+ * @internal
+ */
+function appendContinuationLine(
+  errorMessage: string,
+  line: string,
+  trimmedLine: string,
+  isSnapshotError: boolean
+): string {
+  if (isSnapshotError) {
+    return errorMessage + '\n' + line; // Preserve indentation for diffs
+  }
+  return errorMessage + ' ' + trimmedLine; // Compact for normal errors
+}
+
+/**
+ * Handle truncation logic for non-snapshot errors
+ *
+ * @param errorMessage - Current error message
+ * @param nextLine - Next trimmed line
+ * @param isSnapshotError - Whether handling snapshot error
+ * @param linesConsumed - Number of lines consumed so far
+ * @param maxLines - Maximum continuation lines allowed
+ * @returns Object with updated message and whether to stop
+ *
+ * @internal
+ */
+function handleTruncation(
+  errorMessage: string,
+  nextLine: string,
+  isSnapshotError: boolean,
+  linesConsumed: number,
+  maxLines: number
+): { errorMessage: string; shouldStop: boolean } {
+  if (isSnapshotError || linesConsumed < maxLines) {
+    return { errorMessage, shouldStop: false };
+  }
+
+  const updatedMessage = nextLine ? errorMessage + ' ...(truncated)' : errorMessage;
+  return { errorMessage: updatedMessage, shouldStop: true };
+}
+
+/**
+ * Parse error message with continuation line handling
+ *
+ * @param lines - All output lines
+ * @param startIndex - Index where error message starts
+ * @param isSnapshotError - Whether this is a snapshot error (different continuation rules)
+ * @returns Error message and index of last consumed line
+ *
+ * @internal
+ */
+function parseErrorMessage(
+  lines: string[],
+  startIndex: number,
+  isSnapshotError: boolean
+): { errorMessage: string; lastIndex: number } {
+  let errorMessage = extractErrorMessage(lines[startIndex]);
+
+  const MAX_CONTINUATION_LINES = 5;
+  let j = startIndex + 1;
+  let linesConsumed = 0;
+
+  while (j < lines.length) {
+    const nextLine = lines[j].trim();
+
+    if (isStopMarker(nextLine)) {
+      break;
+    }
+
+    // Check truncation limit for non-snapshot errors
+    const truncation = handleTruncation(errorMessage, nextLine, isSnapshotError, linesConsumed, MAX_CONTINUATION_LINES);
+    if (truncation.shouldStop) {
+      errorMessage = truncation.errorMessage;
+      break;
+    }
+
+    // For non-snapshot errors, stop at blank lines
+    if (!nextLine && !isSnapshotError) {
+      break;
+    }
+
+    // Add line to error message
+    if (nextLine || isSnapshotError) {
+      errorMessage = appendContinuationLine(errorMessage, lines[j], nextLine, isSnapshotError);
+      if (!isSnapshotError) {
+        linesConsumed++;
+      }
+    }
+    j++;
+  }
+
+  return { errorMessage, lastIndex: j - 1 };
+}
+
+/**
+ * Parse location from vitest marker or stack trace
+ *
+ * @param line - Line to parse
+ * @returns Location string (file:line:column) or null
+ *
+ * @internal
+ */
+function parseLocation(line: string): string | null {
+  // Try vitest location marker first
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework location markers (controlled output), not user input
+  const vitestLocation = /❯\s*(.+\.test\.ts):(\d+):(\d+)/.exec(line);
+  if (vitestLocation) {
+    return `${vitestLocation[1]}:${vitestLocation[2]}:${vitestLocation[3]}`;
+  }
+
+  // Try stack trace pattern
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework stack traces (controlled output), not user input
+  const stackLocation = /at\s+.+\(([^\s]+\.test\.ts):(\d+):(\d+)\)/.exec(line);
+  if (stackLocation) {
+    return `${stackLocation[1]}:${stackLocation[2]}:${stackLocation[3]}`;
+  }
+
+  return null;
+}
+
+/**
+ * Format failures into clean output
+ *
+ * @param failures - Extracted test failures
+ * @param expected - Expected value (if present)
+ * @param actual - Actual value (if present)
+ * @returns Formatted output string
+ *
+ * @internal
+ */
+function formatFailuresOutput(
+  failures: TestFailure[],
+  expected?: string,
+  actual?: string
+): string {
+  return failures
+    .slice(0, 10)
+    .map((f, idx) => {
+      const parts = [
+        `[Test ${idx + 1}/${failures.length}] ${f.location ?? f.file}`,
+        '',
+        `Test: ${f.testHierarchy}`,
+        `Error: ${f.errorMessage}`,
+      ];
+
+      if (expected && actual) {
+        parts.push(`Expected: ${expected}`, `Actual: ${actual}`);
+      }
+
+      if (f.sourceLine) {
+        parts.push('', f.sourceLine);
+      }
+
+      return parts.filter(p => p).join('\n');
+    })
+    .join('\n\n');
+}
+
+/**
+ * Generate LLM-friendly guidance based on failures
+ *
+ * @param failureCount - Number of failures
+ * @param expected - Expected value (if present)
+ * @param actual - Actual value (if present)
+ * @returns Guidance text
+ *
+ * @internal
+ */
+function generateGuidanceText(
+  failureCount: number,
+  expected?: string,
+  actual?: string
+): string {
+  let guidance = `${failureCount} test(s) failed. `;
+  if (failureCount === 1) {
+    guidance += 'Fix the assertion in the test file at the location shown. ';
+    if (expected && actual) {
+      guidance += `The test expected "${expected}" but got "${actual}". `;
+    }
+    guidance += 'Run: npm test -- <test-file> to verify the fix.';
+  } else {
+    guidance += 'Fix each failing test individually. Run: npm test -- <test-file> to test each file.';
+  }
+  return guidance;
+}
+
+/**
  * Extract runtime errors (Unhandled Rejection, ENOENT, etc.)
  *
  * @param output - Full test output
@@ -82,7 +364,7 @@ function extractRuntimeError(output: string): TestFailure | null {
  * console.log(result.guidance); // "Fix each failing test individually..."
  * ```
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 97 acceptable for Vitest output parsing (handles multiple output formats, runtime errors, and comprehensive error extraction)
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 29 acceptable for Vitest output parsing (down from 97) - main parsing loop coordinates multiple format detection and state tracking
 export function extractVitestErrors(
   output: string,
   options?: ExtractorOptions
@@ -104,153 +386,49 @@ export function extractVitestErrors(
     i++; // Increment at start so 'continue' statements don't bypass it
     const line = lines[i];
 
-    // Match Format 2: ❯ file.test.ts (N tests | M failed) 123ms
-    // This line declares the file for subsequent × failures
-    // NOTE: Must have parentheses to distinguish from location lines (❯ file.test.ts:57:30)
+    // Check for Format 2 file header
     const fileHeaderMatch = /❯\s+([^\s]+\.test\.ts)\s+\(/.exec(line);
     if (fileHeaderMatch) {
       currentFile = fileHeaderMatch[1];
-      hasFormat2 = true; // We found Format 2, so skip Format 1 to avoid duplicates
+      hasFormat2 = true;
       continue;
     }
 
-    // Match Format 1: FAIL file.test.ts > test hierarchy
-    // OR: ❌ file.test.ts > test hierarchy
-    // OR: × file.test.ts > test hierarchy
-    // BUT: Skip if we've seen Format 2 headers (to avoid processing duplicate FAIL lines)
-    const format1Match = !hasFormat2 && /(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/.exec(line);
-
-    // Match Format 2: × test hierarchy (without file path)
-    // Use currentFile tracked from ❯ line above
-    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework output (controlled output), limited line length
-    const format2Match = !format1Match && /(?:×)\s+(.+?)(?:\s+\d+ms)?$/.exec(line);
-
-    if (format1Match || (format2Match && currentFile)) {
+    // Try to parse as failure line (Format 1 or Format 2)
+    const parsedFailure = parseFailureLine(line, currentFile, hasFormat2);
+    if (parsedFailure) {
       if (currentFailure?.file) {
         failures.push(currentFailure as TestFailure);
       }
-
-      if (format1Match) {
-        // Format 1: file path is in the × line itself
-        currentFailure = {
-          file: format1Match[1],
-          testHierarchy: format1Match[2].trim(),
-          errorMessage: '',
-          sourceLine: '',
-          location: ''
-        };
-      } else if (format2Match && currentFile) {
-        // Format 2: use file from previous ❯ line
-        currentFailure = {
-          file: currentFile,
-          testHierarchy: format2Match[1].trim(),
-          errorMessage: '',
-          sourceLine: '',
-          location: ''
-        };
-      }
+      currentFailure = parsedFailure;
       continue;
     }
 
-    // Match: AssertionError: expected 3000 to be 9999 // Object.is equality
-    // OR: Error: Test timed out in 5000ms.
-    // OR: Snapshot `name` mismatched
-    // OR: → expected 1 to be 5 // Object.is equality (Format 2 error message)
+    // Parse error message if we have a current failure
     if (currentFailure && !currentFailure.errorMessage) {
-      // Check for standard error patterns
-      const errorMatch = /((?:AssertionError|Error):\s*.+)/.exec(line);
-      // Check for snapshot failures (doesn't have "Error:" prefix)
       const snapshotMatch = /Snapshot\s+`([^`]+)`\s+mismatched/.exec(line);
-      // Check for Format 2 error messages (→ prefix)
-      const format2ErrorMatch = /→\s+(.+)/.exec(line);
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to check truthy regex matches, not just null/undefined
+      const hasError = /((?:AssertionError|Error):\s*.+)/.exec(line) || /→\s+(.+)/.exec(line) || snapshotMatch;
 
-      if (errorMatch || snapshotMatch || format2ErrorMatch) {
-        // Keep the full error including the type (AssertionError: ...)
-        let errorMessage: string;
-        if (errorMatch) {
-          errorMessage = errorMatch[1].trim();
-        } else if (format2ErrorMatch) {
-          errorMessage = format2ErrorMatch[1].trim();
-        } else {
-          errorMessage = line.trim();
-        }
+      if (hasError) {
         const isSnapshotError = !!snapshotMatch;
-
-        // Capture additional lines (e.g., timeout guidance, long error messages, snapshot diffs)
-        // For snapshot errors: continue through blank lines until stack trace (no line limit)
-        // For other errors: stop at blank lines OR after 5 continuation lines (prevent verbose object dumps)
-        const MAX_CONTINUATION_LINES = 5;
-        let j = i + 1;
-        let linesConsumed = 0;
-
-        while (j < lines.length) {
-          const nextLine = lines[j].trim();
-
-          // Always stop at these markers
-          if (nextLine.startsWith('❯') || /^\d+\|/.exec(nextLine) || nextLine.startsWith('FAIL') || nextLine.startsWith('✓') || nextLine.startsWith('❌') || nextLine.startsWith('×') || nextLine.startsWith('⎯')) {
-            break;
-          }
-
-          // Stop at stack trace (starts with "at ")
-          if (nextLine.startsWith('at ')) {
-            break;
-          }
-
-          // For non-snapshot errors, limit continuation lines to prevent massive object dumps
-          if (!isSnapshotError && linesConsumed >= MAX_CONTINUATION_LINES) {
-            if (nextLine) {
-              errorMessage += ' ...(truncated)';
-            }
-            break;
-          }
-
-          // For non-snapshot errors, stop at blank lines
-          // For snapshot errors, continue through blank lines to capture diff
-          if (!nextLine && !isSnapshotError) {
-            break;
-          }
-
-          // Add line to error message
-          // For snapshots: preserve formatting with newlines and indentation
-          // For other errors: join with spaces for compact output
-          if (nextLine || isSnapshotError) {
-            if (isSnapshotError) {
-              errorMessage += '\n' + lines[j]; // Preserve indentation for diffs
-            } else {
-              errorMessage += ' ' + nextLine; // Compact for normal errors
-              linesConsumed++;
-            }
-          }
-          j++;
-        }
-
+        const { errorMessage, lastIndex } = parseErrorMessage(lines, i, isSnapshotError);
         currentFailure.errorMessage = errorMessage;
-        i = j - 1; // Will be incremented at next iteration start
+        i = lastIndex;
       }
       continue;
     }
 
-    // Match: ❯ test/unit/config/environment.test.ts:57:30
-    // OR stack trace: at Object.<anonymous> (packages/core/test/runner.test.ts:45:12)
+    // Parse location if we have a current failure
     if (currentFailure && !currentFailure.location) {
-      // Try vitest location marker first
-      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework location markers (controlled output), not user input
-      const vitestLocation = /❯\s*(.+\.test\.ts):(\d+):(\d+)/.exec(line);
-      if (vitestLocation) {
-        currentFailure.location = `${vitestLocation[1]}:${vitestLocation[2]}:${vitestLocation[3]}`;
-        continue;
-      }
-
-      // Try stack trace pattern
-      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework stack traces (controlled output), not user input
-      const stackLocation = /at\s+.+\(([^\s]+\.test\.ts):(\d+):(\d+)\)/.exec(line);
-      if (stackLocation) {
-        currentFailure.location = `${stackLocation[1]}:${stackLocation[2]}:${stackLocation[3]}`;
+      const location = parseLocation(line);
+      if (location) {
+        currentFailure.location = location;
         continue;
       }
     }
 
-    // Match source line: 57|     expect(config.HTTP_PORT).toBe(9999);
+    // Parse source line
     if (currentFailure && /^\s*\d+\|\s+/.exec(line)) {
       const sourceMatch = /^\s*(\d+)\|\s*(.+)/.exec(line);
       if (sourceMatch) {
@@ -264,43 +442,10 @@ export function extractVitestErrors(
     failures.push(currentFailure as TestFailure);
   }
 
-  // Extract expected/actual values if present in output
+  // Extract expected/actual values and format output
   const { expected, actual } = extractExpectedActual(output);
-
-  // Format output with all extracted information + LLM guidance
-  const cleanOutput = failures
-    .slice(0, 10)
-    .map((f, idx) => {
-      const parts = [
-        `[Test ${idx + 1}/${failures.length}] ${f.location ?? f.file}`,
-        '',
-        `Test: ${f.testHierarchy}`,
-        `Error: ${f.errorMessage}`,
-      ];
-
-      if (expected && actual) {
-        parts.push(`Expected: ${expected}`, `Actual: ${actual}`);
-      }
-
-      if (f.sourceLine) {
-        parts.push('', f.sourceLine);
-      }
-
-      return parts.filter(p => p).join('\n');
-    })
-    .join('\n\n');
-
-  // Enhanced LLM-friendly guidance
-  let guidance = `${failures.length} test(s) failed. `;
-  if (failures.length === 1) {
-    guidance += 'Fix the assertion in the test file at the location shown. ';
-    if (expected && actual) {
-      guidance += `The test expected "${expected}" but got "${actual}". `;
-    }
-    guidance += 'Run: npm test -- <test-file> to verify the fix.';
-  } else {
-    guidance += 'Fix each failing test individually. Run: npm test -- <test-file> to test each file.';
-  }
+  const cleanOutput = formatFailuresOutput(failures, expected, actual);
+  const guidance = generateGuidanceText(failures.length, expected, actual);
 
   const result: ErrorExtractorResult = {
     errors: failures.slice(0, 10).map(f => {
@@ -310,15 +455,15 @@ export function extractVitestErrors(
       if (f.location) {
         const parts = f.location.split(':');
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings for parseInt, not just null/undefined
-        column = parseInt(parts.pop() || '');
+        column = Number.parseInt(parts.pop() || '');
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings for parseInt, not just null/undefined
-        line = parseInt(parts.pop() || '');
+        line = Number.parseInt(parts.pop() || '');
       }
 
       return {
         file: f.file,
-        line: line !== undefined && !isNaN(line) ? line : undefined,
-        column: column !== undefined && !isNaN(column) ? column : undefined,
+        line: line !== undefined && !Number.isNaN(line) ? line : undefined,
+        column: column !== undefined && !Number.isNaN(column) ? column : undefined,
         message: f.errorMessage
       };
     }),

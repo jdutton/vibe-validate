@@ -22,6 +22,9 @@ vi.mock('../../src/services/ci-provider-registry.js', () => {
   };
 });
 
+// Type alias for process.exit mock parameter
+type ProcessExitCode = string | number | null | undefined;
+
 describe('watch-pr command', () => {
   let program: Command;
   let mockProvider: CIProvider;
@@ -141,14 +144,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(mockProvider.fetchCheckStatus).toHaveBeenCalledWith('123');
@@ -180,14 +183,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(mockProvider.detectPullRequest).toHaveBeenCalled();
@@ -202,14 +205,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -247,14 +250,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(0);
@@ -292,14 +295,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -335,14 +338,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(mockProvider.fetchFailureLogs).toHaveBeenCalledWith('check-1');
@@ -380,14 +383,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       // Verify YAML separator was written
@@ -426,14 +429,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       // Verify YAML separator was written
@@ -457,14 +460,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '--yaml'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       // Verify YAML separator was written
@@ -508,15 +511,15 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         // Use very short timeout to trigger timeout quickly
         await program.parseAsync(['watch-pr', '123', '--timeout', '0'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(2);
@@ -560,14 +563,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123', '--fail-fast'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -598,14 +601,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123', '--provider', 'github-actions'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       // Verify the provider option was used (command should succeed)
@@ -627,14 +630,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -649,14 +652,14 @@ describe('watch-pr command', () => {
       registerWatchPRCommand(program);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (error) {
-        // Expected - process.exit will throw
+      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+        // Expected exception from Commander.js exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);

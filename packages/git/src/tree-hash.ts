@@ -11,8 +11,8 @@
  * git write-tree produces content-based hashes only (no timestamps).
  */
 
-import { execSync } from 'child_process';
-import { copyFileSync, unlinkSync } from 'fs';
+import { execSync } from 'node:child_process';
+import { copyFileSync, unlinkSync } from 'node:fs';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 const GIT_OPTIONS = {

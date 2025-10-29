@@ -70,6 +70,7 @@ describe('Calculator (Vitest)', () => {
     it('should complete within timeout', async () => {
       // INTENTIONAL FAILURE: Timeout
       await new Promise(resolve => setTimeout(resolve, 100000)); // Takes 100 seconds
+      expect(true).toBe(true); // Unreachable - test will timeout before this
     }, 10); // 10ms timeout
   });
 

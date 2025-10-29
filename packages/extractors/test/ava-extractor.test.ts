@@ -128,7 +128,7 @@ describe('extractAvaErrors', () => {
   Error thrown in test:
 
   TypeError {
-    message: 'Cannot read properties of null (reading \'someProperty\')',
+    message: 'Cannot read properties of null (reading "someProperty")',
   }
 
   TypeError: Cannot read properties of null (reading 'someProperty')
