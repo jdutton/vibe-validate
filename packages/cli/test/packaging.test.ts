@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { discoverTemplates } from '../src/utils/template-discovery.js';
 
 describe('npm packaging', () => {
@@ -32,7 +32,7 @@ describe('npm packaging', () => {
 
     it('should include specific required templates', () => {
       const templates = discoverTemplates();
-      const filenames = templates.map(t => t.filename);
+      const filenames = new Set(templates.map(t => t.filename));
 
       const requiredTemplates = [
         'minimal.yaml',
@@ -43,7 +43,7 @@ describe('npm packaging', () => {
 
       for (const required of requiredTemplates) {
         expect(
-          filenames.includes(required),
+          filenames.has(required),
           `Template ${required} must be packaged with CLI`
         ).toBe(true);
       }

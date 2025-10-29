@@ -6,8 +6,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { extractTAPErrors } from '../src/tap-extractor.js';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 describe('extractTAPErrors', () => {
   describe('Basic Extraction', () => {
@@ -347,9 +347,9 @@ not ok 1 assertion failure
       expect(result.metadata.completeness).toBeGreaterThanOrEqual(80);
 
       // All extracted errors should have messages
-      result.errors.forEach(error => {
+      for (const error of result.errors) {
         expect(error.message).toBeTruthy();
-      });
+      }
     });
   });
 });

@@ -379,8 +379,9 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'show', 'nonexistent'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(console.error).toHaveBeenCalledWith('No validation history found for tree hash: nonexistent');
@@ -560,8 +561,9 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'list'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(console.error).toHaveBeenCalledWith('Error listing history: Git command failed');
@@ -583,8 +585,9 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(console.error).toHaveBeenCalledWith('Error showing history: Git command failed');
@@ -606,8 +609,9 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'prune'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(console.error).toHaveBeenCalledWith('Error pruning history: Git command failed');
@@ -629,8 +633,9 @@ describe('history command', () => {
 
       try {
         await program.parseAsync(['history', 'health'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(console.error).toHaveBeenCalledWith('Error checking history health: Git command failed');

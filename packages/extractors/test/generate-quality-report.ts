@@ -10,9 +10,9 @@
  *   pnpm test:regression       # Check for regressions (exit 1 if found)
  */
 
-import { writeFileSync, existsSync, readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   loadAllSamples,
   groupSamplesBy,

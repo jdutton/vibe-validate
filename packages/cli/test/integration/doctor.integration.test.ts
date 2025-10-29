@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'child_process';
-import { join } from 'path';
+import { execSync } from 'node:child_process';
+import { join } from 'node:path';
 
 describe('Doctor Command Integration', () => {
   const cliPath = join(__dirname, '../../dist/bin.js');
@@ -23,7 +23,7 @@ describe('Doctor Command Integration', () => {
         stdio: 'pipe',
       });
       return { stdout, stderr: '', exitCode: 0 };
-    } catch (_error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
+    } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
       // execSync throws on non-zero exit, but we want to see the output
       return {
         stdout: error.stdout || '',

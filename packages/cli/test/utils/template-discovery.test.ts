@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readdirSync, existsSync } from 'fs';
-import { join } from 'path';
+import { readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { discoverTemplates, formatTemplateList } from '../../src/utils/template-discovery.js';
 
 describe('template-discovery', () => {

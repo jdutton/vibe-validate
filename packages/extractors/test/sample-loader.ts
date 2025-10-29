@@ -5,9 +5,9 @@
  * utilities for working with them.
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';

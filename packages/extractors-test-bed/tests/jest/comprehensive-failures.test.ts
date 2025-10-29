@@ -196,7 +196,7 @@ describe('Edge Cases (Simple Code)', () => {
   describe('File System › ENOENT', () => {
     it('should read config file', async () => {
       // INTENTIONAL FAILURE: File doesn't exist
-      const fs = await import('fs/promises');
+      const fs = await import('node:fs/promises');
       const config = await fs.readFile('/this/file/does/not/exist.json', 'utf8');
       expect(config).toBeDefined();
     });

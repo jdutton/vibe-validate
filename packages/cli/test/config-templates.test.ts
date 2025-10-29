@@ -9,9 +9,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
-import { resolve } from 'path';
+import { resolve } from 'node:path';
 import { safeValidateConfig } from '@vibe-validate/config';
 
 // Templates moved to packages/cli/config-templates (permanent location)
@@ -37,7 +37,7 @@ describe('config-templates/', () => {
   });
 
   describe('template files', () => {
-    TEMPLATE_FILES.forEach(filename => {
+    for (const filename of TEMPLATE_FILES) {
       describe(filename, () => {
         const filePath = resolve(TEMPLATES_DIR, filename);
 
@@ -76,7 +76,7 @@ describe('config-templates/', () => {
           expect(result.success).toBe(true);
         });
       });
-    });
+    }
   });
 
   describe('README.md', () => {
@@ -85,9 +85,9 @@ describe('config-templates/', () => {
     it('should document all template files', () => {
       const content = readFileSync(readmePath, 'utf-8');
 
-      TEMPLATE_FILES.forEach(filename => {
+      for (const filename of TEMPLATE_FILES) {
         expect(content).toContain(filename);
-      });
+      }
     });
 
     it('should link to main documentation', () => {
@@ -139,29 +139,29 @@ describe('config-templates/', () => {
     });
 
     it('all templates should have git.mainBranch configured', () => {
-      TEMPLATE_FILES.forEach(filename => {
+      for (const filename of TEMPLATE_FILES) {
         const filePath = resolve(TEMPLATES_DIR, filename);
         const content = readFileSync(filePath, 'utf-8');
         const config = parseYaml(content) as any;
 
         expect(config.git).toBeDefined();
         expect(config.git.mainBranch).toBe('main');
-      });
+      }
     });
 
     it('all templates should omit failFast (uses default true)', () => {
-      TEMPLATE_FILES.forEach(filename => {
+      for (const filename of TEMPLATE_FILES) {
         const filePath = resolve(TEMPLATES_DIR, filename);
         const content = readFileSync(filePath, 'utf-8');
         const config = parseYaml(content) as any;
 
         // failFast should be omitted (defaults to true in schema)
         expect(config.validation.failFast).toBeUndefined();
-      });
+      }
     });
 
     it('all templates should have descriptive header comments', () => {
-      TEMPLATE_FILES.forEach(filename => {
+      for (const filename of TEMPLATE_FILES) {
         const filePath = resolve(TEMPLATES_DIR, filename);
         const content = readFileSync(filePath, 'utf-8');
 
@@ -171,7 +171,7 @@ describe('config-templates/', () => {
         // Check for "Learn more:" link
         expect(content).toContain('Learn more:');
         expect(content).toContain('github.com/jdutton/vibe-validate');
-      });
+      }
     });
   });
 });

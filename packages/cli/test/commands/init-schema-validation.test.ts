@@ -6,11 +6,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm, readFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
-import { tmpdir } from 'os';
-import { execSync } from 'child_process';
+import { mkdir, rm, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
 
 describe('init command - schema validation', () => {

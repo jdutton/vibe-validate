@@ -117,14 +117,12 @@ async function executeAndExtract(commandString: string): Promise<{
     });
 
     // Handle process exit
-    child.on('close', (exitCode: number | null) => {
-      const actualExitCode = exitCode ?? 1;
-
+    child.on('close', (exitCode: number = 1) => {
       // CRITICAL: Check ONLY stdout for YAML (not stderr)
       // This prevents stderr warnings from corrupting nested YAML output
       if (isYamlOutput(stdout)) {
         const { yaml, preamble } = extractYamlAndPreamble(stdout);
-        const mergedResult = mergeNestedYaml(commandString, yaml, actualExitCode);
+        const mergedResult = mergeNestedYaml(commandString, yaml, exitCode);
 
         // Include preamble and stderr for context
         const contextOutput = {
@@ -147,7 +145,7 @@ async function executeAndExtract(commandString: string): Promise<{
 
       const result: RunResult = {
         command: commandString,
-        exitCode: actualExitCode,
+        exitCode,
         extraction,
         // Include truncated raw output for reference (if needed for debugging)
         rawOutput: combinedOutput.length > 1000

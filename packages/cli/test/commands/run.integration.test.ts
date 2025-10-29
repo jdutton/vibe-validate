@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import yaml from 'yaml';
 
 /**
@@ -30,7 +30,7 @@ describe('run command integration', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (_error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr
+      } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr
         output = error.stdout || '';
         _exitCode = error.status || 1;
       }
@@ -133,8 +133,9 @@ describe('run command integration', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (_error: any) { // NOSONAR - Ignoring errors, just testing performance
+      } catch (error: any) { // NOSONAR - Ignoring errors, just testing performance
         // Expected - command may fail but we're only measuring execution time
+        expect(error).toBeDefined();
       }
 
       const duration = Date.now() - start;

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, rmSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { mkdirSync, rmSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Command } from 'commander';
 import { validateCommand } from '../../src/commands/validate.js';
 import * as core from '@vibe-validate/core';
@@ -120,7 +120,7 @@ describe('validate command', () => {
       acquired: true,
       lockFile: join(tmpdir(), 'test.lock'),
     });
-    vi.mocked(pidLock.releaseLock).mockResolvedValue(undefined);
+    vi.mocked(pidLock.releaseLock).mockResolvedValue();
     vi.mocked(pidLock.checkLock).mockResolvedValue(null);
     vi.mocked(pidLock.waitForLock).mockResolvedValue({
       released: true,
@@ -269,7 +269,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--force'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -328,7 +330,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -382,7 +386,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -401,7 +407,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -414,7 +422,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--verbose'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -547,7 +557,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--check'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit from checkValidationStatus
       }
 
@@ -685,7 +697,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -732,7 +746,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -756,7 +772,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml', '--verbose'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 

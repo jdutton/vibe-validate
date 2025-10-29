@@ -85,8 +85,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
@@ -109,8 +110,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--main-branch', 'develop'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
@@ -133,8 +135,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
@@ -159,8 +162,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify YAML separator was written
@@ -189,8 +193,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify YAML separator was written
@@ -221,8 +226,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify YAML separator was written
@@ -253,8 +259,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml', '--dry-run'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify both options were passed
@@ -285,8 +292,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify console.log was called for human output
@@ -312,8 +320,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify console.log was called
@@ -334,8 +343,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify console.log was called
@@ -352,8 +362,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(console.error).toHaveBeenCalledWith(
@@ -382,8 +393,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -410,8 +422,9 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(0);

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 import { extractPlaywrightErrors } from '../src/playwright-extractor.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -411,10 +411,10 @@ Running 5 tests using 2 workers
       expect(result.errors.length).toBeLessThanOrEqual(12);
 
       // All errors should have file and line
-      result.errors.forEach(error => {
+      for (const error of result.errors) {
         expect(error.file).toBeDefined();
         expect(error.line).toBeGreaterThan(0);
-      });
+      }
 
       // Quality metrics should be high
       expect(result.metadata.confidence).toBeGreaterThan(80);

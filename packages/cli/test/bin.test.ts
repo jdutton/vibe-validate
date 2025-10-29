@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { spawn } from 'child_process';
-import { join } from 'path';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
+import { spawn } from 'node:child_process';
+import { join } from 'node:path';
+import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 describe('bin.ts - CLI entry point', () => {
   let testDir: string;
@@ -335,8 +335,8 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should have CLI reference docs that match --help --verbose output exactly', async () => {
-        const { readFileSync, existsSync } = await import('fs');
-        const { join } = await import('path');
+        const { readFileSync, existsSync } = await import('node:fs');
+        const { join } = await import('node:path');
         const { normalizeLineEndings, splitLines } = await import('../src/utils/normalize-line-endings.js');
 
         const result = await executeCLI(['--help', '--verbose']);
@@ -572,7 +572,7 @@ describe('bin.ts - CLI entry point', () => {
 
     it('should execute sync-check command', async () => {
       // Initialize a git repo first (required for sync-check)
-      const { execSync } = await import('child_process');
+      const { execSync } = await import('node:child_process');
       execSync('git init', { cwd: testDir });
       execSync('git config user.email "test@example.com"', { cwd: testDir });
       execSync('git config user.name "Test User"', { cwd: testDir });
@@ -641,7 +641,7 @@ git:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 
       // Initialize git (required for validation)
-      const { execSync } = await import('child_process');
+      const { execSync } = await import('node:child_process');
       execSync('git init', { cwd: testDir });
       execSync('git config user.email "test@example.com"', { cwd: testDir });
       execSync('git config user.name "Test User"', { cwd: testDir });
@@ -681,7 +681,7 @@ git:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 
       // Initialize git
-      const { execSync } = await import('child_process');
+      const { execSync } = await import('node:child_process');
       execSync('git init', { cwd: testDir });
       execSync('git config user.email "test@example.com"', { cwd: testDir });
       execSync('git config user.name "Test User"', { cwd: testDir });
@@ -722,7 +722,7 @@ git:
       writeFileSync(join(testDir, '.gitignore'), '.vibe-validate-state.yaml\n');
 
       // Initialize git
-      const { execSync } = await import('child_process');
+      const { execSync } = await import('node:child_process');
       execSync('git init', { cwd: testDir });
       execSync('git config user.email "test@example.com"', { cwd: testDir });
       execSync('git config user.name "Test User"', { cwd: testDir });

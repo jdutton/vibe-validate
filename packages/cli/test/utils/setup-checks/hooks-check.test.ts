@@ -5,10 +5,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, writeFile, readFile, rm } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { HooksSetupCheck } from '../../../src/utils/setup-checks/hooks-check.js';
 
 describe('HooksSetupCheck', () => {
@@ -265,7 +265,7 @@ npm test
 
       // Check file permissions (should be executable)
       // Note: This test is skipped on Windows (no Unix permission bits)
-      const stats = await import('fs/promises').then(fs => fs.stat(preCommitPath));
+      const stats = await import('node:fs/promises').then(fs => fs.stat(preCommitPath));
       const isExecutable = (stats.mode & 0o111) !== 0;
       expect(isExecutable).toBe(true);
     });

@@ -12,8 +12,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { safeValidateResult } from '../src/result-schema.js';
 

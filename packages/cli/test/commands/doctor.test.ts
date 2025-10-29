@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { existsSync } from 'fs';
-import { execSync } from 'child_process';
+import { existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 // Mock dependencies
 vi.mock('fs', () => ({
@@ -67,7 +67,7 @@ describe('doctor command', () => {
   describe('runDoctor', () => {
     it('should return all checks passing when environment is healthy', async () => {
       // Mock file reads for version and gitignore checks
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -223,7 +223,7 @@ describe('doctor command', () => {
     });
 
     it('should run all checks even when config has validation errors', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.10.4' }) as any;
@@ -377,7 +377,7 @@ describe('doctor command', () => {
   describe('--verbose flag', () => {
     it('should show all checks including passing ones in verbose mode', async () => {
       // Mock file reads
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -415,7 +415,7 @@ describe('doctor command', () => {
 
     it('should show only summary in non-verbose mode when all pass', async () => {
       // Mock file reads
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -487,7 +487,7 @@ describe('doctor command', () => {
     });
 
     it('should show all checks including passing in verbose mode when failures exist', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -532,7 +532,7 @@ describe('doctor command', () => {
   describe('pre-commit hook opt-out', () => {
     beforeEach(async () => {
       // Mock file reads for all pre-commit tests
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -570,7 +570,7 @@ describe('doctor command', () => {
       };
 
       // Mock all necessary dependencies for healthy environment
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -626,7 +626,7 @@ describe('doctor command', () => {
     });
 
     it('should pass when pre-commit hook is properly configured with vibe-validate', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -650,7 +650,7 @@ describe('doctor command', () => {
     });
 
     it('should pass when pre-commit hook runs vibe-validate via npm script', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -671,7 +671,7 @@ describe('doctor command', () => {
     });
 
     it('should pass when pre-commit hook runs vibe-validate via pnpm script', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -692,7 +692,7 @@ describe('doctor command', () => {
     });
 
     it('should fail when custom pre-commit hook exists but does not run vibe-validate', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockReturnValue('npm test\nnpm run lint\nnpm run format' as any);
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
@@ -709,7 +709,7 @@ describe('doctor command', () => {
     });
 
     it('should fail when pre-commit hook exists but is unreadable', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation(() => {
         throw new Error('EACCES: permission denied');
       });
@@ -726,7 +726,7 @@ describe('doctor command', () => {
     });
 
     it('should use custom command from config when checking hook', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       const configWithCustomCommand = {
         ...mockConfig,
         hooks: {
@@ -751,7 +751,7 @@ describe('doctor command', () => {
 
   describe('version check', () => {
     it('should pass when current version is up to date', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -787,7 +787,7 @@ describe('doctor command', () => {
     });
 
     it('should warn when newer version is available', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.10' }) as any;
@@ -826,7 +826,7 @@ describe('doctor command', () => {
     });
 
     it('should handle npm registry unavailable gracefully', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;
@@ -866,7 +866,7 @@ describe('doctor command', () => {
 
   describe('gitignore state file check', () => {
     it(`should warn when ${DEPRECATED_STATE_FILE} is in .gitignore (deprecated)`, async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('.gitignore')) {
           return `${DEPRECATED_STATE_FILE}\nnode_modules\n` as any;
@@ -902,7 +902,7 @@ describe('doctor command', () => {
     });
 
     it('should pass when .gitignore exists but state file not listed (state file deprecated)', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('.gitignore')) {
           return 'node_modules\ndist\n' as any; // No state file
@@ -941,7 +941,7 @@ describe('doctor command', () => {
     });
 
     it('should fail when .gitignore is unreadable', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('.gitignore')) {
           throw new Error('EACCES: permission denied');
@@ -968,7 +968,7 @@ describe('doctor command', () => {
 
   describe('config format check', () => {
     it('should detect .yaml config files', async () => {
-      const { readFileSync } = await import('fs');
+      const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
           return JSON.stringify({ version: '0.9.11' }) as any;

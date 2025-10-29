@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import os from 'os';
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import os from 'node:os';
 
 // Mock os.tmpdir before importing pid-lock
 const testDir = join(os.tmpdir(), 'vibe-validate-test');
@@ -69,7 +69,7 @@ describe('PID Lock Utilities', () => {
     });
 
     it('should encode Windows paths correctly', async () => {
-      const result = await acquireLock('C:\\Users\\jeff\\project', treeHash);
+      const result = await acquireLock(String.raw`C:\Users\jeff\project`, treeHash);
 
       expect(result.lockFile).toContain('C-_Users_jeff_project.lock');
     });

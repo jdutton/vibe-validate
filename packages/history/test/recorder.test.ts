@@ -31,8 +31,8 @@ describe('recordValidationHistory', () => {
   });
 
   it('should record validation result to git notes', async () => {
-    const { execSync } = await import('child_process');
-    const { writeFileSync } = await import('fs');
+    const { execSync } = await import('node:child_process');
+    const { writeFileSync } = await import('node:fs');
     const treeHash = 'abc123def456';
 
     const result: ValidationResult = {
@@ -151,7 +151,7 @@ describe('recordValidationHistory', () => {
   });
 
   it('should handle recording failures gracefully', async () => {
-    const { execSync } = await import('child_process');
+    const { execSync } = await import('node:child_process');
     const treeHash = 'abc123def456';
 
     vi.mocked(execSync).mockImplementation(() => {
