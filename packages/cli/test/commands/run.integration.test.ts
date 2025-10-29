@@ -30,7 +30,7 @@ describe('run command integration', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (_error: any) {
+      } catch (_error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr
         output = error.stdout || '';
         _exitCode = error.status || 1;
       }
@@ -133,8 +133,8 @@ describe('run command integration', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (_error: any) {
-        // Ignore errors, just testing performance
+      } catch (_error: any) { // NOSONAR - Ignoring errors, just testing performance
+        // Expected - command may fail but we're only measuring execution time
       }
 
       const duration = Date.now() - start;

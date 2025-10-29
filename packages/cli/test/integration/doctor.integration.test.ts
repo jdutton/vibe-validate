@@ -23,7 +23,7 @@ describe('Doctor Command Integration', () => {
         stdio: 'pipe',
       });
       return { stdout, stderr: '', exitCode: 0 };
-    } catch (_error: any) {
+    } catch (_error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
       // execSync throws on non-zero exit, but we want to see the output
       return {
         stdout: error.stdout || '',

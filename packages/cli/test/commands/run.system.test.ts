@@ -34,7 +34,7 @@ describe('run command system tests', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (_error: any) {
+      } catch (_error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout
         output = error.stdout || '';
       }
 
@@ -224,7 +224,7 @@ describe('run command system tests', () => {
           stdio: ['pipe', 'pipe', 'pipe'],
           timeout: 10000,
         });
-      } catch (_error: any) {
+      } catch (_error: any) { // NOSONAR - execSync throws on non-zero exit, we need to check error type and stdout
         // Skip test if state command not available or errors
         if (error.status === 127 || error.message.includes('not found')) {
           return;
@@ -256,8 +256,8 @@ describe('run command system tests', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (_error: any) {
-        // Ignore errors, just testing performance
+      } catch (_error: any) { // NOSONAR - Ignoring errors, just testing performance
+        // Expected - command may fail but we're only measuring execution time
       }
 
       const duration = Date.now() - start;
