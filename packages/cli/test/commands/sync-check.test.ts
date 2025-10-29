@@ -113,7 +113,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(0);
@@ -136,7 +136,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.log).toHaveBeenCalled();
@@ -164,7 +164,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -187,7 +187,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.log).toHaveBeenCalled();
@@ -214,7 +214,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(0);
@@ -236,7 +236,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.log).toHaveBeenCalled();
@@ -259,7 +259,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -289,7 +289,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -319,7 +319,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -352,7 +352,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check', '--main-branch', 'develop'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify checkBranchSync was called with correct remote branch
@@ -376,7 +376,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check', '--remote-origin', 'upstream'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify checkBranchSync was called with correct remote
@@ -400,7 +400,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check', '--main-branch', 'develop', '--remote-origin', 'upstream'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify checkBranchSync was called with both overrides
@@ -426,7 +426,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify console.log was called for human output
@@ -453,7 +453,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify console.log was called
@@ -475,7 +475,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify console.log was called
@@ -498,7 +498,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith(
@@ -524,7 +524,7 @@ describe('sync-check command', () => {
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalled();

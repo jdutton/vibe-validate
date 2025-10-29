@@ -151,7 +151,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(mockProvider.fetchCheckStatus).toHaveBeenCalledWith('123');
@@ -190,7 +190,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(mockProvider.detectPullRequest).toHaveBeenCalled();
@@ -212,7 +212,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -257,7 +257,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(0);
@@ -302,7 +302,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -345,7 +345,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(mockProvider.fetchFailureLogs).toHaveBeenCalledWith('check-1');
@@ -390,7 +390,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -436,7 +436,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -467,7 +467,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -519,7 +519,7 @@ describe('watch-pr command', () => {
         // Use very short timeout to trigger timeout quickly
         await program.parseAsync(['watch-pr', '123', '--timeout', '0'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(2);
@@ -570,7 +570,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123', '--fail-fast'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -608,7 +608,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123', '--provider', 'github-actions'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify the provider option was used (command should succeed)
@@ -637,7 +637,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -659,7 +659,7 @@ describe('watch-pr command', () => {
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);

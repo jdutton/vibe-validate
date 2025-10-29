@@ -45,6 +45,7 @@ export default [
 
       // SonarJS rules - relaxed for tests but still visible
       'sonarjs/no-ignored-exceptions': 'off', // Redundant with unused-vars (which catches this)
+      'sonarjs/void-use': 'off', // Tests use 'void _error;' to explicitly acknowledge ignored exceptions
       'sonarjs/os-command': 'off', // Tests execute commands for validation
       'sonarjs/no-os-command-from-path': 'off', // Test fixtures use PATH commands
       'sonarjs/no-nested-functions': 'off', // Common in describe/it blocks

@@ -86,7 +86,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
@@ -110,7 +110,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup', '--main-branch', 'develop'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
@@ -134,7 +134,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
@@ -160,7 +160,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -190,7 +190,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -222,7 +222,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify YAML separator was written
@@ -254,7 +254,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup', '--yaml', '--dry-run'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify both options were passed
@@ -286,7 +286,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify console.log was called for human output
@@ -313,7 +313,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify console.log was called
@@ -335,7 +335,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       // Verify console.log was called
@@ -353,7 +353,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith(
@@ -383,7 +383,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -411,7 +411,7 @@ describe('cleanup command', () => {
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(exitSpy).toHaveBeenCalledWith(0);

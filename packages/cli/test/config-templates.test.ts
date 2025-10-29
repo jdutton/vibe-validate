@@ -64,8 +64,7 @@ describe('config-templates/', () => {
           let config = raw;
           if (raw && typeof raw === 'object' && '$schema' in raw) {
             const { $schema, ...rest } = raw as any;
-            // eslint-disable-next-line sonarjs/void-use -- Intentionally unused - only used to remove $schema from object
-            void $schema;
+            void $schema; // Intentionally unused - only used to remove $schema from object
             config = rest;
           }
           const result = safeValidateConfig(config);

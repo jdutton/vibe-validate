@@ -380,7 +380,7 @@ describe('history command', () => {
       try {
         await program.parseAsync(['history', 'show', 'nonexistent'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('No validation history found for tree hash: nonexistent');
@@ -561,7 +561,7 @@ describe('history command', () => {
       try {
         await program.parseAsync(['history', 'list'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error listing history: Git command failed');
@@ -584,7 +584,7 @@ describe('history command', () => {
       try {
         await program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error showing history: Git command failed');
@@ -607,7 +607,7 @@ describe('history command', () => {
       try {
         await program.parseAsync(['history', 'prune'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error pruning history: Git command failed');
@@ -630,7 +630,7 @@ describe('history command', () => {
       try {
         await program.parseAsync(['history', 'health'], { from: 'user' });
       } catch (_error) {
-        // Expected - process.exit will throw
+        void _error; // Intentionally ignored - Commander throws on exitOverride
       }
 
       expect(console.error).toHaveBeenCalledWith('Error checking history health: Git command failed');
