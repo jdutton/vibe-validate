@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, rmSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Command } from 'commander';
@@ -213,9 +213,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(1);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
         }
       }
 
@@ -255,9 +255,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -269,7 +269,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--force'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -314,9 +314,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(1);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
         }
       }
 
@@ -328,7 +328,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -382,7 +382,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -401,7 +401,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -414,7 +414,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -450,9 +450,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(1);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
         }
       }
 
@@ -474,9 +474,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(1);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
         }
       }
 
@@ -547,7 +547,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--check'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit from checkValidationStatus
       }
 
@@ -566,9 +566,9 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--check'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(2);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(2);
         }
       }
 
@@ -613,10 +613,10 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--check', '--yaml'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (err: unknown) {
         // Expected exit from checkValidationStatus with code 0
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -685,7 +685,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -708,10 +708,10 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (err: unknown) {
         // Expected exit with code 1
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(1);
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
         }
       }
 
@@ -732,7 +732,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -756,7 +756,7 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate', '--yaml', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -989,10 +989,10 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (err: unknown) {
         // Expected exit with code 0 (validation passed)
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -1044,10 +1044,10 @@ describe('validate command', () => {
 
       try {
         await program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (err: unknown) {
         // Expected exit with code 0 (validation passed)
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 

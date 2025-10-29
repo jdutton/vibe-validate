@@ -4,8 +4,8 @@
  * Following TDD: These tests are written BEFORE the implementation.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdir, writeFile, readFile, rm, chmod } from 'fs/promises';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdir, writeFile, readFile, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -17,6 +17,7 @@ describe('HooksSetupCheck', () => {
 
   beforeEach(async () => {
     // Create unique temp directory for each test
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
     testDir = join(tmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);
     await mkdir(testDir, { recursive: true });
     hooksCheck = new HooksSetupCheck();

@@ -5,6 +5,31 @@
 import type { ValidationResult } from '@vibe-validate/core';
 
 /**
+ * Truncate string to max bytes with message
+ */
+function truncateString(output: string, maxBytes: number): string {
+  if (output.length <= maxBytes) return output;
+  return output.slice(0, maxBytes) + `\n\n[... truncated ${output.length - maxBytes} bytes]`;
+}
+
+/**
+ * Truncate phase outputs
+ */
+function truncatePhaseOutputs(phases: ValidationResult['phases'], maxBytes: number): void {
+  if (!phases) return;
+
+  for (const phase of phases) {
+    if (!phase.steps) continue;
+
+    for (const step of phase.steps) {
+      if (step.output) {
+        step.output = truncateString(step.output, maxBytes);
+      }
+    }
+  }
+}
+
+/**
  * Truncate validation result output to max bytes
  *
  * @param result - Validation result to truncate
@@ -18,31 +43,10 @@ export function truncateValidationOutput(
   // Deep clone to avoid mutating original
   const truncated = JSON.parse(JSON.stringify(result)) as ValidationResult;
 
-  // Truncate phase outputs
-  if (truncated.phases) {
-    for (const phase of truncated.phases) {
-      if (phase.steps) {
-        for (const step of phase.steps) {
-          if (step.output && step.output.length > maxBytes) {
-            const originalLength = step.output.length;
-            step.output =
-              step.output.slice(0, maxBytes) +
-              `\n\n[... truncated ${originalLength - maxBytes} bytes]`;
-          }
-        }
-      }
-    }
-  }
+  truncatePhaseOutputs(truncated.phases, maxBytes);
 
-  // Truncate failed step output
-  if (
-    truncated.failedStepOutput &&
-    truncated.failedStepOutput.length > maxBytes
-  ) {
-    const originalLength = truncated.failedStepOutput.length;
-    truncated.failedStepOutput =
-      truncated.failedStepOutput.slice(0, maxBytes) +
-      `\n\n[... truncated ${originalLength - maxBytes} bytes]`;
+  if (truncated.failedStepOutput) {
+    truncated.failedStepOutput = truncateString(truncated.failedStepOutput, maxBytes);
   }
 
   return truncated;

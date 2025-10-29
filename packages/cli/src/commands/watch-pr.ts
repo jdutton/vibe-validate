@@ -123,6 +123,38 @@ async function watchPRCommand(
 }
 
 /**
+ * Handle timeout scenario
+ */
+function handleTimeout(
+  lastStatus: CheckStatus | null,
+  elapsed: number,
+  yaml: boolean
+): number {
+  if (yaml && lastStatus) {
+    const result: WatchPRResult = {
+      pr: lastStatus.pr,
+      status: 'timeout',
+      result: 'unknown',
+      duration: formatDuration(elapsed),
+      summary: 'Timed out waiting for checks to complete',
+      checks: lastStatus.checks.map((c) => ({
+        name: c.name,
+        status: c.status,
+        conclusion: c.conclusion,
+        duration: c.duration,
+        url: c.url,
+      })),
+    };
+    // YAML mode: Output timeout result to stdout
+    process.stdout.write('---\n');
+    process.stdout.write(stringifyYaml(result));
+  } else {
+    console.log('\n⏱️  Timeout reached. Checks still pending.');
+  }
+  return 2;
+}
+
+/**
  * Watch PR until completion or timeout
  */
 async function watchPR(
@@ -142,28 +174,7 @@ async function watchPR(
 
     // Check timeout
     if (elapsed >= timeoutMs) {
-      if (options.yaml && lastStatus) {
-        const result: WatchPRResult = {
-          pr: lastStatus.pr,
-          status: 'timeout',
-          result: 'unknown',
-          duration: formatDuration(elapsed),
-          summary: 'Timed out waiting for checks to complete',
-          checks: lastStatus.checks.map((c) => ({
-            name: c.name,
-            status: c.status,
-            conclusion: c.conclusion,
-            duration: c.duration,
-            url: c.url,
-          })),
-        };
-        // YAML mode: Output timeout result to stdout
-        process.stdout.write('---\n');
-        process.stdout.write(stringifyYaml(result));
-      } else {
-        console.log('\n⏱️  Timeout reached. Checks still pending.');
-      }
-      return 2;
+      return handleTimeout(lastStatus, elapsed, options.yaml ?? false);
     }
 
     // Fetch current status
@@ -176,11 +187,9 @@ async function watchPR(
     }
 
     // Check if we should fail fast
-    if (options.failFast) {
-      const anyFailure = status.checks.some((c) => c.conclusion === 'failure');
-      if (anyFailure) {
-        return await handleCompletion(provider, status, options, elapsed);
-      }
+    const shouldFailFast = options.failFast && status.checks.some((c) => c.conclusion === 'failure');
+    if (shouldFailFast) {
+      return await handleCompletion(provider, status, options, elapsed);
     }
 
     // Check if all checks are complete

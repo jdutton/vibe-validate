@@ -42,9 +42,9 @@ export function executeCommand(
 
   try {
     output = execSync(command, execOptions);
-  } catch (error: any) {
-    output = error.stdout || error.stderr || '';
-    exitCode = error.status || 1;
+  } catch (err: any) {
+    output = err.stdout || err.stderr || '';
+    exitCode = err.status || 1;
   }
 
   return { output, exitCode };
@@ -65,8 +65,9 @@ export function executeCommandWithYaml(
 
   try {
     result.parsed = yaml.parse(result.output);
-  } catch (error) {
-    // YAML parse failed - leave parsed undefined
+  } catch (_error) {
+    // YAML parse failed - leave parsed undefined (expected for non-YAML output)
+    // Intentionally ignoring this expected parse failure
   }
 
   return result;

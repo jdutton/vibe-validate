@@ -19,6 +19,7 @@ describe('init command - schema validation', () => {
 
   beforeEach(async () => {
     // Create unique temp directory for each test
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
     testDir = join(tmpdir(), `vibe-validate-schema-test-${Date.now()}-${Math.random()}`);
     await mkdir(testDir, { recursive: true });
     cliPath = join(__dirname, '../../dist/bin.js');
@@ -94,10 +95,8 @@ describe('init command - schema validation', () => {
 
   describe('schema discoverability', () => {
     it('should be accessible via local node_modules path', () => {
-      // Simulate installed package structure
-      const localSchemaPath = 'node_modules/@vibe-validate/config/vibe-validate.schema.json';
-
       // Verify the schema exists in our monorepo structure
+      // (Would be at: node_modules/@vibe-validate/config/vibe-validate.schema.json in installed package)
       const actualSchemaPath = resolve(__dirname, '../../../config/vibe-validate.schema.json');
       expect(existsSync(actualSchemaPath)).toBe(true);
     });

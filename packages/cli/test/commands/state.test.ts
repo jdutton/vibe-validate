@@ -69,11 +69,11 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (err: unknown) {
         // Commander throws when exitOverride is set
         // We expect exit code 0 for missing state
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -90,9 +90,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -114,9 +114,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -156,9 +156,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -171,9 +171,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -214,9 +214,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -230,9 +230,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -270,9 +270,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -290,9 +290,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -309,9 +309,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 
@@ -329,9 +329,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(1);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
         }
       }
 
@@ -382,9 +382,9 @@ describe('state command', () => {
 
       try {
         await program.parseAsync(['state'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof error === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
 

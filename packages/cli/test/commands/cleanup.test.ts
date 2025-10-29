@@ -85,7 +85,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -109,7 +109,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--main-branch', 'develop'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -133,7 +133,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -159,7 +159,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -189,7 +189,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -221,7 +221,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -253,7 +253,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--yaml', '--dry-run'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -285,7 +285,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -312,7 +312,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -334,7 +334,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -352,7 +352,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -382,7 +382,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -410,7 +410,7 @@ describe('cleanup command', () => {
 
       try {
         await program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 

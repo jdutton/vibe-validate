@@ -87,8 +87,9 @@ export async function executeCommandAndCaptureOutput(
 ): Promise<string> {
   try {
     await program.parseAsync(args, { from: 'user' });
-  } catch (error: unknown) {
-    // Expected - program.exit() throws
+  } catch (_error: unknown) {
+    // Expected - program.exit() throws (Commander's exitOverride throws on exit)
+    // Intentionally ignoring this exception
   }
 
   const stdoutCalls = vi.mocked(process.stdout.write).mock.calls

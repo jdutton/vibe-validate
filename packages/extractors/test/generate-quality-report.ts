@@ -20,7 +20,7 @@ import {
   computeQualityScore,
 } from './sample-loader.js';
 import { autoDetectAndExtract } from '../src/smart-extractor.js';
-import type { Sample, SampleTestResult, ActualExtraction } from './sample-types.js';
+import type { SampleTestResult, ActualExtraction } from './sample-types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -124,7 +124,7 @@ function generateQualityReport(): QualityMetrics {
   const samplesByTool = groupSamplesBy(samples, 'tool');
   const byTool: QualityMetrics['byTool'] = {};
 
-  for (const [tool, toolSamples] of Object.entries(samplesByTool)) {
+  for (const tool of Object.keys(samplesByTool)) {
     const toolResults = results.filter(r => r.sample.startsWith(`${tool}/`));
     const avgScore = toolResults.reduce((sum, r) => sum + r.score, 0) / toolResults.length;
     const passed = toolResults.filter(r => r.passed).length;
@@ -147,7 +147,7 @@ function generateQualityReport(): QualityMetrics {
   const samplesByDifficulty = groupSamplesBy(samples, 'difficulty');
   const byDifficulty: QualityMetrics['byDifficulty'] = {};
 
-  for (const [difficulty, difficultySamples] of Object.entries(samplesByDifficulty)) {
+  for (const difficulty of Object.keys(samplesByDifficulty)) {
     const difficultyResults = results.filter(r => {
       const sample = samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === r.sample);
       return sample?.metadata.difficulty === difficulty;
@@ -243,7 +243,14 @@ function displaySummary(metrics: QualityMetrics, checkOnly: boolean = false) {
 
   console.log('\nBy Tool:');
   for (const [tool, stats] of Object.entries(metrics.byTool)) {
-    const emoji = stats.failed === 0 ? '✅' : stats.passed > stats.failed ? '⚠️ ' : '❌';
+    let emoji: string;
+    if (stats.failed === 0) {
+      emoji = '✅';
+    } else if (stats.passed > stats.failed) {
+      emoji = '⚠️ ';
+    } else {
+      emoji = '❌';
+    }
     console.log(`  ${emoji} ${tool}: ${(stats.avgScore * 100).toFixed(1)}% (${stats.passed}/${stats.count} passed)`);
   }
 

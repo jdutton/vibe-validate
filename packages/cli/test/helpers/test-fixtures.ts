@@ -47,7 +47,7 @@ export function cleanupTempTestDir(dir: string): void {
  */
 export function withTempDir(
   prefix: string,
-  testFn: (testDir: string) => void | Promise<void>
+  testFn: (_dir: string) => void | Promise<void>
 ): () => Promise<void> {
   return async () => {
     const testDir = createTempTestDir(prefix);

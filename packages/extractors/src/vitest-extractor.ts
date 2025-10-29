@@ -69,6 +69,99 @@ function parseFailureLine(
 }
 
 /**
+ * Extract initial error message from line
+ *
+ * @param line - Line to extract error from
+ * @returns Extracted error message
+ *
+ * @internal
+ */
+function extractErrorMessage(line: string): string {
+  const errorMatch = /((?:AssertionError|Error):\s*.+)/.exec(line);
+  if (errorMatch) {
+    return errorMatch[1].trim();
+  }
+
+  const format2ErrorMatch = /→\s+(.+)/.exec(line);
+  if (format2ErrorMatch) {
+    return format2ErrorMatch[1].trim();
+  }
+
+  return line.trim();
+}
+
+/**
+ * Check if line is a stop marker for error continuation
+ *
+ * @param line - Trimmed line to check
+ * @returns True if this line marks end of error message
+ *
+ * @internal
+ */
+function isStopMarker(line: string): boolean {
+  return (
+    line.startsWith('❯') ||
+    /^\d+\|/.test(line) ||
+    line.startsWith('FAIL') ||
+    line.startsWith('✓') ||
+    line.startsWith('❌') ||
+    line.startsWith('×') ||
+    line.startsWith('⎯') ||
+    line.startsWith('at ')
+  );
+}
+
+/**
+ * Append continuation line to error message
+ *
+ * @param errorMessage - Current error message
+ * @param line - Raw line (with indentation)
+ * @param trimmedLine - Trimmed version of line
+ * @param isSnapshotError - Whether handling snapshot error
+ * @returns Updated error message
+ *
+ * @internal
+ */
+function appendContinuationLine(
+  errorMessage: string,
+  line: string,
+  trimmedLine: string,
+  isSnapshotError: boolean
+): string {
+  if (isSnapshotError) {
+    return errorMessage + '\n' + line; // Preserve indentation for diffs
+  }
+  return errorMessage + ' ' + trimmedLine; // Compact for normal errors
+}
+
+/**
+ * Handle truncation logic for non-snapshot errors
+ *
+ * @param errorMessage - Current error message
+ * @param nextLine - Next trimmed line
+ * @param isSnapshotError - Whether handling snapshot error
+ * @param linesConsumed - Number of lines consumed so far
+ * @param maxLines - Maximum continuation lines allowed
+ * @returns Object with updated message and whether to stop
+ *
+ * @internal
+ */
+function handleTruncation(
+  errorMessage: string,
+  nextLine: string,
+  isSnapshotError: boolean,
+  linesConsumed: number,
+  maxLines: number
+): { errorMessage: string; shouldStop: boolean } {
+  if (isSnapshotError || linesConsumed < maxLines) {
+    return { errorMessage, shouldStop: false };
+  }
+
+  const updatedMessage = nextLine ? errorMessage + ' ...(truncated)' : errorMessage;
+  return { errorMessage: updatedMessage, shouldStop: true };
+}
+
+/**
  * Parse error message with continuation line handling
  *
  * @param lines - All output lines
@@ -83,20 +176,8 @@ function parseErrorMessage(
   startIndex: number,
   isSnapshotError: boolean
 ): { errorMessage: string; lastIndex: number } {
-  const line = lines[startIndex];
-  const errorMatch = /((?:AssertionError|Error):\s*.+)/.exec(line);
-  const format2ErrorMatch = /→\s+(.+)/.exec(line);
+  let errorMessage = extractErrorMessage(lines[startIndex]);
 
-  let errorMessage: string;
-  if (errorMatch) {
-    errorMessage = errorMatch[1].trim();
-  } else if (format2ErrorMatch) {
-    errorMessage = format2ErrorMatch[1].trim();
-  } else {
-    errorMessage = line.trim();
-  }
-
-  // Capture additional lines (e.g., timeout guidance, long error messages, snapshot diffs)
   const MAX_CONTINUATION_LINES = 5;
   let j = startIndex + 1;
   let linesConsumed = 0;
@@ -104,25 +185,14 @@ function parseErrorMessage(
   while (j < lines.length) {
     const nextLine = lines[j].trim();
 
-    // Always stop at these markers
-    if (
-      nextLine.startsWith('❯') ||
-      /^\d+\|/.exec(nextLine) ||
-      nextLine.startsWith('FAIL') ||
-      nextLine.startsWith('✓') ||
-      nextLine.startsWith('❌') ||
-      nextLine.startsWith('×') ||
-      nextLine.startsWith('⎯') ||
-      nextLine.startsWith('at ')
-    ) {
+    if (isStopMarker(nextLine)) {
       break;
     }
 
-    // For non-snapshot errors, limit continuation lines to prevent massive object dumps
-    if (!isSnapshotError && linesConsumed >= MAX_CONTINUATION_LINES) {
-      if (nextLine) {
-        errorMessage += ' ...(truncated)';
-      }
+    // Check truncation limit for non-snapshot errors
+    const truncation = handleTruncation(errorMessage, nextLine, isSnapshotError, linesConsumed, MAX_CONTINUATION_LINES);
+    if (truncation.shouldStop) {
+      errorMessage = truncation.errorMessage;
       break;
     }
 
@@ -133,10 +203,8 @@ function parseErrorMessage(
 
     // Add line to error message
     if (nextLine || isSnapshotError) {
-      if (isSnapshotError) {
-        errorMessage += '\n' + lines[j]; // Preserve indentation for diffs
-      } else {
-        errorMessage += ' ' + nextLine; // Compact for normal errors
+      errorMessage = appendContinuationLine(errorMessage, lines[j], nextLine, isSnapshotError);
+      if (!isSnapshotError) {
         linesConsumed++;
       }
     }

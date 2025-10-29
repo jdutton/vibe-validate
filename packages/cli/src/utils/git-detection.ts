@@ -42,6 +42,55 @@ export interface DetectedGitConfig {
  * console.log(gitConfig.detected); // true if detected, false if defaults
  * ```
  */
+/**
+ * Select preferred remote from available remotes
+ */
+function selectPreferredRemote(remotes: string[]): string {
+  if (remotes.includes('upstream')) {
+    return 'upstream'; // Forked repo workflow
+  }
+  if (remotes.includes('origin')) {
+    return 'origin'; // Standard workflow
+  }
+  return remotes[0]; // Use first available
+}
+
+/**
+ * Detect main branch from remote HEAD
+ */
+function detectMainBranchFromHead(remote: string): string | null {
+  try {
+    const headRef = execSync(`git symbolic-ref refs/remotes/${remote}/HEAD`, {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }).trim();
+    return headRef.replace(`refs/remotes/${remote}/`, '');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detect main branch from common branch names
+ */
+function detectMainBranchFromRemote(remote: string): string | null {
+  try {
+    const branches = execSync(`git ls-remote --heads ${remote}`, {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }).trim();
+
+    // Check for common main branch names in order of preference
+    if (branches.includes('refs/heads/main')) return 'main';
+    if (branches.includes('refs/heads/master')) return 'master';
+    if (branches.includes('refs/heads/develop')) return 'develop';
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function detectGitConfig(): DetectedGitConfig {
   const defaults = {
     mainBranch: GIT_DEFAULTS.MAIN_BRANCH,
@@ -57,65 +106,31 @@ export function detectGitConfig(): DetectedGitConfig {
     return defaults;
   }
 
-  let mainBranch: string = GIT_DEFAULTS.MAIN_BRANCH;
-  let remoteOrigin: string = GIT_DEFAULTS.REMOTE_ORIGIN;
-  let detected = false;
-
-  // Try to detect main branch from remote HEAD
   try {
-    // First, get list of remotes
+    // Get list of remotes
     const remotesOutput = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' }).trim();
     const remotes = remotesOutput.split('\n').filter(Boolean);
 
-    if (remotes.length > 0) {
-      // Prefer 'upstream' if it exists (forked repo workflow), otherwise use first remote
-      if (remotes.includes('upstream')) {
-        remoteOrigin = 'upstream';
-      } else if (remotes.includes('origin')) {
-        remoteOrigin = 'origin';
-      } else {
-        remoteOrigin = remotes[0]; // Use first available remote
-      }
-
-      // Try to detect main branch from remote HEAD
-      try {
-        const headRef = execSync(`git symbolic-ref refs/remotes/${remoteOrigin}/HEAD`, {
-          encoding: 'utf8',
-          stdio: 'pipe',
-        }).trim();
-        mainBranch = headRef.replace(`refs/remotes/${remoteOrigin}/`, '');
-        detected = true;
-      } catch {
-        // Remote HEAD not set, try to detect from common branch names
-        try {
-          const branches = execSync(`git ls-remote --heads ${remoteOrigin}`, {
-            encoding: 'utf8',
-            stdio: 'pipe',
-          }).trim();
-
-          // Check for common main branch names in order of preference
-          if (branches.includes('refs/heads/main')) {
-            mainBranch = 'main';
-            detected = true;
-          } else if (branches.includes('refs/heads/master')) {
-            mainBranch = 'master';
-            detected = true;
-          } else if (branches.includes('refs/heads/develop')) {
-            mainBranch = 'develop';
-            detected = true;
-          }
-        } catch {
-          // Failed to list remote branches - use defaults
-        }
-      }
+    if (remotes.length === 0) {
+      return defaults;
     }
+
+    const remoteOrigin = selectPreferredRemote(remotes);
+
+    // Try to detect main branch from remote HEAD
+    let mainBranch = detectMainBranchFromHead(remoteOrigin);
+
+    // If HEAD not set, try common branch names
+    mainBranch ??= detectMainBranchFromRemote(remoteOrigin);
+
+    // Return detected config or defaults
+    if (mainBranch) {
+      return { mainBranch, remoteOrigin, detected: true };
+    }
+
+    return { mainBranch: GIT_DEFAULTS.MAIN_BRANCH, remoteOrigin, detected: false };
   } catch {
     // Failed to detect - use defaults
+    return defaults;
   }
-
-  return {
-    mainBranch,
-    remoteOrigin,
-    detected,
-  };
 }

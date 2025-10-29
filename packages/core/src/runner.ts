@@ -443,6 +443,56 @@ export async function runStepsInParallel(
 }
 
 /**
+ * Append step outputs to log file
+ */
+function appendStepOutputsToLog(
+  logPath: string,
+  outputs: Map<string, string>,
+  failedStepName?: string
+): void {
+  for (const [stepName, output] of outputs) {
+    appendFileSync(logPath, `\n${'='.repeat(60)}\n`);
+    appendFileSync(logPath, `${stepName}${failedStepName === stepName ? ' - FAILED' : ''}\n`);
+    appendFileSync(logPath, `${'='.repeat(60)}\n`);
+    appendFileSync(logPath, output);
+  }
+}
+
+/**
+ * Create failed validation result with extracted errors
+ */
+function createFailedValidationResult(
+  failedStep: ValidationStep,
+  failedOutput: string,
+  currentTreeHash: string,
+  logPath: string,
+  phaseResults: PhaseResult[]
+): ValidationResult {
+  // Extract actionable failures (LLM-optimized)
+  const extracted = autoDetectAndExtract(failedStep.name, failedOutput);
+  const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
+
+  // Use structured errors from extractor
+  const structuredFailures = extracted.errors.map(error => {
+    const linePart = error.line ? `:${error.line}` : '';
+    const location = error.file ? `${error.file}${linePart}` : 'unknown';
+    return `${location} - ${error.message ?? 'No message'}`;
+  });
+
+  return {
+    passed: false,
+    timestamp: new Date().toISOString(),
+    treeHash: currentTreeHash,
+    failedStep: failedStep.name,
+    rerunCommand: failedStep.command,
+    failedTests: structuredFailures.length > 0 ? structuredFailures : undefined,
+    fullLogFile: logPath,
+    phases: phaseResults,
+    failedStepOutput: extractedOutput,
+  };
+}
+
+/**
  * Validation runner with state tracking and caching
  *
  * Main entry point for running validation with git tree hash-based caching.
@@ -504,7 +554,6 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   // Initialize log file
   writeFileSync(logPath, `Validation started at ${new Date().toISOString()}\n\n`);
 
-  let failedStep: ValidationStep | null = null;
   const phaseResults: PhaseResult[] = [];
 
   // Run each phase
@@ -527,12 +576,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     const durationSecs = Number.parseFloat((phaseDurationMs / 1000).toFixed(1));
 
     // Append all outputs to log file
-    for (const [stepName, output] of result.outputs) {
-      appendFileSync(logPath, `\n${'='.repeat(60)}\n`);
-      appendFileSync(logPath, `${stepName}${result.failedStep?.name === stepName ? ' - FAILED' : ''}\n`);
-      appendFileSync(logPath, `${'='.repeat(60)}\n`);
-      appendFileSync(logPath, output);
-    }
+    appendStepOutputsToLog(logPath, result.outputs, result.failedStep?.name);
 
     // Record phase result
     const phaseResult: PhaseResult = {
@@ -556,48 +600,17 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       onPhaseComplete(phase, phaseResult);
     }
 
-    // If phase failed, stop here
+    // If phase failed, stop here and return failure result
     if (!result.success && result.failedStep) {
-      failedStep = result.failedStep;
-
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-      const failedOutput = result.outputs.get(failedStep.name) || '';
-
-      // Extract actionable failures from raw output (LLM-optimized, 5-10 lines instead of 100+)
-      // This reduces git notes bloat and makes errors immediately actionable
-      const extracted = autoDetectAndExtract(failedStep.name, failedOutput);
-
-      // Use cleanOutput for storage (already formatted for YAML/JSON, stripped of ANSI codes)
-      // Falls back to raw output if extraction fails
-      const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
-
-      // Use structured errors from extractor (replaces deprecated parseFailures)
-      const structuredFailures = extracted.errors.map(error => {
-        const linePart = error.line ? `:${error.line}` : '';
-        const location = error.file
-          ? `${error.file}${linePart}`
-          : 'unknown';
-        return `${location} - ${error.message ?? 'No message'}`;
-      });
-
-      // IMPORTANT: Field order matches types.ts for YAML truncation safety
-      // Verbose fields (phases, failedStepOutput) at the end
-      const validationResult: ValidationResult = {
-        passed: false,
-        timestamp: new Date().toISOString(),
-        treeHash: currentTreeHash,
-        failedStep: failedStep.name,
-        rerunCommand: failedStep.command,
-        failedTests: structuredFailures.length > 0 ? structuredFailures : undefined,
-        fullLogFile: logPath,
-        phases: phaseResults,  // Contains verbose output - near end
-        failedStepOutput: extractedOutput,  // Most verbose - dead last
-      };
-
-      // State persistence moved to validate.ts via git notes (v0.12.0+)
-      // The state file is deprecated - git notes are now the source of truth
-
-      return validationResult;
+      const failedOutput = result.outputs.get(result.failedStep.name) || '';
+      return createFailedValidationResult(
+        result.failedStep,
+        failedOutput,
+        currentTreeHash,
+        logPath,
+        phaseResults
+      );
     }
   }
 

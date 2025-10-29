@@ -22,6 +22,9 @@ vi.mock('../../src/utils/config-loader.js', async () => {
   };
 });
 
+// Type alias for process.exit mock parameter
+type ProcessExitCode = string | number | null | undefined;
+
 describe('sync-check command', () => {
   let program: Command;
 
@@ -101,7 +104,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -109,7 +112,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -132,7 +135,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -152,7 +155,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -160,7 +163,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -183,7 +186,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -202,7 +205,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -210,7 +213,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -232,7 +235,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -255,7 +258,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -285,7 +288,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -315,7 +318,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -348,7 +351,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check', '--main-branch', 'develop'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -372,7 +375,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check', '--remote-origin', 'upstream'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -396,7 +399,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check', '--main-branch', 'develop', '--remote-origin', 'upstream'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -422,7 +425,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -449,7 +452,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -471,7 +474,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -486,7 +489,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockRejectedValue(error);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -494,7 +497,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 
@@ -512,7 +515,7 @@ describe('sync-check command', () => {
       vi.mocked(configLoader.loadConfig).mockRejectedValue(error);
 
       // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
@@ -520,7 +523,7 @@ describe('sync-check command', () => {
 
       try {
         await program.parseAsync(['sync-check'], { from: 'user' });
-      } catch (error) {
+      } catch (_error) {
         // Expected - process.exit will throw
       }
 

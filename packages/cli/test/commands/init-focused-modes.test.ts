@@ -23,6 +23,7 @@ describe('init command - focused modes', () => {
 
   beforeEach(async () => {
     // Create unique temp directory for each test
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
     testDir = join(tmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);
     await mkdir(testDir, { recursive: true });
     cliPath = join(__dirname, '../../dist/bin.js');

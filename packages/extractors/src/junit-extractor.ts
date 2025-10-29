@@ -150,10 +150,19 @@ interface FailureInfo {
   errorType?: string;
 }
 
+/**
+ * Extract attribute value from XML tag
+ */
+function extractXmlAttribute(tag: string, attrName: string): string | undefined {
+  const idx = tag.indexOf(`${attrName}="`);
+  if (idx === -1) return undefined;
+  const start = idx + `${attrName}="`.length;
+  const end = tag.indexOf('"', start);
+  return tag.substring(start, end);
+}
+
 function extractFailures(xml: string): FailureInfo[] {
   const failures: FailureInfo[] = [];
-
-  // Match all <testcase> elements with <failure> children
   const testcasePattern = /<testcase[^>]*>([\s\S]*?)<\/testcase>/g;
   let testcaseMatch;
 
@@ -161,37 +170,20 @@ function extractFailures(xml: string): FailureInfo[] {
     const testcaseContent = testcaseMatch[0];
     const testcaseInner = testcaseMatch[1];
 
-    // Check if this testcase has a failure
+    // Skip passing tests
     if (!testcaseInner.includes('<failure')) {
-      continue; // Skip passing tests
+      continue;
     }
 
-    // Extract attributes from testcase opening tag using more reliable string extraction
+    // Extract testcase tag attributes
     const testcaseTagMatch = /<testcase([^>]*)>/.exec(testcaseContent);
     const testcaseTag = testcaseTagMatch ? testcaseTagMatch[1] : '';
-
-    // Extract classname using indexOf/substring (more reliable than regex for attributes with special chars)
-    let file: string | undefined;
-    const classnameIdx = testcaseTag.indexOf('classname="');
-    if (classnameIdx !== -1) {
-      const start = classnameIdx + 'classname="'.length;
-      const end = testcaseTag.indexOf('"', start);
-      file = testcaseTag.substring(start, end);
-    }
-
-    // Extract name (test hierarchy) similarly
-    let testName: string | undefined;
-    const nameIdx = testcaseTag.indexOf('name="');
-    if (nameIdx !== -1) {
-      const start = nameIdx + 'name="'.length;
-      const end = testcaseTag.indexOf('"', start);
-      testName = testcaseTag.substring(start, end);
-    }
+    const file = extractXmlAttribute(testcaseTag, 'classname');
+    const testName = extractXmlAttribute(testcaseTag, 'name');
 
     // Extract failure element
     const failurePattern = /<failure[^>]*>([\s\S]*?)<\/failure>/;
     const failureMatch = failurePattern.exec(testcaseInner);
-
     if (!failureMatch) {
       continue;
     }
@@ -199,17 +191,11 @@ function extractFailures(xml: string): FailureInfo[] {
     const failureContent = failureMatch[0];
     const failureText = failureMatch[1];
 
-    // Extract message attribute
-    const messageMatch = /message="([^"]+)"/.exec(failureContent);
-    const message = messageMatch ? messageMatch[1] : undefined;
-
-    // Extract error type
-    const typeMatch = /type="([^"]+)"/.exec(failureContent);
-    const errorType = typeMatch ? typeMatch[1] : undefined;
+    // Extract failure attributes
+    const message = extractXmlAttribute(failureContent, 'message');
+    const errorType = extractXmlAttribute(failureContent, 'type');
 
     // Extract location from failure text (❯ file:line:column)
-    // Note: We strip column number to keep format consistent (file:line)
-    // Pattern allows word chars, forward slashes, dots, and hyphens in paths
     const locationPattern = /❯\s+([\w/.-]+):(\d+)(?::\d+)?/;
     const locationMatch = locationPattern.exec(failureText);
 
@@ -218,10 +204,8 @@ function extractFailures(xml: string): FailureInfo[] {
 
     if (locationMatch) {
       extractedFile = locationMatch[1];
-      const line = locationMatch[2];
-      location = `${extractedFile}:${line}`;
+      location = `${extractedFile}:${locationMatch[2]}`;
     }
-    // No fallback - if no location found in failure text, leave location undefined
 
     failures.push({
       file: extractedFile ?? file,

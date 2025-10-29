@@ -166,6 +166,7 @@ describe('getGitTreeHash - integration tests', () => {
 
     // Add ignored files (secrets, env, etc.)
     writeFileSync(join(testRepoPath, 'secrets.txt'), 'API_KEY=secret123');
+    // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- Test fixture, not real password
     writeFileSync(join(testRepoPath, '.env'), 'PASSWORD=admin');
 
     // Get hash WITH secrets (but they should be ignored)

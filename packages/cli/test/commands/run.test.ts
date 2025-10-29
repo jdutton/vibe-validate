@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { runCommand } from '../../src/commands/run.js';
 import * as childProcess from 'child_process';
-import type { ChildProcess } from 'child_process';
 import { EventEmitter } from 'node:events';
 import { createMockChildProcess } from '../helpers/mock-helpers.js';
 
@@ -68,7 +67,7 @@ describe('run command', () => {
 
       try {
         await program.parseAsync(['run', 'echo test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -90,7 +89,7 @@ describe('run command', () => {
 
       try {
         await program.parseAsync(['run', 'echo test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -107,9 +106,9 @@ describe('run command', () => {
 
       try {
         await program.parseAsync(['run', 'echo success'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(0);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
         }
       }
     });
@@ -123,9 +122,9 @@ describe('run command', () => {
 
       try {
         await program.parseAsync(['run', 'exit 1'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(1);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
         }
       }
     });
@@ -150,7 +149,7 @@ describe('run command', () => {
 
       try {
         await program.parseAsync(['run', 'npx vitest'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit with code 1
       }
 
@@ -177,7 +176,7 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
 
       try {
         await program.parseAsync(['run', 'npx tsc --noEmit'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit with code 1
       }
 
@@ -201,7 +200,7 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
 
       try {
         await program.parseAsync(['run', 'echo test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -225,7 +224,7 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
 
       try {
         await program.parseAsync(['run', 'npx vitest'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -257,7 +256,7 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
 
       try {
         await parsePromise;
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected error
       }
 
@@ -292,7 +291,7 @@ rawOutput: "test output..."
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit with code 1
       }
 
@@ -332,7 +331,7 @@ suggestedDirectCommand: "npm test"
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "vibe-validate run \\"npm test\\""'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -371,7 +370,7 @@ guidance: "Fix the test phase errors"
 
       try {
         await program.parseAsync(['run', 'vibe-validate validate'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -409,7 +408,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'pnpm test:llm'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit with code 0
       }
 
@@ -453,7 +452,7 @@ customField: "should be preserved"
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -491,7 +490,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npx vitest"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -530,9 +529,9 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "failing-command"'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(42);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(42);
         }
       }
 
@@ -559,7 +558,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'npm test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -587,7 +586,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -618,7 +617,7 @@ extraction
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -644,7 +643,7 @@ extraction
 
       try {
         await program.parseAsync(['run', 'echo ---'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -674,7 +673,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -705,7 +704,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'npm test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -745,7 +744,7 @@ customField: null
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -775,7 +774,7 @@ suggestedDirectCommand: "npm test"
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "vibe-validate run \\"...\\"" (10 levels)'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -807,7 +806,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -837,7 +836,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -865,7 +864,7 @@ exitCode: "not a number"
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -895,7 +894,7 @@ exitCode: "not a number"
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -939,7 +938,7 @@ ${largeErrors.map(e => `    - file: "${e.file}"\n      line: ${e.line}\n      me
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -970,7 +969,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', longCommand], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1001,7 +1000,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1034,7 +1033,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1066,9 +1065,9 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "custom-tool"'], { from: 'user' });
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'exitCode' in error) {
-          expect(error.exitCode).toBe(42);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(42);
         }
       }
 
@@ -1097,7 +1096,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1131,7 +1130,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'pnpm validate --yaml'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1174,7 +1173,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'npm test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1207,7 +1206,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'yarn test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1244,7 +1243,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'npm test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1274,7 +1273,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1310,7 +1309,7 @@ Done in 5.2s
 
       try {
         await program.parseAsync(['run', 'npm test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit
       }
 
@@ -1351,7 +1350,7 @@ extraction:
 
       try {
         await program.parseAsync(['run', 'pnpm test'], { from: 'user' });
-      } catch (error: unknown) {
+      } catch (_error: unknown) {
         // Expected exit with code 1
       }
 

@@ -18,7 +18,7 @@ const CLI_PATH = 'node packages/cli/dist/bin.js';
 describe('run command system tests', () => {
   describe('deep nested execution', () => {
     it.skip('should handle 3-level nested vibe-validate run commands', () => {
-      // TODO: This test is currently failing - suggestedDirectCommand extraction
+      // SKIPPED: This test is currently failing - suggestedDirectCommand extraction
       // needs debugging. The recursive detection logic may have issues with
       // 3+ levels of nesting. This is lower priority than fixing extractors.
       // 3 levels: run → run → run → echo
@@ -34,7 +34,7 @@ describe('run command system tests', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (error: any) {
+      } catch (_error: any) {
         output = error.stdout || '';
       }
 
@@ -111,7 +111,7 @@ describe('run command system tests', () => {
 
     it('should extract real Jest test failures from extractors-test-bed', () => {
       // This test verifies Jest extractor quality
-      // Expected: 6+ errors, Currently getting fewer (Issue tracked in TODO.md)
+      // Expected: 6+ errors, Currently getting fewer (Issue tracked in project backlog)
       // NOTE: Must run from extractors-test-bed directory for paths to work
       // NOTE: Jest is slower than other runners - needs longer timeout
       const command = `node ../../packages/cli/dist/bin.js run "npx jest tests/jest/comprehensive-failures.test.ts"`;
@@ -151,7 +151,7 @@ describe('run command system tests', () => {
 
     it('should extract real Playwright test failures from extractors-test-bed', () => {
       // This test verifies Playwright extractor quality
-      // Expected: 11 errors, Currently getting fewer (Issue tracked in TODO.md)
+      // Expected: 11 errors, Currently getting fewer (Issue tracked in project backlog)
       // NOTE: Must run from extractors-test-bed directory for paths to work
       const command = `node ../../packages/cli/dist/bin.js run "npx playwright test tests/playwright/comprehensive-failures.spec.ts"`;
 
@@ -209,7 +209,7 @@ describe('run command system tests', () => {
 
   describe('real validation command wrapping', () => {
     it.skip('should preserve all fields when wrapping state command', () => {
-      // TODO: This test is currently failing - needs investigation
+      // SKIPPED: This test is currently failing - needs investigation
       // Lower priority than fixing extractors
       // Test wrapping vibe-validate state command
       // This verifies that YAML output from vibe-validate commands
@@ -224,7 +224,7 @@ describe('run command system tests', () => {
           stdio: ['pipe', 'pipe', 'pipe'],
           timeout: 10000,
         });
-      } catch (error: any) {
+      } catch (_error: any) {
         // Skip test if state command not available or errors
         if (error.status === 127 || error.message.includes('not found')) {
           return;
@@ -256,7 +256,7 @@ describe('run command system tests', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (error: any) {
+      } catch (_error: any) {
         // Ignore errors, just testing performance
       }
 

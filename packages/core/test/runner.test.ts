@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { parse as parseYaml } from 'yaml';
 import { getGitTreeHash } from '@vibe-validate/git';
 import {
   parseFailures,
@@ -10,7 +9,7 @@ import {
   runValidation,
   setupSignalHandlers,
 } from '../src/runner.js';
-import type { ValidationConfig, ValidationPhase, ValidationStep } from '../src/types.js';
+import type { ValidationConfig, ValidationStep } from '../src/types.js';
 
 // Mock git functions
 vi.mock('@vibe-validate/git', () => ({

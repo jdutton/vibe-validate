@@ -23,16 +23,16 @@ describe('run command integration', () => {
       const outerCommand = `${CLI_PATH} run "${innerCommand}"`;
 
       let output: string;
-      let exitCode = 0;
+      let _exitCode = 0;
 
       try {
         output = execSync(outerCommand, {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (error: any) {
+      } catch (_error: any) {
         output = error.stdout || '';
-        exitCode = error.status || 1;
+        _exitCode = error.status || 1;
       }
 
       // Parse YAML output
@@ -55,16 +55,14 @@ describe('run command integration', () => {
       const command = `${CLI_PATH} run "node -e 'process.exit(1)'"`;
 
       let output: string;
-      let exitCode = 0;
 
       try {
         output = execSync(command, {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (error: any) {
-        output = error.stdout || '';
-        exitCode = error.status || 1;
+      } catch (err: any) {
+        output = err.stdout || '';
       }
 
       const parsed = yaml.parse(output);
@@ -80,16 +78,14 @@ describe('run command integration', () => {
       const command = `${CLI_PATH} run "node -e 'process.exit(42)'"`;
 
       let output: string;
-      let exitCode = 0;
 
       try {
         output = execSync(command, {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (error: any) {
-        output = error.stdout || '';
-        exitCode = error.status || 1;
+      } catch (err: any) {
+        output = err.stdout || '';
       }
 
       const parsed = yaml.parse(output);
@@ -103,7 +99,7 @@ describe('run command integration', () => {
 
   describe('real stdout/stderr handling', () => {
     it('should handle commands that write to both stdout and stderr', () => {
-      const command = `${CLI_PATH} run "node -e 'console.log(\"stdout\"); console.error(\"stderr\");'"`;
+      const command = `${CLI_PATH} run "node -e 'console.log("stdout"); console.error("stderr");'"`;
 
       let output: string;
 
@@ -112,8 +108,8 @@ describe('run command integration', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (error: any) {
-        output = error.stdout || '';
+      } catch (err: any) {
+        output = err.stdout || '';
       }
 
       const parsed = yaml.parse(output);
@@ -137,7 +133,7 @@ describe('run command integration', () => {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-      } catch (error: any) {
+      } catch (_error: any) {
         // Ignore errors, just testing performance
       }
 

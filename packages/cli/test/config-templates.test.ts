@@ -61,16 +61,20 @@ describe('config-templates/', () => {
           const raw = parseYaml(content);
 
           // Remove $schema property before validation (not part of config schema)
+          let config = raw;
           if (raw && typeof raw === 'object' && '$schema' in raw) {
-            const { $schema, ...config } = raw as any;
-            const result = safeValidateConfig(config);
-
-            if (!result.success) {
-              console.error(`Validation errors in ${filename}:`, result.errors);
-            }
-
-            expect(result.success).toBe(true);
+            const { $schema, ...rest } = raw as any;
+            // eslint-disable-next-line sonarjs/void-use -- Intentionally unused - only used to remove $schema from object
+            void $schema;
+            config = rest;
           }
+          const result = safeValidateConfig(config);
+
+          if (!result.success) {
+            console.error(`Validation errors in ${filename}:`, result.errors);
+          }
+
+          expect(result.success).toBe(true);
         });
       });
     });

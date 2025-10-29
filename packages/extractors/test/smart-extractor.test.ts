@@ -34,6 +34,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
       const result2 = autoDetectAndExtract('Compile', output);
       const result3 = autoDetectAndExtract('Check Types', output);
 
+      expect(result1).toBeDefined();
       expectExtractorDetection(result1, 'typescript');
       expectExtractorDetection(result2, 'typescript');
       expectExtractorDetection(result3, 'typescript');
@@ -45,6 +46,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
       const output = '✖ 5 problems (3 errors, 2 warnings)';
       const result = autoDetectAndExtract('ANY_STEP_NAME', output);
 
+      expect(result).toBeDefined();
       expectExtractorDetection(result, 'eslint', ['✖ X problems summary']);
     });
 
@@ -52,6 +54,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
       const output = 'src/index.ts:10:5: error Error message rule-name';
       const result = autoDetectAndExtract('ANY_STEP_NAME', output);
 
+      expect(result).toBeDefined();
       expectExtractorDetection(result, 'eslint', ['line:col error/warning format']);
     });
   });
@@ -293,6 +296,7 @@ FAIL tests/example.spec.ts
       const output = 'src/index.ts(10,5): error TS2322: Type error.';
       const result = autoDetectAndExtract('Build', output);
 
+      expect(result).toBeDefined();
       expectCompleteDetectionMetadata(result);
     });
   });
