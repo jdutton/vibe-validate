@@ -63,8 +63,8 @@ describe('config-templates/', () => {
           // Remove $schema property before validation (not part of config schema)
           let config = raw;
           if (raw && typeof raw === 'object' && '$schema' in raw) {
-            const { $schema, ...rest } = raw as any;
-            void $schema; // Intentionally unused - only used to remove $schema from object
+            // eslint-disable-next-line sonarjs/no-unused-vars -- NOSONAR - Unused variable intentional, destructured only to exclude $schema
+            const { $schema: _$schema, ...rest } = raw as any;
             config = rest;
           }
           const result = safeValidateConfig(config);
