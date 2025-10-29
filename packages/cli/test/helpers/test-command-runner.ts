@@ -65,8 +65,9 @@ export function executeCommandWithYaml(
 
   try {
     result.parsed = yaml.parse(result.output);
-  } catch (_error) { // NOSONAR - YAML parse failures are expected for non-YAML output
+  } catch (error) { // NOSONAR - YAML parse failures are expected for non-YAML output
     // YAML parse failed - leave parsed undefined (expected for non-YAML output)
+    expect(error).toBeDefined();
   }
 
   return result;

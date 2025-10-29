@@ -6,8 +6,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { extractAvaErrors } from '../src/ava-extractor.js';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 describe('extractAvaErrors', () => {
   describe('Basic Extraction', () => {
@@ -143,7 +143,7 @@ describe('extractAvaErrors', () => {
     });
 
     it('should detect file not found errors (ENOENT)', () => {
-      const input = `
+      const input = String.raw`
   ✘ [fail]: should fail when reading non-existent file Error thrown in test
 
   Error thrown in test:
@@ -153,7 +153,7 @@ describe('extractAvaErrors', () => {
     errno: -2,
     path: '/this/path/does/not/exist.txt',
     syscall: 'open',
-    message: 'ENOENT: no such file or directory, open \\'/this/path/does/not/exist.txt\\'',
+    message: 'ENOENT: no such file or directory, open \'/this/path/does/not/exist.txt\'',
   }
 
   Error: ENOENT: no such file or directory, open '/this/path/does/not/exist.txt'
@@ -400,13 +400,13 @@ describe('extractAvaErrors', () => {
       expect(typeErrors.length).toBeGreaterThan(0);
 
       // Verify all errors have required fields
-      result.errors.forEach(error => {
+      for (const error of result.errors) {
         expect(error.message).toBeDefined();
         expect(error.message.length).toBeGreaterThan(0);
         if (error.file !== 'unknown') {
           expect(error.file).toBeTruthy();
         }
-      });
+      }
     });
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, rmSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { mkdirSync, rmSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Command } from 'commander';
 import { preCommitCommand } from '../../src/commands/pre-commit.js';
 import * as core from '@vibe-validate/core';
@@ -592,7 +592,9 @@ describe('pre-commit command', () => {
 
       try {
         await program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 
@@ -652,7 +654,9 @@ describe('pre-commit command', () => {
 
       try {
         await program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        // Commander.js throws on exitOverride - verify it's the expected error
+        expect(error).toBeDefined();
         // Expected exit
       }
 

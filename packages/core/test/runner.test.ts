@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { readFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { getGitTreeHash } from '@vibe-validate/git';
 import {
   parseFailures,
@@ -37,11 +37,11 @@ describe('runner', () => {
     // Clean up test files
     if (existsSync(testDir)) {
       try {
-        const files = require('fs').readdirSync(testDir);
-        files.forEach((file: string) => {
+        const files = require('node:fs').readdirSync(testDir);
+        for (const file of files) {
           unlinkSync(join(testDir, file));
-        });
-        require('fs').rmdirSync(testDir);
+        }
+        require('node:fs').rmdirSync(testDir);
       } catch {
         // Ignore cleanup errors
       }

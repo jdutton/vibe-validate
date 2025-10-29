@@ -105,9 +105,9 @@ describe('runner-adapter', () => {
 
       expect(runnerConfig.env?.UNDEFINED_VAR).toBeUndefined();
       // All env values should be strings
-      Object.values(runnerConfig.env || {}).forEach(value => {
+      for (const value of Object.values(runnerConfig.env || {})) {
         expect(typeof value).toBe('string');
-      });
+      }
     });
 
     it('should use empty phases array if validation config is missing', () => {

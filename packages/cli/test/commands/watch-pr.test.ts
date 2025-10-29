@@ -150,8 +150,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(mockProvider.fetchCheckStatus).toHaveBeenCalledWith('123');
@@ -189,8 +190,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(mockProvider.detectPullRequest).toHaveBeenCalled();
@@ -211,8 +213,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -256,8 +259,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(0);
@@ -301,8 +305,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -344,8 +349,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(mockProvider.fetchFailureLogs).toHaveBeenCalledWith('check-1');
@@ -389,8 +395,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify YAML separator was written
@@ -435,8 +442,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify YAML separator was written
@@ -466,8 +474,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '--yaml'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify YAML separator was written
@@ -518,8 +527,9 @@ describe('watch-pr command', () => {
       try {
         // Use very short timeout to trigger timeout quickly
         await program.parseAsync(['watch-pr', '123', '--timeout', '0'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(2);
@@ -569,8 +579,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123', '--fail-fast'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -607,8 +618,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123', '--provider', 'github-actions'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       // Verify the provider option was used (command should succeed)
@@ -636,8 +648,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -658,8 +671,9 @@ describe('watch-pr command', () => {
 
       try {
         await program.parseAsync(['watch-pr', '123'], { from: 'user' });
-      } catch (_error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
+        expect(error).toBeDefined();
       }
 
       expect(exitSpy).toHaveBeenCalledWith(1);

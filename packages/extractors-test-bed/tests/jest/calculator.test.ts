@@ -59,7 +59,7 @@ describe('Calculator (Jest)', () => {
   describe('Runtime Errors', () => {
     it('should read config file', async () => {
       // INTENTIONAL FAILURE: File does not exist (ENOENT)
-      const fs = await import('fs/promises');
+      const fs = await import('node:fs/promises');
       const config = await fs.readFile('/this/file/does/not/exist.json', 'utf8');
       expect(config).toBeDefined();
     });

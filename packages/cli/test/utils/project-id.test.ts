@@ -8,9 +8,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'fs';
-import { join } from 'path';
-import os from 'os';
+import { writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import os from 'node:os';
 import {
   getProjectIdFromGit,
   getProjectIdFromPackageJson,

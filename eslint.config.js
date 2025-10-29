@@ -44,7 +44,7 @@ export default [
       'no-undef': 'off', // Node.js globals (__dirname, setTimeout, etc.) used in tests
 
       // SonarJS rules - relaxed for tests but still visible
-      'sonarjs/no-ignored-exceptions': 'off', // Redundant with unused-vars (which catches this)
+      'sonarjs/no-ignored-exceptions': 'error', // Enforce exception handling (use // NOSONAR with explanation if intentional)
       'sonarjs/os-command': 'off', // Tests execute commands for validation
       'sonarjs/no-os-command-from-path': 'off', // Test fixtures use PATH commands
       'sonarjs/no-nested-functions': 'off', // Common in describe/it blocks
@@ -63,6 +63,17 @@ export default [
         varsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
       }],
+
+      // Unicorn rules - apply same modern JavaScript standards to test code
+      'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)
+      'unicorn/prefer-number-properties': 'error', // Prefer Number.isNaN over global isNaN (reliability)
+      'unicorn/throw-new-error': 'error', // Require 'new' when throwing Error
+      'unicorn/prefer-module': 'error', // Prefer ESM over CommonJS
+      'unicorn/prefer-top-level-await': 'error', // Modern async patterns
+      'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach
+      'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined
+      'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability
+      'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes
     },
   },
   {
@@ -145,6 +156,7 @@ export default [
       'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach
       'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined
       'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability
+      'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes
     },
   },
   {
@@ -169,6 +181,8 @@ export default [
       '**/*.js', // Ignore compiled JS files
       '**/*.d.ts',
       // Files not in tsconfig.json
+      'vitest.config.ts',
+      'vitest.config.system.ts',
       'packages/extractors-test-bed/scripts/**',
       'packages/extractors-test-bed/vitest.config.ts',
       'packages/extractors/vitest.config.ts',

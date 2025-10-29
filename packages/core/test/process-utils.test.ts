@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
+import { ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { stopProcessGroup } from '../src/process-utils.js';
 
 describe('process-utils', () => {
