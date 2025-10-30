@@ -29,10 +29,10 @@ import { stripAnsiCodes } from './utils.js';
  * 2. **ESLint**: `✖ X problems` summary or `line:col error/warning` format
  * 3. **JUnit XML**: `<?xml` + `<testsuite>` tags
  * 4. **Jasmine**: `Failures:` header + numbered list (`1) test name`)
- * 5. **Mocha**: `X passing`/`X failing` summary + numbered list
- * 6. **Playwright**: `.spec.ts` files + numbered failures with `›` separator
- * 7. **Jest**: `FAIL`/`PASS`/`●` markers or `Test Suites:` summary
- * 8. **Vitest**: `✓`/`✕` symbols or `Test Files` summary
+ * 5. **Jest**: `●` bullets or `Test Suites:` summary (checked before Mocha)
+ * 6. **Mocha**: `X passing`/`X failing` summary + numbered list
+ * 7. **Playwright**: `.spec.ts` files + numbered failures with `›` separator
+ * 8. **Vitest**: `×`/`❯`/`❌` symbols + `Test Files` summary
  * 9. **Generic**: Fallback for all other formats
  *
  * @param context - Context string (e.g., step name) preserved for generic extractor error messages only
@@ -112,7 +112,29 @@ export function autoDetectAndExtract(context: string, output: string): ErrorExtr
     return addDetectionMetadata(result, 'jasmine', 85, ['Failures: header', 'numbered test list'], 'Jasmine test output format detected');
   }
 
+  // Jest detection: Check output for Jest-specific patterns
+  // CRITICAL: Must check BEFORE Mocha to avoid false positives
+  // - "●" bullet marker for detailed errors (Jest-specific, Vitest uses ×)
+  // - "Test Suites:" summary line (Jest-specific, Vitest uses "Test Files")
+  // Jest patterns are highly distinctive (confidence 90) vs Mocha's generic patterns (confidence 80)
+  // Mocha's "passing"/"failing" patterns can appear in Jest test names, causing misdetection
+  const hasJestMarkers = cleanOutput.includes('●') ||
+                        cleanOutput.includes('Test Suites:');
+
+  if (hasJestMarkers) {
+    const result = extractJestErrors(cleanOutput);
+    const patterns = [];
+    if (cleanOutput.includes('●')) patterns.push('● bullet marker');
+    if (cleanOutput.includes('Test Suites:')) patterns.push('Test Suites: summary');
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Jest test framework output format (controlled test framework output), not user input
+    if (/^\s*FAIL\s+/m.exec(cleanOutput)) patterns.push('FAIL marker');
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Jest test framework output format (controlled test framework output), not user input
+    if (/^\s*PASS\s+/m.exec(cleanOutput)) patterns.push('PASS marker');
+    return addDetectionMetadata(result, 'jest', 90, patterns, 'Jest test output format detected');
+  }
+
   // Auto-detect Mocha format (distinctive "X passing"/"X failing" pattern)
+  // NOTE: Checked AFTER Jest because "passing"/"failing" can appear in Jest test names
   if ((cleanOutput.includes(' passing') || cleanOutput.includes(' failing')) &&
       // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Mocha test framework output format (controlled test framework output), not user input
       /\s+\d+\)\s+/.exec(cleanOutput)) {
@@ -125,7 +147,7 @@ export function autoDetectAndExtract(context: string, output: string): ErrorExtr
   // - Numbered failures with › separator: "1) file.spec.ts:26:5 › test name"
   // - ✘ symbol followed by .spec.ts file path
   // IMPORTANT: Require .spec.ts with › separator OR ✘ + .spec.ts (not just mentioned in text)
-  // Must check BEFORE Jest/Vitest to avoid misdetection
+  // Must check BEFORE Vitest to avoid misdetection (.spec.ts vs .test.ts)
   const hasPlaywrightMarkers = (cleanOutput.includes('.spec.ts') &&
                                  // eslint-disable-next-line sonarjs/slow-regex, @typescript-eslint/prefer-nullish-coalescing -- Safe: only detects Playwright test framework output format (controlled test framework output), not user input. Boolean OR for pattern matching.
                                  (/\d+\)\s+.*\.spec\.ts:\d+:\d+\s+›/.exec(cleanOutput) ||
@@ -141,28 +163,6 @@ export function autoDetectAndExtract(context: string, output: string): ErrorExtr
     // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Playwright test framework output format (controlled test framework output), not user input
     if (/✘.*\.spec\.ts/.exec(cleanOutput)) patterns.push('✘ failure with .spec.ts file');
     return addDetectionMetadata(result, 'playwright', 95, patterns, 'Playwright test output format detected');
-  }
-
-  // Jest detection: Check output for Jest-specific patterns FIRST (before Vitest)
-  // Jest has very distinctive markers that should be checked first to avoid misdetection
-  // - " ● " bullet marker for detailed errors (Jest-specific, Vitest uses ×)
-  // - "Test Suites:" summary line (Jest-specific, Vitest uses "Test Files")
-  // NOTE: We don't use "FAIL" alone because Vitest also uses it (e.g., "FAIL tests/...")
-  // CRITICAL: Must check BEFORE Vitest because Jest stack traces can contain ❯ symbol
-  // from source code (e.g., in comments), which would trigger Vitest detection
-  const hasJestMarkers = cleanOutput.includes(' ● ') ||
-                        cleanOutput.includes('Test Suites:');
-
-  if (hasJestMarkers) {
-    const result = extractJestErrors(cleanOutput);
-    const patterns = [];
-    if (cleanOutput.includes(' ● ')) patterns.push('● bullet marker');
-    if (cleanOutput.includes('Test Suites:')) patterns.push('Test Suites: summary');
-    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Jest test framework output format (controlled test framework output), not user input
-    if (/^\s*FAIL\s+/m.exec(cleanOutput)) patterns.push('FAIL marker');
-    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Jest test framework output format (controlled test framework output), not user input
-    if (/^\s*PASS\s+/m.exec(cleanOutput)) patterns.push('PASS marker');
-    return addDetectionMetadata(result, 'jest', 90, patterns, 'Jest test output format detected');
   }
 
   // Vitest detection: Check output for Vitest-specific patterns

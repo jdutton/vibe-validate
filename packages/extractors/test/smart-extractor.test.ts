@@ -168,6 +168,33 @@ FAIL test/unit/config.test.ts
       expect(result.metadata?.detection?.patterns).toContain('● bullet marker');
     });
 
+    it('should detect Jest from ● bullet marker WITHOUT spaces (regression test)', () => {
+      // Regression test for bug where Jest detection required ' ● ' (with spaces)
+      // but real Jest output often has '●' without consistent spacing.
+      // This caused false detection as Vitest when .test.ts files were present.
+      const output = `
+FAIL e2e/__tests__/nonSerializableStructures.test.ts
+● processChild › handles circular inequality properly
+
+    expect(received).toMatchSnapshot()
+
+    Snapshot name: processChild handles circular inequality properly 1
+
+    - Snapshot  -  0
+    + Received  + 14
+
+● processChild › handles Map
+
+    expect(received).toMatchSnapshot()
+      `.trim();
+
+      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+
+      // Should detect as Jest, NOT Vitest (even though .test.ts is present)
+      expect(result.metadata?.detection?.extractor).toBe('jest');
+      expect(result.metadata?.detection?.patterns).toContain('● bullet marker');
+    });
+
     it('should detect Jest from Test Suites: summary', () => {
       const output = 'Test Suites: 1 failed, 1 total';
       const result = autoDetectAndExtract('ANY_STEP_NAME', output);
