@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.3] - 2025-10-30
+
+### 🐛 Bug Fixes
+
+- **CRITICAL: Fixed Jest detection failures with real-world output** (Issue #43)
+  - **Problem**: Large Jest output (1.7 MB, 28k lines) from facebook/jest monorepo was misdetected as Mocha or Vitest due to bullet spacing and detection order bugs
+  - **Solution**: Removed space requirement from bullet marker detection and moved Jest detection before Mocha (more distinctive patterns checked first). Added regression tests with real-world samples.
+  - **Impact**: Jest output now correctly detected (confidence 90) with all errors extracted
+
 ## [0.14.2] - 2025-10-27
 
 ### 🐛 Bug Fixes
