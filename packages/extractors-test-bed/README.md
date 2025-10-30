@@ -223,6 +223,35 @@ This ensures test-bed infrastructure is validated on every commit, preventing bi
 
 ### Capture Samples for Extractor Testing
 
+**CRITICAL: Separate stdout/stderr Capture**
+
+❌ **NEVER merge stdout/stderr when capturing samples:**
+```bash
+# ❌ WRONG - Creates corruption
+yarn jest 2>&1 > sample.txt
+FORCE_COLOR=1 yarn jest > sample.txt 2>&1
+```
+
+✅ **Capture separately or let vibe-validate do it:**
+```bash
+# ✅ CORRECT - Let vibe-validate handle streams
+vibe-validate run "FORCE_COLOR=1 yarn jest" --yaml > sample.yaml
+
+# ✅ CORRECT - Capture separately if manual
+FORCE_COLOR=1 yarn jest > stdout.txt 2> stderr.txt
+```
+
+**Why This Matters**:
+- Shell's `2>&1` merges streams at OS level, causing byte-level interleaving
+- ANSI escape sequences get split mid-sequence: `\x1b[31m` becomes `\x1b[31` + `m`
+- Creates orphaned fragments like `m`, `9m`, `2m` that corrupt text
+- Example corruption: `m FAIL test.ts2m` instead of `FAIL test.ts`
+
+**vibe-validate's Protection**:
+- `packages/core/src/runner.ts` captures stdout and stderr independently
+- ANSI stripping happens on each stream separately (no interleaving)
+- Streams are concatenated AFTER cleaning (no corruption)
+
 **When to Regenerate Samples**:
 - Test framework version changes (e.g., Vitest 2.0 → 3.0)
 - Output format changes (e.g., new error message format)
