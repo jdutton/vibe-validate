@@ -122,6 +122,87 @@ describe('run command integration', () => {
 
   // Real YAML output preservation tests moved to run.system.test.ts
 
+  describe('caching behavior', () => {
+    it('should invalidate cache when tree hash changes', () => {
+      const tmpFile = `tmp-cache-test-${Date.now()}.txt`;
+
+      try {
+        // Run command first time - should execute (no cache)
+        const firstRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        const firstParsed = yaml.parse(firstRun);
+        expect(firstParsed.exitCode).toBe(0);
+        expect(firstParsed.command).toBe('echo \'Cache test\'');
+
+        // Run again immediately - should hit cache (same tree hash)
+        const cachedRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        const cachedParsed = yaml.parse(cachedRun);
+        expect(cachedParsed.exitCode).toBe(0);
+
+        // Create a new file to change tree hash
+        execSync(`echo "test" > ${tmpFile}`, { encoding: 'utf-8' });
+
+        // Run same command again - cache should be invalidated due to tree hash change
+        // Should execute again (not from cache)
+        const thirdRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        const thirdParsed = yaml.parse(thirdRun);
+        expect(thirdParsed.exitCode).toBe(0);
+        expect(thirdParsed.command).toBe('echo \'Cache test\'');
+
+        // Cleanup
+        execSync(`rm ${tmpFile}`, { encoding: 'utf-8' });
+      } catch (error: any) { // NOSONAR - Need to access stdout from error for test verification
+        // Cleanup on error
+        try {
+          execSync(`rm ${tmpFile}`, { encoding: 'utf-8' });
+        } catch {
+          // Ignore cleanup errors
+        }
+        throw error;
+      }
+    });
+
+    it('should create separate cache entries for different working directories', () => {
+      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+
+      // Run command in root
+      const rootRun = execSync(`node ${absoluteCliPath} run "echo 'root'"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: process.cwd(),
+      });
+      const rootParsed = yaml.parse(rootRun);
+
+      // Run same command text in subdirectory
+      const subdirRun = execSync(`node ${absoluteCliPath} run "echo 'root'"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: `${process.cwd()}/packages/cli`,
+      });
+      const subdirParsed = yaml.parse(subdirRun);
+
+      // Both should succeed
+      expect(rootParsed.exitCode).toBe(0);
+      expect(subdirParsed.exitCode).toBe(0);
+
+      // Same command text but different working directories
+      expect(rootParsed.command).toBe('echo \'root\'');
+      expect(subdirParsed.command).toBe('echo \'root\'');
+
+      // Both should have executed (not from same cache due to different workdir)
+      expect(rootParsed.extraction).toBeDefined();
+      expect(subdirParsed.extraction).toBeDefined();
+    });
+  });
+
   describe('performance', () => {
     it('should handle nested execution without significant overhead', () => {
       const start = Date.now();

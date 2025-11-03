@@ -214,7 +214,7 @@ $ vibe-validate state
 **Performance:**
 - Validation caching = fast iteration
 - Claude Code can validate frequently without slowdown
-- Cached validation: ~300ms vs. ~90s full validation
+- Cached validation: < 1s vs. seconds/minutes full validation
 
 ---
 

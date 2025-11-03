@@ -12,9 +12,13 @@ import {
 import type { ValidationConfig, ValidationStep } from '../src/types.js';
 
 // Mock git functions
-vi.mock('@vibe-validate/git', () => ({
-  getGitTreeHash: vi.fn(),
-}));
+vi.mock('@vibe-validate/git', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@vibe-validate/git')>();
+  return {
+    ...actual,
+    getGitTreeHash: vi.fn(),
+  };
+});
 
 describe('runner', () => {
   let testDir: string;
@@ -480,6 +484,234 @@ describe('runner', () => {
         expect(passingStep.passed).toBe(true);
         // Should NOT extract on success - no failures to extract!
         expect(passingStep.extractionQuality).toBeUndefined();
+      });
+    });
+
+    describe('YAML frontmatter parsing (nested run commands)', () => {
+      it('should parse YAML frontmatter and extract clean file paths', async () => {
+        // This test reproduces the bug where preamble lines were shown as file paths
+        // Scenario: Step outputs preamble + YAML (like `pnpm lint` which wraps `run "eslint"`)
+        const yamlOutput = String.raw`
+> vibe-validate@ lint /Users/jeff/Workspaces/vibe-validate
+> node packages/cli/dist/bin.js run "eslint --max-warnings=0 \"packages/**/*.ts\""
+
+---
+command: eslint --max-warnings=0 "packages/**/*.ts"
+exitCode: 1
+extraction:
+  errors:
+    - file: packages/core/src/runner.ts
+      line: 349
+      column: 21
+      severity: error
+      message: Review this redundant assignment
+      code: sonarjs/no-redundant-assignments
+    - file: packages/cli/src/commands/run.ts
+      line: 220
+      column: 23
+      severity: error
+      message: Complete the task associated to this TODO comment
+      code: sonarjs/todo-tag
+  summary: 2 ESLint error(s), 0 warning(s)
+  totalCount: 2
+rawOutput: ""
+`.trim();
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'ESLint with YAML',
+                  command: `echo '${yamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        // Verify: Validation failed
+        expect(result.passed).toBe(false);
+        expect(result.failedTests).toBeDefined();
+
+        // CRITICAL: File paths should be clean (NOT include preamble)
+        // BAD:  "> node packages/cli/dist/bin.js run \"eslint...\":349 - error"
+        // GOOD: "packages/core/src/runner.ts:349 - error"
+        const failedTests = result.failedTests!;
+        expect(failedTests.length).toBe(2);
+
+        // First error - should have clean file path
+        expect(failedTests[0]).toContain('packages/core/src/runner.ts:349');
+        expect(failedTests[0]).toContain('Review this redundant assignment');
+        expect(failedTests[0]).not.toContain('> node packages/cli/dist/bin.js');
+        expect(failedTests[0]).not.toContain('> vibe-validate@');
+
+        // Second error - should have clean file path
+        expect(failedTests[1]).toContain('packages/cli/src/commands/run.ts:220');
+        expect(failedTests[1]).toContain('Complete the task');
+        expect(failedTests[1]).not.toContain('> node packages/cli/dist/bin.js');
+      });
+
+      it('should fallback to autoDetectAndExtract if YAML parsing fails', async () => {
+        // Scenario: Output has --- but YAML is invalid
+        const invalidYamlOutput = `
+> preamble line
+
+---
+this is not valid: yaml: syntax
+invalid indentation
+  bad structure
+`.trim();
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'Invalid YAML',
+                  command: `echo '${invalidYamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        // Should still run (fallback to generic extractor)
+        expect(result.passed).toBe(false);
+        // No crash, validation completes
+      });
+
+      it('should handle YAML with Windows line endings', async () => {
+        // Scenario: YAML separator with \r\n instead of \n
+        const windowsYamlOutput = [
+          '> preamble line',
+          '> another preamble',
+          '',
+          '---',
+          'command: test',
+          'exitCode: 1',
+          'extraction:',
+          '  errors:',
+          '    - file: test.ts',
+          '      line: 10',
+          '      message: Test error',
+          '  summary: 1 error',
+          'rawOutput: ""',
+        ].join('\r\n');
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'Windows YAML',
+                  command: `printf '${windowsYamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        // Should parse Windows line endings correctly
+        expect(result.passed).toBe(false);
+        expect(result.failedTests).toBeDefined();
+        expect(result.failedTests!.length).toBe(1);
+        expect(result.failedTests![0]).toContain('test.ts:10');
+      });
+
+      it('should not detect --- inside error messages as YAML separator', async () => {
+        // Scenario: Error message contains "---" but it's not YAML frontmatter
+        const outputWithDashesInError = `
+Error: Something went wrong
+--- this is part of the error message ---
+Not YAML frontmatter
+
+/path/to/file.ts:42:10: error Something bad happened
+`.trim();
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'Dashes in error',
+                  command: `echo '${outputWithDashesInError.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        // Should use autoDetectAndExtract (not try to parse as YAML)
+        expect(result.passed).toBe(false);
+        // Validation completes without crashing
+      });
+
+      it('should use first --- separator when multiple exist', async () => {
+        // Scenario: Multiple --- separators (first one is the YAML separator)
+        const multipleYamlOutput = `
+> preamble
+
+---
+command: test
+exitCode: 1
+extraction:
+  errors:
+    - file: first.ts
+      line: 1
+      message: First error
+  summary: 1 error
+rawOutput: |
+  Some raw output that contains
+  ---
+  another separator
+  ---
+  but these should be ignored
+`.trim();
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                {
+                  name: 'Multiple separators',
+                  command: `echo '${multipleYamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                },
+              ],
+            },
+          ],
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        // Should parse using first --- separator
+        expect(result.passed).toBe(false);
+        expect(result.failedTests).toBeDefined();
+        expect(result.failedTests!.length).toBe(1);
+        expect(result.failedTests![0]).toContain('first.ts:1');
       });
     });
   });

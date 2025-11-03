@@ -13,6 +13,7 @@ export type {
   HistoryConfig,
   HealthCheckResult,
   PruneResult,
+  RunCacheNote,
 } from './types.js';
 
 export { DEFAULT_HISTORY_CONFIG } from './types.js';
@@ -31,8 +32,18 @@ export {
   hasHistoryForTree,
 } from './reader.js';
 
+// Run cache reader
+export {
+  listRunCacheEntries,
+  getRunCacheEntry,
+  getAllRunCacheForTree,
+  listRunCacheTreeHashes,
+  getAllRunCacheEntries,
+  type RunCacheEntryMeta,
+} from './run-cache-reader.js';
+
 // Pruner
-export { pruneHistoryByAge, pruneAllHistory } from './pruner.js';
+export { pruneHistoryByAge, pruneAllHistory, pruneLegacyNotes, pruneAllRunCache } from './pruner.js';
 
 // Health check
 export { checkHistoryHealth } from './health-check.js';

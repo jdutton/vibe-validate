@@ -1,0 +1,16 @@
+{
+  "name": "vibe-validate-local",
+  "owner": {
+    "name": "Jeff Dutton",
+    "email": "[email protected]"
+  },
+  "plugins": [
+    {
+      "name": "vibe-validate",
+      "source": "./plugins/claude-code",
+      "description": "Expert agent for vibe-validate validation orchestration",
+      "version": "0.14.3",
+      "strict": true
+    }
+  ]
+}

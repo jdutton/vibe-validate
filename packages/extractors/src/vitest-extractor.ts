@@ -444,7 +444,7 @@ export function extractVitestErrors(
 
   // Extract expected/actual values and format output
   const { expected, actual } = extractExpectedActual(output);
-  const cleanOutput = formatFailuresOutput(failures, expected, actual);
+  const errorSummary = formatFailuresOutput(failures, expected, actual);
   const guidance = generateGuidanceText(failures.length, expected, actual);
 
   const result: ErrorExtractorResult = {
@@ -470,7 +470,7 @@ export function extractVitestErrors(
     summary: `${failures.length} test failure(s)`,
     totalCount: failures.length,
     guidance,
-    cleanOutput
+    errorSummary
   };
 
   // Add quality metadata if developer feedback enabled

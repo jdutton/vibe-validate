@@ -131,8 +131,8 @@ src/config.ts(25,12): error TS2304: Cannot find name 'process'.
 
     const result = extractTypeScriptErrors(output);
 
-    expect(result.cleanOutput).toContain('src/index.ts:10:5 - TS2322:');
-    expect(result.cleanOutput).toContain('src/config.ts:25:12 - TS2304:');
+    expect(result.errorSummary).toContain('src/index.ts:10:5 - TS2322:');
+    expect(result.errorSummary).toContain('src/config.ts:25:12 - TS2304:');
   });
 
   it('should handle empty output', () => {

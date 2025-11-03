@@ -1,11 +1,11 @@
 # vibe-validate
 
-> Git-aware validation orchestration with 312x faster cached runs
+> Git-aware validation orchestration with dramatically faster cached runs
 
 [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**What it does**: Caches your validation results (tests, lint, typecheck) using git tree hashes. When code hasn't changed, validation completes in ~288ms instead of minutes.
+**What it does**: Caches your validation results (tests, lint, typecheck) using git tree hashes. When code hasn't changed, validation completes in under a second instead of minutes.
 
 **Who it's for**: TypeScript/JavaScript developers, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
 
@@ -27,8 +27,8 @@ npx vibe-validate doctor
 npx vibe-validate validate
 ```
 
-**When code changes**: ~60-90s (runs all checks)
-**When code unchanged**: ~288ms (content-based caching!)
+**When code changes**: seconds to minutes (runs all checks)
+**When code unchanged**: under a second (content-based caching!)
 
 **💡 Tip for AI Agents**: Always run `npx vibe-validate doctor` after upgrading to detect deprecated files and get migration guidance.
 
@@ -88,7 +88,7 @@ npx @vibe-validate/cli@latest doctor
 
 ### Key Features
 
-- **312x faster cached validation** (288ms vs 90s when code unchanged)
+- **Dramatically faster cached validation** (< 1s vs seconds/minutes when code unchanged)
 - **Git tree hash caching** - Content-based, deterministic (includes untracked files)
 - **Parallel phase execution** - Run independent checks simultaneously
 - **Smart concurrency control** - Prevents duplicate runs, wait-for-completion mode for hooks
@@ -99,7 +99,7 @@ npx @vibe-validate/cli@latest doctor
 ### vs. Alternatives
 
 **vs. Running commands manually** (`npm test && npm run lint && ...`):
-- ✅ 312x faster with caching
+- ✅ Dramatically faster with caching
 - ✅ Parallel execution
 - ✅ Branch sync checking
 - ✅ Agent-friendly error output
@@ -157,9 +157,9 @@ npm run typecheck && npm run lint && npm test
 **After** (with vibe-validate):
 ```bash
 npx vibe-validate validate
-# First run: 60-90s (cache miss)
-# Every run after: 288ms if code unchanged (cache hit)
-# Speedup: 312x when code unchanged
+# First run: seconds to minutes (cache miss)
+# Every run after: < 1s if code unchanged (cache hit)
+# Speedup: dramatic when code unchanged
 ```
 
 ## CLI Commands
@@ -216,8 +216,8 @@ npx vibe-validate pre-commit
 **What it does**:
 1. Checks if branch is behind `origin/main` (stops if true)
 2. Calculates git tree hash of working tree
-3. Skips validation if hash matches cached state (288ms)
-4. Runs full validation if hash differs (~90s)
+3. Skips validation if hash matches cached state (< 1s)
+4. Runs full validation if hash differs (seconds to minutes)
 5. Caches result for next run
 
 **When to use**:
@@ -606,7 +606,7 @@ git checkout -b feature/new-feature
 # 3. Validate before commit
 npx vibe-validate pre-commit
 # ✅ Branch sync: OK
-# ✅ Validation: Cached (288ms) - code unchanged
+# ✅ Validation: Cached (< 1s) - code unchanged
 # ✅ Ready to commit
 
 # 4. Commit changes
@@ -669,7 +669,7 @@ npm run pre-commit
 
 **Benefits**:
 - Prevents broken code from being committed
-- Fast cached validation (288ms on repeat)
+- Fast cached validation (< 1s on repeat)
 - Branch sync enforcement
 - No manual intervention needed
 
@@ -730,7 +730,7 @@ Phase 2: Testing ━━━━━━━━━━━━━━━━━━━━━
 
 # Second run (cache hit, no code changes)
 $ npx vibe-validate validate
-✅ Validation cached (288ms)
+✅ Validation cached (< 1s)
 ```
 
 **Cache key calculation**:
@@ -756,8 +756,8 @@ Real-world project (TypeScript Node.js app):
 | Integration | 22.7s |
 | Build | 43.2s |
 | **Total (parallel)** | **90.5s** |
-| **Cached** | **0.288s** |
-| **Speedup** | **312x** |
+| **Cached** | **< 1s** |
+| **Speedup** | **Dramatic** |
 
 ## Packages
 

@@ -235,7 +235,7 @@ describe('bin.ts - CLI entry point', () => {
         const result = await executeCLI(['--help', '--verbose']);
 
         expect(result.stdout).toContain('Creates/modifies:');
-        expect(result.stdout).toContain('Git notes under refs/notes/vibe-validate/runs');
+        expect(result.stdout).toContain('Git notes under refs/notes/vibe-validate/validate');
         expect(result.stdout).toContain('vibe-validate.config.yaml (always)');
         expect(result.stdout).toContain('.husky/pre-commit (with --setup-hooks)');
         expect(result.stdout).toContain('.github/workflows/validate.yml');
@@ -276,7 +276,7 @@ describe('bin.ts - CLI entry point', () => {
 
         expect(result.stdout).toContain('## Files');
         expect(result.stdout).toContain('vibe-validate.config.yaml');
-        expect(result.stdout).toContain('refs/notes/vibe-validate/runs');
+        expect(result.stdout).toContain('refs/notes/vibe-validate/validate');
         expect(result.stdout).toContain('.github/workflows/validate.yml');
         expect(result.stdout).toContain('.husky/pre-commit');
       });

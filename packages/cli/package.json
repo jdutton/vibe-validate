@@ -19,10 +19,11 @@
     "dist",
     "config-templates",
     "watch-pr-result.schema.json",
+    "run-result.schema.json",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && node dist/scripts/generate-watch-pr-schema.js",
+    "build": "tsc && node dist/scripts/generate-watch-pr-schema.js && node dist/scripts/generate-run-result-schema.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

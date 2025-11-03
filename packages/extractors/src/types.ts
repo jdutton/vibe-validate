@@ -3,99 +3,22 @@
  *
  * Type definitions for LLM-optimized error extraction.
  *
+ * NOTE: These types are now derived from Zod schemas in result-schema.ts
+ * This file re-exports them for backward compatibility.
+ *
  * @package @vibe-validate/extractors
  */
 
-/**
- * Structured error information extracted from validation output
- */
-export interface FormattedError {
-  /** File path where the error occurred (undefined if location cannot be determined) */
-  file?: string;
+// Import type for use in this file
+import type { ErrorExtractorResult as ExtractorResult } from './result-schema.js';
 
-  /** Line number (1-indexed) */
-  line?: number;
-
-  /** Column number (1-indexed) */
-  column?: number;
-
-  /** Error message */
-  message: string;
-
-  /** Error code (e.g., TS2322, ESLint rule name) */
-  code?: string;
-
-  /** Severity level */
-  severity?: 'error' | 'warning';
-
-  /** Additional context (surrounding code, stack trace excerpt) */
-  context?: string;
-
-  /** Guidance for fixing the error */
-  guidance?: string;
-}
-
-/**
- * Metadata about which extractor was selected and why
- */
-export interface DetectionMetadata {
-  /** Which extractor was used (e.g., "jest", "vitest", "typescript", "generic") */
-  extractor: string;
-
-  /** Confidence in detection (0-100) */
-  confidence: number;
-
-  /** Patterns that matched (e.g., ["FAIL pattern", "✕ symbols found"]) */
-  patterns: string[];
-
-  /** Why this extractor was chosen */
-  reason: string;
-}
-
-/**
- * Metadata about extraction quality (what the extractor knows about its own extraction)
- *
- * Note: Extractor doesn't know expected count - test infrastructure compares against ground truth
- */
-export interface ExtractionMetadata {
-  /** Detection information (which extractor, why) - only included when developerFeedback: true */
-  detection?: DetectionMetadata;
-
-  /** Extraction confidence (0-100) based on pattern match quality */
-  confidence: number;
-
-  /** Percentage of extracted errors with complete data (file + line + message) */
-  completeness: number;
-
-  /** Issues encountered during extraction (e.g., "ambiguous patterns", "missing line numbers") */
-  issues: string[];
-
-  /** Suggestions for improving extraction quality (only included when developerFeedback: true) */
-  suggestions?: string[];
-}
-
-/**
- * Result of error extraction operation
- */
-export interface ErrorExtractorResult {
-  /** Parsed and structured errors (limited to first 10 for token efficiency) */
-  errors: FormattedError[];
-
-  /** Human-readable summary (e.g., "3 type errors, 2 warnings") */
-  summary: string;
-
-  /** Total error count (may exceed errors.length if truncated) */
-  totalCount: number;
-
-  /** Step-specific actionable guidance for fixing errors */
-  guidance?: string;
-
-  /** Clean, formatted output for YAML/JSON embedding */
-  cleanOutput: string;
-
-  /** Extraction quality metadata (only included when developerFeedback: true) */
-  metadata?: ExtractionMetadata;
-}
+// Re-export types from Zod schemas for backward compatibility
+export type {
+  FormattedError,
+  DetectionMetadata,
+  ExtractionMetadata,
+  ErrorExtractorResult,
+} from './result-schema.js';
 
 /**
  * Error extractor interface for specific tool/format
@@ -107,5 +30,5 @@ export interface ErrorExtractor {
    * @param _output - Raw command output (may include ANSI codes, noise)
    * @returns Structured error information optimized for LLM consumption
    */
-  format(_output: string): ErrorExtractorResult;
+  format(_output: string): ExtractorResult;
 }

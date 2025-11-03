@@ -66,8 +66,8 @@ describe('checkHistoryHealth', () => {
 
   describe('warning scenarios', () => {
     it('should warn when count exceeds threshold only', async () => {
-      // Create 101 recent notes (default warnAfterCount = 100)
-      const manyRecentNotes: HistoryNote[] = Array.from({ length: 101 }, (_, i) => ({
+      // Create 1001 recent notes (default warnAfterCount = 1000 as of v0.15.0)
+      const manyRecentNotes: HistoryNote[] = Array.from({ length: 1001 }, (_, i) => ({
         treeHash: `hash${i}`,
         runs: [
           {
@@ -92,19 +92,19 @@ describe('checkHistoryHealth', () => {
 
       const result = await checkHistoryHealth();
 
-      expect(result.totalNotes).toBe(101);
+      expect(result.totalNotes).toBe(1001);
       expect(result.oldNotesCount).toBe(0);
       expect(result.shouldWarn).toBe(true);
       expect(result.warningMessage).toContain('grown large');
-      expect(result.warningMessage).toContain('101 tree hashes');
+      expect(result.warningMessage).toContain('1001 tree hashes');
       expect(result.warningMessage).toContain('history prune --older-than');
       expect(result.warningMessage).not.toContain('older than');
     });
 
     it('should warn when age exceeds threshold only', async () => {
-      // Create note older than 90 days (default warnAfterDays = 90)
+      // Create note older than 30 days (default warnAfterDays = 30 as of v0.15.0)
       const oldDate = new Date();
-      oldDate.setDate(oldDate.getDate() - 100); // 100 days ago
+      oldDate.setDate(oldDate.getDate() - 40); // 40 days ago (older than 30-day threshold)
 
       const oldNotes: HistoryNote[] = [
         {
@@ -137,15 +137,16 @@ describe('checkHistoryHealth', () => {
       expect(result.oldNotesCount).toBe(1);
       expect(result.shouldWarn).toBe(true);
       expect(result.warningMessage).toContain('Found validation history older than');
-      expect(result.warningMessage).toContain('90 days');
+      expect(result.warningMessage).toContain('30 days'); // v0.15.0: changed from 90
       expect(result.warningMessage).toContain('1 tree hashes can be pruned');
       expect(result.warningMessage).not.toContain('grown large');
     });
 
     it('should warn when both count and age exceed thresholds', async () => {
-      // Create 101 notes, some old
+      // Create 1001 notes (exceeds count threshold), some old (exceeds age threshold)
+      // v0.15.0: Updated from 101 to 1001 to match new warnAfterCount threshold
       const oldDate = new Date();
-      oldDate.setDate(oldDate.getDate() - 100);
+      oldDate.setDate(oldDate.getDate() - 40); // 40 days ago (exceeds 30-day threshold)
 
       const mixedNotes: HistoryNote[] = [
         // 10 old notes
@@ -169,8 +170,8 @@ describe('checkHistoryHealth', () => {
             },
           ],
         })),
-        // 91 recent notes
-        ...Array.from({ length: 91 }, (_, i) => ({
+        // 991 recent notes (total: 1001)
+        ...Array.from({ length: 991 }, (_, i) => ({
           treeHash: `new-hash${i}`,
           runs: [
             {
@@ -196,13 +197,13 @@ describe('checkHistoryHealth', () => {
 
       const result = await checkHistoryHealth();
 
-      expect(result.totalNotes).toBe(101);
+      expect(result.totalNotes).toBe(1001);
       expect(result.oldNotesCount).toBe(10);
       expect(result.shouldWarn).toBe(true);
       expect(result.warningMessage).toContain('grown large');
-      expect(result.warningMessage).toContain('101 tree hashes');
+      expect(result.warningMessage).toContain('1001 tree hashes');
       expect(result.warningMessage).toContain('Found 10 notes older than');
-      expect(result.warningMessage).toContain('90 days');
+      expect(result.warningMessage).toContain('30 days'); // v0.15.0: changed from 90
     });
   });
 

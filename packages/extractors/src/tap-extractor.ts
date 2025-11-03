@@ -33,7 +33,7 @@ export function extractTAPErrors(output: string): ErrorExtractorResult {
       summary: '0 test(s) failed',
       errors: [],
       totalCount: 0,
-      cleanOutput: '',
+      errorSummary: '',
       guidance: '',
       metadata: {
         confidence: 100,
@@ -85,7 +85,7 @@ export function extractTAPErrors(output: string): ErrorExtractorResult {
     summary,
     errors,
     totalCount: failures.length,
-    cleanOutput: formatCleanOutput(errors),
+    errorSummary: formatCleanOutput(errors),
     guidance,
     metadata
   };

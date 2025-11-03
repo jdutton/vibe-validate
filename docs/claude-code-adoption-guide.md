@@ -12,7 +12,7 @@ When a user asks you to "add vibe-validate" or "set up validation", follow this 
 
 ```bash
 # 1. Install
-npm install -D @vibe-validate/cli
+npm install -D vibe-validate
 
 # 2. Initialize configuration
 npx vibe-validate init
@@ -40,7 +40,7 @@ npx vibe-validate install-hook  # Coming in v0.9.7
 
 **Your action**:
 ```bash
-npm install -D @vibe-validate/cli
+npm install -D vibe-validate
 ```
 
 **Expected output**:
@@ -260,7 +260,7 @@ npx vibe-validate validate
 
 **Expected output** (cached run):
 ```
-✅ Validation cached (288ms)
+✅ Validation cached (< 1s)
 ```
 
 **If validation fails**:
@@ -335,7 +335,7 @@ git commit -m "test commit"
 # User: "Add vibe-validate to this project"
 
 # 1. Install
-npm install -D @vibe-validate/cli
+npm install -D vibe-validate
 
 # 2. Initialize
 npx vibe-validate init
@@ -354,7 +354,7 @@ npx vibe-validate generate-workflow --node-versions "20,22"
 npx vibe-validate validate
 # → First run: 45s (all steps run)
 npx vibe-validate validate
-# → Second run: 288ms (cached!)
+# → Second run: < 1s (cached!)
 
 # 6. Pre-commit hook
 npm install -D husky
@@ -457,7 +457,7 @@ Next steps:
   3. Push to GitHub to trigger CI workflow
 
 Benefits:
-  • 312x faster validation (with caching)
+  • Dramatically faster validation (with caching)
   • Parallel step execution
   • Agent-friendly error output
   • Automatic pre-commit validation
@@ -478,7 +478,7 @@ npx vibe-validate validate
 
 # Second run (cache hit)
 npx vibe-validate validate
-# → 288ms (skips validation, returns cached result)
+# → < 1s (skips validation, returns cached result)
 ```
 
 **Force re-run**:

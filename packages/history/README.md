@@ -108,14 +108,14 @@ const config: HistoryConfig = {
   enabled: true,
 
   gitNotes: {
-    ref: 'vibe-validate/runs',  // Git notes ref namespace
-    maxRunsPerTree: 10,          // Keep last 10 runs per tree
-    maxOutputBytes: 10000,       // 10KB max per step output
+    ref: 'vibe-validate/validate',  // Git notes ref namespace (v0.15.0: changed from 'runs')
+    maxRunsPerTree: 10,             // Keep last 10 runs per tree
+    maxOutputBytes: 10000,          // 10KB max per step output
   },
 
   retention: {
-    warnAfterDays: 90,           // Warn about notes >90 days old
-    warnAfterCount: 100,         // Warn when >100 tree hashes
+    warnAfterDays: 30,              // Warn about notes >30 days old (v0.15.0: was 90)
+    warnAfterCount: 1000,           // Warn when >1000 tree hashes (v0.15.0: was 100, adjusted for run caching)
   },
 };
 ```

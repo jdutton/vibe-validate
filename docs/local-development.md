@@ -148,7 +148,7 @@ pnpm -r build
 **Before CI commit**:
 ```bash
 # Switch to published version
-pnpm add -D @vibe-validate/cli@latest
+pnpm add -D vibe-validate@latest
 
 # Commit changes
 git add package.json pnpm-lock.yaml
@@ -165,7 +165,7 @@ Add to your test project's `package.json`:
 {
   "scripts": {
     "vibe:local": "pnpm add -D file:../vibe-validate/packages/cli",
-    "vibe:published": "pnpm add -D @vibe-validate/cli@latest",
+    "vibe:published": "pnpm add -D vibe-validate@latest",
     "vibe:rebuild": "cd ../vibe-validate && pnpm -r build && cd -"
   }
 }

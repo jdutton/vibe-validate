@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0-rc.1] - 2025-11-02 (Release Candidate)
+
+**This is a Release Candidate for early testing. Install with `npm install -D vibe-validate@rc`**
+
+Major update adding smart caching to the `run` command, dramatically improving performance for repeated commands on unchanged code.
+
+### ✨ New Features
+
+- **`run` command now caches results for dramatic speedup**
+  - **What it provides**: Command results cached by git tree hash - unchanged code returns instant results
+  - **How it works**:
+    - First run: Executes command, extracts errors, stores result in cache (keyed by tree hash + command + working directory)
+    - Subsequent runs (same code): Returns cached result instantly (<200ms vs 30+ seconds)
+    - Use `--force` flag to bypass cache and re-execute
+    - Use `--check` flag to query cache status without executing
+  - **Storage**: Git notes at `refs/notes/vibe-validate/run/{treeHash}/{encoded-key}`
+  - **Benefits**:
+    - Works in ANY language (Python, Rust, Go, etc.) - no config file required
+    - Same dramatic speedup as `validate` command caching
+    - Automatically invalidates when code changes
+    - 90-95% context window reduction for AI agents
+  - **Example**:
+    ```bash
+    # First run (executes command)
+    vibe-validate run "pytest tests/"
+    # Duration: ~30 seconds
+
+    # Code unchanged - cache hit!
+    vibe-validate run "pytest tests/"
+    # Duration: <200ms ✨
+
+    # Force re-execution
+    vibe-validate run --force "pytest tests/"
+    ```
+  - **Monorepo support**: Commands run from different directories are cached separately
+
+- **Enhanced `history show` command with `--all` flag**
+  - `history show <tree-hash> --all` now displays:
+    - All validation runs for the tree hash (standard behavior)
+    - All cached `run` command results for the tree hash (NEW)
+  - Shows complete picture of what was validated/executed for a given code state
+  - Useful for debugging cache behavior and understanding what commands ran
+
+### 🚨 BREAKING CHANGES
+
+- **`run` command now caches results by default**
+  - **What changed**: `vibe-validate run "<command>"` now returns immediately if code unchanged (cache hit)
+  - **Impact**: Faster workflow, but use `--force` if you need to re-run despite code being unchanged
+  - **Migration**: No action needed - caching is transparent and automatic
+  - **Bypass cache**: Use `vibe-validate run --force "<command>"` to always re-execute
+
+- **Git notes storage path changed for validation history**
+  - **What changed**: Validation history now stored at `refs/notes/vibe-validate/validate/{treeHash}` instead of `refs/notes/vibe-validate/runs/{treeHash}`
+  - **Impact**: Existing validation history from v0.14.x and earlier will not be visible in `vibe-validate history list`
+  - **Migration**: History from previous versions remains in git notes but won't be displayed. Run `vibe-validate history prune --all` to clean up old notes, or leave them (they don't affect functionality).
+  - **Why**: Consistency with command naming (`validate` command → `validate/` namespace) and separation from new `run/` cache namespace
+
 ## [0.14.3] - 2025-10-30
 
 ### 🐛 Bug Fixes

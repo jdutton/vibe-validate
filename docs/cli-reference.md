@@ -39,7 +39,7 @@ Run validation with git tree hash caching
 
 **Creates/modifies:**
 
-- Git notes under refs/notes/vibe-validate/runs
+- Git notes under refs/notes/vibe-validate/validate
 
 **Options:**
 
@@ -428,7 +428,7 @@ View and manage validation history stored in git notes
 
 ### `run`
 
-Run a command and extract LLM-friendly errors from output
+Run a command and extract LLM-friendly errors (with smart caching)
 
 **What it does:**
 
@@ -445,6 +445,11 @@ Run a command and extract LLM-friendly errors from output
 - `1` - Command failed (same code as original command)
 
 **When to use:** Run individual tests or validation steps with LLM-friendly error extraction
+
+**Options:**
+
+- `--check` - Check if cached result exists without executing
+- `--force` - Force execution and update cache (bypass cache read)
 
 **Examples:**
 
@@ -469,7 +474,7 @@ vibe-validate run "pnpm lint"                  # Lint
 | File | Purpose |
 |------|---------|
 | `vibe-validate.config.yaml` | Configuration (required) |
-| `refs/notes/vibe-validate/runs` | Validation state (git notes, auto-created) |
+| `refs/notes/vibe-validate/validate` | Validation state (git notes, auto-created) |
 | `.github/workflows/validate.yml` | CI workflow (optional, generated) |
 | `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |
 

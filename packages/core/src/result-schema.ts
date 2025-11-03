@@ -8,6 +8,29 @@
 import { z } from 'zod';
 
 /**
+ * Extraction Quality Schema (for developerFeedback mode)
+ */
+export const ExtractionQualitySchema = z.object({
+  /** Which tool was detected (e.g., "eslint", "typescript", "vitest") */
+  detectedTool: z.string().optional(),
+
+  /** Confidence level of detection */
+  confidence: z.string().optional(),
+
+  /** Quality score (0-100) */
+  score: z.number().optional(),
+
+  /** Number of warnings detected */
+  warnings: z.number().optional(),
+
+  /** Number of errors extracted */
+  errorsExtracted: z.number().optional(),
+
+  /** Whether the errors are actionable */
+  actionable: z.boolean().optional(),
+}).optional();
+
+/**
  * Validation Step Result Schema
  */
 export const StepResultSchema = z.object({
@@ -22,6 +45,12 @@ export const StepResultSchema = z.object({
 
   /** Output from the step (stdout + stderr) */
   output: z.string().optional(),
+
+  /** Failed test names (if applicable) */
+  failedTests: z.array(z.string()).optional(),
+
+  /** Extraction quality metrics (only included when developerFeedback: true) */
+  extractionQuality: ExtractionQualitySchema,
 });
 
 /**
@@ -55,7 +84,7 @@ export const ValidationResultSchema = z.object({
   passed: z.boolean(),
 
   /** ISO 8601 timestamp */
-  timestamp: z.string(),
+  timestamp: z.string().datetime(),
 
   /** Git tree hash (if in git repo) */
   treeHash: z.string(),

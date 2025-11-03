@@ -20,7 +20,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
   describe('TypeScript Detection', () => {
     it('should detect TypeScript from error TS#### pattern', () => {
       const output = 'src/index.ts(10,5): error TS2322: Type error.';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expectExtractorDetection(result, 'typescript', ['error TS#### pattern']);
       expect(result.summary).toContain('type error');
@@ -29,10 +29,10 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
     it('should detect TypeScript regardless of step name', () => {
       const output = 'src/index.ts(10,5): error TS2322: Type error.';
 
-      // Try with various step names - should always route to TypeScript
-      const result1 = autoDetectAndExtract('Build', output);
-      const result2 = autoDetectAndExtract('Compile', output);
-      const result3 = autoDetectAndExtract('Check Types', output);
+      // Detection is purely output-based (not step-name based)
+      const result1 = autoDetectAndExtract(output);
+      const result2 = autoDetectAndExtract(output);
+      const result3 = autoDetectAndExtract(output);
 
       expect(result1).toBeDefined();
       expectExtractorDetection(result1, 'typescript');
@@ -44,7 +44,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
   describe('ESLint Detection', () => {
     it('should detect ESLint from ✖ X problems pattern', () => {
       const output = '✖ 5 problems (3 errors, 2 warnings)';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result).toBeDefined();
       expectExtractorDetection(result, 'eslint', ['✖ X problems summary']);
@@ -52,7 +52,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
 
     it('should detect ESLint from line:col error/warning format', () => {
       const output = 'src/index.ts:10:5: error Error message rule-name';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result).toBeDefined();
       expectExtractorDetection(result, 'eslint', ['line:col error/warning format']);
@@ -62,7 +62,7 @@ describe('Smart Extractor - Pattern-Based Detection', () => {
   describe('JUnit XML Detection', () => {
     it('should detect JUnit from <?xml and <testsuite> tags', () => {
       const output = '<?xml version="1.0"?>\n<testsuite tests="10" failures="2"></testsuite>';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('junit');
       expect(result.metadata?.detection?.patterns).toContain('<?xml header');
@@ -78,7 +78,7 @@ Failures:
 1) Test Suite › test name
    Expected true to be false
       `.trim();
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('jasmine');
       expect(result.metadata?.detection?.patterns).toContain('Failures: header');
@@ -95,7 +95,7 @@ Failures:
   1) Test Suite
      test name
       `.trim();
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('mocha');
       expect(result.metadata?.detection?.patterns).toContain('passing/failing summary');
@@ -113,7 +113,7 @@ Running 11 tests using 1 worker
   1) tests/example.spec.ts:26:5 › Test Suite › test name
      Error: expect(received).toBe(expected)
       `.trim();
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('playwright');
       expect(result.metadata?.detection?.patterns).toContain('.spec.ts files');
@@ -123,7 +123,7 @@ Running 11 tests using 1 worker
 
     it('should detect Playwright from ✘ + .spec.ts pattern', () => {
       const output = '  ✘   1 tests/example.spec.ts:26:5';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('playwright');
       expect(result.metadata?.detection?.patterns).toContain('.spec.ts files');
@@ -139,7 +139,7 @@ Running 11 tests using 1 worker
      Error: test failed
       `.trim();
 
-      const result = autoDetectAndExtract('Tests', output);
+      const result = autoDetectAndExtract(output);
 
       // Must be Playwright, NOT Jest!
       expect(result.metadata?.detection?.extractor).toBe('playwright');
@@ -154,7 +154,7 @@ FAIL test/unit/config.test.ts
   ● Test Suite › test name
     Error message
       `.trim();
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('jest');
       expect(result.metadata?.detection?.patterns).toContain('FAIL marker');
@@ -162,7 +162,7 @@ FAIL test/unit/config.test.ts
 
     it('should detect Jest from ● bullet marker', () => {
       const output = ' ● Test Suite › test name';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('jest');
       expect(result.metadata?.detection?.patterns).toContain('● bullet marker');
@@ -188,7 +188,7 @@ FAIL e2e/__tests__/nonSerializableStructures.test.ts
     expect(received).toMatchSnapshot()
       `.trim();
 
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       // Should detect as Jest, NOT Vitest (even though .test.ts is present)
       expect(result.metadata?.detection?.extractor).toBe('jest');
@@ -197,7 +197,7 @@ FAIL e2e/__tests__/nonSerializableStructures.test.ts
 
     it('should detect Jest from Test Suites: summary', () => {
       const output = 'Test Suites: 1 failed, 1 total';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('jest');
       expect(result.metadata?.detection?.patterns).toContain('Test Suites: summary');
@@ -211,7 +211,7 @@ FAIL tests/example.test.ts
     Error message
       `.trim();
 
-      const result = autoDetectAndExtract('Tests', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('jest');
     });
@@ -221,7 +221,7 @@ FAIL tests/example.test.ts
     it('should detect Vitest from × symbol + Test Files summary', () => {
       // Vitest requires MULTIPLE patterns: (× OR ❯) AND (Test Files OR FAIL pattern)
       const output = ' × test/unit/config.test.ts (1 failed)\nTest Files  1 failed | 2 passed (3)';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('vitest');
       expect(result.metadata?.detection?.patterns).toContain('× symbol (U+00D7)');
@@ -231,7 +231,7 @@ FAIL tests/example.test.ts
     it('should detect Vitest from ❯ arrow marker + Test Files summary', () => {
       // Vitest requires MULTIPLE patterns: (× OR ❯) AND (Test Files OR FAIL pattern)
       const output = ' ❯ test/unit/config.test.ts (5 tests)\nTest Files  1 failed (1)';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('vitest');
       expect(result.metadata?.detection?.patterns).toContain('❯ arrow marker');
@@ -241,7 +241,7 @@ FAIL tests/example.test.ts
     it('should detect Vitest from × symbol + FAIL N test files pattern', () => {
       // Vitest requires MULTIPLE patterns: (× OR ❯) AND (Test Files OR FAIL pattern)
       const output = ' × test/unit/config.test.ts\nFAIL 5 test files';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('vitest');
       expect(result.metadata?.detection?.patterns).toContain('× symbol (U+00D7)');
@@ -252,7 +252,7 @@ FAIL tests/example.test.ts
       // Single pattern should NOT trigger Vitest detection
       // Note: Removed .test.ts from test data because × + .test.ts correctly triggers vitest
       const output = ' × some-file.js (1 failed)';
-      const result = autoDetectAndExtract('ANY_STEP_NAME', output);
+      const result = autoDetectAndExtract(output);
 
       // Should fall back to generic extractor
       expect(result.metadata?.detection?.extractor).toBe('generic');
@@ -262,16 +262,16 @@ FAIL tests/example.test.ts
   describe('Generic Fallback Detection', () => {
     it('should use generic extractor for unrecognized patterns', () => {
       const output = 'Some random error output\nAnother error line';
-      const result = autoDetectAndExtract('Custom Build Step', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.extractor).toBe('generic');
       expect(result.metadata?.detection?.patterns).toContain('no specific patterns');
       expect(result.metadata?.detection?.confidence).toBe(50);
-      expect(result.summary).toContain('Custom Build Step');
+      expect(result.summary).toBe('Command failed - see output');
     });
 
     it('should handle empty output gracefully', () => {
-      const result = autoDetectAndExtract('Empty Step', '');
+      const result = autoDetectAndExtract('');
 
       expect(result.metadata?.detection?.extractor).toBe('generic');
       expect(result.errors).toHaveLength(0);
@@ -282,7 +282,7 @@ FAIL tests/example.test.ts
     it('should check TypeScript before other extractors', () => {
       // Output with both TypeScript and generic error patterns
       const output = 'src/index.ts(10,5): error TS2322: Type error.\nSome other error';
-      const result = autoDetectAndExtract('Build', output);
+      const result = autoDetectAndExtract(output);
 
       // Should match TypeScript first
       expect(result.metadata?.detection?.extractor).toBe('typescript');
@@ -295,7 +295,7 @@ FAIL tests/example.test.ts
 FAIL tests/example.spec.ts
       `.trim();
 
-      const result = autoDetectAndExtract('Tests', output);
+      const result = autoDetectAndExtract(output);
 
       // Must be Playwright because .spec.ts + › comes first
       expect(result.metadata?.detection?.extractor).toBe('playwright');
@@ -305,7 +305,7 @@ FAIL tests/example.spec.ts
   describe('Detection Metadata Quality', () => {
     it('should include confidence score', () => {
       const output = 'src/index.ts(10,5): error TS2322: Type error.';
-      const result = autoDetectAndExtract('Build', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.confidence).toBeGreaterThan(0);
       expect(result.metadata?.detection?.confidence).toBeLessThanOrEqual(100);
@@ -313,7 +313,7 @@ FAIL tests/example.spec.ts
 
     it('should include detected patterns', () => {
       const output = '✖ 5 problems (3 errors, 2 warnings)';
-      const result = autoDetectAndExtract('Lint', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result.metadata?.detection?.patterns).toBeDefined();
       expect(result.metadata?.detection?.patterns.length).toBeGreaterThan(0);
@@ -321,7 +321,7 @@ FAIL tests/example.spec.ts
 
     it('should include complete metadata', () => {
       const output = 'src/index.ts(10,5): error TS2322: Type error.';
-      const result = autoDetectAndExtract('Build', output);
+      const result = autoDetectAndExtract(output);
 
       expect(result).toBeDefined();
       expectCompleteDetectionMetadata(result);

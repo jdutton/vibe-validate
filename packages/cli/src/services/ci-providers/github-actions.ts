@@ -242,7 +242,7 @@ export class GitHubActionsProvider implements CIProvider {
       return;
     }
 
-    const extractorResult = autoDetectAndExtract(failedStep, failedStepOutput);
+    const extractorResult = autoDetectAndExtract(failedStepOutput);
 
     if (extractorResult.errors.length > 0) {
       result.failedTests = extractorResult.errors

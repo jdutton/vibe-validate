@@ -6,7 +6,7 @@ Welcome to vibe-validate! This guide will help you set up validation orchestrati
 
 vibe-validate is a **validation orchestration tool** designed for developers using AI assistants. It:
 
-- ✅ **Caches validation results** using git tree hashes (up to 312x speedup)
+- ✅ **Caches validation results** using git tree hashes (dramatic speedup)
 - ✅ **Runs validation steps in parallel** for faster execution
 - ✅ **Formats errors for LLMs** - strips noise, provides actionable fixes
 - ✅ **Detects AI assistants** - auto-optimizes output for Claude Code, Cursor, Aider, Continue
@@ -25,13 +25,13 @@ vibe-validate is a **validation orchestration tool** designed for developers usi
 
 ```bash
 # Using npm
-npm install -D @vibe-validate/cli
+npm install -D vibe-validate
 
 # Using pnpm
-pnpm add -D @vibe-validate/cli
+pnpm add -D vibe-validate
 
 # Using yarn
-yarn add -D @vibe-validate/cli
+yarn add -D vibe-validate
 ```
 
 ## Quick Start
@@ -66,7 +66,7 @@ npx vibe-validate validate
 
 **First run**: Executes all validation steps (may take 30-120 seconds depending on project size).
 
-**Subsequent runs**: If code unchanged, validation completes in ~288ms (cache hit!).
+**Subsequent runs**: If code unchanged, validation completes in under a second (cache hit!).
 
 ### Step 3: Add to package.json Scripts
 
@@ -227,7 +227,7 @@ Phase 2: Testing ━━━━━━━━━━━━━━━━━━━━━
 
 # Second run (cache hit - code unchanged)
 $ npx vibe-validate validate
-✅ Validation cached (288ms)
+✅ Validation cached (< 1s)
 ```
 
 **Cache key calculation**:
@@ -326,7 +326,7 @@ npx vibe-validate cleanup
 **Problem**: `vibe-validate` command not recognized.
 
 **Solution**:
-1. Ensure installed: `npm install -D @vibe-validate/cli`
+1. Ensure installed: `npm install -D vibe-validate`
 2. Use `npx` prefix: `npx vibe-validate validate`
 3. Check npm bin directory is in PATH
 

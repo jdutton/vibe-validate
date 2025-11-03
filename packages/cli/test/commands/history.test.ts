@@ -294,6 +294,50 @@ describe('history command', () => {
 
       expect(console.log).toHaveBeenCalledWith('No validation history found for branch: nonexistent');
     });
+
+    it('should list run cache entries when --run flag is provided', async () => {
+      const mockRunCacheEntries = [
+        {
+          treeHash: 'abc123',
+          command: 'pnpm test',
+          workdir: '',
+          timestamp: '2025-11-02T12:00:00.000Z',
+          exitCode: 0,
+          duration: 5000,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalCount: 0,
+            errorSummary: '',
+          },
+        },
+        {
+          treeHash: 'def456',
+          command: 'pnpm lint',
+          workdir: 'packages/cli',
+          timestamp: '2025-11-02T13:00:00.000Z',
+          exitCode: 1,
+          duration: 3000,
+          extraction: {
+            errors: [{ file: 'test.ts', line: 10, message: 'Unused variable' }],
+            summary: '1 lint error',
+            totalCount: 1,
+            errorSummary: 'test.ts:10 - Unused variable',
+          },
+        },
+      ];
+
+      // Mock getAllRunCacheEntries (will be implemented)
+      const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
+      vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
+
+      historyCommand(program);
+
+      await program.parseAsync(['history', 'list', '--run'], { from: 'user' });
+
+      expect(getAllRunCacheEntries).toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalled();
+    });
   });
 
   describe('history show', () => {
@@ -384,7 +428,7 @@ describe('history command', () => {
         expect(error).toBeDefined();
       }
 
-      expect(console.error).toHaveBeenCalledWith('No validation history found for tree hash: nonexistent');
+      expect(console.error).toHaveBeenCalledWith('No validation history or run cache found for tree hash: nonexistent');
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -488,6 +532,24 @@ describe('history command', () => {
       await program.parseAsync(['history', 'prune', '--all'], { from: 'user' });
 
       expect(console.log).toHaveBeenCalledWith('No history to prune');
+    });
+
+    it('should prune run cache when --run flag is provided', async () => {
+      const mockResult = {
+        notesPruned: 10,
+        runsPruned: 10,
+        notesRemaining: 0,
+      };
+
+      const pruneAllRunCache = vi.fn().mockResolvedValue(mockResult);
+      vi.mocked(history).pruneAllRunCache = pruneAllRunCache;
+
+      historyCommand(program);
+
+      await program.parseAsync(['history', 'prune', '--run', '--all'], { from: 'user' });
+
+      expect(pruneAllRunCache).toHaveBeenCalledWith(false);
+      expect(console.log).toHaveBeenCalled();
     });
   });
 

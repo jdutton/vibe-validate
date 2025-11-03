@@ -1,12 +1,37 @@
 {
   "permissions": {
     "allow": [
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git fetch:*)",
+      "Bash(git for-each-ref:*)",
+      "Bash(git log:*)",
+      "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(git remote:*)",
+      "Bash(grep:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm generate-cli-docs:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm run:*)",
+      "Bash(pnpm state:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm test:coverage:*)",
+      "Bash(pnpm test:system:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm validate:*)",
       "mcp__github__create_issue",
       "mcp__github__create_pull_request",
       "mcp__github__get_issue",
       "mcp__github__get_pull_request",
       "mcp__github__get_pull_request_status",
-      "mcp__github__list_issues"
+      "mcp__github__list_issues",
+      "WebFetch(domain:sonarcloud.io)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebSearch"
     ],
     "ask": [
       "Bash(gh run list:*)",

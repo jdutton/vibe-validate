@@ -122,7 +122,7 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
   const warningCount = deduplicatedErrors.filter(e => e.severity === 'warning').length;
 
   // Build clean output (limit to first 10 for token efficiency)
-  const cleanOutput = deduplicatedErrors
+  const errorSummary = deduplicatedErrors
     .slice(0, 10)
     .map(e => `${e.file}:${e.line}:${e.column} - ${e.message} [${e.code}]`)
     .join('\n');
@@ -132,7 +132,7 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
     summary: `${errorCount} ESLint error(s), ${warningCount} warning(s)`,
     totalCount: deduplicatedErrors.length,
     guidance: getESLintGuidance(deduplicatedErrors),
-    cleanOutput
+    errorSummary
   };
 }
 

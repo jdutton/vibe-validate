@@ -350,7 +350,7 @@ vibe-validate state --yaml
 
 ## Files Created/Modified
 
-- \`refs/notes/vibe-validate/runs\` - Validation history (git notes, auto-created)
+- \`refs/notes/vibe-validate/validate\` - Validation history (git notes, auto-created)
 
 ## Error Recovery
 

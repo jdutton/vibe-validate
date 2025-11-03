@@ -8,7 +8,8 @@
           "type": "boolean"
         },
         "timestamp": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "treeHash": {
           "type": "string"
@@ -43,6 +44,36 @@
                     },
                     "output": {
                       "type": "string"
+                    },
+                    "failedTests": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "extractionQuality": {
+                      "type": "object",
+                      "properties": {
+                        "detectedTool": {
+                          "type": "string"
+                        },
+                        "confidence": {
+                          "type": "string"
+                        },
+                        "score": {
+                          "type": "number"
+                        },
+                        "warnings": {
+                          "type": "number"
+                        },
+                        "errorsExtracted": {
+                          "type": "number"
+                        },
+                        "actionable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   },
                   "required": [

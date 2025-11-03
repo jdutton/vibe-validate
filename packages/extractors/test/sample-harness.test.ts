@@ -45,10 +45,8 @@ describe('Sample-Driven Extractor Tests', () => {
         const sampleName = `${sample.metadata.category} (${sample.metadata.difficulty})`;
 
         it(`should extract ${sampleName}`, () => {
-          // Run extractor on raw input
-          // Use tool name as step name hint for smart routing
-          const stepName = `${sample.metadata.tool} validation`;
-          const extractorResult = autoDetectAndExtract(stepName, sample.input.raw);
+          // Run extractor on raw input (output-based detection)
+          const extractorResult = autoDetectAndExtract(sample.input.raw);
 
           // Build actual extraction result
           const actual: ActualExtraction = {

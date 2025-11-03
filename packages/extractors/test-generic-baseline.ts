@@ -39,10 +39,10 @@ for (const category of categories) {
     console.log(`     Summary: ${result.summary}`);
     console.log(`     Errors found: ${result.errors.length}`);
     console.log(`     Total count: ${result.totalCount}`);
-    console.log(`     Clean output length: ${result.cleanOutput.length} chars`);
+    console.log(`     Clean output length: ${result.errorSummary.length} chars`);
     console.log(`     First 300 chars of clean output:`);
-    const preview = result.cleanOutput.substring(0, 300).replace(/\n/g, '\n     ');
-    console.log(`     ${preview}${result.cleanOutput.length > 300 ? '...' : ''}`);
+    const preview = result.errorSummary.substring(0, 300).replace(/\n/g, '\n     ');
+    console.log(`     ${preview}${result.errorSummary.length > 300 ? '...' : ''}`);
   }
 }
 

@@ -194,7 +194,7 @@ function showComprehensiveHelp(program: Command): void {
         1: 'Validation failed',
         2: 'Configuration error'
       },
-      creates: ['Git notes under refs/notes/vibe-validate/runs'],
+      creates: ['Git notes under refs/notes/vibe-validate/validate'],
       examples: [
         'vibe-validate validate              # Use cache if available',
         'vibe-validate validate --force      # Always run validation',
@@ -484,7 +484,7 @@ function showComprehensiveHelp(program: Command): void {
   console.log('| File | Purpose |');
   console.log('|------|---------|');
   console.log('| `vibe-validate.config.yaml` | Configuration (required) |');
-  console.log('| `refs/notes/vibe-validate/runs` | Validation state (git notes, auto-created) |');
+  console.log('| `refs/notes/vibe-validate/validate` | Validation state (git notes, auto-created) |');
   console.log('| `.github/workflows/validate.yml` | CI workflow (optional, generated) |');
   console.log('| `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |\n');
 

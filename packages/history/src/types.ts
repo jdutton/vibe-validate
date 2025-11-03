@@ -103,17 +103,26 @@ export interface HistoryConfig {
 
 /**
  * Default history configuration
+ *
+ * v0.15.0: Adjusted retention thresholds for run command caching
+ * - warnAfterDays: 90 → 30 (more frequent pruning recommended)
+ * - warnAfterCount: 100 → 1000 (run cache creates many more notes)
+ *
+ * Note count estimation with run caching:
+ * - Validation history: ~50-200 notes (one per tree hash)
+ * - Run cache: ~500-1000+ notes (tree hash × command × workdir)
+ * - Total: Can easily reach 500-1500 notes in active development
  */
 export const DEFAULT_HISTORY_CONFIG: Required<HistoryConfig> = {
   enabled: true,
   gitNotes: {
-    ref: 'vibe-validate/runs',
+    ref: 'vibe-validate/validate',
     maxRunsPerTree: 10,
     maxOutputBytes: 10000,
   },
   retention: {
-    warnAfterDays: 90,
-    warnAfterCount: 100,
+    warnAfterDays: 30,
+    warnAfterCount: 1000,
   },
 };
 
@@ -149,4 +158,66 @@ export interface PruneResult {
 
   /** Tree hashes that were pruned */
   prunedTreeHashes: string[];
+}
+
+/**
+ * Run cache note structure (stored in git notes)
+ *
+ * Cached result of a `vibe-validate run` command execution.
+ * Stored at: refs/notes/vibe-validate/run/{treeHash}/{encoded-cache-key}
+ *
+ * NOTE: Only successful runs (exitCode === 0) are cached.
+ * Failed runs are never cached as they may be transient/environment-specific.
+ */
+export interface RunCacheNote {
+  /** Git tree hash when command was run */
+  treeHash: string;
+
+  /** Command that was executed */
+  command: string;
+
+  /** Working directory relative to git root ("" for root, "packages/cli" for subdirectory) */
+  workdir: string;
+
+  /** ISO 8601 timestamp */
+  timestamp: string;
+
+  /** Exit code from command execution (always 0 for cached entries) */
+  exitCode: number;
+
+  /** Duration in milliseconds */
+  duration: number;
+
+  /** Full extraction result (preserves all metadata and structure) */
+  extraction: {
+    errors: Array<{
+      file?: string;
+      line?: number;
+      column?: number;
+      message: string;
+      code?: string;
+      severity?: 'error' | 'warning';
+      context?: string;
+      guidance?: string;
+    }>;
+    summary: string;
+    totalCount: number;
+    guidance?: string;
+    errorSummary: string;
+    metadata?: {
+      confidence: number;
+      completeness: number;
+      issues: string[];
+      detection?: {
+        extractor: string;
+        confidence: number;
+        patterns: string[];
+        reason: string;
+      };
+      suggestions?: string[];
+    };
+  };
+
+  /** Path to full output log file (may not exist if old/cleaned up) */
+  fullOutputFile?: string;
 }

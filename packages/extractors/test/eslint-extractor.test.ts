@@ -116,8 +116,8 @@ src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-e
 
     const result = extractESLintErrors(output);
 
-    expect(result.cleanOutput).toContain('src/index.ts:10:5 - Unexpected console statement (no-console) [no-console]');
-    expect(result.cleanOutput).toContain('src/config.ts:25:12 - \'unusedVar\' is defined but never used (@typescript-eslint/no-unused-vars) [@typescript-eslint/no-unused-vars]');
+    expect(result.errorSummary).toContain('src/index.ts:10:5 - Unexpected console statement (no-console) [no-console]');
+    expect(result.errorSummary).toContain('src/config.ts:25:12 - \'unusedVar\' is defined but never used (@typescript-eslint/no-unused-vars) [@typescript-eslint/no-unused-vars]');
   });
 
   it('should handle empty output', () => {

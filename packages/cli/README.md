@@ -18,15 +18,19 @@ The `@vibe-validate/cli` package provides a command-line interface for running v
 
 ## Installation
 
+**Recommended**: Install via the umbrella package:
+
 ```bash
-npm install -D @vibe-validate/cli
+npm install -D vibe-validate
 ```
 
 Or use directly via `npx`:
 
 ```bash
-npx @vibe-validate/cli validate
+npx vibe-validate validate
 ```
+
+> **Note**: This package is also available as `@vibe-validate/cli`, but we recommend using the umbrella package `vibe-validate` for simpler installation.
 
 ## Upgrading
 

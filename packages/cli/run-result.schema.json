@@ -1,0 +1,167 @@
+{
+  "$ref": "#/definitions/RunResult",
+  "definitions": {
+    "RunResult": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exitCode": {
+          "type": "integer"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "fullOutputFile": {
+          "type": "string"
+        },
+        "isCachedResult": {
+          "type": "boolean"
+        },
+        "suggestedDirectCommand": {
+          "type": "string"
+        },
+        "extraction": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "totalCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "guidance": {
+              "type": "string"
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "column": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "error",
+                      "warning"
+                    ]
+                  },
+                  "context": {
+                    "type": "string"
+                  },
+                  "guidance": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "detection": {
+                  "type": "object",
+                  "properties": {
+                    "extractor": {
+                      "type": "string"
+                    },
+                    "confidence": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "patterns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "extractor",
+                    "confidence",
+                    "patterns",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "completeness": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "issues": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "suggestions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "confidence",
+                "completeness",
+                "issues"
+              ],
+              "additionalProperties": false
+            },
+            "errorSummary": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "summary",
+            "totalCount",
+            "errors",
+            "errorSummary"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "command",
+        "exitCode",
+        "timestamp",
+        "extraction"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

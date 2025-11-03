@@ -44,8 +44,8 @@ AssertionError: expected 3000 to be 9999
 
     // Message should contain the actual error, not just the test hierarchy
     expect(result.errors[0].message).toContain('AssertionError: expected 3000 to be 9999');
-    // Test hierarchy is captured in cleanOutput, not in message
-    expect(result.cleanOutput).toContain('EnvironmentConfig > should parse HTTP_PORT correctly');
+    // Test hierarchy is captured in errorSummary, not in message
+    expect(result.errorSummary).toContain('EnvironmentConfig > should parse HTTP_PORT correctly');
   });
 
   it('should extract error message', () => {
@@ -75,7 +75,7 @@ AssertionError: expected 3000 to be 9999
     const result = extractVitestErrors(output);
 
     // Vitest extractor extracts source lines (any line with line number)
-    expect(result.cleanOutput).toMatch(/\d+\|/); // Contains at least one line with line number
+    expect(result.errorSummary).toMatch(/\d+\|/); // Contains at least one line with line number
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].file).toBe('test/unit/config/environment.test.ts');
   });
@@ -141,7 +141,7 @@ AssertionError: expected 3000 to be 9999
     const result = extractVitestErrors(output);
 
     // Expected/actual values are extracted and shown in clean output
-    expect(result.cleanOutput).toBeDefined();
+    expect(result.errorSummary).toBeDefined();
     expect(result.errors).toHaveLength(1);
   });
 
@@ -258,9 +258,9 @@ Error: error 2
 
     const result = extractVitestErrors(output);
 
-    expect(result.cleanOutput).toContain('[Test 1/2]');
-    expect(result.cleanOutput).toContain('[Test 2/2]');
-    expect(result.cleanOutput).toContain('test/unit/config/environment.test.ts:57:30');
-    expect(result.cleanOutput).toContain('test/unit/auth/factory.test.ts:100:15');
+    expect(result.errorSummary).toContain('[Test 1/2]');
+    expect(result.errorSummary).toContain('[Test 2/2]');
+    expect(result.errorSummary).toContain('test/unit/config/environment.test.ts:57:30');
+    expect(result.errorSummary).toContain('test/unit/auth/factory.test.ts:100:15');
   });
 });

@@ -139,6 +139,13 @@ importers:
         version: 2.1.9(@types/node@20.19.23)
 
   packages/extractors:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+      zod-to-json-schema:
+        specifier: ^3.24.6
+        version: 3.24.6(zod@3.25.76)
     devDependencies:
       '@types/node':
         specifier: ^20.19.21

@@ -74,9 +74,9 @@ describe('Vibe-Validate Integration Failures', () => {
       
 
       // Pass undefined as output (runtime TypeError)
-      const result = autoDetectAndExtract('test', undefined as any);
+      const result = autoDetectAndExtract(undefined as any);
 
-      expect(result.cleanOutput.length).toBeGreaterThan(0);
+      expect(result.errorSummary.length).toBeGreaterThan(0);
     });
   });
 
