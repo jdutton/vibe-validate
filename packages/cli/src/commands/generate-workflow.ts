@@ -268,7 +268,6 @@ export function generateWorkflow(
     const hasBuildPhase = phases.some(p =>
       p.steps.some(s => s.name.toLowerCase().includes('build'))
     );
-    const isVibeValidateRepo = existsSync('packages/cli/dist/bin.js');
     if (hasBuildPhase) {
       jobSteps.push({
         name: 'Build packages',
@@ -278,14 +277,9 @@ export function generateWorkflow(
 
     // Run validation with --yaml --verbose flags for structured output
     // Redirect stdout (YAML result) to file, stderr (verbose logs) to console
-    let validateCommand: string;
-    if (isVibeValidateRepo) {
-      validateCommand = 'node packages/cli/dist/bin.js validate --yaml --verbose';
-    } else if (packageManager === 'pnpm') {
-      validateCommand = 'pnpm validate --yaml --verbose';
-    } else {
-      validateCommand = 'npm run validate -- --yaml --verbose';
-    }
+    const validateCommand = packageManager === 'pnpm'
+      ? 'pnpm validate --yaml --verbose'
+      : 'npm run validate -- --yaml --verbose';
 
     jobSteps.push({
       name: 'Run validation (Unix)',

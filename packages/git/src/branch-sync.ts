@@ -40,7 +40,8 @@ export interface SyncCheckOptions {
 function execGit(args: string[]): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn('git', args, {
-      timeout: GIT_TIMEOUT
+      timeout: GIT_TIMEOUT,
+      stdio: ['ignore', 'pipe', 'pipe'], // No stdin (git commands shouldn't need interactive input), capture stdout/stderr
     });
 
     let stdout = '';

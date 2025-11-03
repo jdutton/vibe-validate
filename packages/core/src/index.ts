@@ -67,6 +67,7 @@ export {
 // Export process utilities
 export {
   stopProcessGroup,
+  spawnCommand,
 } from './process-utils.js';
 
 // Export validation result schema and validators

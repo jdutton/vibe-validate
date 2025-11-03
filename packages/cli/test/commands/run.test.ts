@@ -75,9 +75,10 @@ describe('run command', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'echo test',
+        [],
         expect.objectContaining({
           shell: true,
-          stdio: ['inherit', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe']
         })
       );
     });
@@ -458,7 +459,7 @@ extraction:
       message: "error 2"
   summary: "2 tests failed"
   guidance: "Fix both errors"
-  cleanOutput: "cleaned output here"
+  errorSummary: "cleaned output here"
   metadata:
     framework: "vitest"
     confidence: 95

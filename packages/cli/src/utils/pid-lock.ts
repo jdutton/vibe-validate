@@ -106,9 +106,8 @@ function isProcessRunning(pid: number): boolean {
     // Signal 0 tests for process existence without killing it
     process.kill(pid, 0);
     return true;
-  } catch (err) {
+  } catch {
     // ESRCH = no such process - expected when process doesn't exist
-    console.debug(`Process ${pid} check failed: ${err instanceof Error ? err.message : String(err)}`);
     return false;
   }
 }

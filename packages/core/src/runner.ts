@@ -10,14 +10,15 @@
  * @packageDocumentation
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess } from 'node:child_process';
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
-import { getGitTreeHash } from '@vibe-validate/git';
-import { autoDetectAndExtract } from '@vibe-validate/extractors';
-import { stopProcessGroup } from './process-utils.js';
+import { parse as parseYaml } from 'yaml';
+import { getGitTreeHash, extractYamlContent } from '@vibe-validate/git';
+import { autoDetectAndExtract, type FormattedError } from '@vibe-validate/extractors';
+import { stopProcessGroup, spawnCommand } from './process-utils.js';
 import type {
   ValidationStep,
   ValidationResult,
@@ -124,31 +125,6 @@ export function parseFailures(output: string): string[] {
 }
 
 /**
- * Detect tool type from step name
- *
- * Uses heuristics to determine which validation tool is running based on the step name.
- * This is a temporary solution until extractors package returns detected tool type.
- *
- * @param stepName - Name of the validation step
- * @returns Detected tool identifier (typescript, eslint, vitest, or unknown)
- *
- * @internal
- */
-function detectToolFromStepName(stepName: string): string {
-  const stepLower = stepName.toLowerCase();
-  if (stepLower.includes('typescript') || stepLower.includes('tsc')) {
-    return 'typescript';
-  }
-  if (stepLower.includes('eslint')) {
-    return 'eslint';
-  }
-  if (stepLower.includes('test') || stepLower.includes('vitest')) {
-    return 'vitest';
-  }
-  return 'unknown';
-}
-
-/**
  * Calculate confidence level from extraction quality score
  *
  * Maps numeric quality scores to confidence levels for easier interpretation.
@@ -185,13 +161,13 @@ function calculateConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
  */
 function processDeveloperFeedback(
   stepResult: StepResult,
-  stepName: string,
   formatted: ReturnType<typeof autoDetectAndExtract>,
   log: (_msg: string) => void,
   isWarning: (_e: { severity?: string }) => boolean,
   isNotWarning: (_e: { severity?: string }) => boolean
 ): void {
-  const detectedTool = detectToolFromStepName(stepName);
+  // Use extractor's own tool detection from metadata (output-based, not hint-based)
+  const detectedTool = formatted.metadata?.detection?.extractor ?? 'unknown';
 
   // eslint-disable-next-line sonarjs/deprecation -- calculateExtractionQuality is deprecated but still used for backwards compatibility
   const score = calculateExtractionQuality(formatted);
@@ -326,6 +302,31 @@ export async function runStepsInParallel(
   };
   const isWarning = (e: { severity?: string }) => e.severity === 'warning';
   const isNotWarning = (e: { severity?: string }) => e.severity !== 'warning';
+
+  // Extract errors from YAML frontmatter output (from nested run commands)
+  const extractYamlErrors = (output: string): FormattedError[] | null => {
+    try {
+      // Use shared efficient regex-based extraction
+      const yamlContent = extractYamlContent(output);
+      if (!yamlContent) {
+        return null; // No YAML found
+      }
+
+      // Parse the YAML
+      const parsed = parseYaml(yamlContent) as {
+        extraction?: {
+          errors?: FormattedError[];
+        };
+      };
+
+      // Return the errors from the extraction field
+      return parsed?.extraction?.errors ?? null;
+    } catch {
+      // If YAML parsing fails, return null to fall back to autoDetectAndExtract
+      return null;
+    }
+  };
+
   const ignoreStopErrors = () => { /* Process may have already exited */ };
 
   const results = await Promise.allSettled(
@@ -336,18 +337,8 @@ export async function runStepsInParallel(
 
         const startTime = Date.now();
 
-        // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
-        // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
-        // NOSONAR - Intentional shell execution of user-defined commands
-        const proc = spawn(step.command, [], {
-          stdio: 'pipe',
-          shell: true,  // Cross-platform: cmd.exe on Windows, sh on Unix
-          // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
-          detached: process.platform !== 'win32',
-          env: {
-            ...process.env,
-            ...env,
-          }
+        const proc = spawnCommand(step.command, {
+          env,
         });
 
         // Track process for potential kill
@@ -356,7 +347,9 @@ export async function runStepsInParallel(
         let stdout = '';
         let stderr = '';
 
-        proc.stdout.on('data', data => {
+        // spawnCommand always sets stdio: ['ignore', 'pipe', 'pipe'], so stdout/stderr are guaranteed non-null
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+        proc.stdout!.on('data', data => {
           const chunk = data.toString();
           // Strip ANSI escape codes to make output readable for humans and LLMs
           // These codes (e.g., \e[32m for colors) are noise in logs, YAML, and git notes
@@ -372,7 +365,8 @@ export async function runStepsInParallel(
             }
           }
         });
-        proc.stderr.on('data', data => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+        proc.stderr!.on('data', data => {
           const chunk = data.toString();
           // Strip ANSI escape codes from stderr as well
           const cleanChunk = stripAnsi(chunk);
@@ -405,7 +399,24 @@ export async function runStepsInParallel(
           // meaningless results (score: 0, no errors). Skipping saves CPU and reduces output noise.
           // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
           if (code !== 0 && output && output.trim()) {
-            const formatted = autoDetectAndExtract(step.name, output);
+            // Try extracting errors from YAML frontmatter (from nested run commands)
+            // Returns null if no YAML found, then falls back to autoDetectAndExtract
+            const yamlErrors = extractYamlErrors(output);
+
+            let formatted;
+            if (yamlErrors) {
+              // Use errors from nested run command's YAML output
+              formatted = {
+                errors: yamlErrors,
+                summary: `${yamlErrors.length} error(s) from nested command`,
+                totalCount: yamlErrors.length,
+                guidance: '',
+                errorSummary: '',
+              };
+            } else {
+              // No YAML detected - use standard extraction
+              formatted = autoDetectAndExtract(output);
+            }
 
             // Extract structured failures/tests
             stepResult.failedTests = formatted.errors?.map(formatError) ?? [];
@@ -413,7 +424,7 @@ export async function runStepsInParallel(
             // Only include extraction quality metrics when developerFeedback is enabled
             // This is for vibe-validate contributors to identify extraction improvement opportunities
             if (developerFeedback) {
-              processDeveloperFeedback(stepResult, step.name, formatted, log, isWarning, isNotWarning);
+              processDeveloperFeedback(stepResult, formatted, log, isWarning, isNotWarning);
             }
           }
 
@@ -468,9 +479,45 @@ function createFailedValidationResult(
   logPath: string,
   phaseResults: PhaseResult[]
 ): ValidationResult {
-  // Extract actionable failures (LLM-optimized)
-  const extracted = autoDetectAndExtract(failedStep.name, failedOutput);
-  const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
+  // Try extracting errors from YAML frontmatter (from nested run commands)
+  // Returns null if no YAML found, then falls back to autoDetectAndExtract
+  const yamlContent = extractYamlContent(failedOutput);
+  let extracted;
+
+  if (yamlContent) {
+    try {
+      // Parse the YAML
+      const parsed = parseYaml(yamlContent) as {
+        extraction?: {
+          errors?: FormattedError[];
+          summary?: string;
+          errorSummary?: string;
+        };
+      };
+
+      // Use errors from nested run command's YAML output
+      if (parsed?.extraction?.errors) {
+        extracted = {
+          errors: parsed.extraction.errors,
+          summary: parsed.extraction.summary ?? `${parsed.extraction.errors.length} error(s) from nested command`,
+          totalCount: parsed.extraction.errors.length,
+          guidance: '',
+          errorSummary: parsed.extraction.errorSummary ?? '',
+        };
+      } else {
+        // YAML found but no extraction.errors - fall back to autoDetectAndExtract
+        extracted = autoDetectAndExtract(failedOutput);
+      }
+    } catch {
+      // YAML parsing failed - fall back to autoDetectAndExtract
+      extracted = autoDetectAndExtract(failedOutput);
+    }
+  } else {
+    // No YAML detected - use standard extraction
+    extracted = autoDetectAndExtract(failedOutput);
+  }
+
+  const extractedOutput = extracted.errorSummary.trim() || failedOutput;
 
   // Use structured errors from extractor
   const structuredFailures = extracted.errors.map(error => {
@@ -590,8 +637,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     if (!result.success && result.failedStep) {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
       const rawOutput = result.outputs.get(result.failedStep.name) || '';
-      const extracted = autoDetectAndExtract(result.failedStep.name, rawOutput);
-      phaseResult.output = extracted.cleanOutput.trim() || rawOutput;
+      const extracted = autoDetectAndExtract(rawOutput);
+      phaseResult.output = extracted.errorSummary.trim() || rawOutput;
     }
 
     phaseResults.push(phaseResult);

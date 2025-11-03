@@ -1,0 +1,26 @@
+{
+  "name": "vibe-validate",
+  "version": "0.14.3",
+  "description": "Expert agent for vibe-validate validation orchestration - 312x faster cached validation, 90-95% context reduction, pre-commit workflows",
+  "author": {
+    "name": "Jeff Dutton",
+    "email": "[email protected]"
+  },
+  "homepage": "https://github.com/jdutton/vibe-validate",
+  "repository": "https://github.com/jdutton/vibe-validate",
+  "license": "MIT",
+  "keywords": [
+    "validation",
+    "testing",
+    "ci",
+    "llm",
+    "context-optimization",
+    "vibe-coding"
+  ],
+  "agents": [
+    "./agents/vibe-validate.md"
+  ],
+  "skills": [
+    "./skills/vibe-validate-run.md"
+  ]
+}
