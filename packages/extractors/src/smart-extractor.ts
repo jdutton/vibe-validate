@@ -98,6 +98,25 @@ export function autoDetectAndExtract(output: string): ErrorExtractorResult {
     return addDetectionMetadata(result, 'eslint', 90, patterns, 'ESLint error format detected');
   }
 
+  // Vitest priority detection: Check for "RUN  v" pattern (100% unique to vitest)
+  // CRITICAL: Must check BEFORE Jest to prevent false positives
+  // Jest's loose ● detection can match test names that mention Jest patterns
+  // (e.g., "should detect Jest from ● bullet marker")
+  // The "RUN  v" pattern at the start of vitest output is unmistakable
+  // Note: Allow optional leading whitespace (ANSI stripping can leave spaces)
+  // eslint-disable-next-line sonarjs/slow-regex -- False positive: regex is anchored and has limited repetition
+  if (/^\s*RUN\s+v\d+\.\d+\.\d+/m.test(errorSummary)) {
+    const result = extractVitestErrors(errorSummary);
+    const patterns = ['RUN v#### version header'];
+    if (errorSummary.includes('×')) patterns.push('× symbol (U+00D7)');
+    if (errorSummary.includes('❌')) patterns.push('❌ cross mark');
+    if (errorSummary.includes(' ❯ ')) patterns.push('❯ arrow marker');
+    if (errorSummary.includes('Test Files')) patterns.push('Test Files summary');
+    if (errorSummary.includes('.test.ts')) patterns.push('.test.ts files');
+    if (/FAIL\s+\d+\s+test\s+(file|case)/i.exec(errorSummary)) patterns.push('FAIL N test files/cases pattern');
+    return addDetectionMetadata(result, 'vitest', 100, patterns, 'Vitest test output format detected (RUN v#### header)');
+  }
+
   // Auto-detect JUnit XML format
   // Must have both <?xml at start of line AND <testsuite tag (not just mentioned in text)
   if (/^<\?xml\s+/m.exec(errorSummary) && errorSummary.includes('<testsuite')) {

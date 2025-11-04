@@ -35,7 +35,8 @@ export function historyCommand(program: Command): void {
     .description('List validation history')
     .option('-l, --limit <number>', 'Limit number of results', '20')
     .option('-b, --branch <name>', 'Filter by branch name')
-    .option('--run', 'List run cache entries instead of validation history')
+    .option('-r, --run [command]', 'List run cache entries, optionally filtered by command pattern')
+    .option('-a, --all', 'Show all run cache entries (use with --run)')
     .option('--yaml', 'Output in YAML format (default: table)')
     .action(async (options) => {
       await listHistory(options);
@@ -161,12 +162,12 @@ function outputRunCacheTable(
     const timestamp = new Date(entry.timestamp).toLocaleString();
     const hash = entry.treeHash.slice(0, 7);
     const status = entry.exitCode === 0 ? '✓ PASSED' : '✗ FAILED';
-    const duration = entry.duration ? (entry.duration / 1000).toFixed(1) : '0.0';
+    const duration = entry.durationSecs ? entry.durationSecs.toFixed(1) : '0.0';
     const workdirDisplay = entry.workdir ? ` (${entry.workdir})` : '';
 
     console.log(`${timestamp}  ${hash}  ${status}  ${duration}s`);
     console.log(`  Command: ${entry.command}${workdirDisplay}`);
-    if (entry.extraction.errors.length > 0) {
+    if (entry.extraction && entry.extraction.errors.length > 0) {
       console.log(`  Errors: ${entry.extraction.errors.length}`);
     }
     console.log('');
@@ -183,7 +184,11 @@ function outputRunCacheTable(
 /**
  * List run cache entries
  */
-async function listRunCacheHistory(limit: number, yaml: boolean): Promise<void> {
+async function listRunCacheHistory(
+  limit: number,
+  commandFilter: string | undefined,
+  yaml: boolean
+): Promise<void> {
   const runCacheEntries = await getAllRunCacheEntries();
 
   if (runCacheEntries.length === 0) {
@@ -192,12 +197,26 @@ async function listRunCacheHistory(limit: number, yaml: boolean): Promise<void> 
     return;
   }
 
-  const limitedEntries = runCacheEntries.slice(0, limit);
+  // Filter by command pattern if specified
+  let filteredEntries = runCacheEntries;
+  if (commandFilter) {
+    filteredEntries = runCacheEntries.filter((entry) =>
+      entry.command.includes(commandFilter)
+    );
+
+    if (filteredEntries.length === 0) {
+      console.log(`No run cache entries found matching command: ${commandFilter}`);
+      console.log(`\nTry a shorter pattern or check: vibe-validate history list --run`);
+      return;
+    }
+  }
+
+  const limitedEntries = filteredEntries.slice(0, limit);
 
   if (yaml) {
     await outputRunCacheYaml(limitedEntries);
   } else {
-    outputRunCacheTable(limitedEntries, runCacheEntries.length);
+    outputRunCacheTable(limitedEntries, filteredEntries.length);
   }
 }
 
@@ -257,15 +276,38 @@ async function listValidationHistory(
 async function listHistory(options: {
   limit: string;
   branch?: string;
-  run?: boolean;
+  run?: boolean | string;
+  all?: boolean;
   yaml?: boolean;
 }): Promise<void> {
   try {
     const limit = Number.parseInt(options.limit, 10);
 
-    if (options.run) {
-      await listRunCacheHistory(limit, options.yaml ?? false);
+    // Check if --run flag is present (with or without command)
+    if (options.run !== undefined) {
+      // Validate that --all is only used with --run
+      if (options.all && typeof options.run === 'string') {
+        console.error('Error: Cannot use --all with a command filter');
+        console.error('\nUsage: vibe-validate history list --run --all  (show all)');
+        console.error('   or: vibe-validate history list --run <pattern>  (filter by command)');
+        process.exit(1);
+      }
+
+      // Determine command filter
+      // - If --run has a string value, use it as filter
+      // - If --run is true (boolean) and --all is present, show all (no filter)
+      // - If --run is true (boolean) without --all, show all (no filter)
+      const commandFilter = typeof options.run === 'string' ? options.run : undefined;
+
+      await listRunCacheHistory(limit, commandFilter, options.yaml ?? false);
     } else {
+      // Validate that --all is only used with --run
+      if (options.all) {
+        console.error('Error: --all option requires --run flag');
+        console.error('\nUsage: vibe-validate history list --run --all');
+        process.exit(1);
+      }
+
       await listValidationHistory(limit, options.branch, options.yaml ?? false);
     }
   } catch (error) {
@@ -365,7 +407,7 @@ async function showHistory(
           const entry = runCacheEntries[i];
           const timestamp = new Date(entry.timestamp).toLocaleString();
           const status = entry.exitCode === 0 ? '✓ PASSED' : '✗ FAILED';
-          const duration = (entry.duration / 1000).toFixed(1);
+          const duration = entry.durationSecs.toFixed(1);
 
           console.log(`Cache Entry #${i + 1}:`);
           console.log(`  Command: ${entry.command}`);
@@ -375,11 +417,11 @@ async function showHistory(
           console.log(`  Timestamp: ${timestamp}`);
           console.log(`  Status: ${status}`);
           console.log(`  Exit Code: ${entry.exitCode}`);
-          if (entry.duration > 0) {
+          if (entry.durationSecs > 0) {
             console.log(`  Duration: ${duration}s`);
           }
 
-          if (entry.extraction.errors.length > 0) {
+          if (entry.extraction && entry.extraction.errors.length > 0) {
             console.log(`  Errors: ${entry.extraction.errors.length}`);
             for (const error of entry.extraction.errors.slice(0, 3)) {
               // Show first 3 errors
@@ -537,17 +579,20 @@ List all validation runs, sorted by timestamp (newest first).
 **Options:**
 - \`-l, --limit <number>\` - Limit results (default: 20)
 - \`-b, --branch <name>\` - Filter by branch name
-- \`--run\` - List run cache entries instead of validation history (NEW in v0.15.0)
+- \`-r, --run [command]\` - List run cache entries, optionally filtered by command pattern (NEW in v0.15.0)
+- \`-a, --all\` - Show all run cache entries (use with --run)
 - \`--yaml\` - Output as YAML
 
 **Examples:**
 \`\`\`bash
-vibe-validate history list                    # Last 20 validation runs
-vibe-validate history list --limit 50         # Last 50 runs
-vibe-validate history list --branch main      # Only main branch
-vibe-validate history list --yaml             # Machine-readable output
-vibe-validate history list --run              # List run cache (NEW in v0.15.0)
-vibe-validate history list --run --limit 100  # Last 100 cached commands
+vibe-validate history list                                   # Last 20 validation runs
+vibe-validate history list --limit 50                        # Last 50 runs
+vibe-validate history list --branch main                     # Only main branch
+vibe-validate history list --yaml                            # Machine-readable output
+vibe-validate history list --run --all                       # All run cache entries (NEW in v0.15.0)
+vibe-validate history list --run vitest                      # Filter by "vitest" command
+vibe-validate history list --run "npm test"                  # Filter by "npm test"
+vibe-validate history list --run comprehensive --limit 100   # Last 100 matching "comprehensive"
 \`\`\`
 
 **Output fields (validation history):**

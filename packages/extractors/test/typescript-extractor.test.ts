@@ -27,7 +27,7 @@ src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'numbe
       message: "Type 'string' is not assignable to type 'number'."
     });
     expect(result.summary).toBe('1 type error(s), 0 warning(s)');
-    expect(result.totalCount).toBe(1);
+    expect(result.totalErrors).toBe(1);
   });
 
   it('should parse multiple TypeScript errors', () => {
@@ -41,7 +41,7 @@ src/utils.ts(100,3): warning TS6133: 'unusedVar' is declared but never used.
 
     expect(result.errors).toHaveLength(3);
     expect(result.summary).toBe('2 type error(s), 1 warning(s)');
-    expect(result.totalCount).toBe(3);
+    expect(result.totalErrors).toBe(3);
 
     // Verify first error
     expect(result.errors[0].file).toBe('src/index.ts');
@@ -61,7 +61,7 @@ src/utils.ts(100,3): warning TS6133: 'unusedVar' is declared but never used.
 
     const result = extractTypeScriptErrors(errors);
 
-    expect(result.totalCount).toBe(15);
+    expect(result.totalErrors).toBe(15);
     expect(result.errors).toHaveLength(10);
     expect(result.summary).toBe('15 type error(s), 0 warning(s)');
   });
@@ -140,7 +140,7 @@ src/config.ts(25,12): error TS2304: Cannot find name 'process'.
 
     expect(result.errors).toHaveLength(0);
     expect(result.summary).toBe('0 type error(s), 0 warning(s)');
-    expect(result.totalCount).toBe(0);
+    expect(result.totalErrors).toBe(0);
     expect(result.guidance).toBe('Fix TypeScript type errors in listed files');
   });
 
@@ -166,5 +166,32 @@ src/my folder/index.ts(10,5): error TS2322: Type error.
 
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].file).toBe('src/my folder/index.ts');
+  });
+
+  it('should truncate errors array to MAX_ERRORS_IN_ARRAY but preserve totalErrors count', async () => {
+    // Import the constant to verify we're using the right value
+    const { MAX_ERRORS_IN_ARRAY } = await import('../src/result-schema.js');
+
+    // Generate 15 TypeScript errors (more than MAX_ERRORS_IN_ARRAY = 10)
+    const errors = Array.from({ length: 15 }, (_, i) =>
+      `src/file${i + 1}.ts(${i + 1},5): error TS2322: Type error ${i + 1}.`
+    );
+    const output = errors.join('\n');
+
+    const result = extractTypeScriptErrors(output);
+
+    // totalErrors should be 15 (full count)
+    expect(result.totalErrors).toBe(15);
+
+    // errors array should be truncated to MAX_ERRORS_IN_ARRAY (10)
+    expect(result.errors).toHaveLength(MAX_ERRORS_IN_ARRAY);
+    expect(result.errors).toHaveLength(10);
+
+    // Verify we got the first 10 errors
+    expect(result.errors[0].file).toBe('src/file1.ts');
+    expect(result.errors[9].file).toBe('src/file10.ts');
+
+    // Summary should show full count (15)
+    expect(result.summary).toBe('15 type error(s), 0 warning(s)');
   });
 });

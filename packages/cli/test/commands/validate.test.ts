@@ -298,15 +298,25 @@ describe('validate command', () => {
       };
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
 
-      // Mock failed validation
+      // Mock failed validation (v0.15.0+: use step.command instead of rerunCommand)
       vi.mocked(core.runValidation).mockResolvedValue({
         passed: false,
         timestamp: new Date().toISOString(),
         treeHash: 'abc123',
-        phases: [],
+        phases: [
+          {
+            name: 'Test Phase',
+            passed: false,
+            steps: [
+              {
+                name: 'Test Step',
+                command: 'npm test', // v0.15.0+: command in step
+                passed: false,
+              }
+            ]
+          }
+        ],
         failedStep: 'Test Step',
-        failedStepOutput: 'Error: Test failed',
-        rerunCommand: 'npm test',
         fullLogFile: join(tmpdir(), 'validation.log'),
       });
     });
@@ -341,7 +351,7 @@ describe('validate command', () => {
         expect.anything()
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('To retry'),
+        expect.stringContaining('🔄 To retry:'),
         expect.stringContaining('npm test')
       );
       expect(console.error).toHaveBeenCalledWith(

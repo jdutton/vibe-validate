@@ -408,7 +408,7 @@ duration: z.number().describe('Duration in seconds with decimal precision')
 ### Priority 3 (Low - Future improvements)
 
 7. **Generate JSON Schema files**
-   - Like `validation-result.schema.json`, create:
+   - Like `validate-result.schema.json`, create:
      - `run-result.schema.json`
      - `error-extractor-result.schema.json`
      - `run-cache-note.schema.json`

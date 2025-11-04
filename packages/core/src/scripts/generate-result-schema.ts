@@ -2,7 +2,7 @@
 /**
  * Generate JSON Schema File for Validation Results
  *
- * Creates validation-result.schema.json in the package root for use in
+ * Creates validate-result.schema.json in the package root for use in
  * validating documentation examples and agent integration code.
  * This script runs during the build process.
  */
@@ -15,7 +15,7 @@ import { validationResultJsonSchema } from '../result-schema-export.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const packageRoot = join(__dirname, '..', '..');
-const schemaPath = join(packageRoot, 'validation-result.schema.json');
+const schemaPath = join(packageRoot, 'validate-result.schema.json');
 
 // Generate and write schema file
 writeFileSync(
@@ -24,4 +24,4 @@ writeFileSync(
   'utf-8'
 );
 
-console.log('✓ Generated validation-result.schema.json');
+console.log('✓ Generated validate-result.schema.json');

@@ -57,9 +57,8 @@ export function getProjectIdFromGit(cwd: string = process.cwd()): string | null 
     }
 
     return extractProjectFromGitUrl(remoteUrl);
-  } catch (err) {
+  } catch {
     // Not a git repo or no remote configured
-    console.debug(`Failed to get project from git: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }
@@ -90,8 +89,8 @@ export function getProjectIdFromPackageJson(cwd: string = process.cwd()): string
 
     // Remove scope prefix (@scope/package → package)
     return name.replace(/^@[^/]+\//, '');
-  } catch (err) {
-    console.debug(`Failed to get project from package.json: ${err instanceof Error ? err.message : String(err)}`);
+  } catch {
+    // package.json doesn't exist or invalid
     return null;
   }
 }

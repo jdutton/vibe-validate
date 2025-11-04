@@ -8,36 +8,43 @@
  */
 
 import { z } from 'zod';
-import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
+import {
+  OperationMetadataSchema,
+  CommandExecutionSchema,
+  createSafeValidator,
+  createStrictValidator
+} from '@vibe-validate/core';
 
 /**
  * Run Result Schema
  *
+ * Extends OperationMetadataSchema + CommandExecutionSchema with run-specific fields.
+ *
  * Output structure from `vibe-validate run` command execution.
  * This is the YAML written to stdout and cached in git notes.
+ *
+ * Field ordering is optimized for LLM consumption:
+ * - Command execution (command, exitCode, durationSecs, extraction)
+ * - Operation metadata (timestamp, treeHash)
+ * - Run-specific (fullOutputFile, isCachedResult, suggestedDirectCommand)
+ *
+ * v0.15.0 changes:
+ * - Now extends CommandExecutionSchema (consistent with StepResult)
+ * - Added durationSecs field
+ * - Deprecated suggestedDirectCommand (will be replaced by runCommand in future)
  */
-export const RunResultSchema = z.object({
-  /** Command that was executed */
-  command: z.string().min(1),
+export const RunResultSchema = OperationMetadataSchema
+  .merge(CommandExecutionSchema)
+  .extend({
+    /** Path to full output log file (may not exist if old/cleaned up) */
+    fullOutputFile: z.string().optional(),
 
-  /** Exit code from the command */
-  exitCode: z.number().int(),
+    /** Whether this result is from cache (true) or fresh execution (false/omitted) */
+    isCachedResult: z.boolean().optional(),
 
-  /** When the command was executed (ISO 8601) - for cache age awareness */
-  timestamp: z.string().datetime(),
-
-  /** Path to full output log file (may not exist if old/cleaned up) */
-  fullOutputFile: z.string().optional(),
-
-  /** Whether this result is from cache (true) or fresh execution (false/omitted) */
-  isCachedResult: z.boolean().optional(),
-
-  /** Suggested direct command (when nested vibe-validate detected) */
-  suggestedDirectCommand: z.string().optional(),
-
-  /** Extracted error information (LLM-optimized) - placed last for readability */
-  extraction: ErrorExtractorResultSchema,
-}).passthrough(); // Allow additional fields from nested YAML merging (e.g., phases, treeHash)
+    /** Suggested direct command (when nested vibe-validate detected) - DEPRECATED: will be replaced by runCommand */
+    suggestedDirectCommand: z.string().optional(),
+  }).passthrough(); // Allow additional fields from nested YAML merging (e.g., phases)
 
 /**
  * Inferred TypeScript type from Zod schema
@@ -45,12 +52,7 @@ export const RunResultSchema = z.object({
 export type RunResult = z.infer<typeof RunResultSchema>;
 
 /**
- * Safe validation function for RunResult
- *
- * Validates a run result object against the schema without throwing.
- *
- * @param data - Data to validate
- * @returns Validation result with success/error information
+ * Safe validation function for RunResult (uses shared utility)
  *
  * @example
  * ```typescript
@@ -62,32 +64,10 @@ export type RunResult = z.infer<typeof RunResultSchema>;
  * }
  * ```
  */
-export function safeValidateRunResult(data: unknown):
-  | { success: true; data: RunResult }
-  | { success: false; errors: string[] } {
-  const result = RunResultSchema.safeParse(data);
-
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-
-  // Extract error messages
-  const errors = result.error.errors.map(err => {
-    const path = err.path.join('.');
-    return path ? `${path}: ${err.message}` : err.message;
-  });
-
-  return { success: false, errors };
-}
+export const safeValidateRunResult = createSafeValidator(RunResultSchema);
 
 /**
- * Strict validation function for RunResult
- *
- * Validates and throws on error.
- *
- * @param data - Data to validate
- * @returns Validated result
- * @throws {Error} If validation fails
+ * Strict validation function for RunResult (uses shared utility)
  *
  * @example
  * ```typescript
@@ -99,6 +79,4 @@ export function safeValidateRunResult(data: unknown):
  * }
  * ```
  */
-export function validateRunResult(data: unknown): RunResult {
-  return RunResultSchema.parse(data);
-}
+export const validateRunResult = createStrictValidator(RunResultSchema);

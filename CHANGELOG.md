@@ -690,7 +690,7 @@ Run `vibe-validate doctor` to check your config for issues.
 ### 🐛 Bug Fixes
 
 - **Fixed IDE Autocomplete in Documentation** (Issue #14)
-  - Corrected schema URL in README examples: Now uses `vibe-validate.schema.json` (was: `schema.json`)
+  - Corrected schema URL in README examples: Now uses `config.schema.json` (was: `schema.json`)
   - Users following documentation will now get proper IDE autocomplete and validation
 
 ### 📝 Documentation
@@ -826,7 +826,7 @@ Run `vibe-validate doctor` to check your config for issues.
   - **CRITICAL FIX**: Use temporary GIT_INDEX_FILE to prevent corrupting git index during pre-commit hooks
   - Added `@vibe-validate/git` as dependency to `@vibe-validate/core` package
   - Ensures `validate` and `validate --check` calculate identical tree hashes for unchanged working tree
-  - Fixes broken caching mechanism that defeated the 312x speedup feature
+  - Fixes broken caching mechanism that defeated the 300x+ speedup feature
   - `--check` flag now accurately detects when validation is needed vs already passed
   - Added TDD test to verify deterministic hash calculation (Issue #8)
   - Removed deprecated non-deterministic `getWorkingTreeHash()` function from core package
@@ -874,7 +874,7 @@ Run `vibe-validate doctor` to check your config for issues.
 
 ### ✨ Features
 
-- **312x faster cached validation** (288ms vs 90s when code unchanged)
+- **300x+ faster cached validation** (sub-second vs ~90s when code unchanged)
 - **Git tree hash caching** - Content-based, deterministic
 - **Parallel phase execution** - Run independent checks simultaneously
 - **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue
@@ -894,8 +894,8 @@ Run `vibe-validate doctor` to check your config for issues.
 
 Real-world TypeScript Node.js app:
 - Full validation: 90.5s (parallel execution)
-- Cached validation: 0.288s
-- Speedup: 312x
+- Cached validation: Sub-second
+- Speedup: 300x+
 
 ### 📊 Test Coverage
 

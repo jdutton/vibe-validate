@@ -97,9 +97,8 @@ export async function listHistoryTreeHashes(
       .filter(Boolean);
 
     return treeHashes;
-  } catch (error) {
+  } catch {
     // No notes exist yet - expected for new repos
-    console.debug(`No history notes found: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   }
 }

@@ -1,0 +1,9 @@
+# .gitleaksignore - Gitleaks False Positive Suppressions
+#
+# This file marks intentional "secrets" that are safe to commit.
+# Format: fingerprints from gitleaks scan output
+# Update: Run gitleaks and copy fingerprint from output
+
+# Documentation examples (ANSI color codes in git-validation-tracking.md - not real secrets)
+docs/git-validation-tracking.md:generic-api-key:207
+docs/git-validation-tracking.md:generic-api-key:213

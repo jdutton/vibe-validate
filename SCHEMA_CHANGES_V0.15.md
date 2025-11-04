@@ -16,7 +16,7 @@
 ### 2. ✅ Generated JSON Schemas (Completed)
 - `packages/extractors/error-extractor-result.schema.json`
 - `packages/cli/run-result.schema.json`
-- `packages/core/validation-result.schema.json` (updated)
+- `packages/core/validate-result.schema.json` (updated)
 
 ### 3. ✅ Created Test Helpers (Completed)
 - Strict validation for tests (throws on invalid data)
@@ -245,7 +245,7 @@ extraction:
 ### JSON Schemas
 - ✅ `packages/extractors/error-extractor-result.schema.json` (NEW)
 - ✅ `packages/cli/run-result.schema.json` (NEW)
-- ✅ `packages/core/validation-result.schema.json` (UPDATED)
+- ✅ `packages/core/validate-result.schema.json` (UPDATED)
 
 ---
 

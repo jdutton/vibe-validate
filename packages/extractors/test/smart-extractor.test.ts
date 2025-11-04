@@ -15,6 +15,7 @@ import {
   expectExtractorDetection,
   expectCompleteDetectionMetadata,
 } from './helpers/assertion-helpers.js';
+import { expectValidExtractorResult } from './test-helpers.js';
 
 describe('Smart Extractor - Pattern-Based Detection', () => {
   describe('TypeScript Detection', () => {
@@ -248,11 +249,27 @@ FAIL tests/example.test.ts
       expect(result.metadata?.detection?.patterns).toContain('FAIL N test files/cases pattern');
     });
 
+    it('should detect Vitest from RUN v#### header pattern (PRIORITY detection)', () => {
+      // RUN v#### is 100% unique to vitest and should be checked BEFORE Jest
+      // This prevents false positives when test names contain ● or other Jest patterns
+      // Test with leading whitespace (can happen after ANSI stripping)
+      const output = '\n RUN  v3.2.4 /path/to/project\n\n ✓ tests/example.test.ts (5 tests)';
+      const result = autoDetectAndExtract(output);
+
+      expect(result.metadata?.detection?.extractor).toBe('vitest');
+      expect(result.metadata?.detection?.confidence).toBe(100);
+      expect(result.metadata?.detection?.patterns).toContain('RUN v#### version header');
+      expect(result.metadata?.detection?.reason).toContain('RUN v#### header');
+    });
+
     it('should NOT detect Vitest from × symbol alone', () => {
       // Single pattern should NOT trigger Vitest detection
       // Note: Removed .test.ts from test data because × + .test.ts correctly triggers vitest
       const output = ' × some-file.js (1 failed)';
       const result = autoDetectAndExtract(output);
+
+      // Validate data integrity (totalErrors === errors.length)
+      expectValidExtractorResult(result);
 
       // Should fall back to generic extractor
       expect(result.metadata?.detection?.extractor).toBe('generic');
@@ -264,6 +281,9 @@ FAIL tests/example.test.ts
       const output = 'Some random error output\nAnother error line';
       const result = autoDetectAndExtract(output);
 
+      // Validate data integrity (totalErrors === errors.length)
+      expectValidExtractorResult(result);
+
       expect(result.metadata?.detection?.extractor).toBe('generic');
       expect(result.metadata?.detection?.patterns).toContain('no specific patterns');
       expect(result.metadata?.detection?.confidence).toBe(50);
@@ -273,8 +293,12 @@ FAIL tests/example.test.ts
     it('should handle empty output gracefully', () => {
       const result = autoDetectAndExtract('');
 
+      // Validate data integrity (totalErrors === errors.length)
+      expectValidExtractorResult(result);
+
       expect(result.metadata?.detection?.extractor).toBe('generic');
       expect(result.errors).toHaveLength(0);
+      expect(result.totalErrors).toBe(0);
     });
   });
 

@@ -29,7 +29,7 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
     return {
       summary: 'Unable to parse Mocha output - invalid format',
       errors: [],
-      totalCount: 0,
+      totalErrors: 0,
       errorSummary: output.trim(),
       guidance: 'Ensure the input is valid Mocha test output',
       metadata: {
@@ -49,7 +49,7 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
     return {
       summary: '0 test(s) failed',
       errors: [],
-      totalCount: 0,
+      totalErrors: 0,
       errorSummary: '',
       guidance: '',
       metadata: {
@@ -103,7 +103,7 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   return {
     summary,
     errors,
-    totalCount: failures.length,
+    totalErrors: failures.length,
     errorSummary: formatCleanOutput(errors),
     guidance,
     metadata

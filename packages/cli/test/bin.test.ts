@@ -311,7 +311,7 @@ describe('bin.ts - CLI entry point', () => {
 
         expect(result.stdout).toContain('## Caching');
         expect(result.stdout).toContain('**Cache key**: Git tree hash of working directory (includes untracked files)');
-        expect(result.stdout).toContain('**Cache hit**: Validation skipped (~288ms)');
+        expect(result.stdout).toContain('**Cache hit**: Validation skipped (sub-second)');
         expect(result.stdout).toContain('**Cache miss**: Full validation runs (~60-90s)');
         expect(result.stdout).toContain('**Invalidation**: Any file change (tracked or untracked)');
       });

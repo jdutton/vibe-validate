@@ -7,12 +7,9 @@
         "summary": {
           "type": "string"
         },
-        "totalCount": {
+        "totalErrors": {
           "type": "integer",
           "minimum": 0
-        },
-        "guidance": {
-          "type": "string"
         },
         "errors": {
           "type": "array",
@@ -55,6 +52,12 @@
             ],
             "additionalProperties": false
           }
+        },
+        "guidance": {
+          "type": "string"
+        },
+        "errorSummary": {
+          "type": "string"
         },
         "metadata": {
           "type": "object",
@@ -117,16 +120,12 @@
             "issues"
           ],
           "additionalProperties": false
-        },
-        "errorSummary": {
-          "type": "string"
         }
       },
       "required": [
         "summary",
-        "totalCount",
-        "errors",
-        "errorSummary"
+        "totalErrors",
+        "errors"
       ],
       "additionalProperties": false
     }

@@ -133,6 +133,51 @@ suggestedDirectCommand: npm test  # ← Unwrapped!
 
 The `suggestedDirectCommand` field shows the innermost command, helping you avoid unnecessary nesting.
 
+## Caching (v0.15.0+)
+
+The `run` command automatically caches successful command executions to avoid re-running expensive operations:
+
+### How It Works
+
+1. **First run**: Command executes, result stored in git notes
+2. **Subsequent runs**: If code unchanged (same tree hash), returns cached result instantly
+
+### Cache Hit Example
+
+```bash
+# First run - executes command
+$ vibe-validate run "npx eslint --max-warnings=0 \"packages/**/*.ts\""
+---
+exitCode: 0
+durationSecs: 5.42    # ← Actual execution time
+
+# Second run - cache hit!
+$ vibe-validate run "npx eslint --max-warnings=0 \"packages/**/*.ts\""
+---
+exitCode: 0
+durationSecs: 0       # ← Instant (cached)
+isCachedResult: true  # ← Cache indicator
+```
+
+### Cache Invalidation
+
+Cache automatically invalidates when:
+- **Code changes**: Different tree hash = different cache key
+- **Command changes**: Different command = different cache key
+- **Working directory changes**: Different workdir = different cache key
+
+### Force Re-execution
+
+Bypass cache with `--force` flag:
+```bash
+vibe-validate run "npm test" --force
+```
+
+### Implementation Details
+
+For technical details on cache key generation and storage structure, see:
+- [Git-Based Validation Tracking: Run Command Caching](../git-validation-tracking.md#4-run-command-caching-v0150)
+
 ## Exit Codes
 
 The `run` command passes through the exit code from the executed command:

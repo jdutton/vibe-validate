@@ -10,6 +10,13 @@
 import { z } from 'zod';
 
 /**
+ * Maximum number of errors to include in errors array
+ *
+ * Limits token usage in LLM context window. Full count available in totalErrors field.
+ */
+export const MAX_ERRORS_IN_ARRAY = 10;
+
+/**
  * Formatted Error Schema
  *
  * Structured error information extracted from validation output
@@ -85,32 +92,40 @@ export const ExtractionMetadataSchema = z.object({
  * Error Extractor Result Schema
  *
  * Complete result structure from error extraction operation
+ *
+ * Field ordering optimized for LLM consumption:
+ * - Summary and count first (high-level overview)
+ * - Structured errors (detailed breakdown)
+ * - Guidance and errorSummary (actionable context)
+ * - Metadata last (quality metrics)
  */
 export const ErrorExtractorResultSchema = z.object({
   /** Human-readable summary (e.g., "2 test failures", "5 type errors") */
   summary: z.string(),
 
-  /** Total error count (may exceed errors.length if truncated) */
-  totalCount: z.number().int().nonnegative(),
+  /** Total error count (may exceed errors.length if truncated to MAX_ERRORS_IN_ARRAY) */
+  totalErrors: z.number().int().nonnegative(),
+
+  /** Parsed and structured errors (limited to MAX_ERRORS_IN_ARRAY for token efficiency) */
+  errors: z.array(FormattedErrorSchema),
 
   /** Step-specific actionable guidance for fixing errors */
   guidance: z.string().optional(),
 
-  /** Parsed and structured errors (limited to first 10 for token efficiency) */
-  errors: z.array(FormattedErrorSchema),
-
-  /** Extraction quality metadata (only included when developerFeedback: true) */
-  metadata: ExtractionMetadataSchema.optional(),
-
   /**
-   * Formatted error summary - LLM-optimized text view of errors (placed last for readability)
+   * Formatted error summary - LLM-optimized text view of errors
    *
    * When errors exist: Concise file:line:column - message format
    * When no errors: Keyword extraction from output (FAILED, Error, etc.)
    * ANSI codes stripped, limited to first 10-20 relevant lines
    * Provides 40x context window savings vs raw output
+   *
+   * Optional - only included when it provides value beyond structured errors array
    */
-  errorSummary: z.string(),
+  errorSummary: z.string().optional(),
+
+  /** Extraction quality metadata (only included when developerFeedback: true) */
+  metadata: ExtractionMetadataSchema.optional(),
 });
 
 /**
@@ -124,7 +139,9 @@ export type ErrorExtractorResult = z.infer<typeof ErrorExtractorResultSchema>;
 /**
  * Safe validation function for ErrorExtractorResult
  *
- * Validates an extractor result object against the schema without throwing.
+ * NOTE: This duplicates the pattern from @vibe-validate/core's createSafeValidator.
+ * We can't import from core here due to circular dependency (core → extractors).
+ * This is an acceptable trade-off for a foundational package.
  *
  * @param data - Data to validate
  * @returns Validation result with success/error information
@@ -138,7 +155,7 @@ export function safeValidateExtractorResult(data: unknown):
     return { success: true, data: result.data };
   }
 
-  // Extract error messages
+  // Extract error messages with full path
   const errors = result.error.errors.map(err => {
     const path = err.path.join('.');
     return path ? `${path}: ${err.message}` : err.message;

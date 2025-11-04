@@ -335,7 +335,10 @@ describe('runner', () => {
       const result = await runValidation(config);
 
       expect(result.passed).toBe(false);
-      expect(result.failedStepOutput).toContain('error message');
+      // Check extraction at step level instead of removed failedStepOutput
+      expect(result.phases).toBeDefined();
+      expect(result.phases![0].steps[0].extraction).toBeDefined();
+      expect(result.phases![0].steps[0].extraction!.errorSummary).toContain('error message');
     });
 
     it('should write log file with all outputs', async () => {
@@ -419,8 +422,9 @@ describe('runner', () => {
     });
 
     describe('developerFeedback=true', () => {
-      it('should include extractionQuality when developerFeedback is true and test fails', async () => {
-        // TDD: This test should FAIL initially
+      it('should include extraction metadata when developerFeedback is true and test fails', async () => {
+        // When developerFeedback is enabled, extractors include metadata
+        // Runner no longer adds redundant extractionQuality field
         const config: ValidationConfig = {
           phases: [
             {
@@ -440,18 +444,20 @@ describe('runner', () => {
 
         const result = await runValidation(config);
 
-        // Assert: ValidationResult SHOULD have extractionQuality field
+        // Assert: extraction.metadata should exist (from extractor)
         expect(result.phases).toBeDefined();
         expect(result.phases![0].steps).toBeDefined();
         const failedStep = result.phases![0].steps![0];
 
         expect(failedStep.passed).toBe(false);
-        // This SHOULD exist when developerFeedback is true and test fails
-        expect(failedStep.extractionQuality).toBeDefined();
-        expect(failedStep.extractionQuality).toHaveProperty('score');
-        expect(failedStep.extractionQuality).toHaveProperty('confidence');
-        expect(failedStep.extractionQuality).toHaveProperty('detectedTool');
-        expect(failedStep.extractionQuality).toHaveProperty('actionable');
+        // Extraction should have metadata from the extractor
+        expect(failedStep.extraction).toBeDefined();
+        expect(failedStep.extraction!.metadata).toBeDefined();
+        expect(failedStep.extraction!.metadata).toHaveProperty('confidence');
+        expect(failedStep.extraction!.metadata).toHaveProperty('completeness');
+        expect(failedStep.extraction!.metadata!.detection).toBeDefined();
+        // extractionQuality should NOT be present (would be redundant)
+        expect(failedStep.extractionQuality).toBeUndefined();
       });
 
       it('should NOT include extractionQuality for passing tests', async () => {
@@ -513,7 +519,7 @@ extraction:
       message: Complete the task associated to this TODO comment
       code: sonarjs/todo-tag
   summary: 2 ESLint error(s), 0 warning(s)
-  totalCount: 2
+  totalErrors: 2
 rawOutput: ""
 `.trim();
 
@@ -537,24 +543,26 @@ rawOutput: ""
 
         // Verify: Validation failed
         expect(result.passed).toBe(false);
-        expect(result.failedTests).toBeDefined();
+
+        // Check extraction at step level (failedTests removed)
+        const extraction = result.phases![0].steps[0].extraction;
+        expect(extraction).toBeDefined();
+        expect(extraction!.errors.length).toBe(2);
 
         // CRITICAL: File paths should be clean (NOT include preamble)
         // BAD:  "> node packages/cli/dist/bin.js run \"eslint...\":349 - error"
         // GOOD: "packages/core/src/runner.ts:349 - error"
-        const failedTests = result.failedTests!;
-        expect(failedTests.length).toBe(2);
+        const errors = extraction!.errors;
 
         // First error - should have clean file path
-        expect(failedTests[0]).toContain('packages/core/src/runner.ts:349');
-        expect(failedTests[0]).toContain('Review this redundant assignment');
-        expect(failedTests[0]).not.toContain('> node packages/cli/dist/bin.js');
-        expect(failedTests[0]).not.toContain('> vibe-validate@');
+        expect(errors[0].file).toBe('packages/core/src/runner.ts');
+        expect(errors[0].line).toBe(349);
+        expect(errors[0].message).toContain('Review this redundant assignment');
 
         // Second error - should have clean file path
-        expect(failedTests[1]).toContain('packages/cli/src/commands/run.ts:220');
-        expect(failedTests[1]).toContain('Complete the task');
-        expect(failedTests[1]).not.toContain('> node packages/cli/dist/bin.js');
+        expect(errors[1].file).toBe('packages/cli/src/commands/run.ts');
+        expect(errors[1].line).toBe(220);
+        expect(errors[1].message).toContain('Complete the task');
       });
 
       it('should fallback to autoDetectAndExtract if YAML parsing fails', async () => {
@@ -606,6 +614,7 @@ invalid indentation
           '      line: 10',
           '      message: Test error',
           '  summary: 1 error',
+          '  totalErrors: 1',
           'rawOutput: ""',
         ].join('\r\n');
 
@@ -629,9 +638,13 @@ invalid indentation
 
         // Should parse Windows line endings correctly
         expect(result.passed).toBe(false);
-        expect(result.failedTests).toBeDefined();
-        expect(result.failedTests!.length).toBe(1);
-        expect(result.failedTests![0]).toContain('test.ts:10');
+
+        // Check extraction at step level (failedTests removed)
+        const extraction = result.phases![0].steps[0].extraction;
+        expect(extraction).toBeDefined();
+        expect(extraction!.errors.length).toBe(1);
+        expect(extraction!.errors[0].file).toContain('test.ts');
+        expect(extraction!.errors[0].line).toBe(10);
       });
 
       it('should not detect --- inside error messages as YAML separator', async () => {
@@ -681,6 +694,7 @@ extraction:
       line: 1
       message: First error
   summary: 1 error
+  totalErrors: 1
 rawOutput: |
   Some raw output that contains
   ---
@@ -709,9 +723,13 @@ rawOutput: |
 
         // Should parse using first --- separator
         expect(result.passed).toBe(false);
-        expect(result.failedTests).toBeDefined();
-        expect(result.failedTests!.length).toBe(1);
-        expect(result.failedTests![0]).toContain('first.ts:1');
+
+        // Check extraction at step level (failedTests removed)
+        const extraction = result.phases![0].steps[0].extraction;
+        expect(extraction).toBeDefined();
+        expect(extraction!.errors.length).toBe(1);
+        expect(extraction!.errors[0].file).toContain('first.ts');
+        expect(extraction!.errors[0].line).toBe(1);
       });
     });
   });

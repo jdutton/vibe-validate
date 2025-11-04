@@ -27,7 +27,7 @@ Run validation with git tree hash caching
 
 1. Calculates git tree hash of working directory
 2. Checks if hash matches cached state
-3. If match: exits immediately (~288ms)
+3. If match: exits immediately (sub-second)
 4. If no match: runs validation pipeline (~60-90s)
 5. Caches result for next run
 
@@ -527,7 +527,7 @@ vibe-validate validate --force
 ## Caching
 
 - **Cache key**: Git tree hash of working directory (includes untracked files)
-- **Cache hit**: Validation skipped (~288ms)
+- **Cache hit**: Validation skipped (sub-second)
 - **Cache miss**: Full validation runs (~60-90s)
 - **Invalidation**: Any file change (tracked or untracked)
 

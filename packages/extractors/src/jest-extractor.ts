@@ -211,7 +211,7 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
   return {
     errors,
     summary,
-    totalCount: failures.length,
+    totalErrors: failures.length,
     guidance,
     errorSummary: formatJestFailures(failures)
   };

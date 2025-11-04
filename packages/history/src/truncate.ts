@@ -45,9 +45,5 @@ export function truncateValidationOutput(
 
   truncatePhaseOutputs(truncated.phases, maxBytes);
 
-  if (truncated.failedStepOutput) {
-    truncated.failedStepOutput = truncateString(truncated.failedStepOutput, maxBytes);
-  }
-
   return truncated;
 }

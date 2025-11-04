@@ -129,7 +129,10 @@ export function extractGenericErrors(output: string): ErrorExtractorResult {
   return {
     errors: [],
     summary: hasErrors ? 'Command failed - see output' : 'No errors detected',
-    totalCount: hasErrors ? 1 : 0,
+    // CRITICAL: totalErrors must always equal errors.length (data integrity invariant)
+    // Generic extractor doesn't populate errors array, so totalErrors is always 0
+    // Error details are in errorSummary only
+    totalErrors: 0,
     guidance: hasErrors ? 'Review the output above and fix the errors' : '',
     errorSummary
   };

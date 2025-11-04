@@ -30,7 +30,7 @@ AssertionError: expected 3000 to be 9999 // Object.is equality
     expect(result.errors[0].line).toBe(57);
     expect(result.errors[0].column).toBe(30);
     expect(result.summary).toBe('1 test failure(s)');
-    expect(result.totalCount).toBe(1);
+    expect(result.totalErrors).toBe(1);
   });
 
   it('should extract test hierarchy and error message', () => {
@@ -102,7 +102,7 @@ AssertionError: expected undefined to be defined
 
     expect(result.errors).toHaveLength(3);
     expect(result.summary).toBe('3 test failure(s)');
-    expect(result.totalCount).toBe(3);
+    expect(result.totalErrors).toBe(3);
 
     expect(result.errors[0].file).toBe('test/unit/config/environment.test.ts');
     expect(result.errors[1].file).toBe('test/unit/auth/factory.test.ts');
@@ -120,7 +120,7 @@ AssertionError: expected ${i} to be ${i + 1}
 
     const result = extractVitestErrors(failures);
 
-    expect(result.totalCount).toBe(15);
+    expect(result.totalErrors).toBe(15);
     expect(result.errors).toHaveLength(10);
   });
 
@@ -195,7 +195,7 @@ AssertionError: expected 3000 to be 9999
 
     expect(result.errors).toHaveLength(0);
     expect(result.summary).toBe('0 test failure(s)');
-    expect(result.totalCount).toBe(0);
+    expect(result.totalErrors).toBe(0);
   });
 
   it('should handle output with no test failures', () => {
@@ -211,7 +211,7 @@ Test Files  3 passed (3)
     const result = extractVitestErrors(output);
 
     expect(result.errors).toHaveLength(0);
-    expect(result.totalCount).toBe(0);
+    expect(result.totalErrors).toBe(0);
   });
 
   it('should handle Jest output format', () => {
@@ -240,7 +240,7 @@ Test Files  3 passed (3)
     const result = extractVitestErrors(output);
 
     // Should still parse some information even with different format
-    expect(result.totalCount).toBeGreaterThanOrEqual(0);
+    expect(result.totalErrors).toBeGreaterThanOrEqual(0);
   });
 
   it('should format clean output with numbered test list', () => {
@@ -262,5 +262,39 @@ Error: error 2
     expect(result.errorSummary).toContain('[Test 2/2]');
     expect(result.errorSummary).toContain('test/unit/config/environment.test.ts:57:30');
     expect(result.errorSummary).toContain('test/unit/auth/factory.test.ts:100:15');
+  });
+
+  it('should extract coverage threshold failures', () => {
+    const output = `
+ RUN  v2.0.5 /Users/jeff/Workspaces/vibe-validate
+
+ ✓ packages/cli/test/commands/run.test.ts (25) 1234ms
+ ✓ packages/core/test/runner.test.ts (15) 567ms
+ ✓ packages/git/test/tree-hash.test.ts (8) 123ms
+
+ Test Files  1139 passed (1139)
+      Tests  1139 passed (1139)
+   Start at  02:03:02
+   Duration  35.62s (transform 1.23s, setup 0ms, collect 4.56s, tests 23.45s, environment 2.34s, prepare 3.21s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   88.47 |    84.21 |   86.47 |   88.47 |
+-------------------|---------|----------|---------|---------|-------------------
+
+ERROR: Coverage for functions (86.47%) does not meet global threshold (87%)
+    `.trim();
+
+    const result = extractVitestErrors(output);
+
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].file).toBe('vitest.config.ts');
+    expect(result.errors[0].message).toContain('Coverage for functions');
+    expect(result.errors[0].message).toContain('86.47%');
+    expect(result.errors[0].message).toContain('87%');
+    expect(result.totalErrors).toBe(1);
+    expect(result.summary).toBe('1 test failure(s)');
   });
 });

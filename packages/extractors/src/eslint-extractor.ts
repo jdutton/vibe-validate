@@ -7,6 +7,7 @@
  */
 
 import type { ErrorExtractorResult, FormattedError } from './types.js';
+import { MAX_ERRORS_IN_ARRAY } from './result-schema.js';
 
 /**
  * Deduplicate ESLint errors by file:line:column
@@ -121,16 +122,16 @@ export function extractESLintErrors(output: string): ErrorExtractorResult {
   const errorCount = deduplicatedErrors.filter(e => e.severity === 'error').length;
   const warningCount = deduplicatedErrors.filter(e => e.severity === 'warning').length;
 
-  // Build clean output (limit to first 10 for token efficiency)
+  // Build clean output (limit to MAX_ERRORS_IN_ARRAY for token efficiency)
   const errorSummary = deduplicatedErrors
-    .slice(0, 10)
+    .slice(0, MAX_ERRORS_IN_ARRAY)
     .map(e => `${e.file}:${e.line}:${e.column} - ${e.message} [${e.code}]`)
     .join('\n');
 
   return {
-    errors: deduplicatedErrors.slice(0, 10),
+    errors: deduplicatedErrors.slice(0, MAX_ERRORS_IN_ARRAY),
     summary: `${errorCount} ESLint error(s), ${warningCount} warning(s)`,
-    totalCount: deduplicatedErrors.length,
+    totalErrors: deduplicatedErrors.length,
     guidance: getESLintGuidance(deduplicatedErrors),
     errorSummary
   };

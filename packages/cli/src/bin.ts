@@ -185,7 +185,7 @@ function showComprehensiveHelp(program: Command): void {
       whatItDoes: [
         '1. Calculates git tree hash of working directory',
         '2. Checks if hash matches cached state',
-        '3. If match: exits immediately (~288ms)',
+        '3. If match: exits immediately (sub-second)',
         '4. If no match: runs validation pipeline (~60-90s)',
         '5. Caches result for next run'
       ],
@@ -529,7 +529,7 @@ function showComprehensiveHelp(program: Command): void {
 
   console.log('## Caching\n');
   console.log('- **Cache key**: Git tree hash of working directory (includes untracked files)');
-  console.log('- **Cache hit**: Validation skipped (~288ms)');
+  console.log('- **Cache hit**: Validation skipped (sub-second)');
   console.log('- **Cache miss**: Full validation runs (~60-90s)');
   console.log('- **Invalidation**: Any file change (tracked or untracked)\n');
 

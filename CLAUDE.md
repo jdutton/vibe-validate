@@ -199,6 +199,7 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 - Node 20+ target (use modern features)
 - ESM modules (not CommonJS)
 - Explicit return types for public APIs
+- **Type definitions**: All YAML-serializable types MUST be Zod schemas (never manual interfaces). Use `z.infer<>` to derive TypeScript types. Manual interfaces only for non-serializable data (callbacks, functions).
 
 ### Testing
 - **Vitest** for all tests (fast, TypeScript-native)

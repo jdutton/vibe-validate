@@ -7,6 +7,7 @@
  */
 
 import type { ErrorExtractorResult, FormattedError } from './types.js';
+import { MAX_ERRORS_IN_ARRAY } from './result-schema.js';
 
 /**
  * Format TypeScript compiler errors
@@ -64,16 +65,16 @@ export function extractTypeScriptErrors(output: string): ErrorExtractorResult {
   const errorCount = errors.filter(e => e.severity === 'error').length;
   const warningCount = errors.filter(e => e.severity === 'warning').length;
 
-  // Build error summary (limit to first 10 for token efficiency)
+  // Build error summary (limit to MAX_ERRORS_IN_ARRAY for token efficiency)
   const errorSummary = errors
-    .slice(0, 10)
+    .slice(0, MAX_ERRORS_IN_ARRAY)
     .map(e => `${e.file}:${e.line}:${e.column} - ${e.code}: ${e.message}`)
     .join('\n');
 
   return {
-    errors: errors.slice(0, 10),
+    errors: errors.slice(0, MAX_ERRORS_IN_ARRAY),
     summary: `${errorCount} type error(s), ${warningCount} warning(s)`,
-    totalCount: errors.length,
+    totalErrors: errors.length,
     guidance: getTypeScriptGuidance(errors),
     errorSummary
   };

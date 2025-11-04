@@ -224,8 +224,8 @@ export class GitHubActionsProvider implements CIProvider {
       }
 
       return result;
-    } catch (error) {
-      console.debug(`Failed to parse validation YAML: ${error instanceof Error ? error.message : String(error)}`);
+    } catch {
+      // Failed to parse validation YAML - return null
       return null;
     }
   }
@@ -412,7 +412,13 @@ export class GitHubActionsProvider implements CIProvider {
     if (validationResult && !validationResult.passed) {
       // Show concise summary: just the failed step and how to rerun
       if (validationResult.failedStep) {
-        return `Failed step: ${validationResult.failedStep}\nRerun: ${validationResult.rerunCommand ?? 'see full logs'}`;
+        // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+        const failedStep = validationResult.phases
+          ?.flatMap(phase => phase.steps ?? [])
+          .find(step => step && step.name === validationResult.failedStep);
+
+        const rerunCommand = failedStep?.command ?? 'see full logs';
+        return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
       }
     }
 

@@ -16,7 +16,7 @@ The configuration file must be named `vibe-validate.config.yaml` in your project
 # vibe-validate.config.yaml
 
 # JSON Schema for IDE autocomplete and validation
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
 
 # Git integration settings
 git:
@@ -35,7 +35,7 @@ Example with custom validation phases:
 
 ```yaml
 # vibe-validate.config.yaml
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
 
 git:
   mainBranch: main
@@ -631,7 +631,7 @@ Comprehensive configuration with all options:
 
 ```yaml
 # vibe-validate.config.yaml
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
 
 # Git configuration
 git:

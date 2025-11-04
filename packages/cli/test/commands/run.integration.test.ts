@@ -197,9 +197,15 @@ describe('run command integration', () => {
       expect(rootParsed.command).toBe('echo \'root\'');
       expect(subdirParsed.command).toBe('echo \'root\'');
 
-      // Both should have executed (not from same cache due to different workdir)
-      expect(rootParsed.extraction).toBeDefined();
-      expect(subdirParsed.extraction).toBeDefined();
+      // Token optimization: extraction omitted for successful runs with no errors
+      expect(rootParsed.extraction).toBeUndefined();
+      expect(subdirParsed.extraction).toBeUndefined();
+
+      // Both should have executed (verify via timestamp difference or fullOutputFile presence)
+      expect(rootParsed.timestamp).toBeDefined();
+      expect(subdirParsed.timestamp).toBeDefined();
+      expect(rootParsed.fullOutputFile).toBeDefined();
+      expect(subdirParsed.fullOutputFile).toBeDefined();
     });
   });
 

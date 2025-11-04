@@ -66,11 +66,9 @@ export interface ValidationResultContents {
   treeHash?: string;
   /** Name of step that failed */
   failedStep?: string;
-  /** Command to re-run failed step */
-  rerunCommand?: string;
-  /** Output from failed step */
+  /** Output from failed step - DEPRECATED: use step.extraction */
   failedStepOutput?: string;
-  /** Parsed list of test failures (file:line format) */
+  /** Parsed list of test failures (file:line format) - DEPRECATED: use step.extraction */
   failedTests?: string[];
   /** All phases (if available) */
   phases?: Array<{
@@ -80,6 +78,8 @@ export interface ValidationResultContents {
     output?: string; // Output from the phase (if failed)
     steps?: Array<{
       name: string;
+      command?: string; // v0.15.0+
+      exitCode?: number; // v0.15.0+
       passed: boolean;
       durationSecs?: number;
       output?: string;

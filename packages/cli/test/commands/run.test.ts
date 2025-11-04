@@ -200,7 +200,7 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
   });
 
   describe('YAML output', () => {
-    it('should output YAML format with command, exitCode, and extracted errors', async () => {
+    it('should output YAML format with command and exitCode (no extraction for successful runs)', async () => {
       const mockSpawn = vi.mocked(childProcess.spawn);
       const mockProcess = createMockChildProcess('test passed', '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
@@ -222,7 +222,8 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       expect(stdoutCalls).toContain('---\n'); // YAML separator
       expect(stdoutCalls).toContain('command:');
       expect(stdoutCalls).toContain('exitCode:');
-      expect(stdoutCalls).toContain('extraction:');
+      // Token optimization: extraction omitted when exitCode=0 and no errors
+      expect(stdoutCalls).not.toContain('extraction:');
     });
 
     it('should include summary and guidance from extractor', async () => {

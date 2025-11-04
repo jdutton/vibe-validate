@@ -235,7 +235,7 @@ describe.skip('run command caching', () => {
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('packages%2Fcore%3Anpm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('a1b2c3d4e5f6g7h8'); // Mock hash
 
       runCommand(program);
 
@@ -247,7 +247,7 @@ describe.skip('run command caching', () => {
 
       // Verify cache key encoding
       expect(mockEncodeRunCacheKey).toHaveBeenCalledWith('npm test', 'packages/core');
-      expect(mockEncodeRunCacheKey).toHaveReturnedWith('packages%2Fcore%3Anpm%20test');
+      expect(mockEncodeRunCacheKey).toHaveReturnedWith('a1b2c3d4e5f6g7h8');
     });
   });
 
@@ -271,7 +271,7 @@ describe.skip('run command caching', () => {
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -313,7 +313,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -352,7 +352,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -400,7 +400,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -412,7 +412,7 @@ summary: All tests passed
 
       // Verify git notes add was called
       expect(gitNotesAddCalled).toBe(true);
-      expect(gitNotesCommand).toContain('git notes --ref=vibe-validate/run/abc123def456/npm%20test');
+      expect(gitNotesCommand).toContain('git notes --ref=vibe-validate/run/abc123def456/1a2b3c4d5e6f7a8b');
       expect(gitNotesCommand).toContain('add -f');
     });
   });
@@ -456,7 +456,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -487,7 +487,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -525,7 +525,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -537,7 +537,7 @@ summary: All tests passed
 
       // Verify correct ref path: refs/notes/vibe-validate/run/{treeHash}/{encoded-key}
       expect(mockExecSync).toHaveBeenCalledWith(
-        expect.stringContaining('vibe-validate/run/abc123def456/npm%20test'),
+        expect.stringContaining('vibe-validate/run/abc123def456/1a2b3c4d5e6f7a8b'),
         expect.any(Object)
       );
     });
@@ -579,7 +579,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       runCommand(program);
 
@@ -617,7 +617,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       const mockProcessExit = vi.mocked(process.exit);
 
@@ -652,7 +652,7 @@ summary: All tests passed
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
-      mockEncodeRunCacheKey.mockReturnValue('npm%20test');
+      mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
       const mockProcessExit = vi.mocked(process.exit);
 

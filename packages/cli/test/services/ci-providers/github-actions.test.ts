@@ -351,7 +351,7 @@ Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Uni
     });
 
     it('should use concise error summary when validation result is available', () => {
-      // Real CI log with validation result
+      // Real CI log with validation result (v0.15.0+: uses step.command instead of rerunCommand)
       const logs = `
 Some other log lines
 Run validation\tValidate\t2025-10-22T12:37:45.000Z ==========================================
@@ -359,8 +359,12 @@ Run validation\tValidate\t2025-10-22T12:37:45.001Z VALIDATION RESULT
 Run validation\tValidate\t2025-10-22T12:37:45.002Z ==========================================
 Run validation\tValidate\t2025-10-22T12:37:45.003Z passed: false
 Run validation\tValidate\t2025-10-22T12:37:45.004Z failedStep: TypeScript Type Check
-Run validation\tValidate\t2025-10-22T12:37:45.005Z rerunCommand: pnpm typecheck
-Run validation\tValidate\t2025-10-22T12:37:45.006Z ==========================================
+Run validation\tValidate\t2025-10-22T12:37:45.005Z phases:
+Run validation\tValidate\t2025-10-22T12:37:45.006Z   - name: Pre-Qualification
+Run validation\tValidate\t2025-10-22T12:37:45.007Z     steps:
+Run validation\tValidate\t2025-10-22T12:37:45.008Z       - name: TypeScript Type Check
+Run validation\tValidate\t2025-10-22T12:37:45.009Z         command: pnpm typecheck
+Run validation\tValidate\t2025-10-22T12:37:45.010Z ==========================================
 ##[error]Process completed with exit code 1.
 `;
 

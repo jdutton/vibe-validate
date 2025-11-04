@@ -4,6 +4,14 @@
     "RunResult": {
       "type": "object",
       "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "treeHash": {
+          "type": "string",
+          "minLength": 1
+        },
         "command": {
           "type": "string",
           "minLength": 1
@@ -11,18 +19,8 @@
         "exitCode": {
           "type": "integer"
         },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "fullOutputFile": {
-          "type": "string"
-        },
-        "isCachedResult": {
-          "type": "boolean"
-        },
-        "suggestedDirectCommand": {
-          "type": "string"
+        "durationSecs": {
+          "type": "number"
         },
         "extraction": {
           "type": "object",
@@ -30,12 +28,9 @@
             "summary": {
               "type": "string"
             },
-            "totalCount": {
+            "totalErrors": {
               "type": "integer",
               "minimum": 0
-            },
-            "guidance": {
-              "type": "string"
             },
             "errors": {
               "type": "array",
@@ -78,6 +73,12 @@
                 ],
                 "additionalProperties": false
               }
+            },
+            "guidance": {
+              "type": "string"
+            },
+            "errorSummary": {
+              "type": "string"
             },
             "metadata": {
               "type": "object",
@@ -140,25 +141,31 @@
                 "issues"
               ],
               "additionalProperties": false
-            },
-            "errorSummary": {
-              "type": "string"
             }
           },
           "required": [
             "summary",
-            "totalCount",
-            "errors",
-            "errorSummary"
+            "totalErrors",
+            "errors"
           ],
           "additionalProperties": false
+        },
+        "fullOutputFile": {
+          "type": "string"
+        },
+        "isCachedResult": {
+          "type": "boolean"
+        },
+        "suggestedDirectCommand": {
+          "type": "string"
         }
       },
       "required": [
+        "timestamp",
+        "treeHash",
         "command",
         "exitCode",
-        "timestamp",
-        "extraction"
+        "durationSecs"
       ],
       "additionalProperties": true
     }

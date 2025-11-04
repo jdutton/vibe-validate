@@ -338,6 +338,167 @@ describe('history command', () => {
       expect(getAllRunCacheEntries).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
     });
+
+    it('should filter run cache entries by command pattern with --run <command>', async () => {
+      const mockRunCacheEntries = [
+        {
+          treeHash: 'abc123',
+          command: 'pnpm test',
+          workdir: '',
+          timestamp: '2025-11-02T12:00:00.000Z',
+          exitCode: 0,
+          duration: 5000,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalCount: 0,
+            errorSummary: '',
+          },
+        },
+        {
+          treeHash: 'def456',
+          command: 'pnpm lint',
+          workdir: 'packages/cli',
+          timestamp: '2025-11-02T13:00:00.000Z',
+          exitCode: 1,
+          duration: 3000,
+          extraction: {
+            errors: [{ file: 'test.ts', line: 10, message: 'Unused variable' }],
+            summary: '1 lint error',
+            totalCount: 1,
+            errorSummary: 'test.ts:10 - Unused variable',
+          },
+        },
+        {
+          treeHash: 'ghi789',
+          command: 'vitest run',
+          workdir: '',
+          timestamp: '2025-11-02T14:00:00.000Z',
+          exitCode: 0,
+          duration: 2000,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalCount: 0,
+            errorSummary: '',
+          },
+        },
+      ];
+
+      const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
+      vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
+
+      historyCommand(program);
+
+      await program.parseAsync(['history', 'list', '--run', 'test'], { from: 'user' });
+
+      expect(getAllRunCacheEntries).toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalled();
+      // Should only show entries matching "test" (pnpm test, vitest run)
+    });
+
+    it('should show all run cache entries with --run --all', async () => {
+      const mockRunCacheEntries = [
+        {
+          treeHash: 'abc123',
+          command: 'pnpm test',
+          workdir: '',
+          timestamp: '2025-11-02T12:00:00.000Z',
+          exitCode: 0,
+          duration: 5000,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalCount: 0,
+            errorSummary: '',
+          },
+        },
+      ];
+
+      const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
+      vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
+
+      historyCommand(program);
+
+      await program.parseAsync(['history', 'list', '--run', '--all'], { from: 'user' });
+
+      expect(getAllRunCacheEntries).toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalled();
+    });
+
+    it('should show error when --all is used without --run', async () => {
+      historyCommand(program);
+
+      // Mock getAllHistoryNotes to avoid actual git operations
+      vi.mocked(history.getAllHistoryNotes).mockResolvedValue([]);
+
+      // Mock process.exit to prevent test from actually exiting
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
+        throw new Error(`process.exit(${code})`);
+      });
+
+      try {
+        await program.parseAsync(['history', 'list', '--all'], { from: 'user' });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
+
+      expect(console.error).toHaveBeenCalledWith('Error: --all option requires --run flag');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      exitSpy.mockRestore();
+    });
+
+    it('should show error when --all is used with command filter', async () => {
+      historyCommand(program);
+
+      // Mock process.exit to prevent test from actually exiting
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
+        throw new Error(`process.exit(${code})`);
+      });
+
+      try {
+        await program.parseAsync(['history', 'list', '--run', 'test', '--all'], { from: 'user' });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
+
+      expect(console.error).toHaveBeenCalledWith('Error: Cannot use --all with a command filter');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      exitSpy.mockRestore();
+    });
+
+    it('should show helpful message when no matches found for command filter', async () => {
+      const mockRunCacheEntries = [
+        {
+          treeHash: 'abc123',
+          command: 'pnpm test',
+          workdir: '',
+          timestamp: '2025-11-02T12:00:00.000Z',
+          exitCode: 0,
+          duration: 5000,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalCount: 0,
+            errorSummary: '',
+          },
+        },
+      ];
+
+      const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
+      vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
+
+      historyCommand(program);
+
+      await program.parseAsync(['history', 'list', '--run', 'nonexistent'], { from: 'user' });
+
+      expect(getAllRunCacheEntries).toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalledWith('No run cache entries found matching command: nonexistent');
+    });
   });
 
   describe('history show', () => {

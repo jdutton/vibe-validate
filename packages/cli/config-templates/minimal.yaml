@@ -14,7 +14,7 @@
 # Learn more: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
 # ============================================================================
 
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
 
 # Git settings
 git:

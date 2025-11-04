@@ -165,7 +165,103 @@ runs:
 
 ---
 
-### 4. Worktree Stability Check
+### 4. Run Command Caching (v0.15.0+)
+
+**Purpose**: Cache individual command execution results to avoid re-running expensive operations
+
+**Storage mechanism**: Git notes with compound keys (tree hash + command hash)
+
+```bash
+# Git notes ref structure
+refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
+
+# Example
+refs/notes/vibe-validate/run/8199e455b81cfb7a050d92c7dc8f7a3422578bfc/2370514eb8a22112
+                                      └──────── tree hash (40 chars) ─────────┘ └─ cache key (16 chars) ─┘
+```
+
+**Cache key generation**:
+
+1. **Input**: `command__workdir`
+   - Command: Normalized command string (collapsed spaces for simple commands, preserved for complex)
+   - Workdir: Working directory relative to git root (empty string for root)
+   - Separator: Double underscore `__`
+
+2. **Hashing**: SHA256 hash of input, first 16 characters
+   ```typescript
+   cacheKey = SHA256(normalizedCommand + '__' + workdir).substring(0, 16)
+   ```
+
+3. **Examples**:
+   ```bash
+   # Simple command at root
+   command: "npm test"
+   workdir: ""
+   input: "npm test__"
+   cacheKey: "a7d32686b0f7c36e" (SHA256 first 16 chars)
+
+   # Command with workdir
+   command: "npx vitest"
+   workdir: "packages/cli"
+   input: "npx vitest__packages/cli"
+   cacheKey: "3f8b9c1d4e2a5f7c"
+
+   # Complex command (spaces preserved in quotes)
+   command: 'echo "hello  world"'
+   workdir: ""
+   input: 'echo "hello  world"__'
+   cacheKey: "9e7d5c3a1b4f6e8d"
+   ```
+
+**Why hash instead of URL encoding?**
+
+Git refuses ref names containing `%` characters. URL encoding produces `%20`, `%3A`, etc., causing:
+```
+fatal: refusing to update ref with bad name 'refs/notes/.../npm%20test'
+```
+
+SHA256 hash avoids this limitation while remaining deterministic.
+
+**Cache note structure** (YAML):
+
+```yaml
+# Git note: refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
+
+treeHash: "8199e455b81cfb7a050d92c7dc8f7a3422578bfc"
+command: "npx eslint --max-warnings=0 \"packages/**/*.ts\""
+workdir: ""
+timestamp: "2025-11-04T01:40:13.274Z"
+exitCode: 0
+duration: 0  # Milliseconds (0 for cached results)
+fullOutputFile: "/tmp/vibe-validate-run-.../run-2025-11-04T01-40-13-240Z.log"
+
+# Optional: Only included when exitCode !== 0 OR errors detected
+extraction:
+  errors:
+    - file: "packages/cli/src/run.ts"
+      line: 42
+      message: "Type 'string' is not assignable to type 'number'"
+  summary: "1 type error"
+  totalErrors: 1
+```
+
+**Cache invalidation**: Automatic when tree hash changes (different code → different cache key path)
+
+**Collision probability**: 2^64 possible keys per tree hash (negligible collision risk in practice)
+
+**Storage optimization** (v0.15.0+):
+- Omit `extraction` field when `exitCode === 0` AND `totalErrors === 0`
+- Token savings: ~90% reduction for successful runs (500 tokens → 50 tokens)
+
+**Benefits**:
+- ✅ Fast cache hits: Sub-millisecond retrieval vs. seconds of re-execution
+- ✅ Workdir-aware: Different directories can have different cached results for same command
+- ✅ Git-native: No external database or state files
+- ✅ Automatic cleanup: Stale caches naturally pruned when tree hash changes
+
+---
+
+### 5. Worktree Stability Check
 
 **Challenge**: Code can change during validation (user edits, git operations)
 

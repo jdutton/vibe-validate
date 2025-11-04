@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
-import { spawnCommand } from '@vibe-validate/core';
+import { spawnCommand, parseVibeValidateOutput } from '@vibe-validate/core';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import yaml from 'yaml';
 
@@ -172,13 +172,20 @@ async function tryGetCachedResult(commandString: string): Promise<RunResult | nu
     // Parse cached note
     const cachedNote = yaml.parse(noteContent) as RunCacheNote;
 
+    // Migration: v0.14.x cached notes used 'duration' (ms), v0.15.0+ uses 'durationSecs' (s)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const durationSecs = cachedNote.durationSecs ?? ((cachedNote as any).duration ? (cachedNote as any).duration / 1000 : 0);
+
     // Convert to RunResult format (mark as cached)
     const result: RunResult = {
       command: commandString,
       exitCode: cachedNote.exitCode,
+      durationSecs,
       timestamp: cachedNote.timestamp,
+      treeHash: cachedNote.treeHash,
       extraction: cachedNote.extraction,
       fullOutputFile: cachedNote.fullOutputFile,
+      suggestedDirectCommand: cachedNote.suggestedDirectCommand,
       isCachedResult: true, // Mark as cache hit
     };
 
@@ -213,16 +220,18 @@ async function storeCacheResult(commandString: string, result: RunResult): Promi
     // Construct git notes ref path
     const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
 
-    // Build cache note with full extraction
+    // Build cache note (extraction already cleaned in runner)
+    // Token optimization: Only include extraction when exitCode !== 0 OR there are actual errors
     const cacheNote: RunCacheNote = {
       treeHash,
       command: commandString,
       workdir,
       timestamp: result.timestamp,
       exitCode: result.exitCode,
-      duration: 0, // Duration not tracked for cached results
-      extraction: result.extraction,
+      durationSecs: result.durationSecs,
+      ...(result.extraction ? { extraction: result.extraction } : {}), // Conditionally include extraction
       fullOutputFile: result.fullOutputFile,
+      suggestedDirectCommand: result.suggestedDirectCommand,
     };
 
     // Store in git notes using heredoc to avoid quote escaping issues
@@ -237,9 +246,9 @@ async function storeCacheResult(commandString: string, result: RunResult): Promi
           shell: '/bin/bash', // Ensure bash for heredoc support
         }
       );
-    // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Note creation failure is non-critical, cache is optional
+    // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical
     } catch (_error) {
-      // Ignore errors (note might already exist or not in git repo)
+      // Cache storage failed - not critical, continue
     }
   // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical, continue execution
   } catch (_error) {
@@ -255,6 +264,7 @@ async function executeAndExtract(commandString: string): Promise<{
   context: { preamble: string; stderr: string };
 }> {
   return new Promise((resolve, reject) => {
+    const startTime = Date.now();
     const child = spawnCommand(commandString);
 
     let stdout = '';
@@ -274,11 +284,13 @@ async function executeAndExtract(commandString: string): Promise<{
 
     // Handle process exit
     child.on('close', (exitCode: number = 1) => {
+      const durationSecs = (Date.now() - startTime) / 1000;
+
       // CRITICAL: Check ONLY stdout for YAML (not stderr)
       // This prevents stderr warnings from corrupting nested YAML output
       const yamlResult = extractYamlWithPreamble(stdout);
       if (yamlResult) {
-        const mergedResult = mergeNestedYaml(commandString, yamlResult.yaml, exitCode);
+        const mergedResult = mergeNestedYaml(commandString, yamlResult.yaml, exitCode, durationSecs);
 
         // Include preamble and stderr for context
         const contextOutput = {
@@ -308,17 +320,39 @@ async function executeAndExtract(commandString: string): Promise<{
       }
 
       // Extract errors using smart extractor (output-based detection)
-      const extraction = autoDetectAndExtract(combinedOutput);
+      // Token optimization: Only extract when exitCode !== 0 OR there are actual errors
+      const rawExtraction = autoDetectAndExtract(combinedOutput);
+      const extraction = (exitCode !== 0 || rawExtraction.totalErrors > 0) ? rawExtraction : undefined;
 
-      const result: RunResult = {
-        command: commandString,
-        exitCode,
-        timestamp: new Date().toISOString(),
-        extraction,
-        fullOutputFile,
-      };
+      // Get tree hash for result (async operation needs to be awaited)
+      getGitTreeHash()
+        .then(treeHash => {
+          const result: RunResult = {
+            command: commandString,
+            exitCode,
+            durationSecs,
+            timestamp: new Date().toISOString(),
+            treeHash,
+            ...(extraction ? { extraction } : {}), // Only include extraction if needed
+            fullOutputFile,
+          };
 
-      resolve({ result, context: { preamble: '', stderr: '' } });
+          resolve({ result, context: { preamble: '', stderr: '' } });
+        })
+        .catch(() => {
+          // If tree hash fails, use fallback (shouldn't happen in practice)
+          const result: RunResult = {
+            command: commandString,
+            exitCode,
+            durationSecs,
+            timestamp: new Date().toISOString(),
+            treeHash: 'unknown',
+            ...(extraction ? { extraction } : {}), // Only include extraction if needed
+            fullOutputFile,
+          };
+
+          resolve({ result, context: { preamble: '', stderr: '' } });
+        });
     });
 
     // Handle spawn errors (e.g., command not found)
@@ -346,59 +380,65 @@ async function executeAndExtract(commandString: string): Promise<{
 function mergeNestedYaml(
   outerCommand: string,
   yamlOutput: string,
-  outerExitCode: number
+  outerExitCode: number,
+  outerDurationSecs: number
 ): RunResult {
   try {
-    // Parse the inner YAML
+    // Always parse the raw YAML first to preserve all fields
     const innerResult = yaml.parse(yamlOutput);
 
-    // Extract the innermost command for suggestedDirectCommand
-    const innermostCommand = extractInnermostCommand(innerResult);
+    // Try parsing as vibe-validate output using shared parser
+    const parsed = parseVibeValidateOutput(yamlOutput);
 
-    // Merge: preserve ALL inner fields, add outer metadata
-    const mergedResult: RunResult = {
-      ...innerResult, // Spread ALL inner fields (errors, phases, tree_hash, etc.)
-      command: outerCommand, // Override with outer command
-      exitCode: outerExitCode, // Use outer exit code (should match inner)
-      suggestedDirectCommand: innermostCommand, // Add suggestion
+    if (parsed) {
+      // Successfully parsed nested vibe-validate output
+      // Spread all inner fields to preserve custom fields (rawOutput, customField, etc.)
+      // Then override with outer metadata and parsed information
+      return {
+        ...innerResult, // Preserve ALL inner fields
+        command: outerCommand, // Override with outer command
+        exitCode: outerExitCode, // Override with outer exit code
+        durationSecs: outerDurationSecs, // Override with outer duration
+        timestamp: parsed.timestamp ?? innerResult.timestamp ?? new Date().toISOString(),
+        treeHash: parsed.treeHash ?? innerResult.treeHash ?? 'unknown',
+        extraction: parsed.extraction, // Use parsed extraction
+        suggestedDirectCommand: parsed.suggestedDirectCommand, // Add suggested command
+        ...(parsed.isCachedResult !== undefined ? { isCachedResult: parsed.isCachedResult } : {}),
+        ...(parsed.fullOutputFile ? { fullOutputFile: parsed.fullOutputFile } : {}),
+      };
+    }
+
+    // Not a recognized vibe-validate format - spread all fields and add suggestedDirectCommand
+    // Use innerResult.command if valid, otherwise 'unknown' (not outerCommand)
+    const suggestedDirectCommand = (innerResult.command && typeof innerResult.command === 'string')
+      ? innerResult.command
+      : 'unknown';
+
+    return {
+      ...innerResult,
+      command: outerCommand,
+      exitCode: outerExitCode,
+      durationSecs: outerDurationSecs,
+      suggestedDirectCommand,
     };
 
-    return mergedResult;
   } catch (error) {
-    // If YAML parsing fails, treat as regular output
+    // YAML parsing completely failed - treat as regular output
     console.error('Warning: Failed to parse nested YAML output:', error);
 
-    const extraction = autoDetectAndExtract(yamlOutput);
+    // Token optimization: Only extract when exitCode !== 0 OR there are actual errors
+    const rawExtraction = autoDetectAndExtract(yamlOutput);
+    const extraction = (outerExitCode !== 0 || rawExtraction.totalErrors > 0) ? rawExtraction : undefined;
 
     return {
       command: outerCommand,
       exitCode: outerExitCode,
+      durationSecs: outerDurationSecs,
       timestamp: new Date().toISOString(),
-      extraction,
+      treeHash: 'unknown',
+      ...(extraction ? { extraction } : {}), // Only include extraction if needed
     };
   }
-}
-
-/**
- * Extract the innermost command from nested run results
- *
- * Examples:
- * - { command: "npm test" } → "npm test"
- * - { command: "...", suggestedDirectCommand: "npm test" } → "npm test"
- * - { command: "vibe-validate validate" } → "vibe-validate validate"
- */
-function extractInnermostCommand(result: Record<string, unknown>): string {
-  // If already has suggestedDirectCommand, use it (handles 3+ levels)
-  if (result.suggestedDirectCommand && typeof result.suggestedDirectCommand === 'string') {
-    return result.suggestedDirectCommand;
-  }
-
-  // Otherwise, use the command from the inner result
-  if (result.command && typeof result.command === 'string') {
-    return result.command;
-  }
-
-  return 'unknown';
 }
 
 /**

@@ -7,7 +7,7 @@
  * @example Basic YAML configuration
  * ```yaml
  * # vibe-validate.config.yaml
- * $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+ * $schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
  *
  * git:
  *   mainBranch: main

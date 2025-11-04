@@ -45,16 +45,24 @@
  * @packageDocumentation
  */
 
-// Export all types
+// Export configuration types (Zod-inferred from @vibe-validate/config)
 export type {
   ValidationStep,
   ValidationPhase,
-  ValidationConfig,
+} from '@vibe-validate/config';
+
+// Export result types (Zod-inferred from result-schema)
+export type {
   ValidationResult,
   StepResult,
   PhaseResult,
+} from './result-schema.js';
+
+// Export runtime types (from runner.ts - non-serializable)
+export type {
+  ValidationConfig,
   ExtractionQuality,
-} from './types.js';
+} from './runner.js';
 
 // Export core runner functions
 export {
@@ -75,12 +83,26 @@ export {
   ValidationResultSchema,
   StepResultSchema,
   PhaseResultSchema,
+  CommandExecutionSchema,
+  OperationMetadataSchema,
   safeValidateResult,
   validateResult,
 } from './result-schema.js';
+
+// Export shared schema utilities
+export {
+  createSafeValidator,
+  createStrictValidator,
+} from './schema-utils.js';
 
 // Export JSON Schema generation
 export {
   validationResultJsonSchema,
   generateValidationResultJsonSchema,
 } from './result-schema-export.js';
+
+// Export run output parser (shared by run command and phase runner)
+export {
+  parseVibeValidateOutput,
+  type ParsedVibeValidateOutput,
+} from './run-output-parser.js';

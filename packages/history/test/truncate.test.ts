@@ -68,21 +68,21 @@ describe('truncateValidationOutput', () => {
     expect(output.startsWith('a'.repeat(10))).toBe(true);
   });
 
-  it('should truncate failedStepOutput', () => {
-    const longOutput = 'b'.repeat(15000);
-
+  it('should not fail on ValidationResult without deprecated fields', () => {
+    // Test that truncation works with new schema (no failedStepOutput field)
     const result: ValidationResult = {
       passed: false,
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash: 'abc123',
+      summary: 'Validation failed',
       failedStep: 'unit-tests',
-      failedStepOutput: longOutput,
     };
 
     const truncated = truncateValidationOutput(result, 10000);
 
-    expect(truncated.failedStepOutput!.length).toBeLessThan(longOutput.length);
-    expect(truncated.failedStepOutput).toContain('[... truncated 5000 bytes]');
+    // Should succeed without errors
+    expect(truncated.passed).toBe(false);
+    expect(truncated.failedStep).toBe('unit-tests');
   });
 
   it('should not mutate original result', () => {

@@ -7,6 +7,7 @@
  */
 
 import type { ErrorExtractorResult, ExtractionMetadata } from './types.js';
+import { MAX_ERRORS_IN_ARRAY } from './result-schema.js';
 
 /**
  * Options for error extraction
@@ -256,7 +257,7 @@ function formatFailuresOutput(
   actual?: string
 ): string {
   return failures
-    .slice(0, 10)
+    .slice(0, MAX_ERRORS_IN_ARRAY)
     .map((f, idx) => {
       const parts = [
         `[Test ${idx + 1}/${failures.length}] ${f.location ?? f.file}`,
@@ -344,6 +345,30 @@ function extractRuntimeError(output: string): TestFailure | null {
 }
 
 /**
+ * Extract coverage threshold failures
+ *
+ * @param output - Full test output
+ * @returns Test failure object if coverage threshold error found
+ */
+function extractCoverageThresholdError(output: string): TestFailure | null {
+  // Look for: "ERROR: Coverage for functions (86.47%) does not meet global threshold (87%)"
+  const coverageMatch = /ERROR:\s+Coverage for (\w+) \(([\d.]+)%\) does not meet (?:global )?threshold \(([\d.]+)%\)/.exec(output);
+  if (!coverageMatch) {
+    return null;
+  }
+
+  const [, metric, actual, expected] = coverageMatch;
+
+  return {
+    file: 'vitest.config.ts',
+    location: '',
+    testHierarchy: 'Coverage Threshold',
+    errorMessage: `Coverage for ${metric} (${actual}%) does not meet threshold (${expected}%)`,
+    sourceLine: ''
+  };
+}
+
+/**
  * Format Vitest test failures
  *
  * Extracts:
@@ -379,6 +404,12 @@ export function extractVitestErrors(
   const runtimeError = extractRuntimeError(output);
   if (runtimeError) {
     failures.push(runtimeError);
+  }
+
+  // Check for coverage threshold failures
+  const coverageError = extractCoverageThresholdError(output);
+  if (coverageError) {
+    failures.push(coverageError);
   }
 
   let i = -1;
@@ -448,7 +479,7 @@ export function extractVitestErrors(
   const guidance = generateGuidanceText(failures.length, expected, actual);
 
   const result: ErrorExtractorResult = {
-    errors: failures.slice(0, 10).map(f => {
+    errors: failures.slice(0, MAX_ERRORS_IN_ARRAY).map(f => {
       // Parse line:column from end of location string (file paths may contain colons)
       let line: number | undefined;
       let column: number | undefined;
@@ -468,7 +499,7 @@ export function extractVitestErrors(
       };
     }),
     summary: `${failures.length} test failure(s)`,
-    totalCount: failures.length,
+    totalErrors: failures.length,
     guidance,
     errorSummary
   };

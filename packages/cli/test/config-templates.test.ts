@@ -53,7 +53,7 @@ describe('config-templates/', () => {
         it('should have JSON Schema reference', () => {
           const content = readFileSync(filePath, 'utf-8');
           expect(content).toContain('$schema:');
-          expect(content).toContain('vibe-validate.schema.json');
+          expect(content).toContain('config.schema.json');
         });
 
         it('should pass strict config validation (no unknown properties)', () => {

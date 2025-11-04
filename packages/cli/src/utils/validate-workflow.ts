@@ -85,8 +85,13 @@ async function checkCache(
         .find(run => run.passed);
 
       if (passingRun) {
+        // Mark result as from cache (BEFORE output to ensure it's visible)
+        const result = passingRun.result as ValidationResult & { _fromCache?: boolean };
+        result._fromCache = true;       // Internal flag for testing
+        result.isCachedResult = true;   // Schema field for user visibility (v0.15.0+)
+
         if (yaml) {
-          await outputYaml(passingRun.result);
+          await outputYaml(result);
         } else {
           const durationSecs = (passingRun.duration / 1000).toFixed(1);
           console.log(chalk.green('✅ Validation already passed for current working tree'));
@@ -101,15 +106,11 @@ async function checkCache(
           }
         }
 
-        // Mark result as from cache
-        const result = passingRun.result as ValidationResult & { _fromCache?: boolean };
-        result._fromCache = true;
         return result;
       }
     }
-  } catch (error) {
+  } catch {
     // Cache check failed - proceed with validation
-    console.debug(`Cache check failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   return null;
@@ -167,8 +168,14 @@ async function recordHistory(
  */
 function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig): void {
   console.error(chalk.blue('\n📋 View error details:'), chalk.white('vibe-validate state'));
-  if (result.rerunCommand) {
-    console.error(chalk.blue('🔄 To retry:'), chalk.white(result.rerunCommand));
+
+  // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+  const failedStep = result.phases
+    ?.flatMap(phase => phase.steps)
+    .find(step => step.name === result.failedStep);
+
+  if (failedStep?.command) {
+    console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));
   }
   if (result.fullLogFile) {
     console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
@@ -178,7 +185,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   if (config.developerFeedback) {
     const poorExtractionSteps = result.phases
       ?.flatMap(phase => phase.steps)
-      .filter(step => !step.passed && step.extractionQuality && step.extractionQuality.score < 50);
+      .filter(step => !step.passed && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
 
     if (poorExtractionSteps && poorExtractionSteps.length > 0) {
       const isDogfooding = process.cwd().includes('vibe-validate');

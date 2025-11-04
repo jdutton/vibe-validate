@@ -63,8 +63,8 @@ export async function findAndLoadConfig(
 
   try {
     return await loadConfigFromFile(configPath);
-  } catch (err) {
-    console.debug(`Failed to load config from ${configPath}: ${err instanceof Error ? err.message : String(err)}`);
+  } catch {
+    // Config file doesn't exist or failed to load - return undefined
     return undefined;
   }
 }

@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { extractGenericErrors } from '../src/generic-extractor.js';
+import { expectValidExtractorResult, expectValidExtractorResultWithCount } from './test-helpers.js';
 
 describe('Generic Extractor', () => {
   describe('Python pytest output', () => {
@@ -401,6 +402,34 @@ SyntaxError in script.rb:33
     });
   });
 
+  describe('Data integrity', () => {
+    it('should always have totalCount equal to errors.length', () => {
+      // Test case 1: Output with error keyword "fail"
+      const outputWithFailKeyword = 'fail you suck';
+      const result1 = extractGenericErrors(outputWithFailKeyword);
+
+      expectValidExtractorResultWithCount(result1, 0);
+      expect(result1.errors).toEqual([]); // Generic extractor doesn't populate errors array
+
+      // Test case 2: Output with multiple error keywords
+      const outputWithMultipleErrors = `
+FAILED tests/test_foo.py::test_division
+Error: Something went wrong
+Exception occurred
+`.trim();
+      const result2 = extractGenericErrors(outputWithMultipleErrors);
+
+      expectValidExtractorResult(result2);
+      expect(result2.totalErrors).toBe(result2.errors.length);
+
+      // Test case 3: Clean output
+      const cleanOutput = 'All tests passed';
+      const result3 = extractGenericErrors(cleanOutput);
+
+      expectValidExtractorResultWithCount(result3, 0);
+    });
+  });
+
   describe('Success scenarios (no errors)', () => {
     it('should return totalCount 0 for clean output with no error keywords', () => {
       const cleanOutput = `
@@ -412,7 +441,7 @@ No issues found
 
       const result = extractGenericErrors(cleanOutput);
 
-      expect(result.totalCount).toBe(0);
+      expect(result.totalErrors).toBe(0);
       expect(result.summary).toBe('No errors detected');
       expect(result.guidance).toBe('');
       expect(result.errors).toEqual([]);
@@ -423,7 +452,7 @@ No issues found
     it('should return totalCount 0 for empty output', () => {
       const result = extractGenericErrors('');
 
-      expect(result.totalCount).toBe(0);
+      expect(result.totalErrors).toBe(0);
       expect(result.summary).toBe('No errors detected');
       expect(result.guidance).toBe('');
     });
@@ -437,11 +466,11 @@ No issues found
 
       const result = extractGenericErrors(eslintSuccess);
 
-      expect(result.totalCount).toBe(0);
+      expect(result.totalErrors).toBe(0);
       expect(result.summary).toBe('No errors detected');
     });
 
-    it('should return totalCount 1 when error keywords are present', () => {
+    it('should return totalCount 0 when error keywords are present (generic extractor doesnt populate errors array)', () => {
       const outputWithErrors = `
 FAILED tests/test_foo.py::test_division
 AssertionError: Expected 1, got 0
@@ -449,7 +478,10 @@ AssertionError: Expected 1, got 0
 
       const result = extractGenericErrors(outputWithErrors);
 
-      expect(result.totalCount).toBe(1);
+      // Generic extractor doesn't populate errors array, so totalCount is always 0
+      // Error details are captured in errorSummary only
+      expect(result.totalErrors).toBe(0);
+      expect(result.errors).toEqual([]);
       expect(result.summary).toBe('Command failed - see output');
       expect(result.guidance).toBe('Review the output above and fix the errors');
       expect(result.errorSummary).toContain('FAILED');

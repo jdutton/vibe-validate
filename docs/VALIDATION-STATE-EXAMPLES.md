@@ -85,9 +85,13 @@ phases:
     passed: true
     steps:
       - name: "TypeScript Type Check"
+        command: "pnpm -r typecheck"
+        exitCode: 0
         passed: true
         durationSecs: 0.7
       - name: "ESLint Code Quality"
+        command: "pnpm lint"
+        exitCode: 0
         passed: true
         durationSecs: 1.1
   - name: "Testing"
@@ -95,6 +99,8 @@ phases:
     passed: false
     steps:
       - name: "Unit Tests with Coverage"
+        command: "pnpm test:coverage"
+        exitCode: 1
         passed: false
         durationSecs: 26.1
     output: "Test failure output here"
@@ -120,9 +126,13 @@ phases:
     passed: true
     steps:
       - name: "TypeScript Type Check"
+        command: "pnpm -r typecheck"
+        exitCode: 0
         passed: true
         durationSecs: 0.8
       - name: "ESLint Code Quality"
+        command: "pnpm lint"
+        exitCode: 0
         passed: true
         durationSecs: 0.9
   - name: "Testing"
@@ -130,6 +140,8 @@ phases:
     passed: true
     steps:
       - name: "Unit Tests"
+        command: "pnpm test"
+        exitCode: 0
         passed: true
         durationSecs: 15.3
 ```
@@ -168,7 +180,7 @@ rerunCommand: "pnpm typecheck"
 ## Schema Validation
 
 All examples tagged with `validation-result:example` are automatically validated against the JSON Schema:
-- **Schema location**: `packages/core/validation-result.schema.json`
+- **Schema location**: `packages/core/validate-result.schema.json`
 - **Validation test**: `packages/core/test/result-schema.test.ts`
 - **Documentation test**: `packages/core/test/markdown-examples-validation.test.ts`
 
@@ -261,5 +273,5 @@ validation:
 - [Agent Integration Guide](./agent-integration-guide.md)
 - [CLI Reference](./cli-reference.md)
 - [Configuration Reference](./configuration-reference.md)
-- [Validation Result Schema](../packages/core/validation-result.schema.json)
-- [Config Schema](../packages/config/vibe-validate.schema.json)
+- [Validation Result Schema](../packages/core/validate-result.schema.json)
+- [Config Schema](../packages/config/config.schema.json)

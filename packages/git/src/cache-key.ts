@@ -4,6 +4,8 @@
  * Generates deterministic cache keys for storing command execution results in git notes.
  */
 
+import { createHash } from 'node:crypto';
+
 /**
  * Shell metacharacters that indicate a "complex" command where internal spacing should be preserved
  */
@@ -45,30 +47,30 @@ function normalizeWhitespace(str: string): string {
  * - For complex commands (has quotes, escapes, etc.): preserve internal spacing
  *
  * Format:
- * - Root directory: `command`
- * - Subdirectory: `workdir:command`
+ * - SHA256 hash of `command__workdir` (first 16 chars for brevity)
+ * - Examples: `85ac6127576393ac` (for command+workdir combination)
  *
  * @param command - The command to run (e.g., "npm test")
  * @param workdir - Working directory relative to git root ("" for root, "packages/cli" for subdirectory)
- * @returns Encoded cache key suitable for use in git ref paths
+ * @returns SHA256 hash (first 16 chars) suitable for use in git ref paths
  *
  * @example
  * ```ts
  * // Simple command at root
  * encodeRunCacheKey('npm test', '')
- * // → encodeURIComponent('npm test')
+ * // → SHA256('npm test__')[:16]
  *
  * // Command with workdir
  * encodeRunCacheKey('npm test', 'packages/cli')
- * // → encodeURIComponent('packages/cli:npm test')
+ * // → SHA256('npm test__packages/cli')[:16]
  *
- * // Whitespace normalization
+ * // Whitespace normalization (simple commands)
  * encodeRunCacheKey('  npm  test  ', '')
- * // → encodeURIComponent('npm test')
+ * // → SHA256('npm test__')[:16]
  *
  * // Complex command (preserve internal spacing)
  * encodeRunCacheKey('echo "hello  world"', '')
- * // → encodeURIComponent('echo "hello  world"')
+ * // → SHA256('echo "hello  world"__')[:16]
  * ```
  */
 export function encodeRunCacheKey(command: string, workdir: string): string {
@@ -86,11 +88,10 @@ export function encodeRunCacheKey(command: string, workdir: string): string {
     ? trimmedCommand
     : normalizeWhitespace(trimmedCommand);
 
-  // Construct cache key
-  const cacheKey = trimmedWorkdir
-    ? `${trimmedWorkdir}:${normalizedCommand}`
-    : normalizedCommand;
+  // Construct cache key input (command__workdir)
+  const cacheKeyInput = `${normalizedCommand}__${trimmedWorkdir}`;
 
-  // Encode for safe use in git ref paths
-  return encodeURIComponent(cacheKey);
+  // Hash for safe use in git ref paths (URL encoding produces % which git rejects)
+  // Use first 16 chars for brevity while maintaining uniqueness
+  return createHash('sha256').update(cacheKeyInput).digest('hex').substring(0, 16);
 }

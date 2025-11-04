@@ -212,7 +212,7 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 
 1. **Calculates git tree hash** of working directory (includes all tracked and untracked files)
 2. **Checks if hash matches cached state** (from previous run)
-3. **If match:** Exits immediately with cached result (~288ms)
+3. **If match:** Exits immediately with cached result (sub-second)
 4. **If no match:** Runs validation pipeline (~60-90s depending on your project)
 5. **Caches result** in git notes for next run
 6. **Records history** for analysis via \`vibe-validate history\`
@@ -258,7 +258,7 @@ vibe-validate validate --verbose --yaml
 
 ### Cache Hit
 - Validation result found for current tree hash
-- Exits in ~288ms
+- Exits in sub-second time
 - Shows: "✓ Validation already passed for tree <hash>"
 
 ### Cache Miss
@@ -344,7 +344,7 @@ vibe-validate state --yaml
 
 | Scenario | Duration | Notes |
 |----------|----------|-------|
-| Cache hit | ~288ms | Cached result found |
+| Cache hit | Sub-second | Cached result found |
 | Cache miss | ~60-90s | Full validation run |
 | Force flag | ~60-90s | Cache bypassed |
 

@@ -64,9 +64,8 @@ export async function listRunCacheEntries(treeHash: string): Promise<RunCacheEnt
       .filter(Boolean) as RunCacheEntryMeta[];
 
     return entries;
-  } catch (error) {
+  } catch {
     // No run cache exists - expected for tree hashes without run cache
-    console.debug(`No run cache for ${treeHash}: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   }
 }
@@ -88,11 +87,8 @@ export async function getRunCacheEntry(
 
     const note = parseYaml(yaml) as RunCacheNote;
     return note;
-  } catch (error) {
+  } catch {
     // Entry doesn't exist or parse failed
-    console.debug(
-      `No run cache entry for ${treeHash}/${cacheKey}: ${error instanceof Error ? error.message : String(error)}`
-    );
     return null;
   }
 }
@@ -148,9 +144,8 @@ export async function listRunCacheTreeHashes(): Promise<string[]> {
     }
 
     return Array.from(treeHashes);
-  } catch (error) {
+  } catch {
     // No run cache exists - expected for repos without run cache
-    console.debug(`No run cache found: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   }
 }

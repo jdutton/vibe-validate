@@ -13,11 +13,11 @@
   },
   "files": [
     "dist",
-    "vibe-validate.schema.json"
+    "config.schema.json"
   ],
   "scripts": {
     "build": "tsc && node --import tsx ./src/scripts/generate-schema.ts",
-    "clean": "rm -rf dist vibe-validate.schema.json"
+    "clean": "rm -rf dist config.schema.json"
   },
   "keywords": [
     "validation",

@@ -247,26 +247,28 @@ export function validateConfig(config: unknown): VibeValidateConfig {
 }
 
 /**
- * Safely validate configuration with detailed error messages
+ * Safe validation function for VibeValidateConfig
  *
- * @param config - Configuration object to validate
- * @returns Result object with success flag and data or errors
+ * NOTE: This duplicates the pattern from @vibe-validate/core's createSafeValidator.
+ * We can't import from core here due to circular dependency (core → config).
+ * This is an acceptable trade-off for a foundational package.
+ *
+ * @param config - Configuration data to validate
+ * @returns Validation result with success/error information
  */
-export function safeValidateConfig(config: unknown): {
-  success: boolean;
-  data?: VibeValidateConfig;
-  errors?: string[];
-} {
+export function safeValidateConfig(config: unknown):
+  | { success: true; data: VibeValidateConfig }
+  | { success: false; errors: string[] } {
   const result = VibeValidateConfigSchema.safeParse(config);
 
   if (result.success) {
     return { success: true, data: result.data };
   }
 
-  // Format Zod errors into readable messages
-  const errors = result.error.issues.map(err => {
-    const path = err.path.map(String).join('.');
-    return `${path}: ${err.message}`;
+  // Extract error messages with full path
+  const errors = result.error.errors.map(err => {
+    const path = err.path.join('.');
+    return path ? `${path}: ${err.message}` : err.message;
   });
 
   return { success: false, errors };

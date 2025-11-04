@@ -322,9 +322,16 @@ function displayHumanCompletion(
       console.log(`\n📋 ${failure.name}:`);
 
       if (failure.validationResult) {
-        console.log(`   Failed step: ${failure.validationResult.failedStep}`);
-        if (failure.validationResult.rerunCommand) {
-          console.log(`   Re-run locally: ${failure.validationResult.rerunCommand}`);
+        const validationResult = failure.validationResult;
+        console.log(`   Failed step: ${validationResult.failedStep}`);
+
+        // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+        const failedStep = validationResult.phases
+          ?.flatMap(phase => phase.steps ?? [])
+          .find(step => step && step.name === validationResult.failedStep);
+
+        if (failedStep?.command) {
+          console.log(`   Re-run locally: ${failedStep.command}`);
         }
 
         // Show parsed test failures (extracted by extractors package)
@@ -378,8 +385,15 @@ function generateNextSteps(
 ): string[] {
   const steps: string[] = [];
 
-  if (validationResult?.rerunCommand) {
-    steps.push(`Run locally: ${validationResult.rerunCommand}`);
+  // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+  if (validationResult) {
+    const failedStep = validationResult.phases
+      ?.flatMap(phase => phase.steps ?? [])
+      .find(step => step && step.name === validationResult.failedStep);
+
+    if (failedStep?.command) {
+      steps.push(`Run locally: ${failedStep.command}`);
+    }
   }
 
   steps.push(`View logs: gh run view ${checkId} --log-failed`);

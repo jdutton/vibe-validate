@@ -156,7 +156,7 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
   return {
     errors,
     summary,
-    totalCount: errors.length,
+    totalErrors: errors.length,
     guidance,
     errorSummary: formattedOutput,
     metadata,

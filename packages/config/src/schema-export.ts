@@ -13,7 +13,7 @@ import { VibeValidateConfigSchema } from './schema.js';
  *
  * This schema can be referenced in YAML files using the $schema property:
  * ```yaml
- * $schema: ./node_modules/@vibe-validate/config/vibe-validate.schema.json
+ * $schema: ./node_modules/@vibe-validate/config/config.schema.json
  * validation:
  *   phases: []
  * ```
