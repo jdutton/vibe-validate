@@ -510,7 +510,7 @@ All templates are available in the [config-templates directory](https://github.c
 # vibe-validate.config.yaml
 
 # JSON Schema for IDE autocomplete and validation
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
+$schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 
 # Git integration settings
 git:

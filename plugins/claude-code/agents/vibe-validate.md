@@ -315,7 +315,7 @@ npx vibe-validate validate
 
 **Schema URL** (for IDE autocomplete):
 ```yaml
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
+$schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 ```
 
 ### Key Configuration Sections

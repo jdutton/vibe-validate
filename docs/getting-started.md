@@ -94,7 +94,7 @@ After running `init`, you'll have a configuration file that looks like this:
 <!-- config:example -->
 ```yaml
 # vibe-validate.config.yaml
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
+$schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 
 # Git integration settings
 git:

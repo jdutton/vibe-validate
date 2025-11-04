@@ -375,7 +375,7 @@ Create `vibe-validate.config.yaml` in your project root:
 <!-- config:example -->
 ```yaml
 # JSON Schema for IDE autocomplete
-$schema: https://unpkg.com/@vibe-validate/config/vibe-validate.schema.json
+$schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 
 git:
   mainBranch: main

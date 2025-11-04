@@ -184,6 +184,20 @@ All examples tagged with `validation-result:example` are automatically validated
 - **Validation test**: `packages/core/test/result-schema.test.ts`
 - **Documentation test**: `packages/core/test/markdown-examples-validation.test.ts`
 
+### Schema URLs
+
+For IDE autocomplete and validation in your own YAML files, use the published schema URLs:
+
+```yaml
+# Version-pinned (recommended for production)
+$schema: https://unpkg.com/@vibe-validate/core@0.15.0/validate-result.schema.json
+
+# Latest version (for documentation/prototyping)
+$schema: https://unpkg.com/@vibe-validate/core/validate-result.schema.json
+```
+
+See [Schema Documentation](schemas.md) for complete details on all published schemas.
+
 ## For Agent Integration
 
 Agents should expect ALL fields from the schema, but only these fields are guaranteed to be present:
