@@ -10,30 +10,6 @@ import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
 import { createSafeValidator, createStrictValidator } from './schema-utils.js';
 
 /**
- * Extraction Quality Schema (for developerFeedback mode)
- * @deprecated - Use extraction.metadata instead (v0.15.0+)
- */
-export const ExtractionQualitySchema = z.object({
-  /** Which tool was detected (e.g., "eslint", "typescript", "vitest") */
-  detectedTool: z.string().optional(),
-
-  /** Confidence level of detection */
-  confidence: z.string().optional(),
-
-  /** Quality score (0-100) */
-  score: z.number().optional(),
-
-  /** Number of warnings detected */
-  warnings: z.number().optional(),
-
-  /** Number of errors extracted */
-  errorsExtracted: z.number().optional(),
-
-  /** Whether the errors are actionable */
-  actionable: z.boolean().optional(),
-}).optional();
-
-/**
  * Base: Command Execution Schema
  *
  * Shared by all command executions (RunResult, StepResult).

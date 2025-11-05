@@ -61,7 +61,6 @@ export type {
 // Export runtime types (from runner.ts - non-serializable)
 export type {
   ValidationConfig,
-  ExtractionQuality,
 } from './runner.js';
 
 // Export core runner functions

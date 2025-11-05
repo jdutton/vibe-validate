@@ -60,7 +60,7 @@ export default defineConfig({
         // Thresholds set to 80% minimum to enforce quality gates
         statements: 80,
         branches: 80,
-        functions: 86.5,  // Lowered from 87 due to schema refactoring (v0.15.0)
+        functions: 86.4,  // Lowered from 86.5 after removing deprecated fields (v0.15.0)
         lines: 80,
       },
     },

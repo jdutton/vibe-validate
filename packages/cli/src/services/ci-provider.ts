@@ -55,6 +55,25 @@ export interface CheckStatus {
 }
 
 /**
+ * Error extraction result (from extractors package)
+ */
+export interface ErrorExtraction {
+  /** Human-readable summary (e.g., "2 test failures", "5 type errors") */
+  summary: string;
+  /** Total error count */
+  totalErrors: number;
+  /** Parsed and structured errors */
+  errors: Array<{
+    file?: string;
+    line?: number;
+    column?: number;
+    message?: string;
+  }>;
+  /** Step-specific actionable guidance for fixing errors */
+  guidance?: string;
+}
+
+/**
  * Validation result extracted from CI logs
  */
 export interface ValidationResultContents {
@@ -66,10 +85,6 @@ export interface ValidationResultContents {
   treeHash?: string;
   /** Name of step that failed */
   failedStep?: string;
-  /** Output from failed step - DEPRECATED: use step.extraction */
-  failedStepOutput?: string;
-  /** Parsed list of test failures (file:line format) - DEPRECATED: use step.extraction */
-  failedTests?: string[];
   /** All phases (if available) */
   phases?: Array<{
     name: string;
@@ -83,6 +98,7 @@ export interface ValidationResultContents {
       passed: boolean;
       durationSecs?: number;
       output?: string;
+      extraction?: ErrorExtraction; // v0.15.0+
     }>;
   }>;
 }

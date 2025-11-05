@@ -190,7 +190,6 @@ describe('state command', () => {
         timestamp: '2025-10-16T12:00:00.000Z',
         treeHash: mockTreeHash,
         failedStep: 'TypeScript Type Check',
-        failedStepOutput: 'Error: Type mismatch\nExpected string, got number',
         phases: [],
       };
 
@@ -243,13 +242,11 @@ describe('state command', () => {
     });
 
     it('should display long error output without truncation (verbose mode)', async () => {
-      const longOutput = Array(30).fill('Error line').join('\n');
       const mockResult: ValidationResult = {
         passed: false,
         timestamp: '2025-10-16T12:00:00.000Z',
         treeHash: mockTreeHash,
         failedStep: 'Build',
-        failedStepOutput: longOutput,
         phases: [],
       };
 

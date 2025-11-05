@@ -27,30 +27,6 @@ import type {
 } from './result-schema.js';
 
 /**
- * Extraction quality metrics for a validation step
- * @deprecated Use extraction.metadata instead (v0.15.0+)
- */
-export interface ExtractionQuality {
-  /** Tool detected from output (vitest, tsc, eslint, etc.) */
-  detectedTool: string;
-
-  /** Confidence level of tool detection */
-  confidence: 'high' | 'medium' | 'low';
-
-  /** Quality score (0-100) based on field extraction */
-  score: number;
-
-  /** Number of warnings extracted (even from passing tests) */
-  warnings: number;
-
-  /** Number of errors/failures extracted */
-  errorsExtracted: number;
-
-  /** Is the extraction actionable? (has structured failures/warnings) */
-  actionable: boolean;
-}
-
-/**
  * Runtime validation configuration
  *
  * This extends the file-based configuration from @vibe-validate/config
@@ -92,42 +68,6 @@ export interface ValidationConfig {
 
   /** Callback when step completes */
   onStepComplete?: (_step: ValidationStep, _result: StepResult) => void;
-}
-
-/**
- * Calculate extraction quality score based on extractor output
- *
- * Scores extraction quality from 0-100 based on:
- * - Number of errors extracted
- * - Field completeness (file, line, message)
- * - Actionability (can an LLM/human act on this?)
- *
- * @param formatted - Extractor output
- * @returns Quality score (0-100)
- *
- * @internal
- */
-function calculateExtractionQuality(formatted: ReturnType<typeof autoDetectAndExtract>): number {
-  let score = 0;
-
-  // Error extraction (0-60 points)
-  const errorCount = formatted.errors?.length ?? 0;
-  if (errorCount > 0) {
-    score += Math.min(60, errorCount * 12); // Max 60 points for 5+ errors
-  }
-
-  // Field completeness (0-40 points)
-  const errors = formatted.errors ?? [];
-  if (errors.length > 0) {
-    const firstError = errors[0];
-    let fieldScore = 0;
-    if (firstError.file) fieldScore += 10;
-    if (firstError.line !== undefined) fieldScore += 10;
-    if (firstError.message) fieldScore += 20;
-    score += fieldScore;
-  }
-
-  return Math.min(100, score);
 }
 
 /**
@@ -183,26 +123,6 @@ export function parseFailures(output: string): string[] {
 }
 
 /**
- * Calculate confidence level from extraction quality score
- *
- * Maps numeric quality scores to confidence levels for easier interpretation.
- *
- * @param score - Quality score (0-100)
- * @returns Confidence level (high >= 80, medium >= 50, low < 50)
- *
- * @internal
- */
-function calculateConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
-  if (score >= 80) {
-    return 'high';
-  }
-  if (score >= 50) {
-    return 'medium';
-  }
-  return 'low';
-}
-
-/**
  * Process developer feedback for failed step
  *
  * Analyzes extraction quality and provides feedback for improving extractors.
@@ -224,18 +144,27 @@ function processDeveloperFeedback(
   _isWarning: (_e: { severity?: string }) => boolean,
   _isNotWarning: (_e: { severity?: string }) => boolean
 ): void {
-  // Calculate extraction quality for developer feedback (not added to result schema)
+  // Use extraction metadata from extractors package
   const detectedTool = formatted.metadata?.detection?.extractor ?? 'unknown';
+  const confidence = formatted.metadata?.confidence ?? 0;
+  const completeness = formatted.metadata?.completeness ?? 0;
 
-  const score = calculateExtractionQuality(formatted);
-  const confidence = calculateConfidenceLevel(score);
+  // Map confidence to level (0-100 → high/medium/low)
+  let confidenceLevel: 'high' | 'medium' | 'low';
+  if (confidence >= 80) {
+    confidenceLevel = 'high';
+  } else if (confidence >= 50) {
+    confidenceLevel = 'medium';
+  } else {
+    confidenceLevel = 'low';
+  }
 
   // Log extraction quality for developer feedback (not added to result)
-  log(`      📊 Extraction quality: ${detectedTool} (${confidence} confidence, score: ${score})`);
+  log(`      📊 Extraction quality: ${detectedTool} (${confidenceLevel} confidence: ${confidence}%, completeness: ${completeness}%)`);
 
   // Alert on poor extraction quality (for failed steps)
-  if (score < 50) {
-    log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
+  if (confidence < 50) {
+    log(`         ⚠️  Poor extraction quality (${confidence}%) - Extractors failed to extract failures`);
     log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
   }
 }
@@ -583,7 +512,6 @@ function createFailedValidationResult(
  *   console.log('✅ Validation passed');
  * } else {
  *   console.error(`❌ Failed at step: ${result.failedStep}`);
- *   console.error(result.failedStepOutput);
  * }
  * ```
  *
@@ -667,9 +595,6 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     phases: phaseResults,
     fullLogFile: logPath,
   };
-
-  // State persistence moved to validate.ts via git notes (v0.12.0+)
-  // The state file is deprecated - git notes are now the source of truth
 
   return validationResult;
 }

@@ -91,10 +91,22 @@ src/index.ts:42:5 - error TS2322
 **Agent-friendly (YAML):**
 <!-- validation-result:partial -->
 ```yaml
-failedStep: TypeScript
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
+passed: false
+phases:
+  - name: Pre-Qualification
+    passed: false
+    steps:
+      - name: TypeScript
+        passed: false
+        command: tsc --noEmit
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+          summary: 1 error found
+          totalErrors: 1
 ```
 
 ## Extractor Details
@@ -315,7 +327,7 @@ vibe-validate validate --check
 # View state file with formatted errors
 vibe-validate state
 
-# Claude Code reads failedStepOutput and suggests fixes
+# Claude Code reads extraction.errors and suggests fixes
 ```
 
 ---

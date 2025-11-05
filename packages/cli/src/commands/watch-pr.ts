@@ -325,7 +325,7 @@ function displayHumanCompletion(
         const validationResult = failure.validationResult;
         console.log(`   Failed step: ${validationResult.failedStep}`);
 
-        // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+        // Find the failed step to get command and extraction data
         const failedStep = validationResult.phases
           ?.flatMap(phase => phase.steps ?? [])
           .find(step => step && step.name === validationResult.failedStep);
@@ -334,17 +334,24 @@ function displayHumanCompletion(
           console.log(`   Re-run locally: ${failedStep.command}`);
         }
 
-        // Show parsed test failures (extracted by extractors package)
-        if (failure.validationResult.failedTests && failure.validationResult.failedTests.length > 0) {
-          console.log(`\n   Failed tests:`);
-          for (const test of failure.validationResult.failedTests) {
-            console.log(`   ❌ ${test}`);
+        // Show extracted errors from failed step (v0.15.0+)
+        if (failedStep?.extraction?.errors && failedStep.extraction.errors.length > 0) {
+          console.log(`\n   Failed tests/errors:`);
+          for (const error of failedStep.extraction.errors.slice(0, 10)) {
+            let location = 'Unknown location';
+            if (error.file && error.line) {
+              const columnPart = error.column ? `:${error.column}` : '';
+              location = `${error.file}:${error.line}${columnPart}`;
+            }
+            const message = error.message ?? 'Error';
+            console.log(`   ❌ ${location} - ${message}`);
           }
-        } else if (failure.validationResult.failedStepOutput) {
-          // Fallback: show raw output if extractor didn't extract anything
-          console.log(`\n   Error output:`);
-          const lines = failure.validationResult.failedStepOutput.split('\n').slice(0, 10);
-          for (const line of lines) console.log(`   ${line}`);
+          if (failedStep.extraction.errors.length > 10) {
+            console.log(`   ... and ${failedStep.extraction.errors.length - 10} more`);
+          }
+        } else if (failedStep?.extraction?.summary) {
+          // Show summary if no specific errors extracted
+          console.log(`\n   Error summary: ${failedStep.extraction.summary}`);
         }
       } else if (failure.errorSummary) {
         console.log(`   ${failure.errorSummary}`);

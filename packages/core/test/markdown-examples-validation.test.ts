@@ -15,11 +15,13 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { safeValidateResult } from '../src/result-schema.js';
+import { safeValidateResult, PhaseResultSchema, StepResultSchema } from '../src/result-schema.js';
+import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
 
 // Import config validator from config package
 // Note: This is a cross-package import for testing purposes
-import { safeValidateConfig } from '../../config/src/schema.js';
+import { safeValidateConfig, GitConfigSchema } from '../../config/src/schema.js';
+import { createSafeValidator } from '../src/schema-utils.js';
 
 /**
  * Schema validator configuration
@@ -51,6 +53,30 @@ const VALIDATORS: SchemaValidator[] = [
       }
     },
     description: 'Configuration file schema (vibe-validate.config.yaml)',
+  },
+  {
+    name: 'PhaseResult',
+    tags: ['phase-result:example'],
+    validate: createSafeValidator(PhaseResultSchema),
+    description: 'Individual validation phase result',
+  },
+  {
+    name: 'StepResult',
+    tags: ['step-result:example'],
+    validate: createSafeValidator(StepResultSchema),
+    description: 'Individual validation step result',
+  },
+  {
+    name: 'ErrorExtractorResult',
+    tags: ['extraction:example', 'error-extraction:example'],
+    validate: createSafeValidator(ErrorExtractorResultSchema),
+    description: 'Error extraction result (from extractors)',
+  },
+  {
+    name: 'GitConfig',
+    tags: ['git-config:example'],
+    validate: createSafeValidator(GitConfigSchema),
+    description: 'Git configuration section',
   },
 ];
 

@@ -1,6 +1,5 @@
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
-import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type {
   CIProvider,
   PullRequest,
@@ -212,46 +211,15 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   /**
-   * Parse YAML and enrich with extractor results
+   * Parse YAML validation result from log content
    */
   private parseAndEnrichValidationResult(yamlContent: string): ValidationResultContents | null {
     try {
       const result = parseYaml(yamlContent) as ValidationResultContents;
-
-      // Enrich with structured failure details if validation failed
-      if (!result.passed && result.failedStep && result.failedStepOutput) {
-        this.enrichWithFailedTests(result);
-      }
-
       return result;
     } catch {
       // Failed to parse validation YAML - return null
       return null;
-    }
-  }
-
-  /**
-   * Enrich validation result with failed test details from extractors
-   */
-  private enrichWithFailedTests(result: ValidationResultContents): void {
-    // Type narrowing: we know these are defined due to the check in parseAndEnrichValidationResult
-    const failedStep = result.failedStep;
-    const failedStepOutput = result.failedStepOutput;
-
-    if (!failedStep || !failedStepOutput) {
-      return;
-    }
-
-    const extractorResult = autoDetectAndExtract(failedStepOutput);
-
-    if (extractorResult.errors.length > 0) {
-      result.failedTests = extractorResult.errors
-        .filter((e: { file?: string; line?: number }) => e.file && e.line)
-        .map((e: { file?: string; line?: number; column?: number; message?: string }) => {
-          const columnPart = e.column ? `:${e.column}` : '';
-          return `${e.file}:${e.line}${columnPart} - ${e.message ?? 'Test failed'}`;
-        })
-        .slice(0, 10); // Limit to first 10 for display
     }
   }
 

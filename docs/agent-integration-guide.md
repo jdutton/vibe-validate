@@ -41,10 +41,20 @@ Found 1 error.
 <!-- validation-result:partial -->
 ```yaml
 passed: false
-failedStep: TypeScript
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
+phases:
+  - name: Pre-Qualification
+    passed: false
+    steps:
+      - name: TypeScript
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+          summary: 1 error found
+          totalErrors: 1
 ```
 
 ## Supported Agents
@@ -94,7 +104,12 @@ do {
   result = run `vibe-validate validate`
   if (result.passed) break;
 
-  errors = parse result.failedStepOutput
+  // Extract errors from failed steps
+  errors = result.phases
+    .flatMap(phase => phase.steps)
+    .filter(step => !step.passed)
+    .flatMap(step => step.extraction?.errors || [])
+
   fixes = suggest_fixes(errors)
   apply_fixes(fixes)
 } while (max_iterations)
@@ -196,8 +211,8 @@ $ vibe-validate state
 
 # Output (YAML format):
 # passed: false
-# failedStep: TypeScript
-# 
+# phases: [...]  # See Phase and Step structure below
+#
 ```
 
 ### Claude Code Features
@@ -521,7 +536,6 @@ passed: false
 timestamp: 2025-10-16T15:30:00.000Z
 treeHash: a1b2c3d4e5f6789abc123def456
 summary: "TypeScript type check failed"
-failedStep: TypeScript
 phases:
   - name: "Pre-Qualification"
     passed: false
@@ -568,8 +582,18 @@ state_output = subprocess.run(
 state = yaml.safe_load(state_output)
 
 if not state['passed']:
-    print(f"Validation failed: {state['failedStep']}")
-    print(f"Errors:\n{state['failedStepOutput']}")
+    # Extract errors from failed steps
+    failed_steps = [
+        step for phase in state['phases']
+        for step in phase['steps']
+        if not step['passed']
+    ]
+
+    for step in failed_steps:
+        print(f"Failed step: {step['name']}")
+        if 'extraction' in step and 'errors' in step['extraction']:
+            for error in step['extraction']['errors']:
+                print(f"  {error['file']}:{error['line']} - {error['message']}")
 
     # AI agent fixes errors here
     # ...
@@ -597,11 +621,23 @@ const stateOutput = execSync('vibe-validate state', { encoding: 'utf-8' });
 const state = yaml.parse(stateOutput);
 
 if (!state.passed) {
-  console.log(`Failed: ${state.failedStep}`);
-  console.log(`Errors:\n${state.failedStepOutput}`);
+  // Extract errors from failed steps
+  const failedSteps = state.phases
+    .flatMap(phase => phase.steps)
+    .filter(step => !step.passed);
+
+  for (const step of failedSteps) {
+    console.log(`Failed step: ${step.name}`);
+    if (step.extraction?.errors) {
+      for (const error of step.extraction.errors) {
+        console.log(`  ${error.file}:${error.line} - ${error.message}`);
+      }
+    }
+  }
 
   // AI agent processes errors
-  const fixes = await aiAgent.fixErrors(state.failedStepOutput);
+  const allErrors = failedSteps.flatMap(step => step.extraction?.errors || []);
+  const fixes = await aiAgent.fixErrors(allErrors);
 
   // Apply fixes
   await applyFixes(fixes);
@@ -773,8 +809,11 @@ async function fixErrorsProgressively() {
       break;
     }
 
-    // Extract errors
-    const errors = parseErrors(state.failedStepOutput);
+    // Extract errors from failed steps
+    const errors = state.phases
+      .flatMap(phase => phase.steps)
+      .filter(step => !step.passed)
+      .flatMap(step => step.extraction?.errors || []);
 
     // Sort by priority (TypeScript errors first)
     const sortedErrors = sortByPriority(errors);

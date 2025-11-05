@@ -725,7 +725,6 @@ describe('validate command', () => {
         treeHash: 'abc123',
         phases: [],
         failedStep: 'Test Step',
-        rerunCommand: 'echo test',
       });
 
       validateCommand(program);

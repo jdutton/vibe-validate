@@ -33,12 +33,15 @@ export const ValidationResultSchema = z.object({
   treeHash: z.string(),
   phases: z.array(PhaseResultSchema).optional(),
   failedStep: z.string().optional(),
-  rerunCommand: z.string().optional(),
-  failedStepOutput: z.string().optional(),
-  failedTests: z.array(z.string()).optional(),
   fullLogFile: z.string().optional(),
   summary: z.string().optional(),
+  isCachedResult: z.boolean().optional(), // v0.15.0+
 });
+
+// Note: v0.15.0 removed:
+// - rerunCommand (use phases[].steps[].command)
+// - failedStepOutput (use phases[].steps[].extraction)
+// - failedTests (use phases[].steps[].extraction.errors)
 ```
 
 ### Actual YAML Output Example
@@ -613,15 +616,18 @@ ValidationResult
 │       │       ├── passed: boolean
 │       │       ├── durationSecs: number
 │       │       ├── output?: string
-│       │       ├── failedTests?: string[] (MISSING IN SCHEMA)
-│       │       └── extractionQuality?: {...} (MISSING IN SCHEMA)
+│       │       └── extraction?: ErrorExtractorResult (v0.15.0+)
+│       │           ├── summary: string
+│       │           ├── totalErrors: number
+│       │           ├── errors: FormattedError[]
+│       │           └── guidance?: string
 │       └── output?: string
 ├── failedStep?: string
-├── rerunCommand?: string
-├── failedStepOutput?: string
-├── failedTests?: string[]
 ├── fullLogFile?: string
-└── summary?: string
+├── summary?: string
+└── isCachedResult?: boolean (v0.15.0+)
+
+// v0.15.0 removed: rerunCommand, failedStepOutput, failedTests
 ```
 
 ### Run Output Type Tree
