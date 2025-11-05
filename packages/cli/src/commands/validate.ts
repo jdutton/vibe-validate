@@ -5,7 +5,6 @@
  */
 
 import type { Command } from 'commander';
-import type { ValidationResult } from '@vibe-validate/core';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
@@ -175,8 +174,7 @@ export function validateCommand(program: Command): void {
 
         // Only call process.exit for non-cached results
         // Cache hits return early without calling process.exit (to support testing)
-        const resultWithCache = result as ValidationResult & { _fromCache?: boolean };
-        if (!resultWithCache._fromCache) {
+        if (!result.isCachedResult) {
           process.exit(result.passed ? 0 : 1);
         }
         // For cache hits, return normally and let Commander exit with code 0

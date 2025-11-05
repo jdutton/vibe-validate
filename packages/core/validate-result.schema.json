@@ -189,15 +189,6 @@
                     },
                     "isCachedResult": {
                       "type": "boolean"
-                    },
-                    "output": {
-                      "type": "string"
-                    },
-                    "failedTests": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
                     }
                   },
                   "required": [

@@ -83,11 +83,13 @@ export const OperationMetadataSchema = z.object({
  * - Did it pass? (passed)
  * - Command execution details (command, exitCode, durationSecs, extraction)
  *
- * v0.15.0 changes:
+ * v0.15.0 BREAKING CHANGES:
  * - Now extends CommandExecutionSchema (adds command, exitCode)
  * - Removed extractionQuality (use extraction.metadata instead)
+ * - Removed output field (use extraction instead)
+ * - Removed failedTests field (use extraction.errors instead)
  * - Added isCachedResult to indicate when result came from cache
- * - Kept deprecated output and failedTests fields for backwards compatibility
+ * - Added .strict() to reject unknown properties (prevents internal fields from leaking)
  */
 export const StepResultSchema = CommandExecutionSchema.extend({
   /** Step name */
@@ -98,13 +100,7 @@ export const StepResultSchema = CommandExecutionSchema.extend({
 
   /** Was this result retrieved from cache? (v0.15.0+) */
   isCachedResult: z.boolean().optional(),
-
-  /** Output from the step (stdout + stderr) - DEPRECATED: use extraction instead */
-  output: z.string().optional(),
-
-  /** Extracted test failures (file:line - message) - DEPRECATED: use extraction.errors instead */
-  failedTests: z.array(z.string()).optional(),
-});
+}).strict();
 
 /**
  * Validation Phase Result Schema
@@ -127,7 +123,7 @@ export const PhaseResultSchema = z.object({
 
   /** Results from individual steps */
   steps: z.array(StepResultSchema),
-});
+}).strict();
 
 /**
  * Validation Result Schema
@@ -144,12 +140,18 @@ export const PhaseResultSchema = z.object({
  * - Quick navigation (failedStep)
  * - Detailed breakdown (phases with step-level extraction, each step has command)
  * - Metadata last (fullLogFile)
+ *
+ * v0.15.0 BREAKING CHANGES:
+ * - Removed rerunCommand (use phases[].steps[].command instead)
+ * - Removed failedStepOutput (use phases[].steps[].extraction instead)
+ * - Added .strict() to reject unknown properties (prevents internal fields
+ *   like _fromCache from leaking into public API)
  */
 export const ValidationResultSchema = OperationMetadataSchema.extend({
   /** Did validation pass? */
   passed: z.boolean(),
 
-  /** One-line summary for LLMs (e.g., "Validation passed" or "TypeScript type check failed") - Optional for backward compatibility with v0.14.x */
+  /** One-line summary for LLMs (e.g., "Validation passed" or "TypeScript type check failed") */
   summary: z.string().optional(),
 
   /** Was this entire validation result retrieved from cache? (v0.15.0+) */
@@ -163,7 +165,7 @@ export const ValidationResultSchema = OperationMetadataSchema.extend({
 
   /** Path to full log file */
   fullLogFile: z.string().optional(),
-});
+}).strict();
 
 /**
  * Inferred TypeScript types from Zod schemas

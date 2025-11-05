@@ -148,39 +148,45 @@ describe('StepResult Schema', () => {
     });
   });
 
-  describe('backward compatibility', () => {
-    it('should still accept output and failedTests for backward compatibility', () => {
-      const stepWithOldFormat: StepResult = {
+  describe('v0.15.0 breaking changes', () => {
+    it('should reject deprecated output field (v0.14.x)', () => {
+      const stepWithOldFormat: unknown = {
         name: 'test',
         command: 'npm test',
         exitCode: 1,
         passed: false,
         durationSecs: 1.5,
-        extraction: {
-          errors: [],
-          summary: 'test failed',
-          totalErrors: 1,
-          guidance: '',
-          errorSummary: '',
-          metadata: {
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-            detection: {
-              extractor: 'vitest',
-              confidence: 100,
-              patterns: [],
-              reason: 'test',
-            },
-          },
-        },
-        output: 'old output field',
-        failedTests: ['test.ts:42 - assertion failed'],
+        output: 'old output field', // ❌ Removed in v0.15.0
       };
 
       const result = StepResultSchema.safeParse(stepWithOldFormat);
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.errors.some(e =>
+          e.message.includes('Unrecognized key')
+        )).toBe(true);
+      }
+    });
+
+    it('should reject deprecated failedTests field (v0.14.x)', () => {
+      const stepWithOldFormat: unknown = {
+        name: 'test',
+        command: 'npm test',
+        exitCode: 1,
+        passed: false,
+        durationSecs: 1.5,
+        failedTests: ['test.ts:42 - assertion failed'], // ❌ Removed in v0.15.0
+      };
+
+      const result = StepResultSchema.safeParse(stepWithOldFormat);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.errors.some(e =>
+          e.message.includes('Unrecognized key')
+        )).toBe(true);
+      }
     });
   });
 });

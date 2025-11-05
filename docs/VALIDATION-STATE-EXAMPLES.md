@@ -65,11 +65,8 @@ All examples tagged with `:example` are automatically validated:
 passed: false
 timestamp: "2025-10-20T12:00:00.000Z"
 treeHash: "a1b2c3d4e5f6789abc123def456"
+summary: "TypeScript type check failed"
 failedStep: "TypeScript"
-rerunCommand: "pnpm typecheck"
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
 ```
 
 ### Example 2: Failed Validation (With Phases)
@@ -103,13 +100,14 @@ phases:
         exitCode: 1
         passed: false
         durationSecs: 26.1
-    output: "Test failure output here"
+        extraction:
+          errors:
+            - file: packages/cli/test/example.test.ts
+              message: "should pass - Error: Expected value to be true"
+          summary: "1 test failure"
+          totalErrors: 1
+summary: "Unit Tests with Coverage failed"
 failedStep: "Unit Tests with Coverage"
-rerunCommand: "pnpm test:coverage"
-failedStepOutput: |
-  FAIL packages/cli/test/example.test.ts
-  × should pass (2ms)
-    → Error: Expected value to be true
 fullLogFile: "/tmp/validation-2025-10-20T12-34-14-730Z.log"
 ```
 
@@ -153,14 +151,26 @@ phases:
 passed: false
 timestamp: "2025-10-20T16:30:00.000Z"
 treeHash: "xyz789abc123def456"
+summary: "Unit Tests failed"
 failedStep: "Unit Tests"
-rerunCommand: "npm test"
-failedStepOutput: |
-  FAIL src/auth.test.ts
-  FAIL src/api.test.ts
-failedTests:
-  - "auth.test.ts: should validate user token"
-  - "api.test.ts: should handle 401 errors"
+phases:
+  - name: "Testing"
+    passed: false
+    durationSecs: 15.2
+    steps:
+      - name: "Unit Tests"
+        command: "npm test"
+        exitCode: 1
+        passed: false
+        durationSecs: 15.2
+        extraction:
+          errors:
+            - file: src/auth.test.ts
+              message: "should validate user token"
+            - file: src/api.test.ts
+              message: "should handle 401 errors"
+          summary: "2 test failures"
+          totalErrors: 2
 ```
 
 ## Partial Examples (Documentation Only)
@@ -173,8 +183,8 @@ These examples are for illustration and are NOT validated against the schema:
 ```yaml
 # This example shows only the fields relevant to error recovery
 passed: false
+summary: "TypeScript type check failed"
 failedStep: "TypeScript"
-rerunCommand: "pnpm typecheck"
 ```
 
 ## Schema Validation
@@ -208,15 +218,14 @@ Agents should expect ALL fields from the schema, but only these fields are guara
 - `treeHash` (git tree hash string)
 
 **Optional fields (present on failure):**
-- `failedStep` (string)
-- `rerunCommand` (string)
-- `failedStepOutput` (string)
-- `failedTests` (array of strings)
-- `fullLogFile` (string)
-- `summary` (string)
+- `summary` (string) - one-line description
+- `failedStep` (string) - name of failed step
+- `fullLogFile` (string) - path to complete log
+- `phases` (array) - detailed breakdown with step-level extraction
 
 **Optional fields (always):**
-- `phases` (array of phase results with steps)
+- `isCachedResult` (boolean) - true if from cache (v0.15.0+)
+- `phases` (array of phase results with steps and extraction)
 
 ---
 

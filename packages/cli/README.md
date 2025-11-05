@@ -465,10 +465,26 @@ npx vibe-validate state
 passed: false
 timestamp: 2025-10-16T20:00:00.000Z
 treeHash: abc123...
+summary: "TypeScript type check failed"
 failedStep: TypeScript
-failedStepOutput: |
-  src/index.ts:10:5 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
-rerunCommand: pnpm typecheck
+phases:
+  - name: "Pre-Qualification"
+    passed: false
+    durationSecs: 2.5
+    steps:
+      - name: "TypeScript"
+        command: "pnpm typecheck"
+        exitCode: 1
+        durationSecs: 2.5
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 10
+              column: 5
+              message: "error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'"
+          summary: "1 type error"
+          totalErrors: 1
 ```
 
 ## Integration with Pre-Commit Hooks

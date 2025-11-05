@@ -74,7 +74,7 @@ async function outputYaml(result: unknown): Promise<void> {
 async function checkCache(
   treeHash: string,
   yaml: boolean
-): Promise<(ValidationResult & { _fromCache?: boolean }) | null> {
+): Promise<ValidationResult | null> {
   try {
     const historyNote = await readHistoryNote(treeHash);
 
@@ -85,10 +85,9 @@ async function checkCache(
         .find(run => run.passed);
 
       if (passingRun) {
-        // Mark result as from cache (BEFORE output to ensure it's visible)
-        const result = passingRun.result as ValidationResult & { _fromCache?: boolean };
-        result._fromCache = true;       // Internal flag for testing
-        result.isCachedResult = true;   // Schema field for user visibility (v0.15.0+)
+        // Mark result as from cache (v0.15.0+ schema field)
+        const result = passingRun.result as ValidationResult;
+        result.isCachedResult = true;
 
         if (yaml) {
           await outputYaml(result);

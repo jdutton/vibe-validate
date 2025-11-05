@@ -271,14 +271,30 @@ if (process.env.CI === 'true') {
 passed: false
 timestamp: 2025-10-16T15:30:00.000Z
 treeHash: a1b2c3d4e5f6789abc123def456
+summary: "TypeScript type check failed"
 failedStep: TypeScript
-rerunCommand: pnpm typecheck
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
-
-  src/auth.ts:128:10 - error TS2345
-  Argument of type 'null' is not assignable to parameter of type 'User'
+phases:
+  - name: "Pre-Qualification"
+    passed: false
+    durationSecs: 3.8
+    steps:
+      - name: "TypeScript"
+        command: "pnpm typecheck"
+        exitCode: 1
+        durationSecs: 3.8
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+            - file: src/auth.ts
+              line: 128
+              column: 10
+              message: "error TS2345: Argument of type 'null' is not assignable to parameter of type 'User'"
+          summary: "2 type errors"
+          totalErrors: 2
 ```
 
 ### Why YAML?

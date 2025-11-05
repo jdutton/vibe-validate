@@ -520,11 +520,26 @@ vibe-validate state
 passed: false
 timestamp: 2025-10-16T15:30:00.000Z
 treeHash: a1b2c3d4e5f6789abc123def456
+summary: "TypeScript type check failed"
 failedStep: TypeScript
-rerunCommand: pnpm typecheck
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
+phases:
+  - name: "Pre-Qualification"
+    passed: false
+    durationSecs: 5.2
+    steps:
+      - name: "TypeScript"
+        command: "pnpm typecheck"
+        exitCode: 1
+        durationSecs: 5.2
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+          summary: "1 type error"
+          totalErrors: 1
 ```
 
 **Note**: Validation state is stored in git notes (not files). Always use `vibe-validate state` to query.
