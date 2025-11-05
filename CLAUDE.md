@@ -173,8 +173,7 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 ### 2. LLM-First Output
 - Detect agent context (Claude Code, Cursor, etc.)
 - Strip ANSI codes and noise from errors
-- Provide actionable guidance in structured format (YAML/JSON)
-- Embed errors directly in state file (no log hunting)
+- Provide actionable guidance and concise extracted errors in structured YAML format
 
 ### 3. Git Tree Hash Caching
 - Uses deterministic `git write-tree` approach for content-based hashing
@@ -185,7 +184,6 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 - Validation always proceeds (never block the user)
 - Lock creation failure → proceed without lock
 - Git command failure → use timestamp fallback
-- Corrupted state file → proceed with validation
 
 ### 5. Flexible Configuration with Smart Defaults
 - Works out-of-box with minimal template
@@ -466,7 +464,7 @@ Every time you run tests, validation, or encounter errors, ask yourself:
    - ❌ Bad: Generic errors with no recovery path
 
 3. **Does it respect your context window?**
-   - ✅ Good: Complete error details in state file, not in terminal
+   - ✅ Good: Complete error details in YAML output, not in terminal
    - ❌ Bad: Spamming terminal with verbose logs
 
 4. **Is the workflow deterministic?**

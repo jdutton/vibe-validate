@@ -187,13 +187,15 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
       .filter(step => !step.passed && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
 
     if (poorExtractionSteps && poorExtractionSteps.length > 0) {
-      const isDogfooding = process.cwd().includes('vibe-validate');
+      // VV_CONTEXT is set by the smart wrapper (vibe-validate/vv)
+      // 'dev' = developer mode (working on vibe-validate itself)
+      const isDevMode = process.env.VV_CONTEXT === 'dev';
 
       console.error('');
       console.error(chalk.yellow('⚠️  Poor extraction quality detected'));
 
-      if (isDogfooding) {
-        console.error(chalk.yellow('   💡 vibe-validate improvement opportunity: Improve extractors in packages/extractors/'));
+      if (isDevMode) {
+        console.error(chalk.yellow('   💡 Developer mode: Improve extractors in packages/extractors/'));
         console.error(chalk.gray('   See packages/extractors/test/samples/ for how to add test cases'));
       } else {
         console.error(chalk.yellow('   💡 Help improve vibe-validate by reporting this extraction issue'));
