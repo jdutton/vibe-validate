@@ -34,6 +34,33 @@ pnpm add -D vibe-validate
 yarn add -D vibe-validate
 ```
 
+### Using the `vv` Short Command
+
+Once installed, you can use the shorter `vv` command instead of `npx vibe-validate`:
+
+```bash
+vv validate      # Same as: npx vibe-validate validate
+vv init          # Same as: npx vibe-validate init
+vv doctor        # Same as: npx vibe-validate doctor
+vv run npm test  # Same as: npx vibe-validate run npm test
+```
+
+**Benefits:**
+- **Shorter**: Type `vv` instead of `npx vibe-validate` (85% less typing!)
+- **Context-aware**: Automatically finds the right installation (dev, local, or global)
+- **Works everywhere**: From any subdirectory in your project
+- **No npx overhead**: Direct execution for faster startup
+
+**When to use what:**
+- Use `vv` after installation for day-to-day work (recommended)
+- Use `npx vibe-validate` before installation to try it out
+- Both commands work identically - choose whichever you prefer
+
+**Examples in this guide:**
+- Pre-installation examples use `npx vibe-validate`
+- Post-installation examples use `vv` for brevity
+- You can substitute one for the other at any time
+
 ## Quick Start
 
 ### Step 1: Initialize Configuration
@@ -61,7 +88,7 @@ Available templates:
 ### Step 2: Run Validation
 
 ```bash
-npx vibe-validate validate
+vv validate
 ```
 
 **First run**: Executes all validation steps (may take 30-120 seconds depending on project size).
@@ -277,28 +304,28 @@ Cache is NOT invalidated by:
 
 ```bash
 # Initialize configuration
-npx vibe-validate init
+vv init
 
 # Run validation
-npx vibe-validate validate
+vv validate
 
 # Run validation (force, bypass cache)
-npx vibe-validate validate --force
+vv validate --force
 
 # Pre-commit workflow
-npx vibe-validate pre-commit
+vv pre-commit
 
 # Check branch sync
-npx vibe-validate sync-check
+vv sync-check
 
 # Show validation state
-npx vibe-validate state
+vv state
 
 # Show configuration
-npx vibe-validate config
+vv config
 
 # Post-merge cleanup
-npx vibe-validate cleanup
+vv cleanup
 ```
 
 ## Next Steps
@@ -316,26 +343,27 @@ npx vibe-validate cleanup
 **Problem**: Cache not working, validation runs full every time.
 
 **Solution**:
-1. Check validation status: `npx vibe-validate validate --check`
+1. Check validation status: `vv validate --check`
 2. Ensure working tree is clean: `git status`
-3. View validation state: `npx vibe-validate state`
-4. Try force re-validation: `npx vibe-validate validate --force`
+3. View validation state: `vv state`
+4. Try force re-validation: `vv validate --force`
 
 ### Command not found
 
-**Problem**: `vibe-validate` command not recognized.
+**Problem**: `vv` or `vibe-validate` command not recognized.
 
 **Solution**:
 1. Ensure installed: `npm install -D vibe-validate`
-2. Use `npx` prefix: `npx vibe-validate validate`
-3. Check npm bin directory is in PATH
+2. Try using `vv` directly (post-install): `vv validate`
+3. Use `npx` prefix if needed: `npx vibe-validate validate`
+4. Check npm bin directory is in PATH
 
 ### Configuration file not found
 
 **Problem**: "No configuration file found" error.
 
 **Solution**:
-1. Run `npx vibe-validate init` to create config
+1. Run `vv init` to create config (or `npx vibe-validate init` pre-install)
 2. Ensure config is in project root
 3. Config must be named `vibe-validate.config.yaml`
 
@@ -344,7 +372,7 @@ npx vibe-validate cleanup
 **Problem**: Tests pass locally but fail in CI environment.
 
 **Solution**:
-1. Run `npx vibe-validate validate --force` locally
+1. Run `vv validate --force` locally
 2. Check for environment-specific issues:
    - Hardcoded paths
    - Missing environment variables
