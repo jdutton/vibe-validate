@@ -2,11 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 
-// SKIP: These tests are timing out consistently due to resource constraints.
-// Each test spawns a full CLI process and takes 10-11 seconds.
-// Total: 9 tests × 11s = 99s, which exhausts Vitest worker timeout under coverage.
-// Re-enable after refactoring to use mocked CLI or separate system test suite
-describe.skip('Doctor Command Integration', () => {
+// Doctor integration tests - each spawns real CLI process (10-11s each)
+// Timeout handling improved based on dogfooding feedback (see commits)
+describe('Doctor Command Integration', () => {
   const cliPath = join(__dirname, '../../dist/bin.js');
   const projectRoot = join(__dirname, '../../../..');
 
@@ -64,7 +62,7 @@ describe.skip('Doctor Command Integration', () => {
 
     // Should show all checks passed (e.g., "14/14 checks passed")
     expect(stdout).toMatch(/📊 Results: (\d+)\/\1 checks passed/);
-  }, 60000); // 60s timeout for doctor command (can be slow on Windows)
+  }, 15000); // 15s timeout for doctor command (spawns real CLI process)
 
   it('should exit with status 0 in verbose mode when all checks pass', () => {
     // Per docs: "Exit code 0 - All critical checks passed"

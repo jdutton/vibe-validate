@@ -285,6 +285,7 @@ function formatFailuresOutput(
  * @param failureCount - Number of failures
  * @param expected - Expected value (if present)
  * @param actual - Actual value (if present)
+ * @param hasTimeout - Whether any failures are due to timeout
  * @returns Guidance text
  *
  * @internal
@@ -292,9 +293,29 @@ function formatFailuresOutput(
 function generateGuidanceText(
   failureCount: number,
   expected?: string,
-  actual?: string
+  actual?: string,
+  hasTimeout?: boolean
 ): string {
   let guidance = `${failureCount} test(s) failed. `;
+
+  // Timeout-specific guidance
+  if (hasTimeout) {
+    guidance += 'Test(s) timed out. ';
+    if (failureCount === 1) {
+      guidance += 'Options: 1) Increase timeout with test.timeout() or testTimeout config, ';
+      guidance += '2) Optimize test to run faster, ';
+      guidance += '3) Mock slow operations (API calls, file I/O, child processes). ';
+    } else {
+      guidance += 'Multiple tests timing out suggests resource constraints. ';
+      guidance += 'Try: 1) Run tests individually to identify slow tests, ';
+      guidance += '2) Increase testTimeout config, ';
+      guidance += '3) Reduce parallel test workers (--pool-workers=2). ';
+    }
+    guidance += 'Run: npm test -- <test-file> to verify the fix.';
+    return guidance;
+  }
+
+  // Standard assertion failure guidance
   if (failureCount === 1) {
     guidance += 'Fix the assertion in the test file at the location shown. ';
     if (expected && actual) {
@@ -508,10 +529,13 @@ export function extractVitestErrors(
     failures.push(currentFailure as TestFailure);
   }
 
+  // Detect timeout failures
+  const hasTimeout = failures.some(f => f.errorMessage.includes('Test timed out'));
+
   // Extract expected/actual values and format output
   const { expected, actual } = extractExpectedActual(output);
   const errorSummary = formatFailuresOutput(failures, expected, actual);
-  const guidance = generateGuidanceText(failures.length, expected, actual);
+  const guidance = generateGuidanceText(failures.length, expected, actual, hasTimeout);
 
   const result: ErrorExtractorResult = {
     errors: failures.slice(0, MAX_ERRORS_IN_ARRAY).map(f => {
