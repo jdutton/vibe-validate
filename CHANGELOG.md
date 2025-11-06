@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0-rc.3] - 2025-11-06
+
+### 🐛 Bug Fixes
+
+**CRITICAL: Fixed umbrella package missing CLI binaries** (v0.15.0-rc.2 regression)
+- **Problem**: Installing `vibe-validate` (umbrella package) globally didn't expose `vv` or `vibe-validate` commands
+- **Root Cause**: The umbrella package only declared a dependency on `@vibe-validate/cli` but didn't expose its binaries
+- **Solution**:
+  - Added `bin` field to umbrella package pointing to wrapper scripts
+  - Updated wrappers to detect and delegate to CLI in umbrella package's `node_modules`
+  - Now supports 4 contexts: dev mode, local install, umbrella install (global/local), and direct CLI install
+- **Impact**: Global installs now work correctly: `npm install -g vibe-validate@rc` exposes both `vv` and `vibe-validate`
+
 ## [0.15.0-rc.2] - 2025-11-06
 
 ### 🐛 Bug Fixes
