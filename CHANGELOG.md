@@ -9,13 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ♻️ Code Quality
 
-**Reduced code duplication in error extractors** (255 lines removed)
+**Reduced test code duplication in Commander test setup** (partial - 2 of 10 files)
+- **Problem**: Same Commander.js test setup repeated across 10+ command test files (program creation, exitOverride, console mocking)
+- **Solution**: Created shared test helper `packages/cli/test/helpers/commander-test-setup.ts`
+  - Exports `setupCommanderTest()` for consistent test environment
+  - Handles program creation, exitOverride, console mocking, process.exit mocking
+  - Simple cleanup function for afterEach hooks
+- **Progress**: Refactored 2 test files (run.test.ts, history.test.ts), 8 remain
+- **Maintainability**: Test setup changes now made in one place
+
+**Reduced code duplication in error extractors** (52 lines removed)
 - **Problem**: Identical `formatCleanOutput()` and `generateGuidance()` functions duplicated across 5 extractors
 - **Solution**: Created shared utilities in `packages/extractors/src/utils/`
   - `formatter-utils.ts`: Exports `formatCleanOutput()` for consistent error formatting
   - `guidance-generator.ts`: Exports pattern-based guidance generation with `COMMON_GUIDANCE_PATTERNS`
 - **Impact**:
-  - 255 net lines of code removed (309 deleted, 54 added)
+  - 52 net lines removed (309 deleted, 257 added)
   - Changes to error formatting or guidance now made in one place
   - Consistent behavior across Jasmine, Mocha, TAP, JUnit, and Ava extractors
 - **Maintainability**: Future extractor improvements benefit all test frameworks automatically

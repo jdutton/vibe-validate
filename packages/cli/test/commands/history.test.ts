@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Command } from 'commander';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { historyCommand } from '../../src/commands/history.js';
 import * as history from '@vibe-validate/history';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the history module
 vi.mock('@vibe-validate/history', async () => {
@@ -16,21 +16,11 @@ vi.mock('@vibe-validate/history', async () => {
   };
 });
 
-// Type alias for process.exit mock parameter
-type ProcessExitCode = string | number | null | undefined;
-
 describe('history command', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    env = setupCommanderTest();
 
     // Reset mocks
     vi.mocked(history.readHistoryNote).mockReset();
@@ -40,49 +30,53 @@ describe('history command', () => {
     vi.mocked(history.checkHistoryHealth).mockReset();
   });
 
+  afterEach(() => {
+    env.cleanup();
+  });
+
   describe('command registration', () => {
     it('should register history command', () => {
-      historyCommand(program);
+      historyCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'history');
+      const command = env.program.commands.find(cmd => cmd.name() === 'history');
       expect(command).toBeDefined();
     });
 
     it('should have correct description', () => {
-      historyCommand(program);
+      historyCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'history');
+      const command = env.program.commands.find(cmd => cmd.name() === 'history');
       expect(command?.description()).toBe('View and manage validation history stored in git notes');
     });
 
     it('should register list subcommand', () => {
-      historyCommand(program);
+      historyCommand(env.program);
 
-      const historyCmd = program.commands.find(cmd => cmd.name() === 'history');
+      const historyCmd = env.program.commands.find(cmd => cmd.name() === 'history');
       const listCmd = historyCmd?.commands.find(cmd => cmd.name() === 'list');
       expect(listCmd).toBeDefined();
     });
 
     it('should register show subcommand', () => {
-      historyCommand(program);
+      historyCommand(env.program);
 
-      const historyCmd = program.commands.find(cmd => cmd.name() === 'history');
+      const historyCmd = env.program.commands.find(cmd => cmd.name() === 'history');
       const showCmd = historyCmd?.commands.find(cmd => cmd.name() === 'show');
       expect(showCmd).toBeDefined();
     });
 
     it('should register prune subcommand', () => {
-      historyCommand(program);
+      historyCommand(env.program);
 
-      const historyCmd = program.commands.find(cmd => cmd.name() === 'history');
+      const historyCmd = env.program.commands.find(cmd => cmd.name() === 'history');
       const pruneCmd = historyCmd?.commands.find(cmd => cmd.name() === 'prune');
       expect(pruneCmd).toBeDefined();
     });
 
     it('should register health subcommand', () => {
-      historyCommand(program);
+      historyCommand(env.program);
 
-      const historyCmd = program.commands.find(cmd => cmd.name() === 'history');
+      const historyCmd = env.program.commands.find(cmd => cmd.name() === 'history');
       const healthCmd = historyCmd?.commands.find(cmd => cmd.name() === 'health');
       expect(healthCmd).toBeDefined();
     });
@@ -117,9 +111,9 @@ describe('history command', () => {
 
       vi.mocked(history.getAllHistoryNotes).mockResolvedValue(mockNotes);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list'], { from: 'user' });
 
       expect(history.getAllHistoryNotes).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
@@ -170,9 +164,9 @@ describe('history command', () => {
 
       vi.mocked(history.getAllHistoryNotes).mockResolvedValue(mockNotes);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--branch', 'main'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--branch', 'main'], { from: 'user' });
 
       expect(history.getAllHistoryNotes).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
@@ -204,9 +198,9 @@ describe('history command', () => {
 
       vi.mocked(history.getAllHistoryNotes).mockResolvedValue(mockNotes);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--limit', '10'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--limit', '10'], { from: 'user' });
 
       expect(history.getAllHistoryNotes).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
@@ -240,9 +234,9 @@ describe('history command', () => {
 
       vi.mocked(history.getAllHistoryNotes).mockResolvedValue(mockNotes);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--yaml'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--yaml'], { from: 'user' });
 
       // Verify YAML separator was written
       const writeCalls = vi.mocked(process.stdout.write).mock.calls;
@@ -253,9 +247,9 @@ describe('history command', () => {
     it('should display message when no history found', async () => {
       vi.mocked(history.getAllHistoryNotes).mockResolvedValue([]);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list'], { from: 'user' });
 
       expect(console.log).toHaveBeenCalledWith('No validation history found');
     });
@@ -288,9 +282,9 @@ describe('history command', () => {
 
       vi.mocked(history.getAllHistoryNotes).mockResolvedValue(mockNotes);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--branch', 'nonexistent'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--branch', 'nonexistent'], { from: 'user' });
 
       expect(console.log).toHaveBeenCalledWith('No validation history found for branch: nonexistent');
     });
@@ -331,9 +325,9 @@ describe('history command', () => {
       const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
       vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--run'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--run'], { from: 'user' });
 
       expect(getAllRunCacheEntries).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
@@ -388,9 +382,9 @@ describe('history command', () => {
       const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
       vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--run', 'test'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--run', 'test'], { from: 'user' });
 
       expect(getAllRunCacheEntries).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
@@ -418,9 +412,9 @@ describe('history command', () => {
       const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
       vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--run'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--run'], { from: 'user' });
 
       expect(getAllRunCacheEntries).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
@@ -448,9 +442,9 @@ describe('history command', () => {
       const getAllRunCacheEntries = vi.fn().mockResolvedValue(mockRunCacheEntries);
       vi.mocked(history).getAllRunCacheEntries = getAllRunCacheEntries;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'list', '--run', 'nonexistent'], { from: 'user' });
+      await env.program.parseAsync(['history', 'list', '--run', 'nonexistent'], { from: 'user' });
 
       expect(getAllRunCacheEntries).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith('No run cache entries found matching command: nonexistent');
@@ -484,9 +478,9 @@ describe('history command', () => {
 
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockNote);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
+      await env.program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
 
       expect(history.readHistoryNote).toHaveBeenCalledWith('abc123');
       expect(console.log).toHaveBeenCalled();
@@ -518,9 +512,9 @@ describe('history command', () => {
 
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockNote);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'show', 'abc123', '--yaml'], { from: 'user' });
+      await env.program.parseAsync(['history', 'show', 'abc123', '--yaml'], { from: 'user' });
 
       // Verify YAML separator was written
       const writeCalls = vi.mocked(process.stdout.write).mock.calls;
@@ -536,10 +530,10 @@ describe('history command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
       try {
-        await program.parseAsync(['history', 'show', 'nonexistent'], { from: 'user' });
+        await env.program.parseAsync(['history', 'show', 'nonexistent'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -562,9 +556,9 @@ describe('history command', () => {
 
       vi.mocked(history.pruneHistoryByAge).mockResolvedValue(mockResult);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'prune'], { from: 'user' });
+      await env.program.parseAsync(['history', 'prune'], { from: 'user' });
 
       expect(history.pruneHistoryByAge).toHaveBeenCalledWith(90, {}, false);
       expect(console.log).toHaveBeenCalled();
@@ -579,9 +573,9 @@ describe('history command', () => {
 
       vi.mocked(history.pruneHistoryByAge).mockResolvedValue(mockResult);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'prune', '--older-than', '30'], { from: 'user' });
+      await env.program.parseAsync(['history', 'prune', '--older-than', '30'], { from: 'user' });
 
       expect(history.pruneHistoryByAge).toHaveBeenCalledWith(30, {}, false);
     });
@@ -595,9 +589,9 @@ describe('history command', () => {
 
       vi.mocked(history.pruneAllHistory).mockResolvedValue(mockResult);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'prune', '--all'], { from: 'user' });
+      await env.program.parseAsync(['history', 'prune', '--all'], { from: 'user' });
 
       expect(history.pruneAllHistory).toHaveBeenCalledWith({}, false);
       expect(console.log).toHaveBeenCalled();
@@ -612,9 +606,9 @@ describe('history command', () => {
 
       vi.mocked(history.pruneHistoryByAge).mockResolvedValue(mockResult);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'prune', '--dry-run'], { from: 'user' });
+      await env.program.parseAsync(['history', 'prune', '--dry-run'], { from: 'user' });
 
       expect(history.pruneHistoryByAge).toHaveBeenCalledWith(90, {}, true);
     });
@@ -628,9 +622,9 @@ describe('history command', () => {
 
       vi.mocked(history.pruneHistoryByAge).mockResolvedValue(mockResult);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'prune'], { from: 'user' });
+      await env.program.parseAsync(['history', 'prune'], { from: 'user' });
 
       expect(console.log).toHaveBeenCalledWith('No history older than 90 days found');
     });
@@ -644,9 +638,9 @@ describe('history command', () => {
 
       vi.mocked(history.pruneAllHistory).mockResolvedValue(mockResult);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'prune', '--all'], { from: 'user' });
+      await env.program.parseAsync(['history', 'prune', '--all'], { from: 'user' });
 
       expect(console.log).toHaveBeenCalledWith('No history to prune');
     });
@@ -661,9 +655,9 @@ describe('history command', () => {
       const pruneAllRunCache = vi.fn().mockResolvedValue(mockResult);
       vi.mocked(history).pruneAllRunCache = pruneAllRunCache;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'prune', '--run', '--all'], { from: 'user' });
+      await env.program.parseAsync(['history', 'prune', '--run', '--all'], { from: 'user' });
 
       expect(pruneAllRunCache).toHaveBeenCalledWith(false);
       expect(console.log).toHaveBeenCalled();
@@ -681,9 +675,9 @@ describe('history command', () => {
 
       vi.mocked(history.checkHistoryHealth).mockResolvedValue(mockHealth);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'health'], { from: 'user' });
+      await env.program.parseAsync(['history', 'health'], { from: 'user' });
 
       expect(history.checkHistoryHealth).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
@@ -699,9 +693,9 @@ describe('history command', () => {
 
       vi.mocked(history.checkHistoryHealth).mockResolvedValue(mockHealth);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'health'], { from: 'user' });
+      await env.program.parseAsync(['history', 'health'], { from: 'user' });
 
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Consider pruning old history')
@@ -718,9 +712,9 @@ describe('history command', () => {
 
       vi.mocked(history.checkHistoryHealth).mockResolvedValue(mockHealth);
 
-      historyCommand(program);
+      historyCommand(env.program);
 
-      await program.parseAsync(['history', 'health'], { from: 'user' });
+      await env.program.parseAsync(['history', 'health'], { from: 'user' });
 
       expect(console.log).toHaveBeenCalledWith('\n✓ History is healthy');
     });
@@ -736,10 +730,10 @@ describe('history command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
       try {
-        await program.parseAsync(['history', 'list'], { from: 'user' });
+        await env.program.parseAsync(['history', 'list'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -760,10 +754,10 @@ describe('history command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
       try {
-        await program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
+        await env.program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -784,10 +778,10 @@ describe('history command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
       try {
-        await program.parseAsync(['history', 'prune'], { from: 'user' });
+        await env.program.parseAsync(['history', 'prune'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -808,10 +802,10 @@ describe('history command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      historyCommand(program);
+      historyCommand(env.program);
 
       try {
-        await program.parseAsync(['history', 'health'], { from: 'user' });
+        await env.program.parseAsync(['history', 'health'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();

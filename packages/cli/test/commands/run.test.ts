@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Command } from 'commander';
 import { runCommand } from '../../src/commands/run.js';
 import * as childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { createMockChildProcess } from '../helpers/mock-helpers.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock child_process.spawn
 vi.mock('child_process', () => ({
@@ -11,34 +11,21 @@ vi.mock('child_process', () => ({
 }));
 
 describe('run command', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-
-    // Mock process.exit to prevent it from actually exiting during tests
-    vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-      throw new Error(`process.exit(${code})`);
-    }) as any;
+    env = setupCommanderTest();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    env.cleanup();
   });
 
   describe('command registration', () => {
     it('should register run command with correct name', () => {
-      runCommand(program);
+      runCommand(env.program);
 
-      const commands = program.commands;
+      const commands = env.program.commands;
       const runCmd = commands.find(cmd => cmd.name() === 'run');
 
       expect(runCmd).toBeDefined();
@@ -46,9 +33,9 @@ describe('run command', () => {
     });
 
     it('should require a command argument', () => {
-      runCommand(program);
+      runCommand(env.program);
 
-      const runCmd = program.commands.find(cmd => cmd.name() === 'run');
+      const runCmd = env.program.commands.find(cmd => cmd.name() === 'run');
       const args = runCmd?._args;
 
       expect(args).toBeDefined();
@@ -63,10 +50,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('test output', '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -88,10 +75,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('stdout output', 'stderr output', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -107,10 +94,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('success', '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo success'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo success'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -123,10 +110,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('', 'error output', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'exit 1'], { from: 'user' });
+        await env.program.parseAsync(['run', 'exit 1'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(1);
@@ -150,10 +137,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess(vitestOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npx vitest'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npx vitest'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -179,10 +166,10 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       const mockProcess = createMockChildProcess(tscOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npx tsc --noEmit'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npx tsc --noEmit'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -205,10 +192,10 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       const mockProcess = createMockChildProcess('test passed', '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -232,10 +219,10 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       const mockProcess = createMockChildProcess(mockOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npx vitest'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npx vitest'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -259,9 +246,9 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       mockProcess.stderr = new EventEmitter();
       mockSpawn.mockReturnValue(mockProcess);
 
-      runCommand(program);
+      runCommand(env.program);
 
-      const parsePromise = program.parseAsync(['run', 'nonexistent-command'], { from: 'user' });
+      const parsePromise = env.program.parseAsync(['run', 'nonexistent-command'], { from: 'user' });
 
       // Emit error immediately
       process.nextTick(() => {
@@ -303,10 +290,10 @@ rawOutput: "test output..."
       const mockProcess = createMockChildProcess(innerYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -343,10 +330,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"npm test\""`], { from: 'user' });
+        await env.program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"npm test\""`], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -384,10 +371,10 @@ guidance: "Fix the test phase errors"
       const mockProcess = createMockChildProcess(validateYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate validate'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate validate'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -424,10 +411,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'pnpm test:llm'], { from: 'user' });
+        await env.program.parseAsync(['run', 'pnpm test:llm'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -470,10 +457,10 @@ customField: "should be preserved"
       const mockProcess = createMockChildProcess(innerYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -510,10 +497,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npx vitest"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npx vitest"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -549,10 +536,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 42);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "failing-command"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "failing-command"'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(42);
@@ -578,10 +565,10 @@ extraction:
       const mockProcess = createMockChildProcess(regularOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -609,10 +596,10 @@ extraction:
       const mockProcess = createMockChildProcess(windowsYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -642,10 +629,10 @@ extraction
       const mockProcess = createMockChildProcess(malformedYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -671,10 +658,10 @@ extraction
       const mockProcess = createMockChildProcess(emptyYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo ---'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo ---'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -703,10 +690,10 @@ extraction:
       const mockProcess = createMockChildProcess(specialCharsYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -737,10 +724,10 @@ extraction:
       const mockProcess = createMockChildProcess(mixedOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -779,10 +766,10 @@ customField: null
       const mockProcess = createMockChildProcess(nullYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -811,10 +798,10 @@ extraction:
       const mockProcess = createMockChildProcess(deepYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"...\"" (10 levels)`], { from: 'user' });
+        await env.program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"...\"" (10 levels)`], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -845,10 +832,10 @@ extraction:
       const mockProcess = createMockChildProcess(missingCommandYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -877,10 +864,10 @@ extraction:
       const mockProcess = createMockChildProcess(nonStringCommandYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -907,10 +894,10 @@ exitCode: "not a number"
       const mockProcess = createMockChildProcess(corruptedYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -936,13 +923,13 @@ exitCode: "not a number"
       const mockProcess = createMockChildProcess(brokenYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       // Spy on console.error to verify error handling
       const consoleErrorSpy = vi.spyOn(console, 'error');
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -985,10 +972,10 @@ ${largeErrors.map(e => `    - file: "${e.file}"\n      line: ${e.line}\n      me
       const mockProcess = createMockChildProcess(largeYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1018,10 +1005,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', longCommand], { from: 'user' });
+        await env.program.parseAsync(['run', longCommand], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1053,10 +1040,10 @@ extraction:
       const mockProcess = createMockChildProcess(multiSeparatorOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1088,10 +1075,10 @@ extraction:
       const mockProcess = createMockChildProcess(yamlOnStdout, stderrOutput, 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1122,10 +1109,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 42);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "custom-tool"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "custom-tool"'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(42);
@@ -1153,10 +1140,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 1); // Outer exit code is 1
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1189,10 +1176,10 @@ extraction:
       const mockProcess = createMockChildProcess(pnpmOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'pnpm validate --yaml'], { from: 'user' });
+        await env.program.parseAsync(['run', 'pnpm validate --yaml'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1234,10 +1221,10 @@ extraction:
       const mockProcess = createMockChildProcess(npmOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1269,10 +1256,10 @@ extraction:
       const mockProcess = createMockChildProcess(yarnOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'yarn test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'yarn test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1308,10 +1295,10 @@ extraction:
       const mockProcess = createMockChildProcess(outputWithPreamble, originalStderr, 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1340,10 +1327,10 @@ extraction:
       const mockProcess = createMockChildProcess(cleanYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1378,10 +1365,10 @@ Done in 5.2s
       const mockProcess = createMockChildProcess(outputWithPostamble, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1421,10 +1408,10 @@ extraction:
       const mockProcess = createMockChildProcess(pnpmWithErrors, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'pnpm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'pnpm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
