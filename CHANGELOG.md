@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ♻️ Code Quality
+
+**Reduced code duplication in error extractors** (255 lines removed)
+- **Problem**: Identical `formatCleanOutput()` and `generateGuidance()` functions duplicated across 5 extractors
+- **Solution**: Created shared utilities in `packages/extractors/src/utils/`
+  - `formatter-utils.ts`: Exports `formatCleanOutput()` for consistent error formatting
+  - `guidance-generator.ts`: Exports pattern-based guidance generation with `COMMON_GUIDANCE_PATTERNS`
+- **Impact**:
+  - 255 net lines of code removed (309 deleted, 54 added)
+  - Changes to error formatting or guidance now made in one place
+  - Consistent behavior across Jasmine, Mocha, TAP, JUnit, and Ava extractors
+- **Maintainability**: Future extractor improvements benefit all test frameworks automatically
+
 ## [0.15.0-rc.3] - 2025-11-06
 
 ### 🐛 Bug Fixes

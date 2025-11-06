@@ -8,6 +8,8 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
+import { formatCleanOutput } from './utils/formatter-utils.js';
+import { generateGuidanceFromPatterns, COMMON_GUIDANCE_PATTERNS, type GuidancePattern } from './utils/guidance-generator.js';
 
 /**
  * Extract errors from Ava test output
@@ -71,8 +73,8 @@ export function extractAvaErrors(output: string): ErrorExtractorResult {
   // Generate summary
   const summary = `${failures.length} test(s) failed`;
 
-  // Generate guidance
-  const guidance = generateGuidance(failures);
+  // Generate guidance using Ava-specific patterns
+  const guidance = generateGuidanceFromPatterns(failures, AVA_GUIDANCE_PATTERNS);
 
   // Calculate quality metadata
   const completeness = failures.length > 0 ? (completeCount / failures.length) * 100 : 100;
@@ -387,41 +389,15 @@ function getErrorGuidance(errorType: string): string | undefined {
 }
 
 /**
- * Generate overall guidance from all failures
+ * Ava-specific guidance patterns
+ * Extends common patterns with Ava-specific timeout guidance
  */
-function generateGuidance(failures: FailureInfo[]): string {
-  if (failures.length === 0) {
-    return '';
+const AVA_GUIDANCE_PATTERNS: GuidancePattern[] = [
+  ...COMMON_GUIDANCE_PATTERNS,
+  {
+    key: 'ava-timeout',
+    messageMatchers: [],
+    errorTypeMatchers: ['timeout'],
+    guidance: 'Tests are timing out - use t.timeout() to increase limit or optimize async operations'
   }
-
-  const errorTypes = new Set(failures.map(f => f.errorType).filter(Boolean));
-
-  if (errorTypes.has('assertion')) {
-    return 'Review failing assertions - check expected vs actual values';
-  }
-  if (errorTypes.has('timeout')) {
-    return 'Tests are timing out - use t.timeout() to increase limit or optimize async operations';
-  }
-  if (errorTypes.has('type-error')) {
-    return 'Type errors detected - check for null/undefined values';
-  }
-
-  return 'Review test failures and fix the underlying issues';
-}
-
-/**
- * Format clean output for display
- */
-function formatCleanOutput(errors: FormattedError[]): string {
-  if (errors.length === 0) {
-    return '';
-  }
-
-  return errors
-    .map(e => {
-      const location = e.file && e.line ? `${e.file}:${e.line}` : e.file ?? 'unknown';
-      const context = e.context ? ` (${e.context})` : '';
-      return `${location}${context}: ${e.message}`;
-    })
-    .join('\n');
-}
+];

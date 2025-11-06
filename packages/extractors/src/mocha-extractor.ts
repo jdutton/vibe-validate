@@ -7,6 +7,8 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
+import { formatCleanOutput } from './utils/formatter-utils.js';
+import { generateGuidanceFromPatterns } from './utils/guidance-generator.js';
 
 /**
  * Extract errors from Mocha test output
@@ -88,7 +90,7 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   const summary = `${failures.length} test(s) failed`;
 
   // Generate guidance
-  const guidance = generateGuidance(failures);
+  const guidance = generateGuidanceFromPatterns(failures);
 
   // Calculate quality metadata
   const completeness = failures.length > 0 ? (completeCount / failures.length) * 100 : 100;
@@ -252,75 +254,3 @@ function extractFailures(output: string): FailureInfo[] {
   return failures;
 }
 
-/**
- * Generate guidance based on failure types
- */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 16 acceptable for guidance generation (categorizes multiple error types and generates actionable suggestions)
-function generateGuidance(failures: FailureInfo[]): string {
-  const guidances: string[] = [];
-  const seen = new Set<string>();
-
-  for (const failure of failures) {
-    const message = failure.message ?? '';
-    const errorType = failure.errorType;
-
-    // Assertion errors
-    if (errorType === 'AssertionError' || message.includes('expected') || message.includes('Expected')) {
-      if (!seen.has('assertion')) {
-        guidances.push('Review test assertions and expected values');
-        seen.add('assertion');
-      }
-    }
-
-    // Timeout errors
-    if (message.includes('Timeout') || message.includes('timeout') || message.includes('exceeded')) {
-      if (!seen.has('timeout')) {
-        guidances.push('Increase test timeout or optimize async operations');
-        seen.add('timeout');
-      }
-    }
-
-    // Type errors
-    if (errorType === 'TypeError') {
-      if (!seen.has('type')) {
-        guidances.push('Check for null/undefined values and type mismatches');
-        seen.add('type');
-      }
-    }
-
-    // File errors
-    if (message.includes('ENOENT') || message.includes('no such file')) {
-      if (!seen.has('file')) {
-        guidances.push('Verify file paths and ensure test fixtures exist');
-        seen.add('file');
-      }
-    }
-
-    // Module errors
-    if (message.includes('Cannot find package') || message.includes('Cannot find module')) {
-      if (!seen.has('module')) {
-        guidances.push('Install missing dependencies or check import paths');
-        seen.add('module');
-      }
-    }
-  }
-
-  return guidances.join('\n');
-}
-
-/**
- * Format clean output for LLM consumption
- */
-function formatCleanOutput(errors: FormattedError[]): string {
-  if (errors.length === 0) {
-    return '';
-  }
-
-  return errors
-    .map((error) => {
-      const location = error.line ? `${error.file}:${error.line}` : error.file;
-      const contextStr = error.context ? ` (${error.context})` : '';
-      return `${location}: ${error.message}${contextStr}`;
-    })
-    .join('\n');
-}
