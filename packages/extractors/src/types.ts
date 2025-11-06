@@ -21,6 +21,23 @@ export type {
 } from './result-schema.js';
 
 /**
+ * Input for error extraction with separated streams
+ *
+ * Allows extractors to choose the most appropriate stream(s) for extraction:
+ * - stdout: Standard output (clean, structured data)
+ * - stderr: Error output (warnings, errors, debug info)
+ * - combined: Chronological mix (for context-dependent extraction)
+ */
+export interface ExtractorInput {
+  /** Raw stdout output */
+  stdout: string;
+  /** Raw stderr output */
+  stderr: string;
+  /** Combined chronological output (stdout + stderr) */
+  combined: string;
+}
+
+/**
  * Error extractor interface for specific tool/format
  */
 export interface ErrorExtractor {

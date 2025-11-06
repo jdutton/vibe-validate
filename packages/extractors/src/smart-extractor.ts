@@ -6,7 +6,7 @@
  * @package @vibe-validate/extractors
  */
 
-import type { ErrorExtractorResult } from './types.js';
+import type { ErrorExtractorResult, ExtractorInput } from './types.js';
 import { extractTypeScriptErrors } from './typescript-extractor.js';
 import { extractESLintErrors } from './eslint-extractor.js';
 import { extractVitestErrors } from './vitest-extractor.js';
@@ -35,26 +35,29 @@ import { stripAnsiCodes } from './utils.js';
  * 8. **Vitest**: `×`/`❯`/`❌` symbols + `Test Files` summary
  * 9. **Generic**: Fallback for all other formats
  *
- * @param output - Raw command output (may contain ANSI color codes)
+ * @param input - Raw command output (string) or separated streams (ExtractorInput)
  * @returns Structured error information from appropriate extractor
  *
  * @example
  * ```typescript
- * // TypeScript detection (from "error TS2322:" pattern)
+ * // Legacy usage (string)
  * const result1 = autoDetectAndExtract(tscOutput);
- * // Uses extractTypeScriptErrors
  *
- * // Jest detection (from "FAIL" markers)
- * const result2 = autoDetectAndExtract(jestOutput);
- * // Uses extractJestErrors
- *
- * // Vitest detection (from "✓" symbols)
- * const result3 = autoDetectAndExtract(vitestOutput);
- * // Uses extractVitestErrors
+ * // New usage (separated streams)
+ * const result2 = autoDetectAndExtract({
+ *   stdout: stdoutString,
+ *   stderr: stderrString,
+ *   combined: combinedString
+ * });
  * ```
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 26 acceptable for smart extractor (sequentially detects 9 different test framework output formats with pattern matching)
-export function autoDetectAndExtract(output: string): ErrorExtractorResult {
+export function autoDetectAndExtract(input: string | ExtractorInput): ErrorExtractorResult {
+  // Normalize input to string for backwards compatibility
+  // Most extractors currently use combined output, but this structure
+  // allows future extractors to be stream-specific
+  const output = typeof input === 'string' ? input : input.combined;
+
   // CRITICAL: Strip ANSI codes centrally before routing to extractors
   //
   // Design Decision: Central stripping (DRY & fail-safe)

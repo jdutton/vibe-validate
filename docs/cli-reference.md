@@ -257,6 +257,19 @@ vibe-validate cleanup            # Execute
 
 ---
 
+### `cleanup-temp`
+
+Clean up old temporary output files
+
+**Options:**
+
+- `--older-than <days>` - Delete files older than N days
+- `--all` - Delete all temp files regardless of age
+- `--dry-run` - Show what would be deleted without actually deleting
+- `--yaml` - Output YAML only (no human-friendly display)
+
+---
+
 ### `config`
 
 Show or validate vibe-validate configuration
@@ -450,6 +463,9 @@ Run a command and extract LLM-friendly errors (with smart caching)
 
 - `--check` - Check if cached result exists without executing
 - `--force` - Force execution and update cache (bypass cache read)
+- `--head <lines>` - Display first N lines of output after YAML (on stderr)
+- `--tail <lines>` - Display last N lines of output after YAML (on stderr)
+- `--verbose` - Display all output after YAML (on stderr)
 
 **Examples:**
 

@@ -347,6 +347,7 @@ export async function runStepsInParallel(
           // objects wastes tokens in LLM context. Only extract when there's value to provide.
           let extraction;
           let isCachedResult: boolean | undefined;
+          let outputFiles;
 
           // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
           if (code !== 0 && output && output.trim()) {
@@ -359,6 +360,7 @@ export async function runStepsInParallel(
               // This preserves the actual meaningful summary instead of generic "X error(s) from nested command"
               extraction = parsed.extraction;
               isCachedResult = parsed.isCachedResult;
+              outputFiles = parsed.outputFiles;
 
               // Log cache hit status if available (nested run was cached)
               if (parsed.isCachedResult && verbose) {
@@ -383,6 +385,7 @@ export async function runStepsInParallel(
             const parsed = parseVibeValidateOutput(output);
             if (parsed) {
               isCachedResult = parsed.isCachedResult;
+              outputFiles = parsed.outputFiles;
 
               // Log cache hit status if available
               if (parsed.isCachedResult && verbose) {
@@ -401,6 +404,7 @@ export async function runStepsInParallel(
             passed: code === 0,
             ...(isCachedResult !== undefined ? { isCachedResult } : {}), // Include cache status if available
             ...(extraction ? { extraction } : {}), // Conditionally include extraction
+            ...(outputFiles ? { outputFiles } : {}), // Include output files for debugging (v0.15.1+)
           };
 
           // Only include extraction quality metrics when developerFeedback is enabled

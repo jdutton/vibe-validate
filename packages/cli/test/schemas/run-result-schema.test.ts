@@ -146,8 +146,10 @@ describe('RunResult Schema', () => {
             },
           },
         },
-        // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture path
-        fullOutputFile: '/tmp/output.log',
+        outputFiles: {
+          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture path
+          combined: '/tmp/output.jsonl',
+        },
         isCachedResult: true,
       };
 
@@ -163,7 +165,7 @@ describe('RunResult Schema', () => {
         'exitCode',       // From CommandExecutionSchema
         'durationSecs',   // From CommandExecutionSchema
         'extraction',     // From CommandExecutionSchema (optional)
-        'fullOutputFile', // From .extend() (optional)
+        'outputFiles',    // From .extend() (optional) - v0.15.0
         'isCachedResult', // From .extend() (optional)
       ];
 

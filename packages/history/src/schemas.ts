@@ -15,6 +15,18 @@ import {
 } from '@vibe-validate/core';
 
 /**
+ * Output files structure for organized temp directory (v0.15.0+)
+ */
+const OutputFilesSchema = z.object({
+  /** Path to stdout.log (omitted if empty) */
+  stdout: z.string().optional(),
+  /** Path to stderr.log (omitted if empty) */
+  stderr: z.string().optional(),
+  /** Path to combined.jsonl (chronological, ANSI-stripped) */
+  combined: z.string(),
+}).optional();
+
+/**
  * Run Cache Note Schema
  *
  * Extends CommandExecutionSchema + OperationMetadataSchema with run-specific fields.
@@ -23,8 +35,10 @@ import {
  * Represents a cached result of a `vibe-validate run` command execution.
  * Only successful runs (exitCode === 0) are cached.
  *
- * v0.15.0 BREAKING CHANGE: Now uses `durationSecs` (seconds) to match CommandExecutionSchema.
- * Previous versions used `duration` (milliseconds). Migration handled by run-cache-reader.ts.
+ * v0.15.0 BREAKING CHANGES:
+ * - Now uses `durationSecs` (seconds) instead of `duration` (milliseconds)
+ * - Added outputFiles with organized temp structure (stdout.log, stderr.log, combined.jsonl)
+ * - REMOVED fullOutputFile (use outputFiles.combined instead)
  */
 export const RunCacheNoteSchema = OperationMetadataSchema
   .merge(CommandExecutionSchema)
@@ -32,14 +46,11 @@ export const RunCacheNoteSchema = OperationMetadataSchema
     /** Working directory relative to git root ("" for root, "packages/cli" for subdirectory) */
     workdir: z.string(),
 
-    /** Path to full output log file (may not exist if old/cleaned up) */
-    fullOutputFile: z.string().optional(),
+    /** Organized output files (v0.15.0+) */
+    outputFiles: OutputFilesSchema,
 
     /** Whether this result is from cache (true) or fresh execution (false/omitted) */
     isCachedResult: z.boolean().optional(),
-
-    /** Suggested direct command (when nested vibe-validate detected) */
-    suggestedDirectCommand: z.string().optional(),
   });
 
 /**

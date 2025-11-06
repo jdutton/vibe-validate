@@ -56,6 +56,7 @@ export type {
   ValidationResult,
   StepResult,
   PhaseResult,
+  OutputFiles,
 } from './result-schema.js';
 
 // Export runtime types (from runner.ts - non-serializable)
@@ -75,6 +76,8 @@ export {
 export {
   stopProcessGroup,
   spawnCommand,
+  captureCommandOutput,
+  type CaptureCommandOptions,
 } from './process-utils.js';
 
 // Export validation result schema and validators
@@ -84,6 +87,7 @@ export {
   PhaseResultSchema,
   CommandExecutionSchema,
   OperationMetadataSchema,
+  OutputFilesSchema,
   safeValidateResult,
   validateResult,
 } from './result-schema.js';
@@ -105,3 +109,14 @@ export {
   parseVibeValidateOutput,
   type ParsedVibeValidateOutput,
 } from './run-output-parser.js';
+
+// Export output capture schemas and types
+export type {
+  OutputLine,
+  CapturedOutput,
+} from './output-capture-schema.js';
+
+export {
+  OutputLineSchema,
+  CapturedOutputSchema,
+} from './output-capture-schema.js';

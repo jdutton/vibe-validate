@@ -14,6 +14,7 @@
 import { parse as parseYaml } from 'yaml';
 import { extractYamlContent } from '@vibe-validate/git';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
+import type { OutputFiles } from './result-schema.js';
 
 /**
  * Parsed vibe-validate output result
@@ -25,14 +26,14 @@ export interface ParsedVibeValidateOutput {
   /** Extracted error information */
   extraction: ErrorExtractorResult;
 
-  /** The innermost command that was actually executed/cached */
-  suggestedDirectCommand?: string;
-
   /** Whether this result came from cache */
   isCachedResult?: boolean;
 
   /** Path to full output log file (if available) */
   fullOutputFile?: string;
+
+  /** Output files from command execution (v0.15.1+) */
+  outputFiles?: OutputFiles;
 
   /** Original tree hash from nested result */
   treeHash?: string;
@@ -102,15 +103,12 @@ function parseRunResult(parsed: Record<string, unknown>): ParsedVibeValidateOutp
     errors: [],
   };
 
-  // Extract innermost command (unwrap nested run commands)
-  const suggestedDirectCommand = extractInnermostCommand(parsed);
-
   return {
     type: 'run',
     extraction: normalizedExtraction,
-    suggestedDirectCommand, // Always include (even if 'unknown')
     isCachedResult: parsed.isCachedResult as boolean | undefined,
     fullOutputFile: parsed.fullOutputFile as string | undefined,
+    outputFiles: parsed.outputFiles as OutputFiles | undefined,
     treeHash: parsed.treeHash as string | undefined,
     exitCode: parsed.exitCode as number | undefined,
     timestamp: parsed.timestamp as string | undefined,
@@ -155,26 +153,4 @@ function parseValidationResult(parsed: Record<string, unknown>): ParsedVibeValid
     treeHash: parsed.treeHash as string | undefined,
     timestamp: parsed.timestamp as string | undefined,
   };
-}
-
-/**
- * Extract the innermost command from nested run results
- *
- * Examples:
- * - { command: "npm test" } → "npm test"
- * - { command: "...", suggestedDirectCommand: "npm test" } → "npm test"
- * - { command: "vibe-validate validate" } → "vibe-validate validate"
- */
-function extractInnermostCommand(result: Record<string, unknown>): string {
-  // If already has suggestedDirectCommand, use it (handles 3+ levels)
-  if (result.suggestedDirectCommand && typeof result.suggestedDirectCommand === 'string') {
-    return result.suggestedDirectCommand;
-  }
-
-  // Otherwise, use the command from the inner result
-  if (result.command && typeof result.command === 'string') {
-    return result.command;
-  }
-
-  return 'unknown';
 }

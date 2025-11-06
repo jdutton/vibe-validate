@@ -114,9 +114,8 @@ export async function getGitTreeHash(): Promise<string> {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     if (errorMessage.includes('not a git repository')) {
-      // Not in git repo - fall back to timestamp-based hash
-      console.warn('⚠️  Not in git repository, using timestamp-based hash');
-      return `nogit-${Date.now()}`;
+      // Not in git repo - return "unknown" (caller should skip caching)
+      return 'unknown';
     }
 
     // Other git errors

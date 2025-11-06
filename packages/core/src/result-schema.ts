@@ -34,6 +34,21 @@ export const CommandExecutionSchema = z.object({
 });
 
 /**
+ * Output Files Schema
+ *
+ * Shared by RunResult and StepResult.
+ * Provides paths to organized output files for debugging and inspection.
+ */
+export const OutputFilesSchema = z.object({
+  /** Path to stdout.log (omitted if empty) */
+  stdout: z.string().optional(),
+  /** Path to stderr.log (omitted if empty) */
+  stderr: z.string().optional(),
+  /** Path to combined.jsonl (chronological, ANSI-stripped) */
+  combined: z.string(),
+});
+
+/**
  * Base: Operation Metadata Schema
  *
  * Shared by top-level operations (RunResult, ValidationResult).
@@ -58,6 +73,7 @@ export const OperationMetadataSchema = z.object({
  * - What step (name)
  * - Did it pass? (passed)
  * - Command execution details (command, exitCode, durationSecs, extraction)
+ * - Debug resources (outputFiles)
  *
  * v0.15.0 BREAKING CHANGES:
  * - Now extends CommandExecutionSchema (adds command, exitCode)
@@ -66,6 +82,9 @@ export const OperationMetadataSchema = z.object({
  * - Removed failedTests field (use extraction.errors instead)
  * - Added isCachedResult to indicate when result came from cache
  * - Added .strict() to reject unknown properties (prevents internal fields from leaking)
+ *
+ * v0.15.1 ENHANCEMENTS:
+ * - Added outputFiles for debugging (stdout.log, stderr.log, combined.jsonl)
  */
 export const StepResultSchema = CommandExecutionSchema.extend({
   /** Step name */
@@ -76,6 +95,9 @@ export const StepResultSchema = CommandExecutionSchema.extend({
 
   /** Was this result retrieved from cache? (v0.15.0+) */
   isCachedResult: z.boolean().optional(),
+
+  /** Output files from step execution (v0.15.1+) */
+  outputFiles: OutputFilesSchema.optional(),
 }).strict();
 
 /**
@@ -146,6 +168,7 @@ export const ValidationResultSchema = OperationMetadataSchema.extend({
 /**
  * Inferred TypeScript types from Zod schemas
  */
+export type OutputFiles = z.infer<typeof OutputFilesSchema>;
 export type StepResult = z.infer<typeof StepResultSchema>;
 export type PhaseResult = z.infer<typeof PhaseResultSchema>;
 export type ValidationResult = z.infer<typeof ValidationResultSchema>;

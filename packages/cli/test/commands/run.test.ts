@@ -322,9 +322,8 @@ rawOutput: "test output..."
       expect(stdoutCalls).toContain('expected 5 to equal 3');
       expect(stdoutCalls).toContain('1 test failed');
 
-      // Should add suggestedDirectCommand pointing to innermost command
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
-      expect(stdoutCalls).toContain('npm test');
+      // Command should be unwrapped to show actual command
+      expect(stdoutCalls).toContain('command: npm test');
     });
 
     it('should detect and merge nested run command (3 levels)', async () => {
@@ -338,7 +337,6 @@ extraction:
       line: 10
       message: "test error"
   summary: "1 test failed"
-suggestedDirectCommand: "npm test"
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -360,7 +358,7 @@ suggestedDirectCommand: "npm test"
         .join('');
 
       // Should unwrap to innermost command
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
       expect(stdoutCalls).toContain('test error');
     });
@@ -406,8 +404,8 @@ guidance: "Fix the test phase errors"
       expect(stdoutCalls).toContain('phases:');
       expect(stdoutCalls).toContain('type error');
 
-      // Should add suggestedDirectCommand
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should preserve validate command (not unwrapped since it's not nested run)
+      expect(stdoutCalls).toContain('command: vibe-validate validate');
       expect(stdoutCalls).toContain('vibe-validate validate');
     });
 
@@ -442,7 +440,7 @@ extraction:
 
       expect(stdoutCalls).toContain('exitCode: 0');
       expect(stdoutCalls).toContain('All tests passed');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command: vitest run');
       expect(stdoutCalls).toContain('vitest run');
     });
 
@@ -499,7 +497,7 @@ customField: "should be preserved"
       expect(stdoutCalls).toContain('should be preserved');
     });
 
-    it('should add suggestedDirectCommand field with unwrapped command', async () => {
+    it('should unwrap command field for nested vibe-validate calls', async () => {
       const innerYaml = `---
 command: "npx vitest"
 exitCode: 0
@@ -526,17 +524,15 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Parse YAML to verify structure
-      const yamlMatch = stdoutCalls.match(/---\n([\s\S]+)/);
-      expect(yamlMatch).not.toBeNull();
+      // Parse YAML output - opening delimiter only (no display flags)
+      expect(stdoutCalls).toMatch(/^---\n/);
+      const yamlContent = stdoutCalls.replace(/^---\n/, '');
 
-      if (yamlMatch) {
-        const yaml = require('yaml');
-        const parsed = yaml.parse(yamlMatch[1]);
+      const yaml = require('yaml');
+      const parsed = yaml.parse(yamlContent);
 
-        expect(parsed.suggestedDirectCommand).toBe('npx vitest');
-        expect(parsed.command).toContain('vibe-validate run');
-      }
+      // Command should be unwrapped (showing actual command, not wrapper)
+      expect(parsed.command).toBe('npx vitest');
     });
 
     it('should preserve exit codes through all nesting levels', async () => {
@@ -599,7 +595,8 @@ extraction:
       // Should extract errors normally (not treat as nested YAML)
       expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('errors:');
-      expect(stdoutCalls).not.toContain('suggestedDirectCommand:');
+      // Non-YAML output should use original command (not unwrapped)
+      expect(stdoutCalls).toContain('command: npm test');
     });
   });
 
@@ -626,8 +623,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should detect Windows-style YAML and merge
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should detect Windows-style YAML and unwrap command
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
 
@@ -662,7 +659,8 @@ extraction
       // Should fallback to extraction (not crash)
       expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('extraction:');
-      expect(stdoutCalls).not.toContain('suggestedDirectCommand:'); // Shouldn't merge
+      // Malformed YAML should use original wrapper command (not unwrapped)
+      expect(stdoutCalls).toContain('command: vibe-validate run');
     });
 
     it('should handle empty YAML output', async () => {
@@ -719,7 +717,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle special characters in unwrapped command
+      expect(stdoutCalls).toContain('command:');
       expect(stdoutCalls).toContain('special chars');
     });
 
@@ -752,9 +751,9 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // NEW BEHAVIOR: SHOULD detect YAML even with preamble and merge it
+      // NEW BEHAVIOR: SHOULD detect YAML even with preamble and unwrap command
       expect(stdoutCalls).toContain('extraction:');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
 
       // Verify preamble was routed to stderr
@@ -794,7 +793,8 @@ customField: null
         .map(call => call[0])
         .join('');
 
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle null values and unwrap command
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
 
@@ -805,7 +805,6 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Tests passed"
-suggestedDirectCommand: "npm test"
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -826,8 +825,8 @@ suggestedDirectCommand: "npm test"
         .map(call => call[0])
         .join('');
 
-      // Should unwrap to innermost
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should unwrap to innermost command
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
   });
@@ -860,8 +859,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should use 'unknown' as fallback
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should use 'unknown' treeHash when command field is missing
+      expect(stdoutCalls).toContain('treeHash: unknown');
       expect(stdoutCalls).toContain('unknown');
     });
 
@@ -892,8 +891,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should fallback to 'unknown'
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should use 'unknown' treeHash when command field is non-string
+      expect(stdoutCalls).toContain('treeHash: unknown');
       expect(stdoutCalls).toContain('unknown');
     });
 
@@ -922,8 +921,8 @@ exitCode: "not a number"
         .map(call => call[0])
         .join('');
 
-      // Should merge successfully (types are flexible)
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should unwrap command even with corrupted types
+      expect(stdoutCalls).toContain('command: npm test');
     });
 
     it('should handle YAML parsing exceptions gracefully', async () => {
@@ -1000,8 +999,8 @@ ${largeErrors.map(e => `    - file: "${e.file}"\n      line: ${e.line}\n      me
         .map(call => call[0])
         .join('');
 
-      // Should handle large output without crashing
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle large output without crashing and unwrap command
+      expect(stdoutCalls).toContain('command:');
       expect(stdoutCalls).toContain('10000 test failures');
     });
 
@@ -1033,7 +1032,9 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle very long commands and unwrap
+      expect(stdoutCalls).toContain('command:');
+      expect(stdoutCalls).toContain('npm test with very long arguments');
     });
 
     it('should handle multiple YAML separators in output', async () => {
@@ -1066,8 +1067,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should parse correctly (YAML parser handles this)
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should parse correctly (YAML parser handles this) and unwrap command
+      expect(stdoutCalls).toContain('command: npm test');
     });
   });
 
@@ -1102,8 +1103,8 @@ extraction:
         .join('');
 
       // NEW BEHAVIOR: Check stdout only for YAML (stderr doesn't corrupt)
-      // Should successfully detect and merge YAML despite stderr warnings
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should successfully detect and unwrap command despite stderr warnings
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
 
@@ -1204,7 +1205,7 @@ extraction:
         .join('');
       expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('command:');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('npm test');
       // Preamble should NOT be in stdout
       expect(stdoutCalls).not.toContain('vibe-validate@0.13.0 validate');
 
@@ -1353,7 +1354,7 @@ extraction:
         .map(call => call[0])
         .join('');
       expect(stdoutCalls).toContain('---\n');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command:');
 
       // No preamble to write to stderr
       const stderrCalls = vi.mocked(process.stderr.write).mock.calls;

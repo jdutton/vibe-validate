@@ -189,6 +189,24 @@
                     },
                     "isCachedResult": {
                       "type": "boolean"
+                    },
+                    "outputFiles": {
+                      "type": "object",
+                      "properties": {
+                        "stdout": {
+                          "type": "string"
+                        },
+                        "stderr": {
+                          "type": "string"
+                        },
+                        "combined": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "combined"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

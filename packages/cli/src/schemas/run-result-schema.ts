@@ -11,6 +11,7 @@ import { z } from 'zod';
 import {
   OperationMetadataSchema,
   CommandExecutionSchema,
+  OutputFilesSchema,
   createSafeValidator,
   createStrictValidator
 } from '@vibe-validate/core';
@@ -26,29 +27,29 @@ import {
  * Field ordering is optimized for LLM consumption:
  * - Command execution (command, exitCode, durationSecs, extraction)
  * - Operation metadata (timestamp, treeHash)
- * - Run-specific (fullOutputFile, isCachedResult, suggestedDirectCommand)
+ * - Run-specific (outputFiles, isCachedResult, suggestedDirectCommand)
  *
- * v0.15.0 changes:
+ * v0.15.0 BREAKING CHANGES:
  * - Now extends CommandExecutionSchema (consistent with StepResult)
  * - Added durationSecs field
- * - Deprecated suggestedDirectCommand (will be replaced by runCommand in future)
+ * - Added outputFiles with organized temp structure (stdout.log, stderr.log, combined.jsonl)
+ * - REMOVED fullOutputFile (use outputFiles.combined instead)
+ * - REMOVED suggestedDirectCommand (command now contains unwrapped command)
  */
 export const RunResultSchema = OperationMetadataSchema
   .merge(CommandExecutionSchema)
   .extend({
-    /** Path to full output log file (may not exist if old/cleaned up) */
-    fullOutputFile: z.string().optional(),
+    /** Organized output files (v0.15.0+) */
+    outputFiles: OutputFilesSchema.optional(),
 
     /** Whether this result is from cache (true) or fresh execution (false/omitted) */
     isCachedResult: z.boolean().optional(),
-
-    /** Suggested direct command (when nested vibe-validate detected) - DEPRECATED: will be replaced by runCommand */
-    suggestedDirectCommand: z.string().optional(),
   }).passthrough(); // Allow additional fields from nested YAML merging (e.g., phases)
 
 /**
- * Inferred TypeScript type from Zod schema
+ * Inferred TypeScript types from Zod schemas
  */
+export type { OutputFiles } from '@vibe-validate/core';
 export type RunResult = z.infer<typeof RunResultSchema>;
 
 /**

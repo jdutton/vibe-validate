@@ -6,6 +6,9 @@
  */
 
 import { ChildProcess, execSync, spawn } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 
 /**
  * Stop a child process and its entire process group (cross-platform)
@@ -140,4 +143,166 @@ export function spawnCommand(
     detached: options?.detached ?? (process.platform !== 'win32'),
     env: options?.env ? { ...process.env, ...options.env } : process.env,
   });
+}
+
+/**
+ * Strip ANSI escape codes from text
+ *
+ * @param text - Text with ANSI codes
+ * @returns Clean text without ANSI codes
+ */
+function stripAnsiCodes(text: string): string {
+  // Control character \x1b is intentionally used to match ANSI escape codes
+  // eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
+  return text.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+/**
+ * Options for capturing command output
+ */
+export interface CaptureCommandOptions {
+  /** Command to execute */
+  command: string;
+  /** Output directory for log files */
+  outputDir: string;
+  /** Command arguments (optional) */
+  args?: string[];
+  /** Timeout in milliseconds (optional) */
+  timeout?: number;
+  /** Environment variables (optional) */
+  env?: Record<string, string>;
+}
+
+/**
+ * Capture command output with organized file structure
+ *
+ * Executes a command and captures stdout/stderr with proper separation:
+ * - stdout.log: Raw stdout with ANSI codes (omitted if empty)
+ * - stderr.log: Raw stderr with ANSI codes (omitted if empty)
+ * - combined.jsonl: Chronological output with ANSI codes stripped
+ *
+ * @param options - Capture options
+ * @returns Captured output with file paths
+ *
+ * @example
+ * ```typescript
+ * const output = await captureCommandOutput({
+ *   command: 'npm test',
+ *   outputDir: '/tmp/vibe-validate/runs/2025-11-05/abc123-17-30-45'
+ * });
+ *
+ * console.log(output.exitCode); // 0 or 1
+ * console.log(output.stdout.file); // Path to stdout.log (if non-empty)
+ * console.log(output.combined.file); // Path to combined.jsonl
+ * ```
+ */
+export async function captureCommandOutput(
+  options: CaptureCommandOptions
+): Promise<CapturedOutput> {
+  const { command, outputDir, args, timeout, env } = options;
+
+  const startTime = Date.now();
+  const combinedLines: OutputLine[] = [];
+  let stdoutRaw = '';
+  let stderrRaw = '';
+
+  // Spawn the command
+  const proc = spawnCommand(command, { args, timeout, env });
+
+  // Capture stdout
+  proc.stdout?.on('data', (data: Buffer) => {
+    const chunk = data.toString();
+    stdoutRaw += chunk;
+
+    // Add to combined output (ANSI-stripped)
+    const lines = chunk.split('\n');
+    for (const line of lines) {
+      if (line) {
+        combinedLines.push({
+          ts: new Date().toISOString(),
+          stream: 'stdout',
+          line: stripAnsiCodes(line),
+        });
+      }
+    }
+  });
+
+  // Capture stderr
+  proc.stderr?.on('data', (data: Buffer) => {
+    const chunk = data.toString();
+    stderrRaw += chunk;
+
+    // Add to combined output (ANSI-stripped)
+    const lines = chunk.split('\n');
+    for (const line of lines) {
+      if (line) {
+        combinedLines.push({
+          ts: new Date().toISOString(),
+          stream: 'stderr',
+          line: stripAnsiCodes(line),
+        });
+      }
+    }
+  });
+
+  // Wait for process to complete
+  const exitCode = await new Promise<number>((resolve) => {
+    proc.on('close', (code) => {
+      resolve(code ?? 1);
+    });
+
+    proc.on('error', () => {
+      resolve(1);
+    });
+  });
+
+  const endTime = Date.now();
+  const durationSecs = (endTime - startTime) / 1000;
+
+  // Ensure output directory exists
+  await mkdir(outputDir, { recursive: true });
+
+  // Write output files
+  const writePromises: Promise<void>[] = [];
+
+  // Write stdout.log (only if non-empty)
+  let stdoutFile: string | undefined;
+  if (stdoutRaw.trim()) {
+    stdoutFile = join(outputDir, 'stdout.log');
+    writePromises.push(writeFile(stdoutFile, stdoutRaw, 'utf-8'));
+  }
+
+  // Write stderr.log (only if non-empty)
+  let stderrFile: string | undefined;
+  if (stderrRaw.trim()) {
+    stderrFile = join(outputDir, 'stderr.log');
+    writePromises.push(writeFile(stderrFile, stderrRaw, 'utf-8'));
+  }
+
+  // Write combined.jsonl (always)
+  const combinedFile = join(outputDir, 'combined.jsonl');
+  const combinedContent = combinedLines
+    .map(line => JSON.stringify(line))
+    .join('\n');
+  writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
+
+  // Wait for all writes to complete
+  await Promise.all(writePromises);
+
+  return {
+    stdout: {
+      raw: stdoutRaw,
+      file: stdoutFile,
+    },
+    stderr: {
+      raw: stderrRaw,
+      file: stderrFile,
+    },
+    combined: {
+      lines: combinedLines,
+      file: combinedFile,
+    },
+    exitCode,
+    durationSecs,
+  };
 }

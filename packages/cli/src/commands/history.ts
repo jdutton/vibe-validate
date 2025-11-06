@@ -36,7 +36,6 @@ export function historyCommand(program: Command): void {
     .option('-l, --limit <number>', 'Limit number of results', '20')
     .option('-b, --branch <name>', 'Filter by branch name')
     .option('-r, --run [command]', 'List run cache entries, optionally filtered by command pattern')
-    .option('-a, --all', 'Show all run cache entries (use with --run)')
     .option('--yaml', 'Output in YAML format (default: table)')
     .action(async (options) => {
       await listHistory(options);
@@ -277,7 +276,6 @@ async function listHistory(options: {
   limit: string;
   branch?: string;
   run?: boolean | string;
-  all?: boolean;
   yaml?: boolean;
 }): Promise<void> {
   try {
@@ -285,29 +283,13 @@ async function listHistory(options: {
 
     // Check if --run flag is present (with or without command)
     if (options.run !== undefined) {
-      // Validate that --all is only used with --run
-      if (options.all && typeof options.run === 'string') {
-        console.error('Error: Cannot use --all with a command filter');
-        console.error('\nUsage: vibe-validate history list --run --all  (show all)');
-        console.error('   or: vibe-validate history list --run <pattern>  (filter by command)');
-        process.exit(1);
-      }
-
       // Determine command filter
       // - If --run has a string value, use it as filter
-      // - If --run is true (boolean) and --all is present, show all (no filter)
-      // - If --run is true (boolean) without --all, show all (no filter)
+      // - If --run is true (boolean), show all (no filter)
       const commandFilter = typeof options.run === 'string' ? options.run : undefined;
 
       await listRunCacheHistory(limit, commandFilter, options.yaml ?? false);
     } else {
-      // Validate that --all is only used with --run
-      if (options.all) {
-        console.error('Error: --all option requires --run flag');
-        console.error('\nUsage: vibe-validate history list --run --all');
-        process.exit(1);
-      }
-
       await listValidationHistory(limit, options.branch, options.yaml ?? false);
     }
   } catch (error) {
@@ -580,7 +562,6 @@ List all validation runs, sorted by timestamp (newest first).
 - \`-l, --limit <number>\` - Limit results (default: 20)
 - \`-b, --branch <name>\` - Filter by branch name
 - \`-r, --run [command]\` - List run cache entries, optionally filtered by command pattern (NEW in v0.15.0)
-- \`-a, --all\` - Show all run cache entries (use with --run)
 - \`--yaml\` - Output as YAML
 
 **Examples:**
@@ -589,7 +570,7 @@ vibe-validate history list                                   # Last 20 validatio
 vibe-validate history list --limit 50                        # Last 50 runs
 vibe-validate history list --branch main                     # Only main branch
 vibe-validate history list --yaml                            # Machine-readable output
-vibe-validate history list --run --all                       # All run cache entries (NEW in v0.15.0)
+vibe-validate history list --run                             # All run cache entries (NEW in v0.15.0)
 vibe-validate history list --run vitest                      # Filter by "vitest" command
 vibe-validate history list --run "npm test"                  # Filter by "npm test"
 vibe-validate history list --run comprehensive --limit 100   # Last 100 matching "comprehensive"
@@ -611,7 +592,7 @@ vibe-validate history list --run comprehensive --limit 100   # Last 100 matching
 - Working directory - If run from subdirectory
 - Error count - Number of errors extracted
 
----
+***
 
 ### \`show\` - Show detailed history for a tree hash
 
@@ -647,7 +628,7 @@ vibe-validate history show abc123d --yaml     # Machine-readable
   - Errors extracted
   - Cache timestamp
 
----
+***
 
 ### \`prune\` - Remove old validation history
 
@@ -677,7 +658,7 @@ vibe-validate history prune --run --all --dry-run     # Preview run cache cleanu
 - ALL run cache entries across all tree hashes
 - Use \`--dry-run\` to preview before deleting
 
----
+***
 
 ### \`health\` - Check history health
 

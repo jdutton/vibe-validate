@@ -132,6 +132,22 @@ async function handleVerboseHelp(args: string[], program: Command): Promise<bool
     return false;
   }
 
+  // Special case: 'run' command
+  // Check if there's a command specified after 'run' (non-flag argument)
+  const runIndex = args.findIndex(arg => arg === 'run');
+  if (runIndex !== -1) {
+    // Look for first non-flag argument after 'run'
+    const argsAfterRun = args.slice(runIndex + 1);
+    const hasCommand = argsAfterRun.some(arg => !arg.startsWith('-'));
+
+    if (hasCommand) {
+      // e.g. "vv run --verbose node --help" - flags are for wrapped command
+      return false;
+    }
+    // e.g. "vv run --verbose --help" - no command, show help for run itself
+    // Fall through to normal help handling
+  }
+
   // Check if a subcommand is specified
   const knownCommands = Object.keys(verboseHelpRegistry);
   const subcommandIndex = args.findIndex(arg => knownCommands.includes(arg));

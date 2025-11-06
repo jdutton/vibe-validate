@@ -397,7 +397,7 @@ describe('history command', () => {
       // Should only show entries matching "test" (pnpm test, vitest run)
     });
 
-    it('should show all run cache entries with --run --all', async () => {
+    it('should show all run cache entries with --run', async () => {
       const mockRunCacheEntries = [
         {
           treeHash: 'abc123',
@@ -420,56 +420,12 @@ describe('history command', () => {
 
       historyCommand(program);
 
-      await program.parseAsync(['history', 'list', '--run', '--all'], { from: 'user' });
+      await program.parseAsync(['history', 'list', '--run'], { from: 'user' });
 
       expect(getAllRunCacheEntries).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalled();
     });
 
-    it('should show error when --all is used without --run', async () => {
-      historyCommand(program);
-
-      // Mock getAllHistoryNotes to avoid actual git operations
-      vi.mocked(history.getAllHistoryNotes).mockResolvedValue([]);
-
-      // Mock process.exit to prevent test from actually exiting
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-        throw new Error(`process.exit(${code})`);
-      });
-
-      try {
-        await program.parseAsync(['history', 'list', '--all'], { from: 'user' });
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error).toBeDefined();
-      }
-
-      expect(console.error).toHaveBeenCalledWith('Error: --all option requires --run flag');
-      expect(exitSpy).toHaveBeenCalledWith(1);
-
-      exitSpy.mockRestore();
-    });
-
-    it('should show error when --all is used with command filter', async () => {
-      historyCommand(program);
-
-      // Mock process.exit to prevent test from actually exiting
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-        throw new Error(`process.exit(${code})`);
-      });
-
-      try {
-        await program.parseAsync(['history', 'list', '--run', 'test', '--all'], { from: 'user' });
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error).toBeDefined();
-      }
-
-      expect(console.error).toHaveBeenCalledWith('Error: Cannot use --all with a command filter');
-      expect(exitSpy).toHaveBeenCalledWith(1);
-
-      exitSpy.mockRestore();
-    });
 
     it('should show helpful message when no matches found for command filter', async () => {
       const mockRunCacheEntries = [

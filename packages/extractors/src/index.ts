@@ -33,7 +33,7 @@ export type {
 } from './result-schema.js';
 
 // Legacy type (interface-only, not validated)
-export type { ErrorExtractor } from './types.js';
+export type { ErrorExtractor, ExtractorInput } from './types.js';
 
 // Zod schemas for runtime validation
 export {
