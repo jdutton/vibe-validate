@@ -1,23 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import { extractYamlContent, extractYamlWithPreamble } from '../src/yaml-detection.js';
+import {
+  createSimpleYaml,
+  createYamlInput,
+  toWindowsLineEndings,
+  createNpmPreamble,
+  createPreamble,
+  expectYamlWithPreamble,
+} from './helpers/yaml-test-helpers.js';
 
 describe('extractYamlContent', () => {
   it('should extract YAML with no preamble', () => {
-    const input = '---\nkey: value\nother: data\n';
+    const input = createSimpleYaml('key', 'value', 'other', 'data');
     const result = extractYamlContent(input);
-    expect(result).toBe('---\nkey: value\nother: data\n');
+    expect(result).toBe(input);
   });
 
   it('should extract YAML with preamble', () => {
-    const input = '> package@1.0.0 test\n> vitest run\n\n---\nkey: value\n';
+    const preamble = createNpmPreamble('package@1.0.0', 'test', 'vitest run');
+    const input = createYamlInput({ yaml: 'key: value', preamble });
     const result = extractYamlContent(input);
-    expect(result).toBe('---\nkey: value\n');
+    expect(result).toBe(createSimpleYaml('key', 'value'));
   });
 
   it('should handle Windows line endings', () => {
-    const input = '> preamble\r\n---\r\nkey: value\r\n';
+    const input = toWindowsLineEndings(
+      createYamlInput({ yaml: 'key: value', preamble: '> preamble' })
+    );
     const result = extractYamlContent(input);
-    expect(result).toBe('---\r\nkey: value\r\n');
+    expect(result).toBe(toWindowsLineEndings(createSimpleYaml('key', 'value')));
   });
 
   it('should return null if no YAML found', () => {
@@ -27,20 +38,25 @@ describe('extractYamlContent', () => {
   });
 
   it('should stop at trailing --- (traditional frontmatter)', () => {
-    const input = '---\ntitle: Post\nauthor: John\n---\nContent after YAML';
+    const input = createYamlInput({
+      yaml: 'title: Post\nauthor: John',
+      trailingContent: 'Content after YAML',
+    });
     const result = extractYamlContent(input);
     expect(result).toBe('---\ntitle: Post\nauthor: John\n');
     expect(result).not.toContain('Content after YAML');
   });
 
   it('should stop at trailing --- with Windows line endings', () => {
-    const input = '---\r\ntitle: Post\r\n---\r\nContent';
+    const input = toWindowsLineEndings(
+      createYamlInput({ yaml: 'title: Post', trailingContent: 'Content' })
+    );
     const result = extractYamlContent(input);
-    expect(result).toBe('---\r\ntitle: Post\r\n');
+    expect(result).toBe(toWindowsLineEndings('---\ntitle: Post\n'));
   });
 
   it('should handle trailing --- at end of string', () => {
-    const input = '---\ntitle: Post\n---';
+    const input = createYamlInput({ yaml: 'title: Post', trailingContent: '' });
     const result = extractYamlContent(input);
     expect(result).toBe('---\ntitle: Post\n');
   });
@@ -52,7 +68,11 @@ describe('extractYamlContent', () => {
   });
 
   it('should handle preamble with trailing ---', () => {
-    const input = '> preamble\n---\ntitle: Post\n---\nContent';
+    const input = createYamlInput({
+      yaml: 'title: Post',
+      preamble: '> preamble',
+      trailingContent: 'Content',
+    });
     const result = extractYamlContent(input);
     expect(result).toBe('---\ntitle: Post\n');
   });
@@ -66,21 +86,18 @@ describe('extractYamlContent', () => {
 
 describe('extractYamlWithPreamble', () => {
   it('should extract YAML and empty preamble when no preamble', () => {
-    const input = '---\nkey: value\n';
+    const yaml = createSimpleYaml('key', 'value');
+    const input = yaml;
     const result = extractYamlWithPreamble(input);
-    expect(result).toEqual({
-      yaml: '---\nkey: value\n',
-      preamble: ''
-    });
+    expect(result).toEqual(expectYamlWithPreamble(yaml));
   });
 
   it('should extract YAML and preamble separately', () => {
-    const input = '> package@1.0.0 test\n> vitest run\n\n---\nkey: value\n';
+    const preamble = createNpmPreamble('package@1.0.0', 'test', 'vitest run');
+    const yaml = createSimpleYaml('key', 'value');
+    const input = createYamlInput({ yaml: 'key: value', preamble });
     const result = extractYamlWithPreamble(input);
-    expect(result).toEqual({
-      yaml: '---\nkey: value\n',
-      preamble: '> package@1.0.0 test\n> vitest run'
-    });
+    expect(result).toEqual(expectYamlWithPreamble(yaml, preamble));
   });
 
   it('should trim preamble whitespace', () => {
@@ -96,27 +113,31 @@ describe('extractYamlWithPreamble', () => {
   });
 
   it('should handle Windows line endings in preamble', () => {
-    const input = '> preamble\r\n---\r\nkey: value\r\n';
+    const input = toWindowsLineEndings(
+      createYamlInput({ yaml: 'key: value', preamble: '> preamble' })
+    );
     const result = extractYamlWithPreamble(input);
-    expect(result).toEqual({
-      yaml: '---\r\nkey: value\r\n',
-      preamble: '> preamble'
-    });
+    expect(result).toEqual(
+      expectYamlWithPreamble(toWindowsLineEndings(createSimpleYaml('key', 'value')), '> preamble')
+    );
   });
 
   it('should stop at trailing --- and separate preamble', () => {
-    const input = 'preamble\n---\ntitle: Post\n---\nContent';
-    const result = extractYamlWithPreamble(input);
-    expect(result).toEqual({
-      yaml: '---\ntitle: Post\n',
-      preamble: 'preamble'
+    const input = createYamlInput({
+      yaml: 'title: Post',
+      preamble: 'preamble',
+      trailingContent: 'Content',
     });
+    const result = extractYamlWithPreamble(input);
+    expect(result).toEqual(expectYamlWithPreamble('---\ntitle: Post\n', 'preamble'));
   });
 
   it('should handle multi-line preamble', () => {
-    const input = 'line 1\nline 2\nline 3\n---\nkey: value\n';
+    const preamble = createPreamble('line 1', 'line 2', 'line 3');
+    const yaml = createSimpleYaml('key', 'value');
+    const input = createYamlInput({ yaml: 'key: value', preamble });
     const result = extractYamlWithPreamble(input);
-    expect(result?.preamble).toBe('line 1\nline 2\nline 3');
-    expect(result?.yaml).toBe('---\nkey: value\n');
+    expect(result?.preamble).toBe(preamble);
+    expect(result?.yaml).toBe(yaml);
   });
 });

@@ -297,4 +297,65 @@ ERROR: Coverage for functions (86.47%) does not meet global threshold (87%)
     expect(result.totalErrors).toBe(1);
     expect(result.summary).toBe('1 test failure(s)');
   });
+
+  it('should extract Vitest worker timeout errors', () => {
+    const output = `
+ RUN  v2.0.5 /Users/jeff/Workspaces/vibe-validate
+
+ ✓ packages/cli/test/commands/run.test.ts (25) 1234ms
+ ✓ packages/core/test/runner.test.ts (15) 567ms
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError node_modules/.pnpm/vitest@3.2.4/node_modules/vitest/dist/chunks/rpc.js:53:10
+ ❯ Timeout._onTimeout node_modules/.pnpm/vitest@3.2.4/node_modules/vitest/dist/chunks/index.js:59:62
+ ❯ listOnTimeout node:internal/timers:608:17
+ ❯ processTimers node:internal/timers:543:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+    `.trim();
+
+    const result = extractVitestErrors(output);
+
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].file).toBe('vitest.config.ts');
+    expect(result.errors[0].message).toContain('Timeout calling "onTaskUpdate"');
+    expect(result.errors[0].message).toContain('system resource constraints');
+    expect(result.errors[0].message).toContain('Kill background processes');
+    expect(result.totalErrors).toBe(1);
+    expect(result.summary).toBe('1 test failure(s)');
+  });
+
+  it('should extract Vitest worker timeout errors with plural "Unhandled Errors"', () => {
+    const output = `
+ RUN  v2.0.5 /Users/jeff/Workspaces/vibe-validate
+
+ ✓ packages/cli/test/commands/run.test.ts (25) 1234ms
+ ✓ packages/core/test/runner.test.ts (15) 567ms
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError node_modules/.pnpm/vitest@3.2.4/node_modules/vitest/dist/chunks/rpc.js:53:10
+ ❯ Timeout._onTimeout node_modules/.pnpm/vitest@3.2.4/node_modules/vitest/dist/chunks/index.js:59:62
+ ❯ listOnTimeout node:internal/timers:608:17
+ ❯ processTimers node:internal/timers:543:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+    `.trim();
+
+    const result = extractVitestErrors(output);
+
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].file).toBe('vitest.config.ts');
+    expect(result.errors[0].message).toContain('Timeout calling "onTaskUpdate"');
+    expect(result.errors[0].message).toContain('system resource constraints');
+    expect(result.errors[0].message).toContain('Kill background processes');
+    expect(result.totalErrors).toBe(1);
+    expect(result.summary).toBe('1 test failure(s)');
+  });
 });

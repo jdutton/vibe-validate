@@ -9,36 +9,18 @@ import { describe, it, expect } from 'vitest';
 import {
   safeValidateRunResult,
   validateRunResult,
-  type RunResult,
 } from '../../src/schemas/run-result-schema.js';
+import {
+  createValidRunResult,
+  createRunResultWithoutTreeHash,
+  createRunResultWithInvalidTreeHash,
+  createRunResultWithOutputFiles,
+} from '../fixtures/run-result-fixtures.js';
 
 describe('RunResult Schema', () => {
   describe('schema structure', () => {
     it('should require treeHash field', () => {
-      const invalidResult = {
-        command: 'npm test',
-        exitCode: 0,
-        durationSecs: 1.5,
-        timestamp: new Date().toISOString(),
-        extraction: {
-          errors: [],
-          summary: 'All tests passed',
-          totalErrors: 0,
-          guidance: '',
-          errorSummary: '',
-          metadata: {
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-            detection: {
-              extractor: 'vitest',
-              confidence: 100,
-              patterns: [],
-              reason: 'test',
-            },
-          },
-        },
-      };
+      const invalidResult = createRunResultWithoutTreeHash();
 
       const result = safeValidateRunResult(invalidResult);
 
@@ -50,31 +32,7 @@ describe('RunResult Schema', () => {
     });
 
     it('should accept valid RunResult with treeHash', () => {
-      const validResult: RunResult = {
-        command: 'npm test',
-        exitCode: 0,
-        durationSecs: 1.5,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123def456',
-        extraction: {
-          errors: [],
-          summary: 'All tests passed',
-          totalErrors: 0,
-          guidance: '',
-          errorSummary: '',
-          metadata: {
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-            detection: {
-              extractor: 'vitest',
-              confidence: 100,
-              patterns: [],
-              reason: 'test',
-            },
-          },
-        },
-      };
+      const validResult = createValidRunResult();
 
       const result = safeValidateRunResult(validResult);
 
@@ -85,31 +43,7 @@ describe('RunResult Schema', () => {
     });
 
     it('should validate treeHash is a string', () => {
-      const invalidResult = {
-        command: 'npm test',
-        exitCode: 0,
-        durationSecs: 1.5,
-        timestamp: new Date().toISOString(),
-        treeHash: 123, // Invalid: should be string
-        extraction: {
-          errors: [],
-          summary: 'All tests passed',
-          totalErrors: 0,
-          guidance: '',
-          errorSummary: '',
-          metadata: {
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-            detection: {
-              extractor: 'vitest',
-              confidence: 100,
-              patterns: [],
-              reason: 'test',
-            },
-          },
-        },
-      };
+      const invalidResult = createRunResultWithInvalidTreeHash();
 
       const result = safeValidateRunResult(invalidResult);
 
@@ -122,36 +56,9 @@ describe('RunResult Schema', () => {
 
   describe('field ordering for LLM optimization', () => {
     it('should have fields in optimal order', () => {
-      const validResult: RunResult = {
-        command: 'npm test',
-        exitCode: 0,
-        durationSecs: 1.5,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123def456',
-        extraction: {
-          errors: [],
-          summary: 'All tests passed',
-          totalErrors: 0,
-          guidance: '',
-          errorSummary: '',
-          metadata: {
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-            detection: {
-              extractor: 'vitest',
-              confidence: 100,
-              patterns: [],
-              reason: 'test',
-            },
-          },
-        },
-        outputFiles: {
-          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture path
-          combined: '/tmp/output.jsonl',
-        },
+      const validResult = createRunResultWithOutputFiles({
         isCachedResult: true,
-      };
+      });
 
       const result = validateRunResult(validResult);
 
@@ -183,31 +90,7 @@ describe('RunResult Schema', () => {
 
   describe('safeValidateRunResult', () => {
     it('should return success for valid data', () => {
-      const validData: RunResult = {
-        command: 'npm test',
-        exitCode: 0,
-        durationSecs: 1.5,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123def456',
-        extraction: {
-          errors: [],
-          summary: 'All tests passed',
-          totalErrors: 0,
-          guidance: '',
-          errorSummary: '',
-          metadata: {
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-            detection: {
-              extractor: 'vitest',
-              confidence: 100,
-              patterns: [],
-              reason: 'test',
-            },
-          },
-        },
-      };
+      const validData = createValidRunResult();
 
       const result = safeValidateRunResult(validData);
 
@@ -231,31 +114,7 @@ describe('RunResult Schema', () => {
 
   describe('validateRunResult', () => {
     it('should not throw for valid data', () => {
-      const validData: RunResult = {
-        command: 'npm test',
-        exitCode: 0,
-        durationSecs: 1.5,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123def456',
-        extraction: {
-          errors: [],
-          summary: 'All tests passed',
-          totalErrors: 0,
-          guidance: '',
-          errorSummary: '',
-          metadata: {
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-            detection: {
-              extractor: 'vitest',
-              confidence: 100,
-              patterns: [],
-              reason: 'test',
-            },
-          },
-        },
-      };
+      const validData = createValidRunResult();
 
       expect(() => validateRunResult(validData)).not.toThrow();
     });

@@ -369,6 +369,35 @@ function extractCoverageThresholdError(output: string): TestFailure | null {
 }
 
 /**
+ * Extract Vitest worker timeout errors
+ *
+ * These occur when Vitest worker threads timeout during test execution,
+ * often due to system resource constraints or competing processes.
+ *
+ * @param output - Full test output
+ * @returns Test failure object if worker timeout error found
+ */
+function extractVitestWorkerTimeoutError(output: string): TestFailure | null {
+  // Look for: "⎯⎯⎯⎯⎯⎯ Unhandled Error(s) ⎯⎯⎯⎯⎯⎯⎯\nError: [vitest-worker]: Timeout calling..."
+  // Handles both singular "Unhandled Error" and plural "Unhandled Errors"
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework error output (controlled output), not user input
+  const timeoutMatch = /⎯+\s*Unhandled Errors?\s*⎯+\s*\n\s*Error:\s*\[vitest-worker\]:\s*(Timeout[^\n]+)/.exec(output);
+  if (!timeoutMatch) {
+    return null;
+  }
+
+  const errorMessage = timeoutMatch[1].trim();
+
+  return {
+    file: 'vitest.config.ts',
+    location: '',
+    testHierarchy: 'Vitest Worker Timeout',
+    errorMessage: `${errorMessage}. This is usually caused by system resource constraints or competing processes. Try: 1) Kill background processes, 2) Reduce --pool-workers, 3) Increase --test-timeout`,
+    sourceLine: ''
+  };
+}
+
+/**
  * Format Vitest test failures
  *
  * Extracts:
@@ -410,6 +439,12 @@ export function extractVitestErrors(
   const coverageError = extractCoverageThresholdError(output);
   if (coverageError) {
     failures.push(coverageError);
+  }
+
+  // Check for Vitest worker timeout errors
+  const timeoutError = extractVitestWorkerTimeoutError(output);
+  if (timeoutError) {
+    failures.push(timeoutError);
   }
 
   let i = -1;
