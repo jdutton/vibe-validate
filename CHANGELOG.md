@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0-rc.2] - 2025-11-06
+
+### 🐛 Bug Fixes
+
+**CRITICAL: Fixed `vv` command missing in global install** (v0.15.0-rc.1 regression)
+- **Problem**: The `vv` binary was defined in package.json but wasn't included in the published package due to symlink handling
+- **Solution**: Build script now copies `vv` as a real file (not symlink) so npm can package it properly
+- **Impact**: Global installs now have both `vv` and `vibe-validate` commands available
+- **Workaround for rc.1**: Use `vibe-validate` command instead of `vv`
+
 ## [0.15.0-rc.1] - 2025-11-05
 
 **🚀 Release Candidate** - Install with `npm install -D vibe-validate@rc`
