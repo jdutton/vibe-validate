@@ -17,35 +17,53 @@ The `run` command executes any shell command and extracts errors using vibe-vali
 
 ## Use Cases
 
-### During Development (AI Agents)
-Instead of parsing verbose test output:
+### Python Testing
 ```bash
-# Verbose (wastes context window)
-npx vitest packages/extractors/test/vitest-extractor.test.ts
+# Run pytest with coverage
+vv run pytest tests/ --cov=src
 
-# Concise (LLM-friendly)
-vibe-validate run "npx vitest packages/extractors/test/vitest-extractor.test.ts"
+# Run specific test
+vv run pytest -k test_authentication --verbose
+
+# Run unittest discovery
+vv run python -m unittest discover
 ```
 
-### Debugging Specific Tests
+### Rust Testing
 ```bash
-# Run single test file with extraction
-vibe-validate run "npx vitest -t 'should extract failed tests'"
+# Run all cargo tests
+vv run cargo test
 
-# Run package tests with extraction
-vibe-validate run "pnpm --filter @vibe-validate/extractors test"
+# Run with all features
+vv run cargo test --all-features
+
+# Run clippy for linting
+vv run cargo clippy -- -D warnings
 ```
 
-### Type Checking
+### Go Testing
 ```bash
-# Extract TypeScript errors
-vibe-validate run "npx tsc --noEmit"
+# Run all tests
+vv run go test ./...
+
+# Run with race detection
+vv run go test -v -race ./pkg/...
+
+# Run go vet
+vv run go vet ./...
 ```
 
-### Linting
+### Node.js/TypeScript
 ```bash
-# Extract ESLint errors
-vibe-validate run "pnpm lint"
+# Run tests
+vv run npm test
+vv run npx vitest packages/cli/test/commands/run.test.ts
+
+# Type checking
+vv run npx tsc --noEmit
+
+# Linting
+vv run pnpm lint
 ```
 
 ## Output Format
@@ -78,7 +96,7 @@ rawOutput: "... (truncated)"
 
 **Terminal usage (both streams visible):**
 ```bash
-$ vibe-validate run "pnpm test"
+$ vv run pnpm test
 ---                           # ← stdout (YAML)
 command: pnpm test
 exitCode: 0
@@ -90,13 +108,13 @@ extraction: {...}
 
 **Piped usage (only YAML):**
 ```bash
-$ vibe-validate run "pnpm test" > results.yaml
+$ vv run pnpm test > results.yaml
 # results.yaml contains ONLY pure YAML (no preamble)
 ```
 
 **Suppress context:**
 ```bash
-$ vibe-validate run "pnpm test" 2>/dev/null
+$ vv run pnpm test 2>/dev/null
 # Shows only YAML (stderr suppressed)
 ```
 
@@ -110,28 +128,27 @@ The `run` command automatically detects and handles package manager preambles:
 
 This means you can safely use:
 ```bash
-vibe-validate run "pnpm validate --yaml"  # Works!
-vibe-validate run "npm test"              # Works!
-vibe-validate run "yarn build"            # Works!
+vv run pnpm validate --yaml  # Works!
+vv run npm test              # Works!
+vv run yarn build            # Works!
 ```
 
 The YAML output on stdout remains clean and parseable, while the preamble is preserved on stderr for debugging.
 
 ## Nested Run Detection
 
-When `run` wraps another vibe-validate command that outputs YAML, it intelligently merges the results:
+When `run` wraps another vibe-validate command that outputs YAML, it automatically unwraps to show the actual command:
 
 ```bash
 # 2-level nesting
-$ vibe-validate run "vibe-validate run 'npm test'"
+$ vv run vv run npm test
 ---
-command: vibe-validate run "npm test"
+command: npm test  # ← Automatically unwrapped!
 exitCode: 0
 extraction: {...}
-suggestedDirectCommand: npm test  # ← Unwrapped!
 ```
 
-The `suggestedDirectCommand` field shows the innermost command, helping you avoid unnecessary nesting.
+The `command` field shows the innermost command that actually executed, helping you avoid unnecessary nesting.
 
 ## Caching (v0.15.0+)
 
@@ -146,13 +163,13 @@ The `run` command automatically caches successful command executions to avoid re
 
 ```bash
 # First run - executes command
-$ vibe-validate run "npx eslint --max-warnings=0 \"packages/**/*.ts\""
+$ vv run pnpm lint
 ---
 exitCode: 0
 durationSecs: 5.42    # ← Actual execution time
 
 # Second run - cache hit!
-$ vibe-validate run "npx eslint --max-warnings=0 \"packages/**/*.ts\""
+$ vv run pnpm lint
 ---
 exitCode: 0
 durationSecs: 0       # ← Instant (cached)
@@ -170,7 +187,7 @@ Cache automatically invalidates when:
 
 Bypass cache with `--force` flag:
 ```bash
-vibe-validate run "npm test" --force
+vv run --force npm test
 ```
 
 ### Implementation Details
@@ -186,29 +203,33 @@ The `run` command passes through the exit code from the executed command:
 
 ## Examples
 
-### Run Single Test File
+### Python Testing
 ```bash
-vibe-validate run "npx vitest packages/cli/test/commands/run.test.ts"
+vv run pytest tests/ --cov=src
+vv run pytest -k test_auth --verbose
+vv run python -m unittest discover
 ```
 
-### Run Specific Test Case
+### Rust Testing
 ```bash
-vibe-validate run "npx vitest -t 'should extract errors'"
+vv run cargo test
+vv run cargo test --all-features
+vv run cargo clippy -- -D warnings
 ```
 
-### Run Package Tests
+### Go Testing
 ```bash
-vibe-validate run "pnpm --filter @vibe-validate/core test"
+vv run go test ./...
+vv run go test -v -race ./pkg/...
+vv run go vet ./...
 ```
 
-### Type Check
+### Node.js/TypeScript
 ```bash
-vibe-validate run "npx tsc --noEmit"
-```
-
-### Lint
-```bash
-vibe-validate run "pnpm lint"
+vv run npm test
+vv run npx vitest packages/cli/test/commands/run.test.ts
+vv run npx tsc --noEmit
+vv run pnpm lint
 ```
 
 ## Supported Extractors
@@ -242,9 +263,9 @@ $ npx vitest test.ts
 
 ### With `run` command:
 ```bash
-$ vibe-validate run "npx vitest test.ts"
+$ vv run npx vitest test.ts
 ---
-command: "npx vitest test.ts"
+command: npx vitest test.ts
 exitCode: 1
 extraction:
   errors:

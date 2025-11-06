@@ -58,29 +58,29 @@ pnpm exec vibe-validate doctor  # Diagnose setup issues (run after upgrade!)
 
 ## LLM-Optimized Testing (Use This!)
 
-**CRITICAL for AI agents**: Use `vibe-validate run` to wrap test/validation commands. Saves 90-95% of context window by extracting only errors.
+**CRITICAL for AI agents**: Use `vv run` to wrap test/validation commands. Saves 90-95% of context window by extracting only errors.
 
 ### Quick Pattern
 ```bash
-vibe-validate run "<any-command>"
+vv run <any-command>
 ```
 
 ### Common Examples
 ```bash
 # Test single file (instead of: npx vitest <file>)
-vibe-validate run "npx vitest packages/cli/test/commands/run.test.ts"
+vv run npx vitest packages/cli/test/commands/run.test.ts
 
 # Test specific case (instead of: npx vitest -t "...")
-vibe-validate run "npx vitest -t 'should extract errors'"
+vv run npx vitest -t 'should extract errors'
 
 # Package tests (instead of: pnpm --filter @pkg test)
-vibe-validate run "pnpm --filter @vibe-validate/core test"
+vv run pnpm --filter @vibe-validate/core test
 
 # Type checking (instead of: pnpm typecheck)
-vibe-validate run "pnpm typecheck"
+vv run pnpm typecheck
 
 # Linting (instead of: pnpm lint)
-vibe-validate run "pnpm lint"
+vv run pnpm lint
 
 # Standard scripts are LLM-optimized by default
 pnpm test        # Wraps vitest with run
@@ -95,7 +95,7 @@ pnpm run "pnpm --filter @pkg test"
 
 ### Dogfooding During Development (CRITICAL!)
 
-**AI agents and developers MUST use `vibe-validate run` while working on vibe-validate itself.**
+**AI agents and developers MUST use `vv run` while working on vibe-validate itself.**
 
 **Why this matters:**
 - You're building a tool to save context window for AI agents
@@ -113,13 +113,13 @@ vitest run test/packaging.system.test.ts
 
 **Correct pattern (use the tool you're building):**
 ```bash
-# ✅ Always wrap with run during development
-pnpm run "npx vitest packages/cli/test/packaging.test.ts"
-pnpm run "pnpm --filter @vibe-validate/cli test"
+# ✅ Always wrap with vv run during development
+vv run npx vitest packages/cli/test/packaging.test.ts
+vv run pnpm --filter @vibe-validate/cli test
 pnpm test:system  # Already wrapped!
 ```
 
-**When you catch yourself typing raw vitest/npm/pnpm commands, STOP and use run instead.**
+**When you catch yourself typing raw vitest/npm/pnpm commands, STOP and use vv run instead.**
 
 ### Output Format (YAML)
 - `exitCode`: 0 (pass) or 1+ (fail)

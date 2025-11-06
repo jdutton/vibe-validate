@@ -9,7 +9,7 @@
 
 **Who it's for**: TypeScript/JavaScript developers, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
 
-**For AI Assistants**: Get all command help at once with `npx vibe-validate --help --verbose` or see the [Complete CLI Reference](docs/cli-reference.md)
+**For AI Assistants**: Get all command help at once with `vv --help --verbose` (or `npx vibe-validate --help --verbose` before install) or see the [Complete CLI Reference](docs/cli-reference.md)
 
 ## Quick Start (4 commands)
 
@@ -31,6 +31,26 @@ npx vibe-validate validate
 **When code unchanged**: under a second (content-based caching!)
 
 **💡 Tip for AI Agents**: Always run `npx vibe-validate doctor` after upgrading to detect deprecated files and get migration guidance.
+
+## Shorter Commands with `vv` Alias
+
+Once installed, use the shorter `vv` command instead of `npx vibe-validate`:
+
+```bash
+vv validate      # Same as: npx vibe-validate validate
+vv doctor        # Same as: npx vibe-validate doctor
+vv run npm test  # Same as: npx vibe-validate run npm test
+```
+
+**Benefits:**
+- **Shorter**: Type `vv` instead of `npx vibe-validate` (85% less typing!)
+- **Context-aware**: Automatically finds the right installation (dev, local, or global)
+- **Works everywhere**: From any subdirectory in your project
+- **Perfect for AI agents**: Less tokens, clearer commands
+
+**When to use what:**
+- Use `vv` after installation for day-to-day work
+- Use `npx vibe-validate` before installation to try it out
 
 ## Integration with package.json
 

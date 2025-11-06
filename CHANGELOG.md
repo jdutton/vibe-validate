@@ -7,39 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 🎨 Improvements
-
-- **Enhanced non-git repository behavior**
-  - Non-git directories now show inline YAML comment: `treeHash: unknown  # Not in git repository - caching disabled`
-  - LLMs parsing YAML output can now see caching status directly
-  - Removed separate stderr warning for cleaner output
-
-- **Simplified nested command output**
-  - `command` field now shows the actual command that executed when nesting is detected
-  - Example: `vibe-validate run "pnpm lint"` shows `command: eslint --max-warnings=0 "..."`
-  - Removed redundant `suggestedDirectCommand` field
-  - LLMs now see the real command without parsing multiple fields
-
-### 🐛 Bug Fixes
-
-- **Fixed non-git repository caching**
-  - **Problem**: Commands run outside git repositories incorrectly used timestamp-based cache keys
-  - **Solution**: Caching is now completely disabled when not in a git repository
-  - **Impact**: No confusing cache behavior or misleading warnings in non-git directories
-
-- **Fixed missing treeHash in certain error scenarios**
-  - **Problem**: When nested YAML failed validation checks (missing or invalid command field), output was missing `treeHash` field
-  - **Solution**: Always set `treeHash: unknown` when nested output is not recognized as valid vibe-validate format
-  - **Impact**: More consistent output structure, better error handling
-
-### 🚨 BREAKING CHANGES
-
-- **Removed `suggestedDirectCommand` field from run output**
-  - The `command` field now contains the unwrapped command directly
-  - Old: `{ command: "pnpm lint", suggestedDirectCommand: "eslint ..." }`
-  - New: `{ command: "eslint ..." }`
-  - Impact: If you parse `suggestedDirectCommand`, use `command` instead
-
 ## [0.15.0-rc.1] - 2025-11-05
 
 **🚀 Release Candidate** - Install with `npm install -D vibe-validate@rc`
@@ -47,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Major update: Run command caching, updated YAML with published JSON Schema, strict validation, and enhanced IDE support.
 
 ### ✨ New Features
+
+**Smart Command Wrapper with `vv` Alias**
+- New `vv` binary provides shortest invocation: `vv run npm test`
+- Context-aware execution: automatically detects dev mode, local install, or global install
+- Works seamlessly in both git and non-git directories
+- Saves typing for developers and AI agents - use `vv` anywhere instead of `npx vibe-validate`
+- Example: `vv run pytest tests/` instead of `npx vibe-validate run "pytest tests/"`
 
 **Run Command Caching**
 - Smart caching by git tree hash - instant results (<200ms) for unchanged code

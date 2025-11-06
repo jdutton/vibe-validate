@@ -844,29 +844,40 @@ The \`run\` command passes through the exit code from the executed command:
 
 ## Examples
 
-### Run Single Test File
+### Python Testing
 \`\`\`bash
-vibe-validate run npx vitest packages/cli/test/commands/run.test.ts
+vv run pytest tests/ --cov=src
+vv run pytest -k test_auth --verbose
+vv run python -m unittest discover
 \`\`\`
 
-### Run Specific Test Case
+### Rust Testing
 \`\`\`bash
-vibe-validate run npx vitest -t 'should extract errors'
+vv run cargo test
+vv run cargo test --all-features
+vv run cargo clippy -- -D warnings
 \`\`\`
 
-### Run Package Tests
+### Go Testing
 \`\`\`bash
-vibe-validate run pnpm --filter @vibe-validate/core test
+vv run go test ./...
+vv run go test -v -race ./pkg/...
+vv run go vet ./...
 \`\`\`
 
-### Type Check
+### Ruby Testing
 \`\`\`bash
-vibe-validate run npx tsc --noEmit
+vv run bundle exec rspec
+vv run bundle exec rspec spec/models/
+vv run bundle exec rubocop
 \`\`\`
 
-### Lint
+### Node.js/TypeScript
 \`\`\`bash
-vibe-validate run pnpm lint
+vv run npm test
+vv run npx vitest packages/cli/test/commands/run.test.ts
+vv run npx tsc --noEmit
+vv run pnpm lint
 \`\`\`
 
 ## Supported Extractors
@@ -937,10 +948,11 @@ Options:
   -h, --help          Display this help message
 
 Examples:
-  vv run npm test
-  vv run --verbose npm test
-  vv run --check "npm test"
-  vv run --force npm test
+  vv run pytest tests/ --cov=src          # Python
+  vv run cargo test --all-features         # Rust
+  vv run go test ./...                     # Go
+  vv run npm test                          # Node.js
+  vv run --verbose npm test                # With output display
 
 For detailed documentation, use: vibe-validate run --help --verbose
   `.trim());
