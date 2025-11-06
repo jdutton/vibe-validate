@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Command } from 'commander';
 import { validateCommand } from '../../src/commands/validate.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 import * as core from '@vibe-validate/core';
 import * as configLoader from '../../src/utils/config-loader.js';
 import * as history from '@vibe-validate/history';
@@ -69,7 +69,7 @@ vi.mock('../../src/utils/project-id.js', () => ({
 describe('validate command', () => {
   let testDir: string;
   let originalCwd: string;
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
     // Clear all mock calls from previous tests (prevents test pollution across test files)
@@ -85,18 +85,8 @@ describe('validate command', () => {
     originalCwd = process.cwd();
     process.chdir(testDir);
 
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    // Mock process.exit to prevent it from actually exiting during tests
-    vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-      throw new Error(`process.exit(${code})`);
-    }) as any;
+    // Setup Commander test environment
+    env = setupCommanderTest();
 
     // Reset mocks
     vi.mocked(core.runValidation).mockReset();
@@ -150,6 +140,8 @@ describe('validate command', () => {
   });
 
   afterEach(() => {
+    env.cleanup();
+
     // Restore cwd
     process.chdir(originalCwd);
 
@@ -167,9 +159,9 @@ describe('validate command', () => {
 
   describe('command registration', () => {
     it('should register validate command with correct name', () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
-      const commands = program.commands;
+      const commands = env.program.commands;
       const validateCmd = commands.find(cmd => cmd.name() === 'validate');
 
       expect(validateCmd).toBeDefined();
@@ -177,27 +169,27 @@ describe('validate command', () => {
     });
 
     it('should register --force option', () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
-      const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
+      const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
       const options = validateCmd?.options;
 
       expect(options?.some(opt => opt.flags === '-f, --force')).toBe(true);
     });
 
     it('should register --verbose option', () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
-      const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
+      const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
       const options = validateCmd?.options;
 
       expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
     });
 
     it('should register --check option', () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
-      const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
+      const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
       const options = validateCmd?.options;
 
       expect(options?.some(opt => opt.flags === '-c, --check')).toBe(true);
@@ -209,10 +201,10 @@ describe('validate command', () => {
       // Mock loadConfig to return null (no config found)
       vi.mocked(configLoader.loadConfig).mockResolvedValue(null);
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(1);
@@ -251,10 +243,10 @@ describe('validate command', () => {
     });
 
     it('should exit with code 0 on successful validation', async () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -265,10 +257,10 @@ describe('validate command', () => {
     });
 
     it('should pass force option to validation runner', async () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--force'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--force'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -322,10 +314,10 @@ describe('validate command', () => {
     });
 
     it('should exit with code 1 on failed validation', async () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(1);
@@ -336,10 +328,10 @@ describe('validate command', () => {
     });
 
     it('should display error details on failure', async () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -392,10 +384,10 @@ describe('validate command', () => {
       // Mock Claude Code environment
       process.env.CLAUDE_CODE = 'true';
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -413,10 +405,10 @@ describe('validate command', () => {
       delete process.env.CLAUDE_CODE;
       delete process.env.CI;
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -428,10 +420,10 @@ describe('validate command', () => {
     });
 
     it('should respect explicit --verbose flag', async () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--verbose'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -466,10 +458,10 @@ describe('validate command', () => {
       // Mock validation throwing an error
       vi.mocked(core.runValidation).mockRejectedValue(new Error('Validation crashed'));
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(1);
@@ -490,10 +482,10 @@ describe('validate command', () => {
       // Spy on stdout.write to capture YAML output
       const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(1);
@@ -563,10 +555,10 @@ describe('validate command', () => {
         ],
       });
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--check'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--check'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -584,10 +576,10 @@ describe('validate command', () => {
       // Mock git notes with no history
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--check'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--check'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(2);
@@ -631,10 +623,10 @@ describe('validate command', () => {
       // Spy on process.stdout.write to capture YAML output
       vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--check', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--check', '--yaml'], { from: 'user' });
       } catch (err: unknown) {
         // Expected exit from checkValidationStatus with code 0
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -687,9 +679,9 @@ describe('validate command', () => {
     });
 
     it('should register --yaml option', () => {
-      validateCommand(program);
+      validateCommand(env.program);
 
-      const validateCmd = program.commands.find(cmd => cmd.name() === 'validate');
+      const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
       const options = validateCmd?.options;
 
       expect(options?.some(opt => opt.flags === '-y, --yaml')).toBe(true);
@@ -703,10 +695,10 @@ describe('validate command', () => {
         phases: [],
       });
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -727,10 +719,10 @@ describe('validate command', () => {
         failedStep: 'Test Step',
       });
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
       } catch (err: unknown) {
         // Expected exit with code 1
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -751,10 +743,10 @@ describe('validate command', () => {
         phases: [],
       });
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -777,10 +769,10 @@ describe('validate command', () => {
         phases: [],
       });
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate', '--yaml', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['validate', '--yaml', '--verbose'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -857,10 +849,10 @@ describe('validate command', () => {
       };
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       // Cache hit should prevent runValidation from being called
-      await program.parseAsync(['validate'], { from: 'user' });
+      await env.program.parseAsync(['validate'], { from: 'user' });
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
@@ -946,10 +938,10 @@ describe('validate command', () => {
       };
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       // Cache hit should prevent runValidation from being called
-      await program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
@@ -1012,10 +1004,10 @@ describe('validate command', () => {
       // Spy on console.warn to verify warning message
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (err: unknown) {
         // Expected exit with code 0 (validation passed)
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -1067,10 +1059,10 @@ describe('validate command', () => {
       // Spy on console.warn to verify NO warning message
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      validateCommand(program);
+      validateCommand(env.program);
 
       try {
-        await program.parseAsync(['validate'], { from: 'user' });
+        await env.program.parseAsync(['validate'], { from: 'user' });
       } catch (err: unknown) {
         // Expected exit with code 0 (validation passed)
         if (err && typeof err === 'object' && 'exitCode' in err) {

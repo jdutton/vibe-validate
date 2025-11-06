@@ -15,8 +15,8 @@
 /* eslint-disable sonarjs/no-ignored-exceptions -- Tests intentionally catch and ignore Commander.js exitOverride exceptions */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Command } from 'commander';
 import { runCommand } from '../../src/commands/run.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 import * as childProcess from 'node:child_process';
 import { createMockChildProcess } from '../helpers/mock-helpers.js';
 import * as git from '@vibe-validate/git';
@@ -37,18 +37,11 @@ vi.mock('@vibe-validate/git', () => ({
 // have an unrelated timeout issue that needs to be resolved separately.
 // Skipping temporarily to unblock the critical bug fix commit.
 describe.skip('run command caching', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    // Setup Commander test environment
+    env = setupCommanderTest();
 
     // Mock writableNeedDrain to prevent waiting for drain event
     // The run command checks writableNeedDrain and waits for 'drain' if true
@@ -57,11 +50,6 @@ describe.skip('run command caching', () => {
       get: () => false,
       configurable: true
     });
-
-    // Mock process.exit to prevent it from actually exiting during tests
-    vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-      throw new Error(`process.exit(${code})`);
-    }) as any;
 
     // Mock process.cwd() to return consistent value
     vi.spyOn(process, 'cwd').mockReturnValue('/Users/test/project');
@@ -85,6 +73,7 @@ describe.skip('run command caching', () => {
   });
 
   afterEach(() => {
+    env.cleanup();
     vi.restoreAllMocks();
 
     // Restore writableNeedDrain property descriptor
@@ -100,10 +89,10 @@ describe.skip('run command caching', () => {
       const mockGetGitTreeHash = vi.mocked(git.getGitTreeHash);
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -120,10 +109,10 @@ describe.skip('run command caching', () => {
       const mockGetGitTreeHash = vi.mocked(git.getGitTreeHash);
       mockGetGitTreeHash.mockRejectedValue(new Error('Not a git repository'));
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -149,10 +138,10 @@ describe.skip('run command caching', () => {
       const mockGetGitTreeHash = vi.mocked(git.getGitTreeHash);
       mockGetGitTreeHash.mockResolvedValue('abc123def456');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -180,10 +169,10 @@ describe.skip('run command caching', () => {
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('encoded-key');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -208,10 +197,10 @@ describe.skip('run command caching', () => {
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('encoded-key');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -237,10 +226,10 @@ describe.skip('run command caching', () => {
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('a1b2c3d4e5f6g7h8'); // Mock hash
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -273,10 +262,10 @@ describe.skip('run command caching', () => {
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -315,10 +304,10 @@ summary: All tests passed
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -354,10 +343,10 @@ summary: All tests passed
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -402,10 +391,10 @@ summary: All tests passed
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -419,7 +408,7 @@ summary: All tests passed
 
   describe('--force flag', () => {
     it('should accept --force flag', () => {
-      runCommand(program);
+      runCommand(env.program);
 
       const runCmd = program.commands.find(cmd => cmd.name() === 'run');
       const options = runCmd?.options;
@@ -458,10 +447,10 @@ summary: All tests passed
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', '--force', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', '--force', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -489,10 +478,10 @@ summary: All tests passed
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', '--force', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', '--force', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -527,10 +516,10 @@ summary: All tests passed
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -545,7 +534,7 @@ summary: All tests passed
 
   describe('--check flag', () => {
     it('should accept --check flag', () => {
-      runCommand(program);
+      runCommand(env.program);
 
       const runCmd = program.commands.find(cmd => cmd.name() === 'run');
       const options = runCmd?.options;
@@ -581,10 +570,10 @@ summary: All tests passed
       const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
       mockEncodeRunCacheKey.mockReturnValue('1a2b3c4d5e6f7a8b');
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', '--check', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', '--check', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected exit
       }
@@ -621,10 +610,10 @@ summary: All tests passed
 
       const mockProcessExit = vi.mocked(process.exit);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', '--check', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', '--check', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected - process.exit is mocked
       }
@@ -656,10 +645,10 @@ summary: All tests passed
 
       const mockProcessExit = vi.mocked(process.exit);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', '--check', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', '--check', 'npm test'], { from: 'user' });
       } catch (_error: unknown) {
         // Expected - process.exit is mocked
       }
@@ -672,7 +661,7 @@ summary: All tests passed
     });
 
     it('should not be combinable with --force flag', () => {
-      runCommand(program);
+      runCommand(env.program);
 
       const runCmd = program.commands.find(cmd => cmd.name() === 'run');
 

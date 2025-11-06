@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Command } from 'commander';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { registerWatchPRCommand } from '../../src/commands/watch-pr.js';
 import { CIProviderRegistry } from '../../src/services/ci-provider-registry.js';
 import type { CIProvider, CheckStatus } from '../../src/services/ci-provider.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the CI provider registry
 vi.mock('../../src/services/ci-provider-registry.js', () => {
@@ -26,18 +26,11 @@ vi.mock('../../src/services/ci-provider-registry.js', () => {
 type ProcessExitCode = string | number | null | undefined;
 
 describe('watch-pr command', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
   let mockProvider: CIProvider;
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    env = setupCommanderTest();
 
     // Create mock provider with vi.fn() methods
     mockProvider = {
@@ -57,59 +50,63 @@ describe('watch-pr command', () => {
     }));
   });
 
+  afterEach(() => {
+    env.cleanup();
+  });
+
   describe('command registration', () => {
     it('should register watch-pr command', () => {
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'watch-pr');
+      const command = env.program.commands.find(cmd => cmd.name() === 'watch-pr');
       expect(command).toBeDefined();
     });
 
     it('should have correct description', () => {
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'watch-pr');
+      const command = env.program.commands.find(cmd => cmd.name() === 'watch-pr');
       expect(command?.description()).toBe('Watch CI checks for a pull/merge request in real-time');
     });
 
     it('should register --provider option', () => {
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'watch-pr');
+      const command = env.program.commands.find(cmd => cmd.name() === 'watch-pr');
       const option = command?.options.find(opt => opt.long === '--provider');
       expect(option).toBeDefined();
     });
 
     it('should register --yaml option', () => {
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'watch-pr');
+      const command = env.program.commands.find(cmd => cmd.name() === 'watch-pr');
       const option = command?.options.find(opt => opt.long === '--yaml');
       expect(option).toBeDefined();
     });
 
     it('should register --timeout option', () => {
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'watch-pr');
+      const command = env.program.commands.find(cmd => cmd.name() === 'watch-pr');
       const option = command?.options.find(opt => opt.long === '--timeout');
       expect(option).toBeDefined();
       expect(option?.defaultValue).toBe('3600');
     });
 
     it('should register --poll-interval option', () => {
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'watch-pr');
+      const command = env.program.commands.find(cmd => cmd.name() === 'watch-pr');
       const option = command?.options.find(opt => opt.long === '--poll-interval');
       expect(option).toBeDefined();
       expect(option?.defaultValue).toBe('10');
     });
 
     it('should register --fail-fast option', () => {
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'watch-pr');
+      const command = env.program.commands.find(cmd => cmd.name() === 'watch-pr');
       const option = command?.options.find(opt => opt.long === '--fail-fast');
       expect(option).toBeDefined();
     });
@@ -141,7 +138,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -149,7 +146,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -181,7 +178,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -189,7 +186,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -204,7 +201,7 @@ describe('watch-pr command', () => {
     it('should error when no PR detected and no number provided', async () => {
       vi.mocked(mockProvider.detectPullRequest).mockResolvedValue(null);
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -212,7 +209,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -250,7 +247,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -258,7 +255,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -296,7 +293,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -304,7 +301,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -340,7 +337,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -348,7 +345,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -386,7 +383,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -394,7 +391,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -433,7 +430,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -441,7 +438,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -465,7 +462,7 @@ describe('watch-pr command', () => {
     it('should output error as YAML when error occurs', async () => {
       vi.mocked(mockProvider.detectPullRequest).mockResolvedValue(null);
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -473,7 +470,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -517,7 +514,7 @@ describe('watch-pr command', () => {
 
       vi.mocked(mockProvider.fetchCheckStatus).mockResolvedValue(mockStatus);
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -526,7 +523,7 @@ describe('watch-pr command', () => {
 
       try {
         // Use very short timeout to trigger timeout quickly
-        await program.parseAsync(['watch-pr', '123', '--timeout', '0'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123', '--timeout', '0'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -570,7 +567,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -578,7 +575,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123', '--fail-fast'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123', '--fail-fast'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -609,7 +606,7 @@ describe('watch-pr command', () => {
         validationResult: null,
       });
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -617,7 +614,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123', '--provider', 'github-actions'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123', '--provider', 'github-actions'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -639,7 +636,7 @@ describe('watch-pr command', () => {
         getProviderNames: vi.fn().mockReturnValue(['github-actions', 'gitlab-ci']),
       }));
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -647,7 +644,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -662,7 +659,7 @@ describe('watch-pr command', () => {
       const error = new Error('API error');
       vi.mocked(mockProvider.fetchCheckStatus).mockRejectedValue(error);
 
-      registerWatchPRCommand(program);
+      registerWatchPRCommand(env.program);
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
@@ -670,7 +667,7 @@ describe('watch-pr command', () => {
       }) as any;
 
       try {
-        await program.parseAsync(['watch-pr', '123'], { from: 'user' });
+        await env.program.parseAsync(['watch-pr', '123'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();

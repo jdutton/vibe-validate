@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Command } from 'commander';
 import { stateCommand } from '../../src/commands/state.js';
 import type { ValidationResult } from '@vibe-validate/core';
 import type { HistoryNote } from '@vibe-validate/history';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
@@ -18,17 +18,11 @@ import { getGitTreeHash } from '@vibe-validate/git';
 import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
 
 describe('state command', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456';
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    env = setupCommanderTest();
 
     // Default mock implementations
     vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHash);
@@ -37,14 +31,15 @@ describe('state command', () => {
   });
 
   afterEach(() => {
+    env.cleanup();
     vi.restoreAllMocks();
   });
 
   describe('command registration', () => {
     it('should register state command with correct name', () => {
-      stateCommand(program);
+      stateCommand(env.program);
 
-      const commands = program.commands;
+      const commands = env.program.commands;
       const stateCmd = commands.find(cmd => cmd.name() === 'state');
 
       expect(stateCmd).toBeDefined();
@@ -52,9 +47,9 @@ describe('state command', () => {
     });
 
     it('should register --verbose option', () => {
-      stateCommand(program);
+      stateCommand(env.program);
 
-      const stateCmd = program.commands.find(cmd => cmd.name() === 'state');
+      const stateCmd = env.program.commands.find(cmd => cmd.name() === 'state');
       const options = stateCmd?.options;
 
       expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
@@ -65,10 +60,10 @@ describe('state command', () => {
     it('should handle missing state with tree hash (minimal output)', async () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(false);
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await env.program.parseAsync(['state'], { from: 'user' });
       } catch (err: unknown) {
         // Commander throws when exitOverride is set
         // We expect exit code 0 for missing state
@@ -86,10 +81,10 @@ describe('state command', () => {
     it('should handle missing state with tree hash (verbose output)', async () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(false);
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -110,10 +105,10 @@ describe('state command', () => {
         runs: [],
       });
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await env.program.parseAsync(['state'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -152,10 +147,10 @@ describe('state command', () => {
     });
 
     it('should display passed state (minimal output)', async () => {
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await env.program.parseAsync(['state'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -167,10 +162,10 @@ describe('state command', () => {
     });
 
     it('should display passed state (verbose output)', async () => {
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -209,10 +204,10 @@ describe('state command', () => {
     });
 
     it('should display failed state (minimal output)', async () => {
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await env.program.parseAsync(['state'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -225,10 +220,10 @@ describe('state command', () => {
     });
 
     it('should display failed state (verbose output)', async () => {
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -263,10 +258,10 @@ describe('state command', () => {
 
       vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -283,10 +278,10 @@ describe('state command', () => {
     it('should handle non-git repository with error message', async () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await env.program.parseAsync(['state'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -302,10 +297,10 @@ describe('state command', () => {
     it('should handle non-git repository (verbose)', async () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -322,10 +317,10 @@ describe('state command', () => {
     it('should handle git errors', async () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('some git error'));
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await env.program.parseAsync(['state'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(1);
@@ -375,10 +370,10 @@ describe('state command', () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(true);
       vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
 
-      stateCommand(program);
+      stateCommand(env.program);
 
       try {
-        await program.parseAsync(['state'], { from: 'user' });
+        await env.program.parseAsync(['state'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof error === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
