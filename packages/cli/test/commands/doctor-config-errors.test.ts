@@ -51,6 +51,8 @@ git:
         output = execSync(`node "${cliPath}" doctor`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         output = error.stdout || error.stderr || '';
@@ -87,6 +89,8 @@ git:
         doctorOutput = execSync(`node "${cliPath}" doctor`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         doctorOutput = error.stdout || error.stderr || '';
@@ -99,6 +103,8 @@ git:
           cwd: testDir,
           encoding: 'utf-8',
           stdio: 'pipe',
+          timeout: 10000, // 10s timeout for config validation
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         configOutput = error.stderr || error.stdout || '';
@@ -141,6 +147,8 @@ validation:
         output = execSync(`node "${cliPath}" doctor --verbose`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         output = error.stdout || error.stderr || '';
@@ -162,6 +170,8 @@ validation:
         output = execSync(`node "${cliPath}" doctor`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         output = error.stdout || error.stderr || '';

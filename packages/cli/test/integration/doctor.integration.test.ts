@@ -16,6 +16,7 @@ describe('Doctor Command Integration', () => {
 
   /**
    * Helper to execute CLI and capture output/errors
+   * CRITICAL: Uses 15s timeout to prevent hung child processes (issue discovered 2025-11-06)
    */
   function executeCLI(args: string[]): { stdout: string; stderr: string; exitCode: number } {
     try {
@@ -23,6 +24,8 @@ describe('Doctor Command Integration', () => {
         cwd: projectRoot,
         encoding: 'utf8',
         stdio: 'pipe',
+        timeout: 15000, // 15s timeout - prevents hung processes
+        killSignal: 'SIGTERM', // Ensure child is killed on timeout
       });
       return { stdout, stderr: '', exitCode: 0 };
     } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
