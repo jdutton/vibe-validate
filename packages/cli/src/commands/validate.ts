@@ -5,7 +5,6 @@
  */
 
 import type { Command } from 'commander';
-import type { ValidationResult } from '@vibe-validate/core';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
@@ -175,8 +174,7 @@ export function validateCommand(program: Command): void {
 
         // Only call process.exit for non-cached results
         // Cache hits return early without calling process.exit (to support testing)
-        const resultWithCache = result as ValidationResult & { _fromCache?: boolean };
-        if (!resultWithCache._fromCache) {
+        if (!result.isCachedResult) {
           process.exit(result.passed ? 0 : 1);
         }
         // For cache hits, return normally and let Commander exit with code 0
@@ -212,7 +210,7 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 
 1. **Calculates git tree hash** of working directory (includes all tracked and untracked files)
 2. **Checks if hash matches cached state** (from previous run)
-3. **If match:** Exits immediately with cached result (~288ms)
+3. **If match:** Exits immediately with cached result (sub-second)
 4. **If no match:** Runs validation pipeline (~60-90s depending on your project)
 5. **Caches result** in git notes for next run
 6. **Records history** for analysis via \`vibe-validate history\`
@@ -258,7 +256,7 @@ vibe-validate validate --verbose --yaml
 
 ### Cache Hit
 - Validation result found for current tree hash
-- Exits in ~288ms
+- Exits in sub-second time
 - Shows: "✓ Validation already passed for tree <hash>"
 
 ### Cache Miss
@@ -344,13 +342,13 @@ vibe-validate state --yaml
 
 | Scenario | Duration | Notes |
 |----------|----------|-------|
-| Cache hit | ~288ms | Cached result found |
+| Cache hit | Sub-second | Cached result found |
 | Cache miss | ~60-90s | Full validation run |
 | Force flag | ~60-90s | Cache bypassed |
 
 ## Files Created/Modified
 
-- \`refs/notes/vibe-validate/runs\` - Validation history (git notes, auto-created)
+- \`refs/notes/vibe-validate/validate\` - Validation history (git notes, auto-created)
 
 ## Error Recovery
 

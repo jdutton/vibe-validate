@@ -108,7 +108,7 @@ describe('pruner', () => {
         expect(result.prunedTreeHashes).toEqual(['old-abc123']);
 
         expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/runs remove old-abc123',
+          'git notes --ref=vibe-validate/validate remove old-abc123',
           expect.objectContaining({
             encoding: 'utf8',
             timeout: 30000,
@@ -302,7 +302,7 @@ describe('pruner', () => {
 
         // Should only delete old note
         expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/runs remove old-abc123',
+          'git notes --ref=vibe-validate/validate remove old-abc123',
           expect.any(Object)
         );
         expect(execSync).toHaveBeenCalledTimes(1);
@@ -576,11 +576,11 @@ describe('pruner', () => {
         expect(result.prunedTreeHashes).toEqual(['abc123', 'def456']);
 
         expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/runs remove abc123',
+          'git notes --ref=vibe-validate/validate remove abc123',
           expect.any(Object)
         );
         expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/runs remove def456',
+          'git notes --ref=vibe-validate/validate remove def456',
           expect.any(Object)
         );
       });

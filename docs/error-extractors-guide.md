@@ -91,10 +91,22 @@ src/index.ts:42:5 - error TS2322
 **Agent-friendly (YAML):**
 <!-- validation-result:partial -->
 ```yaml
-failedStep: TypeScript
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
+passed: false
+phases:
+  - name: Pre-Qualification
+    passed: false
+    steps:
+      - name: TypeScript
+        passed: false
+        command: tsc --noEmit
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+          summary: 1 error found
+          totalErrors: 1
 ```
 
 ## Extractor Details
@@ -271,14 +283,30 @@ if (process.env.CI === 'true') {
 passed: false
 timestamp: 2025-10-16T15:30:00.000Z
 treeHash: a1b2c3d4e5f6789abc123def456
+summary: "TypeScript type check failed"
 failedStep: TypeScript
-rerunCommand: pnpm typecheck
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
-
-  src/auth.ts:128:10 - error TS2345
-  Argument of type 'null' is not assignable to parameter of type 'User'
+phases:
+  - name: "Pre-Qualification"
+    passed: false
+    durationSecs: 3.8
+    steps:
+      - name: "TypeScript"
+        command: "pnpm typecheck"
+        exitCode: 1
+        durationSecs: 3.8
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+            - file: src/auth.ts
+              line: 128
+              column: 10
+              message: "error TS2345: Argument of type 'null' is not assignable to parameter of type 'User'"
+          summary: "2 type errors"
+          totalErrors: 2
 ```
 
 ### Why YAML?
@@ -299,7 +327,7 @@ vibe-validate validate --check
 # View state file with formatted errors
 vibe-validate state
 
-# Claude Code reads failedStepOutput and suggests fixes
+# Claude Code reads extraction.errors and suggests fixes
 ```
 
 ---

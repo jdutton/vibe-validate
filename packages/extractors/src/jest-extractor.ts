@@ -134,14 +134,14 @@ function processLine(
  * Format failures into clean output string
  */
 function formatJestFailures(failures: JestFailure[]): string {
-  const cleanOutputLines: string[] = [];
+  const errorSummaryLines: string[] = [];
   for (const failure of failures) {
-    cleanOutputLines.push(`● ${failure.testHierarchy}`);
-    cleanOutputLines.push(`  ${failure.errorMessage}`);
-    cleanOutputLines.push(`  Location: ${failure.location}`);
-    cleanOutputLines.push('');
+    errorSummaryLines.push(`● ${failure.testHierarchy}`);
+    errorSummaryLines.push(`  ${failure.errorMessage}`);
+    errorSummaryLines.push(`  Location: ${failure.location}`);
+    errorSummaryLines.push('');
   }
-  return cleanOutputLines.join('\n');
+  return errorSummaryLines.join('\n');
 }
 
 /**
@@ -211,8 +211,8 @@ export function extractJestErrors(output: string): ErrorExtractorResult {
   return {
     errors,
     summary,
-    totalCount: failures.length,
+    totalErrors: failures.length,
     guidance,
-    cleanOutput: formatJestFailures(failures)
+    errorSummary: formatJestFailures(failures)
   };
 }

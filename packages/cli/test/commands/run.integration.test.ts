@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { execSync } from 'node:child_process';
 import yaml from 'yaml';
+import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-helpers.js';
 
 /**
  * Integration tests for the run command with REAL command execution
@@ -36,11 +37,12 @@ describe('run command integration', () => {
       }
 
       // Parse YAML output
-      const parsed = yaml.parse(output);
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
-      // Should detect nesting and add suggestedDirectCommand
-      expect(parsed.suggestedDirectCommand).toBeDefined();
-      expect(parsed.suggestedDirectCommand).toContain('echo');
+      // Should unwrap to innermost command (not wrapper)
+      expect(parsed.command).toBeDefined();
+      expect(parsed.command).toContain('echo');
 
       // Should preserve exit code
       expect(parsed.exitCode).toBe(0);
@@ -65,7 +67,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      const parsed = yaml.parse(output);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should have non-zero exit code
       expect(parsed.exitCode).toBe(1);
@@ -88,7 +92,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      const parsed = yaml.parse(output);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should preserve exit code 42
       expect(parsed.exitCode).toBe(42);
@@ -112,7 +118,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      const parsed = yaml.parse(output);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should have both in rawOutput (if present)
       expect(parsed.command).toBeDefined();
@@ -121,6 +129,173 @@ describe('run command integration', () => {
   });
 
   // Real YAML output preservation tests moved to run.system.test.ts
+
+  describe('caching behavior', () => {
+    it('should invalidate cache when tree hash changes', () => {
+      const tmpFile = `tmp-cache-test-${Date.now()}.txt`;
+
+      try {
+        // Run command first time - should execute (no cache)
+        const firstRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        // Parse YAML output - opening delimiter only (no display flags)
+        expect(firstRun).toMatch(/^---\n/);
+        const firstParsed = parseRunYamlOutput(firstRun);
+        expect(firstParsed.exitCode).toBe(0);
+        expect(firstParsed.command).toBe('echo \'Cache test\'');
+
+        // Run again immediately - should hit cache (same tree hash)
+        const cachedRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        expect(cachedRun).toMatch(/^---\n/);
+        const cachedParsed = parseRunYamlOutput(cachedRun);
+        expect(cachedParsed.exitCode).toBe(0);
+
+        // Create a new file to change tree hash
+        execSync(`echo "test" > ${tmpFile}`, { encoding: 'utf-8' });
+
+        // Run same command again - cache should be invalidated due to tree hash change
+        // Should execute again (not from cache)
+        const thirdRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        expect(thirdRun).toMatch(/^---\n/);
+        const thirdParsed = parseRunYamlOutput(thirdRun);
+        expect(thirdParsed.exitCode).toBe(0);
+        expect(thirdParsed.command).toBe('echo \'Cache test\'');
+
+        // Cleanup
+        execSync(`rm ${tmpFile}`, { encoding: 'utf-8' });
+      } catch (error: any) { // NOSONAR - Need to access stdout from error for test verification
+        // Cleanup on error
+        try {
+          execSync(`rm ${tmpFile}`, { encoding: 'utf-8' });
+        } catch {
+          // Ignore cleanup errors
+        }
+        throw error;
+      }
+    });
+
+    it('should create separate cache entries for different working directories', () => {
+      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+
+      // Run command in root
+      const rootRun = execSync(`node ${absoluteCliPath} run "echo 'root'"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: process.cwd(),
+      });
+      // Parse YAML output - opening delimiter only (no display flags)
+      expect(rootRun).toMatch(/^---\n/);
+      const rootParsed = parseRunYamlOutput(rootRun);
+
+      // Run same command text in subdirectory
+      const subdirRun = execSync(`node ${absoluteCliPath} run "echo 'root'"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: `${process.cwd()}/packages/cli`,
+      });
+      expect(subdirRun).toMatch(/^---\n/);
+      const subdirParsed = parseRunYamlOutput(subdirRun);
+
+      // Both should succeed
+      expect(rootParsed.exitCode).toBe(0);
+      expect(subdirParsed.exitCode).toBe(0);
+
+      // Same command text but different working directories
+      expect(rootParsed.command).toBe('echo \'root\'');
+      expect(subdirParsed.command).toBe('echo \'root\'');
+
+      // Token optimization: extraction omitted for successful runs with no errors
+      expect(rootParsed.extraction).toBeUndefined();
+      expect(subdirParsed.extraction).toBeUndefined();
+
+      // Both should have executed (verify via timestamp difference or outputFiles presence)
+      expect(rootParsed.timestamp).toBeDefined();
+      expect(subdirParsed.timestamp).toBeDefined();
+      expect(rootParsed.outputFiles).toBeDefined();
+      expect(subdirParsed.outputFiles).toBeDefined();
+    });
+
+    it('should disable caching in non-git repositories with inline YAML comment', () => {
+      // Test in /tmp which is guaranteed to not be a git repository
+      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+
+      // Capture stdout only (YAML with embedded comment)
+      let output: string;
+
+      try {
+        output = execSync(`node ${absoluteCliPath} run "echo 'test'"`, {
+          encoding: 'utf-8',
+          cwd: '/tmp',
+        });
+      } catch (err: any) {
+        output = err.stdout || '';
+      }
+
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const yamlContent = output.replace(/^---\n/, '');
+
+      // Should have YAML comment explaining caching is disabled
+      expect(yamlContent).toContain('treeHash: unknown  # Not in git repository - caching disabled');
+
+      // Parse YAML (comments are stripped during parsing)
+      const parsed = parseRunYamlOutput(output);
+
+      // Should have treeHash: unknown
+      expect(parsed.treeHash).toBe('unknown');
+
+      // Should succeed
+      expect(parsed.exitCode).toBe(0);
+
+      // Should NOT have stderr warning (it's now in YAML comment)
+      expect(output).not.toContain('⚠️');
+
+      // Comment should NOT mention "timestamp-based hash" (old misleading message)
+      expect(output).not.toContain('timestamp-based hash');
+      expect(output).not.toContain('using timestamp-based');
+
+      // Should have output files (execution still occurs, just no caching)
+      expect(parsed.outputFiles).toBeDefined();
+      expect(parsed.outputFiles.combined).toBeDefined();
+
+      // Run the same command again - should execute again (no caching)
+      // This verifies that caching is actually disabled
+      // Add a small delay to ensure different timestamp (and thus different temp dir)
+      const sleepCommand = 'sleep 1 && echo "test2"';
+      let secondOutput: string;
+      try {
+        secondOutput = execSync(`node ${absoluteCliPath} run "${sleepCommand}"`, {
+          encoding: 'utf-8',
+          cwd: '/tmp',
+        });
+      } catch (err: any) {
+        secondOutput = err.stdout || '';
+      }
+
+      const secondYamlContent = secondOutput.replace(/^---\n/, '');
+      const secondParsed = yaml.parse(secondYamlContent);
+
+      // Should also have YAML comment
+      expect(secondOutput).toContain('treeHash: unknown  # Not in git repository - caching disabled');
+
+      // Should also have treeHash: unknown
+      expect(secondParsed.treeHash).toBe('unknown');
+
+      // Should NOT indicate cached result (proves caching is disabled)
+      expect(secondParsed.isCachedResult).toBeUndefined();
+
+      // Should have output files
+      expect(secondParsed.outputFiles.combined).toBeDefined();
+    });
+  });
 
   describe('performance', () => {
     it('should handle nested execution without significant overhead', () => {
@@ -142,6 +317,241 @@ describe('run command integration', () => {
 
       // Should complete in reasonable time (< 5 seconds)
       expect(duration).toBeLessThan(5000);
+    });
+  });
+
+  describe('argument parsing', () => {
+    it('should treat --help after command as part of the command, not vv run option', () => {
+      // This tests the fix for the critical bug where:
+      // `vv run claude --help` was incorrectly showing help for vv run
+      // instead of executing `claude --help`
+
+      const command = `${CLI_PATH} run echo --help`;
+
+      let output: string;
+
+      try {
+        output = execSync(command, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+      } catch (err: any) {
+        output = err.stdout || '';
+      }
+
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
+
+      // Should execute "echo --help" as a command
+      expect(parsed.command).toBe('echo --help');
+      expect(parsed.exitCode).toBe(0);
+
+      // Should NOT be showing vv run's help text
+      expect(output).not.toContain('Usage: vibe-validate run');
+    });
+
+    it('should handle commands with multiple flags correctly', () => {
+      // Use flags that are NOT known vv run options
+      const command = `${CLI_PATH} run echo -n test --unknown-flag`;
+
+      let output: string;
+
+      try {
+        output = execSync(command, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+      } catch (err: any) {
+        output = err.stdout || '';
+      }
+
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
+
+      // Should preserve all flags in the command
+      expect(parsed.command).toBe('echo -n test --unknown-flag');
+      expect(parsed.exitCode).toBe(0);
+    });
+
+    it('should execute "node --help" not show vv run help', () => {
+      // Regression test: vv run node --help should execute "node --help"
+      // not show help for vv run command
+      const command = `${CLI_PATH} run node --help`;
+
+      let output: string;
+
+      try {
+        output = execSync(command, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+      } catch (err: any) {
+        output = err.stdout || '';
+      }
+
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
+
+      // Should execute "node --help" as a command
+      expect(parsed.command).toBe('node --help');
+      expect(parsed.exitCode).toBe(0);
+
+      // Should NOT be showing vv run's help text
+      expect(output).not.toContain('Usage: vibe-validate run');
+    });
+
+    it('should handle vv run options before command correctly', () => {
+      // Options for vv run itself must come BEFORE the command
+      const command = `${CLI_PATH} run --force echo test`;
+
+      let output: string;
+
+      try {
+        output = execSync(command, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+      } catch (err: any) {
+        output = err.stdout || '';
+      }
+
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
+
+      // --force is handled by vv run, command should just be "echo test"
+      expect(parsed.command).toBe('echo test');
+      expect(parsed.exitCode).toBe(0);
+    });
+
+    it('should show run command help when using --verbose --help without a command', () => {
+      // Critical edge case: vv run --verbose --help should show verbose help for run command
+      // NOT try to execute --help as a command
+      const command = `${CLI_PATH} run --verbose --help`;
+
+      const output = execSync(command, {
+        encoding: 'utf-8',
+      });
+
+      // Should show verbose help documentation (not YAML output)
+      expect(output).toContain('run Command Reference');
+      expect(output).toContain('Run a command and extract LLM-friendly errors');
+
+      // Should NOT be trying to execute --help as a command
+      // Check for YAML structure at the beginning (which would indicate command execution)
+      expect(output).not.toMatch(/^---\s*\ncommand: --help/);
+      expect(output).not.toMatch(/^---\s*\ncommand:/);
+    });
+
+    it('should show run command help when using --help alone', () => {
+      // Basic case: vv run --help should show help for run command
+      const command = `${CLI_PATH} run --help`;
+
+      const output = execSync(command, {
+        encoding: 'utf-8',
+      });
+
+      // Should show basic help
+      expect(output).toContain('Usage: vibe-validate run');
+      expect(output).toContain('Run a command and extract LLM-friendly errors');
+
+      // Should NOT be trying to execute --help as a command
+      // Check for YAML structure at the beginning
+      expect(output).not.toMatch(/^---\s*\ncommand: --help/);
+      expect(output).not.toMatch(/^---\s*\ncommand:/);
+    });
+  });
+
+  describe('display flags', () => {
+    it('should display verbose output with --verbose flag', () => {
+      const command = `${CLI_PATH} run --verbose node --badarg 2>&1`;
+
+      let output: string;
+
+      try {
+        output = execSync(command, {
+          encoding: 'utf-8',
+        });
+      } catch (err: any) {
+        output = err.stdout || '';
+      }
+
+      // Extract YAML front matter (between --- delimiters)
+      const yamlMatch = output.match(/^---\n([\s\S]*?)\n---/);
+      expect(yamlMatch).toBeTruthy();
+      const yamlContent = yamlMatch![1];
+      const parsed = yaml.parse(yamlContent);
+
+      expect(parsed.command).toBe('node --badarg');
+      expect(parsed.exitCode).toBeGreaterThan(0);
+
+      // Should have verbose output after YAML front matter (no header)
+      const afterYaml = output.split('---\n').slice(2).join('');
+      expect(afterYaml).toContain('[stderr]');
+      expect(afterYaml).toContain('node: bad option');
+    });
+
+    it('should display first N lines with --head flag', () => {
+      // Use printf to generate multiple lines of output
+      // Redirect stderr to stdout with 2>&1 to capture display output
+      const command = `${CLI_PATH} run --head 2 printf ${String.raw`"line1\nline2\nline3\n"`} 2>&1`;
+
+      const output = execSync(command, {
+        encoding: 'utf-8',
+      });
+
+      // Extract YAML front matter
+      const yamlMatch = output.match(/^---\n([\s\S]*?)\n---/);
+      expect(yamlMatch).toBeTruthy();
+      const yamlContent = yamlMatch![1];
+      const parsed = yaml.parse(yamlContent);
+      expect(parsed.exitCode).toBe(0);
+
+      // Should have output display after YAML (no header, just output lines)
+      const afterYaml = output.split('---\n').slice(2).join('');
+      expect(afterYaml).toContain('[stdout]');
+    });
+
+    it('should display last N lines with --tail flag', () => {
+      // Use printf to generate multiple lines of output
+      // Redirect stderr to stdout with 2>&1 to capture display output
+      const command = `${CLI_PATH} run --tail 2 printf ${String.raw`"line1\nline2\nline3\n"`} 2>&1`;
+
+      const output = execSync(command, {
+        encoding: 'utf-8',
+      });
+
+      // Extract YAML front matter
+      const yamlMatch = output.match(/^---\n([\s\S]*?)\n---/);
+      expect(yamlMatch).toBeTruthy();
+      const yamlContent = yamlMatch![1];
+      const parsed = yaml.parse(yamlContent);
+      expect(parsed.exitCode).toBe(0);
+
+      // Should have output display after YAML (no header, just output lines)
+      const afterYaml = output.split('---\n').slice(2).join('');
+      expect(afterYaml).toContain('[stdout]');
+    });
+
+    it('should not display output without display flags', () => {
+      // Use echo which works reliably across platforms
+      const command = `${CLI_PATH} run echo "test output" 2>&1`;
+
+      const output = execSync(command, {
+        encoding: 'utf-8',
+      });
+
+      // Parse YAML output - opening delimiter only (no display flags = no closing delimiter)
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
+      expect(parsed.exitCode).toBe(0);
+
+      // Should NOT have closing delimiter or any output after YAML
+      expect(output).not.toMatch(/\n---\n/); // No closing delimiter
+      expect(output.trim()).toBe(('---\n' + yaml.stringify(parsed)).trim());
     });
   });
 });

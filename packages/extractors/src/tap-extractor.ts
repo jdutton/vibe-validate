@@ -8,6 +8,8 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
+import { formatCleanOutput } from './utils/formatter-utils.js';
+import { generateGuidanceFromPatterns, type GuidancePattern } from './utils/guidance-generator.js';
 
 /**
  * Extract errors from TAP test output
@@ -32,8 +34,8 @@ export function extractTAPErrors(output: string): ErrorExtractorResult {
     return {
       summary: '0 test(s) failed',
       errors: [],
-      totalCount: 0,
-      cleanOutput: '',
+      totalErrors: 0,
+      errorSummary: '',
       guidance: '',
       metadata: {
         confidence: 100,
@@ -68,8 +70,8 @@ export function extractTAPErrors(output: string): ErrorExtractorResult {
   // Generate summary
   const summary = `${failures.length} test(s) failed`;
 
-  // Generate guidance
-  const guidance = generateGuidance(failures);
+  // Generate guidance using TAP-specific patterns
+  const guidance = generateGuidanceFromPatterns(failures, TAP_GUIDANCE_PATTERNS);
 
   // Calculate quality metadata
   const completeness = failures.length > 0 ? (completeCount / failures.length) * 100 : 100;
@@ -84,8 +86,8 @@ export function extractTAPErrors(output: string): ErrorExtractorResult {
   return {
     summary,
     errors,
-    totalCount: failures.length,
-    cleanOutput: formatCleanOutput(errors),
+    totalErrors: failures.length,
+    errorSummary: formatCleanOutput(errors),
     guidance,
     metadata
   };
@@ -225,59 +227,36 @@ function detectErrorType(message: string): string {
 }
 
 /**
+ * TAP-specific guidance patterns
+ * TAP uses detectErrorType() which returns specific keys, so we map those to guidance
+ */
+const TAP_GUIDANCE_PATTERNS: GuidancePattern[] = [
+  {
+    key: 'assertion',
+    messageMatchers: ['expected', 'should'],
+    guidance: 'Review the assertion logic and expected vs actual values'
+  },
+  {
+    key: 'timeout',
+    messageMatchers: ['timeout', 'timed out'],
+    guidance: 'Increase timeout limit or optimize async operations'
+  },
+  {
+    key: 'file-not-found',
+    messageMatchers: ['enoent', 'no such file'],
+    guidance: 'Verify file path exists and permissions are correct'
+  },
+  {
+    key: 'type-error',
+    messageMatchers: ['cannot read properties', 'typeerror'],
+    guidance: 'Check for null/undefined values before accessing properties'
+  }
+];
+
+/**
  * Get guidance for a specific error type
  */
 function getErrorGuidance(errorType: string): string | undefined {
-  const guidanceMap: Record<string, string> = {
-    assertion: 'Review the assertion logic and expected vs actual values',
-    timeout: 'Increase timeout limit or optimize async operations',
-    'file-not-found': 'Verify file path exists and permissions are correct',
-    'type-error': 'Check for null/undefined values before accessing properties'
-  };
-
-  return guidanceMap[errorType];
-}
-
-/**
- * Generate overall guidance from all failures
- */
-function generateGuidance(failures: FailureInfo[]): string {
-  if (failures.length === 0) {
-    return '';
-  }
-
-  const errorTypes = new Set(failures.map(f => f.errorType).filter(Boolean));
-
-  if (errorTypes.has('assertion')) {
-    return 'Review failing assertions - check expected vs actual values';
-  }
-  if (errorTypes.has('timeout')) {
-    return 'Tests are timing out - consider increasing timeout or optimizing async code';
-  }
-  if (errorTypes.has('type-error')) {
-    return 'Runtime type errors detected - add null checks before property access';
-  }
-
-  return 'Review test failures and error messages above';
-}
-
-/**
- * Format clean output for LLM consumption
- */
-function formatCleanOutput(errors: FormattedError[]): string {
-  if (errors.length === 0) {
-    return '';
-  }
-
-  return errors
-    .map(error => {
-      const linePart = error.line ? `:${error.line}` : '';
-      const location = error.file
-        ? `${error.file}${linePart}`
-        : 'unknown location';
-
-      const context = error.context ? `[${error.context}] ` : '';
-      return `${location}: ${context}${error.message}`;
-    })
-    .join('\n');
+  const pattern = TAP_GUIDANCE_PATTERNS.find(p => p.key === errorType);
+  return pattern?.guidance;
 }

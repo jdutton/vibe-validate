@@ -1,6 +1,5 @@
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
-import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type {
   CIProvider,
   PullRequest,
@@ -212,46 +211,15 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   /**
-   * Parse YAML and enrich with extractor results
+   * Parse YAML validation result from log content
    */
   private parseAndEnrichValidationResult(yamlContent: string): ValidationResultContents | null {
     try {
       const result = parseYaml(yamlContent) as ValidationResultContents;
-
-      // Enrich with structured failure details if validation failed
-      if (!result.passed && result.failedStep && result.failedStepOutput) {
-        this.enrichWithFailedTests(result);
-      }
-
       return result;
-    } catch (error) {
-      console.debug(`Failed to parse validation YAML: ${error instanceof Error ? error.message : String(error)}`);
+    } catch {
+      // Failed to parse validation YAML - return null
       return null;
-    }
-  }
-
-  /**
-   * Enrich validation result with failed test details from extractors
-   */
-  private enrichWithFailedTests(result: ValidationResultContents): void {
-    // Type narrowing: we know these are defined due to the check in parseAndEnrichValidationResult
-    const failedStep = result.failedStep;
-    const failedStepOutput = result.failedStepOutput;
-
-    if (!failedStep || !failedStepOutput) {
-      return;
-    }
-
-    const extractorResult = autoDetectAndExtract(failedStep, failedStepOutput);
-
-    if (extractorResult.errors.length > 0) {
-      result.failedTests = extractorResult.errors
-        .filter((e: { file?: string; line?: number }) => e.file && e.line)
-        .map((e: { file?: string; line?: number; column?: number; message?: string }) => {
-          const columnPart = e.column ? `:${e.column}` : '';
-          return `${e.file}:${e.line}${columnPart} - ${e.message ?? 'Test failed'}`;
-        })
-        .slice(0, 10); // Limit to first 10 for display
     }
   }
 
@@ -412,7 +380,13 @@ export class GitHubActionsProvider implements CIProvider {
     if (validationResult && !validationResult.passed) {
       // Show concise summary: just the failed step and how to rerun
       if (validationResult.failedStep) {
-        return `Failed step: ${validationResult.failedStep}\nRerun: ${validationResult.rerunCommand ?? 'see full logs'}`;
+        // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+        const failedStep = validationResult.phases
+          ?.flatMap(phase => phase.steps ?? [])
+          .find(step => step && step.name === validationResult.failedStep);
+
+        const rerunCommand = failedStep?.command ?? 'see full logs';
+        return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
       }
     }
 

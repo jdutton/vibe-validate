@@ -41,11 +41,23 @@ Found 1 error.
 <!-- validation-result:partial -->
 ```yaml
 passed: false
-failedStep: TypeScript
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
+phases:
+  - name: Pre-Qualification
+    passed: false
+    steps:
+      - name: TypeScript
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+          summary: 1 error found
+          totalErrors: 1
 ```
+
+> **Note on Command Syntax**: This guide uses `vv` (the short alias) for all commands. You can substitute `vibe-validate` or `npx vibe-validate` if preferred - they work identically. Using `vv` saves typing and tokens, making it especially efficient for AI agents.
 
 ## Supported Agents
 
@@ -69,9 +81,9 @@ vibe-validate officially supports these AI coding assistants:
 ```typescript
 // Agent workflow (pseudo-code):
 1. User: "Commit these changes"
-2. Agent: Run `vibe-validate pre-commit`
+2. Agent: Run `vv pre-commit`
 3. If validation fails:
-   - Run `vibe-validate state` to get error details
+   - Run `vv state` to get error details
    - Analyze errors and suggest fixes
    - Apply fixes
    - Re-run validation (cached, fast!)
@@ -91,10 +103,15 @@ vibe-validate officially supports these AI coding assistants:
 ```typescript
 // Iterative fixing workflow:
 do {
-  result = run `vibe-validate validate`
+  result = run `vv validate`
   if (result.passed) break;
 
-  errors = parse result.failedStepOutput
+  // Extract errors from failed steps
+  errors = result.phases
+    .flatMap(phase => phase.steps)
+    .filter(step => !step.passed)
+    .flatMap(step => step.extraction?.errors || [])
+
   fixes = suggest_fixes(errors)
   apply_fixes(fixes)
 } while (max_iterations)
@@ -113,7 +130,7 @@ do {
 // Real-time feedback workflow:
 1. User: "Add login feature"
 2. Agent: Implement feature
-3. Agent: Run `vibe-validate validate --force`
+3. Agent: Run `vv validate --force`
 4. Agent: Read validation state
 5. If errors exist:
    - Fix errors proactively
@@ -170,14 +187,14 @@ validation:
 ## Validation State
 
 Validation results cached via git notes (content-based):
-- Check current state: `vibe-validate state`
-- Force re-validation: `vibe-validate validate --force`
-- View timeline (advanced): `vibe-validate history list`
+- Check current state: `vv state`
+- Force re-validation: `vv validate --force`
+- View timeline (advanced): `vv history list`
 
 ## Error Fixing
 
 When validation fails:
-1. View error details: `vibe-validate state`
+1. View error details: `vv state`
 2. Fix the issue
 3. Re-run validation (fast with caching!)
 ```
@@ -192,12 +209,12 @@ User: Fix any validation errors and commit
 **Claude Code workflow:**
 ```bash
 # 1. Check validation state
-$ vibe-validate state
+$ vv state
 
 # Output (YAML format):
 # passed: false
-# failedStep: TypeScript
-# 
+# phases: [...]  # See Phase and Step structure below
+#
 ```
 
 ### Claude Code Features
@@ -208,13 +225,13 @@ $ vibe-validate state
 - No manual configuration needed
 
 **State integration:**
-- Claude Code can run `vibe-validate state` for validation results
+- Claude Code can run `vv state` for validation results
 - Structured YAML data for programmatic parsing
 
 **Performance:**
 - Validation caching = fast iteration
 - Claude Code can validate frequently without slowdown
-- Cached validation: ~300ms vs. ~90s full validation
+- Cached validation: < 1s vs. seconds/minutes full validation
 
 ---
 
@@ -284,10 +301,10 @@ validation:
 User: Run validation and fix any errors
 
 Cursor: Running validation...
-[Runs: vibe-validate validate]
+[Runs: vv validate]
 
 Cursor: Found 2 TypeScript errors. Fixing...
-[Runs: vibe-validate state]
+[Runs: vv state]
 [Applies fixes]
 
 Cursor: Validation now passes. Ready to commit.
@@ -352,8 +369,8 @@ pre-commit-hook: |
 **3. Add shell alias:**
 ```bash
 # ~/.bashrc or ~/.zshrc
-alias validate="AIDER=1 vibe-validate validate"
-alias pre-commit="AIDER=1 vibe-validate pre-commit"
+alias validate="AIDER=1 vv validate"
+alias pre-commit="AIDER=1 vv pre-commit"
 ```
 
 ### Usage in Aider
@@ -363,7 +380,7 @@ alias pre-commit="AIDER=1 vibe-validate pre-commit"
 You: Run validation and fix errors
 
 Aider: Running validation...
-> vibe-validate validate
+> vv validate
 
 Aider: Found TypeScript errors:
 - src/index.ts:42:5 - error TS2322
@@ -372,7 +389,7 @@ Aider: Fixing src/index.ts...
 [Applies fix]
 
 Aider: Re-running validation...
-> vibe-validate validate
+> vv validate
 ✅ Validation passed
 
 You: Great! Commit the changes.
@@ -462,7 +479,7 @@ Continue: Validation failed with 2 errors:
 User: /fix-errors
 
 Continue: Reading validation state...
-[Runs: vibe-validate state]
+[Runs: vv state]
 
 Continue: Fixing errors...
 [Applies fixes to src/index.ts and src/auth.ts]
@@ -520,11 +537,25 @@ vibe-validate state
 passed: false
 timestamp: 2025-10-16T15:30:00.000Z
 treeHash: a1b2c3d4e5f6789abc123def456
-failedStep: TypeScript
-rerunCommand: pnpm typecheck
-failedStepOutput: |
-  src/index.ts:42:5 - error TS2322
-  Type 'string' is not assignable to type 'number'
+summary: "TypeScript type check failed"
+phases:
+  - name: "Pre-Qualification"
+    passed: false
+    durationSecs: 5.2
+    steps:
+      - name: "TypeScript"
+        command: "pnpm typecheck"
+        exitCode: 1
+        durationSecs: 5.2
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 42
+              column: 5
+              message: "error TS2322: Type 'string' is not assignable to type 'number'"
+          summary: "1 type error"
+          totalErrors: 1
 ```
 
 **Note**: Validation state is stored in git notes (not files). Always use `vibe-validate state` to query.
@@ -553,8 +584,18 @@ state_output = subprocess.run(
 state = yaml.safe_load(state_output)
 
 if not state['passed']:
-    print(f"Validation failed: {state['failedStep']}")
-    print(f"Errors:\n{state['failedStepOutput']}")
+    # Extract errors from failed steps
+    failed_steps = [
+        step for phase in state['phases']
+        for step in phase['steps']
+        if not step['passed']
+    ]
+
+    for step in failed_steps:
+        print(f"Failed step: {step['name']}")
+        if 'extraction' in step and 'errors' in step['extraction']:
+            for error in step['extraction']['errors']:
+                print(f"  {error['file']}:{error['line']} - {error['message']}")
 
     # AI agent fixes errors here
     # ...
@@ -582,11 +623,23 @@ const stateOutput = execSync('vibe-validate state', { encoding: 'utf-8' });
 const state = yaml.parse(stateOutput);
 
 if (!state.passed) {
-  console.log(`Failed: ${state.failedStep}`);
-  console.log(`Errors:\n${state.failedStepOutput}`);
+  // Extract errors from failed steps
+  const failedSteps = state.phases
+    .flatMap(phase => phase.steps)
+    .filter(step => !step.passed);
+
+  for (const step of failedSteps) {
+    console.log(`Failed step: ${step.name}`);
+    if (step.extraction?.errors) {
+      for (const error of step.extraction.errors) {
+        console.log(`  ${error.file}:${error.line} - ${error.message}`);
+      }
+    }
+  }
 
   // AI agent processes errors
-  const fixes = await aiAgent.fixErrors(state.failedStepOutput);
+  const allErrors = failedSteps.flatMap(step => step.extraction?.errors || []);
+  const fixes = await aiAgent.fixErrors(allErrors);
 
   // Apply fixes
   await applyFixes(fixes);
@@ -758,8 +811,11 @@ async function fixErrorsProgressively() {
       break;
     }
 
-    // Extract errors
-    const errors = parseErrors(state.failedStepOutput);
+    // Extract errors from failed steps
+    const errors = state.phases
+      .flatMap(phase => phase.steps)
+      .filter(step => !step.passed)
+      .flatMap(step => step.extraction?.errors || []);
 
     // Sort by priority (TypeScript errors first)
     const sortedErrors = sortByPriority(errors);

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Command } from 'commander';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { cleanupCommand } from '../../src/commands/cleanup.js';
 import * as git from '@vibe-validate/git';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the git module
 vi.mock('@vibe-validate/git', async () => {
@@ -13,58 +13,55 @@ vi.mock('@vibe-validate/git', async () => {
 });
 
 describe('cleanup command', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
+    env = setupCommanderTest();
 
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-
-    // Reset mocks
+    // Reset git mocks
     vi.mocked(git.cleanupMergedBranches).mockReset();
+  });
+
+  afterEach(() => {
+    env.cleanup();
   });
 
   describe('command registration', () => {
     it('should register cleanup command', () => {
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'cleanup');
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
       expect(command).toBeDefined();
     });
 
     it('should have correct description', () => {
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'cleanup');
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
       expect(command?.description()).toBe('Post-merge cleanup (switch to main, delete merged branches)');
     });
 
     it('should register --main-branch option', () => {
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'cleanup');
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
       const option = command?.options.find(opt => opt.long === '--main-branch');
       expect(option).toBeDefined();
       expect(option?.defaultValue).toBe('main');
     });
 
     it('should register --dry-run option', () => {
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'cleanup');
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
       const option = command?.options.find(opt => opt.long === '--dry-run');
       expect(option).toBeDefined();
     });
 
     it('should register --yaml option', () => {
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'cleanup');
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
       const option = command?.options.find(opt => opt.long === '--yaml');
       expect(option).toBeDefined();
     });
@@ -81,10 +78,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup'], { from: 'user' });
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -106,10 +103,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup', '--main-branch', 'develop'], { from: 'user' });
+        await env.program.parseAsync(['cleanup', '--main-branch', 'develop'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -131,10 +128,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
+        await env.program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -158,10 +155,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -189,10 +186,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -222,10 +219,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -255,10 +252,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup', '--yaml', '--dry-run'], { from: 'user' });
+        await env.program.parseAsync(['cleanup', '--yaml', '--dry-run'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -288,10 +285,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup'], { from: 'user' });
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -316,10 +313,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
+        await env.program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -339,10 +336,10 @@ describe('cleanup command', () => {
 
       vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup'], { from: 'user' });
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -358,10 +355,10 @@ describe('cleanup command', () => {
       const error = new Error('Git command failed');
       vi.mocked(git.cleanupMergedBranches).mockRejectedValue(error);
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup'], { from: 'user' });
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -389,10 +386,10 @@ describe('cleanup command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup'], { from: 'user' });
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -418,10 +415,10 @@ describe('cleanup command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      cleanupCommand(program);
+      cleanupCommand(env.program);
 
       try {
-        await program.parseAsync(['cleanup'], { from: 'user' });
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();

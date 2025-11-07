@@ -6,31 +6,23 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
+import { setupTestEnvironment, cleanupTempTestDir } from '../helpers/integration-setup-helpers.js';
 
 describe('doctor command config error reporting (regression tests)', () => {
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-doctor-errors-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
-
-    // Initialize as git repo (doctor requires this)
-    execSync('git init', { cwd: testDir, stdio: 'ignore' });
-    execSync('git config user.email "test@example.com"', { cwd: testDir, stdio: 'ignore' });
-    execSync('git config user.name "Test User"', { cwd: testDir, stdio: 'ignore' });
+    // Create temp directory and initialize git repo
+    testDir = setupTestEnvironment('vibe-validate-doctor-errors');
   });
 
   afterEach(() => {
     // Clean up test files
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    cleanupTempTestDir(testDir);
   });
 
   describe('config validation in doctor checks', () => {
@@ -51,6 +43,8 @@ git:
         output = execSync(`node "${cliPath}" doctor`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         output = error.stdout || error.stderr || '';
@@ -87,6 +81,8 @@ git:
         doctorOutput = execSync(`node "${cliPath}" doctor`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         doctorOutput = error.stdout || error.stderr || '';
@@ -99,6 +95,8 @@ git:
           cwd: testDir,
           encoding: 'utf-8',
           stdio: 'pipe',
+          timeout: 10000, // 10s timeout for config validation
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         configOutput = error.stderr || error.stdout || '';
@@ -141,6 +139,8 @@ validation:
         output = execSync(`node "${cliPath}" doctor --verbose`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         output = error.stdout || error.stderr || '';
@@ -162,6 +162,8 @@ validation:
         output = execSync(`node "${cliPath}" doctor`, {
           cwd: testDir,
           encoding: 'utf-8',
+          timeout: 15000, // 15s timeout - prevents hung processes
+          killSignal: 'SIGTERM',
         });
       } catch (error: any) {
         output = error.stdout || error.stderr || '';

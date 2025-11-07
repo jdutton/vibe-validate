@@ -27,7 +27,7 @@ Run validation with git tree hash caching
 
 1. Calculates git tree hash of working directory
 2. Checks if hash matches cached state
-3. If match: exits immediately (~288ms)
+3. If match: exits immediately (sub-second)
 4. If no match: runs validation pipeline (~60-90s)
 5. Caches result for next run
 
@@ -39,7 +39,7 @@ Run validation with git tree hash caching
 
 **Creates/modifies:**
 
-- Git notes under refs/notes/vibe-validate/runs
+- Git notes under refs/notes/vibe-validate/validate
 
 **Options:**
 
@@ -257,6 +257,19 @@ vibe-validate cleanup            # Execute
 
 ---
 
+### `cleanup-temp`
+
+Clean up old temporary output files
+
+**Options:**
+
+- `--older-than <days>` - Delete files older than N days
+- `--all` - Delete all temp files regardless of age
+- `--dry-run` - Show what would be deleted without actually deleting
+- `--yaml` - Output YAML only (no human-friendly display)
+
+---
+
 ### `config`
 
 Show or validate vibe-validate configuration
@@ -428,7 +441,7 @@ View and manage validation history stored in git notes
 
 ### `run`
 
-Run a command and extract LLM-friendly errors from output
+Run a command and extract LLM-friendly errors (with smart caching)
 
 **What it does:**
 
@@ -445,6 +458,14 @@ Run a command and extract LLM-friendly errors from output
 - `1` - Command failed (same code as original command)
 
 **When to use:** Run individual tests or validation steps with LLM-friendly error extraction
+
+**Options:**
+
+- `--check` - Check if cached result exists without executing
+- `--force` - Force execution and update cache (bypass cache read)
+- `--head <lines>` - Display first N lines of output after YAML (on stderr)
+- `--tail <lines>` - Display last N lines of output after YAML (on stderr)
+- `--verbose` - Display all output after YAML (on stderr)
 
 **Examples:**
 
@@ -469,7 +490,7 @@ vibe-validate run "pnpm lint"                  # Lint
 | File | Purpose |
 |------|---------|
 | `vibe-validate.config.yaml` | Configuration (required) |
-| `refs/notes/vibe-validate/runs` | Validation state (git notes, auto-created) |
+| `refs/notes/vibe-validate/validate` | Validation state (git notes, auto-created) |
 | `.github/workflows/validate.yml` | CI workflow (optional, generated) |
 | `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |
 
@@ -522,7 +543,7 @@ vibe-validate validate --force
 ## Caching
 
 - **Cache key**: Git tree hash of working directory (includes untracked files)
-- **Cache hit**: Validation skipped (~288ms)
+- **Cache hit**: Validation skipped (sub-second)
 - **Cache miss**: Full validation runs (~60-90s)
 - **Invalidation**: Any file change (tracked or untracked)
 

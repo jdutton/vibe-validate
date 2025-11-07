@@ -6,6 +6,7 @@ import { execSync } from 'node:child_process';
 import type { PruneResult, HistoryConfig } from './types.js';
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
 import { getAllHistoryNotes } from './reader.js';
+import { listRunCacheTreeHashes, getAllRunCacheForTree } from './run-cache-reader.js';
 
 const GIT_TIMEOUT = 30000;
 const GIT_OPTIONS = {
@@ -129,6 +130,93 @@ export async function pruneAllHistory(
   return {
     notesPruned,
     runsPruned,
+    notesRemaining: 0,
+    prunedTreeHashes,
+  };
+}
+
+/**
+ * Clean up legacy git notes from pre-0.15.0 versions
+ *
+ * Removes notes from the old `refs/notes/vibe-validate/runs` namespace.
+ * Safe to call - only removes if legacy notes exist.
+ *
+ * @param dryRun - If true, don't actually delete (default: false)
+ * @returns Prune result
+ */
+export async function pruneLegacyNotes(dryRun: boolean = false): Promise<PruneResult> {
+  const legacyRef = 'vibe-validate/runs';
+
+  let notesPruned = 0;
+  let runsPruned = 0;
+  const prunedTreeHashes: string[] = [];
+
+  try {
+    const allNotes = await getAllHistoryNotes(legacyRef);
+
+    for (const note of allNotes) {
+      if (!dryRun) {
+        try {
+          execSync(
+            `git notes --ref=${legacyRef} remove ${note.treeHash}`,
+            { ...GIT_OPTIONS, stdio: 'ignore' }
+          );
+        } catch {
+          // Ignore errors
+        }
+      }
+
+      notesPruned++;
+      runsPruned += note.runs?.length ?? 0;
+      prunedTreeHashes.push(note.treeHash);
+    }
+  } catch {
+    // No legacy notes found - that's fine
+  }
+
+  return {
+    notesPruned,
+    runsPruned,
+    notesRemaining: 0,
+    prunedTreeHashes,
+  };
+}
+
+/**
+ * Prune all run cache entries
+ *
+ * @param dryRun - If true, don't actually delete (default: false)
+ * @returns Prune result
+ */
+export async function pruneAllRunCache(dryRun: boolean = false): Promise<PruneResult> {
+  const treeHashes = await listRunCacheTreeHashes();
+  let notesPruned = 0;
+  const prunedTreeHashes: string[] = [];
+
+  for (const treeHash of treeHashes) {
+    const entries = await getAllRunCacheForTree(treeHash);
+
+    if (entries.length > 0) {
+      if (!dryRun) {
+        try {
+          // Delete all run cache notes under this tree hash
+          execSync(
+            `git for-each-ref --format="%(refname)" refs/notes/vibe-validate/run/${treeHash}/ | xargs -I {} git update-ref -d {}`,
+            { ...GIT_OPTIONS, stdio: 'ignore' }
+          );
+        } catch {
+          // Ignore errors
+        }
+      }
+
+      notesPruned += entries.length;
+      prunedTreeHashes.push(treeHash);
+    }
+  }
+
+  return {
+    notesPruned,
+    runsPruned: notesPruned, // For run cache, each note is one cached command
     notesRemaining: 0,
     prunedTreeHashes,
   };

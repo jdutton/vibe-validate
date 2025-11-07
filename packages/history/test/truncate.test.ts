@@ -1,5 +1,5 @@
 /**
- * Tests for output truncation
+ * Tests for output truncation (v0.15.0: now a no-op)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -7,7 +7,7 @@ import { truncateValidationOutput } from '../src/truncate.js';
 import type { ValidationResult } from '@vibe-validate/core';
 
 describe('truncateValidationOutput', () => {
-  it('should not truncate output under max bytes', () => {
+  it('should return the same result (v0.15.0: truncation no longer needed)', () => {
     const result: ValidationResult = {
       passed: true,
       timestamp: '2025-10-21T14:30:15.123Z',
@@ -20,10 +20,10 @@ describe('truncateValidationOutput', () => {
           steps: [
             {
               name: 'unit-tests',
-              passed: true,
+              command: 'npm test',
               exitCode: 0,
               durationSecs: 1.2,
-              output: 'Short output',
+              passed: true,
             },
           ],
         },
@@ -32,66 +32,17 @@ describe('truncateValidationOutput', () => {
 
     const truncated = truncateValidationOutput(result, 10000);
 
-    expect(truncated.phases![0].steps[0].output).toBe('Short output');
+    // v0.15.0: Function is now a no-op, returns same reference
+    expect(truncated).toBe(result);
   });
 
-  it('should truncate output over max bytes', () => {
-    const longOutput = 'a'.repeat(15000);
-
+  it('should handle results with extraction (v0.15.0)', () => {
     const result: ValidationResult = {
       passed: false,
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash: 'abc123',
-      phases: [
-        {
-          name: 'test',
-          durationSecs: 1.2,
-          passed: false,
-          steps: [
-            {
-              name: 'unit-tests',
-              passed: false,
-              exitCode: 1,
-              durationSecs: 1.2,
-              output: longOutput,
-            },
-          ],
-        },
-      ],
-    };
-
-    const truncated = truncateValidationOutput(result, 10000);
-
-    const output = truncated.phases![0].steps[0].output!;
-    expect(output.length).toBeLessThan(longOutput.length);
-    expect(output).toContain('[... truncated 5000 bytes]');
-    expect(output.startsWith('a'.repeat(10))).toBe(true);
-  });
-
-  it('should truncate failedStepOutput', () => {
-    const longOutput = 'b'.repeat(15000);
-
-    const result: ValidationResult = {
-      passed: false,
-      timestamp: '2025-10-21T14:30:15.123Z',
-      treeHash: 'abc123',
+      summary: 'Unit tests failed',
       failedStep: 'unit-tests',
-      failedStepOutput: longOutput,
-    };
-
-    const truncated = truncateValidationOutput(result, 10000);
-
-    expect(truncated.failedStepOutput!.length).toBeLessThan(longOutput.length);
-    expect(truncated.failedStepOutput).toContain('[... truncated 5000 bytes]');
-  });
-
-  it('should not mutate original result', () => {
-    const longOutput = 'c'.repeat(15000);
-
-    const result: ValidationResult = {
-      passed: false,
-      timestamp: '2025-10-21T14:30:15.123Z',
-      treeHash: 'abc123',
       phases: [
         {
           name: 'test',
@@ -100,20 +51,56 @@ describe('truncateValidationOutput', () => {
           steps: [
             {
               name: 'unit-tests',
-              passed: false,
+              command: 'npm test',
               exitCode: 1,
               durationSecs: 1.2,
-              output: longOutput,
+              passed: false,
+              extraction: {
+                errors: [{ file: 'test.ts', message: 'assertion failed' }],
+                summary: '1 test failure',
+                totalErrors: 1,
+              },
             },
           ],
         },
       ],
     };
 
-    truncateValidationOutput(result, 10000);
+    const truncated = truncateValidationOutput(result, 10000);
 
-    // Original should be unchanged
-    expect(result.phases![0].steps[0].output).toBe(longOutput);
-    expect(result.phases![0].steps[0].output!.length).toBe(15000);
+    // v0.15.0: Extraction already truncated by extractors (MAX_ERRORS_IN_ARRAY = 10)
+    expect(truncated).toBe(result);
+    expect(truncated.phases![0].steps[0].extraction?.errors.length).toBe(1);
+  });
+
+  it('should work with minimal ValidationResult', () => {
+    const result: ValidationResult = {
+      passed: false,
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash: 'abc123',
+      summary: 'Validation failed',
+      failedStep: 'unit-tests',
+    };
+
+    const truncated = truncateValidationOutput(result, 10000);
+
+    expect(truncated).toBe(result);
+    expect(truncated.failedStep).toBe('unit-tests');
+  });
+
+  it('should ignore maxBytes parameter (deprecated)', () => {
+    const result: ValidationResult = {
+      passed: true,
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash: 'abc123',
+    };
+
+    // Different maxBytes values should have no effect
+    const truncated1 = truncateValidationOutput(result, 100);
+    const truncated2 = truncateValidationOutput(result, 100000);
+
+    expect(truncated1).toBe(result);
+    expect(truncated2).toBe(result);
+    expect(truncated1).toBe(truncated2);
   });
 });

@@ -106,9 +106,8 @@ function isProcessRunning(pid: number): boolean {
     // Signal 0 tests for process existence without killing it
     process.kill(pid, 0);
     return true;
-  } catch (err) {
+  } catch {
     // ESRCH = no such process - expected when process doesn't exist
-    console.debug(`Process ${pid} check failed: ${err instanceof Error ? err.message : String(err)}`);
     return false;
   }
 }
@@ -150,9 +149,8 @@ export async function acquireLock(
       // Stale lock - process no longer exists
       // Clean it up and proceed
       unlinkSync(lockFile);
-    } catch (err) {
+    } catch {
       // Corrupted lock file - remove and proceed
-      console.debug(`Lock file corrupted, removing: ${err instanceof Error ? err.message : String(err)}`);
       unlinkSync(lockFile);
     }
   }
@@ -215,9 +213,8 @@ export async function checkLock(directory: string, options: LockOptions = {}): P
     // Stale lock - clean up
     unlinkSync(lockFile);
     return null;
-  } catch (err) {
+  } catch {
     // Corrupted lock file - clean up
-    console.debug(`Lock file corrupted, removing: ${err instanceof Error ? err.message : String(err)}`);
     unlinkSync(lockFile);
     return null;
   }

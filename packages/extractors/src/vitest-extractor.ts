@@ -7,6 +7,7 @@
  */
 
 import type { ErrorExtractorResult, ExtractionMetadata } from './types.js';
+import { MAX_ERRORS_IN_ARRAY } from './result-schema.js';
 
 /**
  * Options for error extraction
@@ -256,7 +257,7 @@ function formatFailuresOutput(
   actual?: string
 ): string {
   return failures
-    .slice(0, 10)
+    .slice(0, MAX_ERRORS_IN_ARRAY)
     .map((f, idx) => {
       const parts = [
         `[Test ${idx + 1}/${failures.length}] ${f.location ?? f.file}`,
@@ -284,6 +285,7 @@ function formatFailuresOutput(
  * @param failureCount - Number of failures
  * @param expected - Expected value (if present)
  * @param actual - Actual value (if present)
+ * @param hasTimeout - Whether any failures are due to timeout
  * @returns Guidance text
  *
  * @internal
@@ -291,9 +293,29 @@ function formatFailuresOutput(
 function generateGuidanceText(
   failureCount: number,
   expected?: string,
-  actual?: string
+  actual?: string,
+  hasTimeout?: boolean
 ): string {
   let guidance = `${failureCount} test(s) failed. `;
+
+  // Timeout-specific guidance
+  if (hasTimeout) {
+    guidance += 'Test(s) timed out. ';
+    if (failureCount === 1) {
+      guidance += 'Options: 1) Increase timeout with test.timeout() or testTimeout config, ';
+      guidance += '2) Optimize test to run faster, ';
+      guidance += '3) Mock slow operations (API calls, file I/O, child processes). ';
+    } else {
+      guidance += 'Multiple tests timing out suggests resource constraints. ';
+      guidance += 'Try: 1) Run tests individually to identify slow tests, ';
+      guidance += '2) Increase testTimeout config, ';
+      guidance += '3) Reduce parallel test workers (--pool-workers=2). ';
+    }
+    guidance += 'Run: npm test -- <test-file> to verify the fix.';
+    return guidance;
+  }
+
+  // Standard assertion failure guidance
   if (failureCount === 1) {
     guidance += 'Fix the assertion in the test file at the location shown. ';
     if (expected && actual) {
@@ -344,6 +366,59 @@ function extractRuntimeError(output: string): TestFailure | null {
 }
 
 /**
+ * Extract coverage threshold failures
+ *
+ * @param output - Full test output
+ * @returns Test failure object if coverage threshold error found
+ */
+function extractCoverageThresholdError(output: string): TestFailure | null {
+  // Look for: "ERROR: Coverage for functions (86.47%) does not meet global threshold (87%)"
+  const coverageMatch = /ERROR:\s+Coverage for (\w+) \(([\d.]+)%\) does not meet (?:global )?threshold \(([\d.]+)%\)/.exec(output);
+  if (!coverageMatch) {
+    return null;
+  }
+
+  const [, metric, actual, expected] = coverageMatch;
+
+  return {
+    file: 'vitest.config.ts',
+    location: '',
+    testHierarchy: 'Coverage Threshold',
+    errorMessage: `Coverage for ${metric} (${actual}%) does not meet threshold (${expected}%)`,
+    sourceLine: ''
+  };
+}
+
+/**
+ * Extract Vitest worker timeout errors
+ *
+ * These occur when Vitest worker threads timeout during test execution,
+ * often due to system resource constraints or competing processes.
+ *
+ * @param output - Full test output
+ * @returns Test failure object if worker timeout error found
+ */
+function extractVitestWorkerTimeoutError(output: string): TestFailure | null {
+  // Look for: "⎯⎯⎯⎯⎯⎯ Unhandled Error(s) ⎯⎯⎯⎯⎯⎯⎯\nError: [vitest-worker]: Timeout calling..."
+  // Handles both singular "Unhandled Error" and plural "Unhandled Errors"
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework error output (controlled output), not user input
+  const timeoutMatch = /⎯+\s*Unhandled Errors?\s*⎯+\s*\n\s*Error:\s*\[vitest-worker\]:\s*(Timeout[^\n]+)/.exec(output);
+  if (!timeoutMatch) {
+    return null;
+  }
+
+  const errorMessage = timeoutMatch[1].trim();
+
+  return {
+    file: 'vitest.config.ts',
+    location: '',
+    testHierarchy: 'Vitest Worker Timeout',
+    errorMessage: `${errorMessage}. This is usually caused by system resource constraints or competing processes. Try: 1) Kill background processes, 2) Reduce --pool-workers, 3) Increase --test-timeout`,
+    sourceLine: ''
+  };
+}
+
+/**
  * Format Vitest test failures
  *
  * Extracts:
@@ -379,6 +454,18 @@ export function extractVitestErrors(
   const runtimeError = extractRuntimeError(output);
   if (runtimeError) {
     failures.push(runtimeError);
+  }
+
+  // Check for coverage threshold failures
+  const coverageError = extractCoverageThresholdError(output);
+  if (coverageError) {
+    failures.push(coverageError);
+  }
+
+  // Check for Vitest worker timeout errors
+  const timeoutError = extractVitestWorkerTimeoutError(output);
+  if (timeoutError) {
+    failures.push(timeoutError);
   }
 
   let i = -1;
@@ -442,13 +529,16 @@ export function extractVitestErrors(
     failures.push(currentFailure as TestFailure);
   }
 
+  // Detect timeout failures
+  const hasTimeout = failures.some(f => f.errorMessage.includes('Test timed out'));
+
   // Extract expected/actual values and format output
   const { expected, actual } = extractExpectedActual(output);
-  const cleanOutput = formatFailuresOutput(failures, expected, actual);
-  const guidance = generateGuidanceText(failures.length, expected, actual);
+  const errorSummary = formatFailuresOutput(failures, expected, actual);
+  const guidance = generateGuidanceText(failures.length, expected, actual, hasTimeout);
 
   const result: ErrorExtractorResult = {
-    errors: failures.slice(0, 10).map(f => {
+    errors: failures.slice(0, MAX_ERRORS_IN_ARRAY).map(f => {
       // Parse line:column from end of location string (file paths may contain colons)
       let line: number | undefined;
       let column: number | undefined;
@@ -468,9 +558,9 @@ export function extractVitestErrors(
       };
     }),
     summary: `${failures.length} test failure(s)`,
-    totalCount: failures.length,
+    totalErrors: failures.length,
     guidance,
-    cleanOutput
+    errorSummary
   };
 
   // Add quality metadata if developer feedback enabled

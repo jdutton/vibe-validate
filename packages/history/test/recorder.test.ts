@@ -67,7 +67,7 @@ describe('recordValidationHistory', () => {
 
     // Verify git notes command was called
     expect(execSync).toHaveBeenCalledWith(
-      expect.stringContaining('git notes --ref=vibe-validate/runs add'),
+      expect.stringContaining('git notes --ref=vibe-validate/validate add'),
       expect.any(Object)
     );
 

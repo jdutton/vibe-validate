@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Command } from 'commander';
 import { configCommand } from '../../src/commands/config.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 import * as configLoader from '../../src/utils/config-loader.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 
@@ -21,7 +21,7 @@ vi.mock('../../src/utils/config-loader.js', async () => {
 describe('config command', () => {
   let testDir: string;
   let originalCwd: string;
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
     // Create temp directory for test files
@@ -34,13 +34,8 @@ describe('config command', () => {
     originalCwd = process.cwd();
     process.chdir(testDir);
 
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Setup Commander test environment
+    env = setupCommanderTest();
 
     // Reset mocks
     vi.mocked(configLoader.loadConfig).mockReset();
@@ -49,6 +44,8 @@ describe('config command', () => {
   });
 
   afterEach(() => {
+    env.cleanup();
+
     // Restore cwd
     process.chdir(originalCwd);
 
@@ -66,9 +63,9 @@ describe('config command', () => {
 
   describe('command registration', () => {
     it('should register config command with correct name', () => {
-      configCommand(program);
+      configCommand(env.program);
 
-      const commands = program.commands;
+      const commands = env.program.commands;
       const configCmd = commands.find(cmd => cmd.name() === 'config');
 
       expect(configCmd).toBeDefined();
@@ -76,18 +73,18 @@ describe('config command', () => {
     });
 
     it('should register --validate option', () => {
-      configCommand(program);
+      configCommand(env.program);
 
-      const configCmd = program.commands.find(cmd => cmd.name() === 'config');
+      const configCmd = env.program.commands.find(cmd => cmd.name() === 'config');
       const options = configCmd?.options;
 
       expect(options?.some(opt => opt.flags === '--validate')).toBe(true);
     });
 
     it('should register --verbose option', () => {
-      configCommand(program);
+      configCommand(env.program);
 
-      const configCmd = program.commands.find(cmd => cmd.name() === 'config');
+      const configCmd = env.program.commands.find(cmd => cmd.name() === 'config');
       const options = configCmd?.options;
 
       expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
@@ -99,10 +96,10 @@ describe('config command', () => {
       // Mock findConfigPath to return null (no config found)
       vi.mocked(configLoader.findConfigPath).mockReturnValue(null);
 
-      configCommand(program);
+      configCommand(env.program);
 
       try {
-        await program.parseAsync(['config'], { from: 'user' });
+        await env.program.parseAsync(['config'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(1);
@@ -137,10 +134,10 @@ describe('config command', () => {
     });
 
     it('should validate config successfully with --validate flag', async () => {
-      configCommand(program);
+      configCommand(env.program);
 
       try {
-        await program.parseAsync(['config', '--validate'], { from: 'user' });
+        await env.program.parseAsync(['config', '--validate'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(0);
@@ -166,10 +163,10 @@ describe('config command', () => {
     });
 
     it('should exit with error for invalid config', async () => {
-      configCommand(program);
+      configCommand(env.program);
 
       try {
-        await program.parseAsync(['config'], { from: 'user' });
+        await env.program.parseAsync(['config'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(1);
@@ -203,10 +200,10 @@ describe('config command', () => {
     });
 
     it('should display config in minimal YAML format by default', async () => {
-      configCommand(program);
+      configCommand(env.program);
 
       try {
-        await program.parseAsync(['config'], { from: 'user' });
+        await env.program.parseAsync(['config'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(0);
@@ -217,10 +214,10 @@ describe('config command', () => {
     });
 
     it('should display config in verbose format when requested', async () => {
-      configCommand(program);
+      configCommand(env.program);
 
       try {
-        await program.parseAsync(['config', '--verbose'], { from: 'user' });
+        await env.program.parseAsync(['config', '--verbose'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(0);
@@ -239,10 +236,10 @@ describe('config command', () => {
       vi.mocked(configLoader.findConfigPath).mockReturnValue(join(testDir, 'vibe-validate.config.js'));
       vi.mocked(configLoader.loadConfig).mockRejectedValue(new Error('Config parse error'));
 
-      configCommand(program);
+      configCommand(env.program);
 
       try {
-        await program.parseAsync(['config'], { from: 'user' });
+        await env.program.parseAsync(['config'], { from: 'user' });
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'exitCode' in error) {
           expect(error.exitCode).toBe(1);

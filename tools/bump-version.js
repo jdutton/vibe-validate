@@ -236,10 +236,68 @@ try {
 }
 
 console.log('');
+log('Updating Claude Code plugin versions...', 'blue');
+
+// Update plugin version files
+const pluginFiles = [
+  { path: join(PROJECT_ROOT, 'plugins/claude-code/.claude-plugin/plugin.json'), name: 'Plugin manifest' },
+  { path: join(PROJECT_ROOT, '.claude-plugin/marketplace.json'), name: 'Marketplace config' },
+];
+
+let pluginUpdatedCount = 0;
+let pluginSkippedCount = 0;
+
+for (const { path: pluginPath, name } of pluginFiles) {
+  try {
+    const content = readFileSync(pluginPath, 'utf8');
+    const config = JSON.parse(content);
+
+    // Update version field (plugin.json has direct version, marketplace.json has nested)
+    let oldVersion;
+    let updated = false;
+
+    if (pluginPath.endsWith('plugin.json') && config.version) {
+      oldVersion = config.version;
+      if (oldVersion !== newVersion) {
+        const updatedContent = content.replace(
+          /"version":\s*"[^"]+"/,
+          `"version": "${newVersion}"`
+        );
+        writeFileSync(pluginPath, updatedContent, 'utf8');
+        updated = true;
+      }
+    } else if (pluginPath.endsWith('marketplace.json') && config.plugins?.[0]?.version) {
+      oldVersion = config.plugins[0].version;
+      if (oldVersion !== newVersion) {
+        const updatedContent = content.replace(
+          /"version":\s*"[^"]+"/,
+          `"version": "${newVersion}"`
+        );
+        writeFileSync(pluginPath, updatedContent, 'utf8');
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      log(`  ✓ ${name}: ${oldVersion} → ${newVersion}`, 'green');
+      pluginUpdatedCount++;
+    } else {
+      log(`  - ${name}: already at ${newVersion}`, 'yellow');
+      pluginSkippedCount++;
+    }
+  } catch (error) {
+    // Plugin files are optional - don't fail if they don't exist
+    log(`  - ${name}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
+    pluginSkippedCount++;
+  }
+}
+
+console.log('');
 log(`✅ Version bump complete!`, 'green');
-log(`   Updated: ${updatedCount + (updatedCount > 0 || skippedCount === 0 ? 1 : 0)} packages`, 'green');
-if (skippedCount > 0) {
-  log(`   Skipped: ${skippedCount} (already at ${newVersion})`, 'yellow');
+log(`   Packages updated: ${updatedCount + (updatedCount > 0 || skippedCount === 0 ? 1 : 0)}`, 'green');
+log(`   Plugin files updated: ${pluginUpdatedCount}`, 'green');
+if (skippedCount > 0 || pluginSkippedCount > 0) {
+  log(`   Skipped: ${skippedCount + pluginSkippedCount} (already at ${newVersion})`, 'yellow');
 }
 console.log('');
 console.log('Next steps:');

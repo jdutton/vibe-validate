@@ -103,10 +103,9 @@ export async function getGitTreeHash(): Promise<string> {
         // SECURITY: Use Node.js fs.unlinkSync instead of shell rm command
         // Prevents potential command injection if tempIndexFile contains malicious characters
         unlinkSync(tempIndexFile);
-      } catch (cleanupError) {
+      } catch {
         // Ignore cleanup errors - temp file cleanup is best effort
         // unlinkSync throws if file doesn't exist (same as rm -f behavior)
-        console.debug(`Temp index cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
       }
     }
 
@@ -115,9 +114,8 @@ export async function getGitTreeHash(): Promise<string> {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     if (errorMessage.includes('not a git repository')) {
-      // Not in git repo - fall back to timestamp-based hash
-      console.warn('⚠️  Not in git repository, using timestamp-based hash');
-      return `nogit-${Date.now()}`;
+      // Not in git repo - return "unknown" (caller should skip caching)
+      return 'unknown';
     }
 
     // Other git errors
@@ -153,9 +151,8 @@ export async function hasWorkingTreeChanges(): Promise<boolean> {
     const workingTreeHash = await getGitTreeHash();
     const headTreeHash = await getHeadTreeHash();
     return workingTreeHash !== headTreeHash;
-  } catch (error) {
+  } catch {
     // If we can't determine, assume there are changes (safe default)
-    console.debug(`Unable to detect working tree changes: ${error instanceof Error ? error.message : String(error)}`);
     return true;
   }
 }

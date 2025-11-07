@@ -17,19 +17,33 @@
  * const result = autoDetectAndExtract('TypeScript Type Checking', tscOutput);
  * console.log(result.summary); // "3 type error(s), 0 warning(s)"
  * console.log(result.guidance); // "Type mismatch - check variable/parameter types"
- * console.log(result.cleanOutput); // Clean, formatted error list
+ * console.log(result.errorSummary); // Clean, formatted error list
  * ```
  *
  * @package @vibe-validate/extractors
  * @version 0.1.0
  */
 
-// Type definitions
+// Type definitions (from Zod schemas for runtime validation)
 export type {
   FormattedError,
   ErrorExtractorResult,
-  ErrorExtractor
-} from './types.js';
+  DetectionMetadata,
+  ExtractionMetadata,
+} from './result-schema.js';
+
+// Legacy type (interface-only, not validated)
+export type { ErrorExtractor, ExtractorInput } from './types.js';
+
+// Zod schemas for runtime validation
+export {
+  FormattedErrorSchema,
+  ErrorExtractorResultSchema,
+  DetectionMetadataSchema,
+  ExtractionMetadataSchema,
+  safeValidateExtractorResult,
+  validateExtractorResult,
+} from './result-schema.js';
 
 // Individual extractors (for direct use)
 export { extractTypeScriptErrors } from './typescript-extractor.js';

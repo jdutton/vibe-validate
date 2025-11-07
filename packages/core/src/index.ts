@@ -45,16 +45,24 @@
  * @packageDocumentation
  */
 
-// Export all types
+// Export configuration types (Zod-inferred from @vibe-validate/config)
 export type {
   ValidationStep,
   ValidationPhase,
-  ValidationConfig,
+} from '@vibe-validate/config';
+
+// Export result types (Zod-inferred from result-schema)
+export type {
   ValidationResult,
   StepResult,
   PhaseResult,
-  ExtractionQuality,
-} from './types.js';
+  OutputFiles,
+} from './result-schema.js';
+
+// Export runtime types (from runner.ts - non-serializable)
+export type {
+  ValidationConfig,
+} from './runner.js';
 
 // Export core runner functions
 export {
@@ -67,6 +75,9 @@ export {
 // Export process utilities
 export {
   stopProcessGroup,
+  spawnCommand,
+  captureCommandOutput,
+  type CaptureCommandOptions,
 } from './process-utils.js';
 
 // Export validation result schema and validators
@@ -74,12 +85,38 @@ export {
   ValidationResultSchema,
   StepResultSchema,
   PhaseResultSchema,
+  CommandExecutionSchema,
+  OperationMetadataSchema,
+  OutputFilesSchema,
   safeValidateResult,
   validateResult,
 } from './result-schema.js';
+
+// Export shared schema utilities
+export {
+  createSafeValidator,
+  createStrictValidator,
+} from './schema-utils.js';
 
 // Export JSON Schema generation
 export {
   validationResultJsonSchema,
   generateValidationResultJsonSchema,
 } from './result-schema-export.js';
+
+// Export run output parser (shared by run command and phase runner)
+export {
+  parseVibeValidateOutput,
+  type ParsedVibeValidateOutput,
+} from './run-output-parser.js';
+
+// Export output capture schemas and types
+export type {
+  OutputLine,
+  CapturedOutput,
+} from './output-capture-schema.js';
+
+export {
+  OutputLineSchema,
+  CapturedOutputSchema,
+} from './output-capture-schema.js';

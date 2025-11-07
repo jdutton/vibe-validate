@@ -132,6 +132,22 @@ async function handleVerboseHelp(args: string[], program: Command): Promise<bool
     return false;
   }
 
+  // Special case: 'run' command
+  // Check if there's a command specified after 'run' (non-flag argument)
+  const runIndex = args.findIndex(arg => arg === 'run');
+  if (runIndex !== -1) {
+    // Look for first non-flag argument after 'run'
+    const argsAfterRun = args.slice(runIndex + 1);
+    const hasCommand = argsAfterRun.some(arg => !arg.startsWith('-'));
+
+    if (hasCommand) {
+      // e.g. "vv run --verbose node --help" - flags are for wrapped command
+      return false;
+    }
+    // e.g. "vv run --verbose --help" - no command, show help for run itself
+    // Fall through to normal help handling
+  }
+
   // Check if a subcommand is specified
   const knownCommands = Object.keys(verboseHelpRegistry);
   const subcommandIndex = args.findIndex(arg => knownCommands.includes(arg));
@@ -185,7 +201,7 @@ function showComprehensiveHelp(program: Command): void {
       whatItDoes: [
         '1. Calculates git tree hash of working directory',
         '2. Checks if hash matches cached state',
-        '3. If match: exits immediately (~288ms)',
+        '3. If match: exits immediately (sub-second)',
         '4. If no match: runs validation pipeline (~60-90s)',
         '5. Caches result for next run'
       ],
@@ -194,7 +210,7 @@ function showComprehensiveHelp(program: Command): void {
         1: 'Validation failed',
         2: 'Configuration error'
       },
-      creates: ['Git notes under refs/notes/vibe-validate/runs'],
+      creates: ['Git notes under refs/notes/vibe-validate/validate'],
       examples: [
         'vibe-validate validate              # Use cache if available',
         'vibe-validate validate --force      # Always run validation',
@@ -484,7 +500,7 @@ function showComprehensiveHelp(program: Command): void {
   console.log('| File | Purpose |');
   console.log('|------|---------|');
   console.log('| `vibe-validate.config.yaml` | Configuration (required) |');
-  console.log('| `refs/notes/vibe-validate/runs` | Validation state (git notes, auto-created) |');
+  console.log('| `refs/notes/vibe-validate/validate` | Validation state (git notes, auto-created) |');
   console.log('| `.github/workflows/validate.yml` | CI workflow (optional, generated) |');
   console.log('| `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |\n');
 
@@ -529,7 +545,7 @@ function showComprehensiveHelp(program: Command): void {
 
   console.log('## Caching\n');
   console.log('- **Cache key**: Git tree hash of working directory (includes untracked files)');
-  console.log('- **Cache hit**: Validation skipped (~288ms)');
+  console.log('- **Cache hit**: Validation skipped (sub-second)');
   console.log('- **Cache miss**: Full validation runs (~60-90s)');
   console.log('- **Invalidation**: Any file change (tracked or untracked)\n');
 

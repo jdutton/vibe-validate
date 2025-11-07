@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Command } from 'commander';
 import { runCommand } from '../../src/commands/run.js';
 import * as childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { createMockChildProcess } from '../helpers/mock-helpers.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock child_process.spawn
 vi.mock('child_process', () => ({
@@ -11,34 +11,21 @@ vi.mock('child_process', () => ({
 }));
 
 describe('run command', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-
-    // Mock process.exit to prevent it from actually exiting during tests
-    vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-      throw new Error(`process.exit(${code})`);
-    }) as any;
+    env = setupCommanderTest();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    env.cleanup();
   });
 
   describe('command registration', () => {
     it('should register run command with correct name', () => {
-      runCommand(program);
+      runCommand(env.program);
 
-      const commands = program.commands;
+      const commands = env.program.commands;
       const runCmd = commands.find(cmd => cmd.name() === 'run');
 
       expect(runCmd).toBeDefined();
@@ -46,9 +33,9 @@ describe('run command', () => {
     });
 
     it('should require a command argument', () => {
-      runCommand(program);
+      runCommand(env.program);
 
-      const runCmd = program.commands.find(cmd => cmd.name() === 'run');
+      const runCmd = env.program.commands.find(cmd => cmd.name() === 'run');
       const args = runCmd?._args;
 
       expect(args).toBeDefined();
@@ -63,10 +50,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('test output', '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -75,9 +62,10 @@ describe('run command', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'echo test',
+        [],
         expect.objectContaining({
           shell: true,
-          stdio: ['inherit', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe']
         })
       );
     });
@@ -87,10 +75,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('stdout output', 'stderr output', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -106,10 +94,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('success', '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo success'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo success'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0);
@@ -122,10 +110,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess('', 'error output', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'exit 1'], { from: 'user' });
+        await env.program.parseAsync(['run', 'exit 1'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(1);
@@ -149,10 +137,10 @@ describe('run command', () => {
       const mockProcess = createMockChildProcess(vitestOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npx vitest'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npx vitest'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -178,10 +166,10 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       const mockProcess = createMockChildProcess(tscOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npx tsc --noEmit'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npx tsc --noEmit'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -199,15 +187,15 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
   });
 
   describe('YAML output', () => {
-    it('should output YAML format with command, exitCode, and extracted errors', async () => {
+    it('should output YAML format with command and exitCode (no extraction for successful runs)', async () => {
       const mockSpawn = vi.mocked(childProcess.spawn);
       const mockProcess = createMockChildProcess('test passed', '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -221,7 +209,8 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       expect(stdoutCalls).toContain('---\n'); // YAML separator
       expect(stdoutCalls).toContain('command:');
       expect(stdoutCalls).toContain('exitCode:');
-      expect(stdoutCalls).toContain('extraction:');
+      // Token optimization: extraction omitted when exitCode=0 and no errors
+      expect(stdoutCalls).not.toContain('extraction:');
     });
 
     it('should include summary and guidance from extractor', async () => {
@@ -230,10 +219,10 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       const mockProcess = createMockChildProcess(mockOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npx vitest'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npx vitest'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -257,9 +246,9 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       mockProcess.stderr = new EventEmitter();
       mockSpawn.mockReturnValue(mockProcess);
 
-      runCommand(program);
+      runCommand(env.program);
 
-      const parsePromise = program.parseAsync(['run', 'nonexistent-command'], { from: 'user' });
+      const parsePromise = env.program.parseAsync(['run', 'nonexistent-command'], { from: 'user' });
 
       // Emit error immediately
       process.nextTick(() => {
@@ -301,10 +290,10 @@ rawOutput: "test output..."
       const mockProcess = createMockChildProcess(innerYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -320,9 +309,8 @@ rawOutput: "test output..."
       expect(stdoutCalls).toContain('expected 5 to equal 3');
       expect(stdoutCalls).toContain('1 test failed');
 
-      // Should add suggestedDirectCommand pointing to innermost command
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
-      expect(stdoutCalls).toContain('npm test');
+      // Command should be unwrapped to show actual command
+      expect(stdoutCalls).toContain('command: npm test');
     });
 
     it('should detect and merge nested run command (3 levels)', async () => {
@@ -336,17 +324,16 @@ extraction:
       line: 10
       message: "test error"
   summary: "1 test failed"
-suggestedDirectCommand: "npm test"
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
       const mockProcess = createMockChildProcess(innerYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"npm test\""`], { from: 'user' });
+        await env.program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"npm test\""`], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -358,7 +345,7 @@ suggestedDirectCommand: "npm test"
         .join('');
 
       // Should unwrap to innermost command
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
       expect(stdoutCalls).toContain('test error');
     });
@@ -384,10 +371,10 @@ guidance: "Fix the test phase errors"
       const mockProcess = createMockChildProcess(validateYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate validate'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate validate'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -404,8 +391,8 @@ guidance: "Fix the test phase errors"
       expect(stdoutCalls).toContain('phases:');
       expect(stdoutCalls).toContain('type error');
 
-      // Should add suggestedDirectCommand
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should preserve validate command (not unwrapped since it's not nested run)
+      expect(stdoutCalls).toContain('command: vibe-validate validate');
       expect(stdoutCalls).toContain('vibe-validate validate');
     });
 
@@ -424,10 +411,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'pnpm test:llm'], { from: 'user' });
+        await env.program.parseAsync(['run', 'pnpm test:llm'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -440,7 +427,7 @@ extraction:
 
       expect(stdoutCalls).toContain('exitCode: 0');
       expect(stdoutCalls).toContain('All tests passed');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command: vitest run');
       expect(stdoutCalls).toContain('vitest run');
     });
 
@@ -458,7 +445,7 @@ extraction:
       message: "error 2"
   summary: "2 tests failed"
   guidance: "Fix both errors"
-  cleanOutput: "cleaned output here"
+  errorSummary: "cleaned output here"
   metadata:
     framework: "vitest"
     confidence: 95
@@ -470,10 +457,10 @@ customField: "should be preserved"
       const mockProcess = createMockChildProcess(innerYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -497,7 +484,7 @@ customField: "should be preserved"
       expect(stdoutCalls).toContain('should be preserved');
     });
 
-    it('should add suggestedDirectCommand field with unwrapped command', async () => {
+    it('should unwrap command field for nested vibe-validate calls', async () => {
       const innerYaml = `---
 command: "npx vitest"
 exitCode: 0
@@ -510,10 +497,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npx vitest"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npx vitest"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -524,17 +511,15 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Parse YAML to verify structure
-      const yamlMatch = stdoutCalls.match(/---\n([\s\S]+)/);
-      expect(yamlMatch).not.toBeNull();
+      // Parse YAML output - opening delimiter only (no display flags)
+      expect(stdoutCalls).toMatch(/^---\n/);
+      const yamlContent = stdoutCalls.replace(/^---\n/, '');
 
-      if (yamlMatch) {
-        const yaml = require('yaml');
-        const parsed = yaml.parse(yamlMatch[1]);
+      const yaml = require('yaml');
+      const parsed = yaml.parse(yamlContent);
 
-        expect(parsed.suggestedDirectCommand).toBe('npx vitest');
-        expect(parsed.command).toContain('vibe-validate run');
-      }
+      // Command should be unwrapped (showing actual command, not wrapper)
+      expect(parsed.command).toBe('npx vitest');
     });
 
     it('should preserve exit codes through all nesting levels', async () => {
@@ -551,10 +536,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 42);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "failing-command"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "failing-command"'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(42);
@@ -580,10 +565,10 @@ extraction:
       const mockProcess = createMockChildProcess(regularOutput, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -597,7 +582,8 @@ extraction:
       // Should extract errors normally (not treat as nested YAML)
       expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('errors:');
-      expect(stdoutCalls).not.toContain('suggestedDirectCommand:');
+      // Non-YAML output should use original command (not unwrapped)
+      expect(stdoutCalls).toContain('command: npm test');
     });
   });
 
@@ -610,10 +596,10 @@ extraction:
       const mockProcess = createMockChildProcess(windowsYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -624,8 +610,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should detect Windows-style YAML and merge
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should detect Windows-style YAML and unwrap command
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
 
@@ -643,10 +629,10 @@ extraction
       const mockProcess = createMockChildProcess(malformedYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -660,7 +646,8 @@ extraction
       // Should fallback to extraction (not crash)
       expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('extraction:');
-      expect(stdoutCalls).not.toContain('suggestedDirectCommand:'); // Shouldn't merge
+      // Malformed YAML should use original wrapper command (not unwrapped)
+      expect(stdoutCalls).toContain('command: vibe-validate run');
     });
 
     it('should handle empty YAML output', async () => {
@@ -671,10 +658,10 @@ extraction
       const mockProcess = createMockChildProcess(emptyYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'echo ---'], { from: 'user' });
+        await env.program.parseAsync(['run', 'echo ---'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -703,10 +690,10 @@ extraction:
       const mockProcess = createMockChildProcess(specialCharsYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -717,7 +704,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle special characters in unwrapped command
+      expect(stdoutCalls).toContain('command:');
       expect(stdoutCalls).toContain('special chars');
     });
 
@@ -736,10 +724,10 @@ extraction:
       const mockProcess = createMockChildProcess(mixedOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -750,9 +738,9 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // NEW BEHAVIOR: SHOULD detect YAML even with preamble and merge it
+      // NEW BEHAVIOR: SHOULD detect YAML even with preamble and unwrap command
       expect(stdoutCalls).toContain('extraction:');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
 
       // Verify preamble was routed to stderr
@@ -778,10 +766,10 @@ customField: null
       const mockProcess = createMockChildProcess(nullYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -792,7 +780,8 @@ customField: null
         .map(call => call[0])
         .join('');
 
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle null values and unwrap command
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
 
@@ -803,17 +792,16 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Tests passed"
-suggestedDirectCommand: "npm test"
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
       const mockProcess = createMockChildProcess(deepYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"...\"" (10 levels)`], { from: 'user' });
+        await env.program.parseAsync(['run', String.raw`vibe-validate run "vibe-validate run \"...\"" (10 levels)`], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -824,8 +812,8 @@ suggestedDirectCommand: "npm test"
         .map(call => call[0])
         .join('');
 
-      // Should unwrap to innermost
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should unwrap to innermost command
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
   });
@@ -844,10 +832,10 @@ extraction:
       const mockProcess = createMockChildProcess(missingCommandYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -858,8 +846,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should use 'unknown' as fallback
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should use 'unknown' treeHash when command field is missing
+      expect(stdoutCalls).toContain('treeHash: unknown');
       expect(stdoutCalls).toContain('unknown');
     });
 
@@ -876,10 +864,10 @@ extraction:
       const mockProcess = createMockChildProcess(nonStringCommandYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -890,8 +878,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should fallback to 'unknown'
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should use 'unknown' treeHash when command field is non-string
+      expect(stdoutCalls).toContain('treeHash: unknown');
       expect(stdoutCalls).toContain('unknown');
     });
 
@@ -906,10 +894,10 @@ exitCode: "not a number"
       const mockProcess = createMockChildProcess(corruptedYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -920,8 +908,8 @@ exitCode: "not a number"
         .map(call => call[0])
         .join('');
 
-      // Should merge successfully (types are flexible)
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should unwrap command even with corrupted types
+      expect(stdoutCalls).toContain('command: npm test');
     });
 
     it('should handle YAML parsing exceptions gracefully', async () => {
@@ -935,13 +923,13 @@ exitCode: "not a number"
       const mockProcess = createMockChildProcess(brokenYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       // Spy on console.error to verify error handling
       const consoleErrorSpy = vi.spyOn(console, 'error');
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -984,10 +972,10 @@ ${largeErrors.map(e => `    - file: "${e.file}"\n      line: ${e.line}\n      me
       const mockProcess = createMockChildProcess(largeYaml, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -998,8 +986,8 @@ ${largeErrors.map(e => `    - file: "${e.file}"\n      line: ${e.line}\n      me
         .map(call => call[0])
         .join('');
 
-      // Should handle large output without crashing
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle large output without crashing and unwrap command
+      expect(stdoutCalls).toContain('command:');
       expect(stdoutCalls).toContain('10000 test failures');
     });
 
@@ -1017,10 +1005,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', longCommand], { from: 'user' });
+        await env.program.parseAsync(['run', longCommand], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1031,7 +1019,9 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should handle very long commands and unwrap
+      expect(stdoutCalls).toContain('command:');
+      expect(stdoutCalls).toContain('npm test with very long arguments');
     });
 
     it('should handle multiple YAML separators in output', async () => {
@@ -1050,10 +1040,10 @@ extraction:
       const mockProcess = createMockChildProcess(multiSeparatorOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1064,8 +1054,8 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Should parse correctly (YAML parser handles this)
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should parse correctly (YAML parser handles this) and unwrap command
+      expect(stdoutCalls).toContain('command: npm test');
     });
   });
 
@@ -1085,10 +1075,10 @@ extraction:
       const mockProcess = createMockChildProcess(yamlOnStdout, stderrOutput, 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1100,8 +1090,8 @@ extraction:
         .join('');
 
       // NEW BEHAVIOR: Check stdout only for YAML (stderr doesn't corrupt)
-      // Should successfully detect and merge YAML despite stderr warnings
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      // Should successfully detect and unwrap command despite stderr warnings
+      expect(stdoutCalls).toContain('command: npm test');
       expect(stdoutCalls).toContain('npm test');
     });
 
@@ -1119,10 +1109,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 42);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "custom-tool"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "custom-tool"'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(42);
@@ -1150,10 +1140,10 @@ extraction:
       const mockProcess = createMockChildProcess(innerYaml, '', 1); // Outer exit code is 1
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1186,10 +1176,10 @@ extraction:
       const mockProcess = createMockChildProcess(pnpmOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'pnpm validate --yaml'], { from: 'user' });
+        await env.program.parseAsync(['run', 'pnpm validate --yaml'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1202,7 +1192,7 @@ extraction:
         .join('');
       expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('command:');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('npm test');
       // Preamble should NOT be in stdout
       expect(stdoutCalls).not.toContain('vibe-validate@0.13.0 validate');
 
@@ -1231,10 +1221,10 @@ extraction:
       const mockProcess = createMockChildProcess(npmOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1266,10 +1256,10 @@ extraction:
       const mockProcess = createMockChildProcess(yarnOutput, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'yarn test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'yarn test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1305,10 +1295,10 @@ extraction:
       const mockProcess = createMockChildProcess(outputWithPreamble, originalStderr, 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1337,10 +1327,10 @@ extraction:
       const mockProcess = createMockChildProcess(cleanYaml, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
+        await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1351,7 +1341,7 @@ extraction:
         .map(call => call[0])
         .join('');
       expect(stdoutCalls).toContain('---\n');
-      expect(stdoutCalls).toContain('suggestedDirectCommand:');
+      expect(stdoutCalls).toContain('command:');
 
       // No preamble to write to stderr
       const stderrCalls = vi.mocked(process.stderr.write).mock.calls;
@@ -1375,10 +1365,10 @@ Done in 5.2s
       const mockProcess = createMockChildProcess(outputWithPostamble, '', 0);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'npm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -1418,10 +1408,10 @@ extraction:
       const mockProcess = createMockChildProcess(pnpmWithErrors, '', 1);
       mockSpawn.mockReturnValue(mockProcess as any);
 
-      runCommand(program);
+      runCommand(env.program);
 
       try {
-        await program.parseAsync(['run', 'pnpm test'], { from: 'user' });
+        await env.program.parseAsync(['run', 'pnpm test'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();

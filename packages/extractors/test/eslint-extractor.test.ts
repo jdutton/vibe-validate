@@ -27,7 +27,7 @@ src/index.ts:10:5: error Unexpected console statement no-console
       code: 'no-console'
     });
     expect(result.summary).toBe('1 ESLint error(s), 0 warning(s)');
-    expect(result.totalCount).toBe(1);
+    expect(result.totalErrors).toBe(1);
   });
 
   it('should parse multiple ESLint errors and warnings', () => {
@@ -41,7 +41,7 @@ src/utils.ts:100:3: error Missing semicolon semi
 
     expect(result.errors).toHaveLength(3);
     expect(result.summary).toBe('2 ESLint error(s), 1 warning(s)');
-    expect(result.totalCount).toBe(3);
+    expect(result.totalErrors).toBe(3);
 
     // Verify first error
     expect(result.errors[0].file).toBe('src/index.ts');
@@ -61,7 +61,7 @@ src/utils.ts:100:3: error Missing semicolon semi
 
     const result = extractESLintErrors(errors);
 
-    expect(result.totalCount).toBe(15);
+    expect(result.totalErrors).toBe(15);
     expect(result.errors).toHaveLength(10);
     expect(result.summary).toBe('15 ESLint error(s), 0 warning(s)');
   });
@@ -116,8 +116,8 @@ src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-e
 
     const result = extractESLintErrors(output);
 
-    expect(result.cleanOutput).toContain('src/index.ts:10:5 - Unexpected console statement (no-console) [no-console]');
-    expect(result.cleanOutput).toContain('src/config.ts:25:12 - \'unusedVar\' is defined but never used (@typescript-eslint/no-unused-vars) [@typescript-eslint/no-unused-vars]');
+    expect(result.errorSummary).toContain('src/index.ts:10:5 - Unexpected console statement (no-console) [no-console]');
+    expect(result.errorSummary).toContain('src/config.ts:25:12 - \'unusedVar\' is defined but never used (@typescript-eslint/no-unused-vars) [@typescript-eslint/no-unused-vars]');
   });
 
   it('should handle empty output', () => {
@@ -125,7 +125,7 @@ src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-e
 
     expect(result.errors).toHaveLength(0);
     expect(result.summary).toBe('0 ESLint error(s), 0 warning(s)');
-    expect(result.totalCount).toBe(0);
+    expect(result.totalErrors).toBe(0);
     expect(result.guidance).toBe('Fix ESLint errors - run with --fix to auto-fix some issues');
   });
 

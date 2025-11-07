@@ -198,7 +198,7 @@ async function checkConfigValid(
           suggestion: [
             `Fix syntax/validation errors in ${fileName}`,
             'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
-            'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+            'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json',
             'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates'
           ].join('\n   '),
         };
@@ -221,7 +221,7 @@ async function checkConfigValid(
             '  https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml',
             '',
             'JSON Schema for IDE validation:',
-            'https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+            'https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json',
           ].join('\n   '),
         };
       }
@@ -547,6 +547,47 @@ function checkValidationState(): DoctorCheckResult {
 }
 
 /**
+ * Check for v0.15.0 cache migration recommendation
+ *
+ * v0.15.0 introduced run command caching with a new schema.
+ * Old cached results may be missing new fields (e.g., suggestedDirectCommand).
+ * Recommend clearing cache on upgrade to avoid stale data.
+ */
+function checkCacheMigration(): DoctorCheckResult {
+  try {
+    // Check if any run cache notes exist
+    const result = execSync('git for-each-ref --count=1 refs/notes/vibe-validate/run/', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    if (result.trim()) {
+      // Cache exists - recommend clearing for clean v0.15.0+ schema
+      return {
+        name: 'Run cache migration (v0.15.0+)',
+        passed: true, // Not a failure, just informational
+        message: 'Run cache detected from earlier version',
+        suggestion: `Clear old cache for v0.15.0+ schema:\n   git for-each-ref refs/notes/vibe-validate --format='%(refname)' | xargs -n 1 git update-ref -d\n   ℹ️  Clears both run cache and validation history (will rebuild on next run)`,
+      };
+    }
+
+    return {
+      name: 'Run cache migration',
+      passed: true,
+      message: 'No run cache found (clean state)',
+    };
+  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Git command failure is non-critical for migration check
+  } catch (_error) {
+    // Git command failed or no git notes - that's fine
+    return {
+      name: 'Run cache migration',
+      passed: true,
+      message: 'No run cache to migrate',
+    };
+  }
+}
+
+/**
  * Check validation history health
  */
 async function checkHistoryHealth(): Promise<DoctorCheckResult> {
@@ -751,8 +792,8 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
 function getToolVersion(toolName: string): string {
   try {
     return execSync(`${toolName} version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
-  } catch (versionError) {
-    console.debug(`${toolName} version failed: ${versionError instanceof Error ? versionError.message : String(versionError)}`);
+  } catch {
+    // Fallback to --version flag
     return execSync(`${toolName} --version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
   }
 }
@@ -855,10 +896,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   try {
     config = await loadConfig();
     configWithErrors = await loadConfigWithErrors();
-  } catch (error) {
+  } catch {
     // Config load error will be caught by checkConfigValid
     // Intentionally suppressing error here as it will be reported by checkConfigValid
-    console.debug(`Config load failed: ${error instanceof Error ? error.message : String(error)}`);
     config = null;
     configWithErrors = { config: null, errors: null, filePath: null };
   }
@@ -879,6 +919,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   allChecks.push(await checkSecretScanning(config));
   allChecks.push(checkGitignoreStateFile());
   allChecks.push(checkValidationState());
+  allChecks.push(checkCacheMigration());
   allChecks.push(await checkHistoryHealth());
 
   // Collect suggestions from failed checks

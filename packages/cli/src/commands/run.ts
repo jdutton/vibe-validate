@@ -6,50 +6,154 @@
  */
 
 import type { Command } from 'commander';
-import { spawn } from 'node:child_process';
+import { execSync } from 'node:child_process';
+import { writeFile, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
-import type { ErrorExtractorResult } from '@vibe-validate/extractors';
+import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
+import type { OutputLine } from '@vibe-validate/core';
+import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble } from '@vibe-validate/git';
+import type { RunCacheNote } from '@vibe-validate/history';
+import { spawnCommand, parseVibeValidateOutput } from '@vibe-validate/core';
+import { type RunResult } from '../schemas/run-result-schema.js';
 import yaml from 'yaml';
-
-/**
- * Result of running a command with extraction
- */
-interface RunResult {
-  /** Command that was executed */
-  command: string;
-
-  /** Exit code from the command */
-  exitCode: number;
-
-  /** Extracted error information */
-  extraction: ErrorExtractorResult;
-
-  /** Raw output (truncated to 1000 chars for reference) */
-  rawOutput?: string;
-
-  /** Suggested direct command (when nested vibe-validate detected) */
-  suggestedDirectCommand?: string;
-
-  /** Allow additional fields from nested YAML */
-  [key: string]: unknown;
-}
+import chalk from 'chalk';
 
 export function runCommand(program: Command): void {
   program
     .command('run')
-    .description('Run a command and extract LLM-friendly errors from output')
-    .argument('<command>', 'Command to execute (quoted if it contains spaces)')
-    .action(async (commandString: string) => {
+    .description('Run a command and extract LLM-friendly errors (with smart caching)')
+    .argument('<command...>', 'Command to execute (multiple words supported)')
+    .option('--check', 'Check if cached result exists without executing')
+    .option('--force', 'Force execution and update cache (bypass cache read)')
+    .option('--head <lines>', 'Display first N lines of output after YAML (on stderr)', Number.parseInt)
+    .option('--tail <lines>', 'Display last N lines of output after YAML (on stderr)', Number.parseInt)
+    .option('--verbose', 'Display all output after YAML (on stderr)')
+    .helpOption(false) // Disable automatic help to avoid conflicts with commands that use --help
+    .allowUnknownOption() // Allow unknown options in the command
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- Complex command handling logic, refactoring would reduce readability
+    .action(async (commandParts: string[], options: { check?: boolean; force?: boolean; head?: number; tail?: number; verbose?: boolean }) => {
+      // WORKAROUND: Commander.js with allowUnknownOption() strips ALL options from commandParts
+      // Parse directly from process.argv to get the actual command with our options parsed correctly
+      const argv = process.argv;
+      const runIndex = argv.findIndex(arg => arg === 'run' || arg.endsWith('/vv') || arg.endsWith('/vibe-validate'));
+
+      let actualOptions: typeof options;
+      let commandString: string;
+
+      if (runIndex === -1) {
+        // Test environment or non-standard invocation - fallback to Commander's parsing
+        actualOptions = options;
+        commandString = commandParts.join(' ');
+      } else {
+        // Real CLI environment - manually parse argv to get correct options
+        actualOptions = {};
+        const actualCommand: string[] = [];
+
+        let i = runIndex + 1;
+        while (i < argv.length) {
+          const arg = argv[i];
+
+          if (arg === '--verbose') {
+            actualOptions.verbose = true;
+            i++;
+          } else if (arg === '--check') {
+            actualOptions.check = true;
+            i++;
+          } else if (arg === '--force') {
+            actualOptions.force = true;
+            i++;
+          } else if (arg === '--head' && i + 1 < argv.length) {
+            actualOptions.head = Number.parseInt(argv[i + 1], 10);
+            i += 2;
+          } else if (arg === '--tail' && i + 1 < argv.length) {
+            actualOptions.tail = Number.parseInt(argv[i + 1], 10);
+            i += 2;
+          } else {
+            // Not a known option - rest is the command
+            actualCommand.push(...argv.slice(i));
+            break;
+          }
+        }
+
+        commandString = actualCommand.join(' ');
+      }
+
+      // If command is empty or starts with a flag (like --help), show help for run command
+      // This handles cases like: vv run --help, vv run --verbose --help, vv run --help bob
+      const trimmedCommand = commandString.trim();
+      if (!trimmedCommand || trimmedCommand.startsWith('-')) {
+        // No command or command starts with a flag - show run command help
+        showRunHelp();
+        process.exit(0);
+      }
+
       try {
-        const { result, context } = await executeAndExtract(commandString);
+        // Handle --check flag (cache status check only)
+        if (actualOptions.check) {
+          const cachedResult = await tryGetCachedResult(commandString);
+          if (cachedResult) {
+            // Cache hit - output cached result and exit with code 0
+            process.stdout.write('---\n');
+            process.stdout.write(yaml.stringify(cachedResult));
+            process.stdout.write('\n');
+            process.exit(0);
+          } else {
+            // Cache miss - output message and exit with code 1
+            process.stderr.write('No cached result found for command.\n');
+            process.exit(1);
+          }
+          return;
+        }
+
+        // Try to get cached result (unless --force)
+        let result: RunResult;
+        let context = { preamble: '', stderr: '' };
+
+        if (!actualOptions.force) {
+          const cachedResult = await tryGetCachedResult(commandString);
+          if (cachedResult) {
+            result = cachedResult;
+          } else {
+            // Cache miss - execute command
+            const executeResult = await executeAndExtract(commandString);
+            result = executeResult.result;
+            context = executeResult.context;
+
+            // Store result in cache
+            await storeCacheResult(commandString, result);
+          }
+        } else {
+          // Force flag - bypass cache and execute
+          const executeResult = await executeAndExtract(commandString);
+          result = executeResult.result;
+          context = executeResult.context;
+
+          // Update cache with fresh result
+          await storeCacheResult(commandString, result);
+        }
 
         // CRITICAL: Write complete YAML to stdout and flush BEFORE any stderr
         // This ensures even if callers use 2>&1, YAML completes first
+        // Format as YAML front matter with opening delimiter
         process.stdout.write('---\n');
-        process.stdout.write(yaml.stringify(result));
 
-        // Add final newline to ensure YAML terminates cleanly
-        process.stdout.write('\n');
+        // Add YAML comment for non-git repositories to inform LLMs
+        let yamlOutput = yaml.stringify(result);
+        if (result.treeHash === 'unknown') {
+          yamlOutput = yamlOutput.replace(
+            /^treeHash: unknown$/m,
+            'treeHash: unknown  # Not in git repository - caching disabled'
+          );
+        }
+        process.stdout.write(yamlOutput);
+
+        // Only write closing delimiter if there will be output displayed
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || to check truthy values (0 is falsy, which is correct)
+        const willDisplayOutput = !!(actualOptions.head || actualOptions.tail || actualOptions.verbose);
+        if (willDisplayOutput) {
+          process.stdout.write('---\n');
+        }
 
         // Flush stdout to guarantee all YAML is written before any stderr
         // This prevents interleaving when streams are combined with 2>&1
@@ -67,6 +171,11 @@ export function runCommand(program: Command): void {
         }
         if (context.stderr) {
           process.stderr.write(context.stderr);
+        }
+
+        // Display output based on --head, --tail, or --verbose flags
+        if (willDisplayOutput) {
+          await displayCommandOutput(result, actualOptions);
         }
 
         // Exit with same code as the command
@@ -88,6 +197,166 @@ export function runCommand(program: Command): void {
 }
 
 /**
+ * Get working directory relative to git root
+ * Returns empty string for root, "packages/cli" for subdirectory
+ */
+function getWorkingDirectory(): string {
+  try {
+    const gitRoot = execSync('git rev-parse --show-toplevel', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+
+    const cwd = process.cwd();
+
+    // If cwd is git root, return empty string
+    if (cwd === gitRoot) {
+      return '';
+    }
+
+    // Return relative path from git root
+    return cwd.substring(gitRoot.length + 1); // +1 to remove leading slash
+  } catch {
+    // Not in a git repository - return empty string
+    return '';
+  }
+}
+
+/**
+ * Try to get cached result for a command
+ * Returns null if no cache hit or if not in a git repository
+ */
+async function tryGetCachedResult(commandString: string): Promise<RunResult | null> {
+  try {
+    // Get tree hash
+    const treeHash = await getGitTreeHash();
+
+    // Skip caching if not in git repository
+    if (treeHash === 'unknown') {
+      return null;
+    }
+
+    // Get working directory
+    const workdir = getWorkingDirectory();
+
+    // Encode cache key
+    const cacheKey = encodeRunCacheKey(commandString, workdir);
+
+    // Construct git notes ref path: refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
+    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
+
+    // Try to read git note
+    const noteContent = execSync(`git notes --ref=${refPath} show HEAD 2>/dev/null || true`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+
+    if (!noteContent) {
+      // Cache miss
+      return null;
+    }
+
+    // Parse cached note
+    const cachedNote = yaml.parse(noteContent) as RunCacheNote;
+
+    // Migration: v0.14.x cached notes used 'duration' (ms), v0.15.0+ uses 'durationSecs' (s)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const durationSecs = cachedNote.durationSecs ?? ((cachedNote as any).duration ? (cachedNote as any).duration / 1000 : 0);
+
+    // Convert to RunResult format (mark as cached)
+    const result: RunResult = {
+      command: cachedNote.command, // Use command from cache (may be unwrapped)
+      exitCode: cachedNote.exitCode,
+      durationSecs,
+      timestamp: cachedNote.timestamp,
+      treeHash: cachedNote.treeHash,
+      extraction: cachedNote.extraction,
+      ...(cachedNote.outputFiles ? { outputFiles: cachedNote.outputFiles } : {}),
+      isCachedResult: true, // Mark as cache hit
+    };
+
+    return result;
+  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache lookup failure is non-critical, proceed with execution
+  } catch (_error) {
+    // Cache lookup failed - proceed with execution
+    return null;
+  }
+}
+
+/**
+ * Store result in cache (only successful runs - exitCode === 0)
+ */
+async function storeCacheResult(commandString: string, result: RunResult): Promise<void> {
+  try {
+    // Only cache successful runs (v0.15.0+)
+    // Failed runs may be transient or environment-specific
+    if (result.exitCode !== 0) {
+      return;
+    }
+
+    // Get tree hash
+    const treeHash = await getGitTreeHash();
+
+    // Skip caching if not in git repository
+    if (treeHash === 'unknown') {
+      return;
+    }
+
+    // Get working directory
+    const workdir = getWorkingDirectory();
+
+    // Encode cache key
+    const cacheKey = encodeRunCacheKey(commandString, workdir);
+
+    // Construct git notes ref path
+    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
+
+    // Build cache note (extraction already cleaned in runner)
+    // Token optimization: Only include extraction when exitCode !== 0 OR there are actual errors
+    // Note: result.command may be unwrapped (actual command) if nested vibe-validate was detected
+    const cacheNote: RunCacheNote = {
+      treeHash,
+      command: result.command, // Store unwrapped command (e.g., "eslint ..." not "pnpm lint")
+      workdir,
+      timestamp: result.timestamp,
+      exitCode: result.exitCode,
+      durationSecs: result.durationSecs,
+      ...(result.extraction ? { extraction: result.extraction } : {}), // Conditionally include extraction
+      ...(result.outputFiles ? { outputFiles: result.outputFiles } : {}),
+    };
+
+    // Store in git notes using heredoc to avoid quote escaping issues
+    const noteYaml = yaml.stringify(cacheNote);
+
+    // Use heredoc format for multi-line YAML
+    try {
+      execSync(
+        `cat <<'EOF' | git notes --ref=${refPath} add -f -F - HEAD\n${noteYaml}\nEOF`,
+        {
+          stdio: 'ignore',
+          shell: '/bin/bash', // Ensure bash for heredoc support
+        }
+      );
+    // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical
+    } catch (_error) {
+      // Cache storage failed - not critical, continue
+    }
+  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical, continue execution
+  } catch (_error) {
+    // Cache storage failed - not critical, continue
+  }
+}
+
+/**
+ * Strip ANSI escape codes from text
+ */
+function stripAnsiCodes(text: string): string {
+  // Control character \x1b is intentionally used to match ANSI escape codes
+  // eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
+  return text.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+/**
  * Execute a command and extract errors from its output
  */
 async function executeAndExtract(commandString: string): Promise<{
@@ -95,38 +364,64 @@ async function executeAndExtract(commandString: string): Promise<{
   context: { preamble: string; stderr: string };
 }> {
   return new Promise((resolve, reject) => {
-    // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
-    // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
-    // NOSONAR - Intentional shell execution of user-defined commands
-    const child = spawn(commandString, {
-      shell: true,
-      stdio: ['inherit', 'pipe', 'pipe'], // inherit stdin, pipe stdout/stderr
-    });
+    const startTime = Date.now();
+    const child = spawnCommand(commandString);
 
     let stdout = '';
     let stderr = '';
+    const combinedLines: OutputLine[] = [];
 
-    // Capture stdout (stdio: 'pipe' configuration guarantees these are Readable streams)
-    child.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
+    // Capture stdout (spawnCommand always sets stdio: ['ignore', 'pipe', 'pipe'], so stdout/stderr are guaranteed non-null)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+    child.stdout!.on('data', (data: Buffer) => {
+      const chunk = data.toString();
+      stdout += chunk;
+
+      // Add to combined output (ANSI-stripped)
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line) {
+          combinedLines.push({
+            ts: new Date().toISOString(),
+            stream: 'stdout',
+            line: stripAnsiCodes(line),
+          });
+        }
+      }
     });
 
-    // Capture stderr (stdio: 'pipe' configuration guarantees these are Readable streams)
-    child.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
+    // Capture stderr
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+    child.stderr!.on('data', (data: Buffer) => {
+      const chunk = data.toString();
+      stderr += chunk;
+
+      // Add to combined output (ANSI-stripped)
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line) {
+          combinedLines.push({
+            ts: new Date().toISOString(),
+            stream: 'stderr',
+            line: stripAnsiCodes(line),
+          });
+        }
+      }
     });
 
     // Handle process exit
     child.on('close', (exitCode: number = 1) => {
+      const durationSecs = (Date.now() - startTime) / 1000;
+
       // CRITICAL: Check ONLY stdout for YAML (not stderr)
       // This prevents stderr warnings from corrupting nested YAML output
-      if (isYamlOutput(stdout)) {
-        const { yaml, preamble } = extractYamlAndPreamble(stdout);
-        const mergedResult = mergeNestedYaml(commandString, yaml, exitCode);
+      const yamlResult = extractYamlWithPreamble(stdout);
+      if (yamlResult) {
+        const mergedResult = mergeNestedYaml(commandString, yamlResult.yaml, exitCode, durationSecs);
 
         // Include preamble and stderr for context
         const contextOutput = {
-          preamble: preamble.trim(),
+          preamble: yamlResult.preamble,
           stderr: stderr.trim(),
         };
 
@@ -137,23 +432,117 @@ async function executeAndExtract(commandString: string): Promise<{
       // For extraction, combine both streams (stderr has useful error context)
       const combinedOutput = stdout + stderr;
 
-      // Infer step name from command for smart extraction
-      const stepName = inferStepName(commandString);
+      // Extract errors using smart extractor (output-based detection)
+      // Token optimization: Only extract when exitCode !== 0 OR there are actual errors
+      const rawExtraction = autoDetectAndExtract({
+        stdout,
+        stderr,
+        combined: combinedOutput,
+      });
+      const extraction = (exitCode !== 0 || rawExtraction.totalErrors > 0) ? rawExtraction : undefined;
 
-      // Extract errors using smart extractor
-      const extraction = autoDetectAndExtract(stepName, combinedOutput);
+      // Get tree hash for result (async operation needs to be awaited)
+      getGitTreeHash()
+        .then(async treeHash => {
+          // Write output files to organized temp directory
+          const outputDir = getRunOutputDir(treeHash);
+          await ensureDir(outputDir);
 
-      const result: RunResult = {
-        command: commandString,
-        exitCode,
-        extraction,
-        // Include truncated raw output for reference (if needed for debugging)
-        rawOutput: combinedOutput.length > 1000
-          ? combinedOutput.substring(0, 1000) + '... (truncated)'
-          : combinedOutput,
-      };
+          const writePromises: Promise<void>[] = [];
 
-      resolve({ result, context: { preamble: '', stderr: '' } });
+          // Write stdout.log (only if non-empty)
+          let stdoutFile: string | undefined;
+          if (stdout.trim()) {
+            stdoutFile = join(outputDir, 'stdout.log');
+            writePromises.push(writeFile(stdoutFile, stdout, 'utf-8'));
+          }
+
+          // Write stderr.log (only if non-empty)
+          let stderrFile: string | undefined;
+          if (stderr.trim()) {
+            stderrFile = join(outputDir, 'stderr.log');
+            writePromises.push(writeFile(stderrFile, stderr, 'utf-8'));
+          }
+
+          // Write combined.jsonl (always)
+          const combinedFile = join(outputDir, 'combined.jsonl');
+          const combinedContent = combinedLines
+            // eslint-disable-next-line sonarjs/no-nested-functions -- Array.map callback is standard functional programming pattern
+            .map(line => JSON.stringify(line))
+            .join('\n');
+          writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
+
+          // Wait for all writes to complete
+          await Promise.all(writePromises);
+
+          const result: RunResult = {
+            command: commandString,
+            exitCode,
+            durationSecs,
+            timestamp: new Date().toISOString(),
+            treeHash,
+            ...(extraction ? { extraction } : {}), // Only include extraction if needed
+            outputFiles: {
+              ...(stdoutFile ? { stdout: stdoutFile } : {}),
+              ...(stderrFile ? { stderr: stderrFile } : {}),
+              combined: combinedFile,
+            },
+          };
+
+          resolve({ result, context: { preamble: '', stderr: '' } });
+        })
+        .catch(async () => {
+          // If tree hash fails, use timestamp-based fallback
+          const timestamp = new Date().toISOString();
+          const fallbackHash = `nogit-${Date.now()}`;
+
+          // Write output files even without git
+          const outputDir = getRunOutputDir(fallbackHash);
+          await ensureDir(outputDir);
+
+          const writePromises: Promise<void>[] = [];
+
+          // Write stdout.log (only if non-empty)
+          let stdoutFile: string | undefined;
+          if (stdout.trim()) {
+            stdoutFile = join(outputDir, 'stdout.log');
+            writePromises.push(writeFile(stdoutFile, stdout, 'utf-8'));
+          }
+
+          // Write stderr.log (only if non-empty)
+          let stderrFile: string | undefined;
+          if (stderr.trim()) {
+            stderrFile = join(outputDir, 'stderr.log');
+            writePromises.push(writeFile(stderrFile, stderr, 'utf-8'));
+          }
+
+          // Write combined.jsonl (always)
+          const combinedFile = join(outputDir, 'combined.jsonl');
+          const combinedContent = combinedLines
+            // eslint-disable-next-line sonarjs/no-nested-functions -- Array.map callback is standard functional programming pattern
+            .map(line => JSON.stringify(line))
+            .join('\n');
+          writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
+
+          // Wait for all writes to complete
+          await Promise.all(writePromises);
+
+          const result: RunResult = {
+            command: commandString,
+            exitCode,
+            durationSecs,
+            timestamp,
+            treeHash: fallbackHash,
+            ...(extraction ? { extraction } : {}), // Only include extraction if needed
+            outputFiles: {
+              ...(stdoutFile ? { stdout: stdoutFile } : {}),
+              ...(stderrFile ? { stderr: stderrFile } : {}),
+              combined: combinedFile,
+            },
+          };
+
+          resolve({ result, context: { preamble: '', stderr: '' } });
+        });
     });
 
     // Handle spawn errors (e.g., command not found)
@@ -172,134 +561,6 @@ async function executeAndExtract(commandString: string): Promise<{
  * - "pnpm lint" → "lint"
  * - "pnpm --filter @pkg test" → "test"
  */
-function inferStepName(commandString: string): string {
-  const lower = commandString.toLowerCase();
-
-  // TypeScript/tsc
-  if (lower.includes('tsc') || lower.includes('typecheck')) {
-    return 'typecheck';
-  }
-
-  // Linting
-  if (lower.includes('eslint') || lower.includes('lint')) {
-    return 'lint';
-  }
-
-  // Testing (vitest, jest, mocha, etc.)
-  if (lower.includes('vitest') || lower.includes('jest') ||
-      lower.includes('mocha') || lower.includes('test') ||
-      lower.includes('jasmine')) {
-    return 'test';
-  }
-
-  // OpenAPI
-  if (lower.includes('openapi')) {
-    return 'openapi';
-  }
-
-  // Generic fallback
-  return 'run';
-}
-
-/**
- * Check if output contains YAML format (may have preamble before ---)
- *
- * IMPORTANT: This function detects YAML anywhere in the output, not just at the start.
- * This allows us to handle package manager preambles (pnpm, npm, yarn) that appear
- * before the actual YAML content.
- *
- * Example with preamble:
- * ```
- * > vibe-validate@0.13.0 validate
- * > node packages/cli/dist/bin.js validate
- *
- * ---
- * command: "npm test"
- * exitCode: 0
- * ```
- *
- * The preamble will be extracted and routed to stderr, keeping stdout clean.
- */
-function isYamlOutput(output: string): boolean {
-  const trimmed = output.trim();
-  // Check if starts with --- (no preamble)
-  if (trimmed.startsWith('---\n') || trimmed.startsWith('---\r\n')) {
-    return true;
-  }
-  // Check if contains --- with newlines (has preamble)
-  return output.includes('\n---\n') || output.includes('\n---\r\n');
-}
-
-/**
- * Extract YAML content and separate preamble/postamble
- *
- * STREAM ROUTING STRATEGY:
- * - stdout (returned 'yaml'): Clean YAML for piping and LLM consumption
- * - stderr (returned 'preamble'): Package manager noise, preserved for human context
- *
- * This separation follows Unix philosophy: stdout = data, stderr = human messages.
- *
- * Example input:
- * ```
- * > package@1.0.0 test    ← preamble (goes to stderr)
- * > vitest run            ← preamble (goes to stderr)
- *
- * ---                     ← yaml (goes to stdout)
- * command: "vitest run"
- * exitCode: 0
- * extraction: {...}
- * ```
- *
- * Benefits:
- * 1. `run "pnpm test" > file.yaml` writes pure YAML
- * 2. `run "pnpm test" 2>/dev/null` suppresses noise
- * 3. Terminal shows both streams (full context)
- *
- * @param stdout - Raw stdout from the executed command
- * @returns Object with separated yaml, preamble, and postamble
- */
-function extractYamlAndPreamble(stdout: string): {
-  yaml: string;
-  preamble: string;
-  postamble: string;
-} {
-  // Check if it starts with --- (no preamble)
-  const trimmed = stdout.trim();
-  if (trimmed.startsWith('---\n') || trimmed.startsWith('---\r\n')) {
-    return { yaml: trimmed, preamble: '', postamble: '' };
-  }
-
-  // Find first YAML separator with newline before it
-  const patterns = [
-    { pattern: '\n---\n', offset: 1 },
-    { pattern: '\n---\r\n', offset: 1 },
-  ];
-
-  let earliestIndex = -1;
-  let selectedOffset = 0;
-
-  for (const { pattern, offset } of patterns) {
-    const idx = stdout.indexOf(pattern);
-    if (idx !== -1 && (earliestIndex === -1 || idx < earliestIndex)) {
-      earliestIndex = idx;
-      selectedOffset = offset;
-    }
-  }
-
-  if (earliestIndex === -1) {
-    // No YAML found
-    return { yaml: '', preamble: stdout, postamble: '' };
-  }
-
-  // Extract preamble (everything before ---)
-  const preamble = stdout.substring(0, earliestIndex).trim();
-
-  // Extract YAML content (from --- onward)
-  const yamlContent = stdout.substring(earliestIndex + selectedOffset).trim();
-
-  return { yaml: yamlContent, preamble, postamble: '' };
-}
-
 /**
  * Merge nested YAML output with outer run metadata
  *
@@ -309,60 +570,67 @@ function extractYamlAndPreamble(stdout: string): {
 function mergeNestedYaml(
   outerCommand: string,
   yamlOutput: string,
-  outerExitCode: number
+  outerExitCode: number,
+  outerDurationSecs: number
 ): RunResult {
   try {
-    // Parse the inner YAML
+    // Always parse the raw YAML first to preserve all fields
     const innerResult = yaml.parse(yamlOutput);
 
-    // Extract the innermost command for suggestedDirectCommand
-    const innermostCommand = extractInnermostCommand(innerResult);
+    // Try parsing as vibe-validate output using shared parser
+    const parsed = parseVibeValidateOutput(yamlOutput);
 
-    // Merge: preserve ALL inner fields, add outer metadata
-    const mergedResult: RunResult = {
-      ...innerResult, // Spread ALL inner fields (errors, phases, tree_hash, etc.)
-      command: outerCommand, // Override with outer command
-      exitCode: outerExitCode, // Use outer exit code (should match inner)
-      suggestedDirectCommand: innermostCommand, // Add suggestion
+    if (parsed) {
+      // Successfully parsed nested vibe-validate output
+      // Spread all inner fields to preserve custom fields (rawOutput, customField, etc.)
+      // Then override with outer metadata and parsed information
+      // Use command from inner result (already unwrapped by nested vibe-validate call)
+      const unwrappedCommand = innerResult.command ?? outerCommand;
+
+      return {
+        ...innerResult, // Preserve ALL inner fields
+        command: unwrappedCommand, // Use unwrapped command (e.g., "eslint ..." instead of "pnpm lint")
+        exitCode: outerExitCode, // Override with outer exit code
+        durationSecs: outerDurationSecs, // Override with outer duration
+        timestamp: parsed.timestamp ?? innerResult.timestamp ?? new Date().toISOString(),
+        treeHash: parsed.treeHash ?? innerResult.treeHash ?? 'unknown',
+        extraction: parsed.extraction, // Use parsed extraction
+        ...(parsed.isCachedResult !== undefined ? { isCachedResult: parsed.isCachedResult } : {}),
+        ...(parsed.fullOutputFile ? { fullOutputFile: parsed.fullOutputFile } : {}),
+      };
+    }
+
+    // Not a recognized vibe-validate format - use inner command if available
+    // This handles cases where the wrapper executes a command that produces non-YAML output
+    const unwrappedCommand = (innerResult.command && typeof innerResult.command === 'string')
+      ? innerResult.command
+      : outerCommand;
+
+    return {
+      ...innerResult,
+      command: unwrappedCommand, // Use inner command (unwrapped)
+      exitCode: outerExitCode,
+      durationSecs: outerDurationSecs,
+      treeHash: innerResult.treeHash ?? 'unknown', // Use inner treeHash or fallback to unknown
     };
 
-    return mergedResult;
   } catch (error) {
-    // If YAML parsing fails, treat as regular output
+    // YAML parsing completely failed - treat as regular output
     console.error('Warning: Failed to parse nested YAML output:', error);
 
-    const stepName = inferStepName(outerCommand);
-    const extraction = autoDetectAndExtract(stepName, yamlOutput);
+    // Token optimization: Only extract when exitCode !== 0 OR there are actual errors
+    const rawExtraction = autoDetectAndExtract(yamlOutput);
+    const extraction = (outerExitCode !== 0 || rawExtraction.totalErrors > 0) ? rawExtraction : undefined;
 
     return {
       command: outerCommand,
       exitCode: outerExitCode,
-      extraction,
-      rawOutput: yamlOutput.substring(0, 1000),
+      durationSecs: outerDurationSecs,
+      timestamp: new Date().toISOString(),
+      treeHash: 'unknown',
+      ...(extraction ? { extraction } : {}), // Only include extraction if needed
     };
   }
-}
-
-/**
- * Extract the innermost command from nested run results
- *
- * Examples:
- * - { command: "npm test" } → "npm test"
- * - { command: "...", suggestedDirectCommand: "npm test" } → "npm test"
- * - { command: "vibe-validate validate" } → "vibe-validate validate"
- */
-function extractInnermostCommand(result: Record<string, unknown>): string {
-  // If already has suggestedDirectCommand, use it (handles 3+ levels)
-  if (result.suggestedDirectCommand && typeof result.suggestedDirectCommand === 'string') {
-    return result.suggestedDirectCommand;
-  }
-
-  // Otherwise, use the command from the inner result
-  if (result.command && typeof result.command === 'string') {
-    return result.command;
-  }
-
-  return 'unknown';
 }
 
 /**
@@ -371,20 +639,81 @@ function extractInnermostCommand(result: Record<string, unknown>): string {
 export function showRunVerboseHelp(): void {
   console.log(`# run Command Reference
 
-> Run a command and extract LLM-friendly errors
+> Run a command and extract LLM-friendly errors (with smart caching)
 
 ## Overview
 
 The \`run\` command executes any shell command and extracts errors using vibe-validate's smart extractors. This provides concise, structured error information to save AI agent context windows.
 
+**NEW in v0.15.0**: Automatic caching based on git tree hash - repeat commands are instant (<200ms) when code hasn't changed.
+
 ## How It Works
 
-1. **Executes command** in a shell subprocess
-2. **Captures output** (stdout + stderr)
-3. **Auto-detects format** (vitest, jest, tsc, eslint, etc.)
-4. **Extracts errors** using appropriate extractor
-5. **Outputs YAML** with structured error information
-6. **Passes through exit code** from original command
+1. **Checks cache** - If git tree unchanged, returns cached result instantly
+2. **Executes command** (on cache miss) in a shell subprocess
+3. **Captures output** (stdout + stderr)
+4. **Auto-detects format** (vitest, jest, tsc, eslint, etc.)
+5. **Extracts errors** using appropriate extractor
+6. **Stores in cache** - Future runs with same tree hash are instant
+7. **Outputs YAML** with structured error information
+8. **Passes through exit code** from original command
+
+## Caching
+
+The \`run\` command automatically caches results based on:
+- **Git tree hash** - Content-based identifier (same code = same hash)
+- **Command string** - Different commands have separate caches
+- **Working directory** - Subdirectory runs are tracked separately
+
+### Cache Behavior
+
+**First run** (cache miss):
+\`\`\`bash
+$ vibe-validate run "pnpm test"
+# Executes test suite, extracts errors, stores in cache
+# Duration: ~30 seconds
+\`\`\`
+
+**Repeat run** (cache hit):
+\`\`\`bash
+$ vibe-validate run "pnpm test"
+# Returns cached result instantly (no execution)
+# Duration: <200ms
+\`\`\`
+
+**After code change**:
+\`\`\`bash
+# Edit a file, tree hash changes
+$ vibe-validate run "pnpm test"
+# Cache miss - executes and caches with new tree hash
+\`\`\`
+
+### Cache Flags
+
+**Check cache status** (--check):
+\`\`\`bash
+$ vibe-validate run --check "pnpm test"
+# Exit 0 if cached (outputs cached result)
+# Exit 1 if not cached (no execution)
+\`\`\`
+
+**Force execution** (--force):
+\`\`\`bash
+$ vibe-validate run --force "pnpm test"
+# Always executes, updates cache (ignores existing cache)
+# Useful for flaky tests or time-sensitive commands
+\`\`\`
+
+### Cache Storage
+
+Cache is stored in git notes at:
+\`\`\`
+refs/notes/vibe-validate/run/{treeHash}/{encodedCommand}
+\`\`\`
+
+- **Local only** - Not pushed with git (each dev has their own cache)
+- **Automatic cleanup** - Run \`vibe-validate doctor\` to check cache health
+- **No configuration required** - Works out of the box
 
 ## Use Cases
 
@@ -394,29 +723,33 @@ Instead of parsing verbose test output:
 # Verbose (wastes context window)
 npx vitest packages/extractors/test/vitest-extractor.test.ts
 
-# Concise (LLM-friendly)
-vibe-validate run "npx vitest packages/extractors/test/vitest-extractor.test.ts"
+# Concise (LLM-friendly) - NEW: No quotes needed!
+vibe-validate run npx vitest packages/extractors/test/vitest-extractor.test.ts
 \`\`\`
 
 ### Debugging Specific Tests
 \`\`\`bash
-# Run single test file with extraction
-vibe-validate run "npx vitest -t 'should extract failed tests'"
+# Run single test file with extraction (NEW: natural syntax)
+vibe-validate run npx vitest -t 'should extract failed tests'
 
 # Run package tests with extraction
-vibe-validate run "pnpm --filter @vibe-validate/extractors test"
+vibe-validate run pnpm --filter @vibe-validate/extractors test
+
+# Quoted syntax still works for compatibility
+vibe-validate run "npx vitest test.ts"
 \`\`\`
 
 ### Type Checking
 \`\`\`bash
 # Extract TypeScript errors
-vibe-validate run "npx tsc --noEmit"
+vibe-validate run npx tsc --noEmit
 \`\`\`
 
 ### Linting
 \`\`\`bash
-# Extract ESLint errors
-vibe-validate run "pnpm lint"
+# Extract ESLint errors (options pass through correctly)
+vibe-validate run pnpm lint
+vibe-validate run eslint --max-warnings 0 src/
 \`\`\`
 
 ## Output Format
@@ -433,7 +766,7 @@ extraction:
       message: "expected 5 to equal 3"
   summary: "1 test failed"
   guidance: "Review test assertions and expected values"
-  cleanOutput: |
+  errorSummary: |
     test.ts:42 - expected 5 to equal 3
 rawOutput: "... (truncated)"
 \`\`\`
@@ -481,28 +814,27 @@ The \`run\` command automatically detects and handles package manager preambles:
 
 This means you can safely use:
 \`\`\`bash
-vibe-validate run "pnpm validate --yaml"  # Works!
-vibe-validate run "npm test"              # Works!
-vibe-validate run "yarn build"            # Works!
+vibe-validate run pnpm validate --yaml  # Works!
+vibe-validate run npm test              # Works!
+vibe-validate run yarn build            # Works!
 \`\`\`
 
 The YAML output on stdout remains clean and parseable, while the preamble is preserved on stderr for debugging.
 
 ## Nested Run Detection
 
-When \`run\` wraps another vibe-validate command that outputs YAML, it intelligently merges the results:
+When \`run\` wraps another vibe-validate command that outputs YAML, it automatically unwraps to show the actual command:
 
 \`\`\`bash
 # 2-level nesting
 $ vibe-validate run "vibe-validate run 'npm test'"
 ---
-command: vibe-validate run "npm test"
+command: npm test  # ← Automatically unwrapped!
 exitCode: 0
 extraction: {...}
-suggestedDirectCommand: npm test  # ← Unwrapped!
 \`\`\`
 
-The \`suggestedDirectCommand\` field shows the innermost command, helping you avoid unnecessary nesting.
+The \`command\` field shows the innermost command that actually executed, helping you avoid unnecessary nesting.
 
 ## Exit Codes
 
@@ -512,29 +844,40 @@ The \`run\` command passes through the exit code from the executed command:
 
 ## Examples
 
-### Run Single Test File
+### Python Testing
 \`\`\`bash
-vibe-validate run "npx vitest packages/cli/test/commands/run.test.ts"
+vv run pytest tests/ --cov=src
+vv run pytest -k test_auth --verbose
+vv run python -m unittest discover
 \`\`\`
 
-### Run Specific Test Case
+### Rust Testing
 \`\`\`bash
-vibe-validate run "npx vitest -t 'should extract errors'"
+vv run cargo test
+vv run cargo test --all-features
+vv run cargo clippy -- -D warnings
 \`\`\`
 
-### Run Package Tests
+### Go Testing
 \`\`\`bash
-vibe-validate run "pnpm --filter @vibe-validate/core test"
+vv run go test ./...
+vv run go test -v -race ./pkg/...
+vv run go vet ./...
 \`\`\`
 
-### Type Check
+### Ruby Testing
 \`\`\`bash
-vibe-validate run "npx tsc --noEmit"
+vv run bundle exec rspec
+vv run bundle exec rspec spec/models/
+vv run bundle exec rubocop
 \`\`\`
 
-### Lint
+### Node.js/TypeScript
 \`\`\`bash
-vibe-validate run "pnpm lint"
+vv run npm test
+vv run npx vitest packages/cli/test/commands/run.test.ts
+vv run npx tsc --noEmit
+vv run pnpm lint
 \`\`\`
 
 ## Supported Extractors
@@ -582,4 +925,78 @@ extraction:
 
 **Result**: Same information, 90% smaller!
 `);
+}
+
+/**
+ * Show help for the run command
+ */
+function showRunHelp(): void {
+  console.log(`
+Usage: vibe-validate run [options] <command...>
+
+Run a command and extract LLM-friendly errors (with smart caching)
+
+Arguments:
+  command...  Command to execute (multiple words supported)
+
+Options:
+  --check             Check if cached result exists without executing
+  --force             Force execution and update cache (bypass cache read)
+  --head <lines>      Display first N lines of output after YAML (on stderr)
+  --tail <lines>      Display last N lines of output after YAML (on stderr)
+  --verbose           Display all output after YAML (on stderr)
+  -h, --help          Display this help message
+
+Examples:
+  vv run pytest tests/ --cov=src          # Python
+  vv run cargo test --all-features         # Rust
+  vv run go test ./...                     # Go
+  vv run npm test                          # Node.js
+  vv run --verbose npm test                # With output display
+
+For detailed documentation, use: vibe-validate run --help --verbose
+  `.trim());
+}
+
+/**
+ * Display command output based on --head, --tail, or --verbose flags
+ */
+async function displayCommandOutput(
+  result: RunResult,
+  options: { head?: number; tail?: number; verbose?: boolean }
+): Promise<void> {
+  if (!result.outputFiles?.combined) {
+    return;
+  }
+
+  try {
+    const combinedContent = await readFile(result.outputFiles.combined, 'utf-8');
+    const lines = combinedContent.trim().split('\n');
+    const outputLines: OutputLine[] = lines
+      .filter(line => line.trim())
+      .map(line => JSON.parse(line));
+
+    let linesToDisplay: OutputLine[];
+
+    if (options.verbose) {
+      linesToDisplay = outputLines;
+    } else if (options.head) {
+      linesToDisplay = outputLines.slice(0, options.head);
+    } else if (options.tail) {
+      linesToDisplay = outputLines.slice(-options.tail);
+    } else {
+      return;
+    }
+
+    // Display lines with formatting (no timestamp - available in JSONL if needed)
+    // No header - YAML front matter delimiter serves as separator
+    for (const line of linesToDisplay) {
+      const streamColor = line.stream === 'stdout' ? chalk.gray : chalk.yellow;
+      const stream = streamColor(`[${line.stream}]`);
+      process.stderr.write(`${stream} ${line.line}\n`);
+    }
+  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Display errors are non-critical, YAML already written
+  } catch (_err) {
+    // Silently ignore errors in display - YAML output is already written
+  }
 }

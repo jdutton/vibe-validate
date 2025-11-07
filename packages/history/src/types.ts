@@ -1,51 +1,30 @@
 /**
  * Validation history types
+ *
+ * Re-exports YAML-serializable types from schemas (Zod-inferred).
+ * Defines function return types (non-serializable).
+ *
+ * @packageDocumentation
  */
 
-import type { ValidationResult } from '@vibe-validate/core';
+// Re-export YAML-serializable types from Zod schemas
+export type {
+  ValidationRun,
+  HistoryNote,
+  HistoryConfig,
+  RunCacheNote,
+} from './schemas.js';
+
+export {
+  ValidationRunSchema,
+  HistoryNoteSchema,
+  HistoryConfigSchema,
+  RunCacheNoteSchema,
+  DEFAULT_HISTORY_CONFIG,
+} from './schemas.js';
 
 /**
- * Single validation run entry
- */
-export interface ValidationRun {
-  /** Unique run ID (run-{timestamp}) */
-  id: string;
-
-  /** ISO 8601 timestamp */
-  timestamp: string;
-
-  /** Duration in milliseconds */
-  duration: number;
-
-  /** Did validation pass? */
-  passed: boolean;
-
-  /** Branch name at time of validation */
-  branch: string;
-
-  /** HEAD commit SHA at time of validation */
-  headCommit: string;
-
-  /** Were there uncommitted changes? */
-  uncommittedChanges: boolean;
-
-  /** Full validation result (with truncated output) */
-  result: ValidationResult;
-}
-
-/**
- * Git note structure (stored as YAML)
- */
-export interface HistoryNote {
-  /** Tree hash this note is attached to */
-  treeHash: string;
-
-  /** Array of validation runs for this tree */
-  runs: ValidationRun[];
-}
-
-/**
- * Result of recording validation history
+ * Result of recording validation history (function return type)
  */
 export interface RecordResult {
   /** Was history successfully recorded? */
@@ -59,7 +38,7 @@ export interface RecordResult {
 }
 
 /**
- * Worktree stability check result
+ * Worktree stability check result (function return type)
  */
 export interface StabilityCheck {
   /** Is worktree stable? */
@@ -73,52 +52,7 @@ export interface StabilityCheck {
 }
 
 /**
- * History configuration
- */
-export interface HistoryConfig {
-  /** Enable history recording */
-  enabled?: boolean;
-
-  /** Git notes configuration */
-  gitNotes?: {
-    /** Git ref namespace */
-    ref?: string;
-
-    /** Max runs to keep per tree */
-    maxRunsPerTree?: number;
-
-    /** Truncate output to max bytes */
-    maxOutputBytes?: number;
-  };
-
-  /** Retention policy */
-  retention?: {
-    /** Warn after this many days */
-    warnAfterDays?: number;
-
-    /** Warn after this many total notes */
-    warnAfterCount?: number;
-  };
-}
-
-/**
- * Default history configuration
- */
-export const DEFAULT_HISTORY_CONFIG: Required<HistoryConfig> = {
-  enabled: true,
-  gitNotes: {
-    ref: 'vibe-validate/runs',
-    maxRunsPerTree: 10,
-    maxOutputBytes: 10000,
-  },
-  retention: {
-    warnAfterDays: 90,
-    warnAfterCount: 100,
-  },
-};
-
-/**
- * Health check result
+ * Health check result (function return type)
  */
 export interface HealthCheckResult {
   /** Total number of tree hashes with notes */
@@ -135,7 +69,7 @@ export interface HealthCheckResult {
 }
 
 /**
- * Prune result
+ * Prune result (function return type)
  */
 export interface PruneResult {
   /** Number of notes pruned */

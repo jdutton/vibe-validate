@@ -1,53 +1,26 @@
 /**
  * Output truncation utilities
+ *
+ * v0.15.0: Truncation no longer needed - extractors handle it
+ * (MAX_ERRORS_IN_ARRAY = 10, output field removed from StepResult)
  */
 
 import type { ValidationResult } from '@vibe-validate/core';
 
 /**
- * Truncate string to max bytes with message
- */
-function truncateString(output: string, maxBytes: number): string {
-  if (output.length <= maxBytes) return output;
-  return output.slice(0, maxBytes) + `\n\n[... truncated ${output.length - maxBytes} bytes]`;
-}
-
-/**
- * Truncate phase outputs
- */
-function truncatePhaseOutputs(phases: ValidationResult['phases'], maxBytes: number): void {
-  if (!phases) return;
-
-  for (const phase of phases) {
-    if (!phase.steps) continue;
-
-    for (const step of phase.steps) {
-      if (step.output) {
-        step.output = truncateString(step.output, maxBytes);
-      }
-    }
-  }
-}
-
-/**
  * Truncate validation result output to max bytes
  *
- * @param result - Validation result to truncate
- * @param maxBytes - Maximum bytes per step output (default: 10000)
- * @returns Truncated validation result
+ * v0.15.0: No-op function - extraction is already truncated by extractors
+ *
+ * @param result - Validation result
+ * @param _maxBytes - Unused (kept for backward compatibility)
+ * @returns Same validation result (no truncation needed)
  */
 export function truncateValidationOutput(
   result: ValidationResult,
-  maxBytes: number = 10000
+  _maxBytes: number = 10000
 ): ValidationResult {
-  // Deep clone to avoid mutating original
-  const truncated = JSON.parse(JSON.stringify(result)) as ValidationResult;
-
-  truncatePhaseOutputs(truncated.phases, maxBytes);
-
-  if (truncated.failedStepOutput) {
-    truncated.failedStepOutput = truncateString(truncated.failedStepOutput, maxBytes);
-  }
-
-  return truncated;
+  // v0.15.0: Extraction already truncated by extractors (MAX_ERRORS_IN_ARRAY = 10)
+  // output field removed from StepResult, so no truncation needed
+  return result;
 }

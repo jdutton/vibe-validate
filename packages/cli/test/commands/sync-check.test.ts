@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Command } from 'commander';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { syncCheckCommand } from '../../src/commands/sync-check.js';
 import * as git from '@vibe-validate/git';
 import * as configLoader from '../../src/utils/config-loader.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the git module
 vi.mock('@vibe-validate/git', async () => {
@@ -26,17 +26,10 @@ vi.mock('../../src/utils/config-loader.js', async () => {
 type ProcessExitCode = string | number | null | undefined;
 
 describe('sync-check command', () => {
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    env = setupCommanderTest();
 
     // Reset mocks
     vi.mocked(git.checkBranchSync).mockReset();
@@ -52,41 +45,45 @@ describe('sync-check command', () => {
     });
   });
 
+  afterEach(() => {
+    env.cleanup();
+  });
+
   describe('command registration', () => {
     it('should register sync-check command', () => {
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
       expect(command).toBeDefined();
     });
 
     it('should have correct description', () => {
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
       expect(command?.description()).toBe('Check if branch is behind remote main branch');
     });
 
     it('should register --main-branch option', () => {
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
       const option = command?.options.find(opt => opt.long === '--main-branch');
       expect(option).toBeDefined();
     });
 
     it('should register --remote-origin option', () => {
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
       const option = command?.options.find(opt => opt.long === '--remote-origin');
       expect(option).toBeDefined();
     });
 
     it('should register --yaml option', () => {
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
-      const command = program.commands.find(cmd => cmd.name() === 'sync-check');
+      const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
       const option = command?.options.find(opt => opt.long === '--yaml');
       expect(option).toBeDefined();
     });
@@ -108,10 +105,10 @@ describe('sync-check command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -132,10 +129,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -161,10 +158,10 @@ describe('sync-check command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -185,10 +182,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -213,10 +210,10 @@ describe('sync-check command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -236,10 +233,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -260,10 +257,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -291,10 +288,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -322,10 +319,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
+        await env.program.parseAsync(['sync-check', '--yaml'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -356,10 +353,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check', '--main-branch', 'develop'], { from: 'user' });
+        await env.program.parseAsync(['sync-check', '--main-branch', 'develop'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -381,10 +378,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check', '--remote-origin', 'upstream'], { from: 'user' });
+        await env.program.parseAsync(['sync-check', '--remote-origin', 'upstream'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -406,10 +403,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check', '--main-branch', 'develop', '--remote-origin', 'upstream'], { from: 'user' });
+        await env.program.parseAsync(['sync-check', '--main-branch', 'develop', '--remote-origin', 'upstream'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -433,10 +430,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -461,10 +458,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -484,10 +481,10 @@ describe('sync-check command', () => {
 
       vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -508,10 +505,10 @@ describe('sync-check command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
@@ -535,10 +532,10 @@ describe('sync-check command', () => {
         throw new Error(`process.exit(${code})`);
       }) as any;
 
-      syncCheckCommand(program);
+      syncCheckCommand(env.program);
 
       try {
-        await program.parseAsync(['sync-check'], { from: 'user' });
+        await env.program.parseAsync(['sync-check'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
         // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();

@@ -49,7 +49,7 @@ runs:
       expect(result?.runs[0].passed).toBe(true);
 
       expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=vibe-validate/runs show abc123def456',
+        'git notes --ref=vibe-validate/validate show abc123def456',
         expect.objectContaining({
           encoding: 'utf8',
           timeout: 30000,
@@ -148,7 +148,7 @@ note3sha fedcba987654
       ]);
 
       expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=vibe-validate/runs list',
+        'git notes --ref=vibe-validate/validate list',
         expect.objectContaining({
           encoding: 'utf8',
           timeout: 30000,
@@ -305,7 +305,7 @@ note2sha 789012abc345
 
       expect(result).toBe(true);
       expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=vibe-validate/runs show abc123def456',
+        'git notes --ref=vibe-validate/validate show abc123def456',
         expect.any(Object)
       );
     });

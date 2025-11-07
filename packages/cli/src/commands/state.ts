@@ -60,15 +60,15 @@ export function stateCommand(program: Command): void {
         const mostRecentRun = historyNote.runs[historyNote.runs.length - 1];
         const result = mostRecentRun.result;
 
-        // Convert to state format (compatible with old format)
+        // Convert to state format
         const state: ValidationResult = {
           passed: result.passed,
           timestamp: result.timestamp,
           treeHash: result.treeHash,
+          summary: result.summary,
           failedStep: result.failedStep,
-          failedStepOutput: result.failedStepOutput,
           phases: result.phases,
-          rerunCommand: result.rerunCommand,
+          fullLogFile: result.fullLogFile,
         };
 
         // Output YAML format (always)
@@ -137,11 +137,7 @@ function displayVerboseState(state: ValidationResult, yamlContent: string, branc
   // Failed step details (if any)
   if (!state.passed && state.failedStep) {
     console.log(chalk.red(`\n❌ Failed Step: ${state.failedStep}`));
-
-    if (state.failedStepOutput) {
-      console.log(chalk.red('\nError Output (included in YAML above):'));
-      console.log(chalk.gray('  See failedStepOutput field for complete error details'));
-    }
+    console.log(chalk.gray('  See step-level extraction in phases for structured error details'));
   }
 
   console.log(chalk.gray('─'.repeat(50)));

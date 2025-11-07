@@ -10,65 +10,64 @@
  * @packageDocumentation
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess } from 'node:child_process';
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
-import { stopProcessGroup } from './process-utils.js';
+import type { ValidationStep } from '@vibe-validate/config';
+import { stopProcessGroup, spawnCommand } from './process-utils.js';
+import { parseVibeValidateOutput } from './run-output-parser.js';
 import type {
-  ValidationStep,
   ValidationResult,
-  ValidationConfig,
   StepResult,
   PhaseResult,
-} from './types.js';
+} from './result-schema.js';
 
 /**
- * Legacy function - REMOVED in favor of @vibe-validate/git package
+ * Runtime validation configuration
  *
- * Use `getGitTreeHash()` from '@vibe-validate/git' instead.
- * This provides deterministic, content-based tree hashing.
+ * This extends the file-based configuration from @vibe-validate/config
+ * with runtime-specific options (callbacks, logging, output format).
  *
- * @deprecated Removed in v0.9.11 - Use @vibe-validate/git instead
+ * Note: State management (caching, forceRun) is now handled at the CLI layer
+ * via git notes. See packages/cli/src/commands/validate.ts and @vibe-validate/history.
  */
+export interface ValidationConfig {
+  /** Validation phases to execute */
+  phases: import('@vibe-validate/config').ValidationPhase[];
 
-/**
- * Calculate extraction quality score based on extractor output
- *
- * Scores extraction quality from 0-100 based on:
- * - Number of errors extracted
- * - Field completeness (file, line, message)
- * - Actionability (can an LLM/human act on this?)
- *
- * @param formatted - Extractor output
- * @returns Quality score (0-100)
- *
- * @internal
- */
-function calculateExtractionQuality(formatted: ReturnType<typeof autoDetectAndExtract>): number {
-  let score = 0;
+  /** Path to log file (default: os.tmpdir()/validation-{timestamp}.log) */
+  logPath?: string;
 
-  // Error extraction (0-60 points)
-  const errorCount = formatted.errors?.length ?? 0;
-  if (errorCount > 0) {
-    score += Math.min(60, errorCount * 12); // Max 60 points for 5+ errors
-  }
+  /** Enable fail-fast (stop on first failure) */
+  enableFailFast?: boolean;
 
-  // Field completeness (0-40 points)
-  const errors = formatted.errors ?? [];
-  if (errors.length > 0) {
-    const firstError = errors[0];
-    let fieldScore = 0;
-    if (firstError.file) fieldScore += 10;
-    if (firstError.line !== undefined) fieldScore += 10;
-    if (firstError.message) fieldScore += 20;
-    score += fieldScore;
-  }
+  /** Show verbose output (stream command stdout/stderr in real-time) */
+  verbose?: boolean;
 
-  return Math.min(100, score);
+  /** Output YAML result to stdout (redirects subprocess output to stderr when true) */
+  yaml?: boolean;
+
+  /** Developer feedback for continuous quality improvement (default: false) */
+  developerFeedback?: boolean;
+
+  /** Environment variables to pass to all child processes */
+  env?: Record<string, string>;
+
+  /** Callback when phase starts */
+  onPhaseStart?: (_phase: import('@vibe-validate/config').ValidationPhase) => void;
+
+  /** Callback when phase completes */
+  onPhaseComplete?: (_phase: import('@vibe-validate/config').ValidationPhase, _result: PhaseResult) => void;
+
+  /** Callback when step starts */
+  onStepStart?: (_step: ValidationStep) => void;
+
+  /** Callback when step completes */
+  onStepComplete?: (_step: ValidationStep, _result: StepResult) => void;
 }
 
 /**
@@ -124,51 +123,6 @@ export function parseFailures(output: string): string[] {
 }
 
 /**
- * Detect tool type from step name
- *
- * Uses heuristics to determine which validation tool is running based on the step name.
- * This is a temporary solution until extractors package returns detected tool type.
- *
- * @param stepName - Name of the validation step
- * @returns Detected tool identifier (typescript, eslint, vitest, or unknown)
- *
- * @internal
- */
-function detectToolFromStepName(stepName: string): string {
-  const stepLower = stepName.toLowerCase();
-  if (stepLower.includes('typescript') || stepLower.includes('tsc')) {
-    return 'typescript';
-  }
-  if (stepLower.includes('eslint')) {
-    return 'eslint';
-  }
-  if (stepLower.includes('test') || stepLower.includes('vitest')) {
-    return 'vitest';
-  }
-  return 'unknown';
-}
-
-/**
- * Calculate confidence level from extraction quality score
- *
- * Maps numeric quality scores to confidence levels for easier interpretation.
- *
- * @param score - Quality score (0-100)
- * @returns Confidence level (high >= 80, medium >= 50, low < 50)
- *
- * @internal
- */
-function calculateConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
-  if (score >= 80) {
-    return 'high';
-  }
-  if (score >= 50) {
-    return 'medium';
-  }
-  return 'low';
-}
-
-/**
  * Process developer feedback for failed step
  *
  * Analyzes extraction quality and provides feedback for improving extractors.
@@ -184,31 +138,33 @@ function calculateConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
  * @internal
  */
 function processDeveloperFeedback(
-  stepResult: StepResult,
-  stepName: string,
+  _stepResult: StepResult,
   formatted: ReturnType<typeof autoDetectAndExtract>,
   log: (_msg: string) => void,
-  isWarning: (_e: { severity?: string }) => boolean,
-  isNotWarning: (_e: { severity?: string }) => boolean
+  _isWarning: (_e: { severity?: string }) => boolean,
+  _isNotWarning: (_e: { severity?: string }) => boolean
 ): void {
-  const detectedTool = detectToolFromStepName(stepName);
+  // Use extraction metadata from extractors package
+  const detectedTool = formatted.metadata?.detection?.extractor ?? 'unknown';
+  const confidence = formatted.metadata?.confidence ?? 0;
+  const completeness = formatted.metadata?.completeness ?? 0;
 
-  // eslint-disable-next-line sonarjs/deprecation -- calculateExtractionQuality is deprecated but still used for backwards compatibility
-  const score = calculateExtractionQuality(formatted);
-  const confidence = calculateConfidenceLevel(score);
+  // Map confidence to level (0-100 → high/medium/low)
+  let confidenceLevel: 'high' | 'medium' | 'low';
+  if (confidence >= 80) {
+    confidenceLevel = 'high';
+  } else if (confidence >= 50) {
+    confidenceLevel = 'medium';
+  } else {
+    confidenceLevel = 'low';
+  }
 
-  stepResult.extractionQuality = {
-    detectedTool,
-    confidence,
-    score,
-    warnings: formatted.errors?.filter(isWarning).length ?? 0,
-    errorsExtracted: formatted.errors?.filter(isNotWarning).length ?? formatted.errors?.length ?? 0,
-    actionable: (formatted.errors?.length ?? 0) > 0,
-  };
+  // Log extraction quality for developer feedback (not added to result)
+  log(`      📊 Extraction quality: ${detectedTool} (${confidenceLevel} confidence: ${confidence}%, completeness: ${completeness}%)`);
 
   // Alert on poor extraction quality (for failed steps)
-  if (score < 50) {
-    log(`         ⚠️  Poor extraction quality (${score}%) - Extractors failed to extract failures`);
+  if (confidence < 50) {
+    log(`         ⚠️  Poor extraction quality (${confidence}%) - Extractors failed to extract failures`);
     log(`         💡 vibe-validate improvement opportunity: Improve ${detectedTool} extractor for this output`);
   }
 }
@@ -319,13 +275,9 @@ export async function runStepsInParallel(
   let firstFailure: { step: ValidationStep; output: string } | null = null;
 
   // Helper functions (extracted to reduce nesting depth)
-  const formatError = (error: { file?: string; line?: number; message?: string }) => {
-    const linePart = error.line ? `:${error.line}` : '';
-    const location = error.file ? `${error.file}${linePart}` : 'unknown';
-    return `${location} - ${error.message ?? 'No message'}`;
-  };
   const isWarning = (e: { severity?: string }) => e.severity === 'warning';
   const isNotWarning = (e: { severity?: string }) => e.severity !== 'warning';
+
   const ignoreStopErrors = () => { /* Process may have already exited */ };
 
   const results = await Promise.allSettled(
@@ -336,18 +288,8 @@ export async function runStepsInParallel(
 
         const startTime = Date.now();
 
-        // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
-        // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
-        // NOSONAR - Intentional shell execution of user-defined commands
-        const proc = spawn(step.command, [], {
-          stdio: 'pipe',
-          shell: true,  // Cross-platform: cmd.exe on Windows, sh on Unix
-          // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
-          detached: process.platform !== 'win32',
-          env: {
-            ...process.env,
-            ...env,
-          }
+        const proc = spawnCommand(step.command, {
+          env,
         });
 
         // Track process for potential kill
@@ -356,7 +298,9 @@ export async function runStepsInParallel(
         let stdout = '';
         let stderr = '';
 
-        proc.stdout.on('data', data => {
+        // spawnCommand always sets stdio: ['ignore', 'pipe', 'pipe'], so stdout/stderr are guaranteed non-null
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+        proc.stdout!.on('data', data => {
           const chunk = data.toString();
           // Strip ANSI escape codes to make output readable for humans and LLMs
           // These codes (e.g., \e[32m for colors) are noise in logs, YAML, and git notes
@@ -372,7 +316,8 @@ export async function runStepsInParallel(
             }
           }
         });
-        proc.stderr.on('data', data => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+        proc.stderr!.on('data', data => {
           const chunk = data.toString();
           // Strip ANSI escape codes from stderr as well
           const cleanChunk = stripAnsi(chunk);
@@ -383,38 +328,90 @@ export async function runStepsInParallel(
           }
         });
 
-        proc.on('close', code => {
+        // eslint-disable-next-line sonarjs/cognitive-complexity -- Complex handler for step completion, extraction, and fail-fast coordination
+        proc.on('close', exitCode => {
           const durationMs = Date.now() - startTime;
           const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
           const output = stdout + stderr;
           outputs.set(step.name, output);
 
+          // Normalize exit code (null means abnormal termination, treat as failure)
+          const code = exitCode ?? 1;
+
           const status = code === 0 ? '✅' : '❌';
           const result = code === 0 ? 'PASSED' : 'FAILED';
           log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
-          // Create base step result
-          const stepResult: StepResult = {
-            name: step.name,
-            passed: code === 0,
-            durationSecs,
-          };
+          // Extract errors ONLY from FAILED steps (code !== 0)
+          // Rationale: Passing tests have no failures to extract. Including empty extraction
+          // objects wastes tokens in LLM context. Only extract when there's value to provide.
+          let extraction;
+          let isCachedResult: boolean | undefined;
+          let outputFiles;
 
-          // Only run extractors on FAILED steps (code !== 0)
-          // Rationale: Passing tests have no failures to extract, extraction would always produce
-          // meaningless results (score: 0, no errors). Skipping saves CPU and reduces output noise.
           // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
           if (code !== 0 && output && output.trim()) {
-            const formatted = autoDetectAndExtract(step.name, output);
+            // Try parsing vibe-validate YAML output (from nested run commands)
+            // Uses shared parser that handles both RunResult and ValidationResult formats
+            const parsed = parseVibeValidateOutput(output);
 
-            // Extract structured failures/tests
-            stepResult.failedTests = formatted.errors?.map(formatError) ?? [];
+            if (parsed) {
+              // Use extraction from nested vibe-validate command
+              // This preserves the actual meaningful summary instead of generic "X error(s) from nested command"
+              extraction = parsed.extraction;
+              isCachedResult = parsed.isCachedResult;
+              outputFiles = parsed.outputFiles;
 
-            // Only include extraction quality metrics when developerFeedback is enabled
-            // This is for vibe-validate contributors to identify extraction improvement opportunities
-            if (developerFeedback) {
-              processDeveloperFeedback(stepResult, step.name, formatted, log, isWarning, isNotWarning);
+              // Log cache hit status if available (nested run was cached)
+              if (parsed.isCachedResult && verbose) {
+                log(`      ⚡ Step used cached result (${parsed.type} command)`);
+              }
+            } else {
+              // No vibe-validate YAML detected - use standard extraction
+              const rawExtraction = autoDetectAndExtract(output);
+
+              // Strip empty optional fields to save tokens
+              extraction = {
+                summary: rawExtraction.summary,
+                totalErrors: rawExtraction.totalErrors,
+                errors: rawExtraction.errors,
+                ...(rawExtraction.guidance?.trim() ? { guidance: rawExtraction.guidance } : {}),
+                ...(rawExtraction.errorSummary?.trim() ? { errorSummary: rawExtraction.errorSummary } : {}),
+                ...(rawExtraction.metadata ? { metadata: rawExtraction.metadata } : {}),
+              };
             }
+          } else if (output?.trim()) {
+            // Passing step (code === 0) - check if it was cached
+            const parsed = parseVibeValidateOutput(output);
+            if (parsed) {
+              isCachedResult = parsed.isCachedResult;
+              outputFiles = parsed.outputFiles;
+
+              // Log cache hit status if available
+              if (parsed.isCachedResult && verbose) {
+                log(`      ⚡ Step used cached result (${parsed.type} command)`);
+              }
+            }
+          }
+          // If passing step (code === 0), extraction remains undefined (token optimization)
+
+          // Create step result - extends CommandExecutionSchema (v0.15.0+)
+          const stepResult: StepResult = {
+            name: step.name,
+            command: step.command,
+            exitCode: code,
+            durationSecs,
+            passed: code === 0,
+            ...(isCachedResult !== undefined ? { isCachedResult } : {}), // Include cache status if available
+            ...(extraction ? { extraction } : {}), // Conditionally include extraction
+            ...(outputFiles ? { outputFiles } : {}), // Include output files for debugging (v0.15.1+)
+          };
+
+          // Only include extraction quality metrics when developerFeedback is enabled
+          // Skip if extraction already has metadata (from smart extractors) - that's more accurate
+          // This is for vibe-validate contributors to identify extraction improvement opportunities
+          if (developerFeedback && extraction && !extraction.metadata) {
+            processDeveloperFeedback(stepResult, extraction, log, isWarning, isNotWarning);
           }
 
           stepResults.push(stepResult);
@@ -459,36 +456,26 @@ function appendStepOutputsToLog(
 }
 
 /**
- * Create failed validation result with extracted errors
+ * Create failed validation result
+ *
+ * Note: Error extraction now happens at step level
+ * Each failed step in phaseResults has its own extraction field with structured errors
  */
 function createFailedValidationResult(
   failedStep: ValidationStep,
-  failedOutput: string,
   currentTreeHash: string,
   logPath: string,
   phaseResults: PhaseResult[]
 ): ValidationResult {
-  // Extract actionable failures (LLM-optimized)
-  const extracted = autoDetectAndExtract(failedStep.name, failedOutput);
-  const extractedOutput = extracted.cleanOutput.trim() || failedOutput;
-
-  // Use structured errors from extractor
-  const structuredFailures = extracted.errors.map(error => {
-    const linePart = error.line ? `:${error.line}` : '';
-    const location = error.file ? `${error.file}${linePart}` : 'unknown';
-    return `${location} - ${error.message ?? 'No message'}`;
-  });
-
+  // Field order optimized for LLM consumption
   return {
     passed: false,
     timestamp: new Date().toISOString(),
     treeHash: currentTreeHash,
+    summary: `${failedStep.name} failed`,
     failedStep: failedStep.name,
-    rerunCommand: failedStep.command,
-    failedTests: structuredFailures.length > 0 ? structuredFailures : undefined,
-    fullLogFile: logPath,
     phases: phaseResults,
-    failedStepOutput: extractedOutput,
+    fullLogFile: logPath,
   };
 }
 
@@ -529,7 +516,6 @@ function createFailedValidationResult(
  *   console.log('✅ Validation passed');
  * } else {
  *   console.error(`❌ Failed at step: ${result.failedStep}`);
- *   console.error(result.failedStepOutput);
  * }
  * ```
  *
@@ -581,18 +567,10 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     // Record phase result
     const phaseResult: PhaseResult = {
       name: phase.name,
-      durationSecs,
       passed: result.success,
+      durationSecs,
       steps: result.stepResults,
     };
-
-    // If phase failed, extract and include output (LLM-optimized, not raw)
-    if (!result.success && result.failedStep) {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-      const rawOutput = result.outputs.get(result.failedStep.name) || '';
-      const extracted = autoDetectAndExtract(result.failedStep.name, rawOutput);
-      phaseResult.output = extracted.cleanOutput.trim() || rawOutput;
-    }
 
     phaseResults.push(phaseResult);
 
@@ -602,11 +580,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
 
     // If phase failed, stop here and return failure result
     if (!result.success && result.failedStep) {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-      const failedOutput = result.outputs.get(result.failedStep.name) || '';
       return createFailedValidationResult(
         result.failedStep,
-        failedOutput,
         currentTreeHash,
         logPath,
         phaseResults
@@ -615,17 +590,15 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   }
 
   // All steps passed!
-  // IMPORTANT: Field order matches types.ts for YAML truncation safety
+  // Field order optimized for LLM consumption
   const validationResult: ValidationResult = {
     passed: true,
     timestamp: new Date().toISOString(),
     treeHash: currentTreeHash,
+    summary: 'Validation passed',
+    phases: phaseResults,
     fullLogFile: logPath,
-    phases: phaseResults,  // May contain output - at end for safety
   };
-
-  // State persistence moved to validate.ts via git notes (v0.12.0+)
-  // The state file is deprecated - git notes are now the source of truth
 
   return validationResult;
 }

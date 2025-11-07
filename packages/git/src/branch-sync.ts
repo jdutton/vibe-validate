@@ -40,7 +40,8 @@ export interface SyncCheckOptions {
 function execGit(args: string[]): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn('git', args, {
-      timeout: GIT_TIMEOUT
+      timeout: GIT_TIMEOUT,
+      stdio: ['ignore', 'pipe', 'pipe'], // No stdin (git commands shouldn't need interactive input), capture stdout/stderr
     });
 
     let stdout = '';
@@ -147,9 +148,8 @@ export class BranchSyncChecker {
     try {
       await this.gitExecutor(['rev-parse', '--verify', this.remoteBranch]);
       return true;
-    } catch (error) {
+    } catch {
       // Expected when remote branch doesn't exist
-      console.debug(`Remote branch ${this.remoteBranch} not found: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }

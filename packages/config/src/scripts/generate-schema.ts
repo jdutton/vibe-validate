@@ -2,7 +2,7 @@
 /**
  * Generate JSON Schema File
  *
- * Creates vibe-validate.schema.json in the package root for use in YAML configs.
+ * Creates config.schema.json in the package root for use in YAML configs.
  * This script runs during the build process.
  */
 
@@ -14,7 +14,7 @@ import { vibeValidateJsonSchema } from '../schema-export.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const packageRoot = join(__dirname, '..', '..');
-const schemaPath = join(packageRoot, 'vibe-validate.schema.json');
+const schemaPath = join(packageRoot, 'config.schema.json');
 
 // Generate and write schema file
 writeFileSync(
@@ -23,4 +23,4 @@ writeFileSync(
   'utf-8'
 );
 
-console.log('✓ Generated vibe-validate.schema.json');
+console.log('✓ Generated config.schema.json');

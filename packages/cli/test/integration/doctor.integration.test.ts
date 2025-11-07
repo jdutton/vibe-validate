@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 
+// Doctor integration tests - each spawns real CLI process (10-11s each)
+// Timeout handling improved based on dogfooding feedback (see commits)
 describe('Doctor Command Integration', () => {
   const cliPath = join(__dirname, '../../dist/bin.js');
   const projectRoot = join(__dirname, '../../../..');
@@ -14,6 +16,7 @@ describe('Doctor Command Integration', () => {
 
   /**
    * Helper to execute CLI and capture output/errors
+   * CRITICAL: Uses 15s timeout to prevent hung child processes (issue discovered 2025-11-06)
    */
   function executeCLI(args: string[]): { stdout: string; stderr: string; exitCode: number } {
     try {
@@ -21,6 +24,8 @@ describe('Doctor Command Integration', () => {
         cwd: projectRoot,
         encoding: 'utf8',
         stdio: 'pipe',
+        timeout: 15000, // 15s timeout - prevents hung processes
+        killSignal: 'SIGTERM', // Ensure child is killed on timeout
       });
       return { stdout, stderr: '', exitCode: 0 };
     } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
@@ -60,7 +65,7 @@ describe('Doctor Command Integration', () => {
 
     // Should show all checks passed (e.g., "14/14 checks passed")
     expect(stdout).toMatch(/📊 Results: (\d+)\/\1 checks passed/);
-  }, 60000); // 60s timeout for doctor command (can be slow on Windows)
+  }, 15000); // 15s timeout for doctor command (spawns real CLI process)
 
   it('should exit with status 0 in verbose mode when all checks pass', () => {
     // Per docs: "Exit code 0 - All critical checks passed"

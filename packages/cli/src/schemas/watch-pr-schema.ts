@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
 
 /**
  * Zod schema for watch-pr command result
@@ -38,8 +39,6 @@ export const WatchPRResultSchema = z.object({
             timestamp: z.string().optional(),
             treeHash: z.string().optional(),
             failedStep: z.string().optional(),
-            rerunCommand: z.string().optional(),
-            failedStepOutput: z.string().optional(),
             phases: z
               .array(
                 z.object({
@@ -52,6 +51,7 @@ export const WatchPRResultSchema = z.object({
                         passed: z.boolean(),
                         durationSecs: z.number().optional(),
                         output: z.string().optional(),
+                        extraction: ErrorExtractorResultSchema.optional(),
                       })
                     )
                     .optional(),

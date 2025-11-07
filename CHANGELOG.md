@@ -7,6 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0-rc.3] - 2025-11-06
+
+### 🐛 Bug Fixes
+
+**CRITICAL: Fixed umbrella package missing CLI binaries** (v0.15.0-rc.2 regression)
+- **Problem**: Installing `vibe-validate` (umbrella package) globally didn't expose `vv` or `vibe-validate` commands
+- **Root Cause**: The umbrella package only declared a dependency on `@vibe-validate/cli` but didn't expose its binaries
+- **Solution**:
+  - Added `bin` field to umbrella package pointing to wrapper scripts
+  - Updated wrappers to detect and delegate to CLI in umbrella package's `node_modules`
+  - Now supports 4 contexts: dev mode, local install, umbrella install (global/local), and direct CLI install
+- **Impact**: Global installs now work correctly: `npm install -g vibe-validate@rc` exposes both `vv` and `vibe-validate`
+
+## [0.15.0-rc.2] - 2025-11-06
+
+### 🐛 Bug Fixes
+
+**CRITICAL: Fixed `vv` command missing in global install** (v0.15.0-rc.1 regression)
+- **Problem**: The `vv` binary was defined in package.json but wasn't included in the published package due to symlink handling
+- **Solution**: Build script now copies `vv` as a real file (not symlink) so npm can package it properly
+- **Impact**: Global installs now have both `vv` and `vibe-validate` commands available
+- **Workaround for rc.1**: Use `vibe-validate` command instead of `vv`
+
+## [0.15.0-rc.1] - 2025-11-05
+
+**🚀 Release Candidate** - Install with `npm install -D vibe-validate@rc`
+
+Major update: Run command caching, updated YAML with published JSON Schema, strict validation, and enhanced IDE support.
+
+### ✨ New Features
+
+**Smart Command Wrapper with `vv` Alias**
+- New `vv` binary provides shortest invocation: `vv run npm test`
+- Context-aware execution: automatically detects dev mode, local install, or global install
+- Works seamlessly in both git and non-git directories
+- Saves typing for developers and AI agents - use `vv` anywhere instead of `npx vibe-validate`
+- Example: `vv run pytest tests/` instead of `npx vibe-validate run "pytest tests/"`
+
+**Run Command Caching**
+- Smart caching by git tree hash - instant results (<200ms) for unchanged code
+- Works in ANY language (Python, Rust, Go, etc.) - no config required
+- Flags: `--force` (bypass cache), `--check` (query cache status)
+- 90-95% context window reduction for AI agents, when extracting supported formats
+
+**Enhanced History Command**
+- `history show <hash> --all` - View validation runs + all cached run results
+- `history list --run` - List all run cache entries
+- `history prune --run` - Clean up run cache
+
+**Schema Type Safety, Publication, & IDE Support**
+- 5 JSON Schema files now published to npm and available via unpkg CDN
+- All result schemas now use `.strict()` mode (prevents typos/unknown fields)
+- `vibe-validate init` generates version-pinned schema URLs for perfect IDE autocomplete
+- Example: `$schema: https://unpkg.com/@vibe-validate/config@0.15.0-rc.1/config.schema.json`
+- Benefits: Stable URLs, version matching, no breakage when main branch changes
+
+### 🚨 BREAKING CHANGES
+
+**Schema Changes**:
+- Validate results, validate steps, and run results share common schema elements for consistency and clarity.
+
+**Git Notes Paths Changed**:
+- Validation history: `runs/{hash}` → `validate/{hash}`
+- Old v0.14.x history won't display (still exists, just hidden)
+- Run `vibe-validate history prune --all` to clean up (optional)
+
+**Run Command Caching** (behavioral):
+- `run` now returns cached results by default when code unchanged
+- Use `--force` to always re-execute
+
+### 🎨 Improvements
+
+**Natural Command-Line Syntax for `run`** (Issue #1)
+- `vv run echo test` now works naturally (no quotes needed!)
+- Options pass through correctly: `vv run eslint --max-warnings 0 src/`
+- Old quoted syntax still works for backwards compatibility: `vv run "npm test"`
+- Uses Commander.js `.allowUnknownOption()` to pass arguments through
+
+**Cleaner Verbose Help** (Issue #3)
+- Replaced `---` section separators with `***` to avoid confusion with YAML front matter
+- YAML document start markers (`---`) remain in code examples where appropriate
+
+**Simplified `history list` Command** (Issue #2)
+- Removed redundant `--all` flag from `history list --run`
+- Now just: `vv history list --run` (shows all run cache entries)
+- Cleaner, more intuitive interface
+
+### 📚 Documentation
+
+- New `docs/schemas.md` - Complete JSON Schema reference
+- Updated all examples to v0.15.0 format (removed deprecated fields)
+- Migration guide for upgrading from v0.14.x
+- Updated CLI reference with new natural syntax examples
+
 ## [0.14.3] - 2025-10-30
 
 ### 🐛 Bug Fixes
@@ -633,7 +727,7 @@ Run `vibe-validate doctor` to check your config for issues.
 ### 🐛 Bug Fixes
 
 - **Fixed IDE Autocomplete in Documentation** (Issue #14)
-  - Corrected schema URL in README examples: Now uses `vibe-validate.schema.json` (was: `schema.json`)
+  - Corrected schema URL in README examples: Now uses `config.schema.json` (was: `schema.json`)
   - Users following documentation will now get proper IDE autocomplete and validation
 
 ### 📝 Documentation
@@ -769,7 +863,7 @@ Run `vibe-validate doctor` to check your config for issues.
   - **CRITICAL FIX**: Use temporary GIT_INDEX_FILE to prevent corrupting git index during pre-commit hooks
   - Added `@vibe-validate/git` as dependency to `@vibe-validate/core` package
   - Ensures `validate` and `validate --check` calculate identical tree hashes for unchanged working tree
-  - Fixes broken caching mechanism that defeated the 312x speedup feature
+  - Fixes broken caching mechanism that defeated the 300x+ speedup feature
   - `--check` flag now accurately detects when validation is needed vs already passed
   - Added TDD test to verify deterministic hash calculation (Issue #8)
   - Removed deprecated non-deterministic `getWorkingTreeHash()` function from core package
@@ -817,7 +911,7 @@ Run `vibe-validate doctor` to check your config for issues.
 
 ### ✨ Features
 
-- **312x faster cached validation** (288ms vs 90s when code unchanged)
+- **300x+ faster cached validation** (sub-second vs ~90s when code unchanged)
 - **Git tree hash caching** - Content-based, deterministic
 - **Parallel phase execution** - Run independent checks simultaneously
 - **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue
@@ -837,8 +931,8 @@ Run `vibe-validate doctor` to check your config for issues.
 
 Real-world TypeScript Node.js app:
 - Full validation: 90.5s (parallel execution)
-- Cached validation: 0.288s
-- Speedup: 312x
+- Cached validation: Sub-second
+- Speedup: 300x+
 
 ### 📊 Test Coverage
 

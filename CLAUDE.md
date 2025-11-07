@@ -58,29 +58,29 @@ pnpm exec vibe-validate doctor  # Diagnose setup issues (run after upgrade!)
 
 ## LLM-Optimized Testing (Use This!)
 
-**CRITICAL for AI agents**: Use `vibe-validate run` to wrap test/validation commands. Saves 90-95% of context window by extracting only errors.
+**CRITICAL for AI agents**: Use `vv run` to wrap test/validation commands. Saves 90-95% of context window by extracting only errors.
 
 ### Quick Pattern
 ```bash
-vibe-validate run "<any-command>"
+vv run <any-command>
 ```
 
 ### Common Examples
 ```bash
 # Test single file (instead of: npx vitest <file>)
-vibe-validate run "npx vitest packages/cli/test/commands/run.test.ts"
+vv run npx vitest packages/cli/test/commands/run.test.ts
 
 # Test specific case (instead of: npx vitest -t "...")
-vibe-validate run "npx vitest -t 'should extract errors'"
+vv run npx vitest -t 'should extract errors'
 
 # Package tests (instead of: pnpm --filter @pkg test)
-vibe-validate run "pnpm --filter @vibe-validate/core test"
+vv run pnpm --filter @vibe-validate/core test
 
 # Type checking (instead of: pnpm typecheck)
-vibe-validate run "pnpm typecheck"
+vv run pnpm typecheck
 
 # Linting (instead of: pnpm lint)
-vibe-validate run "pnpm lint"
+vv run pnpm lint
 
 # Standard scripts are LLM-optimized by default
 pnpm test        # Wraps vitest with run
@@ -95,7 +95,7 @@ pnpm run "pnpm --filter @pkg test"
 
 ### Dogfooding During Development (CRITICAL!)
 
-**AI agents and developers MUST use `vibe-validate run` while working on vibe-validate itself.**
+**AI agents and developers MUST use `vv run` while working on vibe-validate itself.**
 
 **Why this matters:**
 - You're building a tool to save context window for AI agents
@@ -113,13 +113,13 @@ vitest run test/packaging.system.test.ts
 
 **Correct pattern (use the tool you're building):**
 ```bash
-# ✅ Always wrap with run during development
-pnpm run "npx vitest packages/cli/test/packaging.test.ts"
-pnpm run "pnpm --filter @vibe-validate/cli test"
+# ✅ Always wrap with vv run during development
+vv run npx vitest packages/cli/test/packaging.test.ts
+vv run pnpm --filter @vibe-validate/cli test
 pnpm test:system  # Already wrapped!
 ```
 
-**When you catch yourself typing raw vitest/npm/pnpm commands, STOP and use run instead.**
+**When you catch yourself typing raw vitest/npm/pnpm commands, STOP and use vv run instead.**
 
 ### Output Format (YAML)
 - `exitCode`: 0 (pass) or 1+ (fail)
@@ -173,8 +173,7 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 ### 2. LLM-First Output
 - Detect agent context (Claude Code, Cursor, etc.)
 - Strip ANSI codes and noise from errors
-- Provide actionable guidance in structured format (YAML/JSON)
-- Embed errors directly in state file (no log hunting)
+- Provide actionable guidance and concise extracted errors in structured YAML format
 
 ### 3. Git Tree Hash Caching
 - Uses deterministic `git write-tree` approach for content-based hashing
@@ -185,7 +184,6 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 - Validation always proceeds (never block the user)
 - Lock creation failure → proceed without lock
 - Git command failure → use timestamp fallback
-- Corrupted state file → proceed with validation
 
 ### 5. Flexible Configuration with Smart Defaults
 - Works out-of-box with minimal template
@@ -199,6 +197,7 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 - Node 20+ target (use modern features)
 - ESM modules (not CommonJS)
 - Explicit return types for public APIs
+- **Type definitions**: All YAML-serializable types MUST be Zod schemas (never manual interfaces). Use `z.infer<>` to derive TypeScript types. Manual interfaces only for non-serializable data (callbacks, functions).
 
 ### Testing
 - **Vitest** for all tests (fast, TypeScript-native)
@@ -465,7 +464,7 @@ Every time you run tests, validation, or encounter errors, ask yourself:
    - ❌ Bad: Generic errors with no recovery path
 
 3. **Does it respect your context window?**
-   - ✅ Good: Complete error details in state file, not in terminal
+   - ✅ Good: Complete error details in YAML output, not in terminal
    - ❌ Bad: Spamming terminal with verbose logs
 
 4. **Is the workflow deterministic?**

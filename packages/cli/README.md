@@ -18,15 +18,19 @@ The `@vibe-validate/cli` package provides a command-line interface for running v
 
 ## Installation
 
+**Recommended**: Install via the umbrella package:
+
 ```bash
-npm install -D @vibe-validate/cli
+npm install -D vibe-validate
 ```
 
 Or use directly via `npx`:
 
 ```bash
-npx @vibe-validate/cli validate
+npx vibe-validate validate
 ```
+
+> **Note**: This package is also available as `@vibe-validate/cli`, but we recommend using the umbrella package `vibe-validate` for simpler installation.
 
 ## Upgrading
 
@@ -371,7 +375,7 @@ Create `vibe-validate.config.yaml` in your project root:
 <!-- config:example -->
 ```yaml
 # JSON Schema for IDE autocomplete
-$schema: https://unpkg.com/@vibe-validate/config/vibe-validate.schema.json
+$schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 
 git:
   mainBranch: main
@@ -461,10 +465,26 @@ npx vibe-validate state
 passed: false
 timestamp: 2025-10-16T20:00:00.000Z
 treeHash: abc123...
+summary: "TypeScript type check failed"
 failedStep: TypeScript
-failedStepOutput: |
-  src/index.ts:10:5 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
-rerunCommand: pnpm typecheck
+phases:
+  - name: "Pre-Qualification"
+    passed: false
+    durationSecs: 2.5
+    steps:
+      - name: "TypeScript"
+        command: "pnpm typecheck"
+        exitCode: 1
+        durationSecs: 2.5
+        passed: false
+        extraction:
+          errors:
+            - file: src/index.ts
+              line: 10
+              column: 5
+              message: "error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'"
+          summary: "1 type error"
+          totalErrors: 1
 ```
 
 ## Integration with Pre-Commit Hooks

@@ -1,13 +1,13 @@
 {
   "name": "@vibe-validate/cli",
-  "version": "0.14.3",
+  "version": "0.15.0-rc.4",
   "description": "Command-line interface for vibe-validate validation framework",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "vibe-validate": "./dist/bin.js",
-    "vv": "./dist/bin.js"
+    "vibe-validate": "./bin/vibe-validate",
+    "vv": "./bin/vv"
   },
   "exports": {
     ".": {
@@ -17,12 +17,14 @@
   },
   "files": [
     "dist",
+    "bin",
     "config-templates",
     "watch-pr-result.schema.json",
+    "run-result.schema.json",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && node dist/scripts/generate-watch-pr-schema.js",
+    "build": "tsc && cp bin/vibe-validate dist/vibe-validate && rm -f bin/vv && cp bin/vibe-validate bin/vv && node dist/scripts/generate-watch-pr-schema.js && node dist/scripts/generate-run-result-schema.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

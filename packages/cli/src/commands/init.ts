@@ -299,6 +299,14 @@ function generateYamlConfig(templateName: string, gitConfig: DetectedGitConfig):
     gitSection.remoteOrigin = gitConfig.remoteOrigin;
   }
 
+  // Add version-pinned $schema URL for IDE validation
+  // Uses unpkg CDN to ensure schema matches installed CLI version
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const packageJsonPath = join(__dirname, '../../package.json');
+  const { version } = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as { version: string };
+  templateConfig.$schema = `https://unpkg.com/@vibe-validate/config@${version}/config.schema.json`;
+
   // Return the customized config
   return stringifyYaml(templateConfig, {
     indent: 2,

@@ -219,6 +219,7 @@ FAIL test/example.test.ts
     it('should extract vibe-validate state file from logs', async () => {
       const runData = { name: 'Test' };
       // GitHub Actions log format: "Job\tStep\tTimestamp Content"
+      // v0.15.0+ format with phases[].steps[].extraction
       const logs = `
 Some other log output
 Run validation\tDisplay state\t2025-10-20T10:00:00.000Z ==========================================
@@ -227,10 +228,19 @@ Run validation\tDisplay state\t2025-10-20T10:00:00.200Z ========================
 Run validation\tDisplay state\t2025-10-20T10:00:00.300Z passed: false
 Run validation\tDisplay state\t2025-10-20T10:00:00.400Z timestamp: '2025-10-20T10:00:00.000Z'
 Run validation\tDisplay state\t2025-10-20T10:00:00.500Z failedStep: Unit Tests
-Run validation\tDisplay state\t2025-10-20T10:00:00.600Z rerunCommand: pnpm test
-Run validation\tDisplay state\t2025-10-20T10:00:00.700Z failedStepOutput: |
-Run validation\tDisplay state\t2025-10-20T10:00:00.800Z   FAIL test/example.test.ts
-Run validation\tDisplay state\t2025-10-20T10:00:00.900Z ==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.600Z phases:
+Run validation\tDisplay state\t2025-10-20T10:00:00.700Z   - name: Testing
+Run validation\tDisplay state\t2025-10-20T10:00:00.800Z     passed: false
+Run validation\tDisplay state\t2025-10-20T10:00:00.900Z     steps:
+Run validation\tDisplay state\t2025-10-20T10:00:01.000Z       - name: Unit Tests
+Run validation\tDisplay state\t2025-10-20T10:00:01.100Z         command: pnpm test
+Run validation\tDisplay state\t2025-10-20T10:00:01.200Z         passed: false
+Run validation\tDisplay state\t2025-10-20T10:00:01.300Z         extraction:
+Run validation\tDisplay state\t2025-10-20T10:00:01.400Z           summary: "1 test failure"
+Run validation\tDisplay state\t2025-10-20T10:00:01.500Z           errors:
+Run validation\tDisplay state\t2025-10-20T10:00:01.600Z             - file: test/example.test.ts
+Run validation\tDisplay state\t2025-10-20T10:00:01.700Z               message: Test failed
+Run validation\tDisplay state\t2025-10-20T10:00:01.800Z ==========================================
 More log output after
 `;
 
@@ -243,7 +253,8 @@ More log output after
       expect(result.validationResult).toBeDefined();
       expect(result.validationResult?.passed).toBe(false);
       expect(result.validationResult?.failedStep).toBe('Unit Tests');
-      expect(result.validationResult?.rerunCommand).toBe('pnpm test');
+      // v0.15.0+: command is in phases[].steps[].command, not rerunCommand
+      expect(result.validationResult?.phases?.[0]?.steps?.[0]?.command).toBe('pnpm test');
     });
 
     it('should handle missing validation result gracefully', async () => {
@@ -263,6 +274,7 @@ More log output after
   describe('extractValidationResult', () => {
     it('should extract and parse YAML validation result', () => {
       // GitHub Actions log format: "Job\tStep\tTimestamp Content"
+      // v0.15.0+ format with phases[].steps[].command instead of rerunCommand
       const logs = `
 Some output before
 Run validation\tDisplay state\t2025-10-20T10:00:00.000Z ==========================================
@@ -270,18 +282,22 @@ Run validation\tDisplay state\t2025-10-20T10:00:00.100Z VALIDATION RESULT
 Run validation\tDisplay state\t2025-10-20T10:00:00.200Z ==========================================
 Run validation\tDisplay state\t2025-10-20T10:00:00.300Z passed: false
 Run validation\tDisplay state\t2025-10-20T10:00:00.400Z failedStep: TypeScript Type Check
-Run validation\tDisplay state\t2025-10-20T10:00:00.500Z rerunCommand: pnpm typecheck
-Run validation\tDisplay state\t2025-10-20T10:00:00.600Z ==========================================
+Run validation\tDisplay state\t2025-10-20T10:00:00.500Z phases:
+Run validation\tDisplay state\t2025-10-20T10:00:00.600Z   - name: Pre-Qualification
+Run validation\tDisplay state\t2025-10-20T10:00:00.700Z     steps:
+Run validation\tDisplay state\t2025-10-20T10:00:00.800Z       - name: TypeScript Type Check
+Run validation\tDisplay state\t2025-10-20T10:00:00.900Z         command: pnpm typecheck
+Run validation\tDisplay state\t2025-10-20T10:00:01.000Z ==========================================
 Output after
 `;
 
       const result = provider.extractValidationResult(logs);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         passed: false,
         failedStep: 'TypeScript Type Check',
-        rerunCommand: 'pnpm typecheck',
       });
+      expect(result?.phases?.[0]?.steps?.[0]?.command).toBe('pnpm typecheck');
     });
 
     it('should return null when validation result not found', () => {
@@ -330,8 +346,11 @@ Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Uni
 Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504607Z   - name: Testing
 Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504805Z     durationSecs: 33.3
 Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505013Z     passed: false
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505200Z     steps:
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505400Z       - name: Unit Tests with Coverage
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505600Z         command: pnpm test:coverage
+Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505800Z         passed: false
 Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4682467Z failedStep: Unit Tests with Coverage
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4682754Z rerunCommand: pnpm test:coverage
 Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4812713Z ==========================================
 `;
 
@@ -342,7 +361,8 @@ Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Uni
       expect(result?.timestamp).toBe('2025-10-22T12:37:45.190Z');
       expect(result?.treeHash).toBe('b131b1a1aa6eb1cf4bd4b23a71fd21560df01970');
       expect(result?.failedStep).toBe('Unit Tests with Coverage');
-      expect(result?.rerunCommand).toBe('pnpm test:coverage');
+      // v0.15.0+: command is in phases[].steps[].command, not rerunCommand
+      expect(result?.phases?.[1]?.steps?.[0]?.command).toBe('pnpm test:coverage');
       expect(result?.phases).toHaveLength(2);
       expect(result?.phases?.[0].name).toBe('Pre-Qualification');
       expect(result?.phases?.[0].passed).toBe(true);
@@ -351,7 +371,7 @@ Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Uni
     });
 
     it('should use concise error summary when validation result is available', () => {
-      // Real CI log with validation result
+      // Real CI log with validation result (v0.15.0+: uses step.command instead of rerunCommand)
       const logs = `
 Some other log lines
 Run validation\tValidate\t2025-10-22T12:37:45.000Z ==========================================
@@ -359,8 +379,12 @@ Run validation\tValidate\t2025-10-22T12:37:45.001Z VALIDATION RESULT
 Run validation\tValidate\t2025-10-22T12:37:45.002Z ==========================================
 Run validation\tValidate\t2025-10-22T12:37:45.003Z passed: false
 Run validation\tValidate\t2025-10-22T12:37:45.004Z failedStep: TypeScript Type Check
-Run validation\tValidate\t2025-10-22T12:37:45.005Z rerunCommand: pnpm typecheck
-Run validation\tValidate\t2025-10-22T12:37:45.006Z ==========================================
+Run validation\tValidate\t2025-10-22T12:37:45.005Z phases:
+Run validation\tValidate\t2025-10-22T12:37:45.006Z   - name: Pre-Qualification
+Run validation\tValidate\t2025-10-22T12:37:45.007Z     steps:
+Run validation\tValidate\t2025-10-22T12:37:45.008Z       - name: TypeScript Type Check
+Run validation\tValidate\t2025-10-22T12:37:45.009Z         command: pnpm typecheck
+Run validation\tValidate\t2025-10-22T12:37:45.010Z ==========================================
 ##[error]Process completed with exit code 1.
 `;
 

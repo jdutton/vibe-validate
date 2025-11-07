@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/extractors",
-  "version": "0.14.3",
+  "version": "0.15.0-rc.4",
   "description": "LLM-optimized error extractors for validation output",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,10 +12,11 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "error-extractor-result.schema.json"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node dist/scripts/generate-result-schema.js",
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -46,6 +47,10 @@
     "typescript": "^5.7.3",
     "vitest": "^3.2.4",
     "yaml": "^2.8.1"
+  },
+  "dependencies": {
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.6"
   },
   "engines": {
     "node": ">=20.0.0"

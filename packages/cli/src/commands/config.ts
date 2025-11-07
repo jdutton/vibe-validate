@@ -214,7 +214,7 @@ vibe-validate config --verbose
 1. Check YAML syntax (indentation, quotes)
 2. Verify required fields exist (validation.phases)
 3. See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
-4. Use JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+4. Use JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json
 
 **If config is not found:**
 \`\`\`bash

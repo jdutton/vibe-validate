@@ -156,9 +156,9 @@ export function extractPlaywrightErrors(output: string): ErrorExtractorResult {
   return {
     errors,
     summary,
-    totalCount: errors.length,
+    totalErrors: errors.length,
     guidance,
-    cleanOutput: formattedOutput,
+    errorSummary: formattedOutput,
     metadata,
   };
 }
@@ -271,14 +271,14 @@ function calculateQualityMetadata(errors: FormattedError[], issues: string[]): E
  */
 export function isPlaywrightOutput(output: string): boolean {
   // Look for distinctive Playwright markers
-  const cleanOutput = stripAnsiCodes(output);
+  const errorSummary = stripAnsiCodes(output);
 
   // Playwright uses ✘ symbol and .spec.ts files
-  const hasPlaywrightMarker = cleanOutput.includes('✘') && cleanOutput.includes('.spec.ts');
+  const hasPlaywrightMarker = errorSummary.includes('✘') && errorSummary.includes('.spec.ts');
 
   // Or has numbered failures with › separator
   // eslint-disable-next-line sonarjs/slow-regex -- Safe: only tests Playwright output format (controlled test framework output), not user input
-  const hasNumberedFailures = /^\s+\d+\)\s+.+\.spec\.ts:\d+:\d+\s+›/.test(cleanOutput);
+  const hasNumberedFailures = /^\s+\d+\)\s+.+\.spec\.ts:\d+:\d+\s+›/.test(errorSummary);
 
   return hasPlaywrightMarker || hasNumberedFailures;
 }

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Command } from 'commander';
 import { preCommitCommand } from '../../src/commands/pre-commit.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
@@ -53,7 +53,7 @@ vi.mock('../../src/utils/config-loader.js', async () => {
 describe('pre-commit command', () => {
   let testDir: string;
   let originalCwd: string;
-  let program: Command;
+  let env: CommanderTestEnv;
 
   beforeEach(() => {
     // Clear all mock calls from previous tests (prevents test pollution across test files)
@@ -69,13 +69,8 @@ describe('pre-commit command', () => {
     originalCwd = process.cwd();
     process.chdir(testDir);
 
-    // Create fresh Commander instance
-    program = new Command();
-    program.exitOverride(); // Prevent process.exit() from killing tests
-
-    // Spy on console methods to capture output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Setup Commander test environment
+    env = setupCommanderTest();
 
     // Reset mocks
     vi.mocked(core.runValidation).mockReset();
@@ -84,6 +79,8 @@ describe('pre-commit command', () => {
   });
 
   afterEach(() => {
+    env.cleanup();
+
     // Restore cwd
     process.chdir(originalCwd);
 
@@ -128,10 +125,10 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
         // Commander throws on exitOverride, expected
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -168,10 +165,10 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
         // Commander throws on exitOverride, expected
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -213,10 +210,10 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
         // Commander throws on exitOverride, expected
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -263,10 +260,10 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0); // Should succeed
@@ -302,10 +299,10 @@ describe('pre-commit command', () => {
         hasRemote: true,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
         throw new Error('Should have exited with error');
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -348,10 +345,10 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0); // Should succeed
@@ -390,10 +387,10 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0); // Should succeed
@@ -429,10 +426,10 @@ describe('pre-commit command', () => {
         hasRemote: true,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
         throw new Error('Should have exited with error');
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -477,10 +474,10 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
           expect(err.exitCode).toBe(0); // Should succeed
@@ -516,10 +513,10 @@ describe('pre-commit command', () => {
         hasRemote: true,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
         throw new Error('Should have exited with error');
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -588,10 +585,10 @@ describe('pre-commit command', () => {
       };
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();
@@ -650,10 +647,10 @@ describe('pre-commit command', () => {
         recorded: true,
       });
 
-      preCommitCommand(program);
+      preCommitCommand(env.program);
 
       try {
-        await program.parseAsync(['pre-commit'], { from: 'user' });
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (error: unknown) {
         // Commander.js throws on exitOverride - verify it's the expected error
         expect(error).toBeDefined();

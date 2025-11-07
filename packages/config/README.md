@@ -37,7 +37,7 @@ All templates: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/c
 
 <!-- config:example -->
 ```yaml
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+$schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 
 # Git settings
 git:
@@ -74,14 +74,25 @@ The `$schema` property enables IDE autocomplete and validation:
 
 <!-- config:partial -->
 ```yaml
-$schema: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json
+# Version-pinned (recommended for production)
+$schema: https://unpkg.com/@vibe-validate/config@0.15.0/config.schema.json
+
+# Latest version (auto-updates to newest)
+$schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 ```
+
+**Versioning Strategy:**
+- **Version-pinned URLs** - Match your installed package version, stable API
+- **Latest URLs** - Auto-update to newest schema, good for docs/prototyping
+- **`vibe-validate init`** - Automatically generates version-pinned URLs
 
 This gives you:
 - ✅ Autocomplete for all configuration properties
 - ✅ Inline validation errors
 - ✅ Hover documentation for each field
 - ✅ Type checking for YAML configs
+
+See [Schema Documentation](../../docs/schemas.md) for complete details on versioning and all published schemas.
 
 ## API (Programmatic Usage)
 

@@ -96,7 +96,7 @@ validation:
     it('should ignore $schema property in YAML config', async () => {
       const configPath = join(testDir, 'vibe-validate.config.yaml');
       const yamlWithSchema = `
-$schema: ./node_modules/@vibe-validate/config/vibe-validate.schema.json
+$schema: ./node_modules/@vibe-validate/config/config.schema.json
 validation:
   phases:
     - name: Schema Phase

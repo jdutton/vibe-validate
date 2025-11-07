@@ -29,3 +29,14 @@ export {
   type CleanupResult,
   type CleanupOptions
 } from './post-merge-cleanup.js';
+
+// Cache key encoding for run command
+export {
+  encodeRunCacheKey
+} from './cache-key.js';
+
+// YAML output detection
+export {
+  extractYamlContent,
+  extractYamlWithPreamble
+} from './yaml-detection.js';

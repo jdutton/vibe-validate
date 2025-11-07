@@ -4,6 +4,7 @@
 
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
+import { safeValidateResult } from '@vibe-validate/core';
 import type { HistoryNote } from './types.js';
 
 const GIT_TIMEOUT = 30000;
@@ -17,12 +18,12 @@ const GIT_OPTIONS = {
  * Read validation history note for a tree hash
  *
  * @param treeHash - Git tree hash
- * @param notesRef - Git notes ref (default: vibe-validate/runs)
+ * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns History note or null if not found
  */
 export async function readHistoryNote(
   treeHash: string,
-  notesRef: string = 'vibe-validate/runs'
+  notesRef: string = 'vibe-validate/validate'
 ): Promise<HistoryNote | null> {
   try {
     const yaml = execSync(
@@ -30,11 +31,41 @@ export async function readHistoryNote(
       GIT_OPTIONS
     );
 
-    const note = parseYaml(yaml) as HistoryNote;
-    return note;
-  } catch (error) {
+    const parsed = parseYaml(yaml);
+
+    // Validate as HistoryNote structure
+    if (!parsed || typeof parsed !== 'object' || !('runs' in parsed) || !Array.isArray(parsed.runs)) {
+      console.warn(`Invalid history note structure for ${treeHash} - missing runs array`);
+      return null;
+    }
+
+    // Validate each ValidationResult in runs array using safe validation
+    const validatedRuns = [];
+    for (const run of parsed.runs) {
+      if (!run.result) {
+        console.warn(`Run ${run.id} missing result field - skipping`);
+        continue;
+      }
+
+      const validationResult = safeValidateResult(run.result);
+      if (!validationResult.success) {
+        console.warn(`Invalid ValidationResult in run ${run.id}:`, validationResult.errors);
+        console.warn('Skipping corrupted run entry');
+        continue;
+      }
+
+      validatedRuns.push({
+        ...run,
+        result: validationResult.data,
+      });
+    }
+
+    return {
+      treeHash: parsed.treeHash ?? treeHash,
+      runs: validatedRuns,
+    } as HistoryNote;
+  } catch {
     // Note doesn't exist - this is expected for first-time validation
-    console.debug(`No history note for ${treeHash}: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
@@ -42,11 +73,11 @@ export async function readHistoryNote(
 /**
  * List all tree hashes with validation history
  *
- * @param notesRef - Git notes ref (default: vibe-validate/runs)
+ * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns Array of tree hashes with notes
  */
 export async function listHistoryTreeHashes(
-  notesRef: string = 'vibe-validate/runs'
+  notesRef: string = 'vibe-validate/validate'
 ): Promise<string[]> {
   try {
     const output = execSync(`git notes --ref=${notesRef} list`, GIT_OPTIONS);
@@ -66,9 +97,8 @@ export async function listHistoryTreeHashes(
       .filter(Boolean);
 
     return treeHashes;
-  } catch (error) {
+  } catch {
     // No notes exist yet - expected for new repos
-    console.debug(`No history notes found: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   }
 }
@@ -76,11 +106,11 @@ export async function listHistoryTreeHashes(
 /**
  * Get all validation history notes
  *
- * @param notesRef - Git notes ref (default: vibe-validate/runs)
+ * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns Array of all history notes
  */
 export async function getAllHistoryNotes(
-  notesRef: string = 'vibe-validate/runs'
+  notesRef: string = 'vibe-validate/validate'
 ): Promise<HistoryNote[]> {
   const treeHashes = await listHistoryTreeHashes(notesRef);
   const notes: HistoryNote[] = [];
@@ -99,12 +129,12 @@ export async function getAllHistoryNotes(
  * Check if validation history exists for a tree hash
  *
  * @param treeHash - Git tree hash
- * @param notesRef - Git notes ref (default: vibe-validate/runs)
+ * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns True if history exists
  */
 export async function hasHistoryForTree(
   treeHash: string,
-  notesRef: string = 'vibe-validate/runs'
+  notesRef: string = 'vibe-validate/validate'
 ): Promise<boolean> {
   const note = await readHistoryNote(treeHash, notesRef);
   return note !== null;

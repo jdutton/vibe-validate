@@ -130,7 +130,7 @@ export function formatDoctorConfigError(
   const suggestion = [
     'Fix validation errors shown above',
     'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
-    'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json',
+    'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json',
     'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates'
   ].join('\n   ');
 

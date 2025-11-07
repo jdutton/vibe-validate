@@ -1,0 +1,245 @@
+{
+  "$ref": "#/definitions/ValidationResult",
+  "definitions": {
+    "ValidationResult": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "treeHash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "isCachedResult": {
+          "type": "boolean"
+        },
+        "failedStep": {
+          "type": "string"
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "durationSecs": {
+                "type": "number"
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "exitCode": {
+                      "type": "integer"
+                    },
+                    "durationSecs": {
+                      "type": "number"
+                    },
+                    "extraction": {
+                      "type": "object",
+                      "properties": {
+                        "summary": {
+                          "type": "string"
+                        },
+                        "totalErrors": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "file": {
+                                "type": "string"
+                              },
+                              "line": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "column": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": [
+                                  "error",
+                                  "warning"
+                                ]
+                              },
+                              "context": {
+                                "type": "string"
+                              },
+                              "guidance": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "message"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "guidance": {
+                          "type": "string"
+                        },
+                        "errorSummary": {
+                          "type": "string"
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "detection": {
+                              "type": "object",
+                              "properties": {
+                                "extractor": {
+                                  "type": "string"
+                                },
+                                "confidence": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 100
+                                },
+                                "patterns": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "reason": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "extractor",
+                                "confidence",
+                                "patterns",
+                                "reason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "confidence": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "completeness": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "issues": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "suggestions": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "confidence",
+                            "completeness",
+                            "issues"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "summary",
+                        "totalErrors",
+                        "errors"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "passed": {
+                      "type": "boolean"
+                    },
+                    "isCachedResult": {
+                      "type": "boolean"
+                    },
+                    "outputFiles": {
+                      "type": "object",
+                      "properties": {
+                        "stdout": {
+                          "type": "string"
+                        },
+                        "stderr": {
+                          "type": "string"
+                        },
+                        "combined": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "combined"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "command",
+                    "exitCode",
+                    "durationSecs",
+                    "name",
+                    "passed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "name",
+              "passed",
+              "durationSecs",
+              "steps"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "fullLogFile": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp",
+        "treeHash",
+        "passed"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

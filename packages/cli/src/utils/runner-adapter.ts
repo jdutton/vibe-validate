@@ -79,8 +79,9 @@ function createVerboseCallbacks(yaml: boolean = false): Pick<ValidationConfig, '
         log(chalk.green(`  ✅ ${step.name} (${result.durationSecs}s)`));
       } else {
         log(chalk.red(`  ❌ ${step.name} failed (${result.durationSecs}s)`));
-        if (result.output) {
-          log(chalk.red(`     Error: ${result.output}`));
+        // v0.15.0: output field removed, extraction.summary used instead
+        if (result.extraction?.summary) {
+          log(chalk.red(`     ${result.extraction.summary}`));
         }
       }
     },

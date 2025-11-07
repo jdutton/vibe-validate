@@ -104,7 +104,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(16); // Total number of checks (includes secret scanning, deprecated state file checks, and history health)
+      expect(result.checks).toHaveLength(17); // Total number of checks (includes secret scanning, deprecated state file checks, cache migration, and history health)
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -218,7 +218,7 @@ describe('doctor command', () => {
       expect(configCheck?.message).toContain('Unrecognized key');
       expect(configCheck?.message).toContain('validation.phases.0.name: Required');
       expect(configCheck?.suggestion).toContain('Fix validation errors shown above');
-      expect(configCheck?.suggestion).toContain('https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/vibe-validate.schema.json');
+      expect(configCheck?.suggestion).toContain('https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json');
       expect(configCheck?.suggestion).toContain('https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates');
     });
 
@@ -258,7 +258,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verify that all 16 checks ran (not just the config check)
-      expect(result.checks).toHaveLength(16);
+      expect(result.checks).toHaveLength(17);
 
       // Config check should fail
       const configCheck = result.checks.find(c => c.name === 'Configuration valid');
@@ -271,10 +271,10 @@ describe('doctor command', () => {
       expect(result.checks.find(c => c.name === 'Git installed')?.passed).toBe(true);
       expect(result.checks.find(c => c.name === 'Git repository')?.passed).toBe(true);
 
-      // Summary should show 15/16 passed (only config check fails)
+      // Summary should show 16/17 passed (only config check fails)
       expect(result.allPassed).toBe(false);
-      expect(result.totalChecks).toBe(16);
-      expect(result.passedChecks).toBe(15);
+      expect(result.totalChecks).toBe(17);
+      expect(result.passedChecks).toBe(16);
     });
 
     it('should detect not in git repository', async () => {
@@ -409,7 +409,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verbose mode should return all checks
-      expect(result.checks).toHaveLength(16); // All checks including secret scanning, deprecated state file checks, and history health
+      expect(result.checks).toHaveLength(17); // All checks including secret scanning, deprecated state file checks, and history health
       expect(result.verboseMode).toBe(true);
     });
 
@@ -519,7 +519,7 @@ describe('doctor command', () => {
 
       // Verbose mode should show ALL 16 checks (including passing ones)
       expect(result.verboseMode).toBe(true);
-      expect(result.checks).toHaveLength(16); // All checks
+      expect(result.checks).toHaveLength(17); // All checks
       expect(result.allPassed).toBe(false); // Has failures
 
       const failedChecks = result.checks.filter(c => !c.passed);

@@ -34,17 +34,13 @@ jobs:
         run: pnpm -r build
       - name: Run validation (Unix)
         if: runner.os != 'Windows'
-        run: node packages/cli/dist/bin.js validate --yaml --verbose
-          1>validation-result.yaml || true
+        run: pnpm validate --yaml --verbose 1>validation-result.yaml || true
       - name: Run validation (Windows)
         if: runner.os == 'Windows'
         shell: powershell
-        run: >-
-          node packages/cli/dist/bin.js validate --yaml --verbose
-          1>validation-result.yaml
-
+        run: |-
+          pnpm validate --yaml --verbose 1>validation-result.yaml
           $exitCode = $LASTEXITCODE
-
           exit 0  # Always succeed to allow result display
       - name: Display validation result (Unix)
         if: always() && runner.os != 'Windows'
