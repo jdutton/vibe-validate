@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { execSync } from 'node:child_process';
 import yaml from 'yaml';
+import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-helpers.js';
 
 /**
  * Integration tests for the run command with REAL command execution
@@ -35,10 +36,9 @@ describe('run command integration', () => {
         _exitCode = error.status || 1;
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should unwrap to innermost command (not wrapper)
       expect(parsed.command).toBeDefined();
@@ -67,10 +67,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should have non-zero exit code
       expect(parsed.exitCode).toBe(1);
@@ -93,10 +92,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should preserve exit code 42
       expect(parsed.exitCode).toBe(42);
@@ -120,10 +118,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should have both in rawOutput (if present)
       expect(parsed.command).toBeDefined();
@@ -145,7 +142,7 @@ describe('run command integration', () => {
         });
         // Parse YAML output - opening delimiter only (no display flags)
         expect(firstRun).toMatch(/^---\n/);
-        const firstParsed = yaml.parse(firstRun.replace(/^---\n/, ''));
+        const firstParsed = parseRunYamlOutput(firstRun);
         expect(firstParsed.exitCode).toBe(0);
         expect(firstParsed.command).toBe('echo \'Cache test\'');
 
@@ -155,7 +152,7 @@ describe('run command integration', () => {
           stdio: ['pipe', 'pipe', 'pipe'],
         });
         expect(cachedRun).toMatch(/^---\n/);
-        const cachedParsed = yaml.parse(cachedRun.replace(/^---\n/, ''));
+        const cachedParsed = parseRunYamlOutput(cachedRun);
         expect(cachedParsed.exitCode).toBe(0);
 
         // Create a new file to change tree hash
@@ -168,7 +165,7 @@ describe('run command integration', () => {
           stdio: ['pipe', 'pipe', 'pipe'],
         });
         expect(thirdRun).toMatch(/^---\n/);
-        const thirdParsed = yaml.parse(thirdRun.replace(/^---\n/, ''));
+        const thirdParsed = parseRunYamlOutput(thirdRun);
         expect(thirdParsed.exitCode).toBe(0);
         expect(thirdParsed.command).toBe('echo \'Cache test\'');
 
@@ -196,7 +193,7 @@ describe('run command integration', () => {
       });
       // Parse YAML output - opening delimiter only (no display flags)
       expect(rootRun).toMatch(/^---\n/);
-      const rootParsed = yaml.parse(rootRun.replace(/^---\n/, ''));
+      const rootParsed = parseRunYamlOutput(rootRun);
 
       // Run same command text in subdirectory
       const subdirRun = execSync(`node ${absoluteCliPath} run "echo 'root'"`, {
@@ -205,7 +202,7 @@ describe('run command integration', () => {
         cwd: `${process.cwd()}/packages/cli`,
       });
       expect(subdirRun).toMatch(/^---\n/);
-      const subdirParsed = yaml.parse(subdirRun.replace(/^---\n/, ''));
+      const subdirParsed = parseRunYamlOutput(subdirRun);
 
       // Both should succeed
       expect(rootParsed.exitCode).toBe(0);
@@ -242,15 +239,15 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
+      // Parse YAML output
+      expectValidRunYaml(output);
       const yamlContent = output.replace(/^---\n/, '');
 
       // Should have YAML comment explaining caching is disabled
       expect(yamlContent).toContain('treeHash: unknown  # Not in git repository - caching disabled');
 
       // Parse YAML (comments are stripped during parsing)
-      const parsed = yaml.parse(yamlContent);
+      const parsed = parseRunYamlOutput(output);
 
       // Should have treeHash: unknown
       expect(parsed.treeHash).toBe('unknown');
@@ -342,10 +339,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should execute "echo --help" as a command
       expect(parsed.command).toBe('echo --help');
@@ -370,10 +366,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should preserve all flags in the command
       expect(parsed.command).toBe('echo -n test --unknown-flag');
@@ -396,10 +391,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // Should execute "node --help" as a command
       expect(parsed.command).toBe('node --help');
@@ -424,10 +418,9 @@ describe('run command integration', () => {
         output = err.stdout || '';
       }
 
-      // Parse YAML output - opening delimiter only (no display flags)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      // Parse YAML output
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
 
       // --force is handled by vv run, command should just be "echo test"
       expect(parsed.command).toBe('echo test');
@@ -552,9 +545,8 @@ describe('run command integration', () => {
       });
 
       // Parse YAML output - opening delimiter only (no display flags = no closing delimiter)
-      expect(output).toMatch(/^---\n/);
-      const yamlContent = output.replace(/^---\n/, '');
-      const parsed = yaml.parse(yamlContent);
+      expectValidRunYaml(output);
+      const parsed = parseRunYamlOutput(output);
       expect(parsed.exitCode).toBe(0);
 
       // Should NOT have closing delimiter or any output after YAML

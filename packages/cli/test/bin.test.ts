@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { initializeGitRepo } from './helpers/integration-setup-helpers.js';
 
 describe('bin.ts - CLI entry point', () => {
   let testDir: string;
@@ -572,10 +573,7 @@ describe('bin.ts - CLI entry point', () => {
 
     it('should execute sync-check command', async () => {
       // Initialize a git repo first (required for sync-check)
-      const { execSync } = await import('node:child_process');
-      execSync('git init', { cwd: testDir });
-      execSync('git config user.email "test@example.com"', { cwd: testDir });
-      execSync('git config user.name "Test User"', { cwd: testDir });
+      initializeGitRepo(testDir);
 
       const result = await executeCLI(['sync-check']);
 
@@ -642,9 +640,7 @@ git:
 
       // Initialize git (required for validation)
       const { execSync } = await import('node:child_process');
-      execSync('git init', { cwd: testDir });
-      execSync('git config user.email "test@example.com"', { cwd: testDir });
-      execSync('git config user.name "Test User"', { cwd: testDir });
+      initializeGitRepo(testDir);
       execSync('git add .', { cwd: testDir });
       execSync('git commit -m "Initial commit"', { cwd: testDir });
 
@@ -682,9 +678,7 @@ git:
 
       // Initialize git
       const { execSync } = await import('node:child_process');
-      execSync('git init', { cwd: testDir });
-      execSync('git config user.email "test@example.com"', { cwd: testDir });
-      execSync('git config user.name "Test User"', { cwd: testDir });
+      initializeGitRepo(testDir);
       execSync('git add .', { cwd: testDir });
       execSync('git commit -m "Initial commit"', { cwd: testDir });
 
@@ -723,9 +717,7 @@ git:
 
       // Initialize git
       const { execSync } = await import('node:child_process');
-      execSync('git init', { cwd: testDir });
-      execSync('git config user.email "test@example.com"', { cwd: testDir });
-      execSync('git config user.name "Test User"', { cwd: testDir });
+      initializeGitRepo(testDir);
       execSync('git add .', { cwd: testDir });
       execSync('git commit -m "Initial commit"', { cwd: testDir });
 
