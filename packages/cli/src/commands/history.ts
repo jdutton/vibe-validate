@@ -24,6 +24,54 @@ import { findConfigPath } from '../utils/config-loader.js';
 type ValidationRun = HistoryNote['runs'][0] & { treeHash: string };
 
 /**
+ * Display a single run cache entry in human-readable format
+ *
+ * @param entry - The run cache entry to display
+ * @param index - The index of the entry (for numbering)
+ * @param detailed - If true, show additional details like exit code and error samples
+ */
+function displayRunCacheEntry(entry: RunCacheNote, index: number, detailed = false): void {
+  const timestamp = new Date(entry.timestamp).toLocaleString();
+  const status = entry.exitCode === 0 ? '✓ PASSED' : '✗ FAILED';
+  const duration = entry.durationSecs.toFixed(1);
+
+  console.log(`Cache Entry #${index + 1}:`);
+  console.log(`  Command: ${entry.command}`);
+  if (entry.workdir) {
+    console.log(`  Working Directory: ${entry.workdir}`);
+  }
+  console.log(`  Timestamp: ${timestamp}`);
+  console.log(`  Status: ${status}`);
+
+  if (detailed) {
+    console.log(`  Exit Code: ${entry.exitCode}`);
+    if (entry.durationSecs > 0) {
+      console.log(`  Duration: ${duration}s`);
+    }
+  } else {
+    console.log(`  Duration: ${duration}s`);
+  }
+
+  if (entry.extraction && entry.extraction.errors.length > 0) {
+    console.log(`  Errors: ${entry.extraction.errors.length}`);
+
+    if (detailed) {
+      // Show first 3 error samples
+      for (const error of entry.extraction.errors.slice(0, 3)) {
+        const file = error.file ?? '(no file)';
+        const lineInfo = error.line ? `:${error.line}` : '';
+        console.log(`    - ${file}${lineInfo} - ${error.message.substring(0, 80)}`);
+      }
+      if (entry.extraction.errors.length > 3) {
+        console.log(`    ... and ${entry.extraction.errors.length - 3} more errors`);
+      }
+    }
+  }
+
+  console.log('');
+}
+
+/**
  * Register history command
  */
 export function historyCommand(program: Command): void {
@@ -348,23 +396,7 @@ async function showHistory(
         console.log(`Total Cached Commands: ${runCacheEntries.length}\n`);
 
         for (let i = 0; i < runCacheEntries.length; i++) {
-          const entry = runCacheEntries[i];
-          const timestamp = new Date(entry.timestamp).toLocaleString();
-          const status = entry.exitCode === 0 ? '✓ PASSED' : '✗ FAILED';
-          const duration = entry.durationSecs.toFixed(1);
-
-          console.log(`Cache Entry #${i + 1}:`);
-          console.log(`  Command: ${entry.command}`);
-          if (entry.workdir) {
-            console.log(`  Working Directory: ${entry.workdir}`);
-          }
-          console.log(`  Timestamp: ${timestamp}`);
-          console.log(`  Status: ${status}`);
-          console.log(`  Duration: ${duration}s`);
-          if (entry.extraction && entry.extraction.errors.length > 0) {
-            console.log(`  Errors: ${entry.extraction.errors.length}`);
-          }
-          console.log('');
+          displayRunCacheEntry(runCacheEntries[i], i);
         }
       }
       return;
@@ -434,37 +466,7 @@ async function showHistory(
         console.log(`Total Cached Commands: ${runCacheEntries.length}\n`);
 
         for (let i = 0; i < runCacheEntries.length; i++) {
-          const entry = runCacheEntries[i];
-          const timestamp = new Date(entry.timestamp).toLocaleString();
-          const status = entry.exitCode === 0 ? '✓ PASSED' : '✗ FAILED';
-          const duration = entry.durationSecs.toFixed(1);
-
-          console.log(`Cache Entry #${i + 1}:`);
-          console.log(`  Command: ${entry.command}`);
-          if (entry.workdir) {
-            console.log(`  Working Directory: ${entry.workdir}`);
-          }
-          console.log(`  Timestamp: ${timestamp}`);
-          console.log(`  Status: ${status}`);
-          console.log(`  Exit Code: ${entry.exitCode}`);
-          if (entry.durationSecs > 0) {
-            console.log(`  Duration: ${duration}s`);
-          }
-
-          if (entry.extraction && entry.extraction.errors.length > 0) {
-            console.log(`  Errors: ${entry.extraction.errors.length}`);
-            for (const error of entry.extraction.errors.slice(0, 3)) {
-              // Show first 3 errors
-              const file = error.file ?? '(no file)';
-              const lineInfo = error.line ? `:${error.line}` : '';
-              console.log(`    - ${file}${lineInfo} - ${error.message.substring(0, 80)}`);
-            }
-            if (entry.extraction.errors.length > 3) {
-              console.log(`    ... and ${entry.extraction.errors.length - 3} more errors`);
-            }
-          }
-
-          console.log('');
+          displayRunCacheEntry(runCacheEntries[i], i, true);
         }
       } else if (options.all && runCacheEntries.length === 0) {
         console.log('\nNo run cache entries found for this tree hash.');

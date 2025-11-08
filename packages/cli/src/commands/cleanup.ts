@@ -7,7 +7,7 @@
 import type { Command } from 'commander';
 import { cleanupMergedBranches } from '@vibe-validate/git';
 import { cleanupOldTempFiles, getTempStorageInfo, formatBytes } from '../utils/temp-files.js';
-import { stringify as stringifyYaml } from 'yaml';
+import { outputYamlResult } from '../utils/yaml-output.js';
 import chalk from 'chalk';
 
 export function cleanupCommand(program: Command): void {
@@ -31,24 +31,7 @@ export function cleanupCommand(program: Command): void {
 
         // Output based on yaml flag
         if (options.yaml) {
-          // YAML mode: Output structured result to stdout
-          // Small delay to ensure stderr is flushed
-          await new Promise(resolve => setTimeout(resolve, 10));
-
-          // RFC 4627 separator
-          process.stdout.write('---\n');
-
-          // Write pure YAML
-          process.stdout.write(stringifyYaml(result));
-
-          // CRITICAL: Wait for stdout to flush before exiting
-          await new Promise<void>(resolve => {
-            if (process.stdout.write('')) {
-              resolve();
-            } else {
-              process.stdout.once('drain', resolve);
-            }
-          });
+          await outputYamlResult(result);
         } else {
           // Human-friendly format
           displayHumanCleanup(result, options.dryRun);
@@ -102,16 +85,7 @@ export function cleanupCommand(program: Command): void {
         };
 
         if (options.yaml) {
-          await new Promise(resolve => setTimeout(resolve, 10));
-          process.stdout.write('---\n');
-          process.stdout.write(stringifyYaml(outputResult));
-          await new Promise<void>(resolve => {
-            if (process.stdout.write('')) {
-              resolve();
-            } else {
-              process.stdout.once('drain', resolve);
-            }
-          });
+          await outputYamlResult(outputResult);
         } else {
           displayTempCleanup(outputResult);
         }
