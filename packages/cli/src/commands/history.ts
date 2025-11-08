@@ -4,6 +4,7 @@
 
 import { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
+import { getGitTreeHash } from '@vibe-validate/git';
 import {
   readHistoryNote,
   getAllHistoryNotes,
@@ -17,6 +18,7 @@ import {
   type HistoryNote,
   type RunCacheNote,
 } from '@vibe-validate/history';
+import { findConfigPath } from '../utils/config-loader.js';
 
 // Type for flattened validation run with tree hash
 type ValidationRun = HistoryNote['runs'][0] & { treeHash: string };
@@ -43,8 +45,8 @@ export function historyCommand(program: Command): void {
 
   // history show
   history
-    .command('show <tree-hash>')
-    .description('Show validation history for specific tree hash')
+    .command('show [tree-hash]')
+    .description('Show validation history (defaults to current tree hash if not specified)')
     .option('--all', 'Show all validation runs AND run cache entries')
     .option('--yaml', 'Output in YAML format (default: pretty print)')
     .action(async (treeHash, options) => {
@@ -300,19 +302,23 @@ async function listHistory(options: {
 }
 
 /**
- * Show history for specific tree hash
+ * Show history for specific tree hash (or current tree if not specified)
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 19 acceptable for history display command (coordinates YAML vs pretty-print output, validation+run cache display, error handling, and metadata formatting)
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity acceptable for history display command (coordinates YAML vs pretty-print output, validation+run cache display, error handling, metadata formatting, and smart fallback logic)
 async function showHistory(
-  treeHash: string,
+  treeHash: string | undefined,
   options: { all?: boolean; yaml?: boolean }
 ): Promise<void> {
   try {
+    // If no tree hash specified, use current tree hash
+    treeHash ??= await getGitTreeHash();
+
     const note = await readHistoryNote(treeHash);
     let runCacheEntries: RunCacheNote[] = [];
 
-    // Load run cache if --all flag is specified
-    if (options.all) {
+    // Load run cache if --all flag is specified OR if no validation config exists (smart fallback)
+    const hasConfig = findConfigPath() !== null;
+    if (options.all || (!hasConfig && !note)) {
       runCacheEntries = await getAllRunCacheForTree(treeHash);
     }
 
@@ -320,6 +326,48 @@ async function showHistory(
       console.error(`No validation history or run cache found for tree hash: ${treeHash}`);
       console.error(`\nRun 'vibe-validate history list' to see available tree hashes`);
       process.exit(1);
+    }
+
+    // Smart fallback: If no validation history but have run cache, show run cache
+    if (!note && runCacheEntries.length > 0) {
+      if (options.yaml) {
+        // YAML mode: Output run cache only
+        await new Promise(resolve => setTimeout(resolve, 10));
+        process.stdout.write('---\n');
+        process.stdout.write(stringifyYaml({ runCache: runCacheEntries }));
+        await new Promise<void>(resolve => {
+          if (process.stdout.write('')) {
+            resolve();
+          } else {
+            process.stdout.once('drain', resolve);
+          }
+        });
+      } else {
+        // Pretty print run cache only
+        console.log(`\nRun Cache for Tree Hash: ${treeHash}`);
+        console.log(`Total Cached Commands: ${runCacheEntries.length}\n`);
+
+        for (let i = 0; i < runCacheEntries.length; i++) {
+          const entry = runCacheEntries[i];
+          const timestamp = new Date(entry.timestamp).toLocaleString();
+          const status = entry.exitCode === 0 ? '✓ PASSED' : '✗ FAILED';
+          const duration = entry.durationSecs.toFixed(1);
+
+          console.log(`Cache Entry #${i + 1}:`);
+          console.log(`  Command: ${entry.command}`);
+          if (entry.workdir) {
+            console.log(`  Working Directory: ${entry.workdir}`);
+          }
+          console.log(`  Timestamp: ${timestamp}`);
+          console.log(`  Status: ${status}`);
+          console.log(`  Duration: ${duration}s`);
+          if (entry.extraction && entry.extraction.errors.length > 0) {
+            console.log(`  Errors: ${entry.extraction.errors.length}`);
+          }
+          console.log('');
+        }
+      }
+      return;
     }
 
     if (options.yaml) {

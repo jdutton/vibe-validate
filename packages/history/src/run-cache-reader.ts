@@ -110,6 +110,9 @@ export async function getAllRunCacheForTree(treeHash: string): Promise<RunCacheN
     }
   }
 
+  // Sort by timestamp (newest first) for deterministic ordering
+  notes.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
   return notes;
 }
 

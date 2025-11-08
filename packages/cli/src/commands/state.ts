@@ -8,111 +8,163 @@ import type { Command } from 'commander';
 import chalk from 'chalk';
 import { stringify as stringifyYaml } from 'yaml';
 import { getGitTreeHash } from '@vibe-validate/git';
-import { readHistoryNote, hasHistoryForTree } from '@vibe-validate/history';
+import { readHistoryNote, hasHistoryForTree, getAllRunCacheForTree, type RunCacheNote } from '@vibe-validate/history';
 import type { ValidationResult } from '@vibe-validate/core';
+import { findConfigPath } from '../utils/config-loader.js';
 
 export function stateCommand(program: Command): void {
   program
     .command('state')
-    .description('Show current validation state from git notes')
+    .description('Show current validation state from git notes (or run cache if no config)')
     .option('-v, --verbose', 'Show full error output without truncation')
+    .option('--runs', 'Show only run cache (not validation history)')
+    .option('--all', 'Show both validation history and run cache')
     .action(async (options) => {
       try {
-        // Get current tree hash
-        const treeHash = await getGitTreeHash();
-
-        // Check if history exists for current tree
-        const hasHistory = await hasHistoryForTree(treeHash);
-
-        if (!hasHistory) {
-          // Always show tree hash, even when no history exists (helpful for debugging)
-          const noStateOutput = {
-            exists: false,
-            treeHash: treeHash,
-          };
-          console.log(stringifyYaml(noStateOutput));
-
-          if (options.verbose) {
-            console.log(chalk.gray('ℹ️  No validation state found for current worktree'));
-            console.log(chalk.gray('   Run: vibe-validate validate'));
-          }
-          process.exit(0);
-        }
-
-        // Read history note
-        const historyNote = await readHistoryNote(treeHash);
-
-        if (!historyNote || historyNote.runs.length === 0) {
-          // Always show tree hash, even when no runs exist
-          const noStateOutput = {
-            exists: false,
-            treeHash: treeHash,
-          };
-          console.log(stringifyYaml(noStateOutput));
-
-          if (options.verbose) {
-            console.log(chalk.gray('ℹ️  No validation runs found for current worktree'));
-          }
-          process.exit(0);
-        }
-
-        // Get most recent run
-        const mostRecentRun = historyNote.runs[historyNote.runs.length - 1];
-        const result = mostRecentRun.result;
-
-        // Convert to state format
-        const state: ValidationResult = {
-          passed: result.passed,
-          timestamp: result.timestamp,
-          treeHash: result.treeHash,
-          summary: result.summary,
-          failedStep: result.failedStep,
-          phases: result.phases,
-          fullLogFile: result.fullLogFile,
-        };
-
-        // Output YAML format (always)
-        const yamlContent = stringifyYaml(state);
-
-        if (options.verbose) {
-          // Verbose mode: show full output with colors and explanations
-          displayVerboseState(state, yamlContent, mostRecentRun.branch);
-        } else {
-          // Minimal mode: just the YAML content
-          console.log(yamlContent);
-        }
-
-        process.exit(0);
+        await executeStateCommand(options);
       } catch (error) {
-        if (error instanceof Error && error.message.includes('not a git repository')) {
-          // Not in git repo - show structured output
-          const noGitOutput = {
-            exists: false,
-            error: 'Not in git repository',
-          };
-          console.log(stringifyYaml(noGitOutput));
-
-          if (options.verbose) {
-            console.log(chalk.gray('ℹ️  Not in a git repository'));
-            console.log(chalk.gray('   Validation history requires git'));
-          }
-          process.exit(0);
-        }
-
-        console.error(chalk.red('❌ Failed to read validation state:'), error);
-        process.exit(1);
+        handleStateError(error, options.verbose);
       }
     });
 }
 
 /**
- * Display validation state in verbose format with colors and explanations
+ * Execute the state command logic
  */
-function displayVerboseState(state: ValidationResult, yamlContent: string, branch: string): void {
-  // First show the raw YAML
-  console.log(yamlContent);
+async function executeStateCommand(options: { verbose?: boolean; runs?: boolean; all?: boolean }): Promise<void> {
+  const treeHash = await getGitTreeHash();
+  const hasConfig = findConfigPath() !== null;
+  const showRunsOnly = options.runs === true;
+  const showAll = options.all === true;
 
-  // Then add colored summary and explanations
+  // Load data
+  const validationHistory = showRunsOnly ? null : await loadValidationHistory(treeHash);
+  const runCacheEntries = (showRunsOnly || showAll || (!hasConfig && !validationHistory))
+    ? await getAllRunCacheForTree(treeHash)
+    : [];
+
+  // Determine output
+  const output = determineOutput(validationHistory, runCacheEntries, showRunsOnly, showAll);
+
+  // Handle no data case
+  if (!output) {
+    displayNoDataMessage(treeHash, options.verbose);
+    process.exit(0);
+  }
+
+  // Output YAML and optional verbose summary
+  console.log(stringifyYaml(output));
+
+  if (options.verbose) {
+    displayVerboseOutput(validationHistory, runCacheEntries, showRunsOnly, showAll);
+  }
+
+  process.exit(0);
+}
+
+/**
+ * Load validation history for current tree
+ */
+async function loadValidationHistory(treeHash: string): Promise<ValidationResult | null> {
+  const hasHistory = await hasHistoryForTree(treeHash);
+  if (!hasHistory) return null;
+
+  const historyNote = await readHistoryNote(treeHash);
+  if (!historyNote || historyNote.runs.length === 0) return null;
+
+  const mostRecentRun = historyNote.runs[historyNote.runs.length - 1];
+  return {
+    passed: mostRecentRun.result.passed,
+    timestamp: mostRecentRun.result.timestamp,
+    treeHash: mostRecentRun.result.treeHash,
+    summary: mostRecentRun.result.summary,
+    failedStep: mostRecentRun.result.failedStep,
+    phases: mostRecentRun.result.phases,
+    fullLogFile: mostRecentRun.result.fullLogFile,
+  };
+}
+
+/**
+ * Determine what output to show based on data and flags
+ */
+function determineOutput(
+  validationHistory: ValidationResult | null,
+  runCacheEntries: RunCacheNote[],
+  showRunsOnly: boolean,
+  showAll: boolean
+): ValidationResult | { runCache: RunCacheNote[] } | { validation: ValidationResult | null; runCache: RunCacheNote[] } | null {
+  if (showRunsOnly) {
+    return { runCache: runCacheEntries };
+  }
+
+  if (showAll) {
+    return { validation: validationHistory, runCache: runCacheEntries };
+  }
+
+  if (validationHistory) {
+    return validationHistory;
+  }
+
+  if (runCacheEntries.length > 0) {
+    return { runCache: runCacheEntries };
+  }
+
+  return null;
+}
+
+/**
+ * Display message when no data is available
+ */
+function displayNoDataMessage(treeHash: string, verbose?: boolean): void {
+  console.log(stringifyYaml({ exists: false, treeHash }));
+
+  if (verbose) {
+    console.log(chalk.gray('ℹ️  No validation or run cache found for current worktree'));
+    console.log(chalk.gray('   Run: vibe-validate validate'));
+    console.log(chalk.gray('   Or:  vv run <command>'));
+  }
+}
+
+/**
+ * Display verbose output summaries
+ */
+function displayVerboseOutput(
+  validationHistory: ValidationResult | null,
+  runCacheEntries: RunCacheNote[],
+  showRunsOnly: boolean,
+  showAll: boolean
+): void {
+  if (validationHistory && !showRunsOnly) {
+    displayVerboseSummary(validationHistory);
+  }
+
+  if (runCacheEntries.length > 0 && (showRunsOnly || showAll)) {
+    displayRunCacheSummary(runCacheEntries);
+  }
+}
+
+/**
+ * Handle errors from state command
+ */
+function handleStateError(error: unknown, verbose?: boolean): void {
+  if (error instanceof Error && error.message.includes('not a git repository')) {
+    console.log(stringifyYaml({ exists: false, error: 'Not in git repository' }));
+
+    if (verbose) {
+      console.log(chalk.gray('ℹ️  Not in a git repository'));
+      console.log(chalk.gray('   Validation history requires git'));
+    }
+    process.exit(0);
+  }
+
+  console.error(chalk.red('❌ Failed to read validation state:'), error);
+  process.exit(1);
+}
+
+/**
+ * Display validation summary in verbose format
+ */
+function displayVerboseSummary(state: ValidationResult): void {
   console.log(chalk.gray('─'.repeat(50)));
   console.log(chalk.blue('📊 Validation State Summary'));
   console.log(chalk.gray('─'.repeat(50)));
@@ -130,9 +182,6 @@ function displayVerboseState(state: ValidationResult, yamlContent: string, branc
 
   // Tree hash
   console.log(chalk.gray(`🌳 Git Tree Hash: ${state.treeHash.substring(0, 12)}...`));
-
-  // Branch
-  console.log(chalk.gray(`🌿 Branch: ${branch}`));
 
   // Failed step details (if any)
   if (!state.passed && state.failedStep) {
@@ -161,6 +210,36 @@ function displayVerboseState(state: ValidationResult, yamlContent: string, branc
   }
 
   console.log(chalk.gray('\n💡 Tip: View full history with: vibe-validate history list'));
+}
+
+/**
+ * Display run cache summary in verbose format
+ */
+function displayRunCacheSummary(runCache: RunCacheNote[]): void {
+  console.log(chalk.gray('─'.repeat(50)));
+  console.log(chalk.blue('🏃 Run Cache Summary'));
+  console.log(chalk.gray('─'.repeat(50)));
+
+  console.log(chalk.gray(`📦 Total cached runs: ${runCache.length}`));
+
+  if (runCache.length > 0) {
+    const passed = runCache.filter(r => r.exitCode === 0).length;
+    const failed = runCache.length - passed;
+
+    console.log(chalk.green(`✅ Passed: ${passed}`));
+    if (failed > 0) {
+      console.log(chalk.red(`❌ Failed: ${failed}`));
+    }
+
+    // Show most recent run
+    const mostRecent = runCache[0]; // Already sorted newest first
+    console.log(chalk.gray(`\n⏰ Most recent: ${new Date(mostRecent.timestamp).toLocaleString()}`));
+    console.log(chalk.gray(`   Command: ${mostRecent.command}`));
+    console.log(chalk.gray(`   Status: ${mostRecent.exitCode === 0 ? '✓ PASSED' : '✗ FAILED'}`));
+  }
+
+  console.log(chalk.gray('─'.repeat(50)));
+  console.log(chalk.gray('\n💡 Tip: View run history with: vv history show --all'));
 }
 
 /**

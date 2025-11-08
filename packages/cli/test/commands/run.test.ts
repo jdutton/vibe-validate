@@ -925,9 +925,6 @@ exitCode: "not a number"
 
       runCommand(env.program);
 
-      // Spy on console.error to verify error handling
-      const consoleErrorSpy = vi.spyOn(console, 'error');
-
       try {
         await env.program.parseAsync(['run', 'vibe-validate run "npm test"'], { from: 'user' });
       } catch (error: unknown) {
@@ -936,12 +933,7 @@ exitCode: "not a number"
         // Expected exit
       }
 
-      // Should log warning and fallback to extraction
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Warning: Failed to parse nested YAML output:',
-        expect.anything()
-      );
-
+      // Should fallback to extraction (no warning - nested vv run is normal)
       const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
         .map(call => call[0])
         .join('');
