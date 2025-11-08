@@ -13,26 +13,42 @@
 | Test Extractor Duplication | 49 lines × 2 files = ~100 lines |
 | Overall Duplication | 2.26% |
 
-### After Refactoring
+### After Refactoring (Round 1: Test Extractors)
 | Metric | Value |
 |--------|-------|
 | TypeScript Duplication | **0.27%** (55 lines across 3 clones) |
 | Test Extractor Duplication | **✅ Eliminated** |
-| Overall Duplication | **0.27%** (focused scan) |
-| **Improvement** | **🚀 88% reduction** |
+| **Improvement** | **🚀 88% reduction from baseline** |
+
+### After Refactoring (Round 2: CLI Utilities) - FINAL
+| Metric | Value |
+|--------|-------|
+| TypeScript Duplication | **0.07%** (14 lines across 1 clone) |
+| Total Duplicated Lines | **14 lines** (down from 479) |
+| Total Clones | **1** (down from 33) |
+| **Total Improvement** | **🎉 97% reduction from baseline** |
 
 ### Actions Taken ✅
 1. ✅ **Created shared test framework utilities** (`test-framework-utils.ts`)
-2. ✅ **Refactored Jasmine/Mocha extractors** (eliminated ~100 lines of duplication)
-3. ✅ **Added jscpd to pre-commit validation** (2.5% threshold)
-4. ✅ **Configured focused scanning** (TypeScript/JavaScript only, excludes tests/schemas)
+2. ✅ **Refactored Jasmine/Mocha extractors** (eliminated ~100 lines)
+3. ✅ **Created YAML output utility** (`yaml-output.ts`)
+4. ✅ **Refactored cleanup/sync-check commands** (eliminated ~50 lines)
+5. ✅ **Extracted history.ts display logic** (eliminated ~40 lines)
+6. ✅ **Added jscpd to pre-commit validation** (2.5% threshold)
+7. ✅ **Configured focused scanning** (TypeScript/JavaScript only, excludes tests/schemas)
 
 ### Pre-Commit Integration
 jscpd now runs automatically during pre-commit validation:
-- **Threshold:** 2.5% (current: 0.27% - plenty of headroom)
+- **Threshold:** 2.5% (current: **0.07%** - excellent headroom!)
 - **Focus:** TypeScript and JavaScript source code
 - **Exclusions:** Tests, schemas, templates, documentation
-- **Benefit:** Catches new duplications early in development workflow
+- **Benefit:** Catches new duplications early in development workflow (shift-left)
+
+### Remaining Duplication (Acceptable)
+The final remaining clone (14 lines, 0.07%) is between:
+- `packages/cli/src/commands/pre-commit.ts` ↔ `packages/cli/src/utils/validate-workflow.ts`
+
+This is acceptable duplication that doesn't warrant extraction at this time.
 
 ---
 
