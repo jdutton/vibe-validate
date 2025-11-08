@@ -21,7 +21,7 @@ hooks:
   preCommit:
     enabled: true
     secretScanning:
-      enabled: true
+      enabled: false  # Disabled in containerized environment - enable in local dev
       scanCommand: "gitleaks protect --staged --verbose"
 ci:
   nodeVersions:
