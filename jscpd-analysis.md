@@ -37,12 +37,28 @@
 6. ✅ **Added jscpd to pre-commit validation** (2.5% threshold)
 7. ✅ **Configured focused scanning** (TypeScript/JavaScript only, excludes tests/schemas)
 
-### Pre-Commit Integration
-jscpd now runs automatically during pre-commit validation:
-- **Threshold:** 2.5% (current: **0.07%** - excellent headroom!)
+### Pre-Commit Integration (Baseline-Driven)
+jscpd now runs automatically during pre-commit validation with **baseline-driven detection**:
+- **Mode:** Fail ONLY on NEW duplication (not existing tech debt)
+- **Baseline:** `.jscpd-baseline.json` (committed to version control)
+- **Current Baseline:** 1 clone, 14 lines, 0.07% duplication
 - **Focus:** TypeScript and JavaScript source code
 - **Exclusions:** Tests, schemas, templates, documentation
-- **Benefit:** Catches new duplications early in development workflow (shift-left)
+- **Benefit:** Gradual improvement without blocking all commits (shift-left)
+
+#### How Baseline Detection Works
+1. **During commit:** Runs `node tools/jscpd-check-new.js`
+2. **Compares:** Current duplication vs. committed baseline
+3. **Result:**
+   - ✅ No new duplication → Commit succeeds
+   - ❌ New duplication detected → Commit fails with details
+4. **After refactoring:** Run `node tools/jscpd-update-baseline.js` to update baseline
+
+This allows teams to:
+- Accept existing technical debt as baseline
+- Prevent NEW duplication from being introduced
+- Gradually improve over time without blocking all work
+- Maintain consistent standards across the team
 
 ### Remaining Duplication (Acceptable)
 The final remaining clone (14 lines, 0.07%) is between:
