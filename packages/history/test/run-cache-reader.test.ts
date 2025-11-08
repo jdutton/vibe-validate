@@ -147,8 +147,9 @@ summary: No linting errors
       const result = await getAllRunCacheForTree('abc123');
 
       expect(result).toHaveLength(2);
-      expect(result[0].command).toBe('npm test');
-      expect(result[1].command).toBe('pnpm lint');
+      // Results are sorted by timestamp (newest first)
+      expect(result[0].command).toBe('pnpm lint'); // 10:05:00 (newer)
+      expect(result[1].command).toBe('npm test'); // 10:00:00 (older)
     });
 
     it('should return empty array when no run cache exists', async () => {

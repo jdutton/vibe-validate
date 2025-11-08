@@ -37,8 +37,9 @@ export default defineConfig({
         // Build-time scripts (not runtime code)
         'packages/*/src/scripts/**/*.ts',
         'packages/config/src/schema-export.ts',  // Build-time JSON schema generation
-        // CLI entry point and commands tested via integration tests
+        // CLI entry point and wrapper scripts tested via integration tests
         'packages/cli/src/bin.ts',  // CLI entry point
+        'packages/cli/src/bin/**/*.ts',  // CLI wrapper scripts (tested via compiled output)
         'packages/cli/src/commands/init.ts',  // Tested via integration
         'packages/cli/src/commands/watch-pr.ts',  // Tested via integration
         // CI provider services tested via integration tests

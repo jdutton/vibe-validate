@@ -153,7 +153,7 @@ vibe-validate pre-commit --skip-sync  # Skip sync check (not recommended)
 
 ### `state`
 
-Show current validation state from git notes
+Show current validation state from git notes (or run cache if no config)
 
 **What it does:**
 
@@ -172,6 +172,8 @@ Shows error summary (if failed)
 **Options:**
 
 - `-v, --verbose` - Show full error output without truncation
+- `--runs` - Show only run cache (not validation history)
+- `--all` - Show both validation history and run cache
 
 **Examples:**
 

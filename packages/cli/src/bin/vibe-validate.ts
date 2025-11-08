@@ -11,10 +11,10 @@
  * caching but still get error extraction.
  */
 
-import { existsSync } from 'fs';
-import { dirname, join } from 'path';
-import { spawnSync } from 'child_process';
-import { fileURLToPath } from 'url';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,8 +22,11 @@ const __dirname = dirname(__filename);
 /**
  * Find project root by walking up to .git directory
  * Falls back to startDir if no git repo found
+ *
+ * @param startDir - Directory to start searching from
+ * @returns Project root directory path
  */
-function findProjectRoot(startDir) {
+function findProjectRoot(startDir: string): string {
   let current = startDir;
 
   while (true) {
@@ -44,8 +47,11 @@ function findProjectRoot(startDir) {
 /**
  * Check if we're in vibe-validate repo (developer mode)
  * Simple detection: both dist/vibe-validate and dist/bin.js must exist
+ *
+ * @param projectRoot - Root directory of the project
+ * @returns Path to bin.js if detected, null otherwise
  */
-function getDevModeBinary(projectRoot) {
+function getDevModeBinary(projectRoot: string): string | null {
   const wrapperPath = join(projectRoot, 'packages/cli/dist/vibe-validate');
   const binPath = join(projectRoot, 'packages/cli/dist/bin.js');
 
@@ -60,8 +66,11 @@ function getDevModeBinary(projectRoot) {
 /**
  * Find local vibe-validate installation in node_modules
  * Walks up directory tree from project root
+ *
+ * @param projectRoot - Root directory to start searching from
+ * @returns Path to local bin.js if found, null otherwise
  */
-function findLocalInstall(projectRoot) {
+function findLocalInstall(projectRoot: string): string | null {
   let current = projectRoot;
 
   while (true) {
@@ -84,15 +93,15 @@ function findLocalInstall(projectRoot) {
 /**
  * Main entry point - detects context and executes appropriate binary
  */
-function main() {
+function main(): void {
   const cwd = process.cwd();
   const args = process.argv.slice(2);
 
   // Find project root (where .git is, or cwd if no git)
   const projectRoot = findProjectRoot(cwd);
 
-  let binPath;
-  let context;
+  let binPath: string;
+  let context: 'dev' | 'local' | 'global';
 
   // Priority 1: Check for developer mode (inside vibe-validate repo)
   const devBin = getDevModeBinary(projectRoot);
@@ -109,22 +118,27 @@ function main() {
     }
     // Priority 3: Use global install (this script's location)
     else {
-      binPath = join(__dirname, '../dist/bin.js');
+      binPath = join(__dirname, '../bin.js');
       context = 'global';
     }
   }
 
   // Execute the binary with all arguments
-  const result = spawnSync(process.execPath, [binPath, ...args], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      VV_CONTEXT: context, // Pass context for debugging (optional)
+  const result: SpawnSyncReturns<Buffer> = spawnSync(
+    process.execPath,
+    [binPath, ...args],
+    {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        VV_CONTEXT: context, // Pass context for debugging (optional)
+      },
     }
-  });
+  );
 
   // Exit with same code as child process
-  process.exit(result.status ?? 1);
+  const exitCode: number = result.status ?? 1;
+  process.exit(exitCode);
 }
 
 // Run main function

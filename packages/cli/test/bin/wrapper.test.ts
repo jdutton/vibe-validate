@@ -13,8 +13,8 @@ import { join } from 'node:path';
  */
 
 describe('Smart Wrapper (vibe-validate/vv)', () => {
-  const wrapperPath = join(__dirname, '../../bin/vibe-validate');
-  const vvPath = join(__dirname, '../../bin/vv');
+  const wrapperPath = join(__dirname, '../../dist/bin/vibe-validate');
+  const vvPath = join(__dirname, '../../dist/bin/vv');
 
   describe('Wrapper Files', () => {
     it('should have vibe-validate wrapper file', () => {

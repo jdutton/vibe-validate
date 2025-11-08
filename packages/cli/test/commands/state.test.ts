@@ -43,7 +43,7 @@ describe('state command', () => {
       const stateCmd = commands.find(cmd => cmd.name() === 'state');
 
       expect(stateCmd).toBeDefined();
-      expect(stateCmd?.description()).toBe('Show current validation state from git notes');
+      expect(stateCmd?.description()).toBe('Show current validation state from git notes (or run cache if no config)');
     });
 
     it('should register --verbose option', () => {
@@ -95,7 +95,7 @@ describe('state command', () => {
       const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
       expect(allLogCalls.some(call => call.includes('exists: false'))).toBe(true);
       expect(allLogCalls.some(call => call.includes(`treeHash: ${mockTreeHash}`))).toBe(true);
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No validation state found'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No validation or run cache found'));
     });
 
     it('should handle empty history note with tree hash', async () => {

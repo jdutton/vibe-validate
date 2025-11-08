@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { historyCommand } from '../../src/commands/history.js';
 import * as history from '@vibe-validate/history';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+import * as configLoader from '../../src/utils/config-loader.js';
+import * as git from '@vibe-validate/git';
 
 // Mock the history module
 vi.mock('@vibe-validate/history', async () => {
@@ -10,9 +12,28 @@ vi.mock('@vibe-validate/history', async () => {
     ...actual,
     readHistoryNote: vi.fn(),
     getAllHistoryNotes: vi.fn(),
+    getAllRunCacheForTree: vi.fn(),
     pruneHistoryByAge: vi.fn(),
     pruneAllHistory: vi.fn(),
     checkHistoryHealth: vi.fn(),
+  };
+});
+
+// Mock config-loader module
+vi.mock('../../src/utils/config-loader.js', async () => {
+  const actual = await vi.importActual('../../src/utils/config-loader.js');
+  return {
+    ...actual,
+    findConfigPath: vi.fn(),
+  };
+});
+
+// Mock git module
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual('@vibe-validate/git');
+  return {
+    ...actual,
+    getGitTreeHash: vi.fn(),
   };
 });
 
@@ -25,9 +46,17 @@ describe('history command', () => {
     // Reset mocks
     vi.mocked(history.readHistoryNote).mockReset();
     vi.mocked(history.getAllHistoryNotes).mockReset();
+    vi.mocked(history.getAllRunCacheForTree).mockReset();
     vi.mocked(history.pruneHistoryByAge).mockReset();
     vi.mocked(history.pruneAllHistory).mockReset();
     vi.mocked(history.checkHistoryHealth).mockReset();
+    vi.mocked(configLoader.findConfigPath).mockReset();
+    vi.mocked(git.getGitTreeHash).mockReset();
+
+    // Set default mock return values
+    vi.mocked(configLoader.findConfigPath).mockReturnValue('/path/to/config.yaml');
+    vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+    vi.mocked(history.getAllRunCacheForTree).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -543,6 +572,198 @@ describe('history command', () => {
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
+    });
+
+    it('should default to current tree hash when no hash provided', async () => {
+      const mockNote = {
+        treeHash: 'abc123',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'def456',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123',
+              duration: 5000,
+              branch: 'main',
+              phases: [],
+            },
+          },
+        ],
+      };
+
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockNote);
+
+      historyCommand(env.program);
+
+      await env.program.parseAsync(['history', 'show'], { from: 'user' });
+
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123');
+      expect(console.log).toHaveBeenCalled();
+    });
+
+    it('should show run cache when no validation history but run cache exists (YAML)', async () => {
+      const mockRunCacheEntries = [
+        {
+          treeHash: 'abc123',
+          cacheKey: 'test-cache-key',
+          command: 'pnpm test',
+          workdir: '',
+          timestamp: '2025-11-02T12:00:00.000Z',
+          exitCode: 0,
+          durationSecs: 5,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalErrors: 0,
+            errorSummary: '',
+            metadata: {
+              confidence: 100,
+              completeness: 100,
+              issues: [],
+              detection: {
+                extractor: 'vitest',
+                confidence: 100,
+                patterns: [],
+                reason: 'test',
+              },
+            },
+          },
+        },
+      ];
+
+      vi.mocked(configLoader.findConfigPath).mockReturnValue(null); // No config file
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+      vi.mocked(history.getAllRunCacheForTree).mockResolvedValue(mockRunCacheEntries);
+
+      historyCommand(env.program);
+
+      await env.program.parseAsync(['history', 'show', '--yaml'], { from: 'user' });
+
+      expect(history.getAllRunCacheForTree).toHaveBeenCalledWith('abc123');
+
+      // Verify YAML separator was written
+      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
+      const separatorCall = writeCalls.find(call => call[0] === '---\n');
+      expect(separatorCall).toBeDefined();
+    });
+
+    it('should show run cache when no validation history but run cache exists (pretty print)', async () => {
+      const mockRunCacheEntries = [
+        {
+          treeHash: 'abc123',
+          cacheKey: 'test-cache-key',
+          command: 'pnpm test',
+          workdir: '',
+          timestamp: '2025-11-02T12:00:00.000Z',
+          exitCode: 0,
+          durationSecs: 5,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalErrors: 0,
+            errorSummary: '',
+            metadata: {
+              confidence: 100,
+              completeness: 100,
+              issues: [],
+              detection: {
+                extractor: 'vitest',
+                confidence: 100,
+                patterns: [],
+                reason: 'test',
+              },
+            },
+          },
+        },
+      ];
+
+      vi.mocked(configLoader.findConfigPath).mockReturnValue(null); // No config file
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+      vi.mocked(history.getAllRunCacheForTree).mockResolvedValue(mockRunCacheEntries);
+
+      historyCommand(env.program);
+
+      await env.program.parseAsync(['history', 'show'], { from: 'user' });
+
+      expect(history.getAllRunCacheForTree).toHaveBeenCalledWith('abc123');
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Run Cache for Tree Hash'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Total Cached Commands: 1'));
+    });
+
+    it('should show run cache with --all flag even when validation history exists', async () => {
+      const mockNote = {
+        treeHash: 'abc123',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'def456',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123',
+              duration: 5000,
+              branch: 'main',
+              phases: [],
+            },
+          },
+        ],
+      };
+
+      const mockRunCacheEntries = [
+        {
+          treeHash: 'abc123',
+          cacheKey: 'test-cache-key',
+          command: 'pnpm test',
+          workdir: '',
+          timestamp: '2025-11-02T12:00:00.000Z',
+          exitCode: 0,
+          durationSecs: 5,
+          extraction: {
+            errors: [],
+            summary: 'All tests passed',
+            totalErrors: 0,
+            errorSummary: '',
+            metadata: {
+              confidence: 100,
+              completeness: 100,
+              issues: [],
+              detection: {
+                extractor: 'vitest',
+                confidence: 100,
+                patterns: [],
+                reason: 'test',
+              },
+            },
+          },
+        },
+      ];
+
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockNote);
+      vi.mocked(history.getAllRunCacheForTree).mockResolvedValue(mockRunCacheEntries);
+
+      historyCommand(env.program);
+
+      await env.program.parseAsync(['history', 'show', '--all'], { from: 'user' });
+
+      expect(history.getAllRunCacheForTree).toHaveBeenCalledWith('abc123');
+      expect(console.log).toHaveBeenCalled();
     });
   });
 

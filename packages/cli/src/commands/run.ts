@@ -614,9 +614,10 @@ function mergeNestedYaml(
       treeHash: innerResult.treeHash ?? 'unknown', // Use inner treeHash or fallback to unknown
     };
 
-  } catch (error) {
-    // YAML parsing completely failed - treat as regular output
-    console.error('Warning: Failed to parse nested YAML output:', error);
+  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Intentional: nested vv run YAML parsing is expected to fail, fallback to extraction is correct behavior
+  } catch (_error) {
+    // YAML parsing failed - treat as regular output (normal for nested vv run)
+    // This is expected when running nested vv run commands, so silent fallback
 
     // Token optimization: Only extract when exitCode !== 0 OR there are actual errors
     const rawExtraction = autoDetectAndExtract(yamlOutput);
