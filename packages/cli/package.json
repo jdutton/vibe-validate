@@ -6,8 +6,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "vibe-validate": "./bin/vibe-validate",
-    "vv": "./bin/vv"
+    "vibe-validate": "./dist/bin/vibe-validate",
+    "vv": "./dist/bin/vv"
   },
   "exports": {
     ".": {
@@ -17,14 +17,13 @@
   },
   "files": [
     "dist",
-    "bin",
     "config-templates",
     "watch-pr-result.schema.json",
     "run-result.schema.json",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && cp bin/vibe-validate dist/vibe-validate && rm -f bin/vv && cp bin/vibe-validate bin/vv && node dist/scripts/generate-watch-pr-schema.js && node dist/scripts/generate-run-result-schema.js",
+    "build": "tsc && cp dist/bin/vibe-validate.js dist/bin/vibe-validate && cp dist/bin/vibe-validate dist/bin/vv && chmod +x dist/bin/vibe-validate dist/bin/vv && node dist/scripts/generate-watch-pr-schema.js && node dist/scripts/generate-run-result-schema.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
