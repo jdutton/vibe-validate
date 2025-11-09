@@ -58,10 +58,14 @@ export async function pruneHistoryByAge(
 
     if (oldestTimestamp < cutoffTime) {
       // All runs in this note are old - delete entire note
+      // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const treeHash = note.treeHash!;
+
       if (!dryRun) {
         try {
           execSync(
-            `git notes --ref=${notesRef} remove ${note.treeHash}`,
+            `git notes --ref=${notesRef} remove ${treeHash}`,
             { ...GIT_OPTIONS, stdio: 'ignore' }
           );
         } catch {
@@ -71,7 +75,7 @@ export async function pruneHistoryByAge(
 
       notesPruned++;
       runsPruned += note.runs.length;
-      prunedTreeHashes.push(note.treeHash);
+      prunedTreeHashes.push(treeHash);
     }
   }
 
@@ -111,10 +115,14 @@ export async function pruneAllHistory(
   const prunedTreeHashes: string[] = [];
 
   for (const note of allNotes) {
+    // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const treeHash = note.treeHash!;
+
     if (!dryRun) {
       try {
         execSync(
-          `git notes --ref=${notesRef} remove ${note.treeHash}`,
+          `git notes --ref=${notesRef} remove ${treeHash}`,
           { ...GIT_OPTIONS, stdio: 'ignore' }
         );
       } catch {
@@ -124,7 +132,7 @@ export async function pruneAllHistory(
 
     notesPruned++;
     runsPruned += note.runs?.length ?? 0;
-    prunedTreeHashes.push(note.treeHash);
+    prunedTreeHashes.push(treeHash);
   }
 
   return {
@@ -155,10 +163,14 @@ export async function pruneLegacyNotes(dryRun: boolean = false): Promise<PruneRe
     const allNotes = await getAllHistoryNotes(legacyRef);
 
     for (const note of allNotes) {
+      // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const treeHash = note.treeHash!;
+
       if (!dryRun) {
         try {
           execSync(
-            `git notes --ref=${legacyRef} remove ${note.treeHash}`,
+            `git notes --ref=${legacyRef} remove ${treeHash}`,
             { ...GIT_OPTIONS, stdio: 'ignore' }
           );
         } catch {
@@ -168,7 +180,7 @@ export async function pruneLegacyNotes(dryRun: boolean = false): Promise<PruneRe
 
       notesPruned++;
       runsPruned += note.runs?.length ?? 0;
-      prunedTreeHashes.push(note.treeHash);
+      prunedTreeHashes.push(treeHash);
     }
   } catch {
     // No legacy notes found - that's fine

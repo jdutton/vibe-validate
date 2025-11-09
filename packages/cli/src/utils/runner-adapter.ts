@@ -13,6 +13,7 @@ export interface RunnerOptions {
   force?: boolean;
   verbose: boolean;
   yaml?: boolean;
+  debug?: boolean;
   context: AgentContext;
 }
 
@@ -45,6 +46,7 @@ export function createRunnerConfig(
     enableFailFast: true, // Default to fail-fast (individual phases can override)
     verbose: options.verbose, // Pass verbose flag to runner for output streaming
     yaml: options.yaml, // Pass yaml flag to runner for stdout/stderr routing
+    debug: options.debug ?? false, // Enable debug mode to create output files for all steps
     developerFeedback: config.developerFeedback ?? false, // Enable extraction quality alerts for dogfooding
     env: envVars,
     ...callbacks,

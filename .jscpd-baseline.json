@@ -22,17 +22,17 @@
       },
       "secondFile": {
         "name": "packages/cli/src/utils/validate-workflow.ts",
-        "start": 169,
-        "end": 183,
+        "start": 170,
+        "end": 184,
         "startLoc": {
-          "line": 169,
+          "line": 170,
           "column": 27,
-          "position": 1176
+          "position": 1184
         },
         "endLoc": {
-          "line": 183,
+          "line": 184,
           "column": 86,
-          "position": 1317
+          "position": 1325
         }
       }
     }

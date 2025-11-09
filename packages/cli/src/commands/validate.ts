@@ -21,6 +21,7 @@ export function validateCommand(program: Command): void {
     .option('-v, --verbose', 'Show detailed progress and output')
     .option('-y, --yaml', 'Output validation result as YAML to stdout')
     .option('-c, --check', 'Check if validation has already passed (do not run)')
+    .option('-d, --debug', 'Create output files for all steps (for debugging)')
     .option('--no-lock', 'Allow concurrent validation runs (disables single-instance mode)')
     .option('--no-wait', 'Exit immediately if validation is already running (for background hooks)')
     .option('--wait-timeout <seconds>', 'Maximum time to wait for running validation (default: 300)', '300')
@@ -169,6 +170,7 @@ export function validateCommand(program: Command): void {
           verbose: options.verbose,
           yaml: options.yaml,
           check: options.check,
+          debug: options.debug,
           context,
         });
 

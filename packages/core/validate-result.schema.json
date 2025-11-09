@@ -229,13 +229,27 @@
             "additionalProperties": false
           }
         },
-        "fullLogFile": {
-          "type": "string"
+        "outputFiles": {
+          "type": "object",
+          "properties": {
+            "stdout": {
+              "type": "string"
+            },
+            "stderr": {
+              "type": "string"
+            },
+            "combined": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "combined"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
         "timestamp",
-        "treeHash",
         "passed"
       ],
       "additionalProperties": false

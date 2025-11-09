@@ -152,9 +152,6 @@ export function preCommitCommand(program: Command): void {
           if (failedStep?.command) {
             console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));
           }
-          if (result.fullLogFile) {
-            console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
-          }
 
           process.exit(1);
         }

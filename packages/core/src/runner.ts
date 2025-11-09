@@ -12,6 +12,7 @@
 
 import { type ChildProcess } from 'node:child_process';
 import { writeFileSync, appendFileSync } from 'node:fs';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
@@ -54,6 +55,9 @@ export interface ValidationConfig {
   /** Developer feedback for continuous quality improvement (default: false) */
   developerFeedback?: boolean;
 
+  /** Debug mode: create output files for all steps (default: false) */
+  debug?: boolean;
+
   /** Environment variables to pass to all child processes */
   env?: Record<string, string>;
 
@@ -68,6 +72,52 @@ export interface ValidationConfig {
 
   /** Callback when step completes */
   onStepComplete?: (_step: ValidationStep, _result: StepResult) => void;
+}
+
+/**
+ * Get organized output directory for a specific step
+ *
+ * Creates path like: /tmp/vibe-validate/steps/2025-11-09/abc123-17-30-45-typecheck/
+ *
+ * @param treeHash - Git tree hash
+ * @param stepName - Step name to include in directory
+ * @returns Path to step output directory
+ * @internal
+ */
+function getStepOutputDir(treeHash: string, stepName: string): string {
+  const now = new Date();
+
+  // Date folder: YYYY-MM-DD
+  const dateFolder = now.toISOString().split('T')[0];
+
+  // Short hash: first 6 chars
+  const shortHash = treeHash.substring(0, 6);
+
+  // Time suffix: HH-mm-ss
+  const timeSuffix = now.toISOString().split('T')[1].substring(0, 8).replace(/:/g, '-');
+
+  // Sanitized step name for filesystem
+  const safeStepName = stepName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+
+  // Combined: abc123-17-30-45-typecheck
+  const stepFolder = `${shortHash}-${timeSuffix}-${safeStepName}`;
+
+  return join(tmpdir(), 'vibe-validate', 'steps', dateFolder, stepFolder);
+}
+
+/**
+ * Ensure a directory exists (create if needed)
+ * @internal
+ */
+async function ensureDir(dirPath: string): Promise<void> {
+  try {
+    await mkdir(dirPath, { recursive: true });
+  } catch (err: unknown) {
+    // Ignore if directory already exists
+    if (err && typeof err === 'object' && 'code' in err && err.code !== 'EEXIST') {
+      throw err;
+    }
+  }
 }
 
 /**
@@ -252,7 +302,8 @@ export async function runStepsInParallel(
   env: Record<string, string> = {},
   verbose: boolean = false,
   yaml: boolean = false,
-  developerFeedback: boolean = false
+  developerFeedback: boolean = false,
+  debug: boolean = false
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
@@ -298,6 +349,9 @@ export async function runStepsInParallel(
         let stdout = '';
         let stderr = '';
 
+        // Track timestamped output for combined.jsonl (similar to run command)
+        const combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }> = [];
+
         // spawnCommand always sets stdio: ['ignore', 'pipe', 'pipe'], so stdout/stderr are guaranteed non-null
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
         proc.stdout!.on('data', data => {
@@ -306,6 +360,19 @@ export async function runStepsInParallel(
           // These codes (e.g., \e[32m for colors) are noise in logs, YAML, and git notes
           const cleanChunk = stripAnsi(chunk);
           stdout += cleanChunk;
+
+          // Track timestamped lines for combined.jsonl (for debug mode or failing steps)
+          const lines = cleanChunk.split('\n');
+          for (const line of lines) {
+            if (line) {
+              combinedLines.push({
+                ts: new Date().toISOString(),
+                stream: 'stdout',
+                line,
+              });
+            }
+          }
+
           // Stream output in real-time when verbose mode is enabled
           // When yaml mode is on, redirect subprocess output to stderr to keep stdout clean
           if (verbose) {
@@ -322,25 +389,40 @@ export async function runStepsInParallel(
           // Strip ANSI escape codes from stderr as well
           const cleanChunk = stripAnsi(chunk);
           stderr += cleanChunk;
+
+          // Track timestamped lines for stderr
+          const lines = cleanChunk.split('\n');
+          for (const line of lines) {
+            if (line) {
+              combinedLines.push({
+                ts: new Date().toISOString(),
+                stream: 'stderr',
+                line,
+              });
+            }
+          }
+
           // Stream errors in real-time when verbose mode is enabled
           if (verbose) {
             process.stderr.write(chunk);  // Keep colors for terminal viewing
           }
         });
 
-        // eslint-disable-next-line sonarjs/cognitive-complexity -- Complex handler for step completion, extraction, and fail-fast coordination
         proc.on('close', exitCode => {
-          const durationMs = Date.now() - startTime;
-          const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
-          const output = stdout + stderr;
-          outputs.set(step.name, output);
+          // Wrap in async IIFE to handle file creation
+          // eslint-disable-next-line sonarjs/no-nested-functions, sonarjs/cognitive-complexity -- IIFE required for async/await in sync close handler; inherits complexity from step completion logic
+          void (async () => {
+            const durationMs = Date.now() - startTime;
+            const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
+            const output = stdout + stderr;
+            outputs.set(step.name, output);
 
-          // Normalize exit code (null means abnormal termination, treat as failure)
-          const code = exitCode ?? 1;
+            // Normalize exit code (null means abnormal termination, treat as failure)
+            const code = exitCode ?? 1;
 
-          const status = code === 0 ? '✅' : '❌';
-          const result = code === 0 ? 'PASSED' : 'FAILED';
-          log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
+            const status = code === 0 ? '✅' : '❌';
+            const result = code === 0 ? 'PASSED' : 'FAILED';
+            log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
           // Extract errors ONLY from FAILED steps (code !== 0)
           // Rationale: Passing tests have no failures to extract. Including empty extraction
@@ -348,6 +430,7 @@ export async function runStepsInParallel(
           let extraction;
           let isCachedResult: boolean | undefined;
           let outputFiles;
+          let outputFilesFromNestedCommand = false; // Track if outputFiles came from nested vv run
 
           // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
           if (code !== 0 && output && output.trim()) {
@@ -361,6 +444,7 @@ export async function runStepsInParallel(
               extraction = parsed.extraction;
               isCachedResult = parsed.isCachedResult;
               outputFiles = parsed.outputFiles;
+              outputFilesFromNestedCommand = true; // Came from nested run - always include
 
               // Log cache hit status if available (nested run was cached)
               if (parsed.isCachedResult && verbose) {
@@ -386,6 +470,7 @@ export async function runStepsInParallel(
             if (parsed) {
               isCachedResult = parsed.isCachedResult;
               outputFiles = parsed.outputFiles;
+              outputFilesFromNestedCommand = true; // Came from nested run - always include
 
               // Log cache hit status if available
               if (parsed.isCachedResult && verbose) {
@@ -395,7 +480,59 @@ export async function runStepsInParallel(
           }
           // If passing step (code === 0), extraction remains undefined (token optimization)
 
-          // Create step result - extends CommandExecutionSchema (v0.15.0+)
+          // Create output files for failing steps or when debug mode is enabled
+          // This provides full debugging context when needed
+            const shouldCreateFiles = code !== 0 || debug;
+            if (shouldCreateFiles && !outputFiles) {
+              // Only create files if not already provided by nested vibe-validate command
+              try {
+                const treeHash = await getGitTreeHash();
+                const outputDir = getStepOutputDir(treeHash, step.name);
+                await ensureDir(outputDir);
+
+                const writePromises: Promise<void>[] = [];
+
+                // Write stdout.log (only if non-empty)
+                let stdoutFile: string | undefined;
+                if (stdout.trim()) {
+                  stdoutFile = join(outputDir, 'stdout.log');
+                  writePromises.push(writeFile(stdoutFile, stdout, 'utf-8'));
+                }
+
+                // Write stderr.log (only if non-empty)
+                let stderrFile: string | undefined;
+                if (stderr.trim()) {
+                  stderrFile = join(outputDir, 'stderr.log');
+                  writePromises.push(writeFile(stderrFile, stderr, 'utf-8'));
+                }
+
+                // Write combined.jsonl (always - timestamped interleaved output)
+                const combinedFile = join(outputDir, 'combined.jsonl');
+                const combinedContent = combinedLines
+                  .map(line => JSON.stringify(line))
+                  .join('\n');
+                writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
+
+                // Wait for all writes to complete
+                await Promise.all(writePromises);
+
+                // Populate outputFiles for StepResult
+                outputFiles = {
+                  ...(stdoutFile ? { stdout: stdoutFile } : {}),
+                  ...(stderrFile ? { stderr: stderrFile } : {}),
+                  combined: combinedFile,
+                };
+              } catch (error) {
+                // Silent failure - don't block validation on file creation errors
+                // This ensures validation completes even if temp directory is unavailable
+                if (verbose) {
+                  const errorMsg = error instanceof Error ? error.message : String(error);
+                  log(`      ⚠️  Could not create output files: ${errorMsg}`);
+                }
+              }
+            }
+
+            // Create step result - extends CommandExecutionSchema (v0.15.0+)
           const stepResult: StepResult = {
             name: step.name,
             command: step.command,
@@ -404,7 +541,7 @@ export async function runStepsInParallel(
             passed: code === 0,
             ...(isCachedResult !== undefined ? { isCachedResult } : {}), // Include cache status if available
             ...(extraction ? { extraction } : {}), // Conditionally include extraction
-            ...(outputFiles ? { outputFiles } : {}), // Include output files for debugging (v0.15.1+)
+            ...((outputFiles && (outputFilesFromNestedCommand || code !== 0 || debug)) ? { outputFiles } : {}), // Always show for nested commands, or when step failed/debug enabled (v0.15.0+)
           };
 
           // Only include extraction quality metrics when developerFeedback is enabled
@@ -414,15 +551,16 @@ export async function runStepsInParallel(
             processDeveloperFeedback(stepResult, extraction, log, isWarning, isNotWarning);
           }
 
-          stepResults.push(stepResult);
+            stepResults.push(stepResult);
 
-          if (code === 0) {
-            resolve({ step, output, durationSecs });
-          } else {
-            // On first failure, kill other processes if fail-fast enabled
-            firstFailure = handleFailFast(enableFailFast, firstFailure, step, output, processes, log, ignoreStopErrors);
-            reject({ step, output, durationSecs });
-          }
+            if (code === 0) {
+              resolve({ step, output, durationSecs });
+            } else {
+              // On first failure, kill other processes if fail-fast enabled
+              firstFailure = handleFailFast(enableFailFast, firstFailure, step, output, processes, log, ignoreStopErrors);
+              reject({ step, output, durationSecs });
+            }
+          })(); // Close async IIFE
         });
       })
     )
@@ -464,8 +602,9 @@ function appendStepOutputsToLog(
 function createFailedValidationResult(
   failedStep: ValidationStep,
   currentTreeHash: string,
-  logPath: string,
-  phaseResults: PhaseResult[]
+  phaseResults: PhaseResult[],
+  debug: boolean,
+  logPath?: string
 ): ValidationResult {
   // Field order optimized for LLM consumption
   return {
@@ -475,7 +614,7 @@ function createFailedValidationResult(
     summary: `${failedStep.name} failed`,
     failedStep: failedStep.name,
     phases: phaseResults,
-    fullLogFile: logPath,
+    ...(debug && logPath ? { outputFiles: { combined: logPath } } : {}),
   };
 }
 
@@ -556,7 +695,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       env,
       config.verbose ?? false,
       config.yaml ?? false,
-      config.developerFeedback ?? false
+      config.developerFeedback ?? false,
+      config.debug ?? false
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
     const durationSecs = Number.parseFloat((phaseDurationMs / 1000).toFixed(1));
@@ -583,8 +723,9 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       return createFailedValidationResult(
         result.failedStep,
         currentTreeHash,
-        logPath,
-        phaseResults
+        phaseResults,
+        config.debug ?? false,
+        logPath
       );
     }
   }
@@ -597,7 +738,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     treeHash: currentTreeHash,
     summary: 'Validation passed',
     phases: phaseResults,
-    fullLogFile: logPath,
+    ...(config.debug ? { outputFiles: { combined: logPath } } : {}),
   };
 
   return validationResult;

@@ -104,6 +104,63 @@ The tests completed with 2 failures. Here's the concise output:
 Let me fix these issues...
 ```
 
+## Caching Behavior (NEW in v0.15.0)
+
+The `run` command **automatically caches results** based on git tree hash + command + working directory.
+
+### Default: Use Cache
+```bash
+# First run - executes and caches (~30 seconds)
+vibe-validate run "pytest tests/"
+
+# Repeat run - instant cache hit (<200ms) ✨
+vibe-validate run "pytest tests/"
+
+# After code change - cache miss, re-executes
+vibe-validate run "pytest tests/"
+```
+
+### Check Cache Status (--check)
+Use `--check` to see if a cached result exists **without executing**:
+
+```bash
+vibe-validate run --check "pytest tests/"
+# Exit 0 + outputs cached result (cache hit)
+# Exit 1 (no execution, cache miss)
+```
+
+**When to use `--check`:**
+- Before running expensive commands
+- To verify cache state
+- In CI to detect code changes
+
+### Force Execution (--force)
+Use `--force` to **bypass cache and always execute**:
+
+```bash
+vibe-validate run --force "pytest tests/"
+# Always executes, updates cache
+```
+
+**When to use `--force`:**
+- Flaky tests that may pass/fail non-deterministically
+- Time-sensitive commands (e.g., checking external APIs)
+- After investigating cached failures and want fresh output
+- When you suspect cache is stale
+
+### Cache Management
+
+View cached runs:
+```bash
+vibe-validate history list --run              # All run cache
+vibe-validate history list --run "pytest"     # Filter by command
+```
+
+Prune old cache:
+```bash
+vibe-validate history prune --run --all       # Clear all run cache
+```
+
 ## Decision Tree
 
 ```

@@ -54,14 +54,17 @@ export const OutputFilesSchema = z.object({
  * Shared by top-level operations (RunResult, ValidationResult).
  * Every operation has:
  * - When it ran (timestamp)
- * - What code state (treeHash)
+ * - What code state (treeHash) - optional to avoid duplication in output
+ *
+ * Note: treeHash is optional to allow output layers (history, state) to
+ * provide it at the root level, avoiding token-wasting duplication in nested objects.
  */
 export const OperationMetadataSchema = z.object({
   /** When the operation was executed (ISO 8601) */
   timestamp: z.string().datetime(),
 
-  /** Git tree hash identifying the code state */
-  treeHash: z.string().min(1),
+  /** Git tree hash identifying the code state (optional when provided at root level) */
+  treeHash: z.string().min(1).optional(),
 });
 
 /**
@@ -82,9 +85,8 @@ export const OperationMetadataSchema = z.object({
  * - Removed failedTests field (use extraction.errors instead)
  * - Added isCachedResult to indicate when result came from cache
  * - Added .strict() to reject unknown properties (prevents internal fields from leaking)
- *
- * v0.15.1 ENHANCEMENTS:
  * - Added outputFiles for debugging (stdout.log, stderr.log, combined.jsonl)
+ *   - Only shown in results when step fails or --debug flag enabled
  */
 export const StepResultSchema = CommandExecutionSchema.extend({
   /** Step name */
@@ -137,11 +139,11 @@ export const PhaseResultSchema = z.object({
  * - Cache indicator (isCachedResult) - v0.15.0+
  * - Quick navigation (failedStep)
  * - Detailed breakdown (phases with step-level extraction, each step has command)
- * - Metadata last (fullLogFile)
  *
  * v0.15.0 BREAKING CHANGES:
  * - Removed rerunCommand (use phases[].steps[].command instead)
  * - Removed failedStepOutput (use phases[].steps[].extraction instead)
+ * - Removed fullLogFile (use phases[].steps[].outputFiles instead)
  * - Added .strict() to reject unknown properties (prevents internal fields
  *   like _fromCache from leaking into public API)
  */
@@ -161,8 +163,8 @@ export const ValidationResultSchema = OperationMetadataSchema.extend({
   /** Results from each phase (steps include extraction for failures) */
   phases: z.array(PhaseResultSchema).optional(),
 
-  /** Path to full log file */
-  fullLogFile: z.string().optional(),
+  /** Output files from validation run (only with --debug flag) */
+  outputFiles: OutputFilesSchema.optional(),
 }).strict();
 
 /**

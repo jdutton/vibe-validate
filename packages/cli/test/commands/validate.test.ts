@@ -346,10 +346,6 @@ describe('validate command', () => {
         expect.stringContaining('🔄 To retry:'),
         expect.stringContaining('npm test')
       );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Full log'),
-        expect.anything()
-      );
     });
   });
 

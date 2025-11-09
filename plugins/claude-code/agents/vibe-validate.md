@@ -120,6 +120,41 @@ guidance: "Fix assertion in tests/foo.test.ts:42"
 - ❌ Already-wrapped: `pnpm validate`
 - ❌ Interactive: `git log`
 
+**NEW in v0.15.0 - Smart Caching**:
+
+The `run` command automatically caches results by git tree hash:
+
+```bash
+# First run - executes and caches (~30s)
+npx vibe-validate run "pnpm test"
+
+# Repeat run - instant (<200ms) ✨
+npx vibe-validate run "pnpm test"
+```
+
+**Cache control flags**:
+```bash
+# Check cache without executing
+npx vibe-validate run --check "pnpm test"
+# Exit 0 if cached, exit 1 if not
+
+# Force fresh execution
+npx vibe-validate run --force "pnpm test"
+# Always executes, updates cache
+```
+
+**View/manage run cache**:
+```bash
+# List cached runs
+npx vibe-validate history list --run
+
+# Filter by command
+npx vibe-validate history list --run "vitest"
+
+# Clear run cache
+npx vibe-validate history prune --run --all
+```
+
 ### 3. Full Validation Pipeline
 
 **When**: Validating before push, checking all validation steps

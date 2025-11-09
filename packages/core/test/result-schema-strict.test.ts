@@ -151,7 +151,6 @@ describe('ValidationResultSchema - Strict Validation', () => {
         summary: 'TypeScript type check failed',
         isCachedResult: false,
         failedStep: 'TypeScript',
-        fullLogFile: '/var/folders/s4/validation.log', // NOSONAR - test data
         phases: [{
           name: 'Pre-Qualification',
           passed: false,

@@ -25,6 +25,7 @@ export interface ValidateWorkflowOptions {
   verbose?: boolean;
   yaml?: boolean;
   check?: boolean;
+  debug?: boolean;
   context: AgentContext;
 }
 
@@ -176,9 +177,6 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   if (failedStep?.command) {
     console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));
   }
-  if (result.fullLogFile) {
-    console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));
-  }
 
   // Context-aware extraction quality feedback (only when developerFeedback is enabled)
   if (config.developerFeedback) {
@@ -231,12 +229,14 @@ export async function runValidateWorkflow(
 
     const verbose = options.verbose ?? false;
     const yaml = options.yaml ?? false;
+    const debug = options.debug ?? false;
 
     // Create runner config
     const runnerConfig = createRunnerConfig(config, {
       force: options.force,
       verbose,
       yaml,
+      debug,
       context: options.context,
     });
 

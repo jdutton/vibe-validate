@@ -11,6 +11,7 @@ import { getGitTreeHash } from '@vibe-validate/git';
 import { readHistoryNote, hasHistoryForTree, getAllRunCacheForTree, type RunCacheNote } from '@vibe-validate/history';
 import type { ValidationResult } from '@vibe-validate/core';
 import { findConfigPath } from '../utils/config-loader.js';
+import { formatTreeHashOutput, cleanRunCacheEntries } from '../utils/tree-hash-output.js';
 
 export function stateCommand(program: Command): void {
   program
@@ -43,8 +44,8 @@ async function executeStateCommand(options: { verbose?: boolean; runs?: boolean;
     ? await getAllRunCacheForTree(treeHash)
     : [];
 
-  // Determine output
-  const output = determineOutput(validationHistory, runCacheEntries, showRunsOnly, showAll);
+  // Determine output (passing treeHash for consistent structure)
+  const output = determineOutput(treeHash, validationHistory, runCacheEntries, showRunsOnly, showAll);
 
   // Handle no data case
   if (!output) {
@@ -80,25 +81,35 @@ async function loadValidationHistory(treeHash: string): Promise<ValidationResult
     summary: mostRecentRun.result.summary,
     failedStep: mostRecentRun.result.failedStep,
     phases: mostRecentRun.result.phases,
-    fullLogFile: mostRecentRun.result.fullLogFile,
   };
 }
 
 /**
  * Determine what output to show based on data and flags
+ * Uses shared formatting logic from tree-hash-output.ts
  */
 function determineOutput(
+  treeHash: string,
   validationHistory: ValidationResult | null,
   runCacheEntries: RunCacheNote[],
   showRunsOnly: boolean,
   showAll: boolean
-): ValidationResult | { runCache: RunCacheNote[] } | { validation: ValidationResult | null; runCache: RunCacheNote[] } | null {
+): ValidationResult | { runCache: RunCacheNote[] } | Record<string, unknown> | null {
   if (showRunsOnly) {
-    return { runCache: runCacheEntries };
+    return { runCache: cleanRunCacheEntries(runCacheEntries) };
   }
 
   if (showAll) {
-    return { validation: validationHistory, runCache: runCacheEntries };
+    // Use shared formatting logic - matches history show --all structure exactly
+    return formatTreeHashOutput(
+      treeHash,
+      validationHistory,
+      runCacheEntries,
+      {
+        includeValidation: validationHistory !== null,
+        includeRunCache: true,
+      }
+    );
   }
 
   if (validationHistory) {
@@ -106,7 +117,7 @@ function determineOutput(
   }
 
   if (runCacheEntries.length > 0) {
-    return { runCache: runCacheEntries };
+    return { runCache: cleanRunCacheEntries(runCacheEntries) };
   }
 
   return null;
@@ -181,7 +192,9 @@ function displayVerboseSummary(state: ValidationResult): void {
   console.log(chalk.gray(`⏰ Last Run: ${timestamp.toLocaleString()}`));
 
   // Tree hash
-  console.log(chalk.gray(`🌳 Git Tree Hash: ${state.treeHash.substring(0, 12)}...`));
+  // Note: treeHash is always populated by validation runner
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  console.log(chalk.gray(`🌳 Git Tree Hash: ${state.treeHash!.substring(0, 12)}...`));
 
   // Failed step details (if any)
   if (!state.passed && state.failedStep) {

@@ -91,10 +91,14 @@ export const ValidationRunSchema = z.object({
  * History Note Schema
  *
  * Git note structure stored as YAML in refs/notes/vibe-validate/validate/{treeHash}
+ *
+ * Note: treeHash is optional because it's encoded in the git notes ref path.
+ * The reader will use the ref path value if not present in the note content.
+ * Output commands (history, state) should provide treeHash at root level to avoid duplication.
  */
 export const HistoryNoteSchema = z.object({
-  /** Tree hash this note is attached to */
-  treeHash: z.string().min(1),
+  /** Tree hash this note is attached to (optional - inferred from ref path if omitted) */
+  treeHash: z.string().min(1).optional(),
 
   /** Array of validation runs for this tree */
   runs: z.array(ValidationRunSchema),

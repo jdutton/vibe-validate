@@ -108,7 +108,6 @@ phases:
           totalErrors: 1
 summary: "Unit Tests with Coverage failed"
 failedStep: "Unit Tests with Coverage"
-fullLogFile: "/tmp/validation-2025-10-20T12-34-14-730Z.log"
 ```
 
 ### Example 3: Successful Validation
@@ -220,7 +219,6 @@ Agents should expect ALL fields from the schema, but only these fields are guara
 **Optional fields (present on failure):**
 - `summary` (string) - one-line description
 - `failedStep` (string) - name of failed step
-- `fullLogFile` (string) - path to complete log
 - `phases` (array) - detailed breakdown with step-level extraction
 
 **Optional fields (always):**

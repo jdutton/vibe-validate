@@ -19,6 +19,7 @@ import {
   type RunCacheNote,
 } from '@vibe-validate/history';
 import { findConfigPath } from '../utils/config-loader.js';
+import { cleanRunCacheEntries } from '../utils/tree-hash-output.js';
 
 // Type for flattened validation run with tree hash
 type ValidationRun = HistoryNote['runs'][0] & { treeHash: string };
@@ -145,8 +146,17 @@ async function outputHistoryYaml(runs: ValidationRun[]): Promise<void> {
   // RFC 4627 separator
   process.stdout.write('---\n');
 
+  // Remove duplicate treeHash from nested result (it's at run level)
+  const cleanedRuns = runs.map(run => ({
+    ...run,
+    result: {
+      ...run.result,
+      treeHash: undefined, // Remove duplicate (already at run level)
+    },
+  }));
+
   // Write pure YAML
-  process.stdout.write(stringifyYaml(runs));
+  process.stdout.write(stringifyYaml(cleanedRuns));
 
   // CRITICAL: Wait for stdout to flush before exiting
   await new Promise<void>(resolve => {
@@ -198,8 +208,11 @@ async function outputRunCacheYaml(entries: RunCacheNote[]): Promise<void> {
   // RFC 4627 separator
   process.stdout.write('---\n');
 
+  // Use shared cleaning logic
+  const cleanedEntries = cleanRunCacheEntries(entries);
+
   // Write pure YAML
-  process.stdout.write(stringifyYaml(entries));
+  process.stdout.write(stringifyYaml(cleanedEntries));
 
   // CRITICAL: Wait for stdout to flush before exiting
   await new Promise<void>(resolve => {
@@ -222,7 +235,9 @@ function outputRunCacheTable(
 
   for (const entry of entries) {
     const timestamp = new Date(entry.timestamp).toLocaleString();
-    const hash = entry.treeHash.slice(0, 7);
+    // Note: treeHash is always populated by getAllRunCacheForTree
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const hash = entry.treeHash!.slice(0, 7);
     const status = entry.exitCode === 0 ? '✓ PASSED' : '✗ FAILED';
     const duration = entry.durationSecs ? entry.durationSecs.toFixed(1) : '0.0';
     const workdirDisplay = entry.workdir ? ` (${entry.workdir})` : '';
@@ -299,9 +314,11 @@ async function listValidationHistory(
   }
 
   // Flatten all runs from all notes
+  // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
   const allRuns = allNotes.flatMap((note) =>
     note.runs.map((run) => ({
-      treeHash: note.treeHash,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      treeHash: note.treeHash!,
       ...run,
     }))
   );
@@ -392,10 +409,17 @@ async function showHistory(
     // Smart fallback: If no validation history but have run cache, show run cache
     if (!note && runCacheEntries.length > 0) {
       if (options.yaml) {
-        // YAML mode: Output run cache only
+        // YAML mode: Output run cache only with treeHash at root
         await new Promise(resolve => setTimeout(resolve, 10));
         process.stdout.write('---\n');
-        process.stdout.write(stringifyYaml({ runCache: runCacheEntries }));
+
+        // Use shared cleaning logic
+        const cleanedRunCache = cleanRunCacheEntries(runCacheEntries);
+
+        process.stdout.write(stringifyYaml({
+          treeHash,
+          runCache: cleanedRunCache,
+        }));
         await new Promise<void>(resolve => {
           if (process.stdout.write('')) {
             resolve();
@@ -423,13 +447,35 @@ async function showHistory(
       // RFC 4627 separator
       process.stdout.write('---\n');
 
-      // Write pure YAML
-      const output = options.all
-        ? {
-            validation: note,
-            runCache: runCacheEntries,
-          }
-        : note;
+      // Build output structure with treeHash at root
+      const output: Record<string, unknown> = {
+        treeHash,
+      };
+
+      // Add validation section if config exists and note exists
+      if (hasConfig && note) {
+        // Omit treeHash from validation.runs[].result (it's at root level)
+        const cleanedRuns = note.runs.map(run => ({
+          ...run,
+          result: {
+            ...run.result,
+            treeHash: undefined, // Remove duplicate treeHash
+          },
+        }));
+
+        output.validation = {
+          ...note,
+          treeHash: undefined, // Remove duplicate treeHash
+          runs: cleanedRuns,
+        };
+      }
+
+      // Add runCache section if --all or if it's the only data available
+      if (options.all || (!hasConfig && runCacheEntries.length > 0)) {
+        // Use shared cleaning logic
+        output.runCache = cleanRunCacheEntries(runCacheEntries);
+      }
+
       process.stdout.write(stringifyYaml(output));
 
       // CRITICAL: Wait for stdout to flush before exiting

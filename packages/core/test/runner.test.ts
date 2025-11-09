@@ -733,4 +733,343 @@ rawOutput: |
       });
     });
   });
+
+  describe('outputFiles creation', () => {
+    it('should create output files for failing steps', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Failing Step',
+                command: 'echo "error output" && exit 1',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: false, // Debug off, but should still create files for failing step
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(false);
+      expect(result.phases).toBeDefined();
+      expect(result.phases![0].steps[0].outputFiles).toBeDefined();
+
+      const outputFiles = result.phases![0].steps[0].outputFiles;
+      expect(outputFiles?.combined).toBeDefined();
+      expect(outputFiles?.combined).toContain('/vibe-validate/steps/');
+      expect(outputFiles?.combined).toContain('.jsonl');
+
+      // Verify files exist
+      const { existsSync, readFileSync } = await import('node:fs');
+      expect(existsSync(outputFiles!.combined!)).toBe(true);
+
+      // Verify combined.jsonl has timestamped entries
+      const combinedContent = readFileSync(outputFiles!.combined!, 'utf-8');
+      expect(combinedContent).toContain('"ts":"');
+      expect(combinedContent).toContain('"stream":"stdout"');
+      expect(combinedContent).toContain('"line":"error output"');
+    });
+
+    it('should create output files for all steps when debug mode is enabled', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Passing Step',
+                command: 'echo "success output" && exit 0',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: true, // Debug mode: create files even for passing steps
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(true);
+      expect(result.phases).toBeDefined();
+      expect(result.phases![0].steps[0].outputFiles).toBeDefined();
+
+      const outputFiles = result.phases![0].steps[0].outputFiles;
+      expect(outputFiles?.combined).toBeDefined();
+      expect(outputFiles?.stdout).toBeDefined();
+
+      // Verify files exist
+      const { existsSync, readFileSync } = await import('node:fs');
+      expect(existsSync(outputFiles!.combined!)).toBe(true);
+      expect(existsSync(outputFiles!.stdout!)).toBe(true);
+
+      // Verify stdout.log has content
+      const stdoutContent = readFileSync(outputFiles!.stdout!, 'utf-8');
+      expect(stdoutContent).toContain('success output');
+    });
+
+    it('should NOT create output files for passing steps without debug mode', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Passing Step',
+                command: 'echo "success" && exit 0',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: false, // No debug: passing steps should not create files
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(true);
+      expect(result.phases).toBeDefined();
+
+      // outputFiles should be undefined for passing step without debug
+      const outputFiles = result.phases![0].steps[0].outputFiles;
+      expect(outputFiles).toBeUndefined();
+    });
+
+    it('should create stdout and stderr files when both are present', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Mixed Output Step',
+                command: 'echo "stdout line" && echo "stderr line" >&2 && exit 1',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: false,
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(false);
+
+      const outputFiles = result.phases![0].steps[0].outputFiles;
+      expect(outputFiles?.stdout).toBeDefined();
+      expect(outputFiles?.stderr).toBeDefined();
+      expect(outputFiles?.combined).toBeDefined();
+
+      // Verify file contents
+      const { readFileSync } = await import('node:fs');
+      const stdoutContent = readFileSync(outputFiles!.stdout!, 'utf-8');
+      const stderrContent = readFileSync(outputFiles!.stderr!, 'utf-8');
+
+      expect(stdoutContent).toContain('stdout line');
+      expect(stderrContent).toContain('stderr line');
+    });
+
+    it('should use step name in output directory path', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'TypeScript Compiler',
+                command: 'echo "error" && exit 1',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: false,
+      };
+
+      const result = await runValidation(config);
+
+      const outputFiles = result.phases![0].steps[0].outputFiles;
+      expect(outputFiles?.combined).toBeDefined();
+
+      // Path should contain sanitized step name
+      expect(outputFiles!.combined).toContain('-typescript-compiler');
+    });
+
+    it('should handle multiple failing steps with separate output files', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Step 1',
+                command: 'echo "step1 error" && exit 1',
+              },
+              {
+                name: 'Step 2',
+                command: 'echo "step2 error" && exit 1',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: false,
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(false);
+
+      const step1Files = result.phases![0].steps.find(s => s.name === 'Step 1')?.outputFiles;
+      const step2Files = result.phases![0].steps.find(s => s.name === 'Step 2')?.outputFiles;
+
+      expect(step1Files).toBeDefined();
+      expect(step2Files).toBeDefined();
+
+      // Different steps should have different output directories
+      expect(step1Files!.combined).not.toBe(step2Files!.combined);
+      expect(step1Files!.combined).toContain('-step-1');
+      expect(step2Files!.combined).toContain('-step-2');
+
+      // Verify content is different
+      const { readFileSync } = await import('node:fs');
+      const step1Content = readFileSync(step1Files!.combined!, 'utf-8');
+      const step2Content = readFileSync(step2Files!.combined!, 'utf-8');
+
+      expect(step1Content).toContain('step1 error');
+      expect(step2Content).toContain('step2 error');
+    });
+  });
+
+  describe('ValidationResult outputFiles (top-level)', () => {
+    it('should include top-level outputFiles with debug mode enabled (passing)', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Passing Step',
+                command: 'echo "success" && exit 0',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: true, // Enable debug mode
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(true);
+      expect(result.outputFiles).toBeDefined();
+      expect(result.outputFiles?.combined).toBeDefined();
+      expect(result.outputFiles?.combined).toContain('/validation-');
+      expect(result.outputFiles?.combined).toContain('.log');
+
+      // Verify file exists
+      const { existsSync } = await import('node:fs');
+      expect(existsSync(result.outputFiles!.combined!)).toBe(true);
+    });
+
+    it('should include top-level outputFiles with debug mode enabled (failing)', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Failing Step',
+                command: 'echo "error" && exit 1',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: true, // Enable debug mode
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(false);
+      expect(result.outputFiles).toBeDefined();
+      expect(result.outputFiles?.combined).toBeDefined();
+      expect(result.outputFiles?.combined).toContain('/validation-');
+      expect(result.outputFiles?.combined).toContain('.log');
+
+      // Verify file exists
+      const { existsSync } = await import('node:fs');
+      expect(existsSync(result.outputFiles!.combined!)).toBe(true);
+    });
+
+    it('should NOT include top-level outputFiles without debug mode (passing)', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Passing Step',
+                command: 'echo "success" && exit 0',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: false, // Debug mode off
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(true);
+      expect(result.outputFiles).toBeUndefined();
+    });
+
+    it('should NOT include top-level outputFiles without debug mode (failing)', async () => {
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Failing Step',
+                command: 'echo "error" && exit 1',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: false, // Debug mode off
+      };
+
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(false);
+      expect(result.outputFiles).toBeUndefined();
+    });
+  });
 });

@@ -19,16 +19,13 @@ import {
 
 describe('RunResult Schema', () => {
   describe('schema structure', () => {
-    it('should require treeHash field', () => {
-      const invalidResult = createRunResultWithoutTreeHash();
+    it('should allow treeHash to be optional', () => {
+      const resultWithoutTreeHash = createRunResultWithoutTreeHash();
 
-      const result = safeValidateRunResult(invalidResult);
+      const result = safeValidateRunResult(resultWithoutTreeHash);
 
-      // Should fail because treeHash is missing
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.errors.some(e => e.includes('treeHash'))).toBe(true);
-      }
+      // treeHash is now optional to avoid duplication in output
+      expect(result.success).toBe(true);
     });
 
     it('should accept valid RunResult with treeHash', () => {
