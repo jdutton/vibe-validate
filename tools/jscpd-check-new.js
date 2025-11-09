@@ -69,11 +69,10 @@ function checkNewDuplications() {
   const baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf-8'));
   const baselineClones = baseline.duplicates || [];
 
-  // Build signature sets
+  // Build baseline signature set for comparison
   const baselineSignatures = new Set(baselineClones.map(getCloneSignature));
-  const currentSignatures = new Set(currentClones.map(getCloneSignature));
 
-  // Find new clones
+  // Find new clones (not in baseline)
   const newClones = currentClones.filter(clone =>
     !baselineSignatures.has(getCloneSignature(clone))
   );
