@@ -24,6 +24,28 @@ import { findConfigPath } from '../utils/config-loader.js';
 type ValidationRun = HistoryNote['runs'][0] & { treeHash: string };
 
 /**
+ * Display error samples from extraction result
+ *
+ * @param extraction - The extraction result containing errors
+ */
+function displayErrorSamples(extraction: RunCacheNote['extraction']): void {
+  if (!extraction || extraction.errors.length === 0) {
+    return;
+  }
+
+  // Show first 3 error samples
+  for (const error of extraction.errors.slice(0, 3)) {
+    const file = error.file ?? '(no file)';
+    const lineInfo = error.line ? `:${error.line}` : '';
+    console.log(`    - ${file}${lineInfo} - ${error.message.substring(0, 80)}`);
+  }
+
+  if (extraction.errors.length > 3) {
+    console.log(`    ... and ${extraction.errors.length - 3} more errors`);
+  }
+}
+
+/**
  * Display a single run cache entry in human-readable format
  *
  * @param entry - The run cache entry to display
@@ -54,17 +76,8 @@ function displayRunCacheEntry(entry: RunCacheNote, index: number, detailed = fal
 
   if (entry.extraction && entry.extraction.errors.length > 0) {
     console.log(`  Errors: ${entry.extraction.errors.length}`);
-
     if (detailed) {
-      // Show first 3 error samples
-      for (const error of entry.extraction.errors.slice(0, 3)) {
-        const file = error.file ?? '(no file)';
-        const lineInfo = error.line ? `:${error.line}` : '';
-        console.log(`    - ${file}${lineInfo} - ${error.message.substring(0, 80)}`);
-      }
-      if (entry.extraction.errors.length > 3) {
-        console.log(`    ... and ${entry.extraction.errors.length - 3} more errors`);
-      }
+      displayErrorSamples(entry.extraction);
     }
   }
 
