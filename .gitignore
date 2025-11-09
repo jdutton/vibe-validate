@@ -12,6 +12,7 @@ coverage/
 .vitest/
 packages/extractors-test-bed/junit-output/
 packages/extractors/test/quality-report.json
+jscpd-report/
 
 # Documentation (generated)
 docs/api/

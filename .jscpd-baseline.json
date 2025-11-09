@@ -1,0 +1,40 @@
+{
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 15,
+      "fragment": "), chalk.white('vibe-validate state'));\n\n          // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)\n          const failedStep = result.phases\n            ?.flatMap(phase => phase.steps)\n            .find(step => step.name === result.failedStep);\n\n          if (failedStep?.command) {\n            console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));\n          }\n          if (result.fullLogFile) {\n            console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));\n          }\n\n          process",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/cli/src/commands/pre-commit.ts",
+        "start": 145,
+        "end": 159,
+        "startLoc": {
+          "line": 145,
+          "column": 22,
+          "position": 1322
+        },
+        "endLoc": {
+          "line": 159,
+          "column": 8,
+          "position": 1463
+        }
+      },
+      "secondFile": {
+        "name": "packages/cli/src/utils/validate-workflow.ts",
+        "start": 169,
+        "end": 183,
+        "startLoc": {
+          "line": 169,
+          "column": 27,
+          "position": 1176
+        },
+        "endLoc": {
+          "line": 183,
+          "column": 86,
+          "position": 1317
+        }
+      }
+    }
+  ]
+}

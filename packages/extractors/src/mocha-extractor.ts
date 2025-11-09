@@ -6,9 +6,8 @@
  * @package @vibe-validate/extractors
  */
 
-import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from './types.js';
-import { formatCleanOutput } from './utils/formatter-utils.js';
-import { generateGuidanceFromPatterns } from './utils/guidance-generator.js';
+import type { ErrorExtractorResult } from './types.js';
+import { processTestFailures, type TestFailureInfo } from './utils/test-framework-utils.js';
 
 /**
  * Extract errors from Mocha test output
@@ -47,88 +46,24 @@ export function extractMochaErrors(output: string): ErrorExtractorResult {
   const failingMatch = /(\d+) failing/.exec(output);
   const failureCount = failingMatch ? Number.parseInt(failingMatch[1], 10) : 0;
 
-  if (failureCount === 0) {
-    return {
-      summary: '0 test(s) failed',
-      errors: [],
-      totalErrors: 0,
-      errorSummary: '',
-      guidance: '',
-      metadata: {
-        confidence: 100,
-        completeness: 100,
-        issues: []
-      }
-    };
-  }
-
   // Extract all failures
   const failures = extractFailures(output);
-  const errors: FormattedError[] = [];
 
-  let completeCount = 0;
-
-  for (const failure of failures) {
-    const file = failure.file ?? 'unknown';
-    const message = failure.message ?? 'Test failed';
-    const context = failure.testName ?? '';
-
-    const isComplete = file !== 'unknown' && failure.line && message;
-    if (isComplete) {
-      completeCount++;
-    }
-
-    errors.push({
-      file,
-      line: failure.line,
-      message,
-      context
-    });
+  // Early return if no failures detected (but failure count suggested there should be)
+  if (failureCount === 0 && failures.length === 0) {
+    return processTestFailures([], 95);
   }
 
-  // Generate summary
-  const summary = `${failures.length} test(s) failed`;
-
-  // Generate guidance
-  const guidance = generateGuidanceFromPatterns(failures);
-
-  // Calculate quality metadata
-  const completeness = failures.length > 0 ? (completeCount / failures.length) * 100 : 100;
-  const confidence = failures.length > 0 ? 95 : 100; // High confidence for Mocha
-
-  const metadata: ExtractionMetadata = {
-    confidence,
-    completeness,
-    issues: []
-  };
-
-  return {
-    summary,
-    errors,
-    totalErrors: failures.length,
-    errorSummary: formatCleanOutput(errors),
-    guidance,
-    metadata
-  };
-}
-
-/**
- * Failure information from Mocha output
- */
-interface FailureInfo {
-  file?: string;
-  line?: number;
-  message?: string;
-  testName?: string;
-  errorType?: string;
+  // Process failures using shared utility
+  return processTestFailures(failures, 95);
 }
 
 /**
  * Extract failure information from Mocha output
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 30 acceptable for Mocha output parsing (handles test hierarchies, error messages, and stack trace extraction)
-function extractFailures(output: string): FailureInfo[] {
-  const failures: FailureInfo[] = [];
+function extractFailures(output: string): TestFailureInfo[] {
+  const failures: TestFailureInfo[] = [];
   const lines = output.split('\n');
 
   let i = 0;

@@ -154,6 +154,32 @@ pnpm test
 pnpm build
 ```
 
+### Version Management
+
+**CRITICAL**: Always use the `bump-version` script to update versions across the monorepo. This ensures consistency across all packages and plugin files.
+
+```bash
+# Bump to explicit version
+pnpm bump-version 0.15.0-rc.5
+
+# Increment versions automatically
+pnpm bump-version patch    # 0.15.0 → 0.15.1
+pnpm bump-version minor    # 0.15.0 → 0.16.0
+pnpm bump-version major    # 0.15.0 → 1.0.0
+```
+
+The script automatically updates:
+- All workspace package.json files (cli, config, core, extractors, git, history, vibe-validate)
+- Claude Code plugin manifest and marketplace config
+- Preserves formatting and skips private packages
+
+**After bumping**:
+1. Rebuild: `pnpm -r build`
+2. Commit: `git add -A && git commit -m "chore: Release vX.Y.Z"`
+3. Tag: `git tag vX.Y.Z`
+4. Push: `git push origin main && git push origin vX.Y.Z`
+5. Publish: See "Publishing" section below
+
 ## Code Quality Monitoring
 
 ### SonarCloud
