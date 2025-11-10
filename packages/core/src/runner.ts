@@ -12,7 +12,7 @@
 
 import { type ChildProcess } from 'node:child_process';
 import { writeFileSync, appendFileSync } from 'node:fs';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
@@ -21,6 +21,12 @@ import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type { ValidationStep } from '@vibe-validate/config';
 import { stopProcessGroup, spawnCommand } from './process-utils.js';
 import { parseVibeValidateOutput } from './run-output-parser.js';
+import {
+  ensureDir,
+  getTempDir,
+  createLogFileWrite,
+  createCombinedJsonl,
+} from './fs-utils.js';
 import type {
   ValidationResult,
   StepResult,
@@ -74,51 +80,6 @@ export interface ValidationConfig {
   onStepComplete?: (_step: ValidationStep, _result: StepResult) => void;
 }
 
-/**
- * Get organized output directory for a specific step
- *
- * Creates path like: /tmp/vibe-validate/steps/2025-11-09/abc123-17-30-45-typecheck/
- *
- * @param treeHash - Git tree hash
- * @param stepName - Step name to include in directory
- * @returns Path to step output directory
- * @internal
- */
-function getStepOutputDir(treeHash: string, stepName: string): string {
-  const now = new Date();
-
-  // Date folder: YYYY-MM-DD
-  const dateFolder = now.toISOString().split('T')[0];
-
-  // Short hash: first 6 chars
-  const shortHash = treeHash.substring(0, 6);
-
-  // Time suffix: HH-mm-ss
-  const timeSuffix = now.toISOString().split('T')[1].substring(0, 8).replace(/:/g, '-');
-
-  // Sanitized step name for filesystem
-  const safeStepName = stepName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-
-  // Combined: abc123-17-30-45-typecheck
-  const stepFolder = `${shortHash}-${timeSuffix}-${safeStepName}`;
-
-  return join(tmpdir(), 'vibe-validate', 'steps', dateFolder, stepFolder);
-}
-
-/**
- * Ensure a directory exists (create if needed)
- * @internal
- */
-async function ensureDir(dirPath: string): Promise<void> {
-  try {
-    await mkdir(dirPath, { recursive: true });
-  } catch (err: unknown) {
-    // Ignore if directory already exists
-    if (err && typeof err === 'object' && 'code' in err && err.code !== 'EEXIST') {
-      throw err;
-    }
-  }
-}
 
 /**
  * Parse test output to extract specific failures
@@ -264,6 +225,57 @@ function handleFailFast(
 }
 
 /**
+ * Create a stream data handler for stdout or stderr
+ *
+ * Eliminates code duplication between stdout and stderr handlers by
+ * providing a factory function that creates handlers with proper
+ * stream-specific behavior.
+ *
+ * @param stream - The stream type ('stdout' or 'stderr')
+ * @param accumulator - Object to accumulate output into
+ * @param combinedLines - Array to track timestamped lines
+ * @param verbose - Whether to stream output in real-time
+ * @param yaml - Whether YAML mode is enabled (affects output target)
+ * @returns Data handler function for the stream
+ *
+ * @internal
+ */
+function createStreamHandler(
+  stream: 'stdout' | 'stderr',
+  accumulator: { value: string },
+  combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
+  verbose: boolean,
+  yaml: boolean
+): (_data: Buffer) => void {
+  return (_data: Buffer) => {
+    const chunk = _data.toString();
+    // Strip ANSI escape codes to make output readable for humans and LLMs
+    // These codes (e.g., \e[32m for colors) are noise in logs, YAML, and git notes
+    const cleanChunk = stripAnsi(chunk);
+    accumulator.value += cleanChunk;
+
+    // Track timestamped lines for combined.jsonl (for debug mode or failing steps)
+    const lines = cleanChunk.split('\n');
+    for (const line of lines) {
+      if (line) {
+        combinedLines.push({
+          ts: new Date().toISOString(),
+          stream,
+          line,
+        });
+      }
+    }
+
+    // Stream output in real-time when verbose mode is enabled
+    // When yaml mode is on, redirect subprocess output to stderr to keep stdout clean
+    if (verbose) {
+      const target = (stream === 'stdout' && !yaml) ? process.stdout : process.stderr;
+      target.write(chunk);  // Keep colors for terminal viewing
+    }
+  };
+}
+
+/**
  * Run validation steps in parallel with smart fail-fast
  *
  * Executes multiple validation steps concurrently, capturing output and
@@ -346,67 +358,19 @@ export async function runStepsInParallel(
         // Track process for potential kill
         processes.push({ proc, step });
 
-        let stdout = '';
-        let stderr = '';
+        // Use object accumulators for mutable references
+        const stdoutAccumulator = { value: '' };
+        const stderrAccumulator = { value: '' };
 
         // Track timestamped output for combined.jsonl (similar to run command)
         const combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }> = [];
 
+        // Setup stream handlers using shared factory function (eliminates duplication)
         // spawnCommand always sets stdio: ['ignore', 'pipe', 'pipe'], so stdout/stderr are guaranteed non-null
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-        proc.stdout!.on('data', data => {
-          const chunk = data.toString();
-          // Strip ANSI escape codes to make output readable for humans and LLMs
-          // These codes (e.g., \e[32m for colors) are noise in logs, YAML, and git notes
-          const cleanChunk = stripAnsi(chunk);
-          stdout += cleanChunk;
-
-          // Track timestamped lines for combined.jsonl (for debug mode or failing steps)
-          const lines = cleanChunk.split('\n');
-          for (const line of lines) {
-            if (line) {
-              combinedLines.push({
-                ts: new Date().toISOString(),
-                stream: 'stdout',
-                line,
-              });
-            }
-          }
-
-          // Stream output in real-time when verbose mode is enabled
-          // When yaml mode is on, redirect subprocess output to stderr to keep stdout clean
-          if (verbose) {
-            if (yaml) {
-              process.stderr.write(chunk);  // Keep colors for terminal viewing
-            } else {
-              process.stdout.write(chunk);  // Keep colors for terminal viewing
-            }
-          }
-        });
+        proc.stdout!.on('data', createStreamHandler('stdout', stdoutAccumulator, combinedLines, verbose, yaml));
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-        proc.stderr!.on('data', data => {
-          const chunk = data.toString();
-          // Strip ANSI escape codes from stderr as well
-          const cleanChunk = stripAnsi(chunk);
-          stderr += cleanChunk;
-
-          // Track timestamped lines for stderr
-          const lines = cleanChunk.split('\n');
-          for (const line of lines) {
-            if (line) {
-              combinedLines.push({
-                ts: new Date().toISOString(),
-                stream: 'stderr',
-                line,
-              });
-            }
-          }
-
-          // Stream errors in real-time when verbose mode is enabled
-          if (verbose) {
-            process.stderr.write(chunk);  // Keep colors for terminal viewing
-          }
-        });
+        proc.stderr!.on('data', createStreamHandler('stderr', stderrAccumulator, combinedLines, verbose, yaml));
 
         proc.on('close', exitCode => {
           // Wrap in async IIFE to handle file creation
@@ -414,6 +378,8 @@ export async function runStepsInParallel(
           void (async () => {
             const durationMs = Date.now() - startTime;
             const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
+            const stdout = stdoutAccumulator.value;
+            const stderr = stderrAccumulator.value;
             const output = stdout + stderr;
             outputs.set(step.name, output);
 
@@ -487,30 +453,24 @@ export async function runStepsInParallel(
               // Only create files if not already provided by nested vibe-validate command
               try {
                 const treeHash = await getGitTreeHash();
-                const outputDir = getStepOutputDir(treeHash, step.name);
+                const outputDir = getTempDir('steps', treeHash, step.name);
                 await ensureDir(outputDir);
 
                 const writePromises: Promise<void>[] = [];
 
-                // Write stdout.log (only if non-empty)
-                let stdoutFile: string | undefined;
-                if (stdout.trim()) {
-                  stdoutFile = join(outputDir, 'stdout.log');
-                  writePromises.push(writeFile(stdoutFile, stdout, 'utf-8'));
-                }
+                // Write stdout.log (only if non-empty) using shared utility
+                const { file: stdoutFile, promise: stdoutPromise } =
+                  createLogFileWrite(stdout, outputDir, 'stdout.log');
+                if (stdoutPromise) writePromises.push(stdoutPromise);
 
-                // Write stderr.log (only if non-empty)
-                let stderrFile: string | undefined;
-                if (stderr.trim()) {
-                  stderrFile = join(outputDir, 'stderr.log');
-                  writePromises.push(writeFile(stderrFile, stderr, 'utf-8'));
-                }
+                // Write stderr.log (only if non-empty) using shared utility
+                const { file: stderrFile, promise: stderrPromise } =
+                  createLogFileWrite(stderr, outputDir, 'stderr.log');
+                if (stderrPromise) writePromises.push(stderrPromise);
 
                 // Write combined.jsonl (always - timestamped interleaved output)
                 const combinedFile = join(outputDir, 'combined.jsonl');
-                const combinedContent = combinedLines
-                  .map(line => JSON.stringify(line))
-                  .join('\n');
+                const combinedContent = createCombinedJsonl(combinedLines);
                 writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
 
                 // Wait for all writes to complete

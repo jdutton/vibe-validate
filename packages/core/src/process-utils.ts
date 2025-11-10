@@ -6,9 +6,10 @@
  */
 
 import { ChildProcess, execSync, spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
+import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
 
 /**
  * Stop a child process and its entire process group (cross-platform)
@@ -260,30 +261,24 @@ export async function captureCommandOutput(
   const durationSecs = (endTime - startTime) / 1000;
 
   // Ensure output directory exists
-  await mkdir(outputDir, { recursive: true });
+  await ensureDir(outputDir);
 
-  // Write output files
+  // Write output files using shared utilities
   const writePromises: Promise<void>[] = [];
 
   // Write stdout.log (only if non-empty)
-  let stdoutFile: string | undefined;
-  if (stdoutRaw.trim()) {
-    stdoutFile = join(outputDir, 'stdout.log');
-    writePromises.push(writeFile(stdoutFile, stdoutRaw, 'utf-8'));
-  }
+  const { file: stdoutFile, promise: stdoutPromise } =
+    createLogFileWrite(stdoutRaw, outputDir, 'stdout.log');
+  if (stdoutPromise) writePromises.push(stdoutPromise);
 
   // Write stderr.log (only if non-empty)
-  let stderrFile: string | undefined;
-  if (stderrRaw.trim()) {
-    stderrFile = join(outputDir, 'stderr.log');
-    writePromises.push(writeFile(stderrFile, stderrRaw, 'utf-8'));
-  }
+  const { file: stderrFile, promise: stderrPromise } =
+    createLogFileWrite(stderrRaw, outputDir, 'stderr.log');
+  if (stderrPromise) writePromises.push(stderrPromise);
 
   // Write combined.jsonl (always)
   const combinedFile = join(outputDir, 'combined.jsonl');
-  const combinedContent = combinedLines
-    .map(line => JSON.stringify(line))
-    .join('\n');
+  const combinedContent = createCombinedJsonl(combinedLines);
   writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
 
   // Wait for all writes to complete

@@ -7,9 +7,10 @@
  * - Storage size calculation
  */
 
-import { mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { getTempDir, ensureDir as ensureDirCore } from '@vibe-validate/core';
 
 /**
  * Get the root temporary directory for vibe-validate
@@ -25,36 +26,14 @@ export function getVibeValidateTempDir(): string {
  * @returns Path like /tmp/vibe-validate/runs/2025-11-05/abc123-17-30-45/
  */
 export function getRunOutputDir(treeHash: string): string {
-  const now = new Date();
-
-  // Date folder: YYYY-MM-DD
-  const dateFolder = now.toISOString().split('T')[0];
-
-  // Short hash: first 6 chars
-  const shortHash = treeHash.substring(0, 6);
-
-  // Time suffix: HH-mm-ss
-  const timeSuffix = now.toISOString().split('T')[1].substring(0, 8).replace(/:/g, '-');
-
-  // Combined: abc123-17-30-45
-  const runFolder = `${shortHash}-${timeSuffix}`;
-
-  return join(getVibeValidateTempDir(), 'runs', dateFolder, runFolder);
+  return getTempDir('runs', treeHash);
 }
 
 /**
  * Ensure a directory exists (create if needed)
+ * Re-exports shared utility from @vibe-validate/core
  */
-export async function ensureDir(dirPath: string): Promise<void> {
-  try {
-    await mkdir(dirPath, { recursive: true });
-  } catch (err: unknown) {
-    // Ignore if directory already exists
-    if (err && typeof err === 'object' && 'code' in err && err.code !== 'EEXIST') {
-      throw err;
-    }
-  }
-}
+export const ensureDir = ensureDirCore;
 
 /**
  * Get the size of a directory recursively (in bytes)

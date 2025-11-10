@@ -2,37 +2,577 @@
   "duplicates": [
     {
       "format": "typescript",
-      "lines": 15,
-      "fragment": "), chalk.white('vibe-validate state'));\n\n          // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)\n          const failedStep = result.phases\n            ?.flatMap(phase => phase.steps)\n            .find(step => step.name === result.failedStep);\n\n          if (failedStep?.command) {\n            console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));\n          }\n          if (result.fullLogFile) {\n            console.error(chalk.blue('📄 Full log:'), chalk.gray(result.fullLogFile));\n          }\n\n          process",
+      "lines": 12,
+      "fragment": ".result));\n\n    // Wait for stdout to flush before exiting\n    await new Promise<void>(resolve => {\n      if (process.stdout.write('')) {\n        resolve();\n      } else {\n        process.stdout.once('drain', resolve);\n      }\n    });\n  } else {\n    // Human-readable mode: Display status message",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/cli/src/utils/check-validation.ts",
+        "start": 143,
+        "end": 154,
+        "startLoc": {
+          "line": 143,
+          "column": 11,
+          "position": 1203
+        },
+        "endLoc": {
+          "line": 154,
+          "column": 47,
+          "position": 1288
+        }
+      },
+      "secondFile": {
+        "name": "packages/cli/src/utils/check-validation.ts",
+        "start": 103,
+        "end": 114,
+        "startLoc": {
+          "line": 103,
+          "column": 11,
+          "position": 802
+        },
+        "endLoc": {
+          "line": 114,
+          "column": 48,
+          "position": 887
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": ".substring(0, 12)}...`));\n    console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));\n    console.log(chalk.gray(`   Duration: ${durationSecs}s`));\n    console.log(chalk.gray(`   Branch: ${passingRun.branch}`));\n\n    if (passingRun.result?",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/cli/src/utils/check-validation.ts",
+        "start": 157,
+        "end": 162,
+        "startLoc": {
+          "line": 157,
+          "column": 16,
+          "position": 1339
+        },
+        "endLoc": {
+          "line": 162,
+          "column": 2,
+          "position": 1419
+        }
+      },
+      "secondFile": {
+        "name": "packages/cli/src/utils/validate-workflow.ts",
+        "start": 98,
+        "end": 103,
+        "startLoc": {
+          "line": 98,
+          "column": 9,
+          "position": 603
+        },
+        "endLoc": {
+          "line": 103,
+          "column": 2,
+          "position": 683
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": "), chalk.white('vibe-validate state'));\n\n          // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)\n          const failedStep = result.phases\n            ?.flatMap(phase => phase.steps)\n            .find(step => step.name === result.failedStep);\n\n          if (failedStep?.command) {\n            console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));\n          }\n\n          process",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/src/commands/pre-commit.ts",
         "start": 145,
-        "end": 159,
+        "end": 156,
         "startLoc": {
           "line": 145,
           "column": 22,
           "position": 1322
         },
         "endLoc": {
-          "line": 159,
+          "line": 156,
           "column": 8,
-          "position": 1463
+          "position": 1425
         }
       },
       "secondFile": {
         "name": "packages/cli/src/utils/validate-workflow.ts",
         "start": 170,
-        "end": 184,
+        "end": 181,
         "startLoc": {
           "line": 170,
           "column": 27,
           "position": 1184
         },
         "endLoc": {
-          "line": 184,
+          "line": 181,
           "column": 86,
-          "position": 1325
+          "position": 1287
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": ");\n        return;\n      }\n\n      console.log(`${dryRun ? 'Would prune' : 'Pruned'} ${result.notesPruned} tree hashes`);\n      console.log(`${dryRun ? 'Would remove' : 'Removed'} ${result.runsPruned} validation runs`);\n      console",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/cli/src/commands/history.ts",
+        "start": 609,
+        "end": 615,
+        "startLoc": {
+          "line": 609,
+          "column": 13,
+          "position": 4986
+        },
+        "endLoc": {
+          "line": 615,
+          "column": 8,
+          "position": 5050
+        }
+      },
+      "secondFile": {
+        "name": "packages/cli/src/commands/history.ts",
+        "start": 581,
+        "end": 588,
+        "startLoc": {
+          "line": 581,
+          "column": 22,
+          "position": 4720
+        },
+        "endLoc": {
+          "line": 588,
+          "column": 3,
+          "position": 4785
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 15,
+      "fragment": "config: HistoryConfig = {},\n  dryRun: boolean = false\n): Promise<PruneResult> {\n  const mergedConfig = {\n    ...DEFAULT_HISTORY_CONFIG,\n    ...config,\n    gitNotes: {\n      ...DEFAULT_HISTORY_CONFIG.gitNotes,\n      ...config.gitNotes,\n    },\n  };\n\n  const notesRef = mergedConfig.gitNotes.ref;\n\n  const allNotes",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/history/src/pruner.ts",
+        "start": 98,
+        "end": 112,
+        "startLoc": {
+          "line": 98,
+          "column": 3,
+          "position": 618
+        },
+        "endLoc": {
+          "line": 112,
+          "column": 9,
+          "position": 715
+        }
+      },
+      "secondFile": {
+        "name": "packages/history/src/pruner.ts",
+        "start": 28,
+        "end": 41,
+        "startLoc": {
+          "line": 28,
+          "column": 3,
+          "position": 162
+        },
+        "endLoc": {
+          "line": 41,
+          "column": 11,
+          "position": 258
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 11,
+      "fragment": ".exec(output)) !== null) {\n      errors.push({\n        file: match[1].trim(),\n        line: Number.parseInt(match[2]),\n        column: Number.parseInt(match[3]),\n        severity: match[4] as 'error' | 'warning',\n        code: match[5],\n        message: match[6].trim()\n      });\n    }\n  }",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/typescript-extractor.ts",
+        "start": 53,
+        "end": 63,
+        "startLoc": {
+          "line": 53,
+          "column": 11,
+          "position": 269
+        },
+        "endLoc": {
+          "line": 63,
+          "column": 2,
+          "position": 384
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/typescript-extractor.ts",
+        "start": 40,
+        "end": 51,
+        "startLoc": {
+          "line": 40,
+          "column": 11,
+          "position": 126
+        },
+        "endLoc": {
+          "line": 51,
+          "column": 36,
+          "position": 242
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 16,
+      "fragment": "if (failures.length === 0) {\n    return {\n      summary: '0 test(s) failed',\n      errors: [],\n      totalErrors: 0,\n      errorSummary: '',\n      guidance: '',\n      metadata: {\n        confidence: 100,\n        completeness: 100,\n        issues: []\n      }\n    };\n  }\n\n  const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/tap-extractor.ts",
+        "start": 33,
+        "end": 48,
+        "startLoc": {
+          "line": 33,
+          "column": 3,
+          "position": 97
+        },
+        "endLoc": {
+          "line": 48,
+          "column": 6,
+          "position": 191
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/utils/test-framework-utils.ts",
+        "start": 48,
+        "end": 63,
+        "startLoc": {
+          "line": 48,
+          "column": 3,
+          "position": 143
+        },
+        "endLoc": {
+          "line": 63,
+          "column": 40,
+          "position": 237
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": "];\n    if (errorSummary.includes('×')) patterns.push('× symbol (U+00D7)');\n    if (errorSummary.includes('❌')) patterns.push('❌ cross mark');\n    if (errorSummary.includes(' ❯ ')) patterns.push('❯ arrow marker');\n    if (errorSummary.includes('Test Files')) patterns.push('Test Files summary');\n    if (errorSummary.includes('.test.ts')) patterns.push('.test.ts files');\n    if (/FAIL\\s+\\d+\\s+test\\s+(file|case)/i.exec(errorSummary)) patterns.push('FAIL N test files/cases pattern');\n    return addDetectionMetadata(result, 'vitest', 90",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/smart-extractor.ts",
+        "start": 205,
+        "end": 212,
+        "startLoc": {
+          "line": 205,
+          "column": 2,
+          "position": 1464
+        },
+        "endLoc": {
+          "line": 212,
+          "column": 3,
+          "position": 1598
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/smart-extractor.ts",
+        "start": 113,
+        "end": 120,
+        "startLoc": {
+          "line": 113,
+          "column": 27,
+          "position": 565
+        },
+        "endLoc": {
+          "line": 120,
+          "column": 4,
+          "position": 699
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 17,
+      "fragment": "], 10) : 0;\n\n  // Extract all failures\n  const failures = extractFailures(output);\n\n  // Early return if no failures detected (but failure count suggested there should be)\n  if (failureCount === 0 && failures.length === 0) {\n    return processTestFailures([], 95);\n  }\n\n  // Process failures using shared utility\n  return processTestFailures(failures, 95);\n}\n\n/**\n * Extract failure information from Jasmine output\n */",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/jasmine-extractor.ts",
+        "start": 47,
+        "end": 63,
+        "startLoc": {
+          "line": 47,
+          "column": 2,
+          "position": 211
+        },
+        "endLoc": {
+          "line": 63,
+          "column": 4,
+          "position": 301
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/mocha-extractor.ts",
+        "start": 47,
+        "end": 63,
+        "startLoc": {
+          "line": 47,
+          "column": 2,
+          "position": 211
+        },
+        "endLoc": {
+          "line": 63,
+          "column": 4,
+          "position": 301
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": "function extractFailures(output: string): TestFailureInfo[] {\n  const failures: TestFailureInfo[] = [];\n  const lines = output.split('\\n');\n\n  let i = 0;\n  while (i < lines.length) {\n    const line = lines[i];\n\n    // Look for numbered failure markers (e.g., \"1) Test name\")",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/jasmine-extractor.ts",
+        "start": 65,
+        "end": 73,
+        "startLoc": {
+          "line": 65,
+          "column": 1,
+          "position": 305
+        },
+        "endLoc": {
+          "line": 73,
+          "column": 60,
+          "position": 394
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/mocha-extractor.ts",
+        "start": 65,
+        "end": 73,
+        "startLoc": {
+          "line": 65,
+          "column": 1,
+          "position": 305
+        },
+        "endLoc": {
+          "line": 73,
+          "column": 53,
+          "position": 394
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 22,
+      "fragment": "const failures = extractFailures(output);\n\n  if (failures.length === 0) {\n    return {\n      summary: '0 test(s) failed',\n      errors: [],\n      totalErrors: 0,\n      errorSummary: '',\n      guidance: '',\n      metadata: {\n        confidence: 100,\n        completeness: 100,\n        issues: []\n      }\n    };\n  }\n\n  const errors: FormattedError[] = [];\n  let completeCount = 0;\n\n  for (const failure of failures) {\n    const file = failure.file ?? 'unknown'",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/ava-extractor.ts",
+        "start": 33,
+        "end": 54,
+        "startLoc": {
+          "line": 33,
+          "column": 3,
+          "position": 92
+        },
+        "endLoc": {
+          "line": 54,
+          "column": 10,
+          "position": 255
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/tap-extractor.ts",
+        "start": 31,
+        "end": 52,
+        "startLoc": {
+          "line": 31,
+          "column": 3,
+          "position": 83
+        },
+        "endLoc": {
+          "line": 52,
+          "column": 10,
+          "position": 246
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": "+ 1, failure);\n\n        // Add error type detection and guidance\n        if (!failure.errorType && failure.message) {\n          failure.errorType = detectErrorType(failure.message);\n        }\n        if (failure.errorType) {\n          failure.guidance = getErrorGuidance(failure.errorType);\n        }\n\n        failures.push(failure);\n      }\n    }\n  }",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/ava-extractor.ts",
+        "start": 174,
+        "end": 187,
+        "startLoc": {
+          "line": 174,
+          "column": 2,
+          "position": 1220
+        },
+        "endLoc": {
+          "line": 187,
+          "column": 2,
+          "position": 1315
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/ava-extractor.ts",
+        "start": 149,
+        "end": 161,
+        "startLoc": {
+          "line": 149,
+          "column": 2,
+          "position": 982
+        },
+        "endLoc": {
+          "line": 161,
+          "column": 5,
+          "position": 1076
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": ".safeParse(data);\n\n    if (result.success) {\n      return { success: true, data: result.data };\n    }\n\n    // Extract error messages with full path\n    const errors = result.error.errors.map(err => {\n      const path = err.path.join('.');\n      return path ? `${path}: ${err.message}` : err.message;\n    });\n\n    return { success: false, errors };\n  };",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/core/src/schema-utils.ts",
+        "start": 36,
+        "end": 49,
+        "startLoc": {
+          "line": 36,
+          "column": 7,
+          "position": 111
+        },
+        "endLoc": {
+          "line": 49,
+          "column": 2,
+          "position": 246
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/result-schema.ts",
+        "start": 152,
+        "end": 175,
+        "startLoc": {
+          "line": 152,
+          "column": 27,
+          "position": 710
+        },
+        "endLoc": {
+          "line": 175,
+          "column": 4,
+          "position": 846
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": ");\n\n  if (result.success) {\n    return { success: true, data: result.data };\n  }\n\n  // Extract error messages with full path\n  const errors = result.error.errors.map(err => {\n    const path = err.path.join('.');\n    return path ? `${path}: ${err.message}` : err.message;\n  });\n\n  return { success: false, errors };\n}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/config/src/schema.ts",
+        "start": 262,
+        "end": 275,
+        "startLoc": {
+          "line": 262,
+          "column": 7,
+          "position": 1493
+        },
+        "endLoc": {
+          "line": 275,
+          "column": 2,
+          "position": 1622
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/result-schema.ts",
+        "start": 152,
+        "end": 165,
+        "startLoc": {
+          "line": 152,
+          "column": 5,
+          "position": 714
+        },
+        "endLoc": {
+          "line": 165,
+          "column": 2,
+          "position": 843
+        }
+      }
+    },
+    {
+      "format": "javascript",
+      "lines": 12,
+      "fragment": ",\n  reset: '\\x1b[0m',\n};\n\nfunction log(message, color = 'reset') {\n  console.log(`${colors[color]}${message}${colors.reset}`);\n}\n\n// Parse command-line arguments\nconst args = process.argv.slice(2);\n\nif",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tools/bump-version.js",
+        "start": 34,
+        "end": 45,
+        "startLoc": {
+          "line": 34,
+          "column": 13,
+          "position": 143
+        },
+        "endLoc": {
+          "line": 45,
+          "column": 3,
+          "position": 218
+        }
+      },
+      "secondFile": {
+        "name": "tools/pre-publish-check.js",
+        "start": 34,
+        "end": 44,
+        "startLoc": {
+          "line": 34,
+          "column": 13,
+          "position": 156
+        },
+        "endLoc": {
+          "line": 44,
+          "column": 4,
+          "position": 230
+        }
+      }
+    },
+    {
+      "format": "javascript",
+      "lines": 13,
+      "fragment": "'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)\n      'unicorn/prefer-number-properties': 'error', // Prefer Number.isNaN over global isNaN (reliability)\n      'unicorn/throw-new-error': 'error', // Require 'new' when throwing Error\n      'unicorn/prefer-module': 'error', // Prefer ESM over CommonJS\n      'unicorn/prefer-top-level-await': 'error', // Modern async patterns\n      'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach\n      'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined\n      'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability\n      'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes\n    },\n  },\n  {\n    // Git-aware packages - OS command execution is intentional and necessary",
+      "tokens": 0,
+      "firstFile": {
+        "name": "eslint.config.js",
+        "start": 151,
+        "end": 163,
+        "startLoc": {
+          "line": 151,
+          "column": 7,
+          "position": 993
+        },
+        "endLoc": {
+          "line": 163,
+          "column": 74,
+          "position": 1085
+        }
+      },
+      "secondFile": {
+        "name": "eslint.config.js",
+        "start": 68,
+        "end": 80,
+        "startLoc": {
+          "line": 68,
+          "column": 7,
+          "position": 447
+        },
+        "endLoc": {
+          "line": 80,
+          "column": 70,
+          "position": 539
         }
       }
     }

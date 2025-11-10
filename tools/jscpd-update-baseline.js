@@ -12,8 +12,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const BASELINE_FILE = '.jscpd-baseline.json';
 
 const JSCPD_CONFIG = [
-  '--min-lines', '10',
-  '--min-tokens', '100',
+  '--min-lines', '5',
+  '--min-tokens', '50',
   '--reporters', 'json',
   '--format', 'typescript,javascript',
   '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',

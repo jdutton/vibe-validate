@@ -80,6 +80,14 @@ export {
   type CaptureCommandOptions,
 } from './process-utils.js';
 
+// Export filesystem utilities
+export {
+  ensureDir,
+  getTempDir,
+  createLogFileWrite,
+  createCombinedJsonl,
+} from './fs-utils.js';
+
 // Export validation result schema and validators
 export {
   ValidationResultSchema,
