@@ -241,7 +241,7 @@ describe('run command integration', () => {
 
       // Parse YAML output
       expectValidRunYaml(output);
-      const yamlContent = output.replace(/^---\n/, '');
+      const yamlContent = output.replace(/^---\n/, '').replace(/\n---\n?$/, '');
 
       // Should have YAML comment explaining caching is disabled
       expect(yamlContent).toContain('treeHash: unknown  # Not in git repository - caching disabled');
@@ -280,7 +280,7 @@ describe('run command integration', () => {
         secondOutput = err.stdout || '';
       }
 
-      const secondYamlContent = secondOutput.replace(/^---\n/, '');
+      const secondYamlContent = secondOutput.replace(/^---\n/, '').replace(/\n---\n?$/, '');
       const secondParsed = yaml.parse(secondYamlContent);
 
       // Should also have YAML comment
@@ -544,14 +544,14 @@ describe('run command integration', () => {
         encoding: 'utf-8',
       });
 
-      // Parse YAML output - opening delimiter only (no display flags = no closing delimiter)
+      // Parse YAML output - both opening and closing delimiters (always present for consistency)
       expectValidRunYaml(output);
       const parsed = parseRunYamlOutput(output);
       expect(parsed.exitCode).toBe(0);
 
-      // Should NOT have closing delimiter or any output after YAML
-      expect(output).not.toMatch(/\n---\n/); // No closing delimiter
-      expect(output.trim()).toBe(('---\n' + yaml.stringify(parsed)).trim());
+      // Should have closing delimiter (always present for RFC 4627 compliance)
+      expect(output).toMatch(/\n---\n$/); // Closing delimiter at end
+      expect(output.trim()).toBe(('---\n' + yaml.stringify(parsed) + '---').trim());
     });
   });
 });

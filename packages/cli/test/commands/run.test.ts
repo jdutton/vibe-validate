@@ -213,6 +213,32 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       expect(stdoutCalls).not.toContain('extraction:');
     });
 
+    it('should include both opening and closing YAML separators', async () => {
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess('test passed', '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      runCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['run', 'echo test'], { from: 'user' });
+      } catch (error: unknown) {
+        expect(error).toBeDefined();
+      }
+
+      const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+        .map(call => call[0])
+        .join('');
+
+      // Verify YAML document boundaries
+      expect(stdoutCalls).toMatch(/^---\n/); // Opening separator
+      expect(stdoutCalls).toMatch(/---\n$/); // Closing separator
+
+      // Count occurrences - should have exactly 2 (opening and closing)
+      const separatorCount = (stdoutCalls.match(/^---$/gm) || []).length;
+      expect(separatorCount).toBe(2);
+    });
+
     it('should include summary and guidance from extractor', async () => {
       const mockOutput = 'Some test output with errors';
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -284,6 +310,7 @@ extraction:
   summary: "1 test failed"
   guidance: "Review test assertions"
 rawOutput: "test output..."
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -324,6 +351,7 @@ extraction:
       line: 10
       message: "test error"
   summary: "1 test failed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -365,6 +393,7 @@ phases:
         message: "type error"
 summary: "Validation failed: 1 phase failed"
 guidance: "Fix the test phase errors"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -405,6 +434,7 @@ extraction:
   errors: []
   summary: "All tests passed"
   guidance: ""
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -451,6 +481,7 @@ extraction:
     confidence: 95
 rawOutput: "raw output here"
 customField: "should be preserved"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -491,6 +522,7 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Tests passed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -511,9 +543,9 @@ extraction:
         .map(call => call[0])
         .join('');
 
-      // Parse YAML output - opening delimiter only (no display flags)
+      // Parse YAML output - strip both opening and closing delimiters
       expect(stdoutCalls).toMatch(/^---\n/);
-      const yamlContent = stdoutCalls.replace(/^---\n/, '');
+      const yamlContent = stdoutCalls.replace(/^---\n/, '').replace(/\n---\n?$/, '');
 
       const yaml = require('yaml');
       const parsed = yaml.parse(yamlContent);
@@ -530,6 +562,7 @@ extraction:
   errors:
     - message: "custom error"
   summary: "Command failed with code 42"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -623,6 +656,7 @@ exitCode: 1
 extraction
   errors: [
     - file: "test.ts
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -652,6 +686,7 @@ extraction
 
     it('should handle empty YAML output', async () => {
       const emptyYaml = `---
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -684,6 +719,7 @@ extraction:
   errors: []
   summary: 'Test passed: "success" with 100% coverage'
   guidance: 'Keep going!'
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -760,6 +796,7 @@ extraction:
   summary: null
   guidance: null
 customField: null
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -792,6 +829,7 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Tests passed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -826,6 +864,7 @@ extraction:
   errors:
     - message: "error"
   summary: "Failed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -858,6 +897,7 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Passed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -888,6 +928,7 @@ extraction:
 command: "npm test"
 extraction: "this should be an object"
 exitCode: "not a number"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -917,6 +958,7 @@ exitCode: "not a number"
       const brokenYaml = `---
   invalid: yaml: structure:
     - with: [unclosed
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -958,6 +1000,7 @@ extraction:
   errors:
 ${largeErrors.map(e => `    - file: "${e.file}"\n      line: ${e.line}\n      message: "${e.message}"`).join('\n')}
   summary: "10000 test failures"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -991,6 +1034,7 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Passed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -1095,6 +1139,7 @@ extraction:
   errors:
     - message: "custom error"
   summary: "Custom failure"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -1126,6 +1171,7 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Passed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);
@@ -1313,6 +1359,7 @@ exitCode: 0
 extraction:
   errors: []
   summary: "Passed"
+---
 `;
 
       const mockSpawn = vi.mocked(childProcess.spawn);

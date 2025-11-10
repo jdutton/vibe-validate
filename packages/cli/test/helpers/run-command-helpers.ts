@@ -31,7 +31,8 @@ export function parseRunYamlOutput(output: string): RunResult {
     throw new Error('Expected YAML output to start with --- delimiter');
   }
 
-  const yamlContent = output.replace(/^---\n/, '');
+  // Strip both opening and closing --- separators
+  const yamlContent = output.replace(/^---\n/, '').replace(/\n---\n?$/, '');
   return yaml.parse(yamlContent) as RunResult;
 }
 

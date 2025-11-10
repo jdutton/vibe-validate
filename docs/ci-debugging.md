@@ -178,6 +178,88 @@ View it from the GitHub Actions UI:
 
 **Alternative**: Use `vibe-validate watch-pr <PR>` locally to extract state from failed CI runs
 
+### Using --debug Flag for Full Output Capture
+
+When validation fails but the extracted errors don't provide enough context, use the `--debug` flag:
+
+```bash
+vibe-validate validate --debug --yaml
+```
+
+**What --debug does:**
+- Creates output files for ALL steps (not just failed ones)
+- Adds `outputFiles` field to ValidationResult with log file paths
+- Preserves complete raw output for manual inspection
+
+**Output files created:**
+- `combined.jsonl` - Timestamped stdout+stderr (one JSON line per output line)
+- `stdout.log` - Stdout only (when created by nested `vv run` commands)
+- `stderr.log` - Stderr only (when created by nested `vv run` commands)
+
+**Example YAML with --debug:**
+```yaml
+passed: false
+failedStep: "TypeScript Type Check"
+outputFiles:
+  combined: /tmp/vibe-validate/validation-2025-11-09T23-40-13.log
+phases:
+  - name: "Pre-Qualification"
+    steps:
+      - name: "TypeScript Type Check"
+        passed: false
+        exitCode: 1
+        extraction:
+          errors:
+            - file: "src/types.ts"
+              line: 42
+              message: "Type 'string' is not assignable to type 'number'"
+          summary: "1 error found"
+        outputFiles:
+          combined: /tmp/vibe-validate/runs/2025-11-09/abc123-12-34-56/combined.jsonl
+```
+
+**When to use in CI:**
+```yaml
+- name: Run validation with debug output
+  run: vibe-validate validate --debug --yaml > validation-result.yaml
+
+- name: Upload debug logs on failure
+  if: failure()
+  uses: actions/upload-artifact@v4
+  with:
+    name: validation-debug-logs
+    path: |
+      validation-result.yaml
+      /tmp/vibe-validate/
+```
+
+**Accessing debug logs:**
+
+1. **Download artifact** from GitHub Actions UI
+2. **Read combined.jsonl** for timestamped output:
+   ```bash
+   # View all output chronologically
+   jq -r '.line' combined.jsonl
+
+   # Filter by timestamp
+   jq -r 'select(.ts > "2025-11-09T23:40:00Z") | .line' combined.jsonl
+   ```
+3. **Check top-level log** for complete validation output:
+   ```bash
+   cat validation-2025-11-09T23-40-13.log
+   ```
+
+**When NOT to use --debug:**
+- Default validation runs (generates extra files)
+- When extracted errors are sufficient
+- Pre-commit hooks (slower, unnecessary overhead)
+
+**When TO use --debug:**
+- CI failures with unclear error messages
+- Investigating extractor accuracy
+- Reporting bugs in error extraction
+- Comparing raw vs extracted output
+
 ## Testing CI Locally with act
 
 [nektos/act](https://github.com/nektos/act) runs GitHub Actions workflows locally using Docker.

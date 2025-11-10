@@ -96,7 +96,7 @@ export function runCommand(program: Command): void {
             // Cache hit - output cached result and exit with code 0
             process.stdout.write('---\n');
             process.stdout.write(yaml.stringify(cachedResult));
-            process.stdout.write('\n');
+            process.stdout.write('---\n');
             process.exit(0);
           } else {
             // Cache miss - output message and exit with code 1
@@ -148,12 +148,13 @@ export function runCommand(program: Command): void {
         }
         process.stdout.write(yamlOutput);
 
-        // Only write closing delimiter if there will be output displayed
+        // Always write closing delimiter for consistent YAML format
+        // This ensures LLMs and parsers can deterministically identify document boundaries
+        process.stdout.write('---\n');
+
+        // Check if additional output will be displayed (for displayCommandOutput)
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || to check truthy values (0 is falsy, which is correct)
         const willDisplayOutput = !!(actualOptions.head || actualOptions.tail || actualOptions.verbose);
-        if (willDisplayOutput) {
-          process.stdout.write('---\n');
-        }
 
         // Flush stdout to guarantee all YAML is written before any stderr
         // This prevents interleaving when streams are combined with 2>&1
