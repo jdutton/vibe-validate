@@ -7,99 +7,138 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0-rc.3] - 2025-11-06
+## [0.15.0] - 2025-11-12
 
-### 🐛 Bug Fixes
+Major update bringing run command caching, code quality enforcement, smart defaults, and enhanced AI agent integration.
 
-**CRITICAL: Fixed umbrella package missing CLI binaries** (v0.15.0-rc.2 regression)
-- **Problem**: Installing `vibe-validate` (umbrella package) globally didn't expose `vv` or `vibe-validate` commands
-- **Root Cause**: The umbrella package only declared a dependency on `@vibe-validate/cli` but didn't expose its binaries
-- **Solution**:
-  - Added `bin` field to umbrella package pointing to wrapper scripts
-  - Updated wrappers to detect and delegate to CLI in umbrella package's `node_modules`
-  - Now supports 4 contexts: dev mode, local install, umbrella install (global/local), and direct CLI install
-- **Impact**: Global installs now work correctly: `npm install -g vibe-validate@rc` exposes both `vv` and `vibe-validate`
+### 🚨 BREAKING CHANGES
 
-## [0.15.0-rc.2] - 2025-11-06
+**Schema Changes**
+- Validate results, validate steps, and run results now share common schema elements for consistency
+- Extensive changes to the schema to reduce redundancy that can consume LLM tokens and to support enhancements, e.g. with outputFiles visibility
 
-### 🐛 Bug Fixes
+**Git Notes Paths Changed**
+- Validation history: `runs/{hash}` → `validate/{hash}`
+- Added new run cache location for `vv run` command caching
+- Old v0.14.x history won't display (still exists, just hidden)
+- Run `vibe-validate history prune --all` to clean up old entries (optional)
 
-**CRITICAL: Fixed `vv` command missing in global install** (v0.15.0-rc.1 regression)
-- **Problem**: The `vv` binary was defined in package.json but wasn't included in the published package due to symlink handling
-- **Solution**: Build script now copies `vv` as a real file (not symlink) so npm can package it properly
-- **Impact**: Global installs now have both `vv` and `vibe-validate` commands available
-- **Workaround for rc.1**: Use `vibe-validate` command instead of `vv`
-
-## [0.15.0-rc.1] - 2025-11-05
-
-**🚀 Release Candidate** - Install with `npm install -D vibe-validate@rc`
-
-Major update: Run command caching, updated YAML with published JSON Schema, strict validation, and enhanced IDE support.
+**Run Command Behavior**
+- `vv run` now returns cached results by default when code unchanged
+- Use `--force` flag to bypass cache and always re-execute
+- Use `--check` flag to query cache status without running
 
 ### ✨ New Features
 
 **Smart Command Wrapper with `vv` Alias**
-- New `vv` binary provides shortest invocation: `vv run npm test`
+- New `vv` binary provides shortest invocation for all commands
 - Context-aware execution: automatically detects dev mode, local install, or global install
 - Works seamlessly in both git and non-git directories
-- Saves typing for developers and AI agents - use `vv` anywhere instead of `npx vibe-validate`
 - Example: `vv run pytest tests/` instead of `npx vibe-validate run "pytest tests/"`
+- Global installs now correctly expose both `vv` and `vibe-validate` commands
 
 **Run Command Caching**
 - Smart caching by git tree hash - instant results (<200ms) for unchanged code
 - Works in ANY language (Python, Rust, Go, etc.) - no config required
-- Flags: `--force` (bypass cache), `--check` (query cache status)
-- 90-95% context window reduction for AI agents, when extracting supported formats
+- Flags: `--force` (bypass cache), `--check` (query cache status), `--debug` (show outputFiles)
+- 90-95% context window reduction for AI agents when extracting supported formats
+- YAML frontmatter detection enables nested `vv run` command composition
 
-**Enhanced History Command**
+**Smart outputFiles Visibility**
+- New `--debug` flag for validate and run commands controls output verbosity
+- Step-level outputFiles: Only shown for failed steps or with `--debug`
+- Top-level outputFiles: Only shown with `--debug` flag
+- Commands wrapped with `vv run` always show outputFiles for downstream processing
+- Significantly reduces token usage for AI agents (only show logs when needed)
+
+**Enhanced History and State Commands**
+- `history show` now defaults to current tree hash (no argument needed)
+- `state` command intelligently shows run cache when no validation config exists
+- Added `--runs` flag to state: show only run cache entries
+- Added `--all` flag to state: show both validation history and run cache
 - `history show <hash> --all` - View validation runs + all cached run results
-- `history list --run` - List all run cache entries
-- `history prune --run` - Clean up run cache
+- `history list --run` - List all run cache entries with newest first
+- `history prune --run` - Clean up run cache entries
 
-**Schema Type Safety, Publication, & IDE Support**
-- 5 JSON Schema files now published to npm and available via unpkg CDN
-- All result schemas now use `.strict()` mode (prevents typos/unknown fields)
-- `vibe-validate init` generates version-pinned schema URLs for perfect IDE autocomplete
-- Example: `$schema: https://unpkg.com/@vibe-validate/config@0.15.0-rc.1/config.schema.json`
-- Benefits: Stable URLs, version matching, no breakage when main branch changes
+**Schema Type Safety & IDE Support**
+- 5 JSON Schema files published to npm and available via unpkg CDN
+- All result schemas use `.strict()` mode (prevents typos/unknown fields)
+- `vibe-validate init` generates version-pinned schema URLs for IDE autocomplete
+- Example: `$schema: https://unpkg.com/@vibe-validate/config@0.15.0/config.schema.json`
+- Stable URLs with version matching prevent breakage
 
-### 🚨 BREAKING CHANGES
-
-**Schema Changes**:
-- Validate results, validate steps, and run results share common schema elements for consistency and clarity.
-
-**Git Notes Paths Changed**:
-- Validation history: `runs/{hash}` → `validate/{hash}`
-- Old v0.14.x history won't display (still exists, just hidden)
-- Run `vibe-validate history prune --all` to clean up (optional)
-
-**Run Command Caching** (behavioral):
-- `run` now returns cached results by default when code unchanged
-- Use `--force` to always re-execute
+**TreeHash Deduplication**
+- Removed duplicate treeHash from nested results in history/state output
+- TreeHash now only appears at root level to save tokens
+- Created shared `tree-hash-output.ts` utility for consistent formatting
 
 ### 🎨 Improvements
 
 **Natural Command-Line Syntax for `run`** (Issue #1)
-- `vv run echo test` now works naturally (no quotes needed!)
+- `vv run echo test` now works naturally without quotes
 - Options pass through correctly: `vv run eslint --max-warnings 0 src/`
 - Old quoted syntax still works for backwards compatibility: `vv run "npm test"`
-- Uses Commander.js `.allowUnknownOption()` to pass arguments through
 
-**Cleaner Verbose Help** (Issue #3)
-- Replaced `---` section separators with `***` to avoid confusion with YAML front matter
+**Cleaner Help Output** (Issue #3)
+- Replaced `---` section separators with `***` to avoid YAML front matter confusion
 - YAML document start markers (`---`) remain in code examples where appropriate
 
-**Simplified `history list` Command** (Issue #2)
+**Simplified History Commands** (Issue #2)
 - Removed redundant `--all` flag from `history list --run`
-- Now just: `vv history list --run` (shows all run cache entries)
-- Cleaner, more intuitive interface
+- More intuitive interface with sensible defaults
+
+**YAML Output Format**
+- Always include trailing `---` separator in `vv run` output (RFC 4627 compliant)
+- Provides deterministic parsing boundaries for LLMs and YAML parsers
+- Improves extraction accuracy and standards compliance
+
+**TypeScript Bin Wrapper Refactor**
+- Converted shell script wrappers to TypeScript for type safety
+- Eliminated 132 lines of duplication between `vibe-validate` and `vv` binaries
+- Single source of truth with full type safety and JSDoc comments
+- Cleaner build process and git history
+
+**Reduced Code Duplication**
+- Created shared utilities for common patterns:
+  - `test-framework-utils.ts` - Shared test extraction logic
+  - `yaml-output.ts` - Consistent YAML formatting
+  - `fs-utils.ts` - Reusable filesystem operations
+- Refactored CLI commands to use shared utilities
+- Lowered jscpd detection thresholds (min-lines: 5, min-tokens: 50)
+
+### 🐛 Bug Fixes
+
+**YAML Separator Consistency**
+- Fixed inconsistent trailing separator behavior in `vv run` output
+- Now always includes both opening and closing `---` separators
+- Updated all test mocks and parsing helpers to handle consistent format
+
+**Process Management**
+- Fixed critical timeout bug preventing hung child processes (581s → 87s validation)
+- Added timeout safeguards with proper cleanup
+- Fixed stdin hanging issues with centralized spawn utility
+
+**Generic Extractor**
+- Fixed totalCount bug in error counting
+
+**Test Infrastructure**
+- Removed noisy "Failed to parse nested YAML" warning (expected for nested `vv run`)
+- Extracted Commander test setup helper (refactored 10 test files)
+- Created integration test helpers (3 new modules, 296 lines of reusable code)
 
 ### 📚 Documentation
 
-- New `docs/schemas.md` - Complete JSON Schema reference
-- Updated all examples to v0.15.0 format (removed deprecated fields)
+**New Documentation**
+- `docs/schemas.md` - Complete JSON Schema reference
+- `docs/ci-debugging.md` - Comprehensive `--debug` flag usage guide (82 lines)
 - Migration guide for upgrading from v0.14.x
-- Updated CLI reference with new natural syntax examples
+- Version management workflow in CLAUDE.md
+
+**Updated Documentation**
+- Updated CLI reference with natural syntax examples
+- Added `--debug` flag documentation with CI debugging examples
+- Updated VALIDATION-STATE-EXAMPLES.md with new output format
+- Claude Code plugin docs with v0.15.0 caching behavior
 
 ## [0.14.3] - 2025-10-30
 
@@ -960,6 +999,11 @@ Real-world TypeScript Node.js app:
 
 ## Version History
 
+- **v0.15.0** (2025-11-12) - Run command caching, code quality enforcement, smart defaults, enhanced AI integration
+- **v0.14.3** (2025-10-30) - Fixed Jest detection with real-world output
+- **v0.14.2** (2025-10-27) - Fixed broken init command
+- **v0.14.1** (2025-10-27) - Fixed broken init command (template packaging)
+- **v0.14.0** (2025-10-27) - Run command for AI agents, critical extractor fixes
 - **v0.13.0** (2025-10-26) - Smart locking system for concurrency control
 - **v0.12.2** (2025-10-25) - Comprehensive test framework support (8 extractors)
 - **v0.12.1** (2025-10-24) - Fixed npm publish process
@@ -969,7 +1013,12 @@ Real-world TypeScript Node.js app:
 - **v0.9.11** (2025-10-18) - Critical bug fix for tree hash consistency
 - **v0.9.8** (2025-10-18) - Initial public release
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/jdutton/vibe-validate/compare/v0.14.3...v0.15.0
+[0.14.3]: https://github.com/jdutton/vibe-validate/compare/v0.14.2...v0.14.3
+[0.14.2]: https://github.com/jdutton/vibe-validate/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/jdutton/vibe-validate/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/jdutton/vibe-validate/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/jdutton/vibe-validate/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/jdutton/vibe-validate/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/jdutton/vibe-validate/compare/v0.12.0...v0.12.1
