@@ -18,7 +18,7 @@
  */
 
 import { execSync } from 'child_process';
-import { readdirSync, existsSync } from 'fs';
+import { readdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -199,6 +199,17 @@ try {
     .map(dirent => dirent.name);
 
   for (const pkg of packages) {
+    // Check if package is private (skip build check for private packages)
+    const pkgJsonPath = join(packagesDir, pkg, 'package.json');
+    if (existsSync(pkgJsonPath)) {
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
+
+      // Skip private packages (like test beds)
+      if (pkgJson.private) {
+        continue;
+      }
+    }
+
     const distDir = join(packagesDir, pkg, 'dist');
     if (!existsSync(distDir)) {
       missingBuilds.push(`packages/${pkg}/`);
