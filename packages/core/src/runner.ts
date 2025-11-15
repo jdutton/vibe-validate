@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
-import { autoDetectAndExtract } from '@vibe-validate/extractors';
+import { autoDetectAndExtract, type ErrorExtractorResult } from '@vibe-validate/extractors';
 import type { ValidationStep } from '@vibe-validate/config';
 import { stopProcessGroup, spawnCommand } from './process-utils.js';
 import { parseVibeValidateOutput } from './run-output-parser.js';
@@ -272,6 +272,306 @@ function createStreamHandler(
       const target = (stream === 'stdout' && !yaml) ? process.stdout : process.stderr;
       target.write(chunk);  // Keep colors for terminal viewing
     }
+  };
+}
+
+/**
+ * Extract errors from failed step output
+ */
+function extractFromFailedOutput(output: string): ErrorExtractorResult | undefined {
+  const parsed = parseVibeValidateOutput(output);
+
+  if (parsed?.extraction) {
+    return parsed.extraction as ErrorExtractorResult;
+  }
+
+  // No vibe-validate YAML detected - use standard extraction
+  return autoDetectAndExtract(output);
+}
+
+/**
+ * Parse output and log cache status if verbose
+ */
+function parseAndLogCacheStatus(
+  output: string,
+  verbose: boolean,
+  log: (_msg: string) => void
+): { isCachedResult?: boolean; outputFiles?: { stdout?: string; stderr?: string; combined?: string } } {
+  const parsed = parseVibeValidateOutput(output);
+
+  if (!parsed) {
+    return {};
+  }
+
+  if (parsed.isCachedResult && verbose) {
+    log(`      ⚡ Step used cached result (${parsed.type} command)`);
+  }
+
+  return {
+    isCachedResult: parsed.isCachedResult,
+    outputFiles: parsed.outputFiles,
+  };
+}
+
+/**
+ * Create output files for step
+ */
+async function createStepOutputFiles(
+  stepName: string,
+  stdout: string,
+  stderr: string,
+  combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
+  verbose: boolean,
+  log: (_msg: string) => void
+): Promise<{ stdout?: string; stderr?: string; combined?: string } | undefined> {
+  try {
+    const treeHash = await getGitTreeHash();
+    const outputDir = getTempDir('steps', treeHash, stepName);
+    await ensureDir(outputDir);
+
+    const stdoutPath = join(outputDir, 'stdout.txt');
+    const stderrPath = join(outputDir, 'stderr.txt');
+    const combinedPath = join(outputDir, 'combined.jsonl');
+
+    await Promise.all([
+      writeFile(stdoutPath, stdout || ''),
+      writeFile(stderrPath, stderr || ''),
+      writeFile(combinedPath, createCombinedJsonl(combinedLines)),
+    ]);
+
+    return {
+      stdout: stdoutPath,
+      stderr: stderrPath,
+      combined: combinedPath,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    if (verbose) {
+      log(`      ⚠️ Warning: Could not create output files for ${stepName}: ${errorMessage}`);
+    }
+    return undefined;
+  }
+}
+
+/**
+ * Process step output: parse, extract errors, create output files
+ */
+async function processStepOutput(
+  stepName: string,
+  _command: string,
+  exitCode: number,
+  stdout: string,
+  stderr: string,
+  combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
+  verbose: boolean,
+  debug: boolean,
+  log: (_msg: string) => void
+): Promise<{
+  extraction?: ErrorExtractorResult;
+  isCachedResult?: boolean;
+  outputFiles?: { stdout?: string; stderr?: string; combined?: string };
+}> {
+  const output = stdout + stderr;
+  let extraction: ErrorExtractorResult | undefined;
+  let isCachedResult: boolean | undefined;
+  let outputFiles: { stdout?: string; stderr?: string; combined?: string } | undefined;
+
+  // Process failed steps
+  // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer
+  if (exitCode !== 0 && output && output.trim()) {
+    extraction = extractFromFailedOutput(output);
+    const result = parseAndLogCacheStatus(output, verbose, log);
+    isCachedResult = result.isCachedResult;
+    outputFiles = result.outputFiles;
+  } else if (output?.trim()) {
+    // Process passing steps - check if cached
+    const result = parseAndLogCacheStatus(output, verbose, log);
+    isCachedResult = result.isCachedResult;
+    outputFiles = result.outputFiles;
+  }
+
+  // Create output files if needed
+  const shouldCreateFiles = exitCode !== 0 || debug;
+  if (shouldCreateFiles && !outputFiles) {
+    outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, verbose, log);
+  }
+
+  return { extraction, isCachedResult, outputFiles };
+}
+
+/**
+ * Execute a single validation step
+ */
+async function executeSingleStep(
+  step: ValidationStep,
+  env: Record<string, string>,
+  verbose: boolean,
+  yaml: boolean,
+  debug: boolean,
+  maxNameLength: number,
+  log: (_msg: string) => void
+): Promise<{ output: string; stepResult: StepResult }> {
+  const paddedName = step.name.padEnd(maxNameLength);
+  log(`   ⏳ ${paddedName}  →  ${step.command}`);
+
+  const startTime = Date.now();
+  const proc = spawnCommand(step.command, { env });
+
+  // Use object accumulators for mutable references
+  const stdoutAccumulator = { value: '' };
+  const stderrAccumulator = { value: '' };
+  const combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }> = [];
+
+  // Setup stream handlers
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+  proc.stdout!.on('data', createStreamHandler('stdout', stdoutAccumulator, combinedLines, verbose, yaml));
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+  proc.stderr!.on('data', createStreamHandler('stderr', stderrAccumulator, combinedLines, verbose, yaml));
+
+  // Wait for process to complete
+  const exitCode = await new Promise<number | null>(resolve => {
+    proc.on('close', code => resolve(code));
+  });
+
+  const durationMs = Date.now() - startTime;
+  const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
+  const stdout = stdoutAccumulator.value;
+  const stderr = stderrAccumulator.value;
+  const output = stdout + stderr;
+
+  // Normalize exit code (null means abnormal termination, treat as failure)
+  const code = exitCode ?? 1;
+
+  const status = code === 0 ? '✅' : '❌';
+  const result = code === 0 ? 'PASSED' : 'FAILED';
+  log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
+
+  // Process output: parse, extract, create files
+  const { extraction, isCachedResult, outputFiles } = await processStepOutput(
+    step.name,
+    step.command,
+    code,
+    stdout,
+    stderr,
+    combinedLines,
+    verbose,
+    debug,
+    log
+  );
+
+  // Create step result (build without type annotation to let TS infer)
+  const stepResultBase = {
+    name: step.name,
+    command: step.command,
+    passed: code === 0,
+    durationSecs,
+    exitCode: code,
+  };
+
+  // Add optional fields if present
+  const stepResult: StepResult = {
+    ...stepResultBase,
+    ...(extraction ? { extraction } : {}),
+    ...(isCachedResult !== undefined ? { isCachedResult } : {}),
+    ...(outputFiles ? { outputFiles } : {}),
+  } as StepResult;
+
+  return { output, stepResult };
+}
+
+/**
+ * Run validation steps sequentially (one at a time)
+ *
+ * Executes validation steps one at a time in order, stopping on first failure.
+ * This mode is useful for bootstrap builds or when steps have dependencies.
+ *
+ * @param steps - Array of validation steps to execute sequentially
+ * @param phaseName - Human-readable phase name for logging
+ * @param enableFailFast - If true, stops on first failure (recommended for sequential)
+ * @param env - Additional environment variables for child processes
+ * @returns Promise resolving to execution results with outputs and step results
+ *
+ * @example
+ * ```typescript
+ * const result = await runStepsSequentially(
+ *   [
+ *     { name: 'Build', command: 'pnpm build' },
+ *     { name: 'TypeScript', command: 'pnpm typecheck' },
+ *     { name: 'ESLint', command: 'pnpm lint' },
+ *   ],
+ *   'Pre-Qualification',
+ *   true,
+ *   { NODE_ENV: 'test' }
+ * );
+ *
+ * if (!result.success) {
+ *   console.error(`Step ${result.failedStep?.name} failed`);
+ * }
+ * ```
+ *
+ * @public
+ */
+export async function runStepsSequentially(
+  steps: ValidationStep[],
+  phaseName: string,
+  enableFailFast: boolean = true,
+  env: Record<string, string> = {},
+  verbose: boolean = false,
+  yaml: boolean = false,
+  _developerFeedback: boolean = false,
+  debug: boolean = false
+): Promise<{
+  success: boolean;
+  failedStep?: ValidationStep;
+  outputs: Map<string, string>;
+  stepResults: StepResult[];
+}> {
+  // When yaml mode is on, write progress to stderr to keep stdout clean
+  const log = yaml ?
+    (msg: string) => process.stderr.write(msg + '\n') :
+    (msg: string) => console.log(msg);
+
+  log(`\n🔍 Running ${phaseName} (${steps.length} steps sequentially)...`);
+
+  const maxNameLength = Math.max(...steps.map(s => s.name.length));
+  const outputs = new Map<string, string>();
+  const stepResults: StepResult[] = [];
+
+  // Run steps one at a time
+  for (const step of steps) {
+    const { output, stepResult } = await executeSingleStep(
+      step,
+      env,
+      verbose,
+      yaml,
+      debug,
+      maxNameLength,
+      log
+    );
+
+    outputs.set(step.name, output);
+    stepResults.push(stepResult);
+
+    // If step failed and fail-fast is enabled, stop here
+    if (!stepResult.passed && enableFailFast) {
+      return {
+        success: false,
+        failedStep: step,
+        outputs,
+        stepResults,
+      };
+    }
+  }
+
+  // Check if any step failed (for non-fail-fast mode)
+  const hasFailures = stepResults.some(r => !r.passed);
+  const failedStep = hasFailures ? stepResults.find(r => !r.passed) : undefined;
+
+  return {
+    success: !hasFailures,
+    failedStep: failedStep ? steps.find(s => s.name === failedStep.name) : undefined,
+    outputs,
+    stepResults,
   };
 }
 
@@ -648,7 +948,11 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     }
 
     const phaseStartTime = Date.now();
-    const result = await runStepsInParallel(
+
+    // Choose execution strategy based on parallel flag
+    const runSteps = (phase.parallel === true) ? runStepsInParallel : runStepsSequentially;
+
+    const result = await runSteps(
       phase.steps,
       phase.name,
       enableFailFast,

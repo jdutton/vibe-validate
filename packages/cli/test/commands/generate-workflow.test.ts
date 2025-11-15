@@ -100,7 +100,7 @@ describe('generate-workflow command', () => {
       expect(jobIds).toEqual([
         'typescript-type-check',
         'eslint-code-quality',
-        'unit-tests-with-coverage',
+        'testing', // Phase 2 has parallel: false, so job is named after phase
       ]);
     });
 
@@ -126,7 +126,7 @@ describe('generate-workflow command', () => {
 
       expect(workflow.jobs).toHaveProperty('typescript-type-check');
       expect(workflow.jobs).toHaveProperty('eslint-code-quality');
-      expect(workflow.jobs).toHaveProperty('unit-tests-with-coverage');
+      expect(workflow.jobs).toHaveProperty('testing'); // Phase 2 has parallel: false
     });
 
     it('should auto-depend on previous phase in non-matrix mode', () => {
@@ -134,7 +134,7 @@ describe('generate-workflow command', () => {
       const workflow = parseWorkflowYaml(workflowYaml);
 
       // Testing phase (phase 2) auto-depends on Pre-Qualification phase (phase 1)
-      expect(workflow.jobs['unit-tests-with-coverage'].needs).toEqual([
+      expect(workflow.jobs['testing'].needs).toEqual([
         'typescript-type-check',
         'eslint-code-quality',
       ]);
@@ -159,7 +159,7 @@ describe('generate-workflow command', () => {
       expect(workflow.jobs['all-validation-passed'].needs).toEqual([
         'typescript-type-check',
         'eslint-code-quality',
-        'unit-tests-with-coverage',
+        'testing', // Phase 2 job named after phase
       ]);
     });
 
@@ -199,7 +199,7 @@ describe('generate-workflow command', () => {
       });
       const workflow = parseWorkflowYaml(workflowYaml);
 
-      const coverageJob = workflow.jobs['unit-tests-with-coverage'];
+      const coverageJob = workflow.jobs['testing']; // Phase 2 job named after phase
       const codecovStep = coverageJob.steps.find(
         (s: any) => s.uses === 'codecov/codecov-action@v3'
       );
@@ -235,7 +235,7 @@ describe('generate-workflow command', () => {
       const workflowYaml = generateWorkflow(configWithEnv, { useMatrix: false });
       const workflow = parseWorkflowYaml(workflowYaml);
 
-      const job = workflow.jobs['test-with-env'];
+      const job = workflow.jobs['test']; // Phase has parallel: false, job named after phase
       const testStep = job.steps.find((s: any) => s.run === 'npm test');
       expect(testStep.env.NODE_ENV).toBe('test');
       expect(testStep.env.API_KEY).toBe('${{ secrets.API_KEY }}');

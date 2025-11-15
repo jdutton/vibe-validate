@@ -99,13 +99,20 @@ export function toJobId(name: string): string {
 
 /**
  * Get all job IDs from validation phases
+ * Handles both phase-based (parallel: false) and step-based (parallel: true) jobs
  */
 export function getAllJobIds(phases: ValidationPhase[]): string[] {
   const jobIds: string[] = [];
 
   for (const phase of phases) {
-    for (const step of phase.steps) {
-      jobIds.push(toJobId(step.name));
+    if (phase.parallel === false) {
+      // Phase-based: one job per phase
+      jobIds.push(toJobId(phase.name));
+    } else {
+      // Step-based: one job per step
+      for (const step of phase.steps) {
+        jobIds.push(toJobId(step.name));
+      }
     }
   }
 
@@ -113,15 +120,70 @@ export function getAllJobIds(phases: ValidationPhase[]): string[] {
 }
 
 /**
- * Get job IDs for a specific phase
+ * Create common job setup steps (checkout, node, package manager)
  */
-function getPhaseJobIds(phases: ValidationPhase[], phaseName: string): string[] {
-  const phase = phases.find(p => p.name === phaseName);
-  if (!phase) {
-    return [];
+function createCommonJobSetupSteps(
+  nodeVersion: string,
+  packageManager: string
+): GitHubWorkflowStep[] {
+  const steps: GitHubWorkflowStep[] = [
+    {
+      uses: 'actions/checkout@v4',
+      with: {
+        'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
+      }
+    },
+    {
+      uses: 'actions/setup-node@v4',
+      with: {
+        'node-version': nodeVersion,
+        cache: packageManager,
+      },
+    },
+  ];
+
+  // Install dependencies
+  if (packageManager === 'pnpm') {
+    steps.push(
+      {
+        name: 'Install pnpm',
+        uses: 'pnpm/action-setup@v2',
+        with: { version: '8' },
+      },
+      { run: 'pnpm install' }
+    );
+  } else {
+    steps.push({ run: 'npm ci' });
   }
 
-  return phase.steps.map(step => toJobId(step.name));
+  return steps;
+}
+
+/**
+ * Add coverage reporting steps if enabled for this step
+ */
+function addCoverageReportingSteps(
+  jobSteps: GitHubWorkflowStep[],
+  stepName: string,
+  enableCoverage: boolean,
+  coverageProvider: string
+): void {
+  if (enableCoverage && stepName.toLowerCase().includes('coverage')) {
+    if (coverageProvider === 'codecov') {
+      jobSteps.push({
+        name: 'Upload coverage to Codecov',
+        uses: 'codecov/codecov-action@v3',
+        with: {
+          'fail_ci_if_error': true,
+        },
+      });
+    } else if (coverageProvider === 'coveralls') {
+      jobSteps.push({
+        name: 'Upload coverage to Coveralls',
+        uses: 'coverallsapp/github-action@v2',
+      });
+    }
+  }
 }
 
 /**
@@ -412,84 +474,92 @@ Write-Host '=========================================='`,
       };
     }
   } else {
-    // Non-matrix: Create individual jobs for each validation step
+    // Non-matrix: Create jobs based on parallel flag
+    // - parallel: false → One job per phase (phase-based grouping)
+    // - parallel: true → One job per step (step-based parallelism)
+
+    let previousJobIds: string[] | undefined;
+
     for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
       const phase = phases[phaseIndex];
 
-      // Auto-depend on previous phase for sequential execution
-      // (matches local validation behavior)
-      let needs: string[] | undefined;
-      if (phaseIndex > 0) {
-        const previousPhase = phases[phaseIndex - 1];
-        needs = getPhaseJobIds(phases, previousPhase.name);
-      }
+      // Determine needs based on previous phase
+      let needs: string[] | undefined = previousJobIds;
 
-      for (const step of phase.steps) {
-        const jobId = toJobId(step.name);
-        const jobSteps: GitHubWorkflowStep[] = [
-          {
-            uses: 'actions/checkout@v4',
-            with: {
-              'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
-            }
-          },
-          {
-            uses: 'actions/setup-node@v4',
-            with: {
-              'node-version': nodeVersions[0],
-              cache: packageManager,
-            },
-          },
-        ];
+      if (phase.parallel === false) {
+        // Phase-based grouping: ONE job with sequential workflow steps
+        const phaseJobId = toJobId(phase.name);
+        const jobSteps = createCommonJobSetupSteps(nodeVersions[0], packageManager);
 
-        // Install dependencies
-        if (packageManager === 'pnpm') {
-          jobSteps.push(
-            {
-              name: 'Install pnpm',
-              uses: 'pnpm/action-setup@v2',
-              with: { version: '8' },
-            },
-            { run: 'pnpm install' }
-          );
-        } else {
-          jobSteps.push({ run: 'npm ci' });
+        // Add bootstrap build if this phase has a build step
+        const hasBuildStep = phase.steps.some(s => s.name.toLowerCase().includes('build'));
+        if (hasBuildStep) {
+          jobSteps.push({
+            name: 'Build packages',
+            run: packageManager === 'pnpm' ? 'pnpm -r build' : 'npm run build',
+          });
         }
 
-        // Add the actual validation command
-        const testStep: GitHubWorkflowStep = { run: step.command };
+        // Add each step as a separate workflow step
+        for (const step of phase.steps) {
+          const stepWorkflowStep: GitHubWorkflowStep = {
+            name: step.name,
+            run: step.command,
+          };
 
-        // Add environment variables from step config
-        if (step.env) {
-          testStep.env = { ...step.env };
-        }
-
-        jobSteps.push(testStep);
-
-        // Add coverage reporting if enabled
-        if (enableCoverage && step.name.toLowerCase().includes('coverage')) {
-          if (coverageProvider === 'codecov') {
-            jobSteps.push({
-              name: 'Upload coverage to Codecov',
-              uses: 'codecov/codecov-action@v3',
-              with: {
-                'fail_ci_if_error': true,
-              },
-            });
-          } else if (coverageProvider === 'coveralls') {
-            jobSteps.push({
-              name: 'Upload coverage to Coveralls',
-              uses: 'coverallsapp/github-action@v2',
-            });
+          // Add environment variables from step config
+          if (step.env) {
+            stepWorkflowStep.env = { ...step.env };
           }
+
+          jobSteps.push(stepWorkflowStep);
+
+          // Add coverage reporting if enabled
+          addCoverageReportingSteps(jobSteps, step.name, enableCoverage, coverageProvider);
         }
 
-        jobs[jobId] = {
-          name: step.name,
+        jobs[phaseJobId] = {
+          name: phase.name,
           'runs-on': os[0],
           ...(needs && { needs }),
           steps: jobSteps,
         };
+
+        // Next phase depends on this phase job
+        previousJobIds = [phaseJobId];
+      } else {
+        // Step-based parallelism: Separate job for each step (existing behavior)
+        const stepJobIds: string[] = [];
+
+        for (const step of phase.steps) {
+          const jobId = toJobId(step.name);
+          stepJobIds.push(jobId);
+
+          const jobSteps = createCommonJobSetupSteps(nodeVersions[0], packageManager);
+
+          // Add the actual validation command
+          const testStep: GitHubWorkflowStep = { run: step.command };
+
+          // Add environment variables from step config
+          if (step.env) {
+            testStep.env = { ...step.env };
+          }
+
+          jobSteps.push(testStep);
+
+          // Add coverage reporting if enabled
+          addCoverageReportingSteps(jobSteps, step.name, enableCoverage, coverageProvider);
+
+          jobs[jobId] = {
+            name: step.name,
+            'runs-on': os[0],
+            ...(needs && { needs }),
+            steps: jobSteps,
+          };
+        }
+
+        // Next phase depends on ALL step jobs from this phase
+        previousJobIds = stepJobIds;
       }
     }
   }

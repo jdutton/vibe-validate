@@ -108,33 +108,135 @@ Display name for the phase.
 
 #### `parallel` (optional)
 
-Whether to run steps in this phase simultaneously or sequentially.
+Controls execution strategy for validation steps both locally and in CI workflows.
 
 **Type**: `boolean`
 
-**Default**: `false`
+**Default**: `false` (recommended for most projects)
+
+**Impact**:
+- **Local validation**: Steps run in parallel (true) or sequentially (false)
+- **CI workflows**: Determines GitHub Actions job grouping strategy (see below)
+
+**CI Job Grouping Strategies**:
+
+When you run `vibe-validate generate-workflow`, the `parallel` flag controls how GitHub Actions jobs are created:
+
+1. **Phase-Based Grouping (`parallel: false`)** - Recommended Default
+   - Creates **ONE GitHub Actions job per phase**
+   - All steps run sequentially as workflow steps within that job
+   - **Benefits**:
+     - Reduces CI runner usage by 40-70% (fewer jobs = fewer runners)
+     - Eliminates runner startup overhead (10-20s per job)
+     - Lower cost and faster overall for quick steps
+   - **Best for**: Fast validation steps (< 30s each) where parallelism overhead exceeds actual work time
+
+2. **Step-Based Parallelism (`parallel: true`)** - For Slow Steps
+   - Creates **separate GitHub Actions job per step**
+   - Steps run in parallel across multiple runners
+   - **Benefits**:
+     - Maximum parallelism for independent, slow steps
+     - Faster overall execution when steps take 1+ minute each
+   - **Trade-offs**:
+     - Higher CI runner usage (more jobs = more runners)
+     - Runner startup overhead multiplied by number of steps
+     - Higher cost but faster for slow steps
+
+**Decision Guide**: When to Use Each Strategy
+
+| Scenario | Recommendation | Reason |
+|----------|---------------|---------|
+| Fast validation steps (< 30s each) | `parallel: false` | Startup overhead dominates actual work time |
+| Slow, independent steps (1+ min each) | `parallel: true` | Parallelism benefits outweigh overhead |
+| Bootstrap projects (need build artifacts) | `parallel: false` in Phase 1 | Avoid redundant rebuilds across runners |
+| Cost-sensitive CI usage | `parallel: false` | Minimize runner usage and GitHub Actions minutes |
+| Maximum speed with resources | `parallel: true` | Accept higher cost for faster feedback |
 
 **Examples**:
 
 ```yaml
-# Parallel execution (faster, for independent checks)
-- name: Static Analysis
-  parallel: true
-  steps:
-    - name: TypeScript
-      command: tsc --noEmit
-    - name: ESLint
-      command: eslint src/
-
-# Sequential execution (for dependent checks)
-- name: Testing
+# Phase-based grouping (recommended default)
+# All 4 steps run in ONE GitHub Actions job
+- name: Pre-Qualification
   parallel: false
   steps:
-    - name: Unit Tests
-      command: vitest run
-    - name: Integration Tests
-      command: npm run test:integration
+    - name: TypeScript Type Check
+      command: pnpm typecheck
+    - name: ESLint
+      command: pnpm lint
+    - name: Code Duplication Check
+      command: node tools/jscpd-check.js
+    - name: Build Packages
+      command: pnpm -r build
+
+# Step-based parallelism (for slow steps)
+# Each step runs in separate GitHub Actions job
+- name: Testing
+  parallel: true
+  steps:
+    - name: Unit Tests (slow)
+      command: pnpm test:coverage
+    - name: Integration Tests (slow)
+      command: pnpm test:integration
+    - name: E2E Tests (slow)
+      command: pnpm test:e2e
 ```
+
+**Build Phase Placement**:
+
+Where you place your build step matters:
+
+```yaml
+# Bootstrap projects (CLI tools, validation depends on build)
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: false  # Build first to avoid redundant rebuilds
+      steps:
+        - name: Build Packages
+          command: pnpm -r build
+        - name: TypeScript
+          command: pnpm typecheck
+        - name: ESLint
+          command: pnpm lint
+
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: pnpm test
+
+# Non-bootstrap projects (tests don't need build artifacts)
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: false
+      steps:
+        - name: TypeScript
+          command: pnpm typecheck
+        - name: ESLint
+          command: pnpm lint
+
+    - name: Testing
+      steps:
+        - name: Unit Tests
+          command: pnpm test
+
+    - name: Build
+      steps:
+        - name: Build
+          command: pnpm build  # Verify "can I ship?" last
+```
+
+**Cost vs Speed Tradeoffs**:
+
+| Configuration | CI Runners | Typical Duration | Best For |
+|--------------|------------|------------------|----------|
+| 1 phase, `parallel: false`, 4 fast steps | 1 runner | 45s (4×10s + 5s overhead) | Small projects, fast checks |
+| 1 phase, `parallel: true`, 4 fast steps | 4 runners | 30s (10s + 20s overhead) | Not recommended (overhead > work) |
+| 1 phase, `parallel: false`, 3 slow steps | 1 runner | 180s (3×60s) | Cost-effective, acceptable speed |
+| 1 phase, `parallel: true`, 3 slow steps | 3 runners | 80s (60s + 20s overhead) | Faster but 3x cost |
+
+**Migration Note**: Existing configs with `parallel: false` will now create phase-based jobs in CI (previously this flag was ignored). Regenerate workflows with `vibe-validate generate-workflow` to use the new optimization.
 
 #### `timeout` (optional)
 
