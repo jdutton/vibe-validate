@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0-rc1] - 2025-11-15
+
+### 🚨 BREAKING CHANGES
+
+**Regenerate GitHub Actions Workflows**
+- Run `vibe-validate generate-workflow` to regenerate `.github/workflows/validate.yml`
+- New phase-based job grouping reduces GitHub Actions runner usage by 40-70%
+- Commit and push the updated workflow file
+
+**`parallel` Flag Now Works**
+- The `parallel` flag was defined in config but never implemented - it was silently ignored
+- Now properly controls CI job grouping:
+  - `parallel: false` - Steps run in ONE job (cost-effective, recommended default)
+  - `parallel: true` - Each step runs in separate job (faster for slow steps)
+- Local validation unchanged, only affects CI workflows
+
+### ✨ New Features
+
+**Phase-Based CI Job Grouping**
+- Reduces GitHub Actions runner usage by 40-70% for most projects
+- Example: TypeScript project goes from 3 runners → 1 runner (67% reduction)
+- When to use:
+  - `parallel: false` - Fast steps (< 30s), minimize runner startup overhead
+  - `parallel: true` - Slow steps (1+ min), need true parallelism
+
+**Example Config**:
+```yaml
+validation:
+  phases:
+    - name: Pre-Qualification
+      parallel: false  # All steps in 1 job
+      steps:
+        - name: TypeScript
+          command: pnpm typecheck
+        - name: ESLint
+          command: pnpm lint
+    - name: Testing
+      parallel: true  # Each step separate job (if multiple)
+      steps:
+        - name: Tests
+          command: pnpm test
+```
+
+### 🐛 Bug Fixes
+
+- **CRITICAL**: Fixed unimplemented `parallel` flag - now actually controls CI job grouping as documented
+
+### 🎯 Migration Guide
+
+1. Check your config: `grep "parallel:" vibe-validate.config.yaml`
+2. Decide strategy: `parallel: false` (recommended) or `parallel: true` (for slow steps)
+3. Regenerate: `vibe-validate generate-workflow`
+4. Review: `git diff .github/workflows/validate.yml`
+5. Commit and push
+
 ## [0.15.0] - 2025-11-12
 
 Major update bringing run command caching, code quality enforcement, smart defaults, and enhanced AI agent integration.
@@ -1013,7 +1068,8 @@ Real-world TypeScript Node.js app:
 - **v0.9.11** (2025-10-18) - Critical bug fix for tree hash consistency
 - **v0.9.8** (2025-10-18) - Initial public release
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.16.0-rc1...HEAD
+[0.16.0-rc1]: https://github.com/jdutton/vibe-validate/compare/v0.15.0...v0.16.0-rc1
 [0.15.0]: https://github.com/jdutton/vibe-validate/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/jdutton/vibe-validate/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/jdutton/vibe-validate/compare/v0.14.1...v0.14.2

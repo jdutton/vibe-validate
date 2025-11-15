@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/core",
-  "version": "0.15.0",
+  "version": "0.16.0-rc1",
   "description": "Core validation orchestration engine for vibe-validate",
   "type": "module",
   "main": "./dist/index.js",

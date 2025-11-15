@@ -1,7 +1,7 @@
 validation:
   phases:
     - name: Pre-Qualification
-      parallel: true
+      parallel: false
       steps:
         - name: TypeScript Type Check
           command: pnpm -r typecheck
@@ -9,14 +9,12 @@ validation:
           command: pnpm lint
         - name: Code Duplication Check
           command: node tools/jscpd-check-new.js
+        - name: Build All Packages
+          command: pnpm -r build
     - name: Testing
       steps:
         - name: Unit Tests with Coverage
           command: pnpm test:coverage
-    - name: Build
-      steps:
-        - name: Build All Packages
-          command: pnpm -r build
 git:
   mainBranch: main
 hooks:
