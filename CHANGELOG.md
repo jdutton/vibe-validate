@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0-rc1] - 2025-11-15
+## [0.16.0] - 2025-11-15
 
 ### 🚨 BREAKING CHANGES
 
@@ -1068,8 +1068,8 @@ Real-world TypeScript Node.js app:
 - **v0.9.11** (2025-10-18) - Critical bug fix for tree hash consistency
 - **v0.9.8** (2025-10-18) - Initial public release
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.16.0-rc1...HEAD
-[0.16.0-rc1]: https://github.com/jdutton/vibe-validate/compare/v0.15.0...v0.16.0-rc1
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/jdutton/vibe-validate/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/jdutton/vibe-validate/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/jdutton/vibe-validate/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/jdutton/vibe-validate/compare/v0.14.1...v0.14.2
