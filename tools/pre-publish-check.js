@@ -208,6 +208,11 @@ try {
       if (pkgJson.private) {
         continue;
       }
+
+      // Skip umbrella package (vibe-validate) - it's just a wrapper with bin scripts
+      if (pkg === 'vibe-validate') {
+        continue;
+      }
     }
 
     const distDir = join(packagesDir, pkg, 'dist');
