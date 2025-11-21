@@ -8,13 +8,13 @@
 import type { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { writeFile, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve, relative } from 'node:path';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 import type { OutputLine } from '@vibe-validate/core';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
-import { spawnCommand, parseVibeValidateOutput } from '@vibe-validate/core';
+import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import yaml from 'yaml';
 import chalk from 'chalk';
@@ -26,13 +26,14 @@ export function runCommand(program: Command): void {
     .argument('<command...>', 'Command to execute (multiple words supported)')
     .option('--check', 'Check if cached result exists without executing')
     .option('--force', 'Force execution and update cache (bypass cache read)')
+    .option('--cwd <directory>', 'Working directory relative to git root (default: git root)')
     .option('--head <lines>', 'Display first N lines of output after YAML (on stderr)', Number.parseInt)
     .option('--tail <lines>', 'Display last N lines of output after YAML (on stderr)', Number.parseInt)
     .option('--verbose', 'Display all output after YAML (on stderr)')
     .helpOption(false) // Disable automatic help to avoid conflicts with commands that use --help
     .allowUnknownOption() // Allow unknown options in the command
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Complex command handling logic, refactoring would reduce readability
-    .action(async (commandParts: string[], options: { check?: boolean; force?: boolean; head?: number; tail?: number; verbose?: boolean }) => {
+    .action(async (commandParts: string[], options: { check?: boolean; force?: boolean; cwd?: string; head?: number; tail?: number; verbose?: boolean }) => {
       // WORKAROUND: Commander.js with allowUnknownOption() strips ALL options from commandParts
       // Parse directly from process.argv to get the actual command with our options parsed correctly
       const argv = process.argv;
@@ -63,6 +64,9 @@ export function runCommand(program: Command): void {
           } else if (arg === '--force') {
             actualOptions.force = true;
             i++;
+          } else if (arg === '--cwd' && i + 1 < argv.length) {
+            actualOptions.cwd = argv[i + 1];
+            i += 2;
           } else if (arg === '--head' && i + 1 < argv.length) {
             actualOptions.head = Number.parseInt(argv[i + 1], 10);
             i += 2;
@@ -91,7 +95,7 @@ export function runCommand(program: Command): void {
       try {
         // Handle --check flag (cache status check only)
         if (actualOptions.check) {
-          const cachedResult = await tryGetCachedResult(commandString);
+          const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
           if (cachedResult) {
             // Cache hit - output cached result and exit with code 0
             process.stdout.write('---\n');
@@ -111,26 +115,26 @@ export function runCommand(program: Command): void {
         let context = { preamble: '', stderr: '' };
 
         if (!actualOptions.force) {
-          const cachedResult = await tryGetCachedResult(commandString);
+          const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
           if (cachedResult) {
             result = cachedResult;
           } else {
             // Cache miss - execute command
-            const executeResult = await executeAndExtract(commandString);
+            const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
             result = executeResult.result;
             context = executeResult.context;
 
             // Store result in cache
-            await storeCacheResult(commandString, result);
+            await storeCacheResult(commandString, result, actualOptions.cwd);
           }
         } else {
           // Force flag - bypass cache and execute
-          const executeResult = await executeAndExtract(commandString);
+          const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
           result = executeResult.result;
           context = executeResult.context;
 
           // Update cache with fresh result
-          await storeCacheResult(commandString, result);
+          await storeCacheResult(commandString, result, actualOptions.cwd);
         }
 
         // CRITICAL: Write complete YAML to stdout and flush BEFORE any stderr
@@ -200,24 +204,41 @@ export function runCommand(program: Command): void {
 /**
  * Get working directory relative to git root
  * Returns empty string for root, "packages/cli" for subdirectory
+ *
+ * @param explicitCwd - Optional explicit cwd from --cwd flag (relative to git root)
+ * @returns Working directory path relative to git root (empty string for root)
  */
-function getWorkingDirectory(): string {
+function getWorkingDirectory(explicitCwd?: string): string {
   try {
-    const gitRoot = execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    const gitRoot = getGitRoot();
 
-    const cwd = process.cwd();
-
-    // If cwd is git root, return empty string
-    if (cwd === gitRoot) {
-      return '';
+    if (!gitRoot) {
+      throw new Error('Not in a git repository');
     }
 
-    // Return relative path from git root
-    return cwd.substring(gitRoot.length + 1); // +1 to remove leading slash
-  } catch {
+    // Use explicit --cwd if provided
+    if (explicitCwd) {
+      // Resolve path relative to git root
+      const resolved = resolve(gitRoot, explicitCwd);
+
+      // Security: Prevent directory traversal outside git root
+      if (!resolved.startsWith(gitRoot)) {
+        throw new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`);
+      }
+
+      // Return normalized relative path
+      const relativePath = relative(gitRoot, resolved);
+      return relativePath || ''; // Empty string if resolved to git root
+    }
+
+    // Default to git root (empty string) for consistent behavior
+    // BREAKING CHANGE in v0.17.0: Previously defaulted to process.cwd()
+    return '';
+  } catch (error) {
+    // Re-throw validation errors
+    if (error instanceof Error && error.message.includes('Invalid --cwd')) {
+      throw error;
+    }
     // Not in a git repository - return empty string
     return '';
   }
@@ -227,7 +248,7 @@ function getWorkingDirectory(): string {
  * Try to get cached result for a command
  * Returns null if no cache hit or if not in a git repository
  */
-async function tryGetCachedResult(commandString: string): Promise<RunResult | null> {
+async function tryGetCachedResult(commandString: string, explicitCwd?: string): Promise<RunResult | null> {
   try {
     // Get tree hash
     const treeHash = await getGitTreeHash();
@@ -238,7 +259,7 @@ async function tryGetCachedResult(commandString: string): Promise<RunResult | nu
     }
 
     // Get working directory
-    const workdir = getWorkingDirectory();
+    const workdir = getWorkingDirectory(explicitCwd);
 
     // Encode cache key
     const cacheKey = encodeRunCacheKey(commandString, workdir);
@@ -287,7 +308,7 @@ async function tryGetCachedResult(commandString: string): Promise<RunResult | nu
 /**
  * Store result in cache (only successful runs - exitCode === 0)
  */
-async function storeCacheResult(commandString: string, result: RunResult): Promise<void> {
+async function storeCacheResult(commandString: string, result: RunResult, explicitCwd?: string): Promise<void> {
   try {
     // Only cache successful runs (v0.15.0+)
     // Failed runs may be transient or environment-specific
@@ -304,7 +325,7 @@ async function storeCacheResult(commandString: string, result: RunResult): Promi
     }
 
     // Get working directory
-    const workdir = getWorkingDirectory();
+    const workdir = getWorkingDirectory(explicitCwd);
 
     // Encode cache key
     const cacheKey = encodeRunCacheKey(commandString, workdir);
@@ -360,13 +381,36 @@ function stripAnsiCodes(text: string): string {
 /**
  * Execute a command and extract errors from its output
  */
-async function executeAndExtract(commandString: string): Promise<{
+async function executeAndExtract(commandString: string, explicitCwd?: string): Promise<{
   result: RunResult;
   context: { preamble: string; stderr: string };
 }> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolvePromise, rejectPromise) => {
     const startTime = Date.now();
-    const child = spawnCommand(commandString);
+
+    // Resolve cwd if provided (relative to git root)
+    let resolvedCwd: string | undefined;
+    if (explicitCwd) {
+      try {
+        const gitRoot = getGitRoot();
+        if (!gitRoot) {
+          rejectPromise(new Error('Not in a git repository'));
+          return;
+        }
+        resolvedCwd = resolve(gitRoot, explicitCwd);
+
+        // Security: Validate path is within git root
+        if (!resolvedCwd.startsWith(gitRoot)) {
+          rejectPromise(new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`));
+          return;
+        }
+      } catch (error) {
+        rejectPromise(new Error(`Failed to resolve --cwd: ${error instanceof Error ? error.message : 'unknown error'}`));
+        return;
+      }
+    }
+
+    const child = spawnCommand(commandString, { cwd: resolvedCwd });
 
     let stdout = '';
     let stderr = '';
@@ -426,7 +470,7 @@ async function executeAndExtract(commandString: string): Promise<{
           stderr: stderr.trim(),
         };
 
-        resolve({ result: mergedResult, context: contextOutput });
+        resolvePromise({ result: mergedResult, context: contextOutput });
         return;
       }
 
@@ -490,7 +534,7 @@ async function executeAndExtract(commandString: string): Promise<{
             },
           };
 
-          resolve({ result, context: { preamble: '', stderr: '' } });
+          resolvePromise({ result, context: { preamble: '', stderr: '' } });
         })
         .catch(async () => {
           // If tree hash fails, use timestamp-based fallback
@@ -542,13 +586,13 @@ async function executeAndExtract(commandString: string): Promise<{
             },
           };
 
-          resolve({ result, context: { preamble: '', stderr: '' } });
+          resolvePromise({ result, context: { preamble: '', stderr: '' } });
         });
     });
 
     // Handle spawn errors (e.g., command not found)
     child.on('error', (error: Error) => {
-      reject(error);
+      rejectPromise(error);
     });
   });
 }
@@ -705,6 +749,15 @@ $ vibe-validate run --force "pnpm test"
 # Always executes, updates cache (ignores existing cache)
 # Useful for flaky tests or time-sensitive commands
 \`\`\`
+
+**Working directory** (--cwd):
+\`\`\`bash
+$ vibe-validate run --cwd packages/cli "npm test"
+# Runs command in packages/cli directory (relative to git root)
+# Cache keys include working directory for correct cache hits
+\`\`\`
+
+**NEW in v0.17.0**: The \`--cwd\` flag allows running commands in subdirectories while maintaining consistent cache behavior. Paths are relative to git root, ensuring cache hits regardless of where you invoke the command.
 
 ### Cache Storage
 
@@ -944,6 +997,7 @@ Arguments:
 Options:
   --check             Check if cached result exists without executing
   --force             Force execution and update cache (bypass cache read)
+  --cwd <directory>   Working directory relative to git root (default: git root)
   --head <lines>      Display first N lines of output after YAML (on stderr)
   --tail <lines>      Display last N lines of output after YAML (on stderr)
   --verbose           Display all output after YAML (on stderr)
@@ -954,6 +1008,7 @@ Examples:
   vv run cargo test --all-features         # Rust
   vv run go test ./...                     # Go
   vv run npm test                          # Node.js
+  vv run --cwd packages/cli npm test      # Run in subdirectory
   vv run --verbose npm test                # With output display
 
 For detailed documentation, use: vibe-validate run --help --verbose

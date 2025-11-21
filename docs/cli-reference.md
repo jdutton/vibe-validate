@@ -466,6 +466,7 @@ Run a command and extract LLM-friendly errors (with smart caching)
 
 - `--check` - Check if cached result exists without executing
 - `--force` - Force execution and update cache (bypass cache read)
+- `--cwd <directory>` - Working directory relative to git root (default: git root)
 - `--head <lines>` - Display first N lines of output after YAML (on stderr)
 - `--tail <lines>` - Display last N lines of output after YAML (on stderr)
 - `--verbose` - Display all output after YAML (on stderr)

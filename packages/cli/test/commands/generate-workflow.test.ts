@@ -241,6 +241,87 @@ describe('generate-workflow command', () => {
       expect(testStep.env.API_KEY).toBe('${{ secrets.API_KEY }}');
     });
 
+    it('should add working-directory when step has cwd field in non-matrix mode (phase-based)', () => {
+      const configWithCwd: VibeValidateConfig = {
+        ...mockConfig,
+        validation: {
+          ...mockConfig.validation,
+          phases: [
+            {
+              name: 'Test Backend',
+              parallel: false,
+              steps: [
+                {
+                  name: 'Run backend tests',
+                  command: 'npm test',
+                  cwd: 'packages/backend',
+                },
+              ],
+              timeout: 300000,
+              failFast: true,
+            },
+          ],
+        },
+      };
+
+      const workflowYaml = generateWorkflow(configWithCwd, { useMatrix: false });
+      const workflow = parseWorkflowYaml(workflowYaml);
+
+      const job = workflow.jobs['test-backend']; // Phase has parallel: false, job named after phase
+      const testStep = job.steps.find((s: any) => s.run === 'npm test');
+      expect(testStep['working-directory']).toBe('packages/backend');
+    });
+
+    it('should add working-directory when step has cwd field in non-matrix mode (step-based)', () => {
+      const configWithCwd: VibeValidateConfig = {
+        ...mockConfig,
+        validation: {
+          ...mockConfig.validation,
+          phases: [
+            {
+              name: 'Test',
+              parallel: true,
+              steps: [
+                {
+                  name: 'Test Frontend',
+                  command: 'npm test',
+                  cwd: 'packages/frontend',
+                },
+                {
+                  name: 'Test Backend',
+                  command: 'npm test',
+                  cwd: 'packages/backend',
+                },
+              ],
+              timeout: 300000,
+              failFast: false,
+            },
+          ],
+        },
+      };
+
+      const workflowYaml = generateWorkflow(configWithCwd, { useMatrix: false });
+      const workflow = parseWorkflowYaml(workflowYaml);
+
+      // In step-based parallelism, each step becomes a separate job
+      const frontendJob = workflow.jobs['test-frontend'];
+      const frontendStep = frontendJob.steps.find((s: any) => s.run === 'npm test');
+      expect(frontendStep['working-directory']).toBe('packages/frontend');
+
+      const backendJob = workflow.jobs['test-backend'];
+      const backendStep = backendJob.steps.find((s: any) => s.run === 'npm test');
+      expect(backendStep['working-directory']).toBe('packages/backend');
+    });
+
+    it('should not add working-directory when step has no cwd field', () => {
+      const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
+      const workflow = parseWorkflowYaml(workflowYaml);
+
+      const job = workflow.jobs['typescript-type-check'];
+      const testStep = job.steps.find((s: any) => s.run === 'pnpm -r typecheck');
+      expect(testStep['working-directory']).toBeUndefined();
+    });
+
     it('should include header without timestamp', () => {
       const workflowYaml = generateWorkflow(mockConfig);
       expect(workflowYaml).not.toContain('# Generated:'); // No timestamp in v0.9.6+

@@ -77,6 +77,8 @@ export {
   stopProcessGroup,
   spawnCommand,
   captureCommandOutput,
+  getGitRoot,
+  resolveGitRelativePath,
   type CaptureCommandOptions,
 } from './process-utils.js';
 

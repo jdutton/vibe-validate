@@ -122,7 +122,7 @@ describe('Doctor Command Integration', () => {
     expect(stdout).toContain('checks passed');
     const checkMatches = stdout.match(/✅/g);
     const checkCount = checkMatches ? checkMatches.length : 0;
-    expect(checkCount).toBeLessThanOrEqual(1); // May show history check if >100 notes
+    expect(checkCount).toBeLessThanOrEqual(2); // May show version check and/or cache migration
   }, 30000);
 
   it('should show all checks in verbose mode', () => {
