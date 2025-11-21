@@ -5,12 +5,13 @@
  */
 
 import type { Command } from 'commander';
-import { loadConfig } from '../utils/config-loader.js';
+import { loadConfig, loadConfigWithErrors } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
 import { acquireLock, releaseLock, checkLock, waitForLock, type LockOptions } from '../utils/pid-lock.js';
 import { detectProjectId } from '../utils/project-id.js';
 import { getGitTreeHash } from '@vibe-validate/git';
+import { displayConfigErrors } from '../utils/config-error-reporter.js';
 import chalk from 'chalk';
 
 export function validateCommand(program: Command): void {
@@ -48,7 +49,21 @@ export function validateCommand(program: Command): void {
         // Load configuration first (needed for lock config)
         const config = await loadConfig();
         if (!config) {
-          console.error(chalk.red('❌ No configuration found'));
+          // Get detailed error information to distinguish between missing file and validation errors
+          const configWithErrors = await loadConfigWithErrors();
+
+          if (configWithErrors.errors && configWithErrors.filePath) {
+            // Config file exists but has validation errors
+            const fileName = configWithErrors.filePath.split('/').pop() ?? 'vibe-validate.config.yaml';
+            displayConfigErrors({
+              fileName,
+              errors: configWithErrors.errors
+            });
+          } else {
+            // Config file doesn't exist
+            console.error(chalk.red('❌ No configuration found'));
+          }
+
           process.exit(1);
         }
 
