@@ -215,6 +215,61 @@ describe('validate command', () => {
     });
   });
 
+  describe('invalid config file', () => {
+    it('should report validation errors when config file exists but is invalid', async () => {
+      // Mock loadConfig to return null (invalid config)
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(null);
+
+      // Mock loadConfigWithErrors to return detailed error info
+      const loadConfigWithErrorsSpy = vi.spyOn(configLoader, 'loadConfigWithErrors')
+        .mockResolvedValue({
+          config: null,
+          errors: ['validation.phases is required', 'git.mainBranch must be a string'],
+          filePath: '/test/vibe-validate.config.yaml'
+        });
+
+      validateCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['validate'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
+        }
+      }
+
+      expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration is invalid'));
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('No configuration found'));
+    });
+
+    it('should distinguish between missing file and invalid file', async () => {
+      // Mock loadConfig to return null
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(null);
+
+      // Mock loadConfigWithErrors to return null errors (file doesn't exist)
+      const loadConfigWithErrorsSpy = vi.spyOn(configLoader, 'loadConfigWithErrors')
+        .mockResolvedValue({
+          config: null,
+          errors: null,
+          filePath: null
+        });
+
+      validateCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['validate'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
+        }
+      }
+
+      expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No configuration found'));
+    });
+  });
+
   describe('successful validation', () => {
     beforeEach(() => {
       // Mock valid config
