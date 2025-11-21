@@ -14,7 +14,7 @@ import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 import type { OutputLine } from '@vibe-validate/core';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
-import { spawnCommand, parseVibeValidateOutput } from '@vibe-validate/core';
+import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import yaml from 'yaml';
 import chalk from 'chalk';
@@ -210,10 +210,11 @@ export function runCommand(program: Command): void {
  */
 function getWorkingDirectory(explicitCwd?: string): string {
   try {
-    const gitRoot = execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    const gitRoot = getGitRoot();
+
+    if (!gitRoot) {
+      throw new Error('Not in a git repository');
+    }
 
     // Use explicit --cwd if provided
     if (explicitCwd) {
@@ -391,10 +392,11 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
     let resolvedCwd: string | undefined;
     if (explicitCwd) {
       try {
-        const gitRoot = execSync('git rev-parse --show-toplevel', {
-          encoding: 'utf8',
-          stdio: ['ignore', 'pipe', 'ignore'],
-        }).trim();
+        const gitRoot = getGitRoot();
+        if (!gitRoot) {
+          rejectPromise(new Error('Not in a git repository'));
+          return;
+        }
         resolvedCwd = resolve(gitRoot, explicitCwd);
 
         // Security: Validate path is within git root
