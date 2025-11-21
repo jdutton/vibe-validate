@@ -7,7 +7,7 @@
 
 **What it does**: Caches your validation results (tests, lint, typecheck) using git tree hashes. When code hasn't changed, validation completes in under a second instead of minutes.
 
-**Who it's for**: TypeScript/JavaScript developers, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
+**Who it's for**: TypeScript/JavaScript developers and multi-language monorepos, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
 
 **For AI Assistants**: Get all command help at once with `vv --help --verbose` (or `npx vibe-validate --help --verbose` before install) or see the [Complete CLI Reference](docs/cli-reference.md)
 
@@ -110,6 +110,7 @@ npx @vibe-validate/cli@latest doctor
 
 - **Dramatically faster cached validation** (< 1s vs seconds/minutes when code unchanged)
 - **Git tree hash caching** - Content-based, deterministic (includes untracked files)
+- **Heterogeneous project support** - Perfect for multi-language monorepos (Java + TypeScript + Python)
 - **Parallel phase execution** - Run independent checks simultaneously
 - **Smart concurrency control** - Prevents duplicate runs, wait-for-completion mode for hooks
 - **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue

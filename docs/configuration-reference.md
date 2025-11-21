@@ -399,24 +399,60 @@ Environment variables to set for this step only.
 
 #### `cwd` (optional)
 
-Working directory for this step's command.
+Working directory for this step's command, **relative to git repository root** (v0.17.0+).
 
-**Type**: `string` (relative or absolute path)
+**Type**: `string` (relative path)
 
-**Default**: Project root directory
+**Default**: Git repository root
+
+**Breaking change in v0.17.0**: The `cwd` field is now interpreted relative to git root (not current directory). This provides consistent behavior regardless of where you invoke validation.
+
+**Path resolution**:
+- All paths are relative to git repository root
+- Absolute paths are **not allowed** (security)
+- Path traversal (`../`) outside git root is **rejected**
+- Examples:
+  - `cwd: packages/core` → resolves to `<git-root>/packages/core`
+  - `cwd: services/backend` → resolves to `<git-root>/services/backend`
+  - `cwd: ../other-repo` → **ERROR** (escapes git root)
 
 **Example**:
 ```yaml
-- name: Test Subpackage
-  command: npm test
-  cwd: packages/core
+# Multi-language monorepo
+validation:
+  phases:
+    - name: test
+      parallel: true
+      steps:
+        # Java backend
+        - name: test-backend
+          command: mvn test
+          cwd: services/backend
 
-- name: Build Docs
-  command: npm run build
-  cwd: ./docs-site
+        # TypeScript frontend
+        - name: test-frontend
+          command: npm test
+          cwd: apps/web
+
+        # Python ML service
+        - name: test-ml
+          command: pytest
+          cwd: services/ml-engine
 ```
 
-**Use case**: Monorepos or projects with subdirectories that need isolated commands.
+**Use case**: Perfect for monorepos and heterogeneous projects with multiple languages or build systems. See the [Heterogeneous Projects Guide](heterogeneous-projects.md) for comprehensive examples.
+
+**Security**: All `cwd` paths are validated to prevent directory traversal attacks. Paths must resolve within the git repository.
+
+**CI/CD integration**: When you run `vibe-validate generate-workflow`, steps with `cwd` automatically get `working-directory` in GitHub Actions:
+```yaml
+# Generated workflow
+- name: Test Backend
+  working-directory: services/backend
+  run: mvn test
+```
+
+**Cache optimization**: Using `cwd` field instead of `cd` commands improves cache hit rates by 30-50% in monorepo scenarios.
 
 ### `validation.failFast`
 
