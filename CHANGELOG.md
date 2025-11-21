@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1] - 2025-11-21
+
+### 🐛 Bug Fixes
+
+**Config Error Reporting**
+- `vibe-validate validate` now shows specific validation errors when config file exists but is invalid
+- Previously showed generic "No configuration found" message for both missing files and invalid configs
+- Now matches `vibe-validate doctor` behavior with clear error messages and fix suggestions
+
 ## [0.16.0] - 2025-11-15
 
 ### 🚨 BREAKING CHANGES
