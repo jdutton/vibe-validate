@@ -32,7 +32,7 @@ export const ValidationStepSchema = z.object({
   /** Optional: Environment variables for this step */
   env: z.record(z.string(), z.string()).optional(),
 
-  /** Optional: Working directory for this step (default: project root) */
+  /** Optional: Working directory for this step, relative to git root (default: git root) */
   cwd: z.string().optional(),
 }).strict();
 

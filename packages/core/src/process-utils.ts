@@ -7,9 +7,48 @@
 
 import { ChildProcess, execSync, spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
+
+/**
+ * Get git repository root directory
+ *
+ * @returns Absolute path to git root, or null if not in a git repository
+ */
+export function getGitRoot(): string | null {
+  try {
+    return execSync('git rev-parse --show-toplevel', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve working directory relative to git root
+ *
+ * @param cwd - Working directory path (relative to git root)
+ * @returns Absolute path to working directory
+ * @throws Error if cwd escapes git root (security) or not in git repo
+ */
+export function resolveGitRelativePath(cwd: string): string {
+  const gitRoot = getGitRoot();
+  if (!gitRoot) {
+    throw new Error('Not in a git repository - cannot resolve cwd relative to git root');
+  }
+
+  const resolved = resolve(gitRoot, cwd);
+
+  // Security: Prevent directory traversal outside git root
+  if (!resolved.startsWith(gitRoot)) {
+    throw new Error(`Invalid cwd: "${cwd}" - must be within git repository`);
+  }
+
+  return resolved;
+}
 
 /**
  * Stop a child process and its entire process group (cross-platform)
@@ -131,6 +170,8 @@ export function spawnCommand(
     detached?: boolean;
     /** Environment variables (merged with process.env) */
     env?: Record<string, string>;
+    /** Working directory (defaults to current directory) */
+    cwd?: string;
   }
 ): ChildProcess {
   // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
@@ -143,6 +184,7 @@ export function spawnCommand(
     // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
     detached: options?.detached ?? (process.platform !== 'win32'),
     env: options?.env ? { ...process.env, ...options.env } : process.env,
+    cwd: options?.cwd,
   });
 }
 

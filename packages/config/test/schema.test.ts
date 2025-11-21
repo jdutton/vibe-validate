@@ -51,6 +51,17 @@ describe('ValidationStepSchema', () => {
     const result = ValidationStepSchema.parse(step);
     expect(result).toMatchObject(step);
   });
+
+  it('should accept cwd field (relative to git root)', () => {
+    const step = {
+      name: 'TypeScript',
+      command: 'tsc --noEmit',
+      cwd: 'packages/core',
+    };
+
+    const result = ValidationStepSchema.parse(step);
+    expect(result.cwd).toBe('packages/core');
+  });
 });
 
 describe('ValidationPhaseSchema', () => {

@@ -40,6 +40,5 @@ pnpm-debug.log*
 
 # Development/extraction tracking (git-ignored, local only)
 TODO.md
-TODO-ARCHIVE.md
+TODO*.md
 PUBLISHING.md
-TODO.md

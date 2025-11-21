@@ -19,7 +19,7 @@ import stripAnsi from 'strip-ansi';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { autoDetectAndExtract, type ErrorExtractorResult } from '@vibe-validate/extractors';
 import type { ValidationStep } from '@vibe-validate/config';
-import { stopProcessGroup, spawnCommand } from './process-utils.js';
+import { stopProcessGroup, spawnCommand, resolveGitRelativePath } from './process-utils.js';
 import { parseVibeValidateOutput } from './run-output-parser.js';
 import {
   ensureDir,
@@ -415,7 +415,9 @@ async function executeSingleStep(
   log(`   ⏳ ${paddedName}  →  ${step.command}`);
 
   const startTime = Date.now();
-  const proc = spawnCommand(step.command, { env });
+  // Resolve cwd relative to git root (if specified)
+  const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
+  const proc = spawnCommand(step.command, { env, cwd: resolvedCwd });
 
   // Use object accumulators for mutable references
   const stdoutAccumulator = { value: '' };
@@ -651,8 +653,11 @@ export async function runStepsInParallel(
 
         const startTime = Date.now();
 
+        // Resolve cwd relative to git root (if specified)
+        const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
         const proc = spawnCommand(step.command, {
           env,
+          cwd: resolvedCwd,
         });
 
         // Track process for potential kill

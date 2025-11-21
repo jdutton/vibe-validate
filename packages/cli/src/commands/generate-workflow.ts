@@ -31,6 +31,7 @@ interface GitHubWorkflowStep {
   uses?: string;
   with?: Record<string, unknown>;
   run?: string;
+  'working-directory'?: string;
   env?: Record<string, string>;
   if?: string;
   shell?: string;
@@ -507,6 +508,11 @@ Write-Host '=========================================='`,
             run: step.command,
           };
 
+          // Add working directory if specified (relative to git root)
+          if (step.cwd) {
+            stepWorkflowStep['working-directory'] = step.cwd;
+          }
+
           // Add environment variables from step config
           if (step.env) {
             stepWorkflowStep.env = { ...step.env };
@@ -539,6 +545,11 @@ Write-Host '=========================================='`,
 
           // Add the actual validation command
           const testStep: GitHubWorkflowStep = { run: step.command };
+
+          // Add working directory if specified (relative to git root)
+          if (step.cwd) {
+            testStep['working-directory'] = step.cwd;
+          }
 
           // Add environment variables from step config
           if (step.env) {
