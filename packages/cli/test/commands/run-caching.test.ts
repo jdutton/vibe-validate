@@ -208,6 +208,83 @@ describe.skip('run command caching', () => {
       // Verify cache key was encoded with relative workdir
       expect(mockEncodeRunCacheKey).toHaveBeenCalledWith('npm test', 'packages/cli');
     });
+
+    it('should use explicit --cwd in cache key', async () => {
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess('test output', '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      const mockExecSync = vi.mocked(childProcess.execSync);
+      // Git root
+      mockExecSync.mockReturnValueOnce('/Users/test/project\n' as any);
+      vi.mocked(process.cwd).mockReturnValue('/Users/test/project'); // At root
+
+      const mockGetGitTreeHash = vi.mocked(git.getGitTreeHash);
+      mockGetGitTreeHash.mockResolvedValue('abc123def456');
+
+      const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
+      mockEncodeRunCacheKey.mockReturnValue('encoded-key');
+
+      runCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['run', '--cwd', 'packages/cli', 'npm test'], { from: 'user' });
+      } catch (_error: unknown) {
+        // Expected exit
+      }
+
+      // Verify cache key includes explicit --cwd path
+      expect(mockEncodeRunCacheKey).toHaveBeenCalledWith('npm test', 'packages/cli');
+    });
+
+    it('should generate same cache key: vv run --cwd subdir vs cd subdir && vv run', async () => {
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess('test output', '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      const mockExecSync = vi.mocked(childProcess.execSync);
+      const mockGetGitTreeHash = vi.mocked(git.getGitTreeHash);
+      mockGetGitTreeHash.mockResolvedValue('abc123def456');
+
+      const mockEncodeRunCacheKey = vi.mocked(git.encodeRunCacheKey);
+      mockEncodeRunCacheKey.mockReturnValue('encoded-key');
+
+      // Scenario 1: vv run --cwd packages/cli "npm test" (from root)
+      mockExecSync.mockReturnValueOnce('/Users/test/project\n' as any);
+      vi.mocked(process.cwd).mockReturnValue('/Users/test/project'); // At root
+
+      runCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['run', '--cwd', 'packages/cli', 'npm test'], { from: 'user' });
+      } catch (_error: unknown) {
+        // Expected exit
+      }
+
+      const scenario1CacheKey = mockEncodeRunCacheKey.mock.calls[mockEncodeRunCacheKey.mock.calls.length - 1];
+
+      // Scenario 2: cd packages/cli && vv run "npm test" (from subdirectory)
+      mockExecSync.mockReturnValueOnce('/Users/test/project\n' as any);
+      vi.mocked(process.cwd).mockReturnValue('/Users/test/project/packages/cli'); // At subdirectory
+
+      const mockProcess2 = createMockChildProcess('test output', '', 0);
+      mockSpawn.mockReturnValue(mockProcess2 as any);
+
+      // Reset program
+      runCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['run', 'npm test'], { from: 'user' });
+      } catch (_error: unknown) {
+        // Expected exit
+      }
+
+      const scenario2CacheKey = mockEncodeRunCacheKey.mock.calls[mockEncodeRunCacheKey.mock.calls.length - 1];
+
+      // Both should generate identical cache keys
+      expect(scenario1CacheKey).toEqual(scenario2CacheKey);
+      expect(scenario1CacheKey).toEqual(['npm test', 'packages/cli']);
+    });
   });
 
   describe('cache key encoding', () => {
