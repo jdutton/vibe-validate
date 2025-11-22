@@ -7,6 +7,7 @@
 
 import type { ErrorExtractorResult, FormattedError } from './types.js';
 import { MAX_ERRORS_IN_ARRAY } from './result-schema.js';
+import { extractRelativePath } from './maven-utils.js';
 
 /**
  * Maven Checkstyle output has TWO formats:
@@ -203,25 +204,7 @@ export function extractMavenCheckstyle(
   };
 }
 
-/**
- * Extract relative path from absolute path
- * /Users/name/project/src/main/java/Foo.java -> src/main/java/Foo.java
- */
-function extractRelativePath(absolutePath: string): string {
-  // Common Java source roots
-  const sourceRoots = ['src/main/java', 'src/test/java', 'src/main/kotlin', 'src/test/kotlin'];
-
-  for (const root of sourceRoots) {
-    const index = absolutePath.indexOf(root);
-    if (index !== -1) {
-      return absolutePath.slice(index);
-    }
-  }
-
-  // Fallback: return last 3 path segments
-  const segments = absolutePath.split('/');
-  return segments.slice(-3).join('/');
-}
+// Relative path extraction moved to maven-utils.ts (shared with maven-compiler-extractor)
 
 /**
  * Deduplicate violations (both formats report same violations)

@@ -55,10 +55,15 @@ export { extractMochaErrors } from './mocha-extractor.js';
 export { extractJasmineErrors } from './jasmine-extractor.js';
 export { extractMavenCheckstyle } from './maven-checkstyle-extractor.js';
 export { extractMavenSurefire } from './maven-surefire-extractor.js';
+export { extractMavenCompiler } from './maven-compiler-extractor.js';
 export { extractGenericErrors } from './generic-extractor.js';
 
 // Smart extractor (auto-detection - recommended)
 export { autoDetectAndExtract } from './smart-extractor.js';
+
+// Extractor registry (for advanced use cases)
+export { EXTRACTOR_REGISTRY } from './extractor-registry.js';
+export type { ExtractorDescriptor, DetectionResult } from './extractor-registry.js';
 
 // Utilities
 export { stripAnsiCodes, extractErrorLines } from './utils.js';
