@@ -66,7 +66,7 @@
     "publish:core": "cd packages/core && pnpm publish --no-git-checks",
     "publish:cli": "cd packages/cli && pnpm publish --no-git-checks",
     "publish:umbrella": "cd packages/vibe-validate && pnpm publish --no-git-checks",
-    "publish:all": "npm run pre-publish && npm run publish:extractors && npm run publish:git && npm run publish:config && npm run publish:history && npm run publish:core && npm run publish:cli && npm run publish:umbrella",
+    "publish:all": "node tools/publish-all.js",
     "version:patch": "node tools/bump-version.js patch",
     "version:minor": "node tools/bump-version.js minor",
     "version:major": "node tools/bump-version.js major",

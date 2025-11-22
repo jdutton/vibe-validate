@@ -1,0 +1,145 @@
+#!/usr/bin/env node
+/**
+ * Intelligent publish script that determines npm dist-tag from package version
+ *
+ * Version patterns:
+ * - X.Y.Z          → --tag latest (stable release)
+ * - X.Y.Z-rc.N     → --tag rc (release candidate)
+ * - X.Y.Z-beta.N   → --tag beta (beta release)
+ * - X.Y.Z-alpha.N  → --tag alpha (alpha release)
+ * - X.Y.Z-canary.N → --tag canary (canary release)
+ *
+ * Usage:
+ *   node tools/publish-all.js
+ *   pnpm publish:all
+ */
+
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const ROOT = join(__dirname, '..');
+
+/**
+ * Determine npm dist-tag from version string
+ * @param {string} version - Package version (e.g., "0.17.0-rc1")
+ * @returns {string} - npm dist-tag (e.g., "rc", "latest")
+ */
+function determineTag(version) {
+  // Extract prerelease identifier (e.g., "rc1", "beta.2", "alpha", etc.)
+  const prereleaseMatch = version.match(/-([a-z]+)/i);
+
+  if (!prereleaseMatch) {
+    // No prerelease identifier → stable release
+    return 'latest';
+  }
+
+  const prerelease = prereleaseMatch[1].toLowerCase();
+
+  // Map common prerelease identifiers to dist-tags
+  const tagMap = {
+    'rc': 'rc',
+    'beta': 'beta',
+    'alpha': 'alpha',
+    'canary': 'canary',
+    'next': 'next',
+  };
+
+  return tagMap[prerelease] || 'next'; // Default to 'next' for unknown prerelease types
+}
+
+/**
+ * Get version from CLI package.json (canonical version)
+ */
+function getVersion() {
+  const pkgPath = join(ROOT, 'packages/cli/package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  return pkg.version;
+}
+
+/**
+ * Publish a package with the determined tag
+ * @param {string} packageName - Package directory name
+ * @param {string} tag - npm dist-tag
+ */
+function publishPackage(packageName, tag) {
+  const packagePath = join(ROOT, 'packages', packageName);
+  console.log(`\n📦 Publishing ${packageName}...`);
+
+  try {
+    execSync(`pnpm publish --no-git-checks --tag ${tag}`, {
+      cwd: packagePath,
+      stdio: 'inherit',
+    });
+    console.log(`✅ ${packageName} published with tag: ${tag}`);
+  } catch (error) {
+    console.error(`❌ Failed to publish ${packageName}`);
+    throw error;
+  }
+}
+
+/**
+ * Run pre-publish checks
+ */
+function runPrePublishChecks() {
+  console.log('🔍 Running pre-publish checks...\n');
+  try {
+    execSync('node tools/pre-publish-check.js', {
+      cwd: ROOT,
+      stdio: 'inherit',
+    });
+    console.log('\n✅ Pre-publish checks passed\n');
+  } catch (error) {
+    console.error('\n❌ Pre-publish checks failed');
+    throw error;
+  }
+}
+
+/**
+ * Main publish flow
+ */
+function main() {
+  const version = getVersion();
+  const tag = determineTag(version);
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`📦 Publishing vibe-validate v${version}`);
+  console.log(`🏷️  npm dist-tag: ${tag}`);
+  console.log(`${'='.repeat(60)}\n`);
+
+  // Run pre-publish checks
+  runPrePublishChecks();
+
+  // Publish packages in dependency order
+  const packages = [
+    'extractors',
+    'git',
+    'config',
+    'history',
+    'core',
+    'cli',
+    'vibe-validate', // umbrella package last
+  ];
+
+  for (const pkg of packages) {
+    publishPackage(pkg, tag);
+  }
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`✅ All packages published successfully!`);
+  console.log(`📦 Version: ${version}`);
+  console.log(`🏷️  Tag: ${tag}`);
+  console.log(`${'='.repeat(60)}\n`);
+
+  if (tag !== 'latest') {
+    console.log(`\n💡 Users can install with:`);
+    console.log(`   npm install -g vibe-validate@${tag}`);
+    console.log(`   npm install -g vibe-validate@${version}\n`);
+  }
+}
+
+// Run
+main();
