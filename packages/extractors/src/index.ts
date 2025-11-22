@@ -88,5 +88,14 @@ export {
 } from './plugin-loader.js';
 export type { PluginSource, PluginDiscoveryConfig } from './plugin-loader.js';
 
+// Sandbox (NEW - secure plugin execution)
+export {
+  runInSandbox,
+  createSandboxedCode,
+  SandboxExecutionError,
+  SandboxStatsCollector,
+} from './sandbox.js';
+export type { SandboxOptions, SandboxResult, SandboxStats } from './sandbox.js';
+
 // Utilities
 export { stripAnsiCodes, extractErrorLines } from './utils.js';
