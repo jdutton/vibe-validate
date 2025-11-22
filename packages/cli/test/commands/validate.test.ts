@@ -27,6 +27,8 @@ vi.mock('../../src/utils/config-loader.js', async () => {
   return {
     ...actual,
     loadConfig: vi.fn(),
+    loadConfigWithDir: vi.fn(),
+    loadConfigWithErrors: vi.fn(),
   };
 });
 
@@ -198,8 +200,15 @@ describe('validate command', () => {
 
   describe('no config file', () => {
     it('should exit with error when no config found', async () => {
-      // Mock loadConfig to return null (no config found)
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(null);
+      // Mock loadConfigWithDir to return null (no config found)
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue(null);
+
+      // Mock loadConfigWithErrors to return null (no config file exists)
+      vi.mocked(configLoader.loadConfigWithErrors).mockResolvedValue({
+        config: null,
+        errors: null,
+        filePath: null
+      });
 
       validateCommand(env.program);
 
@@ -218,7 +227,7 @@ describe('validate command', () => {
   describe('invalid config file', () => {
     it('should report validation errors when config file exists but is invalid', async () => {
       // Mock loadConfig to return null (invalid config)
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(null);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue(null);
 
       // Mock loadConfigWithErrors to return detailed error info
       const loadConfigWithErrorsSpy = vi.spyOn(configLoader, 'loadConfigWithErrors')
@@ -245,7 +254,7 @@ describe('validate command', () => {
 
     it('should distinguish between missing file and invalid file', async () => {
       // Mock loadConfig to return null
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(null);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue(null);
 
       // Mock loadConfigWithErrors to return null errors (file doesn't exist)
       const loadConfigWithErrorsSpy = vi.spyOn(configLoader, 'loadConfigWithErrors')
@@ -286,7 +295,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
 
       // Mock successful validation
       vi.mocked(core.runValidation).mockResolvedValue({
@@ -343,7 +352,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
 
       // Mock failed validation (v0.15.0+: use step.command instead of rerunCommand)
       vi.mocked(core.runValidation).mockResolvedValue({
@@ -420,7 +429,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
 
       // Mock successful validation
       vi.mocked(core.runValidation).mockResolvedValue({
@@ -502,7 +511,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
     });
 
     it('should handle validation runner exceptions', async () => {
@@ -577,7 +586,7 @@ describe('validate command', () => {
           ]
         },
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
     });
 
     it('should not run validation when --check flag is used', async () => {
@@ -714,7 +723,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
 
       // Spy on process.stdout.write to capture YAML output
       // Return true to indicate write succeeded (no buffering needed)
@@ -852,7 +861,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
 
       // Mock git tree hash (override default rejection)
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
@@ -949,7 +958,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
 
       // Spy on process.stdout.write to capture YAML output
       vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
@@ -1027,7 +1036,7 @@ describe('validate command', () => {
           ]
         }
       };
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
     });
 
     it('should warn and skip history recording when worktree changes during validation', async () => {

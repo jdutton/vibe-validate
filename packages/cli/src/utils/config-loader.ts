@@ -78,6 +78,42 @@ export async function loadConfig(cwd?: string): Promise<VibeValidateConfig | nul
 }
 
 /**
+ * Load configuration and return both config and the directory where it was found
+ *
+ * Useful for features that need to know the project root (like locking).
+ *
+ * @param cwd Current working directory (defaults to process.cwd())
+ * @returns Object with config and configDir, or null if not found
+ */
+export async function loadConfigWithDir(cwd?: string): Promise<{
+  config: VibeValidateConfig;
+  configDir: string;
+} | null> {
+  const searchDir = cwd ?? process.cwd();
+
+  try {
+    // Walk up directory tree to find config
+    const configDir = findConfigUp(searchDir);
+    if (!configDir) {
+      return null;
+    }
+
+    // Use the config package's finder to load from the found directory
+    const config = await findAndLoadConfig(configDir);
+    if (!config) {
+      return null;
+    }
+
+    return { config, configDir };
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(chalk.red(`❌ Failed to load configuration: ${error.message}`));
+    }
+    return null;
+  }
+}
+
+/**
  * Check if a config file exists (searches up directory tree)
  *
  * @param cwd Current working directory
