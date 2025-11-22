@@ -259,32 +259,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/smart-extractor.ts",
-        "start": 205,
-        "end": 212,
+        "start": 242,
+        "end": 249,
         "startLoc": {
-          "line": 205,
+          "line": 242,
           "column": 2,
-          "position": 1464
+          "position": 1689
         },
         "endLoc": {
-          "line": 212,
+          "line": 249,
           "column": 3,
-          "position": 1598
+          "position": 1823
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/smart-extractor.ts",
-        "start": 113,
-        "end": 120,
+        "start": 150,
+        "end": 157,
         "startLoc": {
-          "line": 113,
+          "line": 150,
           "column": 27,
-          "position": 565
+          "position": 790
         },
         "endLoc": {
-          "line": 120,
+          "line": 157,
           "column": 4,
-          "position": 699
+          "position": 924
         }
       }
     },
@@ -531,12 +531,12 @@
         "startLoc": {
           "line": 34,
           "column": 13,
-          "position": 156
+          "position": 159
         },
         "endLoc": {
           "line": 44,
           "column": 4,
-          "position": 230
+          "position": 233
         }
       }
     },

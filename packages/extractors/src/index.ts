@@ -53,6 +53,8 @@ export { extractJestErrors } from './jest-extractor.js';
 export { extractJUnitErrors } from './junit-extractor.js';
 export { extractMochaErrors } from './mocha-extractor.js';
 export { extractJasmineErrors } from './jasmine-extractor.js';
+export { extractMavenCheckstyle } from './maven-checkstyle-extractor.js';
+export { extractMavenSurefire } from './maven-surefire-extractor.js';
 export { extractGenericErrors } from './generic-extractor.js';
 
 // Smart extractor (auto-detection - recommended)
