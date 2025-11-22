@@ -202,8 +202,12 @@ export function runCommand(program: Command): void {
 }
 
 /**
- * Get working directory relative to git root
+ * Get working directory relative to git root for cache key
  * Returns empty string for root, "packages/cli" for subdirectory
+ *
+ * IMPORTANT: For cache key generation, we use the ACTUAL directory where the command
+ * is invoked from (process.cwd()), not where it runs. This ensures cache keys are
+ * accurate - running "npm test" from packages/cli is different than from git root.
  *
  * @param explicitCwd - Optional explicit cwd from --cwd flag (relative to git root)
  * @returns Working directory path relative to git root (empty string for root)
@@ -231,9 +235,17 @@ function getWorkingDirectory(explicitCwd?: string): string {
       return relativePath || ''; // Empty string if resolved to git root
     }
 
-    // Default to git root (empty string) for consistent behavior
-    // BREAKING CHANGE in v0.17.0: Previously defaulted to process.cwd()
-    return '';
+    // Use actual current directory for cache key (process.cwd() relative to git root)
+    // This ensures cache keys reflect WHERE the command was invoked from, not where it runs
+    const cwd = process.cwd();
+    const relativePath = relative(gitRoot, cwd);
+
+    // If outside git repo or at git root, return empty string
+    if (relativePath.startsWith('..') || !relativePath) {
+      return '';
+    }
+
+    return relativePath;
   } catch (error) {
     // Re-throw validation errors
     if (error instanceof Error && error.message.includes('Invalid --cwd')) {

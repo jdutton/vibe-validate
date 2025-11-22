@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0-rc3] - 2025-11-22
+
+### 🐛 Bug Fixes
+
+**Config File Discovery from Subdirectories (New Feature)**
+- **Problem**: Running `vv validate` from a subdirectory failed with "No configuration found" even when config existed in parent directories
+- **Solution**: Config loader now walks up directory tree to find `vibe-validate.config.yaml`, similar to how ESLint/Prettier work
+- **Impact**: Users can run `vv validate` from any subdirectory within their project
+- **Example**:
+  ```bash
+  # Before (all versions): Failed with "No configuration found"
+  cd packages/core
+  vv validate  # ❌ Error
+
+  # After (v0.17.0-rc3): Finds config in parent directory
+  cd packages/core
+  vv validate  # ✅ Works - walks up to find config at project root
+  ```
+
+**Fixed `vv run` Cache Regression from v0.17.0-rc1**
+- **Problem**: v0.17.0-rc1 broke `vv run` caching from subdirectories (regression from v0.16.1)
+  - Cache keys always used git root, causing false cache hits
+  - Running same command from different directories incorrectly shared cache
+- **Solution**: Restored v0.16.1 behavior - cache keys include actual invocation directory
+- **Impact**: Prevents false cache hits, ensures `vv run --cwd subdir "cmd"` == `cd subdir && vv run "cmd"`
+- **Example**:
+  ```bash
+  # Cache keys are now directory-aware (restored v0.16.1 behavior):
+  cd packages/cli && vv run "npm test"  # Cache: "npm test__packages/cli"
+  cd packages/core && vv run "npm test" # Cache: "npm test__packages/core"
+  vv run --cwd packages/cli "npm test"  # Cache: "npm test__packages/cli" (same as cd)
+  ```
+
 ## [0.17.0-rc2] - 2025-11-22
 
 ### 🚨 BREAKING CHANGES

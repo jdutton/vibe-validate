@@ -4,16 +4,54 @@
  * Loads and validates vibe-validate configuration from project root.
  */
 
-import { join } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { findAndLoadConfig } from '@vibe-validate/config';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 
 /**
+ * Find configuration file by walking up directory tree
+ *
+ * Searches for vibe-validate.config.yaml starting from cwd and walking up
+ * to the root directory, similar to how ESLint/Prettier find their config files.
+ *
+ * @param startDir Directory to start searching from
+ * @returns Path to config file or null if not found
+ */
+export function findConfigUp(startDir: string): string | null {
+  let currentDir = resolve(startDir);
+  const root = resolve('/');
+
+  // Walk up directory tree until we find config or reach root
+  while (currentDir !== root) {
+    const configPath = join(currentDir, 'vibe-validate.config.yaml');
+    if (existsSync(configPath)) {
+      return currentDir;
+    }
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      // Reached root (shouldn't happen, but safety check)
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  // Check root directory as final attempt
+  const rootConfigPath = join(root, 'vibe-validate.config.yaml');
+  if (existsSync(rootConfigPath)) {
+    return root;
+  }
+
+  return null;
+}
+
+/**
  * Load vibe-validate configuration from project root
  *
- * Searches for vibe-validate.config.yaml in the current directory.
+ * Searches for vibe-validate.config.yaml by walking up the directory tree
+ * from the current working directory to the root.
  *
  * @param cwd Current working directory (defaults to process.cwd())
  * @returns Configuration object or null if not found
@@ -22,8 +60,14 @@ export async function loadConfig(cwd?: string): Promise<VibeValidateConfig | nul
   const searchDir = cwd ?? process.cwd();
 
   try {
-    // Use the config package's finder which searches for config files in the directory
-    const config = await findAndLoadConfig(searchDir);
+    // Walk up directory tree to find config
+    const configDir = findConfigUp(searchDir);
+    if (!configDir) {
+      return null;
+    }
+
+    // Use the config package's finder to load from the found directory
+    const config = await findAndLoadConfig(configDir);
     return config ?? null;
   } catch (error) {
     if (error instanceof Error) {
@@ -34,30 +78,67 @@ export async function loadConfig(cwd?: string): Promise<VibeValidateConfig | nul
 }
 
 /**
- * Check if a config file exists in the given directory
+ * Load configuration and return both config and the directory where it was found
+ *
+ * Useful for features that need to know the project root (like locking).
+ *
+ * @param cwd Current working directory (defaults to process.cwd())
+ * @returns Object with config and configDir, or null if not found
+ */
+export async function loadConfigWithDir(cwd?: string): Promise<{
+  config: VibeValidateConfig;
+  configDir: string;
+} | null> {
+  const searchDir = cwd ?? process.cwd();
+
+  try {
+    // Walk up directory tree to find config
+    const configDir = findConfigUp(searchDir);
+    if (!configDir) {
+      return null;
+    }
+
+    // Use the config package's finder to load from the found directory
+    const config = await findAndLoadConfig(configDir);
+    if (!config) {
+      return null;
+    }
+
+    return { config, configDir };
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(chalk.red(`❌ Failed to load configuration: ${error.message}`));
+    }
+    return null;
+  }
+}
+
+/**
+ * Check if a config file exists (searches up directory tree)
  *
  * @param cwd Current working directory
  * @returns True if config file exists
  */
 export function configExists(cwd?: string): boolean {
   const searchDir = cwd ?? process.cwd();
-  const configPath = 'vibe-validate.config.yaml';
-
-  return existsSync(join(searchDir, configPath));
+  return findConfigUp(searchDir) !== null;
 }
 
 /**
- * Find config file path if it exists
+ * Find config file path if it exists (searches up directory tree)
  *
  * @param cwd Current working directory
  * @returns Config file path or null if not found
  */
 export function findConfigPath(cwd?: string): string | null {
   const searchDir = cwd ?? process.cwd();
-  const configPath = 'vibe-validate.config.yaml';
-  const fullPath = join(searchDir, configPath);
+  const configDir = findConfigUp(searchDir);
 
-  return existsSync(fullPath) ? fullPath : null;
+  if (!configDir) {
+    return null;
+  }
+
+  return join(configDir, 'vibe-validate.config.yaml');
 }
 
 /**

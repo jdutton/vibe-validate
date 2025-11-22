@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfig, configExists, findConfigPath, loadConfigWithErrors } from '../src/utils/config-loader.js';
+import { loadConfig, configExists, findConfigPath, loadConfigWithErrors, findConfigUp } from '../src/utils/config-loader.js';
 
 describe('config-loader', () => {
   let testDir: string;
@@ -140,6 +140,120 @@ describe('config-loader', () => {
         errors: null,
         filePath: null,
       });
+    });
+  });
+
+  describe('findConfigUp (directory walk-up)', () => {
+    it('should find config in current directory', () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(configPath, 'validation:\n  phases: []\n');
+
+      const foundDir = findConfigUp(testDir);
+
+      expect(foundDir).toBe(testDir);
+    });
+
+    it('should find config in parent directory', () => {
+      // Create config in root
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(configPath, 'validation:\n  phases: []\n');
+
+      // Create subdirectory
+      const subDir = join(testDir, 'packages');
+      mkdirSync(subDir, { recursive: true });
+
+      // Search from subdirectory should find config in parent
+      const foundDir = findConfigUp(subDir);
+
+      expect(foundDir).toBe(testDir);
+    });
+
+    it('should find config multiple levels up', () => {
+      // Create config in root
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(configPath, 'validation:\n  phases: []\n');
+
+      // Create deeply nested directory
+      const deepDir = join(testDir, 'packages', 'cli', 'src', 'commands');
+      mkdirSync(deepDir, { recursive: true });
+
+      // Search from deep directory should find config 4 levels up
+      const foundDir = findConfigUp(deepDir);
+
+      expect(foundDir).toBe(testDir);
+    });
+
+    it('should return null if no config found', () => {
+      const subDir = join(testDir, 'no-config-here');
+      mkdirSync(subDir, { recursive: true });
+
+      const foundDir = findConfigUp(subDir);
+
+      expect(foundDir).toBeNull();
+    });
+
+    it('should prefer closest config file', () => {
+      // Create config in root
+      const rootConfigPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(rootConfigPath, 'validation:\n  phases:\n    - name: root\n');
+
+      // Create subdirectory with its own config
+      const subDir = join(testDir, 'packages');
+      mkdirSync(subDir, { recursive: true });
+      const subConfigPath = join(subDir, 'vibe-validate.config.yaml');
+      writeFileSync(subConfigPath, 'validation:\n  phases:\n    - name: sub\n');
+
+      // Search from subdirectory should find its own config, not parent's
+      const foundDir = findConfigUp(subDir);
+
+      expect(foundDir).toBe(subDir);
+    });
+  });
+
+  describe('config functions with walk-up (integration)', () => {
+    it('configExists should find config in parent directory', () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(configPath, 'validation:\n  phases: []\n');
+
+      const subDir = join(testDir, 'packages', 'core');
+      mkdirSync(subDir, { recursive: true });
+
+      const exists = configExists(subDir);
+
+      expect(exists).toBe(true);
+    });
+
+    it('findConfigPath should return parent config path', () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      writeFileSync(configPath, 'validation:\n  phases: []\n');
+
+      const subDir = join(testDir, 'packages', 'core');
+      mkdirSync(subDir, { recursive: true });
+
+      const foundPath = findConfigPath(subDir);
+
+      expect(foundPath).toBe(configPath);
+    });
+
+    it('loadConfig should load from parent directory', async () => {
+      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      // Use a valid minimal config that will pass schema validation
+      const validConfig = `validation:
+  phases:
+    - name: test
+      steps:
+        - name: example
+          command: echo test
+`;
+      writeFileSync(configPath, validConfig);
+
+      const subDir = join(testDir, 'packages', 'core');
+      mkdirSync(subDir, { recursive: true });
+
+      const config = await loadConfig(subDir);
+
+      expect(config).not.toBeNull();
+      expect(config?.validation?.phases).toHaveLength(1);
     });
   });
 });

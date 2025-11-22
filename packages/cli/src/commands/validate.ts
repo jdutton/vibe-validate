@@ -5,7 +5,7 @@
  */
 
 import type { Command } from 'commander';
-import { loadConfig, loadConfigWithErrors } from '../utils/config-loader.js';
+import { loadConfigWithErrors, loadConfigWithDir } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
 import { acquireLock, releaseLock, checkLock, waitForLock, type LockOptions } from '../utils/pid-lock.js';
@@ -47,8 +47,9 @@ export function validateCommand(program: Command): void {
         }
 
         // Load configuration first (needed for lock config)
-        const config = await loadConfig();
-        if (!config) {
+        // Use loadConfigWithDir to get config directory for locking
+        const configResult = await loadConfigWithDir();
+        if (!configResult) {
           // Get detailed error information to distinguish between missing file and validation errors
           const configWithErrors = await loadConfigWithErrors();
 
@@ -66,6 +67,8 @@ export function validateCommand(program: Command): void {
 
           process.exit(1);
         }
+
+        const { config, configDir } = configResult;
 
         // Detect context (Claude Code, CI, etc.)
         const context = detectContext();
@@ -102,8 +105,8 @@ export function validateCommand(program: Command): void {
 
         // Handle wait mode (default: wait for running validation to complete)
         if (shouldWait) {
-          const cwd = process.cwd();
-          const existingLock = await checkLock(cwd, lockOptions);
+          // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
+          const existingLock = await checkLock(configDir, lockOptions);
 
           if (existingLock) {
             const waitTimeout = Number.parseInt(options.waitTimeout, 10) || 300;
@@ -115,7 +118,7 @@ export function validateCommand(program: Command): void {
               console.log(`  Timeout: ${waitTimeout}s`);
             }
 
-            const waitResult = await waitForLock(cwd, waitTimeout, 1000, lockOptions);
+            const waitResult = await waitForLock(configDir, waitTimeout, 1000, lockOptions);
 
             if (waitResult.timedOut) {
               if (!options.yaml) {
@@ -132,10 +135,10 @@ export function validateCommand(program: Command): void {
 
         // Handle lock mode (single-instance execution)
         if (options.lock) {
-          const cwd = process.cwd();
+          // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
           const treeHash = await getGitTreeHash();
 
-          const lockResult = await acquireLock(cwd, treeHash, lockOptions);
+          const lockResult = await acquireLock(configDir, treeHash, lockOptions);
 
           if (!lockResult.acquired && lockResult.existingLock) {
             // Another validation is already running
