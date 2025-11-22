@@ -78,5 +78,15 @@ export { autoDetectAndExtract } from './smart-extractor.js';
 export { EXTRACTOR_REGISTRY } from './extractor-registry.js';
 export type { ExtractorDescriptor } from './extractor-registry.js';
 
+// Plugin loader (NEW - external plugin support)
+export {
+  loadPlugin,
+  discoverPlugins,
+  registerPlugins,
+  validatePluginInterface,
+  PluginValidationError,
+} from './plugin-loader.js';
+export type { PluginSource, PluginDiscoveryConfig } from './plugin-loader.js';
+
 // Utilities
 export { stripAnsiCodes, extractErrorLines } from './utils.js';

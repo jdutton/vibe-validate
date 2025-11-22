@@ -187,6 +187,40 @@ export const LockingConfigSchema = z.object({
 export type LockingConfig = z.infer<typeof LockingConfigSchema>;
 
 /**
+ * Extractor Plugin Source Schema
+ *
+ * Defines how to load an external extractor plugin.
+ */
+export const ExtractorPluginSourceSchema = z.discriminatedUnion('type', [
+  z.object({
+    /** Load from file path */
+    type: z.literal('path'),
+    /** Absolute or relative path to plugin file */
+    path: z.string().min(1, 'Plugin path cannot be empty'),
+  }).strict(),
+  z.object({
+    /** Load from npm package */
+    type: z.literal('package'),
+    /** npm package name (e.g., '@my-org/extractor') */
+    package: z.string().min(1, 'Package name cannot be empty'),
+  }).strict(),
+]);
+
+export type ExtractorPluginSource = z.infer<typeof ExtractorPluginSourceSchema>;
+
+/**
+ * Extractors Configuration Schema
+ *
+ * External extractor plugins to load and register.
+ */
+export const ExtractorsConfigSchema = z.object({
+  /** List of extractor plugins to load */
+  plugins: z.array(ExtractorPluginSourceSchema).optional().default([]),
+}).strict();
+
+export type ExtractorsConfig = z.infer<typeof ExtractorsConfigSchema>;
+
+/**
  * Full Configuration Schema
  *
  * Root configuration object for vibe-validate.
@@ -218,6 +252,17 @@ export const VibeValidateConfigSchema = z.object({
   locking: LockingConfigSchema.optional().default({
     enabled: true,
     concurrencyScope: 'directory',
+  }),
+
+  /**
+   * External extractor plugins (optional)
+   *
+   * Load custom error extractors from npm packages or local files.
+   * Plugins are auto-discovered from vibe-validate-local-plugins/ directory
+   * unless explicitly configured here.
+   */
+  extractors: ExtractorsConfigSchema.optional().default({
+    plugins: [],
   }),
 
   /**
