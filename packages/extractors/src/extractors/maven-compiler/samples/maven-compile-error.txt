@@ -1,0 +1,39 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------< com.example:sample-java-extension >-----------------
+[INFO] Building sample-java-extension 1.0.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ sample-java-extension ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO]
+[INFO] --- maven-compiler-plugin:3.13.0:compile (default-compile) @ sample-java-extension ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 45 source files with javac [debug release 21] to target/classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR :
+[INFO] -------------------------------------------------------------
+[ERROR] /Users/jeff/project/src/main/java/com/example/Foo.java:[42,25] cannot find symbol
+  symbol:   method extractComponent()
+  location: class com.example.RefactoringActions
+[ERROR] /Users/jeff/project/src/main/java/com/example/Bar.java:[15,8] incompatible types: java.lang.String cannot be converted to int
+[INFO] 2 errors
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.123 s
+[INFO] Finished at: 2025-11-22T15:24:27Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project sample-java-extension: Compilation failure: Compilation failure:
+[ERROR] /Users/jeff/project/src/main/java/com/example/Foo.java:[42,25] cannot find symbol
+[ERROR]   symbol:   method extractComponent()
+[ERROR]   location: class com.example.RefactoringActions
+[ERROR] /Users/jeff/project/src/main/java/com/example/Bar.java:[15,8] incompatible types: java.lang.String cannot be converted to int
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

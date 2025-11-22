@@ -1,0 +1,38 @@
+[INFO] --- maven-checkstyle-plugin:3.3.1:check (default-cli) @ test-project ---
+[INFO] Starting audit...
+[WARN] /project/src/main/java/com/example/controller/UserController.java:1:1: Missing package-info.java file. [JavadocPackage]
+[WARN] /project/src/main/java/com/example/controller/UserController.java:8:1: Missing a Javadoc comment. [JavadocType]
+[WARN] /project/src/main/java/com/example/controller/UserController.java:15:5: Missing a Javadoc comment. [JavadocMethod]
+[WARN] /project/src/main/java/com/example/controller/UserController.java:20:5: Missing a Javadoc comment. [JavadocMethod]
+[WARN] /project/src/main/java/com/example/model/User.java:1:1: Missing package-info.java file. [JavadocPackage]
+[WARN] /project/src/main/java/com/example/model/User.java:5:1: Missing a Javadoc comment. [JavadocType]
+[WARN] /project/src/main/java/com/example/model/User.java:8:5: Missing a Javadoc comment. [JavadocVariable]
+[WARN] /project/src/main/java/com/example/model/User.java:9:5: Missing a Javadoc comment. [JavadocVariable]
+[WARN] /project/src/main/java/com/example/service/UserService.java:1:1: Missing package-info.java file. [JavadocPackage]
+[WARN] /project/src/main/java/com/example/service/UserService.java:7:1: Missing a Javadoc comment. [JavadocType]
+[WARN] /project/src/main/java/com/example/service/UserService.java:12:5: Missing a Javadoc comment. [JavadocMethod]
+[WARN] /project/src/main/java/com/example/service/UserService.java:16:5: Missing a Javadoc comment. [JavadocMethod]
+[WARN] /project/src/main/java/com/example/util/StringHelper.java:3:8: Unused import - java.util.Arrays. [UnusedImports]
+[WARN] /project/src/main/java/com/example/util/StringHelper.java:4:1: Using the '.*' form of import should be avoided - java.util.*. [AvoidStarImport]
+[WARN] /project/src/main/java/com/example/util/StringHelper.java:10:1: Missing a Javadoc comment. [JavadocType]
+[WARN] /project/src/main/java/com/example/util/StringHelper.java:15:5: Missing a Javadoc comment. [JavadocMethod]
+Audit done.
+[INFO] 
+[WARNING] src/main/java/com/example/controller/UserController.java:[1] (javadoc) JavadocPackage: Missing package-info.java file.
+[WARNING] src/main/java/com/example/controller/UserController.java:[8] (javadoc) JavadocType: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/controller/UserController.java:[15] (javadoc) JavadocMethod: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/controller/UserController.java:[20] (javadoc) JavadocMethod: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/model/User.java:[1] (javadoc) JavadocPackage: Missing package-info.java file.
+[WARNING] src/main/java/com/example/model/User.java:[5] (javadoc) JavadocType: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/model/User.java:[8] (javadoc) JavadocVariable: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/model/User.java:[9] (javadoc) JavadocVariable: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/service/UserService.java:[1] (javadoc) JavadocPackage: Missing package-info.java file.
+[WARNING] src/main/java/com/example/service/UserService.java:[7] (javadoc) JavadocType: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/service/UserService.java:[12] (javadoc) JavadocMethod: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/service/UserService.java:[16] (javadoc) JavadocMethod: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/util/StringHelper.java:[3,8] (imports) UnusedImports: Unused import - java.util.Arrays.
+[WARNING] src/main/java/com/example/util/StringHelper.java:[4,1] (imports) AvoidStarImport: Using the '.*' form of import should be avoided - java.util.*.
+[WARNING] src/main/java/com/example/util/StringHelper.java:[10] (javadoc) JavadocType: Missing a Javadoc comment.
+[WARNING] src/main/java/com/example/util/StringHelper.java:[15] (javadoc) JavadocMethod: Missing a Javadoc comment.
+[INFO] 
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-checkstyle-plugin:3.3.1:check (default-cli) on project test-project: You have 16 Checkstyle violations. -> [Help 1]

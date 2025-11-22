@@ -2,36 +2,29 @@
  * Extractor Registry
  *
  * Centralized registry of all error extractors with detection logic.
- * Eliminates code duplication in smart-extractor.ts by providing a
- * single source of truth for extractor metadata and detection patterns.
+ * All extractors now use the plugin structure with co-located tests and documentation.
  *
  * @package @vibe-validate/extractors
  */
 
 import type { ErrorExtractorResult } from './types.js';
-import { extractTypeScriptErrors } from './typescript-extractor.js';
-import { extractESLintErrors } from './eslint-extractor.js';
-import { extractVitestErrors } from './vitest-extractor.js';
-import { extractJestErrors } from './jest-extractor.js';
-import { extractJUnitErrors } from './junit-extractor.js';
-import { extractMochaErrors } from './mocha-extractor.js';
-import { extractJasmineErrors } from './jasmine-extractor.js';
-import { extractPlaywrightErrors } from './playwright-extractor.js';
-import { detectMavenCheckstyle, extractMavenCheckstyle } from './maven-checkstyle-extractor.js';
-import { detectMavenSurefire, extractMavenSurefire } from './maven-surefire-extractor.js';
-import { detectMavenCompiler, extractMavenCompiler } from './maven-compiler-extractor.js';
+import type { DetectionResult } from './types.js';
 
-/**
- * Detection result from pattern matching
- */
-export interface DetectionResult {
-  /** Confidence level (0-100) - higher means more certain */
-  confidence: number;
-  /** Patterns that matched in the output */
-  patterns: string[];
-  /** Human-readable explanation of detection */
-  reason: string;
-}
+// Import all extractor plugins
+import typescriptPlugin from './extractors/typescript/index.js';
+import eslintPlugin from './extractors/eslint/index.js';
+import vitestPlugin from './extractors/vitest/index.js';
+import jestPlugin from './extractors/jest/index.js';
+import mochaPlugin from './extractors/mocha/index.js';
+import jasminePlugin from './extractors/jasmine/index.js';
+import playwrightPlugin from './extractors/playwright/index.js';
+import junitPlugin from './extractors/junit/index.js';
+import mavenCheckstylePlugin from './extractors/maven-checkstyle/index.js';
+import mavenSurefirePlugin from './extractors/maven-surefire/index.js';
+import mavenCompilerPlugin from './extractors/maven-compiler/index.js';
+import avaPlugin from './extractors/ava/index.js';
+import tapPlugin from './extractors/tap/index.js';
+import genericPlugin from './extractors/generic/index.js';
 
 /**
  * Extractor descriptor with detection and extraction logic
@@ -50,92 +43,36 @@ export interface ExtractorDescriptor {
 /**
  * Registry of all available extractors
  *
- * Extractors are defined in priority order:
- * 1. TypeScript (95 confidence) - Very specific error codes
- * 2. ESLint (90 confidence) - Distinctive format
- * 3. Maven Checkstyle (variable) - Checkstyle-specific patterns
- * 4. Maven Surefire (variable) - Test plugin patterns
- * 5. Maven Compiler (variable) - Compilation error patterns
- * 6. Vitest (100 priority check, 90 fallback) - "RUN v" header is unmistakable
- * 7. JUnit (100 confidence) - XML format is unique
- * 8. Jasmine (85 confidence) - Distinctive "Failures:" header
- * 9. Jest (90 confidence) - Must check before Mocha
- * 10. Mocha (80 confidence) - Generic "passing/failing" patterns
- * 11. Playwright (95 confidence) - .spec.ts files with › separator
- * 12. Vitest secondary (90 confidence) - Fallback patterns
+ * All extractors now use the ExtractorPlugin structure with:
+ * - Co-located tests (*.test.ts)
+ * - Documentation (README.md + CLAUDE.md)
+ * - Sample test cases
+ * - Fast filtering hints
+ * - Structured metadata
+ *
+ * Extractors are sorted by priority (highest first):
+ * 1. Vitest (Priority 100) - "RUN v" header is unmistakable
+ * 2. JUnit (Priority 100) - XML format is unique
+ * 3. TypeScript (Priority 95) - Very specific error codes
+ * 4. Playwright (Priority 95) - .spec.ts files with › separator
+ * 5. Jest (Priority 90) - Must check before Mocha
+ * 6. Vitest (Priority 90) - Secondary fallback patterns
+ * 7. ESLint (Priority 85) - Distinctive format
+ * 8. Jasmine (Priority 85) - Distinctive "Failures:" header
+ * 9. Ava (Priority 82) - Ava v6+ format with ✘ markers
+ * 10. Mocha (Priority 80) - Generic "passing/failing" patterns
+ * 11. TAP (Priority 78) - TAP version 13 protocol
+ * 12. Maven Compiler (Priority 70) - Compilation error patterns
+ * 13. Maven Checkstyle (Priority 60) - Checkstyle-specific patterns
+ * 14. Maven Surefire (Priority 65) - Test plugin patterns
+ * 15. Generic (Priority 10) - Fallback for unknown formats
  */
 export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
-  // TypeScript - Very distinctive error codes (TS####)
-  {
-    name: 'typescript',
-    priority: 95,
-    detect: (output: string): DetectionResult => {
-      const match = /error TS\d+:/.exec(output);
-      if (match) {
-        return {
-          confidence: 95,
-          patterns: ['error TS#### pattern'],
-          reason: 'TypeScript compiler error format detected',
-        };
-      }
-      return { confidence: 0, patterns: [], reason: '' };
-    },
-    extract: extractTypeScriptErrors,
-  },
-
-  // ESLint - Distinctive problem summary and line:col format
-  {
-    name: 'eslint',
-    priority: 90,
-    detect: (output: string): DetectionResult => {
-      const hasProblemsSummary = /✖ \d+ problems?/.exec(output);
-      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects ESLint output format (controlled linter output), limited input size
-      const hasLineColFormat = /\d+:\d+:?\s+(error|warning)\s+/.exec(output);
-
-      if (hasProblemsSummary || hasLineColFormat) {
-        const patterns = [];
-        if (hasProblemsSummary) patterns.push('✖ X problems summary');
-        if (hasLineColFormat) patterns.push('line:col error/warning format');
-        return {
-          confidence: 90,
-          patterns,
-          reason: 'ESLint error format detected',
-        };
-      }
-      return { confidence: 0, patterns: [], reason: '' };
-    },
-    extract: extractESLintErrors,
-  },
-
-  // Maven Checkstyle - Checkstyle plugin markers
-  {
-    name: 'maven-checkstyle',
-    priority: 70,
-    detect: detectMavenCheckstyle,
-    extract: extractMavenCheckstyle,
-  },
-
-  // Maven Surefire - Test plugin markers
-  {
-    name: 'maven-surefire',
-    priority: 70,
-    detect: detectMavenSurefire,
-    extract: extractMavenSurefire,
-  },
-
-  // Maven Compiler - Compilation error markers
-  {
-    name: 'maven-compiler',
-    priority: 70,
-    detect: detectMavenCompiler,
-    extract: extractMavenCompiler,
-  },
-
   // Vitest (Priority Check) - "RUN v" header is 100% unique to Vitest
   // Must check BEFORE other test frameworks to prevent false positives
   {
-    name: 'vitest',
-    priority: 100,
+    name: vitestPlugin.metadata.name,
+    priority: 100, // Explicit priority for RUN v header check
     detect: (output: string): DetectionResult => {
       // eslint-disable-next-line sonarjs/slow-regex -- False positive: regex is anchored and has limited repetition
       if (/^\s*RUN\s+v\d+\.\d+\.\d+/m.test(output)) {
@@ -154,122 +91,45 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
       }
       return { confidence: 0, patterns: [], reason: '' };
     },
-    extract: extractVitestErrors,
+    extract: vitestPlugin.extract,
   },
 
   // JUnit XML - Unique XML format
   {
-    name: 'junit',
-    priority: 100,
-    detect: (output: string): DetectionResult => {
-      if (/^<\?xml\s+/m.exec(output) && output.includes('<testsuite')) {
-        return {
-          confidence: 100,
-          patterns: ['<?xml header', '<testsuite> tag'],
-          reason: 'JUnit XML format detected',
-        };
-      }
-      return { confidence: 0, patterns: [], reason: '' };
-    },
-    extract: extractJUnitErrors,
+    name: junitPlugin.metadata.name,
+    priority: junitPlugin.priority,
+    detect: junitPlugin.detect,
+    extract: junitPlugin.extract,
   },
 
-  // Jasmine - Distinctive "Failures:" header
+  // TypeScript - Very distinctive error codes (TS####)
   {
-    name: 'jasmine',
-    priority: 85,
-    detect: (output: string): DetectionResult => {
-      if (output.includes('Failures:') && /^\d+\)\s+/m.exec(output)) {
-        return {
-          confidence: 85,
-          patterns: ['Failures: header', 'numbered test list'],
-          reason: 'Jasmine test output format detected',
-        };
-      }
-      return { confidence: 0, patterns: [], reason: '' };
-    },
-    extract: extractJasmineErrors,
-  },
-
-  // Jest - Must check BEFORE Mocha to avoid false positives
-  {
-    name: 'jest',
-    priority: 90,
-    detect: (output: string): DetectionResult => {
-      const hasBullet = output.includes('●');
-      const hasSummary = output.includes('Test Suites:');
-
-      if (hasBullet || hasSummary) {
-        const patterns = [];
-        if (hasBullet) patterns.push('● bullet marker');
-        if (hasSummary) patterns.push('Test Suites: summary');
-        // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Jest test framework output format (controlled test framework output), not user input
-        if (/^\s*FAIL\s+/m.exec(output)) patterns.push('FAIL marker');
-        // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Jest test framework output format (controlled test framework output), not user input
-        if (/^\s*PASS\s+/m.exec(output)) patterns.push('PASS marker');
-        return {
-          confidence: 90,
-          patterns,
-          reason: 'Jest test output format detected',
-        };
-      }
-      return { confidence: 0, patterns: [], reason: '' };
-    },
-    extract: extractJestErrors,
-  },
-
-  // Mocha - Generic patterns, checked AFTER Jest
-  {
-    name: 'mocha',
-    priority: 80,
-    detect: (output: string): DetectionResult => {
-      if (
-        (output.includes(' passing') || output.includes(' failing')) &&
-        // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Mocha test framework output format (controlled test framework output), not user input
-        /\s+\d+\)\s+/.exec(output)
-      ) {
-        return {
-          confidence: 80,
-          patterns: ['passing/failing summary', 'numbered failures'],
-          reason: 'Mocha test output format detected',
-        };
-      }
-      return { confidence: 0, patterns: [], reason: '' };
-    },
-    extract: extractMochaErrors,
+    name: typescriptPlugin.metadata.name,
+    priority: typescriptPlugin.priority,
+    detect: typescriptPlugin.detect,
+    extract: typescriptPlugin.extract,
   },
 
   // Playwright - .spec.ts files with › separator
   {
-    name: 'playwright',
-    priority: 95,
-    detect: (output: string): DetectionResult => {
-      const hasSpecFiles = output.includes('.spec.ts');
-      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Playwright test framework output format (controlled test framework output), not user input
-      const hasNumberedFailures = /\d+\)\s+.*\.spec\.ts:\d+:\d+\s+›/.exec(output);
-      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only detects Playwright test framework output format (controlled test framework output), not user input
-      const hasFailureMarker = /✘.*\.spec\.ts/.exec(output);
+    name: playwrightPlugin.metadata.name,
+    priority: playwrightPlugin.priority,
+    detect: playwrightPlugin.detect,
+    extract: playwrightPlugin.extract,
+  },
 
-      if (hasSpecFiles && (hasNumberedFailures ?? hasFailureMarker)) {
-        const patterns = [];
-        patterns.push('.spec.ts files');
-        if (hasNumberedFailures) patterns.push('numbered failures with › separator');
-        if (hasFailureMarker) patterns.push('✘ failure with .spec.ts file');
-        return {
-          confidence: 95,
-          patterns,
-          reason: 'Playwright test output format detected',
-        };
-      }
-      return { confidence: 0, patterns: [], reason: '' };
-    },
-    extract: extractPlaywrightErrors,
+  // Jest - Must check BEFORE Mocha to avoid false positives
+  {
+    name: jestPlugin.metadata.name,
+    priority: jestPlugin.priority,
+    detect: jestPlugin.detect,
+    extract: jestPlugin.extract,
   },
 
   // Vitest (Secondary) - Fallback patterns if "RUN v" not found
   {
-    name: 'vitest',
-    priority: 90,
+    name: vitestPlugin.metadata.name,
+    priority: 90, // Secondary check with fallback patterns
     detect: (output: string): DetectionResult => {
       // Require MULTIPLE patterns together to avoid false positives:
       // - "Test Files" keyword (unique to Vitest) OR
@@ -299,6 +159,78 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
       }
       return { confidence: 0, patterns: [], reason: '' };
     },
-    extract: extractVitestErrors,
+    extract: vitestPlugin.extract,
+  },
+
+  // ESLint - Distinctive problem summary and line:col format
+  {
+    name: eslintPlugin.metadata.name,
+    priority: eslintPlugin.priority,
+    detect: eslintPlugin.detect,
+    extract: eslintPlugin.extract,
+  },
+
+  // Jasmine - Distinctive "Failures:" header
+  {
+    name: jasminePlugin.metadata.name,
+    priority: jasminePlugin.priority,
+    detect: jasminePlugin.detect,
+    extract: jasminePlugin.extract,
+  },
+
+  // Ava - Ava v6+ format with ✘ markers
+  {
+    name: avaPlugin.metadata.name,
+    priority: avaPlugin.priority,
+    detect: avaPlugin.detect,
+    extract: avaPlugin.extract,
+  },
+
+  // Mocha - Generic patterns, checked AFTER Jest and Jasmine
+  {
+    name: mochaPlugin.metadata.name,
+    priority: mochaPlugin.priority,
+    detect: mochaPlugin.detect,
+    extract: mochaPlugin.extract,
+  },
+
+  // TAP - TAP version 13 protocol
+  {
+    name: tapPlugin.metadata.name,
+    priority: tapPlugin.priority,
+    detect: tapPlugin.detect,
+    extract: tapPlugin.extract,
+  },
+
+  // Maven Compiler - Compilation error markers
+  {
+    name: mavenCompilerPlugin.metadata.name,
+    priority: mavenCompilerPlugin.priority,
+    detect: mavenCompilerPlugin.detect,
+    extract: mavenCompilerPlugin.extract,
+  },
+
+  // Maven Surefire - Test plugin patterns
+  {
+    name: mavenSurefirePlugin.metadata.name,
+    priority: mavenSurefirePlugin.priority,
+    detect: mavenSurefirePlugin.detect,
+    extract: mavenSurefirePlugin.extract,
+  },
+
+  // Maven Checkstyle - Checkstyle plugin markers
+  {
+    name: mavenCheckstylePlugin.metadata.name,
+    priority: mavenCheckstylePlugin.priority,
+    detect: mavenCheckstylePlugin.detect,
+    extract: mavenCheckstylePlugin.extract,
+  },
+
+  // Generic - Fallback extractor (lowest priority)
+  {
+    name: genericPlugin.metadata.name,
+    priority: genericPlugin.priority,
+    detect: genericPlugin.detect,
+    extract: genericPlugin.extract,
   },
 ];

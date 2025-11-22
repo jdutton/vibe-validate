@@ -8,7 +8,7 @@
 
 import type { ErrorExtractorResult, ExtractorInput } from './types.js';
 import { EXTRACTOR_REGISTRY } from './extractor-registry.js';
-import { extractGenericErrors } from './generic-extractor.js';
+import genericPlugin from './extractors/generic/index.js';
 import { stripAnsiCodes } from './utils.js';
 
 /**
@@ -110,7 +110,7 @@ function sequentialDetection(errorSummary: string): ErrorExtractorResult {
   }
 
   // No specific pattern detected - use generic extractor
-  const result = extractGenericErrors(errorSummary);
+  const result = genericPlugin.extract(errorSummary);
   return addDetectionMetadata(result, 'generic', 50, ['no specific patterns'], 'No specific tool detected, using generic extractor');
 }
 
@@ -188,7 +188,7 @@ function autoDetectWithFallback(errorSummary: string, exitCode: number): ErrorEx
 
     // RED FLAG: Exit code != 0 but NO extractor found errors
     // Fall back to generic extractor (shows raw output context)
-    const result = extractGenericErrors(errorSummary);
+    const result = genericPlugin.extract(errorSummary);
     return addDetectionMetadata(
       result,
       'generic',
@@ -206,7 +206,7 @@ function autoDetectWithFallback(errorSummary: string, exitCode: number): ErrorEx
 
   // Step 4: No extractors matched at all
   if (allCandidates.length === 0) {
-    const result = extractGenericErrors(errorSummary);
+    const result = genericPlugin.extract(errorSummary);
     if (exitCode !== 0) {
       // Command failed but no extractor could parse the output
       return addDetectionMetadata(
