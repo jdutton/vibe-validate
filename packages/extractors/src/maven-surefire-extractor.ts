@@ -140,8 +140,7 @@ export function extractMavenSurefire(
   let currentFailure: Partial<TestFailure> | null = null;
   let inStackTrace = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (const line of lines) {
 
     // Check for error header: [ERROR] Class.method -- Time elapsed: ... <<< FAILURE!
     const headerMatch = SUREFIRE_PATTERNS.errorHeader.exec(line);
@@ -241,7 +240,7 @@ export function extractMavenSurefire(
     }
 
     return {
-      file: f.file ??`${f.testClass.replace(/\./g, '/')}.java`,
+      file: f.file ??`${f.testClass.replaceAll('.', '/')}.java`,
       line: f.line,
       message: `Test: ${testId}\n${message}`,
     };

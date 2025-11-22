@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.17.0-rc1] - 2025-11-21
+## [0.17.0-rc2] - 2025-11-22
 
 ### 🚨 BREAKING CHANGES
 
@@ -79,6 +79,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     working-directory: services/backend
     run: mvn test
   ```
+
+**Maven Checkstyle and Surefire Extractors for Java Projects**
+- **Problem**: Java Maven projects showed 0 errors extracted when validation failed
+- **Solution**: Two specialized extractors for Maven build output
+  - Maven Checkstyle: Parses `mvn checkstyle:check` violations with file/line/column
+  - Maven Surefire: Parses `mvn test` failures (JUnit 4 & 5, AssertJ assertions)
+- **Impact**: LLM agents now receive actionable Java error context (100% confidence detection)
+- **Real-world validation**: Heterogeneous Java + TypeScript project now extracts 19 violations vs 0 before
 
 ### 🎨 Improvements
 
