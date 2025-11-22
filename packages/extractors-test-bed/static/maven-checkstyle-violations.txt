@@ -1,0 +1,67 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----< com.acme.product:product-lsp-lemminx-extension >------
+[INFO] Building Product LSP LemMinX Extension 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- checkstyle:3.3.1:check (default-cli) @ product-lsp-lemminx-extension ---
+[INFO] Starting audit...
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:3:17: Using the '.*' form of import should be avoided - java.util.*. [AvoidStarImport]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:12:1: '{' at column 1 should be on the previous line. [LeftCurly]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:15:5: Missing a Javadoc comment. [JavadocVariable]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:15:19: Variable 'publicField' must be private and have accessor methods. [VisibilityModifier]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:17:22: '=' is not followed by whitespace. [WhitespaceAround]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:17:22: '=' is not preceded with whitespace. [WhitespaceAround]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:23:55: '{' is not preceded with whitespace. [WhitespaceAround]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:24:19: '=' is not followed by whitespace. [WhitespaceAround]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:24:19: '=' is not preceded with whitespace. [WhitespaceAround]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:28:28: '(' is followed by whitespace. [ParenPad]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:28:43: ')' is preceded with whitespace. [ParenPad]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:29:5: '{' at column 5 should be on the previous line. [LeftCurly]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:30:9: 'if' is not followed by whitespace. [WhitespaceAfter]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:30:17: '==' is not followed by whitespace. [WhitespaceAround]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:30:17: '==' is not preceded with whitespace. [WhitespaceAround]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:31:9: '{' at column 9 should be on the previous line. [LeftCurly]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:36: Line is longer than 120 characters (found 171). [LineLength]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:45:16: Name 'GetCount' must match pattern '^[a-z][a-zA-Z0-9]*$'. [MethodName]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:46:5: '{' at column 5 should be on the previous line. [LeftCurly]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:53:5: '{' at column 5 should be on the previous line. [LeftCurly]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:54:45: '+' should be on a new line. [OperatorWrap]
+[WARN] /Users/jeff.dutton/Workspaces/product-lsp-vibe-validate-testing/lemminx-extension/src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:55:34: '+' should be on a new line. [OperatorWrap]
+Audit done.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[3,17] (imports) AvoidStarImport: Using the '.*' form of import should be avoided - java.util.*.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[12,1] (blocks) LeftCurly: '{' at column 1 should be on the previous line.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[15,5] (javadoc) JavadocVariable: Missing a Javadoc comment.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[15,19] (design) VisibilityModifier: Variable 'publicField' must be private and have accessor methods.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[17,22] (whitespace) WhitespaceAround: '=' is not followed by whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[17,22] (whitespace) WhitespaceAround: '=' is not preceded with whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[23,55] (whitespace) WhitespaceAround: '{' is not preceded with whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[24,19] (whitespace) WhitespaceAround: '=' is not followed by whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[24,19] (whitespace) WhitespaceAround: '=' is not preceded with whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[28,28] (whitespace) ParenPad: '(' is followed by whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[28,43] (whitespace) ParenPad: ')' is preceded with whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[29,5] (blocks) LeftCurly: '{' at column 5 should be on the previous line.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[30,9] (whitespace) WhitespaceAfter: 'if' is not followed by whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[30,17] (whitespace) WhitespaceAround: '==' is not followed by whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[30,17] (whitespace) WhitespaceAround: '==' is not preceded with whitespace.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[31,9] (blocks) LeftCurly: '{' at column 9 should be on the previous line.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[36] (sizes) LineLength: Line is longer than 120 characters (found 171).
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[45,16] (naming) MethodName: Name 'GetCount' must match pattern '^[a-z][a-zA-Z0-9]*$'.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[46,5] (blocks) LeftCurly: '{' at column 5 should be on the previous line.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[53,5] (blocks) LeftCurly: '{' at column 5 should be on the previous line.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[54,45] (whitespace) OperatorWrap: '+' should be on a new line.
+[WARNING] src/main/java/com/acme/product/lsp/ExtractorValidationHelper.java:[55,34] (whitespace) OperatorWrap: '+' should be on a new line.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.951 s
+[INFO] Finished at: 2025-11-21T22:19:22-05:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-checkstyle-plugin:3.3.1:check (default-cli) on project product-lsp-lemminx-extension: You have 22 Checkstyle violations. -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

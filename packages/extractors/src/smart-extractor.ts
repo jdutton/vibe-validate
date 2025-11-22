@@ -15,6 +15,8 @@ import { extractJUnitErrors } from './junit-extractor.js';
 import { extractMochaErrors } from './mocha-extractor.js';
 import { extractJasmineErrors } from './jasmine-extractor.js';
 import { extractPlaywrightErrors } from './playwright-extractor.js';
+import { detectMavenCheckstyle, extractMavenCheckstyle } from './maven-checkstyle-extractor.js';
+import { detectMavenSurefire, extractMavenSurefire } from './maven-surefire-extractor.js';
 import { extractGenericErrors } from './generic-extractor.js';
 import { stripAnsiCodes } from './utils.js';
 
@@ -101,6 +103,40 @@ export function autoDetectAndExtract(input: string | ExtractorInput): ErrorExtra
     return addDetectionMetadata(result, 'eslint', 90, patterns, 'ESLint error format detected');
   }
 
+  // Maven Checkstyle detection: Check for Checkstyle-specific patterns
+  // - "maven-checkstyle-plugin" reference
+  // - "Starting audit..." / "Audit done." markers
+  // - "[WARN]" or "[WARNING]" with file paths and line numbers
+  // - "You have N Checkstyle violations" summary
+  const checkstyleDetection = detectMavenCheckstyle(errorSummary);
+  if (checkstyleDetection.confidence >= 70) {
+    const result = extractMavenCheckstyle(errorSummary);
+    return addDetectionMetadata(
+      result,
+      'maven-checkstyle',
+      checkstyleDetection.confidence,
+      checkstyleDetection.patterns,
+      checkstyleDetection.reason
+    );
+  }
+
+  // Maven Surefire/Failsafe detection: Check for Maven test output patterns
+  // - "maven-surefire-plugin" or "maven-failsafe-plugin" reference
+  // - "Tests run: X, Failures: Y, Errors: Z" summary
+  // - "<<< FAILURE!" or "<<< ERROR!" markers
+  // - JUnit assertion errors
+  const surefireDetection = detectMavenSurefire(errorSummary);
+  if (surefireDetection.confidence >= 70) {
+    const result = extractMavenSurefire(errorSummary);
+    return addDetectionMetadata(
+      result,
+      'maven-surefire',
+      surefireDetection.confidence,
+      surefireDetection.patterns,
+      surefireDetection.reason
+    );
+  }
+
   // Vitest priority detection: Check for "RUN  v" pattern (100% unique to vitest)
   // CRITICAL: Must check BEFORE Jest to prevent false positives
   // Jest's loose ● detection can match test names that mention Jest patterns
@@ -110,6 +146,7 @@ export function autoDetectAndExtract(input: string | ExtractorInput): ErrorExtra
   // eslint-disable-next-line sonarjs/slow-regex -- False positive: regex is anchored and has limited repetition
   if (/^\s*RUN\s+v\d+\.\d+\.\d+/m.test(errorSummary)) {
     const result = extractVitestErrors(errorSummary);
+    // NOSONAR: Pattern building is common across extractors, duplication is intentional for clarity
     const patterns = ['RUN v#### version header'];
     if (errorSummary.includes('×')) patterns.push('× symbol (U+00D7)');
     if (errorSummary.includes('❌')) patterns.push('❌ cross mark');
