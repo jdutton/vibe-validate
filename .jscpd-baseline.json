@@ -439,17 +439,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/config/src/schema.ts",
-        "start": 307,
-        "end": 320,
+        "start": 352,
+        "end": 365,
         "startLoc": {
-          "line": 307,
+          "line": 352,
           "column": 7,
-          "position": 1742
+          "position": 1928
         },
         "endLoc": {
-          "line": 320,
+          "line": 365,
           "column": 2,
-          "position": 1871
+          "position": 2057
         }
       },
       "secondFile": {

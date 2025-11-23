@@ -187,35 +187,75 @@ export const LockingConfigSchema = z.object({
 export type LockingConfig = z.infer<typeof LockingConfigSchema>;
 
 /**
- * Extractor Plugin Source Schema
+ * Extractor Trust Level
  *
- * Defines how to load an external extractor plugin.
+ * Controls security sandbox behavior for extractors:
+ * - 'full': Run with full Node.js access (trusted code)
+ * - 'sandbox': Run in isolated V8 context with limited API access (untrusted code)
  */
-export const ExtractorPluginSourceSchema = z.discriminatedUnion('type', [
-  z.object({
-    /** Load from file path */
-    type: z.literal('path'),
-    /** Absolute or relative path to plugin file */
-    path: z.string().min(1, 'Plugin path cannot be empty'),
-  }).strict(),
-  z.object({
-    /** Load from npm package */
-    type: z.literal('package'),
-    /** npm package name (e.g., '@my-org/extractor') */
-    package: z.string().min(1, 'Package name cannot be empty'),
-  }).strict(),
-]);
+export const ExtractorTrustLevelSchema = z.enum(['full', 'sandbox']);
 
-export type ExtractorPluginSource = z.infer<typeof ExtractorPluginSourceSchema>;
+export type ExtractorTrustLevel = z.infer<typeof ExtractorTrustLevelSchema>;
+
+/**
+ * Extractor Category Config Schema
+ *
+ * Shared configuration for built-in and local plugin extractors.
+ */
+export const ExtractorCategoryConfigSchema = z.object({
+  /** Trust level for extractors in this category (default varies by category) */
+  trust: ExtractorTrustLevelSchema.optional(),
+
+  /** List of extractor names to disable (default: []) */
+  disable: z.array(z.string()).optional().default([]),
+}).strict();
+
+export type ExtractorCategoryConfig = z.infer<typeof ExtractorCategoryConfigSchema>;
+
+/**
+ * External Extractor Config Schema
+ *
+ * Configuration for an explicit npm package extractor.
+ */
+export const ExternalExtractorConfigSchema = z.object({
+  /** npm package name (e.g., '@my-org/vibe-validate-plugin-gradle') */
+  package: z.string().min(1, 'Package name cannot be empty'),
+
+  /** Trust level (default: 'sandbox') */
+  trust: ExtractorTrustLevelSchema.optional().default('sandbox'),
+}).strict();
+
+export type ExternalExtractorConfig = z.infer<typeof ExternalExtractorConfigSchema>;
 
 /**
  * Extractors Configuration Schema
  *
- * External extractor plugins to load and register.
+ * Controls extractor plugin loading, trust levels, and selective disabling.
  */
 export const ExtractorsConfigSchema = z.object({
-  /** List of extractor plugins to load */
-  plugins: z.array(ExtractorPluginSourceSchema).optional().default([]),
+  /**
+   * Built-in extractors configuration
+   * Default: { trust: 'full', disable: [] }
+   */
+  builtins: ExtractorCategoryConfigSchema.optional().default({
+    trust: 'full',
+    disable: [],
+  }),
+
+  /**
+   * Local plugins configuration (auto-discovered from vibe-validate-local-plugins/)
+   * Default: { trust: 'sandbox', disable: [] }
+   */
+  localPlugins: ExtractorCategoryConfigSchema.optional().default({
+    trust: 'sandbox',
+    disable: [],
+  }),
+
+  /**
+   * External npm package extractors (explicit registration required)
+   * Default: []
+   */
+  external: z.array(ExternalExtractorConfigSchema).optional().default([]),
 }).strict();
 
 export type ExtractorsConfig = z.infer<typeof ExtractorsConfigSchema>;
@@ -255,14 +295,19 @@ export const VibeValidateConfigSchema = z.object({
   }),
 
   /**
-   * External extractor plugins (optional)
+   * Extractor plugins configuration (optional)
    *
-   * Load custom error extractors from npm packages or local files.
-   * Plugins are auto-discovered from vibe-validate-local-plugins/ directory
-   * unless explicitly configured here.
+   * Controls trust levels and selective disabling for extractors:
+   * - Built-in extractors (shipped with vibe-validate)
+   * - Local plugins (auto-discovered from vibe-validate-local-plugins/)
+   * - External npm packages (explicit registration required)
+   *
+   * Default: { builtins: { trust: 'full', disable: [] }, localPlugins: { trust: 'sandbox', disable: [] }, external: [] }
    */
   extractors: ExtractorsConfigSchema.optional().default({
-    plugins: [],
+    builtins: { trust: 'full', disable: [] },
+    localPlugins: { trust: 'sandbox', disable: [] },
+    external: [],
   }),
 
   /**

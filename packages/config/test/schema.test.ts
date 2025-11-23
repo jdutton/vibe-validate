@@ -611,3 +611,356 @@ describe('Strict Schema Validation', () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe('ExtractorsConfigSchema', () => {
+  it('should apply default values when extractors not specified', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.builtins?.trust).toBe('full');
+    expect(result.data?.extractors?.builtins?.disable).toEqual([]);
+    expect(result.data?.extractors?.localPlugins?.trust).toBe('sandbox');
+    expect(result.data?.extractors?.localPlugins?.disable).toEqual([]);
+    expect(result.data?.extractors?.external).toEqual([]);
+  });
+
+  it('should validate config with custom builtin trust level', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        builtins: {
+          trust: 'sandbox'
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.builtins?.trust).toBe('sandbox');
+  });
+
+  it('should validate config with disabled built-in extractors', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        builtins: {
+          trust: 'full',
+          disable: ['maven-compiler', 'eslint']
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.builtins?.disable).toEqual(['maven-compiler', 'eslint']);
+  });
+
+  it('should validate config with custom local plugin trust level', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        localPlugins: {
+          trust: 'full'
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.localPlugins?.trust).toBe('full');
+  });
+
+  it('should validate config with disabled local plugins', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        localPlugins: {
+          trust: 'sandbox',
+          disable: ['old-plugin', 'deprecated-extractor']
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.localPlugins?.disable).toEqual(['old-plugin', 'deprecated-extractor']);
+  });
+
+  it('should validate config with external npm package extractor (default trust)', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        external: [
+          {
+            package: '@myorg/vibe-validate-plugin-gradle'
+          }
+        ]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.external).toHaveLength(1);
+    expect(result.data?.extractors?.external![0].package).toBe('@myorg/vibe-validate-plugin-gradle');
+    expect(result.data?.extractors?.external![0].trust).toBe('sandbox');
+  });
+
+  it('should validate config with external npm package extractor (explicit trust)', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        external: [
+          {
+            package: '@myorg/internal-plugin',
+            trust: 'full'
+          }
+        ]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.external![0].trust).toBe('full');
+  });
+
+  it('should validate config with multiple external extractors', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        external: [
+          {
+            package: '@myorg/plugin-gradle',
+            trust: 'sandbox'
+          },
+          {
+            package: '@myorg/plugin-webpack',
+            trust: 'sandbox'
+          },
+          {
+            package: '@myorg/internal-plugin',
+            trust: 'full'
+          }
+        ]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.external).toHaveLength(3);
+  });
+
+  it('should validate complete extractors config', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        builtins: {
+          trust: 'full',
+          disable: ['maven-compiler']
+        },
+        localPlugins: {
+          trust: 'sandbox',
+          disable: ['old-plugin']
+        },
+        external: [
+          {
+            package: '@myorg/plugin-gradle',
+            trust: 'sandbox'
+          }
+        ]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(true);
+    expect(result.data?.extractors?.builtins?.trust).toBe('full');
+    expect(result.data?.extractors?.builtins?.disable).toEqual(['maven-compiler']);
+    expect(result.data?.extractors?.localPlugins?.trust).toBe('sandbox');
+    expect(result.data?.extractors?.localPlugins?.disable).toEqual(['old-plugin']);
+    expect(result.data?.extractors?.external).toHaveLength(1);
+  });
+
+  it('should reject invalid trust level for builtins', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        builtins: {
+          trust: 'invalid'
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);
+  });
+
+  it('should reject invalid trust level for localPlugins', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        localPlugins: {
+          trust: 'untrusted'
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);
+  });
+
+  it('should reject invalid trust level for external extractor', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        external: [
+          {
+            package: '@myorg/plugin',
+            trust: 'partial'
+          }
+        ]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);
+  });
+
+  it('should reject empty package name for external extractor', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        external: [
+          {
+            package: '',
+            trust: 'sandbox'
+          }
+        ]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Package name') && e.includes('empty'))).toBe(true);
+  });
+
+  it('should reject unknown properties in extractors config', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        builtins: {
+          trust: 'full',
+          unknownProperty: 'should fail'
+        }
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+  });
+
+  it('should reject unknown properties in external extractor', () => {
+    const config = {
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }]
+        }]
+      },
+      extractors: {
+        external: [
+          {
+            package: '@myorg/plugin',
+            trust: 'sandbox',
+            unknownField: 'should fail'
+          }
+        ]
+      }
+    };
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+  });
+});
