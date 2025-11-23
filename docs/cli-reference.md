@@ -1,12 +1,10 @@
 # CLI Reference
 
-> **Complete command-line reference for vibe-validate**
->
-> **This document is auto-synced with `vibe-validate --help --verbose` output**
->
-> The content below is the exact output from running `vibe-validate --help --verbose`. This ensures perfect accuracy between CLI and documentation.
+> **AUTO-GENERATED** - This file is automatically synced with `vv --help --verbose` output.
+> Do not edit below the `---` separator - those sections are overwritten by tests.
 
 ---
+
 # vibe-validate CLI Reference
 
 > Agent-friendly validation framework with git tree hash caching
@@ -480,6 +478,19 @@ vibe-validate run "pnpm --filter @pkg test"    # Package tests
 vibe-validate run "npx tsc --noEmit"           # Type check
 vibe-validate run "pnpm lint"                  # Lint
 ```
+
+---
+
+### `create-extractor`
+
+Create a new extractor plugin from template
+
+**Options:**
+
+- `--description <desc>` - Plugin description
+- `--author <author>` - Author name and email
+- `--priority <number>` - Detection priority (higher = check first)
+- `-f, --force` - Overwrite existing plugin directory
 
 ---
 

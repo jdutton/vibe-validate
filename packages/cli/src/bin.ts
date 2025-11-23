@@ -21,6 +21,7 @@ import { doctorCommand } from './commands/doctor.js';
 import { registerWatchPRCommand } from './commands/watch-pr.js';
 import { historyCommand } from './commands/history.js';
 import { runCommand } from './commands/run.js';
+import { createExtractorCommand } from './commands/create-extractor.js';
 
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation
@@ -59,6 +60,7 @@ doctorCommand(program);               // vibe-validate doctor
 registerWatchPRCommand(program);      // vibe-validate watch-pr
 historyCommand(program);              // vibe-validate history
 runCommand(program);                  // vibe-validate run
+createExtractorCommand(program);      // vibe-validate create-extractor
 
 /**
  * Registry mapping command names to their verbose help loaders
@@ -116,6 +118,10 @@ const verboseHelpRegistry: Partial<Record<string, VerboseHelpLoader>> = {
   'run': async () => {
     const { showRunVerboseHelp } = await import('./commands/run.js');
     return showRunVerboseHelp;
+  },
+  'create-extractor': async () => {
+    const { showCreateExtractorVerboseHelp } = await import('./commands/create-extractor.js');
+    return showCreateExtractorVerboseHelp;
   },
 };
 
