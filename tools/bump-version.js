@@ -236,6 +236,52 @@ try {
 }
 
 console.log('');
+log('Updating test version expectations...', 'blue');
+
+// Update test files with BUMP_VERSION_UPDATE markers
+const testFilesWithVersions = [
+  join(PROJECT_ROOT, 'packages/cli/test/bin/wrapper.test.ts'),
+];
+
+let testUpdatedCount = 0;
+let testSkippedCount = 0;
+
+for (const testFile of testFilesWithVersions) {
+  try {
+    const content = readFileSync(testFile, 'utf8');
+
+    // Find all lines with BUMP_VERSION_UPDATE marker
+    // Pattern matches: .toContain('0.17.0-rc4'); // BUMP_VERSION_UPDATE
+    const versionPattern = /(['"])\d+\.\d+\.\d+(-[\w.]+)?\1\);?\s*\/\/\s*BUMP_VERSION_UPDATE/g;
+    const matches = Array.from(content.matchAll(versionPattern));
+
+    if (matches.length === 0) {
+      log(`  - ${testFile.split('/').pop()}: no version markers found`, 'yellow');
+      testSkippedCount++;
+      continue;
+    }
+
+    // Replace all version strings marked with BUMP_VERSION_UPDATE
+    const updatedContent = content.replace(
+      versionPattern,
+      `$1${newVersion}$1); // BUMP_VERSION_UPDATE`
+    );
+
+    if (updatedContent !== content) {
+      writeFileSync(testFile, updatedContent, 'utf8');
+      log(`  ✓ ${testFile.split('/').pop()}: updated ${matches.length} version expectation(s)`, 'green');
+      testUpdatedCount++;
+    } else {
+      log(`  - ${testFile.split('/').pop()}: already at ${newVersion}`, 'yellow');
+      testSkippedCount++;
+    }
+  } catch (error) {
+    log(`  - ${testFile.split('/').pop()}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
+    testSkippedCount++;
+  }
+}
+
+console.log('');
 log('Updating Claude Code plugin versions...', 'blue');
 
 // Update plugin version files
@@ -295,9 +341,10 @@ for (const { path: pluginPath, name } of pluginFiles) {
 console.log('');
 log(`✅ Version bump complete!`, 'green');
 log(`   Packages updated: ${updatedCount + (updatedCount > 0 || skippedCount === 0 ? 1 : 0)}`, 'green');
+log(`   Test files updated: ${testUpdatedCount}`, 'green');
 log(`   Plugin files updated: ${pluginUpdatedCount}`, 'green');
-if (skippedCount > 0 || pluginSkippedCount > 0) {
-  log(`   Skipped: ${skippedCount + pluginSkippedCount} (already at ${newVersion})`, 'yellow');
+if (skippedCount > 0 || testSkippedCount > 0 || pluginSkippedCount > 0) {
+  log(`   Skipped: ${skippedCount + testSkippedCount + pluginSkippedCount} (already at ${newVersion})`, 'yellow');
 }
 console.log('');
 console.log('Next steps:');
