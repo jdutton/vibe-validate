@@ -4,6 +4,11 @@
  * Centralized registry of all error extractors with detection logic.
  * All extractors now use the plugin structure with co-located tests and documentation.
  *
+ * **Trust Levels** (Phase 2B):
+ * - All built-in extractors have `trust: 'full'` (run directly, no sandbox)
+ * - External plugins will have `trust: 'sandbox'` (run in isolated-vm)
+ * - Use `getSandboxedExtractor()` to get wrapped extract function
+ *
  * @package @vibe-validate/extractors
  */
 
@@ -27,6 +32,13 @@ import tapPlugin from './extractors/tap/index.js';
 import genericPlugin from './extractors/generic/index.js';
 
 /**
+ * Trust level for extractor execution
+ * - 'full': Run with full Node.js access (built-in trusted code, no sandbox)
+ * - 'sandbox': Run in isolated V8 context (external plugins, secure)
+ */
+export type ExtractorTrustLevel = 'full' | 'sandbox';
+
+/**
  * Extractor descriptor with detection and extraction logic
  */
 export interface ExtractorDescriptor {
@@ -38,6 +50,8 @@ export interface ExtractorDescriptor {
   extract: (_output: string) => ErrorExtractorResult;
   /** Priority for detection order (higher = check first) */
   priority: number;
+  /** Trust level for execution (default: 'full' for built-ins) */
+  trust: ExtractorTrustLevel;
 }
 
 /**
@@ -73,6 +87,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: vitestPlugin.metadata.name,
     priority: 100, // Explicit priority for RUN v header check
+    trust: 'full', // Built-in trusted code
     detect: (output: string): DetectionResult => {
       // eslint-disable-next-line sonarjs/slow-regex -- False positive: regex is anchored and has limited repetition
       if (/^\s*RUN\s+v\d+\.\d+\.\d+/m.test(output)) {
@@ -98,6 +113,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: junitPlugin.metadata.name,
     priority: junitPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: junitPlugin.detect,
     extract: junitPlugin.extract,
   },
@@ -106,6 +122,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: typescriptPlugin.metadata.name,
     priority: typescriptPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: typescriptPlugin.detect,
     extract: typescriptPlugin.extract,
   },
@@ -114,6 +131,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: playwrightPlugin.metadata.name,
     priority: playwrightPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: playwrightPlugin.detect,
     extract: playwrightPlugin.extract,
   },
@@ -122,6 +140,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: jestPlugin.metadata.name,
     priority: jestPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: jestPlugin.detect,
     extract: jestPlugin.extract,
   },
@@ -130,6 +149,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: vitestPlugin.metadata.name,
     priority: 90, // Secondary check with fallback patterns
+    trust: 'full', // Built-in trusted code
     detect: (output: string): DetectionResult => {
       // Require MULTIPLE patterns together to avoid false positives:
       // - "Test Files" keyword (unique to Vitest) OR
@@ -166,6 +186,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: eslintPlugin.metadata.name,
     priority: eslintPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: eslintPlugin.detect,
     extract: eslintPlugin.extract,
   },
@@ -174,6 +195,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: jasminePlugin.metadata.name,
     priority: jasminePlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: jasminePlugin.detect,
     extract: jasminePlugin.extract,
   },
@@ -182,6 +204,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: avaPlugin.metadata.name,
     priority: avaPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: avaPlugin.detect,
     extract: avaPlugin.extract,
   },
@@ -190,6 +213,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: mochaPlugin.metadata.name,
     priority: mochaPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: mochaPlugin.detect,
     extract: mochaPlugin.extract,
   },
@@ -198,6 +222,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: tapPlugin.metadata.name,
     priority: tapPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: tapPlugin.detect,
     extract: tapPlugin.extract,
   },
@@ -206,6 +231,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: mavenCompilerPlugin.metadata.name,
     priority: mavenCompilerPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: mavenCompilerPlugin.detect,
     extract: mavenCompilerPlugin.extract,
   },
@@ -214,6 +240,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: mavenSurefirePlugin.metadata.name,
     priority: mavenSurefirePlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: mavenSurefirePlugin.detect,
     extract: mavenSurefirePlugin.extract,
   },
@@ -222,6 +249,7 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: mavenCheckstylePlugin.metadata.name,
     priority: mavenCheckstylePlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: mavenCheckstylePlugin.detect,
     extract: mavenCheckstylePlugin.extract,
   },
@@ -230,7 +258,18 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
   {
     name: genericPlugin.metadata.name,
     priority: genericPlugin.priority,
+    trust: 'full', // Built-in trusted code
     detect: genericPlugin.detect,
     extract: genericPlugin.extract,
   },
 ];
+
+/**
+ * Get an extractor descriptor by name
+ *
+ * @param name - The extractor name to find
+ * @returns The extractor descriptor, or undefined if not found
+ */
+export function getExtractorByName(name: string): ExtractorDescriptor | undefined {
+  return EXTRACTOR_REGISTRY.find(descriptor => descriptor.name === name);
+}

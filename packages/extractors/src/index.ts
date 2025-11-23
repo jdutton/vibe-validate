@@ -97,5 +97,14 @@ export {
 } from './sandbox.js';
 export type { SandboxOptions, SandboxResult, SandboxStats } from './sandbox.js';
 
+// Sandboxed Extractor Wrapper (NEW - trust-based execution)
+export {
+  createSandboxedExtractor,
+} from './sandboxed-extractor.js';
+export type {
+  ExtractorTrustLevel,
+  SandboxedExtractorOptions,
+} from './sandboxed-extractor.js';
+
 // Utilities
 export { stripAnsiCodes, extractErrorLines } from './utils.js';
