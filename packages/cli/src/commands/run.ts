@@ -6,13 +6,12 @@
  */
 
 import type { Command } from 'commander';
-import { execSync } from 'node:child_process';
 import { writeFile, readFile } from 'node:fs/promises';
 import { join, resolve, relative } from 'node:path';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 import type { OutputLine } from '@vibe-validate/core';
-import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble } from '@vibe-validate/git';
+import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
 import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
 import { type RunResult } from '../schemas/run-result-schema.js';
@@ -283,11 +282,8 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     // Construct git notes ref path: refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
     const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
 
-    // Try to read git note
-    const noteContent = execSync(`git notes --ref=${refPath} show HEAD 2>/dev/null || true`, {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    // Try to read git note using secure readNote function
+    const noteContent = readNote(refPath, 'HEAD');
 
     if (!noteContent) {
       // Cache miss
@@ -363,18 +359,13 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
       ...(result.outputFiles ? { outputFiles: result.outputFiles } : {}),
     };
 
-    // Store in git notes using heredoc to avoid quote escaping issues
+    // Store in git notes using secure addNote function
+    // SECURITY FIX: Eliminates heredoc injection vulnerability
     const noteYaml = yaml.stringify(cacheNote);
 
-    // Use heredoc format for multi-line YAML
     try {
-      execSync(
-        `cat <<'EOF' | git notes --ref=${refPath} add -f -F - HEAD\n${noteYaml}\nEOF`,
-        {
-          stdio: 'ignore',
-          shell: '/bin/bash', // Ensure bash for heredoc support
-        }
-      );
+      // Use secure addNote with stdin piping (no shell, no heredoc)
+      addNote(refPath, 'HEAD', noteYaml, true);
     // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical
     } catch (_error) {
       // Cache storage failed - not critical, continue

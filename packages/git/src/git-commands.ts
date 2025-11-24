@@ -1,48 +1,18 @@
 /**
  * Git Command Utilities
  *
- * Standardized git command execution with consistent options and error handling.
- * Consolidates scattered git rev-parse usage across packages.
+ * High-level git operations built on top of the secure git-executor.
+ * These functions provide convenient access to common git commands.
  */
 
-import { execSync } from 'node:child_process';
-
-/**
- * Standard options for git command execution
- */
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: 30000, // 30 seconds
-  stdio: 'pipe' as const,
-} as const;
-
-/**
- * Execute a git command with standard options
- * @param command - The git command to execute
- * @param options - Optional overrides for execution options
- * @returns The command output, trimmed of whitespace
- * @throws Error if the command fails
- */
-function execGitCommand(command: string, options?: Partial<typeof GIT_OPTIONS>): string {
-  try {
-    const result = execSync(command, { ...GIT_OPTIONS, ...options });
-    return result.trim();
-  } catch (error) {
-    throw new Error(`Git command failed: ${command}`, { cause: error });
-  }
-}
+import { execGitCommand, tryGitCommand } from './git-executor.js';
 
 /**
  * Check if the current directory is inside a git repository
  * @returns true if inside a git repository, false otherwise
  */
 export function isGitRepository(): boolean {
-  try {
-    execGitCommand('git rev-parse --is-inside-work-tree');
-    return true;
-  } catch {
-    return false;
-  }
+  return tryGitCommand(['rev-parse', '--is-inside-work-tree']);
 }
 
 /**
@@ -51,7 +21,7 @@ export function isGitRepository(): boolean {
  * @throws Error if not in a git repository
  */
 export function getGitDir(): string {
-  return execGitCommand('git rev-parse --git-dir');
+  return execGitCommand(['rev-parse', '--git-dir']);
 }
 
 /**
@@ -60,7 +30,7 @@ export function getGitDir(): string {
  * @throws Error if not in a git repository
  */
 export function getRepositoryRoot(): string {
-  return execGitCommand('git rev-parse --show-toplevel');
+  return execGitCommand(['rev-parse', '--show-toplevel']);
 }
 
 /**
@@ -69,7 +39,7 @@ export function getRepositoryRoot(): string {
  * @throws Error if not on a branch (detached HEAD)
  */
 export function getCurrentBranch(): string {
-  return execGitCommand('git rev-parse --abbrev-ref HEAD');
+  return execGitCommand(['rev-parse', '--abbrev-ref', 'HEAD']);
 }
 
 /**
@@ -78,7 +48,7 @@ export function getCurrentBranch(): string {
  * @throws Error if not in a git repository or HEAD is invalid
  */
 export function getHeadCommitSha(): string {
-  return execGitCommand('git rev-parse HEAD');
+  return execGitCommand(['rev-parse', 'HEAD']);
 }
 
 /**
@@ -87,7 +57,7 @@ export function getHeadCommitSha(): string {
  * @throws Error if not in a git repository or HEAD is invalid
  */
 export function getHeadTreeSha(): string {
-  return execGitCommand('git rev-parse HEAD^{tree}');
+  return execGitCommand(['rev-parse', 'HEAD^{tree}']);
 }
 
 /**
@@ -96,12 +66,7 @@ export function getHeadTreeSha(): string {
  * @returns true if the reference exists, false otherwise
  */
 export function verifyRef(ref: string): boolean {
-  try {
-    execGitCommand(`git rev-parse --verify ${ref}`);
-    return true;
-  } catch {
-    return false;
-  }
+  return tryGitCommand(['rev-parse', '--verify', ref]);
 }
 
 /**
@@ -111,7 +76,7 @@ export function verifyRef(ref: string): boolean {
  * @throws Error if the reference doesn't exist
  */
 export function verifyRefOrThrow(ref: string): string {
-  return execGitCommand(`git rev-parse --verify ${ref}`);
+  return execGitCommand(['rev-parse', '--verify', ref]);
 }
 
 /**
@@ -120,14 +85,5 @@ export function verifyRefOrThrow(ref: string): string {
  * @returns true if the notes ref exists, false otherwise
  */
 export function hasNotesRef(notesRef: string): boolean {
-  try {
-    // Use || true to prevent error when notes don't exist
-    const result = execSync(`git rev-parse --verify ${notesRef} 2>/dev/null || true`, {
-      encoding: 'utf8',
-      timeout: GIT_OPTIONS.timeout,
-    }).trim();
-    return result.length > 0;
-  } catch {
-    return false;
-  }
+  return tryGitCommand(['rev-parse', '--verify', notesRef]);
 }
