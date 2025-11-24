@@ -16,13 +16,14 @@ import { listRunCacheTreeHashes, getAllRunCacheForTree } from './run-cache-reade
 function mergeConfig(config: HistoryConfig = {}): {
   gitNotes: { ref: string };
 } {
+  const mergedGitNotes = config.gitNotes
+    ? { ...DEFAULT_HISTORY_CONFIG.gitNotes, ...config.gitNotes }
+    : DEFAULT_HISTORY_CONFIG.gitNotes;
+
   return {
     ...DEFAULT_HISTORY_CONFIG,
     ...config,
-    gitNotes: {
-      ...DEFAULT_HISTORY_CONFIG.gitNotes,
-      ...(config.gitNotes ?? {}),
-    },
+    gitNotes: mergedGitNotes,
   };
 }
 
@@ -185,18 +186,20 @@ export async function pruneAllRunCache(dryRun: boolean = false): Promise<PruneRe
   for (const treeHash of treeHashes) {
     const entries = await getAllRunCacheForTree(treeHash);
 
-    if (entries.length > 0) {
-      if (!dryRun) {
-        // SECURITY FIX: Use secure removeNotesRefs instead of shell piping
-        // This eliminates command injection risk from treeHash variable
-        const deleted = removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
-        notesPruned += deleted;
-      } else {
-        notesPruned += entries.length;
-      }
-
-      prunedTreeHashes.push(treeHash);
+    if (entries.length === 0) {
+      continue;
     }
+
+    if (dryRun) {
+      notesPruned += entries.length;
+    } else {
+      // SECURITY FIX: Use secure removeNotesRefs instead of shell piping
+      // This eliminates command injection risk from treeHash variable
+      const deleted = removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
+      notesPruned += deleted;
+    }
+
+    prunedTreeHashes.push(treeHash);
   }
 
   return {

@@ -142,21 +142,21 @@ export function executeGitCommand(
   const success = exitCode === 0;
 
   // Handle errors
-  if (!success && !ignoreErrors) {
-    const errorMessage = stderr || stdout || 'Git command failed';
-    const error = new Error(`Git command failed: git ${args.join(' ')}\n${errorMessage}`) as GitCommandError;
-    error.exitCode = exitCode;
-    error.stderr = stderr;
-    error.stdout = stdout;
-    throw error;
+  if (success || ignoreErrors) {
+    return {
+      stdout,
+      stderr,
+      exitCode,
+      success,
+    };
   }
 
-  return {
-    stdout,
-    stderr,
-    exitCode,
-    success,
-  };
+  const errorMessage = stderr || stdout || 'Git command failed';
+  const error = new Error(`Git command failed: git ${args.join(' ')}\n${errorMessage}`) as GitCommandError;
+  error.exitCode = exitCode;
+  error.stderr = stderr;
+  error.stdout = stdout;
+  throw error;
 }
 
 /**
