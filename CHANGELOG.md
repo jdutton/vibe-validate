@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0-rc5] - 2025-11-23
+
+### 📚 Documentation
+
+**Create-Extractor Command Guide**
+- **Problem**: Users needed to manually scaffold extractor plugins with correct structure
+- **Solution**: Added comprehensive documentation for the `vv create-extractor` command
+- **Impact**: Developers can quickly create custom extractors with proper TypeScript setup
+- **Coverage**: Scaffolding usage, plugin structure, auto-discovery, detection patterns, testing workflow
+
+**Claude Code Plugin Structure**
+- Reorganized plugin skills into `skills/vibe-validate/` directory for better organization
+- Updated plugin manifest to reflect new structure
+
 ## [0.17.0-rc4] - 2025-11-22
 
 ### ✨ Features

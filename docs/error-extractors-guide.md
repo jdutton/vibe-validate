@@ -336,62 +336,146 @@ vibe-validate state
 
 You can create custom extractors for tools not supported by default.
 
-### Step 1: Implement Extractor Interface
+### Quick Start: Generate Extractor Plugin
 
-```typescript
-// my-extractor.ts
-import { type FormattedError } from '@vibe-validate/extractors';
+**RECOMMENDED**: Use the built-in scaffolding tool to create a plugin:
 
-export function extractMyTool(output: string): FormattedError {
-  // Parse tool output
-  const lines = output.split('\n');
-  const errors: string[] = [];
-
-  for (const line of lines) {
-    // Extract error information
-    const match = line.match(/ERROR: (.+)/);
-    if (match) {
-      errors.push(match[1]);
-    }
-  }
-
-  return {
-    summary: `Found ${errors.length} errors`,
-    details: errors.join('\n'),
-    errorCount: errors.length,
-  };
-}
+```bash
+# Create extractor plugin with scaffolding
+vv create-extractor my-tool \
+  --description "Extracts errors from my-tool output" \
+  --author "Your Name <you@example.com>" \
+  --detection-pattern "ERROR:"
 ```
 
-### Step 2: Register Extractor
+This creates a plugin directory `vibe-validate-plugin-my-tool/` with:
+- TypeScript plugin template with detection and extraction logic
+- Example detection pattern configured
+- package.json with proper metadata
+- tsconfig.json for TypeScript support
+- README.md with usage instructions
 
-```typescript
-// validation-runner.ts
-import { runValidation } from '@vibe-validate/core';
-import { extractMyTool } from './my-extractor';
-
-const result = await runValidation({
-  phases: [...],
-  extractors: {
-    'my-tool': extractMyTool, // ← Register custom extractor
-  },
-});
+**Generated plugin structure:**
+```
+vibe-validate-plugin-my-tool/
+├── package.json
+├── tsconfig.json
+├── index.ts          # Your extractor implementation
+└── README.md
 ```
 
-### Step 3: Use in Configuration
+**Next steps:**
+1. **Build the plugin**: `cd vibe-validate-plugin-my-tool && npm run build`
+2. **Edit `index.ts`**: Customize detection and extraction logic
+3. **Test it**: `vv run <your-command>` (plugin auto-discovered)
+4. **Refine**: Iterate on detection patterns and extraction logic
 
-<!-- config:example -->
+### How Plugin Discovery Works
+
+Plugins in `vibe-validate-local-plugins/` or matching the naming pattern `vibe-validate-plugin-*` in your project are automatically discovered and loaded.
+
+**Manual plugin location:**
+```bash
+# Move built plugin to auto-discovery directory
+mkdir -p vibe-validate-local-plugins
+mv vibe-validate-plugin-my-tool vibe-validate-local-plugins/
+```
+
+**Plugin registration in config (optional):**
 ```yaml
 # vibe-validate.config.yaml
-# Reference: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates
 git:
   mainBranch: main
+
+extractors:
+  # Explicitly register plugins (alternative to auto-discovery)
+  - path: ./vibe-validate-local-plugins/vibe-validate-plugin-my-tool
+    trust: sandbox  # Run in sandbox (default)
+
 validation:
   phases:
-    - name: Testing
+    - name: Build
       steps:
-        - name: Unit Tests
-          command: npm test
+        - name: My Tool
+          command: my-tool build
+          # Extractor auto-detects based on detection pattern
+```
+
+### Manual Implementation (Advanced)
+
+If you need fine-grained control, you can manually implement the extractor interface:
+
+#### Step 1: Implement Extractor Plugin
+
+```typescript
+// vibe-validate-plugin-my-tool/index.ts
+import type { ExtractorPlugin } from '@vibe-validate/extractors';
+
+const plugin: ExtractorPlugin = {
+  // Detection function
+  detect(output: string) {
+    const hasErrorMarker = output.includes('ERROR:');
+    if (hasErrorMarker) {
+      return {
+        confidence: 90,
+        hints: {
+          required: ['ERROR:'],
+          optional: [],
+        },
+      };
+    }
+    return { confidence: 0, hints: { required: [], optional: [] } };
+  },
+
+  // Extraction function
+  extract(output: string) {
+    const lines = output.split('\n');
+    const errors: string[] = [];
+
+    for (const line of lines) {
+      const match = line.match(/ERROR: (.+)/);
+      if (match) {
+        errors.push(match[1]);
+      }
+    }
+
+    return {
+      summary: `Found ${errors.length} errors`,
+      details: errors.join('\n'),
+      errorCount: errors.length,
+      errors: errors.map(msg => ({ message: msg })),
+    };
+  },
+};
+
+export default plugin;
+```
+
+#### Step 2: Build and Test
+
+```bash
+# Build TypeScript plugin
+cd vibe-validate-plugin-my-tool
+npm run build
+
+# Test with real output
+cd /path/to/your/project
+vv run my-tool build
+```
+
+#### Step 3: Verify Detection
+
+Check that your plugin was loaded and used:
+
+```bash
+# Check extraction metadata in state
+vv state
+
+# Look for:
+# metadata:
+#   detection:
+#     extractor: my-tool  # Your plugin name
+#     confidence: 90
 ```
 
 ### Extractor Interface
