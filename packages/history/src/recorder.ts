@@ -7,7 +7,12 @@ import { writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
-import { getGitTreeHash, hasWorkingTreeChanges } from '@vibe-validate/git';
+import {
+  getGitTreeHash,
+  hasWorkingTreeChanges,
+  getCurrentBranch as getGitBranch,
+  getHeadCommitSha,
+} from '@vibe-validate/git';
 import type { ValidationResult } from '@vibe-validate/core';
 import type {
   ValidationRun,
@@ -34,7 +39,7 @@ const GIT_OPTIONS = {
  */
 async function getCurrentBranch(): Promise<string> {
   try {
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', GIT_OPTIONS).trim();
+    const branch = getGitBranch();
     return branch === 'HEAD' ? 'detached' : branch;
   } catch {
     return 'unknown';
@@ -48,7 +53,7 @@ async function getCurrentBranch(): Promise<string> {
  */
 async function getHeadCommit(): Promise<string> {
   try {
-    return execSync('git rev-parse HEAD', GIT_OPTIONS).trim();
+    return getHeadCommitSha();
   } catch {
     return 'none';
   }

@@ -40,3 +40,16 @@ export {
   extractYamlContent,
   extractYamlWithPreamble
 } from './yaml-detection.js';
+
+// Git command utilities (standardized rev-parse operations)
+export {
+  isGitRepository,
+  getGitDir,
+  getRepositoryRoot,
+  getCurrentBranch,
+  getHeadCommitSha,
+  getHeadTreeSha,
+  verifyRef,
+  verifyRefOrThrow,
+  hasNotesRef
+} from './git-commands.js';

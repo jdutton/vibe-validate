@@ -8,6 +8,7 @@
 import { ChildProcess, execSync, spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { getRepositoryRoot } from '@vibe-validate/git';
 import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
 
@@ -18,10 +19,7 @@ import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.j
  */
 export function getGitRoot(): string | null {
   try {
-    return execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    return getRepositoryRoot();
   } catch {
     return null;
   }
