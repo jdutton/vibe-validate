@@ -6,8 +6,9 @@
  */
 
 import type { Command } from 'commander';
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
 import prompts from 'prompts';
 
@@ -19,6 +20,7 @@ interface CreateExtractorOptions {
   description?: string;
   author?: string;
   priority?: number;
+  detectionPattern?: string;
   force?: boolean;
 }
 
@@ -42,6 +44,7 @@ export function createExtractorCommand(program: Command): void {
     .description('Create a new extractor plugin from template')
     .option('--description <desc>', 'Plugin description')
     .option('--author <author>', 'Author name and email')
+    .option('--detection-pattern <pattern>', 'Detection keyword or pattern')
     .option('--priority <number>', 'Detection priority (higher = check first)', '70')
     .option('-f, --force', 'Overwrite existing plugin directory')
     .action(async (name: string | undefined, options: CreateExtractorOptions) => {
@@ -116,7 +119,7 @@ async function gatherContext(
         : '',
     },
     {
-      type: 'text',
+      type: options.detectionPattern ? null : 'text',
       name: 'detectionPattern',
       message: 'Detection keyword (e.g., "ERROR:", "[FAIL]"):',
       validate: (value: string) => value.length > 0 || 'Detection keyword is required',
@@ -132,7 +135,7 @@ async function gatherContext(
   const pluginName = name ?? responses.pluginName;
   const description = options.description ?? responses.description;
   const author = options.author ?? responses.author ?? 'Unknown';
-  const detectionPattern = responses.detectionPattern;
+  const detectionPattern = options.detectionPattern ?? responses.detectionPattern;
   const priority = typeof options.priority === 'number'
     ? options.priority
     : Number.parseInt(options.priority ?? '70', 10);
@@ -593,9 +596,42 @@ If false positives/negatives occur:
 }
 
 /**
+ * Get CLI version from package.json
+ */
+function getCliVersion(): string {
+  try {
+    // Get the path to the CLI's package.json
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    // Go up from dist/commands/ to package.json
+    const packageJsonPath = join(__dirname, '..', '..', 'package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as { version: string };
+    return packageJson.version;
+  } catch {
+    // Fallback to a known version if reading fails
+    return '0.17.0';
+  }
+}
+
+/**
+ * Get version range for package.json (e.g., "0.17.0-rc4" -> "^0.17.0-rc4")
+ */
+function getVersionRange(version: string): string {
+  // For RC versions, use exact version to avoid issues
+  if (version.includes('-rc')) {
+    return version;
+  }
+  // For stable versions, use caret range
+  return `^${version}`;
+}
+
+/**
  * Generate package.json
  */
 function generatePackageJson(context: TemplateContext): string {
+  const cliVersion = getCliVersion();
+  const versionRange = getVersionRange(cliVersion);
+
   return `{
   "name": "vibe-validate-plugin-${context.pluginName}",
   "version": "1.0.0",
@@ -622,11 +658,11 @@ function generatePackageJson(context: TemplateContext): string {
   "author": "${context.author}",
   "license": "MIT",
   "peerDependencies": {
-    "@vibe-validate/extractors": "^0.17.0"
+    "@vibe-validate/extractors": "${versionRange}"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@vibe-validate/extractors": "^0.17.0",
+    "@vibe-validate/extractors": "${versionRange}",
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
   }
@@ -721,6 +757,7 @@ The \`create-extractor\` command generates a fully-functional extractor plugin d
 - \`[name]\` - Plugin name (kebab-case, e.g., "my-tool")
 - \`--description <desc>\` - Plugin description
 - \`--author <author>\` - Author name and email
+- \`--detection-pattern <pattern>\` - Detection keyword or pattern
 - \`--priority <number>\` - Detection priority (default: 70)
 - \`-f, --force\` - Overwrite existing plugin directory
 
@@ -753,6 +790,7 @@ vibe-validate create-extractor my-tool
 vibe-validate create-extractor my-tool \\
   --description "Extracts errors from my tool" \\
   --author "John Doe <john@example.com>" \\
+  --detection-pattern "ERROR:" \\
   --priority 70
 
 # Overwrite existing plugin

@@ -75,8 +75,8 @@ export { default as genericPlugin } from './extractors/generic/index.js';
 export { autoDetectAndExtract } from './smart-extractor.js';
 
 // Extractor registry (for advanced use cases)
-export { EXTRACTOR_REGISTRY } from './extractor-registry.js';
-export type { ExtractorDescriptor } from './extractor-registry.js';
+export { EXTRACTOR_REGISTRY, registerPlugins as registerPluginsToRegistry } from './extractor-registry.js';
+export type { ExtractorDescriptor, ExtractorTrustLevel } from './extractor-registry.js';
 
 // Plugin loader (NEW - external plugin support)
 export {
@@ -102,7 +102,6 @@ export {
   createSandboxedExtractor,
 } from './sandboxed-extractor.js';
 export type {
-  ExtractorTrustLevel,
   SandboxedExtractorOptions,
 } from './sandboxed-extractor.js';
 

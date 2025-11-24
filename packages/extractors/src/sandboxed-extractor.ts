@@ -9,13 +9,7 @@
 
 import { runInSandbox } from './sandbox.js';
 import type { ExtractorPlugin, ErrorExtractorResult } from './types.js';
-
-/**
- * Trust level for extractor execution
- * - 'full': Run with full Node.js access (trusted code, faster)
- * - 'sandbox': Run in isolated V8 context (untrusted code, secure)
- */
-export type ExtractorTrustLevel = 'full' | 'sandbox';
+import type { ExtractorTrustLevel } from './extractor-registry.js';
 
 /**
  * Options for sandboxed extractor creation

@@ -48,6 +48,7 @@ export function createRunnerConfig(
     yaml: options.yaml, // Pass yaml flag to runner for stdout/stderr routing
     debug: options.debug ?? false, // Enable debug mode to create output files for all steps
     developerFeedback: config.developerFeedback ?? false, // Enable extraction quality alerts for dogfooding
+    extractors: config.extractors, // Pass extractor configuration for plugin loading
     env: envVars,
     ...callbacks,
   };

@@ -67,6 +67,9 @@ export interface ValidationConfig {
   /** Environment variables to pass to all child processes */
   env?: Record<string, string>;
 
+  /** Extractor plugin configuration (for loading local/external plugins) */
+  extractors?: Pick<import('@vibe-validate/config').VibeValidateConfig, 'extractors'>['extractors'];
+
   /** Callback when phase starts */
   onPhaseStart?: (_phase: import('@vibe-validate/config').ValidationPhase) => void;
 
@@ -925,6 +928,7 @@ function createFailedValidationResult(
  *
  * @public
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 19 acceptable for main validation orchestration function (plugin loading, caching, phase execution, and result handling)
 export async function runValidation(config: ValidationConfig): Promise<ValidationResult> {
   const {
     phases,
@@ -943,6 +947,31 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
 
   // Initialize log file
   writeFileSync(logPath, `Validation started at ${new Date().toISOString()}\n\n`);
+
+  // Load and register local plugins if configured
+  // This must happen before any validation steps run, so extractors are available
+  if (config.extractors) {
+    try {
+      const { discoverPlugins, registerPluginsToRegistry } = await import('@vibe-validate/extractors');
+
+      // Auto-discover local plugins from vibe-validate-local-plugins/ directory
+      const plugins = await discoverPlugins({
+        baseDir: process.cwd(),
+      });
+
+      // Register plugins with the appropriate trust level
+      const trustLevel = config.extractors.localPlugins?.trust ?? 'sandbox';
+      if (plugins.length > 0) {
+        registerPluginsToRegistry(plugins, trustLevel);
+        appendFileSync(logPath, `Loaded ${plugins.length} local plugin(s) with trust level: ${trustLevel}\n\n`);
+      }
+    } catch (error) {
+      // Fail-safe: If plugin loading fails, log but continue validation
+      // This ensures validation never blocks due to plugin issues
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      appendFileSync(logPath, `Warning: Plugin loading failed: ${errorMessage}\n\n`);
+    }
+  }
 
   const phaseResults: PhaseResult[] = [];
 

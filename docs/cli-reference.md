@@ -1,10 +1,12 @@
 # CLI Reference
 
-> **AUTO-GENERATED** - This file is automatically synced with `vv --help --verbose` output.
-> Do not edit below the `---` separator - those sections are overwritten by tests.
+> **Complete command-line reference for vibe-validate**
+>
+> **This document is auto-synced with `vibe-validate --help --verbose` output**
+>
+> The content below is the exact output from running `vibe-validate --help --verbose`. This ensures perfect accuracy between CLI and documentation.
 
 ---
-
 # vibe-validate CLI Reference
 
 > Agent-friendly validation framework with git tree hash caching
@@ -489,6 +491,7 @@ Create a new extractor plugin from template
 
 - `--description <desc>` - Plugin description
 - `--author <author>` - Author name and email
+- `--detection-pattern <pattern>` - Detection keyword or pattern
 - `--priority <number>` - Detection priority (higher = check first)
 - `-f, --force` - Overwrite existing plugin directory
 

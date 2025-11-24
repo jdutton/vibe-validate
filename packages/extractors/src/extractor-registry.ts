@@ -52,6 +52,12 @@ export interface ExtractorDescriptor {
   priority: number;
   /** Trust level for execution (default: 'full' for built-ins) */
   trust: ExtractorTrustLevel;
+  /** Optional hints for fast pre-filtering (Phase 2B) */
+  hints?: {
+    required?: string[];
+    anyOf?: string[];
+    forbidden?: string[];
+  };
 }
 
 /**
@@ -272,4 +278,44 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
  */
 export function getExtractorByName(name: string): ExtractorDescriptor | undefined {
   return EXTRACTOR_REGISTRY.find(descriptor => descriptor.name === name);
+}
+
+/**
+ * Register external plugins to the extractor registry
+ *
+ * This function is called at runtime to add dynamically loaded plugins from:
+ * - Local plugin directories (vibe-validate-local-plugins/)
+ * - npm packages
+ * - Explicit config paths
+ *
+ * Plugins are inserted in priority order to maintain registry sorting.
+ *
+ * @param plugins - Array of ExtractorPlugins to register
+ * @param trustLevel - Trust level for execution ('sandbox' for external plugins)
+ */
+export function registerPlugins(
+  plugins: Array<{ metadata: { name: string }; priority: number; hints?: { required?: string[]; anyOf?: string[]; forbidden?: string[] }; detect: (_output: string) => DetectionResult; extract: (_output: string) => ErrorExtractorResult }>,
+  trustLevel: ExtractorTrustLevel = 'sandbox'
+): void {
+  for (const plugin of plugins) {
+    const descriptor: ExtractorDescriptor = {
+      name: plugin.metadata.name,
+      priority: plugin.priority,
+      trust: trustLevel,
+      detect: plugin.detect,
+      extract: plugin.extract,
+      ...(plugin.hints && { hints: plugin.hints }),
+    };
+
+    // Find correct insertion point to maintain priority order (highest first)
+    const insertIndex = EXTRACTOR_REGISTRY.findIndex(ext => ext.priority < plugin.priority);
+
+    if (insertIndex === -1) {
+      // Plugin has lowest priority, add to end
+      EXTRACTOR_REGISTRY.push(descriptor);
+    } else {
+      // Insert at correct priority position
+      EXTRACTOR_REGISTRY.splice(insertIndex, 0, descriptor);
+    }
+  }
 }

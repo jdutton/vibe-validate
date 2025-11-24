@@ -31,3 +31,6 @@ ci:
     - ubuntu-latest
     - windows-latest
 developerFeedback: true
+extractors:
+  localPlugins:
+    trust: sandbox
