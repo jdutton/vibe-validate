@@ -1020,6 +1020,145 @@ describe('validate command', () => {
     });
   });
 
+  describe('auto-YAML output on failure', () => {
+    beforeEach(() => {
+      // Mock valid config
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [
+                { name: 'Test Step', command: 'npm test' }
+              ]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+    });
+
+    it('should auto-output YAML to stderr on validation failure (without --yaml flag)', async () => {
+      // Spy on process.stderr.write to capture YAML output
+      const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+      // Mock failed validation
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: false,
+        timestamp: '2025-11-24T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [
+          {
+            name: 'Test Phase',
+            passed: false,
+            steps: [
+              {
+                name: 'Test Step',
+                command: 'npm test',
+                passed: false,
+                errors: [
+                  {
+                    file: 'src/foo.ts',
+                    line: 42,
+                    message: "Type 'string' is not assignable to type 'number'"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        failedStep: 'Test Step',
+      });
+
+      validateCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['validate'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
+        }
+      }
+
+      // Verify human-readable summary was shown first
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('View error details'),
+        expect.anything()
+      );
+
+      // Verify YAML separator and content were written to stderr
+      const stderrCalls = stderrSpy.mock.calls.map(call => call[0]).join('');
+      expect(stderrCalls).toContain('---\n');
+      expect(stderrCalls).toContain('passed: false');
+      expect(stderrCalls).toContain('failedStep: Test Step');
+      expect(stderrCalls).toContain('src/foo.ts');
+
+      stderrSpy.mockRestore();
+    });
+
+    it('should NOT auto-output YAML on validation success (without --yaml flag)', async () => {
+      // Spy on process.stderr.write
+      const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+      // Mock successful validation
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-11-24T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+      });
+
+      validateCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['validate'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
+        }
+      }
+
+      // Verify YAML was NOT output to stderr (success case)
+      const stderrCalls = stderrSpy.mock.calls.map(call => call[0]).join('');
+      expect(stderrCalls).not.toContain('---\n');
+      expect(stderrCalls).not.toContain('passed: true');
+
+      stderrSpy.mockRestore();
+    });
+
+    it('should still respect explicit --yaml flag (output to stdout on both success and failure)', async () => {
+      // Spy on stdout
+      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      // Mock failed validation
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: false,
+        timestamp: '2025-11-24T00:00:00.000Z',
+        treeHash: 'abc123',
+        phases: [],
+        failedStep: 'Test Step',
+      });
+
+      validateCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
+        }
+      }
+
+      // With --yaml flag, should output to stdout (not stderr)
+      const stdoutCalls = stdoutSpy.mock.calls.map(call => call[0]).join('');
+      expect(stdoutCalls).toContain('---\n');
+      expect(stdoutCalls).toContain('passed: false');
+
+      stdoutSpy.mockRestore();
+    });
+  });
+
   describe('worktree stability', () => {
     beforeEach(() => {
       // Mock valid config
