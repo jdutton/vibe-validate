@@ -53,3 +53,27 @@ export {
   verifyRefOrThrow,
   hasNotesRef
 } from './git-commands.js';
+
+// Secure git command execution (low-level - use high-level APIs when possible)
+export {
+  executeGitCommand,
+  execGitCommand,
+  tryGitCommand,
+  validateGitRef,
+  validateNotesRef,
+  validateTreeHash,
+  type GitExecutionOptions,
+  type GitExecutionResult
+} from './git-executor.js';
+
+// Git notes operations (high-level abstraction)
+export {
+  addNote,
+  readNote,
+  removeNote,
+  listNotes,
+  hasNote,
+  listNotesRefs,
+  removeNotesRefs,
+  getNotesRefSha
+} from './git-notes.js';

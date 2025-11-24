@@ -2,18 +2,29 @@
  * History pruning utilities
  */
 
-import { execSync } from 'node:child_process';
+import { removeNote, removeNotesRefs } from '@vibe-validate/git';
 import type { PruneResult, HistoryConfig } from './types.js';
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
 import { getAllHistoryNotes } from './reader.js';
 import { listRunCacheTreeHashes, getAllRunCacheForTree } from './run-cache-reader.js';
 
-const GIT_TIMEOUT = 30000;
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: GIT_TIMEOUT,
-  stdio: ['pipe', 'pipe', 'ignore'] as ['pipe', 'pipe', 'ignore'],
-};
+// Removed: Git operations now use secure @vibe-validate/git functions
+
+/**
+ * Merge user config with defaults
+ */
+function mergeConfig(config: HistoryConfig = {}): {
+  gitNotes: { ref: string };
+} {
+  return {
+    ...DEFAULT_HISTORY_CONFIG,
+    ...config,
+    gitNotes: {
+      ...DEFAULT_HISTORY_CONFIG.gitNotes,
+      ...(config.gitNotes ?? {}),
+    },
+  };
+}
 
 /**
  * Prune validation history older than specified days
@@ -28,15 +39,7 @@ export async function pruneHistoryByAge(
   config: HistoryConfig = {},
   dryRun: boolean = false
 ): Promise<PruneResult> {
-  const mergedConfig = {
-    ...DEFAULT_HISTORY_CONFIG,
-    ...config,
-    gitNotes: {
-      ...DEFAULT_HISTORY_CONFIG.gitNotes,
-      ...config.gitNotes,
-    },
-  };
-
+  const mergedConfig = mergeConfig(config);
   const notesRef = mergedConfig.gitNotes.ref;
   const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
 
@@ -63,14 +66,8 @@ export async function pruneHistoryByAge(
       const treeHash = note.treeHash!;
 
       if (!dryRun) {
-        try {
-          execSync(
-            `git notes --ref=${notesRef} remove ${treeHash}`,
-            { ...GIT_OPTIONS, stdio: 'ignore' }
-          );
-        } catch {
-          // Ignore errors (note might not exist)
-        }
+        // Use secure removeNote function (no command injection risk)
+        removeNote(notesRef, treeHash);
       }
 
       notesPruned++;
@@ -98,15 +95,7 @@ export async function pruneAllHistory(
   config: HistoryConfig = {},
   dryRun: boolean = false
 ): Promise<PruneResult> {
-  const mergedConfig = {
-    ...DEFAULT_HISTORY_CONFIG,
-    ...config,
-    gitNotes: {
-      ...DEFAULT_HISTORY_CONFIG.gitNotes,
-      ...config.gitNotes,
-    },
-  };
-
+  const mergedConfig = mergeConfig(config);
   const notesRef = mergedConfig.gitNotes.ref;
 
   const allNotes = await getAllHistoryNotes(notesRef);
@@ -120,14 +109,8 @@ export async function pruneAllHistory(
     const treeHash = note.treeHash!;
 
     if (!dryRun) {
-      try {
-        execSync(
-          `git notes --ref=${notesRef} remove ${treeHash}`,
-          { ...GIT_OPTIONS, stdio: 'ignore' }
-        );
-      } catch {
-        // Ignore errors
-      }
+      // Use secure removeNote function (no command injection risk)
+      removeNote(notesRef, treeHash);
     }
 
     notesPruned++;
@@ -168,14 +151,8 @@ export async function pruneLegacyNotes(dryRun: boolean = false): Promise<PruneRe
       const treeHash = note.treeHash!;
 
       if (!dryRun) {
-        try {
-          execSync(
-            `git notes --ref=${legacyRef} remove ${treeHash}`,
-            { ...GIT_OPTIONS, stdio: 'ignore' }
-          );
-        } catch {
-          // Ignore errors
-        }
+        // Use secure removeNote function (no command injection risk)
+        removeNote(legacyRef, treeHash);
       }
 
       notesPruned++;
@@ -210,18 +187,14 @@ export async function pruneAllRunCache(dryRun: boolean = false): Promise<PruneRe
 
     if (entries.length > 0) {
       if (!dryRun) {
-        try {
-          // Delete all run cache notes under this tree hash
-          execSync(
-            `git for-each-ref --format="%(refname)" refs/notes/vibe-validate/run/${treeHash}/ | xargs -I {} git update-ref -d {}`,
-            { ...GIT_OPTIONS, stdio: 'ignore' }
-          );
-        } catch {
-          // Ignore errors
-        }
+        // SECURITY FIX: Use secure removeNotesRefs instead of shell piping
+        // This eliminates command injection risk from treeHash variable
+        const deleted = removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
+        notesPruned += deleted;
+      } else {
+        notesPruned += entries.length;
       }
 
-      notesPruned += entries.length;
       prunedTreeHashes.push(treeHash);
     }
   }

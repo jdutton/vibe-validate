@@ -189,6 +189,52 @@ The script automatically updates:
 
 Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR` comments with explanations to suppress invalid warnings.
 
+## Security Requirements
+
+### Git Command Execution Policy (MANDATORY)
+
+**ALL git commands in vibe-validate MUST be executed through the `@vibe-validate/git` package.**
+
+#### Rules
+1. **NEVER** use `execSync('git ...')` or string interpolation with git commands
+2. **NEVER** use shell piping (`|`) or heredocs (`<<`) with user-controlled variables
+3. **ALWAYS** use functions from `@vibe-validate/git`:
+   - Low-level: `executeGitCommand()`, `execGitCommand()`, `tryGitCommand()`
+   - High-level: `addNote()`, `readNote()`, `removeNote()`, etc.
+4. **ALWAYS** validate inputs using: `validateGitRef()`, `validateNotesRef()`, `validateTreeHash()`
+
+#### Rationale
+- Prevents command injection attacks
+- Eliminates shell special character risks
+- Centralizes git operations for easier maintenance
+- Enables consistent mocking in tests
+
+#### Examples
+
+**❌ WRONG - Command Injection Risk:**
+```typescript
+// DON'T DO THIS - vulnerable to command injection
+execSync(`git notes --ref=${notesRef} remove ${treeHash}`);
+execSync(`cat <<'EOF' | git notes add -f -F - HEAD\n${content}\nEOF`);
+execSync(`git for-each-ref refs/notes/${path} | xargs -I {} git update-ref -d {}`);
+```
+
+**✅ CORRECT - Secure API:**
+```typescript
+// Use secure functions from @vibe-validate/git
+import { removeNote, addNote, removeNotesRefs } from '@vibe-validate/git';
+
+removeNote(notesRef, treeHash);
+addNote(notesRef, 'HEAD', content, true);
+removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
+```
+
+#### For New Contributors
+- Read `packages/git/src/git-executor.ts` for secure execution patterns
+- All git operations go through spawnSync with array arguments
+- Inputs are validated before execution
+- See `packages/git/test/git-executor.test.ts` for command injection test cases
+
 ## Key Design Principles
 
 ### 1. Language-Agnostic Core
