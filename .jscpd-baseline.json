@@ -2,6 +2,222 @@
   "duplicates": [
     {
       "format": "typescript",
+      "lines": 11,
+      "fragment": ".exec(output)) !== null) {\n      errors.push({\n        file: match[1].trim(),\n        line: Number.parseInt(match[2]),\n        column: Number.parseInt(match[3]),\n        severity: match[4] as 'error' | 'warning',\n        code: match[5],\n        message: match[6].trim(),\n      });\n    }\n  }",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/extractors/typescript/index.ts",
+        "start": 79,
+        "end": 89,
+        "startLoc": {
+          "line": 79,
+          "column": 11,
+          "position": 467
+        },
+        "endLoc": {
+          "line": 89,
+          "column": 2,
+          "position": 583
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/extractors/typescript/index.ts",
+        "start": 66,
+        "end": 77,
+        "startLoc": {
+          "line": 66,
+          "column": 11,
+          "position": 323
+        },
+        "endLoc": {
+          "line": 77,
+          "column": 36,
+          "position": 440
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": "function extractFailures(output: string): TestFailureInfo[] {\n  const failures: TestFailureInfo[] = [];\n  const lines = output.split('\\n');\n\n  let i = 0;\n  while (i < lines.length) {\n    const line = lines[i];\n\n    // Look for numbered failure markers (e.g., \"1) Test name\")",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/extractors/jasmine/index.ts",
+        "start": 21,
+        "end": 29,
+        "startLoc": {
+          "line": 21,
+          "column": 1,
+          "position": 55
+        },
+        "endLoc": {
+          "line": 29,
+          "column": 60,
+          "position": 144
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/extractors/mocha/index.ts",
+        "start": 21,
+        "end": 29,
+        "startLoc": {
+          "line": 21,
+          "column": 1,
+          "position": 55
+        },
+        "endLoc": {
+          "line": 29,
+          "column": 53,
+          "position": 144
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 20,
+      "fragment": "], 10) : 0;\n\n  // Extract all failures\n  const failures = extractFailures(output);\n\n  // Early return if no failures detected (but failure count suggested there should be)\n  if (failureCount === 0 && failures.length === 0) {\n    return processTestFailures([], 95);\n  }\n\n  // Process failures using shared utility\n  return processTestFailures(failures, 95);\n}\n\n/**\n * Detect if output is from Jasmine test framework\n *\n * @param output - Command output to analyze\n * @returns Detection result with confidence and patterns\n */",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/extractors/jasmine/index.ts",
+        "start": 160,
+        "end": 179,
+        "startLoc": {
+          "line": 160,
+          "column": 2,
+          "position": 1104
+        },
+        "endLoc": {
+          "line": 179,
+          "column": 4,
+          "position": 1194
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/extractors/mocha/index.ts",
+        "start": 174,
+        "end": 193,
+        "startLoc": {
+          "line": 174,
+          "column": 2,
+          "position": 1084
+        },
+        "endLoc": {
+          "line": 193,
+          "column": 4,
+          "position": 1174
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 17,
+      "fragment": ",\n          confidence: detection.confidence,\n          patterns: detection.patterns,\n          reason: detection.reason,\n        },\n        confidence: 100,\n        completeness: 100,\n        issues: [],\n      },\n    };\n  }\n\n  const errors: FormattedError[] = [];\n  let completeCount = 0;\n\n  for (const failure of failures) {\n    const file = failure.file ?? 'unknown'",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/extractors/ava/index.ts",
+        "start": 164,
+        "end": 180,
+        "startLoc": {
+          "line": 164,
+          "column": 6,
+          "position": 1021
+        },
+        "endLoc": {
+          "line": 180,
+          "column": 10,
+          "position": 1144
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/extractors/tap/index.ts",
+        "start": 158,
+        "end": 174,
+        "startLoc": {
+          "line": 158,
+          "column": 6,
+          "position": 988
+        },
+        "endLoc": {
+          "line": 174,
+          "column": 10,
+          "position": 1111
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 24,
+      "fragment": ",\n      confidence: detection.confidence,\n      patterns: detection.patterns,\n      reason: detection.reason,\n    },\n    confidence,\n    completeness,\n    issues: [],\n  };\n\n  return {\n    summary,\n    errors,\n    totalErrors: failures.length,\n    errorSummary: formatCleanOutput(errors),\n    guidance,\n    metadata,\n  };\n}\n\n/**\n * Extract all failures from Ava output\n * Strategy: Find detailed headers (test names with ›), then parse each block\n */",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/extractors/ava/index.ts",
+        "start": 211,
+        "end": 234,
+        "startLoc": {
+          "line": 211,
+          "column": 6,
+          "position": 1417
+        },
+        "endLoc": {
+          "line": 234,
+          "column": 4,
+          "position": 1518
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/extractors/tap/index.ts",
+        "start": 204,
+        "end": 226,
+        "startLoc": {
+          "line": 204,
+          "column": 6,
+          "position": 1362
+        },
+        "endLoc": {
+          "line": 226,
+          "column": 4,
+          "position": 1463
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": "+ 1, failure);\n\n        // Add error type detection and guidance\n        if (!failure.errorType && failure.message) {\n          failure.errorType = detectErrorType(failure.message);\n        }\n        if (failure.errorType) {\n          failure.guidance = getErrorGuidance(failure.errorType);\n        }\n\n        failures.push(failure);\n      }\n    }\n  }",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/src/extractors/ava/index.ts",
+        "start": 296,
+        "end": 309,
+        "startLoc": {
+          "line": 296,
+          "column": 2,
+          "position": 2102
+        },
+        "endLoc": {
+          "line": 309,
+          "column": 2,
+          "position": 2197
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/src/extractors/ava/index.ts",
+        "start": 271,
+        "end": 283,
+        "startLoc": {
+          "line": 271,
+          "column": 2,
+          "position": 1864
+        },
+        "endLoc": {
+          "line": 283,
+          "column": 5,
+          "position": 1958
+        }
+      }
+    },
+    {
+      "format": "typescript",
       "lines": 12,
       "fragment": ".result));\n\n    // Wait for stdout to flush before exiting\n    await new Promise<void>(resolve => {\n      if (process.stdout.write('')) {\n        resolve();\n      } else {\n        process.stdout.once('drain', resolve);\n      }\n    });\n  } else {\n    // Human-readable mode: Display status message",
       "tokens": 0,
@@ -182,258 +398,6 @@
     },
     {
       "format": "typescript",
-      "lines": 11,
-      "fragment": ".exec(output)) !== null) {\n      errors.push({\n        file: match[1].trim(),\n        line: Number.parseInt(match[2]),\n        column: Number.parseInt(match[3]),\n        severity: match[4] as 'error' | 'warning',\n        code: match[5],\n        message: match[6].trim()\n      });\n    }\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/typescript-extractor.ts",
-        "start": 53,
-        "end": 63,
-        "startLoc": {
-          "line": 53,
-          "column": 11,
-          "position": 269
-        },
-        "endLoc": {
-          "line": 63,
-          "column": 2,
-          "position": 384
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/typescript-extractor.ts",
-        "start": 40,
-        "end": 51,
-        "startLoc": {
-          "line": 40,
-          "column": 11,
-          "position": 126
-        },
-        "endLoc": {
-          "line": 51,
-          "column": 36,
-          "position": 242
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": "if (failures.length === 0) {\n    return {\n      summary: '0 test(s) failed',\n      errors: [],\n      totalErrors: 0,\n      errorSummary: '',\n      guidance: '',\n      metadata: {\n        confidence: 100,\n        completeness: 100,\n        issues: []\n      }\n    };\n  }\n\n  const",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/tap-extractor.ts",
-        "start": 33,
-        "end": 48,
-        "startLoc": {
-          "line": 33,
-          "column": 3,
-          "position": 97
-        },
-        "endLoc": {
-          "line": 48,
-          "column": 6,
-          "position": 191
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/utils/test-framework-utils.ts",
-        "start": 48,
-        "end": 63,
-        "startLoc": {
-          "line": 48,
-          "column": 3,
-          "position": 143
-        },
-        "endLoc": {
-          "line": 63,
-          "column": 40,
-          "position": 237
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": "];\n    if (errorSummary.includes('×')) patterns.push('× symbol (U+00D7)');\n    if (errorSummary.includes('❌')) patterns.push('❌ cross mark');\n    if (errorSummary.includes(' ❯ ')) patterns.push('❯ arrow marker');\n    if (errorSummary.includes('Test Files')) patterns.push('Test Files summary');\n    if (errorSummary.includes('.test.ts')) patterns.push('.test.ts files');\n    if (/FAIL\\s+\\d+\\s+test\\s+(file|case)/i.exec(errorSummary)) patterns.push('FAIL N test files/cases pattern');\n    return addDetectionMetadata(result, 'vitest', 90",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/smart-extractor.ts",
-        "start": 242,
-        "end": 249,
-        "startLoc": {
-          "line": 242,
-          "column": 2,
-          "position": 1689
-        },
-        "endLoc": {
-          "line": 249,
-          "column": 3,
-          "position": 1823
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/smart-extractor.ts",
-        "start": 150,
-        "end": 157,
-        "startLoc": {
-          "line": 150,
-          "column": 27,
-          "position": 790
-        },
-        "endLoc": {
-          "line": 157,
-          "column": 4,
-          "position": 924
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": "], 10) : 0;\n\n  // Extract all failures\n  const failures = extractFailures(output);\n\n  // Early return if no failures detected (but failure count suggested there should be)\n  if (failureCount === 0 && failures.length === 0) {\n    return processTestFailures([], 95);\n  }\n\n  // Process failures using shared utility\n  return processTestFailures(failures, 95);\n}\n\n/**\n * Extract failure information from Jasmine output\n */",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/jasmine-extractor.ts",
-        "start": 47,
-        "end": 63,
-        "startLoc": {
-          "line": 47,
-          "column": 2,
-          "position": 211
-        },
-        "endLoc": {
-          "line": 63,
-          "column": 4,
-          "position": 301
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/mocha-extractor.ts",
-        "start": 47,
-        "end": 63,
-        "startLoc": {
-          "line": 47,
-          "column": 2,
-          "position": 211
-        },
-        "endLoc": {
-          "line": 63,
-          "column": 4,
-          "position": 301
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "function extractFailures(output: string): TestFailureInfo[] {\n  const failures: TestFailureInfo[] = [];\n  const lines = output.split('\\n');\n\n  let i = 0;\n  while (i < lines.length) {\n    const line = lines[i];\n\n    // Look for numbered failure markers (e.g., \"1) Test name\")",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/jasmine-extractor.ts",
-        "start": 65,
-        "end": 73,
-        "startLoc": {
-          "line": 65,
-          "column": 1,
-          "position": 305
-        },
-        "endLoc": {
-          "line": 73,
-          "column": 60,
-          "position": 394
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/mocha-extractor.ts",
-        "start": 65,
-        "end": 73,
-        "startLoc": {
-          "line": 65,
-          "column": 1,
-          "position": 305
-        },
-        "endLoc": {
-          "line": 73,
-          "column": 53,
-          "position": 394
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": "const failures = extractFailures(output);\n\n  if (failures.length === 0) {\n    return {\n      summary: '0 test(s) failed',\n      errors: [],\n      totalErrors: 0,\n      errorSummary: '',\n      guidance: '',\n      metadata: {\n        confidence: 100,\n        completeness: 100,\n        issues: []\n      }\n    };\n  }\n\n  const errors: FormattedError[] = [];\n  let completeCount = 0;\n\n  for (const failure of failures) {\n    const file = failure.file ?? 'unknown'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/ava-extractor.ts",
-        "start": 33,
-        "end": 54,
-        "startLoc": {
-          "line": 33,
-          "column": 3,
-          "position": 92
-        },
-        "endLoc": {
-          "line": 54,
-          "column": 10,
-          "position": 255
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/tap-extractor.ts",
-        "start": 31,
-        "end": 52,
-        "startLoc": {
-          "line": 31,
-          "column": 3,
-          "position": 83
-        },
-        "endLoc": {
-          "line": 52,
-          "column": 10,
-          "position": 246
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": "+ 1, failure);\n\n        // Add error type detection and guidance\n        if (!failure.errorType && failure.message) {\n          failure.errorType = detectErrorType(failure.message);\n        }\n        if (failure.errorType) {\n          failure.guidance = getErrorGuidance(failure.errorType);\n        }\n\n        failures.push(failure);\n      }\n    }\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/ava-extractor.ts",
-        "start": 174,
-        "end": 187,
-        "startLoc": {
-          "line": 174,
-          "column": 2,
-          "position": 1220
-        },
-        "endLoc": {
-          "line": 187,
-          "column": 2,
-          "position": 1315
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/ava-extractor.ts",
-        "start": 149,
-        "end": 161,
-        "startLoc": {
-          "line": 149,
-          "column": 2,
-          "position": 982
-        },
-        "endLoc": {
-          "line": 161,
-          "column": 5,
-          "position": 1076
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 14,
       "fragment": ".safeParse(data);\n\n    if (result.success) {\n      return { success: true, data: result.data };\n    }\n\n    // Extract error messages with full path\n    const errors = result.error.errors.map(err => {\n      const path = err.path.join('.');\n      return path ? `${path}: ${err.message}` : err.message;\n    });\n\n    return { success: false, errors };\n  };",
       "tokens": 0,
@@ -475,17 +439,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/config/src/schema.ts",
-        "start": 262,
-        "end": 275,
+        "start": 352,
+        "end": 365,
         "startLoc": {
-          "line": 262,
+          "line": 352,
           "column": 7,
-          "position": 1493
+          "position": 1928
         },
         "endLoc": {
-          "line": 275,
+          "line": 365,
           "column": 2,
-          "position": 1622
+          "position": 2057
         }
       },
       "secondFile": {

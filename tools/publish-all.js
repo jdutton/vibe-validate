@@ -83,11 +83,17 @@ function publishPackage(packageName, tag) {
 
 /**
  * Run pre-publish checks
+ * @param {string[]} args - Command-line arguments to pass through
  */
-function runPrePublishChecks() {
+function runPrePublishChecks(args = []) {
   console.log('🔍 Running pre-publish checks...\n');
+
+  // Build command with arguments
+  const argsStr = args.length > 0 ? ' ' + args.join(' ') : '';
+  const command = `node tools/pre-publish-check.js${argsStr}`;
+
   try {
-    execSync('node tools/pre-publish-check.js', {
+    execSync(command, {
       cwd: ROOT,
       stdio: 'inherit',
     });
@@ -110,8 +116,9 @@ function main() {
   console.log(`🏷️  npm dist-tag: ${tag}`);
   console.log(`${'='.repeat(60)}\n`);
 
-  // Run pre-publish checks
-  runPrePublishChecks();
+  // Pass through command-line arguments to pre-publish-check
+  const args = process.argv.slice(2);
+  runPrePublishChecks(args);
 
   // Publish packages in dependency order
   const packages = [

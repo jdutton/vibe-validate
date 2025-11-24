@@ -93,6 +93,10 @@ export function runCommand(program: Command): void {
       }
 
       try {
+        // Note: Plugin loading is handled by the runner (in @vibe-validate/core)
+        // when running via validate command. For standalone run commands, plugins
+        // are not needed since run is primarily for caching/extraction, not validation.
+
         // Handle --check flag (cache status check only)
         if (actualOptions.check) {
           const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
@@ -495,7 +499,7 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
         stdout,
         stderr,
         combined: combinedOutput,
-      });
+      }, exitCode);
       const extraction = (exitCode !== 0 || rawExtraction.totalErrors > 0) ? rawExtraction : undefined;
 
       // Get tree hash for result (async operation needs to be awaited)
@@ -690,6 +694,11 @@ function mergeNestedYaml(
     };
   }
 }
+
+// Note: loadPluginsIfConfigured() has been removed.
+// Plugin loading is now handled exclusively by the runner (in @vibe-validate/core)
+// when executing validation. This prevents redundant plugin loading on every
+// `vv run` invocation, which was causing 2.4x+ performance regression during tests.
 
 /**
  * Show verbose help with detailed documentation

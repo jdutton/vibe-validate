@@ -483,6 +483,20 @@ vibe-validate run "pnpm lint"                  # Lint
 
 ---
 
+### `create-extractor`
+
+Create a new extractor plugin from template
+
+**Options:**
+
+- `--description <desc>` - Plugin description
+- `--author <author>` - Author name and email
+- `--detection-pattern <pattern>` - Detection keyword or pattern
+- `--priority <number>` - Detection priority (higher = check first)
+- `-f, --force` - Overwrite existing plugin directory
+
+---
+
 ## Global Options
 
 - `-V, --version` - Show vibe-validate version

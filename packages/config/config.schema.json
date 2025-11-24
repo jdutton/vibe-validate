@@ -210,6 +210,96 @@
             "concurrencyScope": "directory"
           }
         },
+        "extractors": {
+          "type": "object",
+          "properties": {
+            "builtins": {
+              "type": "object",
+              "properties": {
+                "trust": {
+                  "type": "string",
+                  "enum": [
+                    "full",
+                    "sandbox"
+                  ]
+                },
+                "disable": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "trust": "full",
+                "disable": []
+              }
+            },
+            "localPlugins": {
+              "type": "object",
+              "properties": {
+                "trust": {
+                  "type": "string",
+                  "enum": [
+                    "full",
+                    "sandbox"
+                  ]
+                },
+                "disable": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "trust": "sandbox",
+                "disable": []
+              }
+            },
+            "external": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "package": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "trust": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "sandbox"
+                    ],
+                    "default": "sandbox"
+                  }
+                },
+                "required": [
+                  "package"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "builtins": {
+              "trust": "full",
+              "disable": []
+            },
+            "localPlugins": {
+              "trust": "sandbox",
+              "disable": []
+            },
+            "external": []
+          }
+        },
         "developerFeedback": {
           "type": "boolean",
           "default": false
