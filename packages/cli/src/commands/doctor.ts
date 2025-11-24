@@ -547,42 +547,43 @@ function checkValidationState(): DoctorCheckResult {
 }
 
 /**
- * Check for v0.15.0 cache migration recommendation
+ * Check for old validation history format (pre-v0.15.0)
  *
- * v0.15.0 introduced run command caching with a new schema.
- * Old cached results may be missing new fields (e.g., suggestedDirectCommand).
- * Recommend clearing cache on upgrade to avoid stale data.
+ * Pre-v0.15.0 used a single ref: refs/notes/vibe-validate/validate
+ * v0.15.0+ uses: refs/notes/vibe-validate/run/{treeHash}/{commandHash}
+ *
+ * Only warn if the OLD single ref exists.
  */
 function checkCacheMigration(): DoctorCheckResult {
   try {
-    // Check if any run cache notes exist
-    const result = execSync('git for-each-ref --count=1 refs/notes/vibe-validate/run/', {
+    // Check if the OLD validation history ref exists (single ref, not the new run cache structure)
+    const result = execSync('git rev-parse --verify refs/notes/vibe-validate/validate 2>/dev/null || true', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     if (result.trim()) {
-      // Cache exists - recommend clearing for clean v0.15.0+ schema
+      // Old validation history ref exists - recommend clearing
       return {
-        name: 'Run cache migration (v0.15.0+)',
+        name: 'Validation history migration',
         passed: true, // Not a failure, just informational
-        message: 'Run cache detected from earlier version',
-        suggestion: `Clear old cache for v0.15.0+ schema:\n   git for-each-ref refs/notes/vibe-validate --format='%(refname)' | xargs -n 1 git update-ref -d\n   ℹ️  Clears both run cache and validation history (will rebuild on next run)`,
+        message: 'Old validation history format detected (pre-v0.15.0)',
+        suggestion: `Clear old validation history:\n   git update-ref -d refs/notes/vibe-validate/validate\n   ℹ️  This only removes the deprecated format; run cache will remain intact`,
       };
     }
 
     return {
-      name: 'Run cache migration',
+      name: 'Validation history migration',
       passed: true,
-      message: 'No run cache found (clean state)',
+      message: 'Using current validation history format',
     };
   // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Git command failure is non-critical for migration check
   } catch (_error) {
     // Git command failed or no git notes - that's fine
     return {
-      name: 'Run cache migration',
+      name: 'Validation history migration',
       passed: true,
-      message: 'No run cache to migrate',
+      message: 'No validation history to migrate',
     };
   }
 }

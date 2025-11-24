@@ -141,17 +141,8 @@ export function preCommitCommand(program: Command): void {
           console.error(chalk.red('\n❌ Pre-commit checks failed'));
           console.error(chalk.yellow('   Fix errors before committing.'));
 
-          // Show agent-friendly error details
-          console.error(chalk.blue('\n📋 Error details:'), chalk.white('vibe-validate state'));
-
-          // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
-          const failedStep = result.phases
-            ?.flatMap(phase => phase.steps)
-            .find(step => step.name === result.failedStep);
-
-          if (failedStep?.command) {
-            console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));
-          }
+          // Note: Error details and YAML output are already shown by runValidateWorkflow
+          // No need to duplicate the error display here
 
           process.exit(1);
         }

@@ -7,53 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.17.0-rc5] - 2025-11-23
-
-### 📚 Documentation
-
-**Create-Extractor Command Guide**
-- **Problem**: Users needed to manually scaffold extractor plugins with correct structure
-- **Solution**: Added comprehensive documentation for the `vv create-extractor` command
-- **Impact**: Developers can quickly create custom extractors with proper TypeScript setup
-- **Coverage**: Scaffolding usage, plugin structure, auto-discovery, detection patterns, testing workflow
-
-**Claude Code Plugin Structure**
-- Reorganized plugin skills into `skills/vibe-validate/` directory for better organization
-- Updated plugin manifest to reflect new structure
-
-## [0.17.0-rc4] - 2025-11-22
-
 ### ✨ Features
 
-**Maven Compiler Error Extractor**
-- **Problem**: Java compilation errors from `mvn compile` or `mvn test` were not being extracted properly
-- **Solution**: New extractor detects and parses Maven compiler plugin output with 100% confidence
-- **Impact**: Java developers get actionable error messages with file, line, column, and full context
-- **Detection patterns**: `[ERROR] COMPILATION ERROR :`, `maven-compiler-plugin`, `file:[line,column]` format
+**Auto-Output YAML on Validation Failure** ([#54](https://github.com/jdutton/vibe-validate/issues/54))
+- **Problem**: When validation failed, users (both humans and LLMs) had to run a separate `vv state` command to see structured error details
+- **Solution**: `vv validate` and `vv pre-commit` now automatically output structured YAML to stderr on failure
+- **Impact**: Immediate, actionable feedback without extra commands - saves context window for LLMs
+- **Behavior**:
+  - **Success**: Concise human-readable message (no change)
+  - **Failure**: Human-readable summary + structured YAML with error details
+  - **With `--yaml` flag**: Continues to output to stdout (for scripts)
 - **Example**:
   ```bash
-  vv run --cwd lemminx-extension "mvn test"
+  $ vv validate
+  ❌ Validation failed
+  📋 View error details: vibe-validate state
 
-  # Before: exitCode: 1, totalErrors: 0 (wrong extractor)
-  # After: exitCode: 1, totalErrors: 2, errors properly extracted
+  ---
+  passed: false
+  failedStep: typecheck
+  phases:
+    - name: Pre-Qualification
+      status: failed
+      steps:
+        - name: typecheck
+          errors:
+            - file: src/foo.ts
+              line: 42
+              message: "Type 'string' is not assignable to type 'number'"
   ```
-
-**Multi-Extractor Fallback Strategy (RED FLAG HEURISTIC)**
-- **Problem**: When a command fails (exitCode != 0) but extractor finds 0 errors, users get no actionable feedback
-  - Example: Checkstyle detector matched Maven compiler output (70% confidence) but extracted nothing
-  - This is a "red flag" indicating false positive detection
-- **Solution**: Smart extractor now tries ALL extractors when exitCode provided
-  - If primary extractor finds no errors despite failure, tries next-best extractor
-  - Prefers extractors that actually found errors over high confidence without results
-  - Falls back to generic extractor when no specific extractor succeeds
-- **Impact**: Prevents false positives, ensures users always get actionable error information
-- **Backward compatible**: Old behavior (sequential detection) used when exitCode not provided
-
-### 🎯 Detection Improvements
-
-**Extractor Confidence Thresholds**
-- Lowered candidate threshold from 70% to 40% for fallback consideration
-- Allows more extractors to compete, improving accuracy in edge cases
 
 ## [0.17.0-rc3] - 2025-11-22
 

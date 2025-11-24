@@ -289,9 +289,19 @@ export async function runValidateWorkflow(
     // If validation failed, show agent-friendly error details
     if (!result.passed) {
       displayFailureInfo(result, config);
+
+      // Auto-output YAML on failure (to stderr) unless --yaml flag is set (which outputs to stdout)
+      if (!yaml) {
+        // Small delay to ensure stderr error messages are flushed first
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Output YAML document separator and result to stderr
+        process.stderr.write('\n---\n');
+        process.stderr.write(yamlStringify(result));
+      }
     }
 
-    // Output YAML validation result if --yaml flag is set
+    // Output YAML validation result if --yaml flag is set (to stdout)
     if (yaml) {
       await outputYaml(result);
     }
