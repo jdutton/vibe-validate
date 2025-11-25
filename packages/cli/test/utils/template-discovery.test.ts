@@ -118,6 +118,7 @@ describe('template-discovery', () => {
       // Format should be: "• filename.yaml - description"
       for (const line of formatted) {
         if (line !== 'No templates found') {
+          // eslint-disable-next-line security/detect-unsafe-regex -- Safe: Test code validating known template format (no user input), no ReDoS risk
           expect(line).toMatch(/^• [\w-]+\.yaml( - .+)?$/);
         }
       }

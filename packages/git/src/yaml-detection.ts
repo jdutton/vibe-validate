@@ -44,6 +44,7 @@
  * - `"---\ntitle: Post\n---\nContent"` → matches, captures `"---\ntitle: Post\n"` (stops at trailing `---`)
  * - `"no yaml"` → no match
  */
+// eslint-disable-next-line security/detect-unsafe-regex -- Safe: Parses controlled YAML frontmatter from command output (not user input), no ReDoS risk
 const YAML_OUTPUT_PATTERN = /(?:^|\r?\n)(---\r?\n(?:(?!---(?:\r?\n|$))[\s\S])*)/;
 
 /**
