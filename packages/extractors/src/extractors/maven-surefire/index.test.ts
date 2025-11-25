@@ -16,6 +16,13 @@ describe('Maven Surefire Extractor Plugin', () => {
       expect(mavenSurefireExtractor.hints?.required).toContain('Tests run:');
       expect(mavenSurefireExtractor.hints?.anyOf).toBeDefined();
     });
+
+    it('should have priority higher than Jasmine to avoid false matches', () => {
+      // Regression test: Maven Surefire must have higher priority than Jasmine (90)
+      // to prevent Jasmine from incorrectly detecting Maven output
+      expect(mavenSurefireExtractor.priority).toBe(95);
+      expect(mavenSurefireExtractor.priority).toBeGreaterThan(90); // Higher than Jasmine
+    });
   });
 
   describe('detect', () => {

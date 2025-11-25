@@ -3,10 +3,26 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import sonarjs from 'eslint-plugin-sonarjs';
 import unicorn from 'eslint-plugin-unicorn';
+import security from 'eslint-plugin-security';
+import pluginNode from 'eslint-plugin-n';
+
+// Shared Unicorn rules for modern JavaScript standards (applies to both test and production code)
+const unicornRules = {
+  'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)
+  'unicorn/prefer-number-properties': 'error', // Prefer Number.isNaN over global isNaN (reliability)
+  'unicorn/throw-new-error': 'error', // Require 'new' when throwing Error
+  'unicorn/prefer-module': 'error', // Prefer ESM over CommonJS
+  'unicorn/prefer-top-level-await': 'error', // Modern async patterns
+  'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach
+  'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined
+  'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability
+  'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes
+};
 
 export default [
   eslint.configs.recommended,
   sonarjs.configs.recommended,
+  security.configs.recommended,
   {
     // Test files - disable type-aware linting (test files excluded from tsconfig)
     // This MUST come before general TS config (more specific patterns first in flat config)
@@ -28,6 +44,8 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       unicorn,
+      security,
+      n: pluginNode,
     },
     rules: {
       // Disable type-aware rules for test files (require TypeScript project)
@@ -42,6 +60,11 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': 'off', // Test helpers don't need explicit return types
       '@typescript-eslint/no-non-null-assertion': 'off', // Tests often assert known state
       'no-undef': 'off', // Node.js globals (__dirname, setTimeout, etc.) used in tests
+
+      // Security - relaxed for tests
+      'security/detect-child-process': 'off', // Tests execute commands
+      'security/detect-non-literal-fs-filename': 'off', // Tests use temp paths
+      'security/detect-object-injection': 'off', // TypeScript type safety covers this
 
       // SonarJS rules - relaxed for tests but still visible
       'sonarjs/no-ignored-exceptions': 'error', // Enforce exception handling (use // NOSONAR with explanation if intentional)
@@ -65,15 +88,7 @@ export default [
       }],
 
       // Unicorn rules - apply same modern JavaScript standards to test code
-      'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)
-      'unicorn/prefer-number-properties': 'error', // Prefer Number.isNaN over global isNaN (reliability)
-      'unicorn/throw-new-error': 'error', // Require 'new' when throwing Error
-      'unicorn/prefer-module': 'error', // Prefer ESM over CommonJS
-      'unicorn/prefer-top-level-await': 'error', // Modern async patterns
-      'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach
-      'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined
-      'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability
-      'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes
+      ...unicornRules,
     },
   },
   {
@@ -99,6 +114,8 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       unicorn,
+      security,
+      n: pluginNode,
     },
     rules: {
       // TypeScript-specific rules
@@ -129,6 +146,21 @@ export default [
         caughtErrorsIgnorePattern: '^_',
       }],
 
+      // Security - vulnerability detection (CRITICAL)
+      'security/detect-child-process': 'error', // Catch command injection vulnerabilities
+      'security/detect-non-literal-fs-filename': 'warn', // Catch path traversal risks
+      'security/detect-non-literal-regexp': 'warn',
+      'security/detect-unsafe-regex': 'error',
+      'security/detect-buffer-noassert': 'error',
+      'security/detect-eval-with-expression': 'error',
+      'security/detect-no-csrf-before-method-override': 'error',
+      'security/detect-possible-timing-attacks': 'warn',
+      'security/detect-pseudoRandomBytes': 'error',
+      'security/detect-object-injection': 'off', // False positive for TypeScript
+
+      // Node.js best practices
+      'n/no-path-concat': 'error', // Catch path traversal via string concatenation
+
       // SonarJS rules - active enforcement
       'sonarjs/no-ignored-exceptions': 'error', // Fixed: all exceptions now handled
       'sonarjs/no-control-regex': 'error', // 1 intentional use documented with eslint-disable (ANSI escape codes)
@@ -148,15 +180,7 @@ export default [
       'sonarjs/no-unused-vars': 'warn', // Keep as warn (duplicate of @typescript-eslint/no-unused-vars)
 
       // Unicorn rules - modern JavaScript best practices
-      'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)
-      'unicorn/prefer-number-properties': 'error', // Prefer Number.isNaN over global isNaN (reliability)
-      'unicorn/throw-new-error': 'error', // Require 'new' when throwing Error
-      'unicorn/prefer-module': 'error', // Prefer ESM over CommonJS
-      'unicorn/prefer-top-level-await': 'error', // Modern async patterns
-      'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach
-      'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined
-      'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability
-      'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes
+      ...unicornRules,
     },
   },
   {
@@ -170,6 +194,22 @@ export default [
     rules: {
       'sonarjs/os-command': 'off', // Git operations require system command execution
       'sonarjs/no-os-command-from-path': 'off', // Git commands require PATH access
+      'security/detect-child-process': 'off', // Git package uses secure spawnSync patterns (validated in GH-57)
+      'security/detect-non-literal-fs-filename': 'off', // Git notes use computed paths (validated for traversal)
+    },
+  },
+  {
+    // Extractor plugins - parse controlled test framework output (not user input)
+    files: ['packages/extractors/src/extractors/**/*.ts'],
+    rules: {
+      'security/detect-unsafe-regex': 'off', // Extractors parse controlled test output (already protected by sonarjs/slow-regex)
+    },
+  },
+  {
+    // Config loader - reads config files from filesystem
+    files: ['packages/config/src/loader.ts'],
+    rules: {
+      'security/detect-non-literal-fs-filename': 'off', // Config paths validated before reaching loader
     },
   },
   {

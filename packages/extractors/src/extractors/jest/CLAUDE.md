@@ -208,7 +208,7 @@ Plugin includes 3 built-in samples:
 ## Known Limitations
 
 1. **Line/column precision**: Jest summary output doesn't provide exact locations
-   - Defaults to line: 0, column: 0
+   - Sets line/column to undefined when not available (schema compliant)
    - Detailed stack traces would require additional parsing
 
 2. **Error message details**: Captures "Test failed" generic message

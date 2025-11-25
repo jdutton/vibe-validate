@@ -17,20 +17,51 @@ Failures:
     Expected true to be false
 `;
       const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(85);
-      expect(result.reason).toContain('Jasmine');
+      expect(result.confidence).toBe(0); // No "spec" keyword, so not detected
+      expect(result.reason).toBe('');
     });
 
     it('should detect Jasmine output with spec count', () => {
       const output = `3 specs, 0 failures`;
       const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(85);
+      expect(result.confidence).toBe(60); // Only "spec" keyword, weak signal
+    });
+
+    it('should detect Jasmine output with both spec and Failures', () => {
+      const output = `
+3 specs, 1 failure
+Failures:
+1) Test
+  Message:
+    Expected true to be false
+`;
+      const result = jasminePlugin.detect(output);
+      expect(result.confidence).toBe(90); // Both "spec" and "Failures:", strong signal
+      expect(result.reason).toContain('spec + Failures');
     });
 
     it('should not detect non-Jasmine output', () => {
       const output = 'Some random text without Jasmine patterns';
       const result = jasminePlugin.detect(output);
       expect(result.confidence).toBe(0);
+    });
+
+    it('should not detect Maven Surefire output (regression test)', () => {
+      // This was the actual Maven output that caused false positive detection
+      const mavenOutput = `[ERROR] Tests run: 10, Failures: 2, Errors: 0, Skipped: 0
+[ERROR] com.example.FooTest.testBar -- Time elapsed: 0.123 s <<< FAILURE!
+java.lang.AssertionError: Expected 5 but was 3
+  at com.example.FooTest.testBar(FooTest.java:42)
+
+[INFO] Results:
+[ERROR] Failures:
+[ERROR]   FooTest.testBar:42 Expected 5 but was 3`;
+
+      const result = jasminePlugin.detect(mavenOutput);
+
+      // Should NOT detect as Jasmine (no "spec" keyword)
+      expect(result.confidence).toBe(0);
+      expect(result.reason).toBe('');
     });
   });
 
@@ -347,7 +378,7 @@ Failures:
     });
 
     it('should have appropriate priority', () => {
-      expect(jasminePlugin.priority).toBe(85);
+      expect(jasminePlugin.priority).toBe(90);
     });
 
     it('should have detection hints', () => {

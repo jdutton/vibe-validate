@@ -205,13 +205,19 @@ function extract(output: string): ErrorExtractorResult {
   }
 
   // Build formatted errors (limit to MAX_ERRORS_IN_ARRAY)
-  const errors: FormattedError[] = failures.slice(0, MAX_ERRORS_IN_ARRAY).map(f => ({
-    file: f.file,
-    line: Number.parseInt(f.location.split(':')[1] || '0'),
-    column: Number.parseInt(f.location.split(':')[2] || '0'),
-    message: `${f.testHierarchy}: ${f.errorMessage}`,
-    severity: 'error' as const
-  }));
+  const errors: FormattedError[] = failures.slice(0, MAX_ERRORS_IN_ARRAY).map(f => {
+    const locationParts = f.location.split(':');
+    const lineNum = Number.parseInt(locationParts[1] || '');
+    const colNum = Number.parseInt(locationParts[2] || '');
+
+    return {
+      file: f.file,
+      line: lineNum > 0 ? lineNum : undefined,
+      column: colNum > 0 ? colNum : undefined,
+      message: `${f.testHierarchy}: ${f.errorMessage}`,
+      severity: 'error' as const
+    };
+  });
 
   const summary = failures.length > 0
     ? `${failures.length} test failure(s)`

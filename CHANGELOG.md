@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 Bug Fixes
+
+**Fixed Broken Validation History in Jest-Based Projects** (Issue #57)
+- **Problem**: Projects using Jest would show schema validation warnings and corrupted validation history
+  - Warning: "Invalid ValidationResult: line: Number must be greater than 0"
+  - Required manual cleanup: `vv history prune --all`
+- **Root Cause**: Jest output without location details resulted in `line: 0, column: 0` (invalid - must be >0 or undefined)
+- **Solution**: Jest extractor now sets line/column to `undefined` when location unavailable (schema compliant)
+- **Impact**: Jest-based projects (e.g., duck-skills-duck-creek-sdlc) no longer produce corrupted validation history
+
+**Fixed Incorrect Extractor Selection in Multi-Language Projects** (Issue #57)
+- **Problem**: Maven test output was incorrectly detected as Jasmine tests, causing wrong error extraction
+- **Root Cause**:
+  - Jasmine detection too broad (matched any output with "Failures:" marker)
+  - Priority mismatch (Jasmine priority 85 beat Maven Surefire priority 65)
+- **Solution**:
+  - Made Jasmine detection more conservative (now requires "spec" keyword)
+  - Increased Maven Surefire priority to 95 (higher than Jasmine's 90)
+- **Impact**: Maven projects now correctly extract test failures with proper file/line/message details
+
 ### ✨ Features
 
 **Auto-Output YAML on Validation Failure** ([#54](https://github.com/jdutton/vibe-validate/issues/54))
