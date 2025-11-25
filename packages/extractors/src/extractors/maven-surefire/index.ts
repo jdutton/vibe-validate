@@ -313,7 +313,7 @@ const mavenSurefireExtractor: ExtractorPlugin = {
     anyOf: ['FAILURE!', 'ERROR!', 'maven-surefire-plugin', 'maven-failsafe-plugin'],
   },
 
-  priority: 65,
+  priority: 95, // Higher than Jasmine (90) to avoid false matches
 
   detect: detectMavenSurefire,
   extract: extractMavenSurefire,

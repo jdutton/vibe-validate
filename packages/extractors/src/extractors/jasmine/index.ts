@@ -178,13 +178,28 @@ function extract(output: string): ErrorExtractorResult {
  * @returns Detection result with confidence and patterns
  */
 function detect(output: string): DetectionResult {
-  if (output.includes('spec') || output.includes('Failures:')) {
+  // Require "spec" to avoid false positives on Maven output (which has "Failures:")
+  const hasSpec = output.includes('spec');
+  const hasFailures = output.includes('Failures:');
+
+  // Strong signal: both spec and Failures: present
+  if (hasSpec && hasFailures) {
     return {
-      confidence: 85,
-      patterns: ['spec/Failures pattern'],
-      reason: 'Jasmine test framework output detected',
+      confidence: 90,
+      patterns: ['spec', 'Failures:'],
+      reason: 'Jasmine test framework output detected (spec + Failures)',
     };
   }
+
+  // Weak signal: only spec (could be other frameworks)
+  if (hasSpec) {
+    return {
+      confidence: 60,
+      patterns: ['spec'],
+      reason: 'Possible Jasmine output (spec keyword found)',
+    };
+  }
+
   return { confidence: 0, patterns: [], reason: '' };
 }
 
@@ -266,7 +281,7 @@ const jasminePlugin: ExtractorPlugin = {
     required: ['spec'],
     anyOf: ['Failures:'],
   },
-  priority: 85,
+  priority: 90, // Updated to match highest confidence
   detect,
   extract,
   samples,

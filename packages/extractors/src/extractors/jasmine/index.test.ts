@@ -17,14 +17,27 @@ Failures:
     Expected true to be false
 `;
       const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(85);
-      expect(result.reason).toContain('Jasmine');
+      expect(result.confidence).toBe(0); // No "spec" keyword, so not detected
+      expect(result.reason).toBe('');
     });
 
     it('should detect Jasmine output with spec count', () => {
       const output = `3 specs, 0 failures`;
       const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(85);
+      expect(result.confidence).toBe(60); // Only "spec" keyword, weak signal
+    });
+
+    it('should detect Jasmine output with both spec and Failures', () => {
+      const output = `
+3 specs, 1 failure
+Failures:
+1) Test
+  Message:
+    Expected true to be false
+`;
+      const result = jasminePlugin.detect(output);
+      expect(result.confidence).toBe(90); // Both "spec" and "Failures:", strong signal
+      expect(result.reason).toContain('spec + Failures');
     });
 
     it('should not detect non-Jasmine output', () => {
@@ -347,7 +360,7 @@ Failures:
     });
 
     it('should have appropriate priority', () => {
-      expect(jasminePlugin.priority).toBe(85);
+      expect(jasminePlugin.priority).toBe(90);
     });
 
     it('should have detection hints', () => {
