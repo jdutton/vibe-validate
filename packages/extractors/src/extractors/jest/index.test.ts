@@ -347,6 +347,24 @@ ${failures}
       expect(result.errors[1].message).toContain('slow test');
       expect(result.errors[2].message).toContain('no timing');
     });
+
+    it('should set line/column to undefined when location info not available (regression test for GH-57)', () => {
+      // Regression test: Jest output without line:column info should produce
+      // undefined values (not 0) to comply with schema validation
+      const output = `
+ FAIL test/example.test.ts
+  Example Suite
+    ✕ test without location (10 ms)
+    `.trim();
+
+      const result = extract(output);
+
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].file).toBe('test/example.test.ts');
+      expect(result.errors[0].line).toBeUndefined(); // Not 0!
+      expect(result.errors[0].column).toBeUndefined(); // Not 0!
+      expect(result.errors[0].message).toContain('Example Suite › test without location');
+    });
   });
 
   describe('plugin metadata', () => {
