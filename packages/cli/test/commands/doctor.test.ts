@@ -34,6 +34,47 @@ import type { VibeValidateConfig } from '@vibe-validate/config';
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
 
+/**
+ * Test helper: Setup healthy environment mocks
+ * Reduces duplication across multiple test cases
+ */
+function mockHealthyEnvironment() {
+  vi.mocked(execSync).mockImplementation((cmd: string) => {
+    const cmdStr = cmd.toString();
+    if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
+    if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+    if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+    if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
+    if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+    if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
+    if (cmdStr.includes('git remote')) return 'origin' as any;
+    if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
+    return '' as any;
+  });
+}
+
+/**
+ * Test helper: Setup file system mocks
+ */
+async function mockHealthyFileSystem() {
+  const { readFileSync } = await import('node:fs');
+  vi.mocked(readFileSync).mockImplementation((path: any) => {
+    if (path.toString().includes('package.json')) {
+      return JSON.stringify({ version: '0.9.11' }) as any;
+    }
+    if (path.toString().includes('.gitignore')) {
+      return 'node_modules\ndist\n' as any;
+    }
+    return 'npx vibe-validate pre-commit' as any;
+  });
+
+  vi.mocked(existsSync).mockImplementation((path: string) => {
+    if (path.toString() === 'vibe-validate.config.yaml') return true;
+    if (path.toString() === DEPRECATED_STATE_FILE) return false;
+    return true;
+  });
+}
+
 describe('doctor command', () => {
   const mockConfig: VibeValidateConfig = {
     validation: {
@@ -66,45 +107,15 @@ describe('doctor command', () => {
 
   describe('runDoctor', () => {
     it('should return all checks passing when environment is healthy', async () => {
-      // Mock file reads for version and gitignore checks
-      const { readFileSync } = await import('node:fs');
-      vi.mocked(readFileSync).mockImplementation((path: any) => {
-        if (path.toString().includes('package.json')) {
-          return JSON.stringify({ version: '0.9.11' }) as any;
-        }
-        if (path.toString().includes('.gitignore')) {
-          return 'node_modules\ndist\n' as any; // Healthy: no deprecated state file
-        }
-        return 'npx vibe-validate pre-commit' as any; // Pre-commit hook content
-      });
-
-      // Mock healthy environment
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
-        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
-        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
-        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
-        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any; // Branch exists
-        if (cmdStr.includes('git remote')) return 'origin' as any; // Remote exists
-        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any; // Remote branch exists
-        return '' as any;
-      });
-
-      vi.mocked(existsSync).mockImplementation((path: string) => {
-        // Config format check needs specific file checks
-        if (path.toString() === 'vibe-validate.config.yaml') return true;
-        if (path.toString() === DEPRECATED_STATE_FILE) return false; // Healthy: no deprecated state file
-        return true; // Everything else exists
-      });
+      await mockHealthyFileSystem();
+      mockHealthyEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(17); // Total number of checks (includes secret scanning, deprecated state file checks, cache migration, and history health)
+      expect(result.checks).toHaveLength(17);
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -376,7 +387,7 @@ describe('doctor command', () => {
 
   describe('--verbose flag', () => {
     it('should show all checks including passing ones in verbose mode', async () => {
-      // Mock file reads
+      // Custom gitignore with deprecated state file
       const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
         if (path.toString().includes('package.json')) {
@@ -388,67 +399,25 @@ describe('doctor command', () => {
         return 'npx vibe-validate pre-commit' as any;
       });
 
-      // Mock healthy environment
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
-        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
-        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
-        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
-        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
-        if (cmdStr.includes('git remote')) return 'origin' as any;
-        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
-        return '' as any;
-      });
-
+      mockHealthyEnvironment();
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
       const result = await runDoctor({ verbose: true });
 
-      // Verbose mode should return all checks
-      expect(result.checks).toHaveLength(17); // All checks including secret scanning, deprecated state file checks, and history health
+      expect(result.checks).toHaveLength(17);
       expect(result.verboseMode).toBe(true);
     });
 
     it('should show only summary in non-verbose mode when all pass', async () => {
-      // Mock file reads
-      const { readFileSync } = await import('node:fs');
-      vi.mocked(readFileSync).mockImplementation((path: any) => {
-        if (path.toString().includes('package.json')) {
-          return JSON.stringify({ version: '0.9.11' }) as any;
-        }
-        if (path.toString().includes('.gitignore')) {
-          return 'node_modules\ndist\n' as any; // Healthy: no deprecated state file
-        }
-        return 'npx vibe-validate pre-commit' as any;
-      });
-
-      // Mock healthy environment
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
-        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
-        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
-        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
-        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
-        if (cmdStr.includes('git remote')) return 'origin' as any;
-        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
-        return '' as any;
-      });
-
-      vi.mocked(existsSync).mockImplementation((path: string) =>
-        path.toString() !== DEPRECATED_STATE_FILE
-      );
+      await mockHealthyFileSystem();
+      mockHealthyEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
       const result = await runDoctor({ verbose: false });
 
-      // Non-verbose with all passing should show ONLY failed checks OR checks with suggestions
       expect(result.verboseMode).toBe(false);
       expect(result.allPassed).toBe(true);
       // Should show secret scanning recommendation (passes but has suggestion)
@@ -569,34 +538,8 @@ describe('doctor command', () => {
         },
       };
 
-      // Mock all necessary dependencies for healthy environment
-      const { readFileSync } = await import('node:fs');
-      vi.mocked(readFileSync).mockImplementation((path: any) => {
-        if (path.toString().includes('package.json')) {
-          return JSON.stringify({ version: '0.9.11' }) as any;
-        }
-        if (path.toString().includes('.gitignore')) {
-          return 'node_modules\ndist\n' as any; // Healthy: no deprecated state file
-        }
-        return 'npx vibe-validate pre-commit' as any;
-      });
-
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
-        const cmdStr = cmd.toString();
-        if (cmdStr.includes('npm view vibe-validate version')) return '0.9.11' as any;
-        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
-        if (cmdStr.includes('pnpm --version')) return '9.0.0' as any;
-        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
-        if (cmdStr.includes('git rev-parse --verify main')) return 'abc123' as any;
-        if (cmdStr.includes('git remote')) return 'origin' as any;
-        if (cmdStr.includes('git ls-remote --heads origin main')) return 'abc123 refs/heads/main' as any;
-        return '' as any;
-      });
-
-      vi.mocked(existsSync).mockImplementation((path: string) =>
-        path.toString() !== DEPRECATED_STATE_FILE
-      );
+      await mockHealthyFileSystem();
+      mockHealthyEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(configWithDisabledHook);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 

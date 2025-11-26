@@ -176,8 +176,23 @@ export function runSecretScan(
 
     if (error && typeof error === 'object' && 'stderr' in error && 'stdout' in error) {
       // Safely convert stderr/stdout to strings (may be Buffer or string from child_process)
-      const stderr = typeof error.stderr === 'string' ? error.stderr : String(error.stderr ?? '');
-      const stdout = typeof error.stdout === 'string' ? error.stdout : String(error.stdout ?? '');
+      // Handle potential undefined/null values before stringification to avoid [object Object]
+      const stderrValue = error.stderr;
+      const stdoutValue = error.stdout;
+
+      let stderr = '';
+      if (typeof stderrValue === 'string') {
+        stderr = stderrValue;
+      } else if (stderrValue) {
+        stderr = String(stderrValue);
+      }
+
+      let stdout = '';
+      if (typeof stdoutValue === 'string') {
+        stdout = stdoutValue;
+      } else if (stdoutValue) {
+        stdout = String(stdoutValue);
+      }
 
       return {
         tool,
