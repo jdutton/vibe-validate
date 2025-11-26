@@ -175,8 +175,9 @@ export function runSecretScan(
     const duration = Date.now() - startTime;
 
     if (error && typeof error === 'object' && 'stderr' in error && 'stdout' in error) {
-      const stderr = String(error.stderr ?? '');
-      const stdout = String(error.stdout ?? '');
+      // Safely convert stderr/stdout to strings (may be Buffer or string from child_process)
+      const stderr = typeof error.stderr === 'string' ? error.stderr : String(error.stderr ?? '');
+      const stdout = typeof error.stdout === 'string' ? error.stdout : String(error.stdout ?? '');
 
       return {
         tool,
