@@ -5,6 +5,20 @@ import { GitHubActionsProvider } from '../../../src/services/ci-providers/github
 // Mock child_process
 vi.mock('node:child_process');
 
+// Mock @vibe-validate/git
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+  return {
+    ...actual,
+    executeGitCommand: vi.fn(() => ({
+      success: true,
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    })),
+  };
+});
+
 describe('GitHubActionsProvider', () => {
   let provider: GitHubActionsProvider;
 
@@ -15,15 +29,21 @@ describe('GitHubActionsProvider', () => {
 
   describe('isAvailable', () => {
     it('should return true when gh CLI is available and in GitHub repo', async () => {
-      vi.mocked(execSync)
-        .mockReturnValueOnce(Buffer.from('gh version 2.40.0'))
-        .mockReturnValueOnce(Buffer.from('https://github.com/user/repo.git'));
+      const { executeGitCommand } = await import('@vibe-validate/git');
+
+      vi.mocked(execSync).mockReturnValueOnce(Buffer.from('gh version 2.40.0'));
+      vi.mocked(executeGitCommand).mockReturnValueOnce({
+        success: true,
+        stdout: 'https://github.com/user/repo.git',
+        stderr: '',
+        exitCode: 0,
+      });
 
       const result = await provider.isAvailable();
 
       expect(result).toBe(true);
       expect(execSync).toHaveBeenCalledWith('gh --version', { stdio: 'ignore' });
-      expect(execSync).toHaveBeenCalledWith('git remote get-url origin', { encoding: 'utf8' });
+      expect(executeGitCommand).toHaveBeenCalledWith(['remote', 'get-url', 'origin']);
     });
 
     it('should return false when gh CLI is not available', async () => {
@@ -37,9 +57,15 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should return false when not in GitHub repo', async () => {
-      vi.mocked(execSync)
-        .mockReturnValueOnce(Buffer.from('gh version 2.40.0'))
-        .mockReturnValueOnce(Buffer.from('https://gitlab.com/user/repo.git'));
+      const { executeGitCommand } = await import('@vibe-validate/git');
+
+      vi.mocked(execSync).mockReturnValueOnce(Buffer.from('gh version 2.40.0'));
+      vi.mocked(executeGitCommand).mockReturnValueOnce({
+        success: true,
+        stdout: 'https://gitlab.com/user/repo.git',
+        stderr: '',
+        exitCode: 0,
+      });
 
       const result = await provider.isAvailable();
 

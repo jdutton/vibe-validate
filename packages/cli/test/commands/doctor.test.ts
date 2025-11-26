@@ -19,9 +19,36 @@ vi.mock('fs', () => ({
   readdirSync: vi.fn(() => []), // Mock empty directory for template discovery
 }));
 
-vi.mock('child_process', () => ({
-  execSync: vi.fn(),
-}));
+vi.mock('child_process', async () => {
+  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process');
+  return {
+    ...actual,
+    execSync: vi.fn(),
+    spawnSync: vi.fn(() => ({
+      status: 0,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from(''),
+    })),
+  };
+});
+
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+  return {
+    ...actual,
+    verifyRef: vi.fn(() => true), // Default to successful verification
+    isGitRepository: vi.fn(() => true),
+    listNotesRefs: vi.fn(() => []),
+    executeGitCommand: vi.fn((args: string[]) => {
+      // Mock git remote command
+      if (args[0] === 'remote') {
+        return { success: true, stdout: 'origin\n', stderr: '', exitCode: 0 };
+      }
+      // Default success for other commands (including --version)
+      return { success: true, stdout: 'git version 2.43.0', stderr: '', exitCode: 0 };
+    }),
+  };
+});
 
 vi.mock('../../src/utils/config-loader.js');
 vi.mock('../../src/commands/generate-workflow.js');
@@ -147,6 +174,16 @@ describe('doctor command', () => {
         if (cmd.includes('git --version')) throw new Error('git not found');
         if (cmd.includes('node --version')) return 'v22.0.0' as any;
         return '' as any;
+      });
+
+      // Override executeGitCommand to simulate git not installed
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        if (args[0] === '--version') {
+          // Simulate git not installed
+          throw new Error('git not found');
+        }
+        return { success: true, stdout: '', stderr: '', exitCode: 0 };
       });
 
       vi.mocked(existsSync).mockReturnValue(true);
@@ -295,6 +332,10 @@ describe('doctor command', () => {
         if (cmd.includes('git rev-parse --git-dir')) throw new Error('not a git repository');
         return '' as any;
       });
+
+      // Mock isGitRepository to return false for this test
+      const { isGitRepository } = await import('@vibe-validate/git');
+      vi.mocked(isGitRepository).mockReturnValue(false);
 
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
@@ -1312,6 +1353,10 @@ describe('doctor command', () => {
         return '' as any;
       });
 
+      // Mock listNotesRefs to return old format refs
+      const { listNotesRefs } = await import('@vibe-validate/git');
+      vi.mocked(listNotesRefs).mockReturnValue(['refs/notes/vibe-validate/runs/tree789']);
+
       // ACT
       const result = await runDoctor({ verbose: true });
 
@@ -1371,6 +1416,12 @@ describe('doctor command', () => {
         }
 
         return '' as any;
+      });
+
+      // Mock listNotesRefs to throw an error
+      const { listNotesRefs } = await import('@vibe-validate/git');
+      vi.mocked(listNotesRefs).mockImplementation(() => {
+        throw new Error('Git command failed');
       });
 
       // ACT

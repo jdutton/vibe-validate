@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
+import { executeGitCommand } from '@vibe-validate/git';
 import type {
   CIProvider,
   PullRequest,
@@ -26,8 +27,8 @@ export class GitHubActionsProvider implements CIProvider {
       execSync('gh --version', { stdio: 'ignore' });
 
       // Check if we're in a GitHub repo
-      const remote = execSync('git remote get-url origin', { encoding: 'utf8' });
-      return remote.includes('github.com');
+      const result = executeGitCommand(['remote', 'get-url', 'origin']);
+      return result.success && result.stdout.includes('github.com');
     } catch {
       return false;
     }

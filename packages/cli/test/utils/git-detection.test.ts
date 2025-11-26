@@ -1,21 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { execSync } from 'node:child_process';
 import { detectGitConfig } from '../../src/utils/git-detection.js';
 
-// Mock child_process
-vi.mock('child_process');
+// Mock @vibe-validate/git instead of child_process
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+  return {
+    ...actual,
+    isGitRepository: vi.fn(() => true),
+    executeGitCommand: vi.fn((_args: string[]) => {
+      // Default mock - tests will override
+      return { success: true, stdout: '', stderr: '', exitCode: 0 };
+    }),
+  };
+});
 
 describe('git-detection', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
+  beforeEach(async () => {
+    // Reset mocks to default implementation
+    const { isGitRepository, executeGitCommand } = await import('@vibe-validate/git');
+    vi.mocked(isGitRepository).mockReturnValue(true);
+    vi.mocked(executeGitCommand).mockImplementation(() => {
+      return { success: true, stdout: '', stderr: '', exitCode: 0 };
+    });
   });
 
   describe('detectGitConfig', () => {
-    it('should return defaults when not in a git repository', () => {
-      // Arrange: git rev-parse throws (not a git repo)
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('Not a git repository');
-      });
+    it('should return defaults when not in a git repository', async () => {
+      // Arrange: isGitRepository returns false
+      const { isGitRepository } = await import('@vibe-validate/git');
+      vi.mocked(isGitRepository).mockReturnValue(false);
 
       // Act
       const result = detectGitConfig();
@@ -28,20 +41,18 @@ describe('git-detection', () => {
       });
     });
 
-    it('should detect main branch from remote HEAD', () => {
+    it('should detect main branch from remote HEAD', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'origin';
+        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
+          return { success: true, stdout: 'refs/remotes/origin/main', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/origin/HEAD') {
-          return 'refs/remotes/origin/main';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -55,20 +66,18 @@ describe('git-detection', () => {
       });
     });
 
-    it('should detect master branch from remote HEAD', () => {
+    it('should detect master branch from remote HEAD', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'origin';
+        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
+          return { success: true, stdout: 'refs/remotes/origin/master', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/origin/HEAD') {
-          return 'refs/remotes/origin/master';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -82,20 +91,18 @@ describe('git-detection', () => {
       });
     });
 
-    it('should prefer upstream over origin remote', () => {
+    it('should prefer upstream over origin remote', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'origin\nupstream', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'origin\nupstream';
+        if (cmd === 'symbolic-ref refs/remotes/upstream/HEAD') {
+          return { success: true, stdout: 'refs/remotes/upstream/main', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/upstream/HEAD') {
-          return 'refs/remotes/upstream/main';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -109,20 +116,18 @@ describe('git-detection', () => {
       });
     });
 
-    it('should use first remote if neither origin nor upstream exists', () => {
+    it('should use first remote if neither origin nor upstream exists', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'custom-remote', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'custom-remote';
+        if (cmd === 'symbolic-ref refs/remotes/custom-remote/HEAD') {
+          return { success: true, stdout: 'refs/remotes/custom-remote/develop', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/custom-remote/HEAD') {
-          return 'refs/remotes/custom-remote/develop';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -136,23 +141,21 @@ describe('git-detection', () => {
       });
     });
 
-    it('should detect main from ls-remote when symbolic-ref fails', () => {
+    it('should detect main from ls-remote when symbolic-ref fails', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'origin';
+        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
+          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/origin/HEAD') {
-          throw new Error('Remote HEAD not set');
+        if (cmd === 'ls-remote --heads origin') {
+          return { success: true, stdout: 'abc123\trefs/heads/main\ndef456\trefs/heads/feature', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git ls-remote --heads origin') {
-          return 'abc123\trefs/heads/main\ndef456\trefs/heads/feature';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -166,23 +169,21 @@ describe('git-detection', () => {
       });
     });
 
-    it('should detect master from ls-remote when main does not exist', () => {
+    it('should detect master from ls-remote when main does not exist', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'origin';
+        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
+          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/origin/HEAD') {
-          throw new Error('Remote HEAD not set');
+        if (cmd === 'ls-remote --heads origin') {
+          return { success: true, stdout: 'abc123\trefs/heads/master\ndef456\trefs/heads/feature', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git ls-remote --heads origin') {
-          return 'abc123\trefs/heads/master\ndef456\trefs/heads/feature';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -196,23 +197,21 @@ describe('git-detection', () => {
       });
     });
 
-    it('should detect develop from ls-remote when main and master do not exist', () => {
+    it('should detect develop from ls-remote when main and master do not exist', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'origin';
+        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
+          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/origin/HEAD') {
-          throw new Error('Remote HEAD not set');
+        if (cmd === 'ls-remote --heads origin') {
+          return { success: true, stdout: 'abc123\trefs/heads/develop\ndef456\trefs/heads/feature', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git ls-remote --heads origin') {
-          return 'abc123\trefs/heads/develop\ndef456\trefs/heads/feature';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -226,17 +225,15 @@ describe('git-detection', () => {
       });
     });
 
-    it('should return defaults when no remotes exist', () => {
+    it('should return defaults when no remotes exist', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: '', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return '';
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -250,23 +247,21 @@ describe('git-detection', () => {
       });
     });
 
-    it('should return defaults when ls-remote fails', () => {
+    it('should return defaults when ls-remote fails', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
         }
-        if (cmd === 'git remote') {
-          return 'origin';
+        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
+          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
         }
-        if (cmd === 'git symbolic-ref refs/remotes/origin/HEAD') {
-          throw new Error('Remote HEAD not set');
+        if (cmd === 'ls-remote --heads origin') {
+          return { success: false, stdout: '', stderr: 'Network error', exitCode: 1 };
         }
-        if (cmd === 'git ls-remote --heads origin') {
-          throw new Error('Network error');
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act
@@ -280,17 +275,15 @@ describe('git-detection', () => {
       });
     });
 
-    it('should return defaults when git remote command fails', () => {
+    it('should return defaults when git remote command fails', async () => {
       // Arrange
-      vi.mocked(execSync).mockImplementation((command: string | Buffer, _options?: any) => {
-        const cmd = command.toString();
-        if (cmd === 'git rev-parse --git-dir') {
-          return Buffer.from('.git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        const cmd = args.join(' ');
+        if (cmd === 'remote') {
+          return { success: false, stdout: '', stderr: 'Git error', exitCode: 1 };
         }
-        if (cmd === 'git remote') {
-          throw new Error('Git error');
-        }
-        throw new Error(`Unexpected command: ${cmd}`);
+        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
       });
 
       // Act

@@ -22,6 +22,12 @@ import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-v
 import { formatTemplateList } from '../utils/template-discovery.js';
 import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
 import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
+import {
+  executeGitCommand,
+  isGitRepository,
+  verifyRef,
+  listNotesRefs
+} from '@vibe-validate/git';
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
@@ -100,10 +106,11 @@ function checkNodeVersion(): DoctorCheckResult {
  */
 function checkGitInstalled(): DoctorCheckResult {
   try {
-    const version = execSync('git --version', { encoding: 'utf8' }).trim();
+    const result = executeGitCommand(['--version']);
+    const version = result.success ? result.stdout.trim() : '';
     return {
       name: 'Git installed',
-      passed: true,
+      passed: result.success,
       message: version,
     };
   } catch (error) {
@@ -122,18 +129,27 @@ function checkGitInstalled(): DoctorCheckResult {
  */
 function checkGitRepository(): DoctorCheckResult {
   try {
-    execSync('git rev-parse --git-dir', { encoding: 'utf8', stdio: 'pipe' });
-    return {
-      name: 'Git repository',
-      passed: true,
-      message: 'Current directory is a git repository',
-    };
+    const isGitRepo = isGitRepository();
+    if (isGitRepo) {
+      return {
+        name: 'Git repository',
+        passed: true,
+        message: 'Current directory is a git repository',
+      };
+    } else {
+      return {
+        name: 'Git repository',
+        passed: false,
+        message: 'Current directory is not a git repository',
+        suggestion: 'Run: git init',
+      };
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       name: 'Git repository',
       passed: false,
-      message: `Current directory is not a git repository: ${errorMessage}`,
+      message: `Error checking git repository: ${errorMessage}`,
       suggestion: 'Run: git init',
     };
   }
@@ -560,12 +576,9 @@ function checkValidationState(): DoctorCheckResult {
 function checkCacheMigration(): DoctorCheckResult {
   try {
     // Check if the OLD validation history namespace exists (plural "runs")
-    const result = execSync('git for-each-ref refs/notes/vibe-validate/runs 2>/dev/null || true', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const refs = listNotesRefs('refs/notes/vibe-validate/runs');
 
-    if (result.trim()) {
+    if (refs.length > 0) {
       // Old validation history namespace exists - recommend clearing
       return {
         name: 'Validation history migration',
@@ -641,33 +654,31 @@ async function checkMainBranch(config?: VibeValidateConfig | null): Promise<Doct
     const remoteOrigin = getRemoteOrigin(config.git);
 
     // Check for local branch first
-    try {
-      execSync(`git rev-parse --verify ${mainBranch}`, { stdio: 'pipe' });
+    const localResult = verifyRef(mainBranch);
+    if (localResult) {
       return {
         name: 'Git main branch',
         passed: true,
         message: `Branch '${mainBranch}' exists locally`,
       };
-    } catch (localError) {
-      // Local branch doesn't exist, check for remote branch
-      const localErrorMsg = localError instanceof Error ? localError.message : String(localError);
-      try {
-        execSync(`git rev-parse --verify ${remoteOrigin}/${mainBranch}`, { stdio: 'pipe' });
-        return {
-          name: 'Git main branch',
-          passed: true,
-          message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}' (fetch-depth: 0 required in CI)`,
-        };
-      } catch (remoteError) {
-        const remoteErrorMsg = remoteError instanceof Error ? remoteError.message : String(remoteError);
-        return {
-          name: 'Git main branch',
-          passed: false,
-          message: `Configured main branch '${mainBranch}' does not exist locally (${localErrorMsg}) or on remote '${remoteOrigin}' (${remoteErrorMsg})`,
-          suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
-        };
-      }
     }
+
+    // Local branch doesn't exist, check for remote branch
+    const remoteResult = verifyRef(`${remoteOrigin}/${mainBranch}`);
+    if (remoteResult) {
+      return {
+        name: 'Git main branch',
+        passed: true,
+        message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}' (fetch-depth: 0 required in CI)`,
+      };
+    }
+
+    return {
+      name: 'Git main branch',
+      passed: false,
+      message: `Configured main branch '${mainBranch}' does not exist locally or on remote '${remoteOrigin}'`,
+      suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
@@ -694,10 +705,10 @@ async function checkRemoteOrigin(config?: VibeValidateConfig | null): Promise<Do
     const remoteOrigin = getRemoteOrigin(config.git);
 
     try {
-      const remotes = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' })
-        .trim()
-        .split('\n')
-        .filter(Boolean);
+      const result = executeGitCommand(['remote']);
+      const remotes = result.success
+        ? result.stdout.trim().split('\n').filter(Boolean)
+        : [];
 
       if (remotes.includes(remoteOrigin)) {
         return {
@@ -751,10 +762,10 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
 
     try {
       // First check if remote exists
-      const remotes = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' })
-        .trim()
-        .split('\n')
-        .filter(Boolean);
+      const remotesResult = executeGitCommand(['remote']);
+      const remotes = remotesResult.success
+        ? remotesResult.stdout.trim().split('\n').filter(Boolean)
+        : [];
 
       if (!remotes.includes(remoteOrigin)) {
         return {
@@ -765,7 +776,10 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
       }
 
       // Check if remote branch exists
-      execSync(`git ls-remote --heads ${remoteOrigin} ${mainBranch}`, { stdio: 'pipe' });
+      const lsRemoteResult = executeGitCommand(['ls-remote', '--heads', remoteOrigin, mainBranch]);
+      if (!lsRemoteResult.success) {
+        throw new Error(`Failed to check remote branch: ${lsRemoteResult.stderr}`);
+      }
       return {
         name: 'Git remote main branch',
         passed: true,
