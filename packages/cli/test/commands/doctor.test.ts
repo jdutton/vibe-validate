@@ -1242,4 +1242,203 @@ describe('doctor command', () => {
       expect(secretCheck?.message).toMatch(/gitleaks|secretlint/);
     });
   });
+
+  describe('validation history format detection', () => {
+    /**
+     * TDD Tests for correct validation history format detection
+     *
+     * CONTEXT: The doctor command checks for legacy validation history format.
+     *
+     * FORMATS:
+     * - PRE-v0.15.0 (OLD/DEPRECATED): refs/notes/vibe-validate/runs/* (plural "runs")
+     * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/validate (validation history)
+     * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/run/{tree}/{key} (run cache)
+     *
+     * The doctor should ONLY warn if the OLD "runs" namespace exists.
+     * It should NOT warn about the current "validate" or "run" refs.
+     */
+
+    beforeEach(async () => {
+      // Setup common mocks for all validation history tests
+      const { readFileSync } = await import('node:fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.17.0' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return 'node_modules\ndist\n' as any;
+        }
+        return 'npx vibe-validate pre-commit' as any;
+      });
+
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        if (path.toString() === DEPRECATED_STATE_FILE) return false;
+        if (path.toString() === 'vibe-validate.config.yaml') return true;
+        return true;
+      });
+
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+    });
+
+    it('should PASS when only current validation history format exists (refs/notes/vibe-validate/validate)', async () => {
+      // ARRANGE: Mock git commands to show CURRENT format only
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+
+        // Standard mocks
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+
+        // CRITICAL: Check for OLD format (plural "runs") - should be EMPTY
+        if (cmdStr.includes('git for-each-ref refs/notes/vibe-validate/runs')) {
+          return '' as any; // OLD format does NOT exist
+        }
+
+        // Current format exists (but doctor doesn't check this - only checks for OLD)
+        if (cmdStr.includes('git rev-parse --verify refs/notes/vibe-validate/validate')) {
+          return 'abc123' as any; // CURRENT validation history exists
+        }
+
+        return '' as any;
+      });
+
+      // ACT
+      const result = await runDoctor({ verbose: true });
+
+      // ASSERT
+      const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
+      expect(migrationCheck).toBeDefined();
+      expect(migrationCheck?.passed).toBe(true);
+      expect(migrationCheck?.message).toBe('Using current validation history format');
+      expect(migrationCheck?.suggestion).toBeUndefined();
+    });
+
+    it('should PASS when only run cache exists (refs/notes/vibe-validate/run/*)', async () => {
+      // ARRANGE: Mock git commands to show run cache only
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+
+        // Standard mocks
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+
+        // CRITICAL: Check for OLD format (plural "runs") - should be EMPTY
+        if (cmdStr.includes('git for-each-ref refs/notes/vibe-validate/runs')) {
+          return '' as any; // OLD format does NOT exist
+        }
+
+        // Run cache exists (singular "run" with subpaths)
+        if (cmdStr.includes('git for-each-ref refs/notes/vibe-validate/run')) {
+          return 'abc123 commit\trefs/notes/vibe-validate/run/tree123/key456' as any;
+        }
+
+        return '' as any;
+      });
+
+      // ACT
+      const result = await runDoctor({ verbose: true });
+
+      // ASSERT
+      const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
+      expect(migrationCheck).toBeDefined();
+      expect(migrationCheck?.passed).toBe(true);
+      expect(migrationCheck?.message).toBe('Using current validation history format');
+      expect(migrationCheck?.suggestion).toBeUndefined();
+    });
+
+    it('should WARN when OLD format exists (refs/notes/vibe-validate/runs/*)', async () => {
+      // ARRANGE: Mock git commands to show OLD format (plural "runs")
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+
+        // Standard mocks
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+
+        // CRITICAL: OLD format (plural "runs") EXISTS - should trigger warning
+        if (cmdStr.includes('git for-each-ref refs/notes/vibe-validate/runs')) {
+          return 'def456 commit\trefs/notes/vibe-validate/runs/tree789' as any; // OLD format exists!
+        }
+
+        return '' as any;
+      });
+
+      // ACT
+      const result = await runDoctor({ verbose: true });
+
+      // ASSERT
+      const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
+      expect(migrationCheck).toBeDefined();
+      expect(migrationCheck?.passed).toBe(true); // Still passes, just informational
+      expect(migrationCheck?.message).toBe('Old validation history format detected (pre-v0.15.0)');
+      expect(migrationCheck?.suggestion).toContain('vibe-validate history prune --legacy');
+      expect(migrationCheck?.suggestion).toContain('deprecated "runs" namespace');
+    });
+
+    it('should PASS when no git notes exist at all', async () => {
+      // ARRANGE: Mock git commands to show NO git notes
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+
+        // Standard mocks
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+
+        // No git notes exist at all
+        if (cmdStr.includes('git for-each-ref')) {
+          return '' as any; // Empty - no notes
+        }
+
+        return '' as any;
+      });
+
+      // ACT
+      const result = await runDoctor({ verbose: true });
+
+      // ASSERT
+      const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
+      expect(migrationCheck).toBeDefined();
+      expect(migrationCheck?.passed).toBe(true);
+      expect(migrationCheck?.message).toBe('Using current validation history format');
+      expect(migrationCheck?.suggestion).toBeUndefined();
+    });
+
+    it('should handle git command errors gracefully', async () => {
+      // ARRANGE: Mock git command to throw error
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        const cmdStr = cmd.toString();
+
+        // Standard mocks
+        if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
+        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
+        if (cmdStr.includes('git --version')) return 'git version 2.43.0' as any;
+        if (cmdStr.includes('git rev-parse --git-dir')) return '.git' as any;
+
+        // Git notes command fails
+        if (cmdStr.includes('git for-each-ref refs/notes/vibe-validate/runs')) {
+          throw new Error('Git command failed');
+        }
+
+        return '' as any;
+      });
+
+      // ACT
+      const result = await runDoctor({ verbose: true });
+
+      // ASSERT
+      const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
+      expect(migrationCheck).toBeDefined();
+      expect(migrationCheck?.passed).toBe(true); // Should pass even on error
+      expect(migrationCheck?.message).toBe('No validation history to migrate');
+      expect(migrationCheck?.suggestion).toBeUndefined();
+    });
+  });
 });

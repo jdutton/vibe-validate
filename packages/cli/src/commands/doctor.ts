@@ -550,26 +550,28 @@ function checkValidationState(): DoctorCheckResult {
 /**
  * Check for old validation history format (pre-v0.15.0)
  *
- * Pre-v0.15.0 used a single ref: refs/notes/vibe-validate/validate
- * v0.15.0+ uses: refs/notes/vibe-validate/run/{treeHash}/{commandHash}
+ * Pre-v0.15.0 used refs under: refs/notes/vibe-validate/runs/*
+ * v0.15.0+ uses two systems:
+ *   - Validation history: refs/notes/vibe-validate/validate (current format)
+ *   - Run cache: refs/notes/vibe-validate/run/{treeHash}/{commandHash}
  *
- * Only warn if the OLD single ref exists.
+ * Only warn if the OLD "runs" namespace exists.
  */
 function checkCacheMigration(): DoctorCheckResult {
   try {
-    // Check if the OLD validation history ref exists (single ref, not the new run cache structure)
-    const result = execSync('git rev-parse --verify refs/notes/vibe-validate/validate 2>/dev/null || true', {
+    // Check if the OLD validation history namespace exists (plural "runs")
+    const result = execSync('git for-each-ref refs/notes/vibe-validate/runs 2>/dev/null || true', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     if (result.trim()) {
-      // Old validation history ref exists - recommend clearing
+      // Old validation history namespace exists - recommend clearing
       return {
         name: 'Validation history migration',
         passed: true, // Not a failure, just informational
         message: 'Old validation history format detected (pre-v0.15.0)',
-        suggestion: `Clear old validation history:\n   git update-ref -d refs/notes/vibe-validate/validate\n   ℹ️  This only removes the deprecated format; run cache will remain intact`,
+        suggestion: `Clear old validation history:\n   vibe-validate history prune --legacy\n   ℹ️  This only removes the deprecated "runs" namespace`,
       };
     }
 
