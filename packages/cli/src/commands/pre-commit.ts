@@ -11,7 +11,15 @@ import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
-import { execSync } from 'node:child_process';
+import {
+  selectToolsToRun,
+  runSecretScan,
+  showPerformanceWarning,
+  showSecretsDetectedError,
+  formatToolName,
+  hasGitleaksConfig,
+  isGitleaksAvailable,
+} from '../utils/secret-scanning.js';
 import chalk from 'chalk';
 
 export function preCommitCommand(program: Command): void {
@@ -65,58 +73,56 @@ export function preCommitCommand(program: Command): void {
 
         // Step 5: Run secret scanning if enabled
         const secretScanning = config.hooks?.preCommit?.secretScanning;
-        if (secretScanning?.enabled && secretScanning?.scanCommand) {
+        if (secretScanning?.enabled) {
           console.log(chalk.blue('\n🔒 Running secret scanning...'));
 
-          try {
-            const result = execSync(secretScanning.scanCommand, {
-              encoding: 'utf8',
-              stdio: 'pipe',
-            });
+          // Determine which tools to run (autodetect or explicit command)
+          const toolsToRun = selectToolsToRun(secretScanning.scanCommand);
 
-            // Show scan output if verbose
-            if (verbose && result) {
-              console.log(chalk.gray(result));
+          if (toolsToRun.length === 0) {
+            console.warn(chalk.yellow('⚠️  No secret scanning tools configured or available'));
+            console.warn(chalk.gray('   Install gitleaks or add .secretlintrc.json'));
+          } else {
+            const results = [];
+
+            // Run each tool
+            for (const { tool, command } of toolsToRun) {
+              const result = runSecretScan(tool, command, verbose);
+              results.push(result);
+
+              // Handle skipped scans (e.g., gitleaks not available but config exists)
+              if (result.skipped) {
+                if (hasGitleaksConfig() && !isGitleaksAvailable()) {
+                  console.warn(chalk.yellow(`⚠️  Found .gitleaks.toml but gitleaks command not available, skipping`));
+                  console.warn(chalk.gray('   Install gitleaks: brew install gitleaks'));
+                }
+                continue;
+              }
+
+              // Show verbose output if requested
+              if (verbose && result.output) {
+                console.log(chalk.gray(result.output));
+              }
+
+              // Show performance warning if scan was slow (hardcoded 5s threshold)
+              if (result.passed) {
+                showPerformanceWarning(tool, result.duration, 5000);
+              }
             }
 
-            console.log(chalk.green('✅ No secrets detected'));
-          } catch (error: unknown) {
-            // Secret scanning failed (either tool missing or secrets found)
-            if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-              // Tool not found
-              const toolName = secretScanning.scanCommand.split(' ')[0];
-              console.error(chalk.red('\n❌ Secret scanning tool not found'));
-              console.error(chalk.yellow(`   Command: ${chalk.white(secretScanning.scanCommand)}`));
-              console.error(chalk.yellow(`   Tool '${toolName}' is not installed or not in PATH`));
-              console.error(chalk.blue('\n💡 Fix options:'));
-              console.error(chalk.gray('   1. Install the tool (e.g., brew install gitleaks)'));
-              console.error(chalk.gray('   2. Disable scanning: set hooks.preCommit.secretScanning.enabled=false'));
+            // Check if any scans failed
+            const failedScans = results.filter(r => !r.passed && !r.skipped);
+            if (failedScans.length > 0) {
+              showSecretsDetectedError(failedScans);
               process.exit(1);
-            } else if (error && typeof error === 'object' && 'stderr' in error && 'stdout' in error) {
-              // Tool ran but found secrets
-              const stderr = 'stderr' in error && error.stderr ? String(error.stderr) : '';
-              const stdout = 'stdout' in error && error.stdout ? String(error.stdout) : '';
+            }
 
-              console.error(chalk.red('\n❌ Secret scanning detected potential secrets in staged files\n'));
-
-              // Show scan output
-              if (stdout) {
-                console.error(stdout);
-              }
-              if (stderr) {
-                console.error(stderr);
-              }
-
-              console.error(chalk.blue('\n💡 Fix options:'));
-              console.error(chalk.gray('   1. Remove secrets from staged files'));
-              console.error(chalk.gray('   2. Use .gitleaksignore to mark false positives (if using gitleaks)'));
-              console.error(chalk.gray('   3. Disable scanning: set hooks.preCommit.secretScanning.enabled=false'));
-              process.exit(1);
-            } else {
-              // Unknown error
-              console.error(chalk.red('\n❌ Secret scanning failed with unknown error'));
-              console.error(chalk.gray(String(error)));
-              process.exit(1);
+            // Success message
+            const ranTools = results.filter(r => !r.skipped);
+            if (ranTools.length > 0) {
+              const toolNames = ranTools.map(r => formatToolName(r.tool)).join(', ');
+              const totalDuration = ranTools.reduce((sum, r) => sum + r.duration, 0);
+              console.log(chalk.green(`✅ No secrets detected (${toolNames}, ${totalDuration}ms)`));
             }
           }
         }
@@ -167,9 +173,10 @@ The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure yo
 
 ## How It Works
 
-1. Runs sync-check (fails if branch behind origin/main)
-2. Runs validate (with caching)
-3. Reports git status (warns about unstaged files)
+1. Runs secret scanning (if enabled in config)
+2. Runs sync-check (fails if branch behind origin/main)
+3. Runs validate (with caching)
+4. Reports git status (warns about unstaged files)
 
 ## Options
 
@@ -216,6 +223,90 @@ echo "npx vibe-validate pre-commit" > .husky/pre-commit
 # Now runs automatically before every commit
 git commit -m "Your message"
 \`\`\`
+
+## Secret Scanning
+
+Secret scanning prevents accidental commits of credentials (API keys, tokens, passwords).
+
+### Autodetect Mode (Recommended)
+
+Enable in config without specifying \`scanCommand\`:
+
+\`\`\`yaml
+hooks:
+  preCommit:
+    secretScanning:
+      enabled: true
+\`\`\`
+
+Automatically runs tools based on config files:
+- \`.gitleaks.toml\` or \`.gitleaksignore\` → runs gitleaks
+- \`.secretlintrc.json\` → runs secretlint (via npx)
+- Both files → runs both tools (defense-in-depth)
+
+### Tool Setup
+
+**Option 1: gitleaks (recommended - fast, 160+ secret types)**
+\`\`\`bash
+# Install
+macOS:   brew install gitleaks
+Linux:   https://github.com/gitleaks/gitleaks#installation
+Windows: winget install gitleaks
+
+# Create config (empty file enables autodetect)
+touch .gitleaksignore
+
+# Handle false positives (add fingerprints from gitleaks output)
+echo "path/to/file.txt:generic-api-key:123" >> .gitleaksignore
+\`\`\`
+
+**Option 2: secretlint (npm-based, always available)**
+\`\`\`bash
+# Install
+npm install --save-dev @secretlint/secretlint-rule-preset-recommend secretlint
+
+# Create config
+cat > .secretlintrc.json << 'EOF'
+{
+  "rules": [
+    {"id": "@secretlint/secretlint-rule-preset-recommend"}
+  ]
+}
+EOF
+
+# Handle false positives
+cat > .secretlintignore << 'EOF'
+.jscpd/
+**/dist/**
+**/node_modules/**
+EOF
+\`\`\`
+
+**Option 3: Both (defense-in-depth)**
+\`\`\`bash
+# Set up both tools - autodetect runs both automatically
+# gitleaks: fast native binary
+# secretlint: npm-based with different detection patterns
+\`\`\`
+
+### Explicit Command Mode
+
+For custom tools or specific flags:
+
+\`\`\`yaml
+hooks:
+  preCommit:
+    secretScanning:
+      enabled: true
+      scanCommand: "gitleaks protect --staged --verbose --config .gitleaks.toml"
+\`\`\`
+
+### Troubleshooting
+
+- **"No secrets detected"** - Working correctly, no secrets found
+- **"Secret scanning enabled but no tools available"** - Install gitleaks or create .secretlintrc.json
+- **False positives** - Add to .gitleaksignore or .secretlintignore
+- **Slow scans** - Warning shown if scan takes >5 seconds
 
 ## Error Recovery
 

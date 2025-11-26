@@ -21,6 +21,13 @@ import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 import { formatTemplateList } from '../utils/template-discovery.js';
 import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
+import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
+import {
+  executeGitCommand,
+  isGitRepository,
+  verifyRef,
+  listNotesRefs
+} from '@vibe-validate/git';
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
@@ -99,10 +106,11 @@ function checkNodeVersion(): DoctorCheckResult {
  */
 function checkGitInstalled(): DoctorCheckResult {
   try {
-    const version = execSync('git --version', { encoding: 'utf8' }).trim();
+    const result = executeGitCommand(['--version']);
+    const version = result.success ? result.stdout.trim() : '';
     return {
       name: 'Git installed',
-      passed: true,
+      passed: result.success,
       message: version,
     };
   } catch (error) {
@@ -121,18 +129,27 @@ function checkGitInstalled(): DoctorCheckResult {
  */
 function checkGitRepository(): DoctorCheckResult {
   try {
-    execSync('git rev-parse --git-dir', { encoding: 'utf8', stdio: 'pipe' });
-    return {
-      name: 'Git repository',
-      passed: true,
-      message: 'Current directory is a git repository',
-    };
+    const isGitRepo = isGitRepository();
+    if (isGitRepo) {
+      return {
+        name: 'Git repository',
+        passed: true,
+        message: 'Current directory is a git repository',
+      };
+    } else {
+      return {
+        name: 'Git repository',
+        passed: false,
+        message: 'Current directory is not a git repository',
+        suggestion: 'Run: git init',
+      };
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       name: 'Git repository',
       passed: false,
-      message: `Current directory is not a git repository: ${errorMessage}`,
+      message: `Error checking git repository: ${errorMessage}`,
       suggestion: 'Run: git init',
     };
   }
@@ -549,26 +566,25 @@ function checkValidationState(): DoctorCheckResult {
 /**
  * Check for old validation history format (pre-v0.15.0)
  *
- * Pre-v0.15.0 used a single ref: refs/notes/vibe-validate/validate
- * v0.15.0+ uses: refs/notes/vibe-validate/run/{treeHash}/{commandHash}
+ * Pre-v0.15.0 used refs under: refs/notes/vibe-validate/runs/*
+ * v0.15.0+ uses two systems:
+ *   - Validation history: refs/notes/vibe-validate/validate (current format)
+ *   - Run cache: refs/notes/vibe-validate/run/{treeHash}/{commandHash}
  *
- * Only warn if the OLD single ref exists.
+ * Only warn if the OLD "runs" namespace exists.
  */
 function checkCacheMigration(): DoctorCheckResult {
   try {
-    // Check if the OLD validation history ref exists (single ref, not the new run cache structure)
-    const result = execSync('git rev-parse --verify refs/notes/vibe-validate/validate 2>/dev/null || true', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    // Check if the OLD validation history namespace exists (plural "runs")
+    const refs = listNotesRefs('refs/notes/vibe-validate/runs');
 
-    if (result.trim()) {
-      // Old validation history ref exists - recommend clearing
+    if (refs.length > 0) {
+      // Old validation history namespace exists - recommend clearing
       return {
         name: 'Validation history migration',
         passed: true, // Not a failure, just informational
         message: 'Old validation history format detected (pre-v0.15.0)',
-        suggestion: `Clear old validation history:\n   git update-ref -d refs/notes/vibe-validate/validate\n   ℹ️  This only removes the deprecated format; run cache will remain intact`,
+        suggestion: `Clear old validation history:\n   vibe-validate history prune --legacy\n   ℹ️  This only removes the deprecated "runs" namespace`,
       };
     }
 
@@ -638,33 +654,31 @@ async function checkMainBranch(config?: VibeValidateConfig | null): Promise<Doct
     const remoteOrigin = getRemoteOrigin(config.git);
 
     // Check for local branch first
-    try {
-      execSync(`git rev-parse --verify ${mainBranch}`, { stdio: 'pipe' });
+    const localResult = verifyRef(mainBranch);
+    if (localResult) {
       return {
         name: 'Git main branch',
         passed: true,
         message: `Branch '${mainBranch}' exists locally`,
       };
-    } catch (localError) {
-      // Local branch doesn't exist, check for remote branch
-      const localErrorMsg = localError instanceof Error ? localError.message : String(localError);
-      try {
-        execSync(`git rev-parse --verify ${remoteOrigin}/${mainBranch}`, { stdio: 'pipe' });
-        return {
-          name: 'Git main branch',
-          passed: true,
-          message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}' (fetch-depth: 0 required in CI)`,
-        };
-      } catch (remoteError) {
-        const remoteErrorMsg = remoteError instanceof Error ? remoteError.message : String(remoteError);
-        return {
-          name: 'Git main branch',
-          passed: false,
-          message: `Configured main branch '${mainBranch}' does not exist locally (${localErrorMsg}) or on remote '${remoteOrigin}' (${remoteErrorMsg})`,
-          suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
-        };
-      }
     }
+
+    // Local branch doesn't exist, check for remote branch
+    const remoteResult = verifyRef(`${remoteOrigin}/${mainBranch}`);
+    if (remoteResult) {
+      return {
+        name: 'Git main branch',
+        passed: true,
+        message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}' (fetch-depth: 0 required in CI)`,
+      };
+    }
+
+    return {
+      name: 'Git main branch',
+      passed: false,
+      message: `Configured main branch '${mainBranch}' does not exist locally or on remote '${remoteOrigin}'`,
+      suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
@@ -691,10 +705,10 @@ async function checkRemoteOrigin(config?: VibeValidateConfig | null): Promise<Do
     const remoteOrigin = getRemoteOrigin(config.git);
 
     try {
-      const remotes = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' })
-        .trim()
-        .split('\n')
-        .filter(Boolean);
+      const result = executeGitCommand(['remote']);
+      const remotes = result.success
+        ? result.stdout.trim().split('\n').filter(Boolean)
+        : [];
 
       if (remotes.includes(remoteOrigin)) {
         return {
@@ -748,10 +762,10 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
 
     try {
       // First check if remote exists
-      const remotes = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' })
-        .trim()
-        .split('\n')
-        .filter(Boolean);
+      const remotesResult = executeGitCommand(['remote']);
+      const remotes = remotesResult.success
+        ? remotesResult.stdout.trim().split('\n').filter(Boolean)
+        : [];
 
       if (!remotes.includes(remoteOrigin)) {
         return {
@@ -762,7 +776,10 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
       }
 
       // Check if remote branch exists
-      execSync(`git ls-remote --heads ${remoteOrigin} ${mainBranch}`, { stdio: 'pipe' });
+      const lsRemoteResult = executeGitCommand(['ls-remote', '--heads', remoteOrigin, mainBranch]);
+      if (!lsRemoteResult.success) {
+        throw new Error(`Failed to check remote branch: ${lsRemoteResult.stderr}`);
+      }
       return {
         name: 'Git remote main branch',
         passed: true,
@@ -787,49 +804,6 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
   }
 }
 
-/**
- * Get tool version by trying multiple version flag variants
- */
-function getToolVersion(toolName: string): string {
-  try {
-    return execSync(`${toolName} version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
-  } catch {
-    // Fallback to --version flag
-    return execSync(`${toolName} --version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
-  }
-}
-
-/**
- * Check if scanning tool is available
- */
-function checkScanningToolAvailable(toolName: string): DoctorCheckResult {
-  try {
-    const version = getToolVersion(toolName);
-    return {
-      name: 'Pre-commit secret scanning',
-      passed: true,
-      message: `Secret scanning enabled with ${toolName} ${version}`,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const isCI = process.env.CI === 'true' || process.env.CI === '1';
-
-    if (isCI) {
-      return {
-        name: 'Pre-commit secret scanning',
-        passed: true,
-        message: `Secret scanning enabled (pre-commit only, not needed in CI)`,
-      };
-    }
-
-    return {
-      name: 'Pre-commit secret scanning',
-      passed: true,
-      message: `Secret scanning enabled but '${toolName}' not found: ${errorMessage}`,
-      suggestion: `Install ${toolName}:\n   • gitleaks: brew install gitleaks\n   • Or disable: set hooks.preCommit.secretScanning.enabled=false in config`,
-    };
-  }
-}
 
 /**
  * Check if secret scanning is configured and tool is available
@@ -851,7 +825,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
         name: 'Pre-commit secret scanning',
         passed: true,
         message: 'Secret scanning not configured',
-        suggestion: 'Recommended: Enable secret scanning to prevent credential leaks\n   • Add to config: hooks.preCommit.secretScanning.enabled=true\n   • scanCommand: "gitleaks protect --staged --verbose"\n   • Install gitleaks: brew install gitleaks',
+        suggestion: 'Recommended: Enable secret scanning to prevent credential leaks\n   • Add to config: hooks.preCommit.secretScanning.enabled=true\n   • Install gitleaks: brew install gitleaks\n   • Or add .secretlintrc.json for npm-based scanning',
       };
     }
 
@@ -863,17 +837,68 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
       };
     }
 
-    if (!secretScanning.scanCommand) {
+    // Detect available tools and what would be run
+    const toolsToRun = selectToolsToRun(secretScanning.scanCommand);
+    const availableTools = detectSecretScanningTools();
+
+    if (toolsToRun.length === 0) {
       return {
         name: 'Pre-commit secret scanning',
         passed: true,
-        message: 'Secret scanning enabled but no scanCommand configured',
-        suggestion: 'Add hooks.preCommit.secretScanning.scanCommand to config',
+        message: 'Secret scanning enabled but no tools available',
+        suggestion: 'Install a secret scanning tool:\n   • gitleaks: brew install gitleaks\n   • secretlint: npm install --save-dev @secretlint/secretlint-rule-preset-recommend\n   • Or add config files: .gitleaks.toml or .secretlintrc.json',
       };
     }
 
-    const toolName = secretScanning.scanCommand.split(' ')[0];
-    return checkScanningToolAvailable(toolName);
+    // Build status message
+    const toolStatuses = availableTools.map(tool => {
+      if (tool.tool === 'gitleaks') {
+        if (tool.available && tool.hasConfig) {
+          return 'gitleaks (configured, available)';
+        } else if (tool.available) {
+          return 'gitleaks (available, no config)';
+        } else if (tool.hasConfig) {
+          return 'gitleaks (configured, NOT available)';
+        }
+      } else if (tool.tool === 'secretlint') {
+        if (tool.hasConfig) {
+          return 'secretlint (configured, via npx)';
+        } else {
+          return 'secretlint (available via npx, no config)';
+        }
+      }
+      return null;
+    }).filter(Boolean);
+
+    const message = `Secret scanning enabled: ${toolStatuses.join(', ')}`;
+
+    // Check if gitleaks is configured but not available
+    const gitleaks = availableTools.find(t => t.tool === 'gitleaks');
+    if (gitleaks?.hasConfig && !gitleaks.available) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message,
+        suggestion: 'Install gitleaks for better performance: brew install gitleaks',
+      };
+    }
+
+    // Check if only secretlint is available (suggest gitleaks for performance)
+    const hasGitleaksAvailable = availableTools.some(t => t.tool === 'gitleaks' && t.available);
+    if (!hasGitleaksAvailable && toolsToRun.some(t => t.tool === 'secretlint')) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message,
+        suggestion: 'Consider installing gitleaks for faster scanning: brew install gitleaks',
+      };
+    }
+
+    return {
+      name: 'Pre-commit secret scanning',
+      passed: true,
+      message,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {

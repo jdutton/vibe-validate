@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod';
+import { createSafeValidator, createStrictValidator } from '@vibe-validate/config';
 
 /**
  * Maximum number of errors to include in errors array
@@ -139,30 +140,10 @@ export type ErrorExtractorResult = z.infer<typeof ErrorExtractorResultSchema>;
 /**
  * Safe validation function for ErrorExtractorResult
  *
- * NOTE: This duplicates the pattern from @vibe-validate/core's createSafeValidator.
- * We can't import from core here due to circular dependency (core → extractors).
- * This is an acceptable trade-off for a foundational package.
- *
  * @param data - Data to validate
  * @returns Validation result with success/error information
  */
-export function safeValidateExtractorResult(data: unknown):
-  | { success: true; data: ErrorExtractorResult }
-  | { success: false; errors: string[] } {
-  const result = ErrorExtractorResultSchema.safeParse(data);
-
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-
-  // Extract error messages with full path
-  const errors = result.error.errors.map(err => {
-    const path = err.path.join('.');
-    return path ? `${path}: ${err.message}` : err.message;
-  });
-
-  return { success: false, errors };
-}
+export const safeValidateExtractorResult = createSafeValidator(ErrorExtractorResultSchema);
 
 /**
  * Strict validation function for ErrorExtractorResult
@@ -173,6 +154,4 @@ export function safeValidateExtractorResult(data: unknown):
  * @returns Validated result
  * @throws {Error} If validation fails
  */
-export function validateExtractorResult(data: unknown): ErrorExtractorResult {
-  return ErrorExtractorResultSchema.parse(data);
-}
+export const validateExtractorResult = createStrictValidator(ErrorExtractorResultSchema);

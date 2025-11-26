@@ -62,3 +62,6 @@ export {
 // Git configuration constants and helpers
 export { GIT_DEFAULTS } from './constants.js';
 export { getRemoteBranch, getMainBranch, getRemoteOrigin } from './git-helpers.js';
+
+// Shared schema utilities (foundational - no dependencies)
+export { createSafeValidator, createStrictValidator } from './schema-utils.js';

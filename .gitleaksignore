@@ -7,3 +7,6 @@
 # Documentation examples (ANSI color codes in git-validation-tracking.md - not real secrets)
 docs/git-validation-tracking.md:generic-api-key:207
 docs/git-validation-tracking.md:generic-api-key:213
+
+# jscpd reports contain code snippets that may include test JWT tokens
+.jscpd/jscpd-report.json:jwt:28515

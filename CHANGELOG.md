@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Features
+
+**Automatic Secret Scanning Tool Detection** (Issue #59)
+- **Problem**: Secret scanning required explicit `scanCommand` configuration and only supported one tool at a time
+  - Blocked adoption in containerized environments (Claude Code on the web) where gitleaks isn't available
+  - Users had to manually configure tool commands
+- **Solution**: Automatic tool detection with intelligent fallback
+  - **Autodetect mode** (default): Automatically detects and runs available tools based on config files
+  - **Config-based**: Presence of `.gitleaks.toml`/`.gitleaksignore` → runs gitleaks (if available)
+  - **Config-based**: Presence of `.secretlintrc.json` → runs secretlint (via npx, always available)
+  - **Multi-tool**: Can run both gitleaks and secretlint if both configured (defense in depth)
+  - **Graceful fallback**: Warns if gitleaks config exists but command unavailable, continues with secretlint
+  - **Performance monitoring**: Warns if scanning takes >5s (configurable via `performanceThreshold`)
+- **Impact**:
+  - Works in containerized environments (secretlint via npx, no install required)
+  - Users can run multiple secret scanners simultaneously
+  - Backwards compatible (explicit `scanCommand` still supported)
+  - Automatic performance guidance (suggests gitleaks for faster scans)
+- **Configuration**:
+  ```yaml
+  hooks:
+    preCommit:
+      secretScanning:
+        enabled: true  # Now defaults to autodetect
+        # scanCommand: "gitleaks protect --staged --verbose"  # Optional explicit override
+        performanceThreshold: 5000  # Optional, default 5000ms
+  ```
+- **Doctor command enhanced**: Now shows tool availability and configuration status
+
 ### 🐛 Bug Fixes
 
 **Fixed Broken Validation History in Jest-Based Projects** (Issue #57)

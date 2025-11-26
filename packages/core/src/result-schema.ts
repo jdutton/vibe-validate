@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
-import { createSafeValidator, createStrictValidator } from './schema-utils.js';
+import { createSafeValidator, createStrictValidator } from '@vibe-validate/config';
 
 /**
  * Base: Command Execution Schema

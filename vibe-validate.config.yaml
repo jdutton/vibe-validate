@@ -21,8 +21,9 @@ hooks:
   preCommit:
     enabled: true
     secretScanning:
-      enabled: false  # Disabled in containerized environment - enable in local dev
-      scanCommand: "gitleaks protect --staged --verbose"
+      enabled: true
+      # scanCommand omitted = autodetect mode
+      # Will detect and run both gitleaks and secretlint if configured
 ci:
   nodeVersions:
     - '22'

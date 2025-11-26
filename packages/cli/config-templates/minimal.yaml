@@ -25,17 +25,28 @@ hooks:
   preCommit:
     enabled: true
     # Secret scanning prevents accidental credential commits
-    # Runs before validation to catch secrets in staged files
     secretScanning:
       enabled: true
-      # Gitleaks is recommended for speed and comprehensive detection (160+ secret types)
-      # Install: brew install gitleaks (macOS) | https://github.com/gitleaks/gitleaks#installation
-      scanCommand: "gitleaks protect --staged --verbose"
-      # Alternative tools:
-      # - detect-secrets: scanCommand: "detect-secrets scan --staged"
-      # - semgrep: scanCommand: "semgrep scan --config auto"
+      # Autodetect mode (recommended): Omit scanCommand to auto-detect tools
+      # Automatically runs tools based on config files present:
+      #   - .gitleaks.toml or .gitleaksignore → runs gitleaks
+      #   - .secretlintrc.json → runs secretlint (via npx)
+      #   - Both files present → runs both tools (defense-in-depth)
       #
-      # False positives: Create .gitleaksignore file with fingerprints
+      # Setup options:
+      # 1. gitleaks (recommended - fast, 160+ secret types):
+      #    macOS: brew install gitleaks
+      #    Linux/Windows: https://github.com/gitleaks/gitleaks#installation
+      #    Create .gitleaksignore for false positives
+      #
+      # 2. secretlint (npm-based, always available):
+      #    npm install --save-dev @secretlint/secretlint-rule-preset-recommend secretlint
+      #    Create .secretlintrc.json with: {"rules": [{"id": "@secretlint/secretlint-rule-preset-recommend"}]}
+      #    Create .secretlintignore for false positives
+      #
+      # 3. Both (defense-in-depth): Create both config files
+      #
+      # To use explicit command instead: scanCommand: "gitleaks protect --staged --verbose"
       # To disable: set enabled: false
 
 # Validation configuration

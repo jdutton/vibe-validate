@@ -18,10 +18,10 @@ import { parse as parseYaml } from 'yaml';
 import { safeValidateResult, PhaseResultSchema, StepResultSchema } from '../src/result-schema.js';
 import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
 
-// Import config validator from config package
+// Import config validator and utilities from config package
 // Note: This is a cross-package import for testing purposes
 import { safeValidateConfig, GitConfigSchema } from '../../config/src/schema.js';
-import { createSafeValidator } from '../src/schema-utils.js';
+import { createSafeValidator } from '@vibe-validate/config';
 
 /**
  * Schema validator configuration

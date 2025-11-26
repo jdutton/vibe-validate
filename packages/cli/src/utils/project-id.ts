@@ -6,9 +6,9 @@
  * multiple directories (worktrees, clones) share the same lock.
  */
 
-import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { executeGitCommand } from '@vibe-validate/git';
 
 /**
  * Extract project name from git remote URL
@@ -40,23 +40,18 @@ function extractProjectFromGitUrl(remoteUrl: string): string | null {
  * Tries to extract project name from git remote URL.
  * Works for GitHub, GitLab, Bitbucket, and other git hosts.
  *
- * @param cwd - Directory to check (defaults to process.cwd())
  * @returns Project ID or null
  */
-export function getProjectIdFromGit(cwd: string = process.cwd()): string | null {
+export function getProjectIdFromGit(): string | null {
   try {
     // Get remote URL for origin
-    const remoteUrl = execSync('git config --get remote.origin.url', {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim();
+    const result = executeGitCommand(['config', '--get', 'remote.origin.url']);
 
-    if (!remoteUrl) {
+    if (!result.success || !result.stdout.trim()) {
       return null;
     }
 
-    return extractProjectFromGitUrl(remoteUrl);
+    return extractProjectFromGitUrl(result.stdout.trim());
   } catch {
     // Not a git repo or no remote configured
     return null;
@@ -108,7 +103,7 @@ export function getProjectIdFromPackageJson(cwd: string = process.cwd()): string
  */
 export function detectProjectId(cwd: string = process.cwd()): string | null {
   // Try git remote first (most reliable for worktrees/clones)
-  const gitProject = getProjectIdFromGit(cwd);
+  const gitProject = getProjectIdFromGit();
   if (gitProject) {
     return gitProject;
   }

@@ -256,7 +256,7 @@ describe('HooksConfigSchema', () => {
     expect(result.data?.hooks?.preCommit?.secretScanning).toBeUndefined();
   });
 
-  it('should require scanCommand when secretScanning is enabled', () => {
+  it('should allow secretScanning enabled without scanCommand (autodetect)', () => {
     const config = {
       validation: {
         phases: [{
@@ -269,16 +269,16 @@ describe('HooksConfigSchema', () => {
           enabled: true,
           secretScanning: {
             enabled: true
-            // Missing scanCommand
+            // scanCommand is optional - defaults to autodetect
           }
         }
       }
     };
 
     const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('scanCommand') || e.includes('required'))).toBe(true);
+    expect(result.success).toBe(true);
+    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);
+    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBeUndefined();
   });
 
   it('should allow custom scan commands', () => {

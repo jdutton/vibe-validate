@@ -5,8 +5,8 @@
  * Used by both init and doctor commands.
  */
 
-import { execSync } from 'node:child_process';
 import { GIT_DEFAULTS } from '@vibe-validate/config';
+import { executeGitCommand, isGitRepository } from '@vibe-validate/git';
 
 /**
  * Result of git configuration detection
@@ -60,11 +60,11 @@ function selectPreferredRemote(remotes: string[]): string {
  */
 function detectMainBranchFromHead(remote: string): string | null {
   try {
-    const headRef = execSync(`git symbolic-ref refs/remotes/${remote}/HEAD`, {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    }).trim();
-    return headRef.replace(`refs/remotes/${remote}/`, '');
+    const result = executeGitCommand(['symbolic-ref', `refs/remotes/${remote}/HEAD`]);
+    if (!result.success) {
+      return null;
+    }
+    return result.stdout.trim().replace(`refs/remotes/${remote}/`, '');
   } catch {
     return null;
   }
@@ -75,10 +75,12 @@ function detectMainBranchFromHead(remote: string): string | null {
  */
 function detectMainBranchFromRemote(remote: string): string | null {
   try {
-    const branches = execSync(`git ls-remote --heads ${remote}`, {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    }).trim();
+    const result = executeGitCommand(['ls-remote', '--heads', remote]);
+    if (!result.success) {
+      return null;
+    }
+
+    const branches = result.stdout.trim();
 
     // Check for common main branch names in order of preference
     if (branches.includes('refs/heads/main')) return 'main';
@@ -98,18 +100,19 @@ export function detectGitConfig(): DetectedGitConfig {
     detected: false,
   };
 
-  try {
-    // Check if we're in a git repository
-    execSync('git rev-parse --git-dir', { stdio: 'pipe' });
-  } catch {
-    // Not a git repository - use defaults
+  // Check if we're in a git repository
+  if (!isGitRepository()) {
     return defaults;
   }
 
   try {
     // Get list of remotes
-    const remotesOutput = execSync('git remote', { encoding: 'utf8', stdio: 'pipe' }).trim();
-    const remotes = remotesOutput.split('\n').filter(Boolean);
+    const result = executeGitCommand(['remote']);
+    if (!result.success) {
+      return defaults;
+    }
+
+    const remotes = result.stdout.trim().split('\n').filter(Boolean);
 
     if (remotes.length === 0) {
       return defaults;

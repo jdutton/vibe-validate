@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { createSafeValidator, createStrictValidator } from './schema-utils.js';
 import { GIT_DEFAULTS } from './constants.js';
 
 /**
@@ -123,18 +124,19 @@ export const SecretScanningSchema = z.object({
   /** Enable secret scanning in pre-commit (default: true) */
   enabled: z.boolean().default(true),
 
-  /** Command to run for secret scanning (required when enabled) */
+  /**
+   * Command to run for secret scanning (optional)
+   * - Explicit command: "gitleaks protect --staged --verbose"
+   * - Omit or "autodetect": Automatically detect and run available tools
+   *
+   * Default: autodetect (runs tools based on config file presence)
+   * - Checks for .gitleaks.toml/.gitleaksignore and .secretlintrc.json
+   * - Runs gitleaks if available and configured
+   * - Runs secretlint (via npx) if configured
+   * - Falls back to gitleaks or secretlint if no config files present
+   */
   scanCommand: z.string().min(1, 'scanCommand cannot be empty').optional(),
-}).strict().refine(
-  (data) => {
-    // If enabled is true, scanCommand must be provided
-    return !data.enabled || !!data.scanCommand;
-  },
-  {
-    message: 'scanCommand is required when secret scanning is enabled',
-    path: ['scanCommand'],
-  }
-);
+}).strict();
 
 export type SecretScanningConfig = z.infer<typeof SecretScanningSchema>;
 
@@ -332,34 +334,12 @@ export type VibeValidateConfig = z.input<typeof VibeValidateConfigSchema>;
  * @returns Validated configuration with defaults applied
  * @throws ZodError if validation fails
  */
-export function validateConfig(config: unknown): VibeValidateConfig {
-  return VibeValidateConfigSchema.parse(config);
-}
+export const validateConfig = createStrictValidator(VibeValidateConfigSchema);
 
 /**
  * Safe validation function for VibeValidateConfig
  *
- * NOTE: This duplicates the pattern from @vibe-validate/core's createSafeValidator.
- * We can't import from core here due to circular dependency (core → config).
- * This is an acceptable trade-off for a foundational package.
- *
  * @param config - Configuration data to validate
  * @returns Validation result with success/error information
  */
-export function safeValidateConfig(config: unknown):
-  | { success: true; data: VibeValidateConfig }
-  | { success: false; errors: string[] } {
-  const result = VibeValidateConfigSchema.safeParse(config);
-
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-
-  // Extract error messages with full path
-  const errors = result.error.errors.map(err => {
-    const path = err.path.join('.');
-    return path ? `${path}: ${err.message}` : err.message;
-  });
-
-  return { success: false, errors };
-}
+export const safeValidateConfig = createSafeValidator(VibeValidateConfigSchema);
