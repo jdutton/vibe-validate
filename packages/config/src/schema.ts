@@ -136,12 +136,6 @@ export const SecretScanningSchema = z.object({
    * - Falls back to gitleaks or secretlint if no config files present
    */
   scanCommand: z.string().min(1, 'scanCommand cannot be empty').optional(),
-
-  /**
-   * Performance warning threshold in milliseconds (default: 5000)
-   * Warns if secret scanning takes longer than this threshold
-   */
-  performanceThreshold: z.number().min(0).default(5000).optional(),
 }).strict();
 
 export type SecretScanningConfig = z.infer<typeof SecretScanningSchema>;

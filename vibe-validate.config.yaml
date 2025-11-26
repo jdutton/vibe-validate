@@ -24,7 +24,6 @@ hooks:
       enabled: true
       # scanCommand omitted = autodetect mode
       # Will detect and run both gitleaks and secretlint if configured
-      performanceThreshold: 5000  # Warn if scan takes >5s
 ci:
   nodeVersions:
     - '22'

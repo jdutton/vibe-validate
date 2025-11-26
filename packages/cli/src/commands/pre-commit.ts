@@ -104,10 +104,9 @@ export function preCommitCommand(program: Command): void {
                 console.log(chalk.gray(result.output));
               }
 
-              // Show performance warning if scan was slow
+              // Show performance warning if scan was slow (hardcoded 5s threshold)
               if (result.passed) {
-                const threshold = secretScanning.performanceThreshold ?? 5000;
-                showPerformanceWarning(tool, result.duration, threshold);
+                showPerformanceWarning(tool, result.duration, 5000);
               }
             }
 
