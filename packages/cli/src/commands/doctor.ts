@@ -21,6 +21,7 @@ import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 import { formatTemplateList } from '../utils/template-discovery.js';
 import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
+import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
@@ -787,49 +788,6 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
   }
 }
 
-/**
- * Get tool version by trying multiple version flag variants
- */
-function getToolVersion(toolName: string): string {
-  try {
-    return execSync(`${toolName} version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
-  } catch {
-    // Fallback to --version flag
-    return execSync(`${toolName} --version`, { encoding: 'utf8', stdio: 'pipe' }).trim();
-  }
-}
-
-/**
- * Check if scanning tool is available
- */
-function checkScanningToolAvailable(toolName: string): DoctorCheckResult {
-  try {
-    const version = getToolVersion(toolName);
-    return {
-      name: 'Pre-commit secret scanning',
-      passed: true,
-      message: `Secret scanning enabled with ${toolName} ${version}`,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const isCI = process.env.CI === 'true' || process.env.CI === '1';
-
-    if (isCI) {
-      return {
-        name: 'Pre-commit secret scanning',
-        passed: true,
-        message: `Secret scanning enabled (pre-commit only, not needed in CI)`,
-      };
-    }
-
-    return {
-      name: 'Pre-commit secret scanning',
-      passed: true,
-      message: `Secret scanning enabled but '${toolName}' not found: ${errorMessage}`,
-      suggestion: `Install ${toolName}:\n   • gitleaks: brew install gitleaks\n   • Or disable: set hooks.preCommit.secretScanning.enabled=false in config`,
-    };
-  }
-}
 
 /**
  * Check if secret scanning is configured and tool is available
@@ -851,7 +809,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
         name: 'Pre-commit secret scanning',
         passed: true,
         message: 'Secret scanning not configured',
-        suggestion: 'Recommended: Enable secret scanning to prevent credential leaks\n   • Add to config: hooks.preCommit.secretScanning.enabled=true\n   • scanCommand: "gitleaks protect --staged --verbose"\n   • Install gitleaks: brew install gitleaks',
+        suggestion: 'Recommended: Enable secret scanning to prevent credential leaks\n   • Add to config: hooks.preCommit.secretScanning.enabled=true\n   • Install gitleaks: brew install gitleaks\n   • Or add .secretlintrc.json for npm-based scanning',
       };
     }
 
@@ -863,17 +821,68 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
       };
     }
 
-    if (!secretScanning.scanCommand) {
+    // Detect available tools and what would be run
+    const toolsToRun = selectToolsToRun(secretScanning.scanCommand);
+    const availableTools = detectSecretScanningTools();
+
+    if (toolsToRun.length === 0) {
       return {
         name: 'Pre-commit secret scanning',
         passed: true,
-        message: 'Secret scanning enabled but no scanCommand configured',
-        suggestion: 'Add hooks.preCommit.secretScanning.scanCommand to config',
+        message: 'Secret scanning enabled but no tools available',
+        suggestion: 'Install a secret scanning tool:\n   • gitleaks: brew install gitleaks\n   • secretlint: npm install --save-dev @secretlint/secretlint-rule-preset-recommend\n   • Or add config files: .gitleaks.toml or .secretlintrc.json',
       };
     }
 
-    const toolName = secretScanning.scanCommand.split(' ')[0];
-    return checkScanningToolAvailable(toolName);
+    // Build status message
+    const toolStatuses = availableTools.map(tool => {
+      if (tool.tool === 'gitleaks') {
+        if (tool.available && tool.hasConfig) {
+          return 'gitleaks (configured, available)';
+        } else if (tool.available) {
+          return 'gitleaks (available, no config)';
+        } else if (tool.hasConfig) {
+          return 'gitleaks (configured, NOT available)';
+        }
+      } else if (tool.tool === 'secretlint') {
+        if (tool.hasConfig) {
+          return 'secretlint (configured, via npx)';
+        } else {
+          return 'secretlint (available via npx, no config)';
+        }
+      }
+      return null;
+    }).filter(Boolean);
+
+    const message = `Secret scanning enabled: ${toolStatuses.join(', ')}`;
+
+    // Check if gitleaks is configured but not available
+    const gitleaks = availableTools.find(t => t.tool === 'gitleaks');
+    if (gitleaks?.hasConfig && !gitleaks.available) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message,
+        suggestion: 'Install gitleaks for better performance: brew install gitleaks',
+      };
+    }
+
+    // Check if only secretlint is available (suggest gitleaks for performance)
+    const hasGitleaksAvailable = availableTools.some(t => t.tool === 'gitleaks' && t.available);
+    if (!hasGitleaksAvailable && toolsToRun.some(t => t.tool === 'secretlint')) {
+      return {
+        name: 'Pre-commit secret scanning',
+        passed: true,
+        message,
+        suggestion: 'Consider installing gitleaks for faster scanning: brew install gitleaks',
+      };
+    }
+
+    return {
+      name: 'Pre-commit secret scanning',
+      passed: true,
+      message,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {

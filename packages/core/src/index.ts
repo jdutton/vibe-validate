@@ -102,11 +102,11 @@ export {
   validateResult,
 } from './result-schema.js';
 
-// Export shared schema utilities
+// Export shared schema utilities (re-exported from @vibe-validate/config)
 export {
   createSafeValidator,
   createStrictValidator,
-} from './schema-utils.js';
+} from '@vibe-validate/config';
 
 // Export JSON Schema generation
 export {

@@ -165,6 +165,11 @@
                     "scanCommand": {
                       "type": "string",
                       "minLength": 1
+                    },
+                    "performanceThreshold": {
+                      "type": "number",
+                      "minimum": 0,
+                      "default": 5000
                     }
                   },
                   "additionalProperties": false
