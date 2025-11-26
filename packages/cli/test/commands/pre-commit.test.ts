@@ -661,4 +661,12 @@ describe('pre-commit command', () => {
       expect(core.runValidation).toHaveBeenCalledOnce();
     });
   });
+
+  // Note: Autodetect mode behavior (scanCommand omitted) is tested in
+  // packages/cli/test/utils/secret-scanning.test.ts with 28 unit tests covering:
+  // - Tool detection (gitleaks available/unavailable, config present/absent)
+  // - selectToolsToRun() autodetect logic
+  // - Fallback behavior when gitleaks config exists but command unavailable
+  // - Defense-in-depth (both tools configured)
+  // - Explicit command mode vs autodetect mode
 });
