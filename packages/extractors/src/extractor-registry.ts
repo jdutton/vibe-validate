@@ -12,8 +12,7 @@
  * @package @vibe-validate/extractors
  */
 
-import type { ErrorExtractorResult } from './types.js';
-import type { DetectionResult } from './types.js';
+import type { ErrorExtractorResult, DetectionResult } from './types.js';
 
 // Import all extractor plugins
 import typescriptPlugin from './extractors/typescript/index.js';

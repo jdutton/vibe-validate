@@ -48,9 +48,9 @@ async function main() {
   await fs.mkdir(pluginDir, { recursive: true });
   await fs.mkdir(path.join(pluginDir, 'samples'), { recursive: true });
 
-  // Read source files
-  const srcContent = await fs.readFile(srcFile, 'utf-8');
-  const testContent = await fs.readFile(testFile, 'utf-8');
+  // Read source files (for future implementation)
+  const _srcContent = await fs.readFile(srcFile, 'utf-8');
+  const _testContent = await fs.readFile(testFile, 'utf-8');
 
   console.log('✅ Created plugin directory structure');
   console.log('📂', pluginDir);

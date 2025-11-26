@@ -10,11 +10,11 @@
  * Tests performance with realistic extractor workload and security boundaries.
  */
 
-import { Worker } from 'worker_threads';
-import { performance } from 'perf_hooks';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { createRequire } from 'module';
+import { Worker } from 'node:worker_threads';
+import { performance } from 'node:perf_hooks';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
@@ -31,8 +31,8 @@ const SAMPLE_INPUT = `[ERROR] COMPILATION ERROR :
 [INFO] 2 errors
 [INFO] -------------------------------------------------------------`;
 
-// Realistic extractor function (similar to maven-compiler)
-const extractorCode = `
+// Realistic extractor function (similar to maven-compiler) - kept for future benchmarking work
+const _extractorCode = `
 function extractErrors(content) {
   const errors = [];
   const pattern = /\\[ERROR\\]\\s+([^:]+):\\[([0-9]+),([0-9]+)\\]\\s+(.+)/g;
@@ -98,8 +98,8 @@ async function benchmarkNoSandbox(iterations = 1000) {
     while ((match = pattern.exec(SAMPLE_INPUT)) !== null) {
       errors.push({
         file: match[1].trim(),
-        line: parseInt(match[2], 10),
-        column: parseInt(match[3], 10),
+        line: Number.parseInt(match[2], 10),
+        column: Number.parseInt(match[3], 10),
         message: match[4].trim(),
         severity: 'error'
       });
@@ -199,7 +199,7 @@ async function benchmarkIsolatedVM(iterations = 1000) {
   let ivm;
   try {
     ivm = require('isolated-vm');
-  } catch (err) {
+  } catch (_err) {
     return {
       approach: 'Isolated-VM',
       error: 'Package not installed (run: pnpm add -Dw isolated-vm)',
@@ -243,7 +243,7 @@ async function benchmarkIsolatedVM(iterations = 1000) {
     context.global.setSync('input', new ivm.ExternalCopy(SAMPLE_INPUT).copyInto());
 
     const result = context.evalSync('JSON.stringify(extractErrors(input))');
-    const errors = JSON.parse(result);
+    const _errors = JSON.parse(result);
   }
 
   isolate.dispose();
@@ -284,13 +284,13 @@ async function testSecurityBoundaries() {
   // Test worker threads (limited protection)
   for (const test of SECURITY_TESTS) {
     try {
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve, _reject) => {
         const worker = new Worker(`
           const { parentPort } = require('worker_threads');
           try {
             ${test.code}
             parentPort.postMessage({ success: true });
-          } catch (err) {
+          } catch (_err) {
             parentPort.postMessage({ error: err.message });
           }
         `, { eval: true });
@@ -334,7 +334,7 @@ async function testSecurityBoundaries() {
         results['Isolated-VM'].push({ test: test.name, blocked: true, reason: err.message });
       }
     }
-  } catch (err) {
+  } catch (_err) {
     results['Isolated-VM'] = [{ error: 'isolated-vm not installed' }];
   }
 
@@ -393,10 +393,10 @@ async function main() {
     const total = tests.length;
     console.log(`  Blocked: ${blocked}/${total} attacks`);
 
-    tests.forEach(t => {
+    for (const t of tests) {
       const icon = t.blocked ? '✅' : '❌';
       console.log(`  ${icon} ${t.test}${t.reason ? ` (${t.reason.slice(0, 50)}...)` : ''}`);
-    });
+    }
     console.log();
   }
 

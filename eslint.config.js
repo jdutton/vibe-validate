@@ -5,6 +5,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import unicorn from 'eslint-plugin-unicorn';
 import security from 'eslint-plugin-security';
 import pluginNode from 'eslint-plugin-n';
+import importPlugin from 'eslint-plugin-import';
 
 // Shared Unicorn rules for modern JavaScript standards (applies to both test and production code)
 const unicornRules = {
@@ -46,6 +47,7 @@ export default [
       unicorn,
       security,
       n: pluginNode,
+      import: importPlugin,
     },
     rules: {
       // Disable type-aware rules for test files (require TypeScript project)
@@ -87,6 +89,9 @@ export default [
         caughtErrorsIgnorePattern: '^_',
       }],
 
+      // Import rules - catch duplicate imports
+      'import/no-duplicates': 'error',
+
       // Unicorn rules - apply same modern JavaScript standards to test code
       ...unicornRules,
     },
@@ -116,6 +121,7 @@ export default [
       unicorn,
       security,
       n: pluginNode,
+      import: importPlugin,
     },
     rules: {
       // TypeScript-specific rules
@@ -179,6 +185,9 @@ export default [
       'sonarjs/prefer-single-boolean-return': 'error', // Promoted from warn
       'sonarjs/no-unused-vars': 'warn', // Keep as warn (duplicate of @typescript-eslint/no-unused-vars)
 
+      // Import rules - catch duplicate imports
+      'import/no-duplicates': 'error',
+
       // Unicorn rules - modern JavaScript best practices
       ...unicornRules,
     },
@@ -213,12 +222,81 @@ export default [
     },
   },
   {
+    // Tools scripts - relaxed linting for build/utility scripts
+    files: ['tools/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        NodeJS: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+      },
+    },
+    plugins: {
+      unicorn,
+      import: importPlugin,
+      security,
+      n: pluginNode,
+    },
+    rules: {
+      // Core JavaScript rules
+      'no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'no-console': 'off', // Tools use console for output
+
+      // Security - relaxed for tools
+      'security/detect-child-process': 'off', // Tools spawn processes
+      'security/detect-non-literal-fs-filename': 'off', // Tools use dynamic paths
+      'security/detect-object-injection': 'off',
+      'security/detect-unsafe-regex': 'off', // Tools use regexes for parsing (not user input)
+      'security/detect-eval-with-expression': 'off', // Some tools use eval for dynamic code execution
+
+      // Import rules
+      'import/no-duplicates': 'error',
+
+      // SonarJS rules - catch issues but more lenient for tools
+      'sonarjs/cognitive-complexity': ['warn', 30],
+      'sonarjs/no-duplicate-string': 'off',
+      'sonarjs/no-identical-functions': 'warn',
+      'sonarjs/no-os-command-from-path': 'off', // Tools spawn processes
+      'sonarjs/os-command': 'off', // Tools intentionally execute system commands
+      'sonarjs/no-ignored-exceptions': 'off', // Tools may have intentional empty catch blocks
+      'sonarjs/no-unused-collection': 'off', // Tools may prepare data for future use
+      'sonarjs/no-dead-store': 'off', // Tools may have unused assignments during development
+      'sonarjs/code-eval': 'off', // Some tools use eval for dynamic code execution
+      'sonarjs/slow-regex': 'off', // Tools process known-safe input, no DoS risk
+      'sonarjs/unused-import': 'off', // May have imports for future development
+      'sonarjs/updated-loop-counter': 'off', // Tools may manually update loop counters for argument parsing
+      'sonarjs/no-unused-vars': 'off', // Already covered by no-unused-vars
+      'sonarjs/concise-regex': 'off', // Allow verbose regex for clarity in tools
+      'sonarjs/no-nested-template-literals': 'off', // Allow nested templates in tools
+
+      // Node.js rules
+      'n/no-path-concat': 'error',
+
+      // Unicorn rules - still enforce modern JavaScript
+      'unicorn/prefer-node-protocol': 'error',
+      'unicorn/prefer-number-properties': 'error',
+      'unicorn/no-array-for-each': 'off', // Allow forEach in tools for readability
+      'unicorn/prefer-top-level-await': 'off', // Tools may use promise chains
+      'unicorn/throw-new-error': 'error',
+    },
+  },
+  {
     ignores: [
       'dist/',
       'build/',
       'coverage/',
       'node_modules/',
-      '**/*.js', // Ignore compiled JS files
+      '**/dist/**/*.js', // Ignore compiled output (more specific)
+      '*.config.js', // Ignore root config files (eslint, vitest, etc)
       '**/*.d.ts',
       // Files not in tsconfig.json
       'vitest.config.ts',
