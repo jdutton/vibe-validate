@@ -173,9 +173,10 @@ The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure yo
 
 ## How It Works
 
-1. Runs sync-check (fails if branch behind origin/main)
-2. Runs validate (with caching)
-3. Reports git status (warns about unstaged files)
+1. Runs secret scanning (if enabled in config)
+2. Runs sync-check (fails if branch behind origin/main)
+3. Runs validate (with caching)
+4. Reports git status (warns about unstaged files)
 
 ## Options
 
@@ -222,6 +223,90 @@ echo "npx vibe-validate pre-commit" > .husky/pre-commit
 # Now runs automatically before every commit
 git commit -m "Your message"
 \`\`\`
+
+## Secret Scanning
+
+Secret scanning prevents accidental commits of credentials (API keys, tokens, passwords).
+
+### Autodetect Mode (Recommended)
+
+Enable in config without specifying \`scanCommand\`:
+
+\`\`\`yaml
+hooks:
+  preCommit:
+    secretScanning:
+      enabled: true
+\`\`\`
+
+Automatically runs tools based on config files:
+- \`.gitleaks.toml\` or \`.gitleaksignore\` → runs gitleaks
+- \`.secretlintrc.json\` → runs secretlint (via npx)
+- Both files → runs both tools (defense-in-depth)
+
+### Tool Setup
+
+**Option 1: gitleaks (recommended - fast, 160+ secret types)**
+\`\`\`bash
+# Install
+macOS:   brew install gitleaks
+Linux:   https://github.com/gitleaks/gitleaks#installation
+Windows: winget install gitleaks
+
+# Create config (empty file enables autodetect)
+touch .gitleaksignore
+
+# Handle false positives (add fingerprints from gitleaks output)
+echo "path/to/file.txt:generic-api-key:123" >> .gitleaksignore
+\`\`\`
+
+**Option 2: secretlint (npm-based, always available)**
+\`\`\`bash
+# Install
+npm install --save-dev @secretlint/secretlint-rule-preset-recommend secretlint
+
+# Create config
+cat > .secretlintrc.json << 'EOF'
+{
+  "rules": [
+    {"id": "@secretlint/secretlint-rule-preset-recommend"}
+  ]
+}
+EOF
+
+# Handle false positives
+cat > .secretlintignore << 'EOF'
+.jscpd/
+**/dist/**
+**/node_modules/**
+EOF
+\`\`\`
+
+**Option 3: Both (defense-in-depth)**
+\`\`\`bash
+# Set up both tools - autodetect runs both automatically
+# gitleaks: fast native binary
+# secretlint: npm-based with different detection patterns
+\`\`\`
+
+### Explicit Command Mode
+
+For custom tools or specific flags:
+
+\`\`\`yaml
+hooks:
+  preCommit:
+    secretScanning:
+      enabled: true
+      scanCommand: "gitleaks protect --staged --verbose --config .gitleaks.toml"
+\`\`\`
+
+### Troubleshooting
+
+- **"No secrets detected"** - Working correctly, no secrets found
+- **"Secret scanning enabled but no tools available"** - Install gitleaks or create .secretlintrc.json
+- **False positives** - Add to .gitleaksignore or .secretlintignore
+- **Slow scans** - Warning shown if scan takes >5 seconds
 
 ## Error Recovery
 
