@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/cli",
-  "version": "0.17.0-rc.8",
+  "version": "0.17.0-rc.9",
   "description": "Command-line interface for vibe-validate validation framework",
   "type": "module",
   "main": "./dist/index.js",

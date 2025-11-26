@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.17.0-rc.8",
+  "version": "0.17.0-rc.9",
   "description": "Expert agent for vibe-validate validation orchestration - 312x faster cached validation, 90-95% context reduction, pre-commit workflows",
   "author": {
     "name": "Jeff Dutton",
