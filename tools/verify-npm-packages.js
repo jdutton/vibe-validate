@@ -54,7 +54,7 @@ for (const packageName of publishablePackages) {
       console.log(`❌ ${packageName}: expected ${expectedVersion}, found ${npmVersion}`);
       allPublished = false;
     }
-  } catch (error) {
+  } catch (_error) {
     results.push({ package: packageName, status: 'missing', expected: expectedVersion });
     console.log(`❌ ${packageName}@${expectedVersion} - NOT PUBLISHED`);
     allPublished = false;
@@ -74,21 +74,21 @@ if (allPublished) {
 
   if (missing.length > 0) {
     console.log(`Missing packages (${missing.length}):`);
-    missing.forEach(r => console.log(`  - ${r.package}@${r.expected}`));
+    for (const r of missing) console.log(`  - ${r.package}@${r.expected}`);
     console.log('');
   }
 
   if (mismatched.length > 0) {
     console.log(`Version mismatches (${mismatched.length}):`);
-    mismatched.forEach(r => console.log(`  - ${r.package}: expected ${r.expected}, found ${r.actual}`));
+    for (const r of mismatched) console.log(`  - ${r.package}: expected ${r.expected}, found ${r.actual}`);
     console.log('');
   }
 
   console.log('Run the missing publish scripts:');
-  missing.forEach(r => {
+  for (const r of missing) {
     const pkgName = r.package.replace('@vibe-validate/', '').replace('vibe-validate', 'umbrella');
     console.log(`  pnpm publish:${pkgName}`);
-  });
+  }
   console.log('');
 
   process.exit(1);

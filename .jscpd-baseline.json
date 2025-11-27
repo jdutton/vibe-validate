@@ -290,42 +290,6 @@
     },
     {
       "format": "typescript",
-      "lines": 12,
-      "fragment": "), chalk.white('vibe-validate state'));\n\n          // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)\n          const failedStep = result.phases\n            ?.flatMap(phase => phase.steps)\n            .find(step => step.name === result.failedStep);\n\n          if (failedStep?.command) {\n            console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));\n          }\n\n          process",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/src/commands/pre-commit.ts",
-        "start": 145,
-        "end": 156,
-        "startLoc": {
-          "line": 145,
-          "column": 22,
-          "position": 1322
-        },
-        "endLoc": {
-          "line": 156,
-          "column": 8,
-          "position": 1425
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/src/utils/validate-workflow.ts",
-        "start": 170,
-        "end": 181,
-        "startLoc": {
-          "line": 170,
-          "column": 27,
-          "position": 1184
-        },
-        "endLoc": {
-          "line": 181,
-          "column": 86,
-          "position": 1287
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 7,
       "fragment": ");\n        return;\n      }\n\n      console.log(`${dryRun ? 'Would prune' : 'Pruned'} ${result.notesPruned} tree hashes`);\n      console.log(`${dryRun ? 'Would remove' : 'Removed'} ${result.runsPruned} validation runs`);\n      console",
       "tokens": 0,
@@ -361,110 +325,74 @@
       }
     },
     {
-      "format": "typescript",
-      "lines": 15,
-      "fragment": "config: HistoryConfig = {},\n  dryRun: boolean = false\n): Promise<PruneResult> {\n  const mergedConfig = {\n    ...DEFAULT_HISTORY_CONFIG,\n    ...config,\n    gitNotes: {\n      ...DEFAULT_HISTORY_CONFIG.gitNotes,\n      ...config.gitNotes,\n    },\n  };\n\n  const notesRef = mergedConfig.gitNotes.ref;\n\n  const allNotes",
+      "format": "javascript",
+      "lines": 8,
+      "fragment": "} from 'node:fs';\nimport { join, dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst PROJECT_ROOT = join(__dirname, '..');\nconst",
       "tokens": 0,
       "firstFile": {
-        "name": "packages/history/src/pruner.ts",
-        "start": 98,
-        "end": 112,
+        "name": "tools/generate-cli-docs.js",
+        "start": 18,
+        "end": 25,
         "startLoc": {
-          "line": 98,
-          "column": 3,
-          "position": 618
+          "line": 18,
+          "column": 2,
+          "position": 39
         },
         "endLoc": {
-          "line": 112,
-          "column": 9,
-          "position": 715
+          "line": 25,
+          "column": 6,
+          "position": 119
         }
       },
       "secondFile": {
-        "name": "packages/history/src/pruner.ts",
-        "start": 28,
-        "end": 41,
+        "name": "tools/pre-publish-check.js",
+        "start": 21,
+        "end": 29,
         "startLoc": {
-          "line": 28,
-          "column": 3,
-          "position": 162
+          "line": 21,
+          "column": 2,
+          "position": 39
         },
         "endLoc": {
-          "line": 41,
-          "column": 11,
-          "position": 258
+          "line": 29,
+          "column": 21,
+          "position": 121
         }
       }
     },
     {
-      "format": "typescript",
+      "format": "javascript",
       "lines": 14,
-      "fragment": ".safeParse(data);\n\n    if (result.success) {\n      return { success: true, data: result.data };\n    }\n\n    // Extract error messages with full path\n    const errors = result.error.errors.map(err => {\n      const path = err.path.join('.');\n      return path ? `${path}: ${err.message}` : err.message;\n    });\n\n    return { success: false, errors };\n  };",
+      "fragment": "} from 'node:fs';\nimport { join, dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst PROJECT_ROOT = join(__dirname, '..');\n\n// Colors for output\nconst colors = {\n  red: '\\x1b[0;31m',\n  green: '\\x1b[0;32m',\n  yellow: '\\x1b[1;33m',\n  blue",
       "tokens": 0,
       "firstFile": {
-        "name": "packages/core/src/schema-utils.ts",
-        "start": 36,
-        "end": 49,
+        "name": "tools/bump-version.js",
+        "start": 21,
+        "end": 34,
         "startLoc": {
-          "line": 36,
-          "column": 7,
-          "position": 111
-        },
-        "endLoc": {
-          "line": 49,
+          "line": 21,
           "column": 2,
-          "position": 246
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/result-schema.ts",
-        "start": 152,
-        "end": 175,
-        "startLoc": {
-          "line": 152,
-          "column": 27,
-          "position": 710
+          "position": 26
         },
         "endLoc": {
-          "line": 175,
-          "column": 4,
-          "position": 846
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ");\n\n  if (result.success) {\n    return { success: true, data: result.data };\n  }\n\n  // Extract error messages with full path\n  const errors = result.error.errors.map(err => {\n    const path = err.path.join('.');\n    return path ? `${path}: ${err.message}` : err.message;\n  });\n\n  return { success: false, errors };\n}",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/src/schema.ts",
-        "start": 352,
-        "end": 365,
-        "startLoc": {
-          "line": 352,
-          "column": 7,
-          "position": 1928
-        },
-        "endLoc": {
-          "line": 365,
-          "column": 2,
-          "position": 2057
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/result-schema.ts",
-        "start": 152,
-        "end": 165,
-        "startLoc": {
-          "line": 152,
+          "line": 34,
           "column": 5,
-          "position": 714
+          "position": 139
+        }
+      },
+      "secondFile": {
+        "name": "tools/pre-publish-check.js",
+        "start": 21,
+        "end": 34,
+        "startLoc": {
+          "line": 21,
+          "column": 2,
+          "position": 39
         },
         "endLoc": {
-          "line": 165,
-          "column": 2,
-          "position": 843
+          "line": 34,
+          "column": 6,
+          "position": 153
         }
       }
     },
@@ -490,53 +418,17 @@
       },
       "secondFile": {
         "name": "tools/pre-publish-check.js",
-        "start": 34,
-        "end": 44,
+        "start": 33,
+        "end": 43,
         "startLoc": {
-          "line": 34,
+          "line": 33,
           "column": 13,
-          "position": 159
+          "position": 150
         },
         "endLoc": {
-          "line": 44,
+          "line": 43,
           "column": 4,
-          "position": 233
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 13,
-      "fragment": "'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)\n      'unicorn/prefer-number-properties': 'error', // Prefer Number.isNaN over global isNaN (reliability)\n      'unicorn/throw-new-error': 'error', // Require 'new' when throwing Error\n      'unicorn/prefer-module': 'error', // Prefer ESM over CommonJS\n      'unicorn/prefer-top-level-await': 'error', // Modern async patterns\n      'unicorn/no-array-for-each': 'error', // Prefer for...of over forEach\n      'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined\n      'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability\n      'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes\n    },\n  },\n  {\n    // Git-aware packages - OS command execution is intentional and necessary",
-      "tokens": 0,
-      "firstFile": {
-        "name": "eslint.config.js",
-        "start": 151,
-        "end": 163,
-        "startLoc": {
-          "line": 151,
-          "column": 7,
-          "position": 993
-        },
-        "endLoc": {
-          "line": 163,
-          "column": 74,
-          "position": 1085
-        }
-      },
-      "secondFile": {
-        "name": "eslint.config.js",
-        "start": 68,
-        "end": 80,
-        "startLoc": {
-          "line": 68,
-          "column": 7,
-          "position": 447
-        },
-        "endLoc": {
-          "line": 80,
-          "column": 70,
-          "position": 539
+          "position": 224
         }
       }
     }

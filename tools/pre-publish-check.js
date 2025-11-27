@@ -17,11 +17,10 @@
  *   1 - Not ready (with explanation)
  */
 
-import { execSync } from 'child_process';
-import { readdirSync, existsSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { execSync } from 'node:child_process';
+import { readdirSync, existsSync, readFileSync } from 'node:fs';
+import { join , dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -81,7 +80,7 @@ console.log('');
 try {
   execSync('git rev-parse --git-dir', { stdio: 'pipe', cwd: PROJECT_ROOT });
   log('✓ Git repository detected', 'green');
-} catch (err) {
+} catch (_error) { // NOSONAR - Exception handled by logging and exiting
   log('✗ Not a git repository', 'red');
   process.exit(1);
 }
@@ -94,7 +93,7 @@ try {
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
   }).trim();
-} catch (err) {
+} catch (_error) { // NOSONAR - Exception handled by logging and exiting
   log('✗ Failed to determine current branch', 'red');
   process.exit(1);
 }
@@ -115,7 +114,7 @@ if (allowCustomBranch && currentBranch !== 'main') {
 let hasUncommittedChanges = false;
 try {
   execSync('git diff-index --quiet HEAD --', { stdio: 'pipe', cwd: PROJECT_ROOT });
-} catch (err) {
+} catch (_error) { // NOSONAR - Exception intentionally caught to set flag
   hasUncommittedChanges = true;
 }
 
@@ -126,8 +125,8 @@ if (hasUncommittedChanges) {
   try {
     const status = execSync('git status --short', { encoding: 'utf8', cwd: PROJECT_ROOT });
     console.log(status);
-  } catch (err) {
-    // Ignore if git status fails
+  } catch (_error) { // NOSONAR - Ignore if git status fails (non-critical)
+    // Silently continue if git status fails
   }
 
   console.log('  Please commit or stash your changes before publishing');
@@ -143,8 +142,8 @@ try {
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
   }).trim();
-} catch (err) {
-  // Ignore errors
+} catch (_error) { // NOSONAR - Ignore errors (untracked files check is optional)
+  // Silently continue if command fails
 }
 
 if (untracked) {
@@ -164,7 +163,7 @@ if (untracked) {
   if (filteredUntracked.length > 0) {
     log('✗ Untracked files detected', 'red');
     console.log('');
-    filteredUntracked.forEach(file => console.log(file));
+    for (const file of filteredUntracked) console.log(file);
     console.log('');
     console.log('  Please add these files to git or .gitignore before publishing');
     process.exit(1);
@@ -179,7 +178,7 @@ console.log('Running validation checks...');
 try {
   execSync('pnpm validate', { stdio: 'inherit', cwd: PROJECT_ROOT });
   log('✓ All validation checks passed', 'green');
-} catch (err) {
+} catch (_error) { // NOSONAR - Exception handled by logging and exiting
   console.log('');
   log('✗ Validation failed', 'red');
   console.log('  Check the output above and fix all issues before publishing');
@@ -191,7 +190,7 @@ console.log('');
 console.log('Checking package builds...');
 
 const packagesDir = join(PROJECT_ROOT, 'packages');
-let missingBuilds = [];
+const missingBuilds = [];
 
 try {
   const packages = readdirSync(packagesDir, { withFileTypes: true })
@@ -228,7 +227,7 @@ try {
 
 if (missingBuilds.length > 0) {
   log('✗ Missing build outputs', 'red');
-  missingBuilds.forEach(pkg => console.log(pkg));
+  for (const pkg of missingBuilds) console.log(pkg);
   console.log('  Run \'pnpm build\' to build all packages');
   process.exit(1);
 }
