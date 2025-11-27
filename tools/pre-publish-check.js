@@ -80,7 +80,7 @@ console.log('');
 try {
   execSync('git rev-parse --git-dir', { stdio: 'pipe', cwd: PROJECT_ROOT });
   log('✓ Git repository detected', 'green');
-} catch (_error) {
+} catch (_error) { // NOSONAR - Exception handled by logging and exiting
   log('✗ Not a git repository', 'red');
   process.exit(1);
 }
@@ -93,7 +93,7 @@ try {
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
   }).trim();
-} catch (_error) {
+} catch (_error) { // NOSONAR - Exception handled by logging and exiting
   log('✗ Failed to determine current branch', 'red');
   process.exit(1);
 }
@@ -114,7 +114,7 @@ if (allowCustomBranch && currentBranch !== 'main') {
 let hasUncommittedChanges = false;
 try {
   execSync('git diff-index --quiet HEAD --', { stdio: 'pipe', cwd: PROJECT_ROOT });
-} catch (_error) {
+} catch (_error) { // NOSONAR - Exception intentionally caught to set flag
   hasUncommittedChanges = true;
 }
 
@@ -125,8 +125,8 @@ if (hasUncommittedChanges) {
   try {
     const status = execSync('git status --short', { encoding: 'utf8', cwd: PROJECT_ROOT });
     console.log(status);
-  } catch (_error) {
-    // Ignore if git status fails
+  } catch (_error) { // NOSONAR - Ignore if git status fails (non-critical)
+    // Silently continue if git status fails
   }
 
   console.log('  Please commit or stash your changes before publishing');
@@ -142,8 +142,8 @@ try {
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
   }).trim();
-} catch (_error) {
-  // Ignore errors
+} catch (_error) { // NOSONAR - Ignore errors (untracked files check is optional)
+  // Silently continue if command fails
 }
 
 if (untracked) {
@@ -178,7 +178,7 @@ console.log('Running validation checks...');
 try {
   execSync('pnpm validate', { stdio: 'inherit', cwd: PROJECT_ROOT });
   log('✓ All validation checks passed', 'green');
-} catch (_error) {
+} catch (_error) { // NOSONAR - Exception handled by logging and exiting
   console.log('');
   log('✗ Validation failed', 'red');
   console.log('  Check the output above and fix all issues before publishing');

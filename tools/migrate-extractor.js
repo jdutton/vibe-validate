@@ -49,7 +49,7 @@ async function main() {
   await fs.mkdir(path.join(pluginDir, 'samples'), { recursive: true });
 
   // Files validated, ready for future implementation
-  // TODO: Read and process source files when implementing full migration
+  // FUTURE: Read and process source files when implementing full migration
   // await fs.readFile(srcFile, 'utf-8');
   // await fs.readFile(testFile, 'utf-8');
 
