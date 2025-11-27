@@ -80,7 +80,7 @@ console.log('');
 try {
   execSync('git rev-parse --git-dir', { stdio: 'pipe', cwd: PROJECT_ROOT });
   log('✓ Git repository detected', 'green');
-} catch (_err) {
+} catch (_error) {
   log('✗ Not a git repository', 'red');
   process.exit(1);
 }
@@ -93,7 +93,7 @@ try {
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
   }).trim();
-} catch (_err) {
+} catch (_error) {
   log('✗ Failed to determine current branch', 'red');
   process.exit(1);
 }
@@ -114,7 +114,7 @@ if (allowCustomBranch && currentBranch !== 'main') {
 let hasUncommittedChanges = false;
 try {
   execSync('git diff-index --quiet HEAD --', { stdio: 'pipe', cwd: PROJECT_ROOT });
-} catch (_err) {
+} catch (_error) {
   hasUncommittedChanges = true;
 }
 
@@ -125,7 +125,7 @@ if (hasUncommittedChanges) {
   try {
     const status = execSync('git status --short', { encoding: 'utf8', cwd: PROJECT_ROOT });
     console.log(status);
-  } catch (_err) {
+  } catch (_error) {
     // Ignore if git status fails
   }
 
@@ -142,7 +142,7 @@ try {
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
   }).trim();
-} catch (_err) {
+} catch (_error) {
   // Ignore errors
 }
 
@@ -178,7 +178,7 @@ console.log('Running validation checks...');
 try {
   execSync('pnpm validate', { stdio: 'inherit', cwd: PROJECT_ROOT });
   log('✓ All validation checks passed', 'green');
-} catch (_err) {
+} catch (_error) {
   console.log('');
   log('✗ Validation failed', 'red');
   console.log('  Check the output above and fix all issues before publishing');

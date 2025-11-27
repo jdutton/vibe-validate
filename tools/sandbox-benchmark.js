@@ -199,7 +199,7 @@ async function benchmarkIsolatedVM(iterations = 1000) {
   let ivm;
   try {
     ivm = require('isolated-vm');
-  } catch (_err) {
+  } catch (_error) {
     return {
       approach: 'Isolated-VM',
       error: 'Package not installed (run: pnpm add -Dw isolated-vm)',
@@ -242,8 +242,8 @@ async function benchmarkIsolatedVM(iterations = 1000) {
   for (let i = 0; i < iterations; i++) {
     context.global.setSync('input', new ivm.ExternalCopy(SAMPLE_INPUT).copyInto());
 
-    const result = context.evalSync('JSON.stringify(extractErrors(input))');
-    const _errors = JSON.parse(result);
+    // Parse and validate extraction (result unused in benchmark)
+    context.evalSync('JSON.stringify(extractErrors(input))');
   }
 
   isolate.dispose();
@@ -290,7 +290,7 @@ async function testSecurityBoundaries() {
           try {
             ${test.code}
             parentPort.postMessage({ success: true });
-          } catch (_err) {
+          } catch (_error) {
             parentPort.postMessage({ error: err.message });
           }
         `, { eval: true });
@@ -334,7 +334,7 @@ async function testSecurityBoundaries() {
         results['Isolated-VM'].push({ test: test.name, blocked: true, reason: err.message });
       }
     }
-  } catch (_err) {
+  } catch (_error) {
     results['Isolated-VM'] = [{ error: 'isolated-vm not installed' }];
   }
 

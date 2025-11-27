@@ -277,6 +277,7 @@ export default [
       'sonarjs/no-unused-vars': 'off', // Already covered by no-unused-vars
       'sonarjs/concise-regex': 'off', // Allow verbose regex for clarity in tools
       'sonarjs/no-nested-template-literals': 'off', // Allow nested templates in tools
+      'sonarjs/todo-tag': 'off', // Allow TODO comments in development tools
 
       // Node.js rules
       'n/no-path-concat': 'error',
