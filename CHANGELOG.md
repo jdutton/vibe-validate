@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0-rc.10] - 2025-11-28
+
+### 🐛 Bug Fixes
+
+**Fixed Doctor Command Legacy History Detection** (PR #63)
+- **Problem**: `vibe-validate doctor` incorrectly reported "Legacy validation history detected" even on fresh projects
+  - False positive occurred when only modern git notes history was present
+  - Caused confusion for users with clean setups
+- **Solution**: Enhanced legacy history detection to distinguish between deprecated file-based cache and modern git notes
+  - Only warns when actual legacy `.vibe-validate-state.yaml` entries exist in git notes
+  - Properly detects and auto-cleans legacy entries when found
+  - No false positives on fresh installations
+- **Impact**: Doctor command now accurately reports validation history status
+
+### 🔧 Internal Improvements
+
+**Reduced Test Duplication in Doctor Tests** (PR #63)
+- Extracted reusable test helpers to separate file (`doctor-helpers.ts`)
+- Reduced code duplication from 51.4% to <5%
+- Reduced test file from 1,408 to 1,092 lines (22.4% reduction)
+- Improved test maintainability with consistent assertion patterns
+- All 47 tests passing with 80%+ coverage maintained
+
 ## [0.17.0-rc.9] - 2025-11-26
 
 ### ✨ Features
