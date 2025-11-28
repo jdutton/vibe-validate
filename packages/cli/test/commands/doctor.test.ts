@@ -1334,55 +1334,45 @@ describe('doctor command', () => {
       expect(migrationCheck?.suggestion).toBeUndefined();
     });
 
-    it('should automatically clean up OLD format when it exists (refs/notes/vibe-validate/runs)', async () => {
-      // ARRANGE: Mock git commands to show OLD format (singular "runs" ref)
+    // Helper to setup standard mocks for cache migration tests
+    async function setupCacheMigrationMocks(gitBehavior: 'old-ref-exists' | 'no-ref' | 'error') {
       const { executeGitCommand } = await import('@vibe-validate/git');
 
       vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        // Check for exact ref (not prefix match)
-        if (args[0] === 'for-each-ref' &&
-            args[1] === '--format=%(refname)' &&
-            args[2] === 'refs/notes/vibe-validate/runs') {
-          return {
-            success: true,
-            stdout: 'refs/notes/vibe-validate/runs', // Exact match - old ref exists
-            stderr: '',
-            exitCode: 0
-          };
+        const isForEachRef = args[0] === 'for-each-ref' && args[2] === 'refs/notes/vibe-validate/runs';
+
+        if (isForEachRef) {
+          if (gitBehavior === 'error') {
+            throw new Error('Git command failed');
+          }
+          if (gitBehavior === 'old-ref-exists') {
+            return { success: true, stdout: 'refs/notes/vibe-validate/runs', stderr: '', exitCode: 0 };
+          }
+          // 'no-ref' case
+          return { success: true, stdout: '', stderr: '', exitCode: 0 };
         }
 
-        // Auto-cleanup command
-        if (args[0] === 'update-ref' && args[1] === '-d' && args[2] === 'refs/notes/vibe-validate/runs') {
-          return {
-            success: true,
-            stdout: '',
-            stderr: '',
-            exitCode: 0
-          };
+        // Auto-cleanup command (for 'old-ref-exists' case)
+        if (args[0] === 'update-ref' && args[1] === '-d') {
+          return { success: true, stdout: '', stderr: '', exitCode: 0 };
         }
 
-        return {
-          success: true,
-          stdout: '',
-          stderr: '',
-          exitCode: 0
-        };
+        return { success: true, stdout: '', stderr: '', exitCode: 0 };
       });
 
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         const cmdStr = cmd.toString();
-
-        // Standard mocks
         if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
         if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-
         return '' as any;
       });
+    }
 
-      // ACT
+    it('should automatically clean up OLD format when it exists (refs/notes/vibe-validate/runs)', async () => {
+      await setupCacheMigrationMocks('old-ref-exists');
+
       const result = await runDoctor({ verbose: true });
 
-      // ASSERT
       const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
       expect(migrationCheck).toBeDefined();
       expect(migrationCheck?.passed).toBe(true);
@@ -1391,42 +1381,10 @@ describe('doctor command', () => {
     });
 
     it('should PASS when no git notes exist at all', async () => {
-      // ARRANGE: Mock git commands to show NO git notes
-      const { executeGitCommand } = await import('@vibe-validate/git');
+      await setupCacheMigrationMocks('no-ref');
 
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        // No old refs found (empty stdout)
-        if (args[0] === 'for-each-ref' && args[2] === 'refs/notes/vibe-validate/runs') {
-          return {
-            success: true,
-            stdout: '', // Empty - no old ref exists
-            stderr: '',
-            exitCode: 0
-          };
-        }
-
-        return {
-          success: true,
-          stdout: '',
-          stderr: '',
-          exitCode: 0
-        };
-      });
-
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
-        const cmdStr = cmd.toString();
-
-        // Standard mocks
-        if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
-        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-
-        return '' as any;
-      });
-
-      // ACT
       const result = await runDoctor({ verbose: true });
 
-      // ASSERT
       const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
       expect(migrationCheck).toBeDefined();
       expect(migrationCheck?.passed).toBe(true);
@@ -1435,40 +1393,13 @@ describe('doctor command', () => {
     });
 
     it('should handle git command errors gracefully', async () => {
-      // ARRANGE: Mock git command to throw error
-      const { executeGitCommand } = await import('@vibe-validate/git');
+      await setupCacheMigrationMocks('error');
 
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        // Git command fails for checking old refs
-        if (args[0] === 'for-each-ref' && args[2] === 'refs/notes/vibe-validate/runs') {
-          throw new Error('Git command failed');
-        }
-
-        return {
-          success: true,
-          stdout: '',
-          stderr: '',
-          exitCode: 0
-        };
-      });
-
-      vi.mocked(execSync).mockImplementation((cmd: string) => {
-        const cmdStr = cmd.toString();
-
-        // Standard mocks
-        if (cmdStr.includes('npm view vibe-validate version')) return '0.17.0' as any;
-        if (cmdStr.includes('node --version')) return 'v22.0.0' as any;
-
-        return '' as any;
-      });
-
-      // ACT
       const result = await runDoctor({ verbose: true });
 
-      // ASSERT
       const migrationCheck = result.checks.find(c => c.name === 'Validation history migration');
       expect(migrationCheck).toBeDefined();
-      expect(migrationCheck?.passed).toBe(true); // Should pass even on error
+      expect(migrationCheck?.passed).toBe(true);
       expect(migrationCheck?.message).toBe('No validation history to migrate');
       expect(migrationCheck?.suggestion).toBeUndefined();
     });
