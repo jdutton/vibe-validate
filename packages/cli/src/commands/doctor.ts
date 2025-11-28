@@ -25,8 +25,7 @@ import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-sca
 import {
   executeGitCommand,
   isGitRepository,
-  verifyRef,
-  listNotesRefs
+  verifyRef
 } from '@vibe-validate/git';
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
@@ -575,17 +574,32 @@ function checkValidationState(): DoctorCheckResult {
  */
 function checkCacheMigration(): DoctorCheckResult {
   try {
-    // Check if the OLD validation history namespace exists (plural "runs")
-    const refs = listNotesRefs('refs/notes/vibe-validate/runs');
+    // Check if the EXACT old validation history ref exists (singular "runs", not "run/")
+    // Using git for-each-ref with exact ref name to avoid matching "run/" subdirectories
+    const result = executeGitCommand(
+      ['for-each-ref', '--format=%(refname)', 'refs/notes/vibe-validate/runs'],
+      { ignoreErrors: true, suppressStderr: true }
+    );
 
-    if (refs.length > 0) {
-      // Old validation history namespace exists - recommend clearing
-      return {
-        name: 'Validation history migration',
-        passed: true, // Not a failure, just informational
-        message: 'Old validation history format detected (pre-v0.15.0)',
-        suggestion: `Clear old validation history:\n   vibe-validate history prune --legacy\n   ℹ️  This only removes the deprecated "runs" namespace`,
-      };
+    if (result.success && result.stdout.trim() === 'refs/notes/vibe-validate/runs') {
+      // Old validation history namespace exists - automatically clean it up
+      try {
+        executeGitCommand(['update-ref', '-d', 'refs/notes/vibe-validate/runs']);
+        return {
+          name: 'Validation history migration',
+          passed: true,
+          message: 'Automatically removed old validation history format (pre-v0.15.0)',
+        };
+      // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Auto-cleanup failure handled with manual suggestion
+      } catch (_error) {
+        // Fallback to manual suggestion if auto-cleanup fails
+        return {
+          name: 'Validation history migration',
+          passed: true, // Not a failure, just informational
+          message: 'Old validation history format detected (pre-v0.15.0)',
+          suggestion: `Manual cleanup:\n   git update-ref -d refs/notes/vibe-validate/runs\n   ℹ️  This removes the deprecated "runs" namespace`,
+        };
+      }
     }
 
     return {
