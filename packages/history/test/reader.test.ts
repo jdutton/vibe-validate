@@ -127,6 +127,65 @@ runs:
       expect(result?.runs[0].id).toBe('run-1');
       expect(result?.runs[1].id).toBe('run-2');
     });
+
+    it('should silently skip corrupted runs with invalid line/column (legacy 0/0 bug)', async () => {
+      // Simulate legacy history from rc.9 with 0/0 line/column errors
+      const mockYaml = `
+treeHash: abc123def456
+runs:
+  - id: run-corrupted
+    timestamp: '2025-10-21T09:00:00Z'
+    duration: 5000
+    passed: false
+    branch: main
+    headCommit: commit123
+    uncommittedChanges: false
+    result:
+      passed: false
+      timestamp: '2025-10-21T09:00:00Z'
+      treeHash: abc123def456
+      phases:
+        - name: Tests
+          passed: false
+          durationSecs: 5
+          steps:
+            - name: Unit Tests
+              command: npm test
+              exitCode: 1
+              durationSecs: 5
+              passed: false
+              extraction:
+                summary: Test failed
+                totalErrors: 1
+                errors:
+                  - file: test.ts
+                    line: 0
+                    column: 0
+                    message: Some error
+  - id: run-valid
+    timestamp: '2025-10-21T10:00:00Z'
+    duration: 3000
+    passed: true
+    branch: main
+    headCommit: commit456
+    uncommittedChanges: false
+    result:
+      passed: true
+      timestamp: '2025-10-21T10:00:00Z'
+      treeHash: abc123def456
+      phases: []
+`;
+
+      vi.mocked(execSync).mockReturnValue(mockYaml);
+
+      const result = await readHistoryNote('abc123def456');
+
+      // Should only return valid runs, corrupted run silently skipped
+      expect(result?.runs).toHaveLength(1);
+      expect(result?.runs[0].id).toBe('run-valid');
+      // Silent skip - no warnings logged, no user notification needed
+      // After upgrade, users should run 'vv doctor' to check for issues
+    });
   });
 
   describe('listHistoryTreeHashes', () => {

@@ -706,8 +706,20 @@ export async function runStepsInParallel(
           let outputFiles;
           let outputFilesFromNestedCommand = false; // Track if outputFiles came from nested vv run
 
+          // Handle killed/stopped processes (fail-fast scenario)
+          // When output is empty or very short AND exit code is non-zero, the process was likely killed
+          const minimalOutput = !output || output.trim().length < 50;
+          if (code !== 0 && minimalOutput) {
+            // Process was killed/stopped - provide meaningful message instead of "0 errors"
+            extraction = {
+              summary: 'Process stopped (fail-fast)',
+              totalErrors: 0,
+              errors: [],
+              guidance: 'This step was terminated when another step failed. Check the failed step above for the root cause.',
+            };
+          }
           // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
-          if (code !== 0 && output && output.trim()) {
+          else if (code !== 0 && output && output.trim()) {
             // Try parsing vibe-validate YAML output (from nested run commands)
             // Uses shared parser that handles both RunResult and ValidationResult formats
             const parsed = parseVibeValidateOutput(output);

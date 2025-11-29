@@ -204,6 +204,31 @@ describe('runner', () => {
       expect(result.stepResults).toHaveLength(2);
     });
 
+    it('should provide meaningful extraction for killed processes (fail-fast)', async () => {
+      const steps: ValidationStep[] = [
+        { name: 'Fast Fail', command: 'exit 1' },
+        { name: 'Slow Process', command: 'sleep 10 && echo "done"' },
+      ];
+
+      const result = await runStepsInParallel(steps, 'Test Phase', true);
+
+      expect(result.success).toBe(false);
+      expect(result.stepResults).toHaveLength(2);
+
+      // Find the killed process step
+      const killedStep = result.stepResults.find(s => s.name === 'Slow Process');
+      expect(killedStep).toBeDefined();
+      expect(killedStep!.passed).toBe(false);
+      expect(killedStep!.exitCode).not.toBe(0);
+
+      // Should have meaningful extraction, not "0 errors"
+      expect(killedStep!.extraction).toBeDefined();
+      expect(killedStep!.extraction!.summary).toContain('stopped');
+      expect(killedStep!.extraction!.summary).toContain('fail-fast');
+      expect(killedStep!.extraction!.guidance).toBeDefined();
+      expect(killedStep!.extraction!.guidance).toContain('terminated');
+    });
+
     it('should handle step with no output', async () => {
       const steps: ValidationStep[] = [
         { name: 'Silent', command: 'true' },
