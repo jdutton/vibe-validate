@@ -40,17 +40,17 @@ export async function readHistoryNote(
     }
 
     // Validate each ValidationResult in runs array using safe validation
+    // Silently skip corrupted entries (e.g., legacy 0/0 line/column from rc.9)
+    // After upgrading vibe-validate, run 'vv doctor' to check for issues
+    // Users can optionally cleanup old history with: vv history prune --all
     const validatedRuns = [];
     for (const run of parsed.runs) {
       if (!run.result) {
-        console.warn(`Run ${run.id} missing result field - skipping`);
         continue;
       }
 
       const validationResult = safeValidateResult(run.result);
       if (!validationResult.success) {
-        console.warn(`Invalid ValidationResult in run ${run.id}:`, validationResult.errors);
-        console.warn('Skipping corrupted run entry');
         continue;
       }
 

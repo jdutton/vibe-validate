@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 Bug Fixes
+
+**Suppressed Alarming Schema Validation Warnings for Legacy History**
+- **Problem**: After upgrading from rc.9, users saw confusing warnings about "Invalid ValidationResult" and "Skipping corrupted run entry"
+  - These warnings were caused by legacy history entries from rc.9 with 0/0 line/column values (fixed extractor bug in rc.10)
+  - Warnings were correct (entries violated schema), but alarming and repetitive (appeared on every validation)
+  - Confused users into thinking current validation was broken
+- **Solution**: Silently skip corrupted legacy entries
+  - Reader now filters out invalid runs without spamming warnings
+  - Users can optionally cleanup with: `vv history prune --all`
+  - After any upgrade, run `vv doctor` to check for issues
+- **Impact**: Clean validation output, no more alarming warnings for legacy data
+
+**Fixed Misleading "0 test failure(s)" for Killed Processes**
+- **Problem**: When fail-fast killed a slow process, extraction showed "0 test failure(s)" which was misleading
+  - Killed processes had exitCode=1 but empty output
+  - Extractor reported "0 errors" since it found no output to extract
+  - Confused users about why the step failed
+- **Solution**: Detect killed processes (minimal output + non-zero exit) and provide meaningful extraction
+  - Summary: "Process stopped (fail-fast)"
+  - Guidance: "This step was terminated when another step failed. Check the failed step above for the root cause."
+  - Clearly indicates the step was stopped, not that it passed
+- **Impact**: Users now understand fail-fast behavior and can quickly identify the root cause
+
 ## [0.17.0-rc.10] - 2025-11-28
 
 ### 🐛 Bug Fixes
