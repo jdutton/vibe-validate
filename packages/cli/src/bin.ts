@@ -33,6 +33,11 @@ let version = '0.9.2'; // Fallback version
 try {
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
   version = packageJson.version;
+
+  // Append "-dev" suffix if running in dev context
+  if (process.env.VV_CONTEXT === 'dev') {
+    version = `${version}-dev`;
+  }
 } catch (error) {
   // If package.json can't be read (shouldn't happen in production), use fallback
   const errorMessage = error instanceof Error ? error.message : String(error);
