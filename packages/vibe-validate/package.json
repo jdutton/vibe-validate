@@ -49,5 +49,14 @@
   },
   "dependencies": {
     "@vibe-validate/cli": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.8",
+    "typescript": "^5.5.2",
+    "vitest": "^2.0.5"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "echo 'No linting needed for delegation wrappers'"
   }
 }

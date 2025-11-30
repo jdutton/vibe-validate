@@ -21,6 +21,13 @@ const unicornRules = {
 };
 
 export default [
+  {
+    // Global ignores - must be first in array
+    ignores: [
+      '**/vitest.config.ts', // Vitest configs don't need linting
+      '**/vitest.config.js',
+    ],
+  },
   eslint.configs.recommended,
   sonarjs.configs.recommended,
   security.configs.recommended,

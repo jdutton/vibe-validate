@@ -1,156 +1,18 @@
 #!/usr/bin/env node
 /**
- * Smart vibe-validate wrapper with context-aware execution
- *
- * Automatically detects execution context and delegates to appropriate binary:
- * - Developer mode: Inside vibe-validate repo → packages/cli/dist/bin.js (unpackaged dev build)
- * - Local install: Project has vibe-validate → node_modules version (packaged)
- * - Global install: Fallback → globally installed version (packaged)
- *
- * Works in both git and non-git directories. Non-git directories don't get
- * caching but still get error extraction.
+ * Thin wrapper that delegates to @vibe-validate/cli
+ * This ensures single source of truth for all wrapper logic.
  */
-
-import { existsSync } from 'fs';
-import { dirname, join } from 'path';
-import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * Find project root by walking up to .git directory
- * Falls back to startDir if no git repo found
- */
-function findProjectRoot(startDir) {
-  let current = startDir;
+// Resolve the CLI package's wrapper script
+// Go from: vibe-validate/bin/vibe-validate
+// To: @vibe-validate/cli/dist/bin/vibe-validate.js
+const cliWrapperPath = join(__dirname, '../node_modules/@vibe-validate/cli/dist/bin/vibe-validate.js');
 
-  while (true) {
-    const gitDir = join(current, '.git');
-    if (existsSync(gitDir)) {
-      return current; // Found git repo
-    }
-
-    const parent = dirname(current);
-    if (parent === current) {
-      // Reached filesystem root, no git found
-      return startDir;
-    }
-    current = parent;
-  }
-}
-
-/**
- * Check if we're in vibe-validate repo (developer mode)
- * Simple detection: both dist/vibe-validate and dist/bin.js must exist
- */
-function getDevModeBinary(projectRoot) {
-  const wrapperPath = join(projectRoot, 'packages/cli/dist/vibe-validate');
-  const binPath = join(projectRoot, 'packages/cli/dist/bin.js');
-
-  // Both files must exist to confirm we're in vibe-validate repo
-  if (existsSync(wrapperPath) && existsSync(binPath)) {
-    return binPath;
-  }
-
-  return null;
-}
-
-/**
- * Find local vibe-validate installation in node_modules
- * Walks up directory tree from project root
- */
-function findLocalInstall(projectRoot) {
-  let current = projectRoot;
-
-  while (true) {
-    const localBin = join(current, 'node_modules/@vibe-validate/cli/dist/bin.js');
-    if (existsSync(localBin)) {
-      return localBin;
-    }
-
-    const parent = dirname(current);
-    if (parent === current) {
-      // Reached filesystem root
-      break;
-    }
-    current = parent;
-  }
-
-  return null;
-}
-
-/**
- * Find CLI package relative to umbrella package installation
- * Used when umbrella package is installed (locally or globally)
- */
-function findCliInUmbrellaPackage() {
-  // When this wrapper is in umbrella package, CLI is in node_modules
-  // __dirname is .../vibe-validate/bin
-  const umbrellaRoot = dirname(__dirname);
-  const cliBin = join(umbrellaRoot, 'node_modules/@vibe-validate/cli/dist/bin.js');
-
-  if (existsSync(cliBin)) {
-    return cliBin;
-  }
-
-  return null;
-}
-
-/**
- * Main entry point - detects context and executes appropriate binary
- */
-function main() {
-  const cwd = process.cwd();
-  const args = process.argv.slice(2);
-
-  // Find project root (where .git is, or cwd if no git)
-  const projectRoot = findProjectRoot(cwd);
-
-  let binPath;
-  let context;
-
-  // Priority 1: Check for developer mode (inside vibe-validate repo)
-  const devBin = getDevModeBinary(projectRoot);
-  if (devBin) {
-    binPath = devBin;
-    context = 'dev';
-  }
-  // Priority 2: Check for local install (node_modules)
-  else {
-    const localBin = findLocalInstall(projectRoot);
-    if (localBin) {
-      binPath = localBin;
-      context = 'local';
-    }
-    // Priority 3: Check if CLI is in umbrella package (global or local umbrella install)
-    else {
-      const umbrellaCliBin = findCliInUmbrellaPackage();
-      if (umbrellaCliBin) {
-        binPath = umbrellaCliBin;
-        context = 'umbrella';
-      }
-      // Priority 4: Try relative path (CLI package structure)
-      else {
-        binPath = join(__dirname, '../dist/bin.js');
-        context = 'direct';
-      }
-    }
-  }
-
-  // Execute the binary with all arguments
-  const result = spawnSync(process.execPath, [binPath, ...args], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      VV_CONTEXT: context, // Pass context for debugging (optional)
-    }
-  });
-
-  // Exit with same code as child process
-  process.exit(result.status ?? 1);
-}
-
-// Run main function
-main();
+// Import and execute the CLI wrapper
+await import(cliWrapperPath);
