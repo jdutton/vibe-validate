@@ -14,6 +14,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { Command } from 'commander';
+import * as semver from 'semver';
 import { stringify as stringifyYaml } from 'yaml';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
@@ -417,6 +418,25 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
 }
 
 /**
+ * Get context label for version display
+ */
+function getContextLabel(context: string): string {
+  if (context === 'dev') return ' (dev)';
+  if (context === 'local') return ' (local)';
+  if (context === 'global') return ' (global)';
+  return '';
+}
+
+/**
+ * Get upgrade command based on context
+ */
+function getUpgradeCommand(context: string): string {
+  return context === 'local'
+    ? 'npm install -D vibe-validate@latest (or pnpm add -D vibe-validate@latest)'
+    : 'npm install -g vibe-validate@latest';
+}
+
+/**
  * Check if vibe-validate version is up to date
  */
 async function checkVersion(): Promise<DoctorCheckResult> {
@@ -426,6 +446,9 @@ async function checkVersion(): Promise<DoctorCheckResult> {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
     const currentVersion = packageJson.version;
 
+    // Determine context (set by wrapper)
+    const context = process.env.VV_CONTEXT ?? 'unknown';
+
     // Fetch latest version from npm registry
     try {
       const latestVersion = execSync('npm view vibe-validate version', {
@@ -433,40 +456,33 @@ async function checkVersion(): Promise<DoctorCheckResult> {
         stdio: 'pipe',
       }).trim();
 
-      // Compare versions (simple semver comparison)
-      const current = currentVersion.split('.').map(Number);
-      const latest = latestVersion.split('.').map(Number);
+      // Compare versions using semver library (handles prereleases correctly)
+      // semver.lt() returns true if currentVersion < latestVersion
+      const isOutdated = semver.lt(currentVersion, latestVersion);
 
-      let isOutdated = false;
-      for (let i = 0; i < 3; i++) {
-        if (current[i] < latest[i]) {
-          isOutdated = true;
-          break;
-        } else if (current[i] > latest[i]) {
-          break; // Current is newer
-        }
-      }
+      // Build context-aware message
+      const contextLabel = getContextLabel(context);
 
       if (currentVersion === latestVersion) {
         return {
           name: 'vibe-validate version',
           passed: true,
-          message: `Current version ${currentVersion} is up to date`,
+          message: `Current: ${currentVersion}${contextLabel} — up to date with npm`,
         };
       } else if (isOutdated) {
         // Only show suggestion if current version is behind npm
         return {
           name: 'vibe-validate version',
           passed: true, // Warning only, not a failure
-          message: `Current: ${currentVersion}, Latest: ${latestVersion} available`,
-          suggestion: `Upgrade: npm install -D vibe-validate@latest (or pnpm add -D vibe-validate@latest)\n   💡 After upgrade: Run 'vibe-validate doctor' to verify setup`,
+          message: `Current: ${currentVersion}${contextLabel}, Latest: ${latestVersion} available`,
+          suggestion: `Upgrade: ${getUpgradeCommand(context)}\n   💡 After upgrade: Run 'vibe-validate doctor' to verify setup`,
         };
       } else {
         // Current version is ahead of npm (pre-release or unpublished)
         return {
           name: 'vibe-validate version',
           passed: true,
-          message: `Current: ${currentVersion} (ahead of npm: ${latestVersion})`,
+          message: `Current: ${currentVersion}${contextLabel} (ahead of npm: ${latestVersion})`,
         };
       }
     } catch (npmError) {

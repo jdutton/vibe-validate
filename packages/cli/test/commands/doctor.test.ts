@@ -634,7 +634,7 @@ describe('doctor command', () => {
       assertCheck(result, 'vibe-validate version', {
         passed: true, // Warning only, not a failure
         messageContains: ['0.9.10', '0.9.11'],
-        suggestionContains: ['npm install -D vibe-validate@latest', 'vibe-validate doctor']
+        suggestionContains: ['npm install', 'vibe-validate@latest', 'vibe-validate doctor']
       });
     });
 

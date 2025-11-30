@@ -92,6 +92,9 @@ importers:
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
+      semver:
+        specifier: ^7.7.3
+        version: 7.7.3
       yaml:
         specifier: ^2.6.1
         version: 2.8.1
@@ -108,6 +111,9 @@ importers:
       '@types/prompts':
         specifier: ^2.4.9
         version: 2.4.9
+      '@types/semver':
+        specifier: ^7.7.1
+        version: 7.7.1
       typescript:
         specifier: ^5.5.2
         version: 5.9.3
@@ -769,6 +775,9 @@ packages:
 
   '@types/sarif@2.1.7':
     resolution: {integrity: sha512-kRz0VEkJqWLf1LLVN4pT1cg1Z9wAuvI6L97V3m2f5B76Tg8d413ddvLBPTEHAZJlnn4XSvu0FkZtViCQGVyrXQ==}
+
+  '@types/semver@7.7.1':
+    resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
@@ -3315,6 +3324,8 @@ snapshots:
       kleur: 3.0.3
 
   '@types/sarif@2.1.7': {}
+
+  '@types/semver@7.7.1': {}
 
   '@types/unist@3.0.3': {}
 
