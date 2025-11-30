@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Enhancements
+
+**Pre-commit Now Detects and Blocks Partially Staged Files**
+- **Problem**: Users could commit files with only some changes staged, causing validation mismatch
+  - User stages part of a file: `git add file.ts` (adds lines 1-10)
+  - User makes more changes: `echo "line 11" >> file.ts` (unstaged)
+  - Pre-commit validates the FULL file (lines 1-11)
+  - Git commits ONLY the staged portion (lines 1-10)
+  - **Result**: Validated code ≠ committed code (validation passed but committed code could be broken)
+  - Users were unaware this was happening - silent data corruption risk
+- **Solution**: Pre-commit now detects partially staged files and fails with clear error
+  - Checks if any files have BOTH staged AND unstaged changes
+  - Fails immediately with actionable remediation steps:
+    - Stage all changes: `git add <files>`
+    - Unstage all changes: `git restore --staged <files>`
+    - Skip validation: `git commit --no-verify` (not recommended)
+  - Clear explanation of why this is incompatible with validation
+- **Impact**: Prevents silent validation mismatches - committed code always matches validated code
+
+**Pre-commit Now Detects If Current Branch Is Behind Remote**
+- **Problem**: Users could commit while unaware that someone else pushed to the same branch
+  - Working on local `fix-issue-X` branch
+  - Teammate pushes changes to `origin/fix-issue-X`
+  - User commits and pushes, creating conflicts or losing teammate's changes
+  - No warning that branch was out of sync with its remote
+- **Solution**: Pre-commit now checks if current branch is behind its remote tracking branch
+  - Detects commits in remote that aren't in local branch
+  - Fails immediately with clear error showing commit count behind
+  - Provides actionable remediation steps:
+    - Merge remote changes: `git pull`
+    - Rebase onto remote: `git pull --rebase`
+    - Skip check: `--skip-sync` flag (not recommended)
+  - Works for any branch with remote tracking (feature branches, main, etc.)
+  - Gracefully handles new branches without remotes
+- **Impact**: Prevents conflicts and lost work - ensures local branch is up-to-date before committing
+
 ### 🐛 Bug Fixes
 
 **Suppressed Alarming Schema Validation Warnings for Legacy History**
