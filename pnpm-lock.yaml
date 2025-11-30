@@ -250,6 +250,16 @@ importers:
       '@vibe-validate/cli':
         specifier: workspace:*
         version: link:../cli
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.8
+        version: 20.19.23
+      typescript:
+        specifier: ^5.5.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.5
+        version: 2.1.9(@types/node@20.19.23)
 
 packages:
 
