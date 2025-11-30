@@ -7,375 +7,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### ✨ Enhancements
+## [0.17.0] - 2025-11-30
+
+### 🚨 BREAKING CHANGES
+
+**Default Working Directory Changed to Git Root**
+- Commands now run from git root by default (not `process.cwd()`)
+- Steps with `cwd` field interpret paths relative to git root
+- Improves cache hit rates by 30-50% in monorepos
+- If you relied on running from subdirectories, add explicit `cwd` field to config
+- See "Heterogeneous Project Support" feature below for migration details
+
+### ✨ Features
+
+**Smart Version-Aware CLI Wrapper**
+- Automatically detects execution context (dev/local/global)
+- Shows `-dev` suffix for development builds (`vv --version` in workspace)
+- Enhanced `vv doctor` with context labels and semver-aware version checks
+- Debug mode (`VV_DEBUG=1`) shows resolution details
+- Impact: Clear understanding of which vibe-validate version is running
+
+**Heterogeneous Project Support (Multi-Language Monorepos)**
+- New `cwd` field runs validation steps from specific directories
+- Paths interpreted relative to git root for consistency
+- Perfect for Java + TypeScript + Python monorepos
+- 30-50% better cache hit rates through path normalization
+- Security: Path traversal prevention built-in
+- GitHub Actions workflow generation includes `working-directory`
+- New documentation: `docs/heterogeneous-projects.md`
+- New template: `config-templates/multi-language.yaml`
+
+**Plugin Architecture for Error Extractors**
+- Migrated all 14 extractors to plugin structure with co-located tests/docs
+- Eliminated ~400 lines of duplicated detection logic
+- Extractor registry pattern for easy extension
+- Each plugin includes: detection logic, extraction, samples, tests, docs
+- Impact: Easier to add new test framework support
+
+**Secure Git Command Execution**
+- Eliminated all command injection vulnerabilities in git operations
+- New secure execution layer with input validation
+- High-level API functions (`addNote()`, `readNote()`, `removeNote()`)
+- Comprehensive security test suite
+- Impact: Safe git operations, no shell injection risks
+
+**Maven Compiler Extractor**
+- Extracts compilation errors from Maven builds
+- Supports file/line/column parsing
+- Impact: Better error extraction for Java projects
 
 **Pre-commit Now Detects and Blocks Partially Staged Files**
-- **Problem**: Users could commit files with only some changes staged, causing validation mismatch
-  - User stages part of a file: `git add file.ts` (adds lines 1-10)
-  - User makes more changes: `echo "line 11" >> file.ts` (unstaged)
-  - Pre-commit validates the FULL file (lines 1-11)
-  - Git commits ONLY the staged portion (lines 1-10)
-  - **Result**: Validated code ≠ committed code (validation passed but committed code could be broken)
-  - Users were unaware this was happening - silent data corruption risk
-- **Solution**: Pre-commit now detects partially staged files and fails with clear error
-  - Checks if any files have BOTH staged AND unstaged changes
-  - Fails immediately with actionable remediation steps:
-    - Stage all changes: `git add <files>`
-    - Unstage all changes: `git restore --staged <files>`
-    - Skip validation: `git commit --no-verify` (not recommended)
-  - Clear explanation of why this is incompatible with validation
-- **Impact**: Prevents silent validation mismatches - committed code always matches validated code
+- Pre-commit now detects when files have both staged and unstaged changes
+- Prevents validation mismatch where validated code differs from committed code
+- Provides clear remediation steps when detected
+- Impact: Ensures committed code always matches validated code
 
 **Pre-commit Now Detects If Current Branch Is Behind Remote**
-- **Problem**: Users could commit while unaware that someone else pushed to the same branch
-  - Working on local `fix-issue-X` branch
-  - Teammate pushes changes to `origin/fix-issue-X`
-  - User commits and pushes, creating conflicts or losing teammate's changes
-  - No warning that branch was out of sync with its remote
-- **Solution**: Pre-commit now checks if current branch is behind its remote tracking branch
-  - Detects commits in remote that aren't in local branch
-  - Fails immediately with clear error showing commit count behind
-  - Provides actionable remediation steps:
-    - Merge remote changes: `git pull`
-    - Rebase onto remote: `git pull --rebase`
-    - Skip check: `--skip-sync` flag (not recommended)
-  - Works for any branch with remote tracking (feature branches, main, etc.)
-  - Gracefully handles new branches without remotes
-- **Impact**: Prevents conflicts and lost work - ensures local branch is up-to-date before committing
+- Pre-commit now checks if current branch is behind its remote tracking branch
+- Prevents conflicts from committing while teammates have pushed to the same branch
+- Works for any branch with remote tracking (feature branches, main, etc.)
+- Impact: Prevents merge conflicts and lost work
+
+**Meta-Package Delegation to CLI**
+- Fixed `vibe-validate` wrapper scripts to delegate to `@vibe-validate/cli` at runtime
+- Ensures single source of truth for wrapper logic
+- Fixes version detection when installed globally via npm
+- Impact: `vv --version` now correctly shows `-dev` suffix in workspace
+
+**Automatic Secret Scanning Tool Detection**
+- Secret scanning now automatically detects available tools (gitleaks, secretlint)
+- Can run multiple scanners simultaneously (defense in depth)
+- Works in containerized environments (Claude Code on the web)
+- Graceful fallback when preferred tool unavailable
+- Impact: Better secret detection across different environments
+
+**Auto-Output YAML on Validation Failure**
+- `vv validate` and `vv pre-commit` now automatically output structured YAML on failure
+- Eliminates need for separate `vv state` command
+- Impact: Immediate actionable feedback for both humans and AI agents
+
+**Config File Discovery from Subdirectories**
+- Config loader now walks up directory tree to find `vibe-validate.config.yaml`
+- Impact: Run `vv validate` from any subdirectory within your project
 
 ### 🐛 Bug Fixes
 
 **Suppressed Alarming Schema Validation Warnings for Legacy History**
-- **Problem**: After upgrading from rc.9, users saw confusing warnings about "Invalid ValidationResult" and "Skipping corrupted run entry"
-  - These warnings were caused by legacy history entries from rc.9 with 0/0 line/column values (fixed extractor bug in rc.10)
-  - Warnings were correct (entries violated schema), but alarming and repetitive (appeared on every validation)
-  - Confused users into thinking current validation was broken
-- **Solution**: Silently skip corrupted legacy entries
-  - Reader now filters out invalid runs without spamming warnings
-  - Users can optionally cleanup with: `vv history prune --all`
-  - After any upgrade, run `vv doctor` to check for issues
-- **Impact**: Clean validation output, no more alarming warnings for legacy data
+- Silently skip corrupted legacy entries from rc.9 (0/0 line/column values)
+- Clean validation output without repeated warnings
+- Users can cleanup with: `vv history prune --all`
 
 **Fixed Misleading "0 test failure(s)" for Killed Processes**
-- **Problem**: When fail-fast killed a slow process, extraction showed "0 test failure(s)" which was misleading
-  - Killed processes had exitCode=1 but empty output
-  - Extractor reported "0 errors" since it found no output to extract
-  - Confused users about why the step failed
-- **Solution**: Detect killed processes (minimal output + non-zero exit) and provide meaningful extraction
-  - Summary: "Process stopped (fail-fast)"
-  - Guidance: "This step was terminated when another step failed. Check the failed step above for the root cause."
-  - Clearly indicates the step was stopped, not that it passed
-- **Impact**: Users now understand fail-fast behavior and can quickly identify the root cause
+- Killed processes (from fail-fast) now show meaningful extraction
+- Summary: "Process stopped (fail-fast)"
+- Impact: Clear understanding of fail-fast behavior
 
-## [0.17.0-rc.10] - 2025-11-28
+**Fixed Broken Validation History in Jest-Based Projects**
+- Jest extractor now sets line/column to `undefined` when location unavailable
+- Prevents schema validation warnings and corrupted history
+- Impact: Jest projects no longer produce corrupted validation history
 
-### 🐛 Bug Fixes
+**Fixed Incorrect Extractor Selection in Multi-Language Projects**
+- Maven test output no longer misdetected as Jasmine tests
+- Increased Maven Surefire priority above Jasmine
+- Impact: Maven projects now correctly extract test failures
 
-**Fixed Doctor Command Legacy History Detection** (PR #63)
-- **Problem**: `vibe-validate doctor` incorrectly reported "Legacy validation history detected" even on fresh projects
-  - False positive occurred when only modern git notes history was present
-  - Caused confusion for users with clean setups
-- **Solution**: Enhanced legacy history detection to distinguish between deprecated file-based cache and modern git notes
-  - Only warns when actual legacy `.vibe-validate-state.yaml` entries exist in git notes
-  - Properly detects and auto-cleans legacy entries when found
-  - No false positives on fresh installations
-- **Impact**: Doctor command now accurately reports validation history status
+**Fixed Doctor Command Legacy History Detection**
+- No longer reports false positives for "Legacy validation history detected"
+- Only warns when actual legacy `.vibe-validate-state.yaml` entries exist
+- Impact: Accurate diagnosis for fresh installations
 
-### 🔧 Internal Improvements
+**Fixed `vv run` Cache Regression**
+- Restored v0.16.1 behavior - cache keys include invocation directory
+- Prevents false cache hits from different directories
+- Impact: Reliable caching for subdirectory workflows
 
-**Reduced Test Duplication in Doctor Tests** (PR #63)
-- Extracted reusable test helpers to separate file (`doctor-helpers.ts`)
-- Reduced code duplication from 51.4% to <5%
-- Reduced test file from 1,408 to 1,092 lines (22.4% reduction)
-- Improved test maintainability with consistent assertion patterns
-- All 47 tests passing with 80%+ coverage maintained
+**Fixed Extractor Schema Compliance**
+- Jest extractor now properly sets `line`/`column` to `undefined` when unavailable
+- Prevents "line: Number must be greater than 0" schema violations
+- Impact: No more corrupted validation history in Jest projects
 
-## [0.17.0-rc.9] - 2025-11-26
+### 🔒 Security
 
-### ✨ Features
-
-**Automatic Secret Scanning Tool Detection** (Issue #59)
-- **Problem**: Secret scanning required explicit `scanCommand` configuration and only supported one tool at a time
-  - Blocked adoption in containerized environments (Claude Code on the web) where gitleaks isn't available
-  - Users had to manually configure tool commands
-- **Solution**: Automatic tool detection with intelligent fallback
-  - **Autodetect mode** (default): Automatically detects and runs available tools based on config files
-  - **Config-based**: Presence of `.gitleaks.toml`/`.gitleaksignore` → runs gitleaks (if available)
-  - **Config-based**: Presence of `.secretlintrc.json` → runs secretlint (via npx, always available)
-  - **Multi-tool**: Can run both gitleaks and secretlint if both configured (defense in depth)
-  - **Graceful fallback**: Warns if gitleaks config exists but command unavailable, continues with secretlint
-  - **Performance monitoring**: Warns if scanning takes >5s (configurable via `performanceThreshold`)
-- **Impact**:
-  - Works in containerized environments (secretlint via npx, no install required)
-  - Users can run multiple secret scanners simultaneously
-  - Backwards compatible (explicit `scanCommand` still supported)
-  - Automatic performance guidance (suggests gitleaks for faster scans)
-- **Configuration**:
-  ```yaml
-  hooks:
-    preCommit:
-      secretScanning:
-        enabled: true  # Now defaults to autodetect
-        # scanCommand: "gitleaks protect --staged --verbose"  # Optional explicit override
-        performanceThreshold: 5000  # Optional, default 5000ms
-  ```
-- **Doctor command enhanced**: Now shows tool availability and configuration status
-
-### 🐛 Bug Fixes
-
-**Fixed Broken Validation History in Jest-Based Projects** (Issue #57)
-- **Problem**: Projects using Jest would show schema validation warnings and corrupted validation history
-  - Warning: "Invalid ValidationResult: line: Number must be greater than 0"
-  - Required manual cleanup: `vv history prune --all`
-- **Root Cause**: Jest output without location details resulted in `line: 0, column: 0` (invalid - must be >0 or undefined)
-- **Solution**: Jest extractor now sets line/column to `undefined` when location unavailable (schema compliant)
-- **Impact**: Jest-based projects (e.g., duck-skills-duck-creek-sdlc) no longer produce corrupted validation history
-
-**Fixed Incorrect Extractor Selection in Multi-Language Projects** (Issue #57)
-- **Problem**: Maven test output was incorrectly detected as Jasmine tests, causing wrong error extraction
-- **Root Cause**:
-  - Jasmine detection too broad (matched any output with "Failures:" marker)
-  - Priority mismatch (Jasmine priority 85 beat Maven Surefire priority 65)
-- **Solution**:
-  - Made Jasmine detection more conservative (now requires "spec" keyword)
-  - Increased Maven Surefire priority to 95 (higher than Jasmine's 90)
-- **Impact**: Maven projects now correctly extract test failures with proper file/line/message details
-
-### ✨ Features
-
-**Auto-Output YAML on Validation Failure** ([#54](https://github.com/jdutton/vibe-validate/issues/54))
-- **Problem**: When validation failed, users (both humans and LLMs) had to run a separate `vv state` command to see structured error details
-- **Solution**: `vv validate` and `vv pre-commit` now automatically output structured YAML to stderr on failure
-- **Impact**: Immediate, actionable feedback without extra commands - saves context window for LLMs
-- **Behavior**:
-  - **Success**: Concise human-readable message (no change)
-  - **Failure**: Human-readable summary + structured YAML with error details
-  - **With `--yaml` flag**: Continues to output to stdout (for scripts)
-- **Example**:
-  ```bash
-  $ vv validate
-  ❌ Validation failed
-  📋 View error details: vibe-validate state
-
-  ---
-  passed: false
-  failedStep: typecheck
-  phases:
-    - name: Pre-Qualification
-      status: failed
-      steps:
-        - name: typecheck
-          errors:
-            - file: src/foo.ts
-              line: 42
-              message: "Type 'string' is not assignable to type 'number'"
-  ```
-
-## [0.17.0-rc3] - 2025-11-22
-
-### 🐛 Bug Fixes
-
-**Config File Discovery from Subdirectories (New Feature)**
-- **Problem**: Running `vv validate` from a subdirectory failed with "No configuration found" even when config existed in parent directories
-- **Solution**: Config loader now walks up directory tree to find `vibe-validate.config.yaml`, similar to how ESLint/Prettier work
-- **Impact**: Users can run `vv validate` from any subdirectory within their project
-- **Example**:
-  ```bash
-  # Before (all versions): Failed with "No configuration found"
-  cd packages/core
-  vv validate  # ❌ Error
-
-  # After (v0.17.0-rc3): Finds config in parent directory
-  cd packages/core
-  vv validate  # ✅ Works - walks up to find config at project root
-  ```
-
-**Fixed `vv run` Cache Regression from v0.17.0-rc1**
-- **Problem**: v0.17.0-rc1 broke `vv run` caching from subdirectories (regression from v0.16.1)
-  - Cache keys always used git root, causing false cache hits
-  - Running same command from different directories incorrectly shared cache
-- **Solution**: Restored v0.16.1 behavior - cache keys include actual invocation directory
-- **Impact**: Prevents false cache hits, ensures `vv run --cwd subdir "cmd"` == `cd subdir && vv run "cmd"`
-- **Example**:
-  ```bash
-  # Cache keys are now directory-aware (restored v0.16.1 behavior):
-  cd packages/cli && vv run "npm test"  # Cache: "npm test__packages/cli"
-  cd packages/core && vv run "npm test" # Cache: "npm test__packages/core"
-  vv run --cwd packages/cli "npm test"  # Cache: "npm test__packages/cli" (same as cd)
-  ```
-
-## [0.17.0-rc2] - 2025-11-22
-
-### 🚨 BREAKING CHANGES
-
-**Default Working Directory Changed**
-- **Problem**: Commands ran from `process.cwd()` (where you invoked the command), causing inconsistent behavior and poor cache hit rates
-- **Solution**: Commands now run from git root by default for predictable behavior
-- **Impact**: If you previously relied on running commands from subdirectories, you must add `cwd` field to your config
-- **Migration**:
-  ```yaml
-  # Before (v0.16.x): Relied on shell location
-  # $ cd packages/api && vv validate
-
-  # After (v0.17.0): Add explicit cwd field
-  steps:
-    - name: test
-      cwd: packages/api  # ← Add this
-      command: npm test
-  ```
-
-**`cwd` Field Semantics Changed**
-- **Problem**: `cwd` field was passed directly to Node.js spawn, making it relative to process location (inconsistent)
-- **Solution**: `cwd` now interpreted relative to git repository root for consistency
-- **Impact**: Existing configs with `cwd` field may need adjustment (rare - field was optional and rarely used)
-- **Benefits**: 30-50% better cache hit rates in monorepo scenarios
-
-### ✨ New Features
-
-**Heterogeneous Project Support** (Multi-Language Monorepos)
-- **Problem**: Traditional tools struggle with projects combining multiple languages and build systems (Java + TypeScript + Python)
-- **Solution**: New `cwd` field runs each validation step from its own directory, relative to git root
-- **Impact**: Perfect for multi-language monorepos and polyglot microservices
-- **Features**:
-  - Git-root-relative working directories (consistent behavior everywhere)
-  - Parallel execution across different subsystems
-  - Content-based caching works seamlessly across multiple directories
-  - Security: Path traversal prevention (no `../` escapes outside git root)
-- **Example**:
-  ```yaml
-  validation:
-    phases:
-      - name: test
-        parallel: true
-        steps:
-          - name: test-java-backend
-            cwd: services/backend
-            command: mvn test
-
-          - name: test-node-frontend
-            cwd: apps/web
-            command: npm test
-
-          - name: test-python-ml
-            cwd: services/ml-engine
-            command: pytest
-  ```
-
-**`--cwd` Flag for `vv run` Command**
-- Run ad-hoc commands from specific directories with caching
-- Improves cache hit rates by normalizing working directory paths
-- Example: `vv run --cwd packages/api "npm test"`
-- Works the same way locally and in CI
-
-**GitHub Actions `working-directory` Generation**
-- `vv generate-workflow` now automatically adds `working-directory` to steps when `cwd` is specified
-- Ensures CI workflows match local validation behavior exactly
-- Example generated workflow:
-  ```yaml
-  - name: Test Backend
-    working-directory: services/backend
-    run: mvn test
-  ```
-
-**Maven Checkstyle and Surefire Extractors for Java Projects**
-- **Problem**: Java Maven projects showed 0 errors extracted when validation failed
-- **Solution**: Two specialized extractors for Maven build output
-  - Maven Checkstyle: Parses `mvn checkstyle:check` violations with file/line/column
-  - Maven Surefire: Parses `mvn test` failures (JUnit 4 & 5, AssertJ assertions)
-- **Impact**: LLM agents now receive actionable Java error context (100% confidence detection)
-- **Real-world validation**: Heterogeneous Java + TypeScript project now extracts 19 violations vs 0 before
-
-### 🎨 Improvements
-
-**Cache Hit Rate Optimization**
-- Before: Different invocation patterns created different cache keys (poor hit rate)
-- After: Consistent git-root-relative paths improve cache hits by 30-50% in monorepos
-- Example:
-  ```bash
-  # Before (v0.16.x): Different cache keys
-  # From root: vv run "cd packages/cli && npm test"
-  # From packages/cli: vv run "npm test"
-  # Result: CACHE MISS
-
-  # After (v0.17.0): Same cache key
-  # From anywhere: vv run --cwd packages/cli "npm test"
-  # Result: CACHE HIT
-  ```
-
-**Security: Path Traversal Prevention**
-- All `cwd` paths validated to prevent directory traversal attacks
-- Paths like `../../../etc/passwd` rejected with clear error messages
-- Absolute paths outside git root rejected
-- Enhanced security for CI/CD environments
-
-### 📚 Documentation
-
-**New Documentation**
-- `docs/heterogeneous-projects.md` - Comprehensive 600+ line guide for multi-language monorepos
-- `config-templates/multi-language.yaml` - Ready-to-use template with Java + TypeScript + Python examples
-- Covers best practices, cache optimization, CI/CD generation, and common patterns
-
-**Updated Documentation**
-- CLI reference regenerated with `--cwd` flag documentation and examples
-- Configuration reference updated with `cwd` field semantics
-
-### ⚡ Performance
-
-**Improved Monorepo Performance**
-- Cache hit rates improved 30-50% through consistent working directory handling
-- Better parallelization across subsystems
-- Reduced CI runner usage through optimized workflow generation
-
-### 🧪 Testing
-
-**Comprehensive Test Coverage**
-- 10+ new security tests for path traversal prevention
-- 3 new workflow generation tests covering all `working-directory` scenarios
-- Unit tests for `getGitRoot()` and `resolveGitRelativePath()` utilities
-- All 162+ tests passing (100% pass rate)
-
-### 🎯 Migration Guide
-
-**Step 1: Check if you need migration**
-```bash
-# Search for commands that use 'cd' (anti-pattern)
-grep -r "cd " vibe-validate.config.yaml
-
-# Check if you run validation from subdirectories
-pwd  # If not git root, you may need cwd field
-```
-
-**Step 2: Update config**
-```yaml
-# Replace 'cd' commands with 'cwd' field:
-# Before:
-steps:
-  - name: test-backend
-    command: cd services/backend && mvn test
-
-# After:
-steps:
-  - name: test-backend
-    cwd: services/backend
-    command: mvn test
-```
-
-**Step 3: Regenerate workflow**
-```bash
-vv generate-workflow --output .github/workflows/validation.yml
-git add .github/workflows/validation.yml
-```
-
-**Step 4: Test**
-```bash
-vv validate  # Should work from any directory now
-```
-
-### 🔗 Further Reading
-
-- Heterogeneous Projects Guide: `docs/heterogeneous-projects.md`
-- Multi-language template: `config-templates/multi-language.yaml`
-- Configuration reference: `docs/configuration-reference.md`
+**Eliminated Git Command Injection Vulnerabilities**
+- Fixed shell piping vulnerability in git notes cleanup
+- Fixed heredoc injection in git notes operations
+- All git commands now use secure spawn with array arguments
+- Comprehensive input validation for refs, hashes, and paths
+- Impact: Protection against command injection attacks
 
 ## [0.16.1] - 2025-11-21
 
@@ -1433,6 +1192,9 @@ Real-world TypeScript Node.js app:
 
 ## Version History
 
+- **v0.17.0** (2025-11-30) - Heterogeneous project support, smart version detection, plugin architecture, security hardening, pre-commit enhancements
+- **v0.16.1** (2025-11-21) - Fixed config error reporting
+- **v0.16.0** (2025-11-15) - Phase-based CI job grouping, parallel flag implementation
 - **v0.15.0** (2025-11-12) - Run command caching, code quality enforcement, smart defaults, enhanced AI integration
 - **v0.14.3** (2025-10-30) - Fixed Jest detection with real-world output
 - **v0.14.2** (2025-10-27) - Fixed broken init command
@@ -1447,7 +1209,9 @@ Real-world TypeScript Node.js app:
 - **v0.9.11** (2025-10-18) - Critical bug fix for tree hash consistency
 - **v0.9.8** (2025-10-18) - Initial public release
 
-[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/jdutton/vibe-validate/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/jdutton/vibe-validate/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/jdutton/vibe-validate/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/jdutton/vibe-validate/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/jdutton/vibe-validate/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/jdutton/vibe-validate/compare/v0.14.2...v0.14.3
