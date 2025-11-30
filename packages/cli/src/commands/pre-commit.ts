@@ -6,7 +6,7 @@
  */
 
 import type { Command } from 'commander';
-import { checkBranchSync } from '@vibe-validate/git';
+import { checkBranchSync, getPartiallyStagedFiles, isCurrentBranchBehindTracking } from '@vibe-validate/git';
 import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
@@ -39,7 +39,51 @@ export function preCommitCommand(program: Command): void {
           process.exit(1);
         }
 
-        // Step 2: Check branch sync (unless skipped)
+        // Step 2: Check for partially staged files
+        console.log(chalk.blue('🔍 Checking for partially staged files...'));
+        const partiallyStagedFiles = getPartiallyStagedFiles();
+
+        if (partiallyStagedFiles.length > 0) {
+          console.error(chalk.red('❌ Partially staged files detected'));
+          console.error(chalk.yellow('   These files have BOTH staged and unstaged changes:'));
+          for (const file of partiallyStagedFiles) {
+            console.error(chalk.gray(`   - ${file}`));
+          }
+          console.error(chalk.yellow('\n   This is incompatible with validation:'));
+          console.error(chalk.gray('   • Validation runs against the FULL file (staged + unstaged)'));
+          console.error(chalk.gray('   • Git commits only the STAGED portion'));
+          console.error(chalk.gray('   • Result: Validated code ≠ committed code'));
+          console.error(chalk.yellow('\n   To fix, choose one:'));
+          console.error(chalk.gray(`   • Stage all changes:   git add ${partiallyStagedFiles.join(' ')}`));
+          console.error(chalk.gray(`   • Unstage all changes: git restore --staged ${partiallyStagedFiles.join(' ')}`));
+          console.error(chalk.gray('   • Skip validation:     git commit --no-verify (not recommended)'));
+          process.exit(1);
+        }
+        console.log(chalk.green('✅ No partially staged files'));
+
+        // Step 3: Check if current branch is behind its remote tracking branch
+        console.log(chalk.blue('🔍 Checking if current branch is behind remote...'));
+        const behindTracking = isCurrentBranchBehindTracking();
+
+        if (behindTracking !== null && behindTracking > 0) {
+          console.error(chalk.red(`❌ Current branch is behind its remote tracking branch`));
+          console.error(chalk.yellow(`   Behind by ${behindTracking} commit(s)`));
+          console.error(chalk.yellow('   Someone else has pushed changes to this branch.'));
+          console.error(chalk.yellow('\n   To fix, pull and merge the remote changes:'));
+          console.error(chalk.gray('   git pull'));
+          console.error(chalk.yellow('\n   Or rebase if you prefer:'));
+          console.error(chalk.gray('   git pull --rebase'));
+          console.error(chalk.gray('\n   Skip this check with: --skip-sync (not recommended)'));
+          process.exit(1);
+        }
+
+        if (behindTracking === null) {
+          console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or not pushed yet)'));
+        } else {
+          console.log(chalk.green('✅ Current branch is up to date with remote'));
+        }
+
+        // Step 4: Check branch sync (unless skipped)
         if (!options.skipSync) {
           // Construct remote branch reference using helper
           const remoteBranch = getRemoteBranch(config.git);
@@ -65,13 +109,13 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
-        // Step 3: Detect context
+        // Step 5: Detect context
         const context = detectContext();
 
-        // Step 4: Verbose mode is ONLY enabled via explicit --verbose flag
+        // Step 6: Verbose mode is ONLY enabled via explicit --verbose flag
         const verbose = options.verbose ?? false;
 
-        // Step 5: Run secret scanning if enabled
+        // Step 7: Run secret scanning if enabled
         const secretScanning = config.hooks?.preCommit?.secretScanning;
         if (secretScanning?.enabled) {
           console.log(chalk.blue('\n🔒 Running secret scanning...'));
@@ -127,7 +171,7 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
-        // Step 6: Run validation with caching
+        // Step 8: Run validation with caching
         console.log(chalk.blue('\n🔄 Running validation...'));
 
         const result = await runValidateWorkflow(config, {
@@ -138,7 +182,7 @@ export function preCommitCommand(program: Command): void {
           context,
         });
 
-        // Step 7: Report results
+        // Step 9: Report results
         if (result.passed) {
           console.log(chalk.green('\n✅ Pre-commit checks passed!'));
           console.log(chalk.gray('   Safe to commit.'));
@@ -173,10 +217,12 @@ The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure yo
 
 ## How It Works
 
-1. Runs secret scanning (if enabled in config)
-2. Runs sync-check (fails if branch behind origin/main)
-3. Runs validate (with caching)
-4. Reports git status (warns about unstaged files)
+1. Checks for partially staged files (fails if detected)
+2. Checks if current branch is behind its remote tracking branch (fails if detected)
+3. Runs sync-check (fails if branch behind origin/main)
+4. Runs secret scanning (if enabled in config)
+5. Runs validate (with caching)
+6. Reports git status (warns about unstaged files)
 
 ## Options
 

@@ -77,3 +77,13 @@ export {
   removeNotesRefs,
   getNotesRefSha
 } from './git-notes.js';
+
+// Git staging detection (prevent partially staged files in pre-commit)
+export {
+  getPartiallyStagedFiles
+} from './staging.js';
+
+// Git tracking branch detection (check if current branch is behind remote)
+export {
+  isCurrentBranchBehindTracking
+} from './tracking-branch.js';
