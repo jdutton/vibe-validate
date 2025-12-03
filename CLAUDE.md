@@ -306,7 +306,7 @@ removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
    pnpm generate-cli-docs
    ```
 
-2. **Never manually edit `docs/cli-reference.md`**
+2. **Never manually edit `docs/skill/resources/cli-reference.md`**
    - This file is auto-generated from `--help --verbose` output
    - Manual edits will be overwritten
    - A test enforces this (will fail if docs don't match CLI output)

@@ -1,6 +1,6 @@
 # vibe-validate
 
-> Git-aware validation orchestration with dramatically faster cached runs
+> Git-aware validation orchestration with automatic work protection and dramatically faster cached runs
 
 [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,7 +9,7 @@
 
 **Who it's for**: TypeScript/JavaScript developers and multi-language monorepos, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
 
-**For AI Assistants**: Get all command help at once with `vv --help --verbose` (or `npx vibe-validate --help --verbose` before install) or see the [Complete CLI Reference](docs/cli-reference.md)
+**For AI Assistants**: Get all command help at once with `vv --help --verbose` (or `npx vibe-validate --help --verbose` before install) or see the [Complete CLI Reference](docs/skill/resources/cli-reference.md)
 
 ## Quick Start (4 commands)
 
@@ -98,6 +98,138 @@ npx @vibe-validate/cli@latest doctor
 
 **Built for agentic coding workflows** to help deterministically enforce SDLC best practices and minimize context window usage when working with AI assistants like [Claude Code](https://claude.ai/code).
 
+## Automatic Work Protection
+
+Every validation run automatically protects your work - without any user action required.
+
+### How It Works
+
+When vibe-validate calculates the git tree hash for caching, it creates git objects for ALL your files:
+- ✅ Staged changes
+- ✅ Unstaged modifications
+- ✅ Untracked files (not in .gitignore)
+
+These git objects persist in `.git/objects/` even if your files are accidentally deleted or modified.
+
+### Real-World Recovery Scenarios
+
+**Scenario 1: Accidental Revert**
+```bash
+# You've been coding for 3 hours (unstaged changes)
+$ cat src/feature.ts
+"Brilliant new code from 3 hours of work"
+
+# You accidentally revert everything
+$ git restore .
+
+# Your unstaged work is gone from the file system!
+$ cat src/feature.ts
+"Old committed version"
+
+# But vibe-validate saved it! Find your last validation:
+$ vv history list
+2025-12-02 14:30:15  abc123def  feature-branch  ✓ PASSED
+
+# View what was in that tree hash:
+$ vv history show abc123def --file src/feature.ts
+"Brilliant new code from 3 hours of work"
+
+# Recover your work:
+$ git cat-file -p abc123def:src/feature.ts > src/feature.ts
+# Work restored!
+```
+
+**Scenario 2: Bad Find/Replace**
+```bash
+# You run a find/replace that goes wrong
+# Realize it 30 minutes later after more edits
+
+# Check recent validation history:
+$ vv history list --limit 5
+2025-12-02 15:45:10  xyz789abc  feature-branch  ✓ PASSED  # After bad replace
+2025-12-02 15:10:22  def456ghi  feature-branch  ✓ PASSED  # Before bad replace
+
+# Compare what changed:
+$ git diff def456ghi xyz789abc -- src/
+
+# Restore specific files from before the bad replace:
+$ git cat-file -p def456ghi:src/broken.ts > src/broken.ts
+```
+
+**Scenario 3: Editor Crash**
+```bash
+# Your editor crashes before saving
+# Files revert to last saved state
+
+# But if you ran validation during your work session:
+$ vv history list --limit 1
+2025-12-02 14:15:30  ghi789jkl  feature-branch  ✓ PASSED
+
+# Your in-progress work is in that tree hash:
+$ vv history show ghi789jkl --file src/
+# Shows all files as they were during that validation
+```
+
+### Benefits
+
+- **Zero overhead**: Git deduplicates objects automatically (no extra disk space for unchanged files)
+- **No user action required**: Protection happens automatically every validation run
+- **Historical snapshots**: Every validation creates a snapshot you can reference later
+- **Complements git**: Works alongside git commits, provides safety net for uncommitted work
+- **Recovery commands**: Simple `git cat-file` commands to recover any file from any validation point
+
+### When Work is Protected
+
+Your work is automatically captured whenever you run:
+- `vv validate` - Full validation pipeline
+- `vv pre-commit` - Pre-commit workflow
+- `vv run <command>` - Individual command execution (v0.15.0+)
+
+Each run creates a tree hash that captures the complete state of your working directory.
+
+### Viewing Your Protected Snapshots
+
+```bash
+# List all validation snapshots with timestamps
+$ vv history list
+
+# Show complete details of a specific snapshot
+$ vv history show <tree-hash>
+
+# List files in a specific snapshot
+$ git ls-tree <tree-hash>
+
+# View specific file content from a snapshot
+$ git cat-file -p <tree-hash>:path/to/file.ts
+```
+
+### What Gets Protected
+
+✅ **Protected** (captured in tree hash):
+- Tracked files (staged or modified)
+- Untracked files (not in .gitignore)
+- New files you just created
+- All modifications in working directory
+
+❌ **Not protected** (security by design):
+- Files in `.gitignore` (secrets, API keys, credentials)
+- Build artifacts (dist/, node_modules/)
+- Temporary files (*.tmp, *.swp)
+
+### Comparison to Git Stash
+
+| Feature | vibe-validate | git stash |
+|---------|---------------|-----------|
+| User action required | ❌ Automatic | ✅ Manual (`git stash`) |
+| Captures unstaged changes | ✅ Yes | ✅ Yes |
+| Captures untracked files | ✅ Yes | ⚠️ Only with `-u` flag |
+| Timestamp-indexed | ✅ Via history list | ⚠️ Stash stack only |
+| Keeps working directory | ✅ Yes | ❌ Clears changes |
+| Tied to validation events | ✅ Yes | ❌ No |
+| Multiple snapshots per code state | ✅ Yes (multi-run support) | ❌ No |
+
+**Think of it as**: Automatic "checkpoint saves" every time you validate - but your game (working directory) keeps running.
+
 ### Core Design Goals
 
 1. **Validate before pushing** - Prevent broken PRs by catching issues locally before they reach CI
@@ -108,6 +240,7 @@ npx @vibe-validate/cli@latest doctor
 
 ### Key Features
 
+- **Automatic work protection** - Every validation creates recoverable snapshots of all files (staged, unstaged, untracked)
 - **Dramatically faster cached validation** (< 1s vs seconds/minutes when code unchanged)
 - **Git tree hash caching** - Content-based, deterministic (includes untracked files)
 - **Heterogeneous project support** - Perfect for multi-language monorepos (Java + TypeScript + Python)
@@ -124,18 +257,21 @@ npx @vibe-validate/cli@latest doctor
 - ✅ Parallel execution
 - ✅ Branch sync checking
 - ✅ Agent-friendly error output
+- ✅ Automatic work protection / Accidental change recovery
 
 **vs. Nx/Turborepo**:
 - ✅ Simpler setup (one config file vs complex workspace)
 - ✅ Language-agnostic (not tied to npm workspaces)
 - ✅ Designed for AI assistants (Claude Code integration)
 - ✅ SDLC enforcement (pre-commit, branch sync)
+- ✅ Automatic work protection / Accidental change recovery
 
 **vs. Pre-commit framework (Python)**:
 - ✅ Native Node.js (no Python dependency)
 - ✅ Full validation orchestration (not just pre-commit)
 - ✅ Caching between local/CI runs
 - ✅ GitHub Actions generator
+- ✅ Automatic work protection / Accidental change recovery
 
 **Primarily tested with:** [Claude Code](https://claude.ai/code) - Anthropic's AI-powered coding assistant
 

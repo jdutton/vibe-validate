@@ -9,6 +9,7 @@ The `@vibe-validate/cli` package provides a command-line interface for running v
 
 ## Features
 
+- **🛡️ Automatic work protection** - Invisible safety net for all uncommitted changes
 - **🚀 Git tree hash-based caching** - 312x faster validation on unchanged code
 - **🤖 Agent-friendly output** - Minimal token waste, structured error reporting
 - **⚡ Parallel phase execution** - Run validation steps concurrently
@@ -486,6 +487,56 @@ phases:
           summary: "1 type error"
           totalErrors: 1
 ```
+
+## Work Protection & Recovery
+
+vibe-validate automatically protects your uncommitted work every time it calculates a git tree hash for caching.
+
+### How It Works
+
+When you run validation commands, vibe-validate:
+1. Creates a temporary git index
+2. Stages all your files (tracked + untracked) in that temp index
+3. Runs `git write-tree` to create git objects for everything
+4. Cleans up the temp index (your real index is untouched)
+
+**Result**: All your files are now in `.git/objects/` as git blobs, even if they're unstaged or untracked.
+
+### Recovery Commands
+
+```bash
+# List validation history (shows tree hashes with timestamps)
+vv history list
+
+# Show files in a specific tree hash
+git ls-tree <tree-hash>
+
+# View a specific file from any validation point
+git cat-file -p <tree-hash>:path/to/file.ts
+
+# Recover a file
+git cat-file -p <tree-hash>:src/deleted-work.ts > src/deleted-work.ts
+
+# Recover entire directory
+git checkout <tree-hash> -- src/
+```
+
+### Use Cases
+
+- **Accidental git restore**: Recover unstaged changes after accidental revert
+- **Bad refactoring**: Revert to code state before risky changes
+- **Editor crashes**: Restore in-progress work from last validation
+- **Experimental changes**: Compare current code vs previous validation snapshots
+- **Team debugging**: Share exact code state via tree hash
+
+### When Protection Happens
+
+Your work is automatically captured during:
+- `vv validate` - Full validation
+- `vv pre-commit` - Pre-commit workflow
+- `vv run <command>` - Individual command execution (cached)
+
+See [Work Protection Guide](../../docs/work-protection.md) for detailed examples.
 
 ## Integration with Pre-Commit Hooks
 

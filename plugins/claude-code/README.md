@@ -211,8 +211,8 @@ The agent provides complete coverage of vibe-validate capabilities:
 The agent keeps initial instructions focused (~350 lines) and references comprehensive documentation on-demand:
 
 **Referenced Documentation** (loaded when needed):
-- [CLI Reference](../../docs/cli-reference.md) - Complete command syntax
-- [Configuration Reference](../../docs/configuration-reference.md) - Schema details
+- [CLI Reference](../../docs/skill/resources/cli-reference.md) - Complete command syntax
+- [Configuration Reference](../../docs/skill/resources/configuration-reference.md) - Schema details
 - [Error Extractors Guide](../../docs/error-extractors-guide.md) - Extractor internals
 - [Agent Integration Guide](../../docs/agent-integration-guide.md) - Other AI assistants
 - [Claude Code Plugin](../../docs/claude-code-plugin.md) - Plugin architecture and roadmap
@@ -332,5 +332,5 @@ MIT © Jeff Dutton
 - [vibe-validate Repository](https://github.com/jdutton/vibe-validate)
 - [Documentation](https://github.com/jdutton/vibe-validate#readme)
 - [Issues](https://github.com/jdutton/vibe-validate/issues)
-- [CLI Reference](https://github.com/jdutton/vibe-validate/blob/main/docs/cli-reference.md)
+- [CLI Reference](https://github.com/jdutton/vibe-validate/blob/main/docs/skill/resources/cli-reference.md)
 - [Plugin Architecture](https://github.com/jdutton/vibe-validate/blob/main/docs/claude-code-plugin.md)

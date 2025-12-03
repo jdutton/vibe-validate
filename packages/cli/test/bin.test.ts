@@ -341,11 +341,11 @@ describe('bin.ts - CLI entry point', () => {
         const { normalizeLineEndings, splitLines } = await import('../src/utils/normalize-line-endings.js');
 
         const result = await executeCLI(['--help', '--verbose']);
-        const docsPath = join(__dirname, '../../../docs/cli-reference.md');
+        const docsPath = join(__dirname, '../../../docs/skill/resources/cli-reference.md');
 
         if (!existsSync(docsPath)) {
           throw new Error(
-            'CLI reference docs missing at docs/cli-reference.md\n' +
+            'CLI reference docs missing at docs/skill/resources/cli-reference.md\n' +
             'The documentation should be auto-generated from --help --verbose output.'
           );
         }

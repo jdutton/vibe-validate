@@ -4,6 +4,7 @@ Validation history tracking via git notes for vibe-validate.
 
 ## Features
 
+- **Automatic Work Protection**: Every validation creates recoverable snapshots of all files
 - **Git Notes Storage**: Store validation results keyed by git tree hash
 - **Distributed Cache**: Remember validation for EVERY tree hash
 - **Worktree Stability Check**: Verify tree unchanged during validation
@@ -227,6 +228,73 @@ await recordValidationHistory(treeHashBefore, result);
 - ❌ File paths with usernames
 
 **Sharing**: Local by default (no auto-push to remote)
+
+## Work Protection
+
+Every validation run that records history also provides automatic work protection.
+
+### How Validation History Enables Recovery
+
+Each history entry stores:
+- `treeHash`: The git tree hash for that validation
+- `timestamp`: When validation occurred
+- `branch`: Which branch you were on
+- `headCommit`: Last commit at validation time
+- `uncommittedChanges`: Whether you had uncommitted work
+
+The `treeHash` is the key to recovery - it references a git tree object containing all your files as they existed during that validation.
+
+### Recovery Workflow
+
+1. **Find the validation** you want to recover from:
+```bash
+vv history list
+```
+
+2. **Examine the tree hash** to see what files existed:
+```bash
+git ls-tree <tree-hash>
+```
+
+3. **View specific file content**:
+```bash
+git cat-file -p <tree-hash>:path/to/file.ts
+```
+
+4. **Recover files**:
+```bash
+# Single file
+git cat-file -p <tree-hash>:src/feature.ts > src/feature.ts
+
+# Entire directory
+git checkout <tree-hash> -- src/
+```
+
+### Example: Recovering from Accidental Loss
+
+```typescript
+// You were working on new features (unstaged)
+// Accidentally ran `git restore .`
+// Work is gone from file system!
+
+// But history remembers:
+const notes = await readHistoryNote(currentTreeHash);
+console.log(`Last validation: ${notes.runs[0].timestamp}`);
+console.log(`Tree hash: ${notes.treeHash}`);
+
+// Recover via git:
+// git cat-file -p <tree-hash>:src/lost-work.ts
+```
+
+### Privacy Implications
+
+Work protection does NOT increase privacy risks:
+- Git objects are local (not pushed unless you explicitly push git notes)
+- Only files already tracked or trackable are protected
+- .gitignore is respected (secrets stay ignored)
+- Tree hashes are content-based (no PII)
+
+See [Work Protection Guide](../../docs/work-protection.md) for comprehensive examples.
 
 ## Future Extensions
 

@@ -2,7 +2,7 @@
 /**
  * Generate CLI Reference Documentation
  *
- * This script regenerates docs/cli-reference.md from the actual CLI --help --verbose output.
+ * This script regenerates docs/skill/resources/cli-reference.md from the actual CLI --help --verbose output.
  * Run this script whenever you modify CLI help text or add new commands.
  *
  * Usage:
@@ -23,7 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, '..');
 const CLI_BIN = join(PROJECT_ROOT, 'packages/cli/dist/bin.js');
-const DOCS_FILE = join(PROJECT_ROOT, 'docs/cli-reference.md');
+const DOCS_FILE = join(PROJECT_ROOT, 'docs/skill/resources/cli-reference.md');
 
 // Colors for output
 const colors = {
@@ -96,5 +96,5 @@ if (existsSync(DOCS_FILE)) {
 writeFileSync(DOCS_FILE, newContent, 'utf8');
 
 const lineCount = newContent.split('\n').length;
-log(`✓ Generated docs/cli-reference.md (${lineCount} lines)`, 'green');
+log(`✓ Generated docs/skill/resources/cli-reference.md (${lineCount} lines)`, 'green');
 log('📋 Remember to commit the updated documentation', 'yellow');

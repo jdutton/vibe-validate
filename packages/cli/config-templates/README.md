@@ -322,8 +322,8 @@ All templates in this directory are:
 ## Related Documentation
 
 - [Getting Started Guide](../docs/getting-started.md)
-- [Configuration Reference](../docs/configuration-reference.md)
-- [CLI Reference](../docs/cli-reference.md)
+- [Configuration Reference](../docs/skill/resources/configuration-reference.md)
+- [CLI Reference](../docs/skill/resources/cli-reference.md)
 
 ---
 
