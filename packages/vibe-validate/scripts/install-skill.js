@@ -6,7 +6,7 @@
  * available to Claude Code globally.
  */
 
-import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +16,7 @@ const __dirname = dirname(__filename);
 
 // Determine skill source location
 const PACKAGE_ROOT = join(__dirname, '..');
-const SKILL_SOURCE = join(PACKAGE_ROOT, '../../docs/skill');
+const SKILL_SOURCE = join(PACKAGE_ROOT, 'skill');
 
 // Target location
 const CLAUDE_SKILLS_DIR = join(homedir(), '.claude', 'skills', 'vibe-validate');
@@ -67,6 +67,11 @@ function installSkill() {
 
     // Create ~/.claude/skills directory if needed
     mkdirSync(dirname(CLAUDE_SKILLS_DIR), { recursive: true });
+
+    // Remove old installation if it exists (clean install)
+    if (existsSync(CLAUDE_SKILLS_DIR)) {
+      rmSync(CLAUDE_SKILLS_DIR, { recursive: true, force: true });
+    }
 
     // Copy skill files
     copyDirectory(SKILL_SOURCE, CLAUDE_SKILLS_DIR);
