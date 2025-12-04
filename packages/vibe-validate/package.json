@@ -57,6 +57,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "lint": "echo 'No linting needed for delegation wrappers'"
+    "lint": "echo 'No linting needed for delegation wrappers'",
+    "postinstall": "node scripts/install-skill.js"
   }
 }

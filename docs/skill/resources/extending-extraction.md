@@ -1,15 +1,15 @@
 # Creating Custom Extractors for vibe-validate
 
 ## Purpose
-This skill guides Claude Code in helping users create custom error extractors for tools not natively supported by vibe-validate.
+This guide helps you create custom error extractors when vibe-validate isn't capturing errors properly for your tools.
 
-## When to Use This Skill
+## When to Use This Guide
 
-**Trigger this skill when:**
-1. User's validation fails but no errors were extracted (exitCode !== 0 but totalErrors === 0)
+**You're in the right place if:**
+1. Validation fails but no errors were extracted (exitCode !== 0 but totalErrors === 0)
 2. Generic extractor is being used (extractor: "generic" in metadata)
-3. User explicitly asks to create a custom extractor
-4. User mentions errors aren't being captured properly
+3. You want to create a custom extractor for an unsupported tool
+4. Errors aren't being captured properly
 
 **Signs extraction is failing:**
 ```yaml
@@ -22,6 +22,8 @@ extraction:
       extractor: generic  # ❌ Fell back to generic
       confidence: 50
 ```
+
+**Want to understand how extractors work first?** See [Error Extractors Guide](error-extractors-guide.md) for complete details on the extraction system.
 
 ## Quick Start: Using the CLI Tool
 

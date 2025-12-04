@@ -366,6 +366,41 @@ git diff abc123 def456
 git checkout abc123 -- src/refactored-file.ts
 ```
 
+### 5. Improving Poor Extraction Results
+
+**When**: Validation fails (exitCode !== 0) but no errors extracted (totalErrors === 0), or generic extractor is being used
+
+**Step 1: Identify the problem**
+```bash
+npx vibe-validate state --yaml
+```
+
+Look for:
+```yaml
+exitCode: 1
+extraction:
+  totalErrors: 0  # ❌ No errors despite failure
+  metadata:
+    detection:
+      extractor: generic  # ❌ Fell back to generic
+```
+
+**Step 2: Understand what happened**
+- If `totalErrors: 0` but command failed → extractor didn't recognize error format
+- If `extractor: generic` → no specific extractor found for this tool
+- If errors seem truncated → extractor may need tuning
+
+**Step 3: Create custom extractor**
+→ **Load**: [Extending Extraction Guide](resources/extending-extraction.md)
+
+This guide will:
+1. Help you use `vv create-extractor` scaffolding command
+2. Show you how to identify error patterns in your tool's output
+3. Guide implementation of the extraction logic
+4. Show testing and verification steps
+
+**Progressive detail**: If you need to understand how extractors work internally first, the Extending Extraction Guide links to the complete [Error Extractors Guide](resources/error-extractors-guide.md).
+
 ## Decision Trees
 
 ### When User Requests a Commit
@@ -509,7 +544,7 @@ vibe-validate extracts errors from tool output for LLM consumption.
 
 **Extraction**: Removes ANSI codes, progress bars, passing tests → extracts only errors with file:line context.
 
-**For detailed extractor info**: Load [Error Extractors Guide](../../docs/error-extractors-guide.md)
+**If errors aren't being captured**: See workflow below for improving extraction.
 
 ## Troubleshooting
 
@@ -572,8 +607,11 @@ For schema details, templates, and examples:
 - **Load**: [Configuration Reference](resources/configuration-reference.md)
 
 ### Error Extractors
-For extractor details, custom extractors, troubleshooting:
-- **Load**: [Error Extractors Guide](../../docs/error-extractors-guide.md)
+For complete extractor system details:
+- **Load**: [Error Extractors Guide](resources/error-extractors-guide.md)
+
+For creating custom extractors:
+- **Load**: [Extending Extraction](resources/extending-extraction.md)
 
 ### Agent Integration
 For integration with other AI assistants (Cursor, Aider, Continue):
