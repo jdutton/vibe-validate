@@ -61,6 +61,7 @@
     "test": "vitest run",
     "lint": "echo 'No linting needed for delegation wrappers'",
     "prepare": "rm -rf skill && cp -R ../../docs/skill .",
-    "postinstall": "node scripts/install-skill.js"
+    "postinstall": "node scripts/install-skill.js",
+    "preuninstall": "node scripts/uninstall-skill.js"
   }
 }
