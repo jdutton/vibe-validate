@@ -7,65 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Known Limitations
-
-- **Claude Code Skill Installation**: Skill auto-installs on `npm install -g` but NOT on `npm uninstall -g`
-  - Upgrading vibe-validate automatically cleans and reinstalls the skill
-  - Manual cleanup: `rm -rf ~/.claude/skills/vibe-validate` if needed
-  - Only affects global installations - local project installs don't touch skill directory
-
-## [0.17.1] - 2025-12-02
+## [0.17.1] - 2025-12-05
 
 ### Features
 
-- **Automatic Work Protection**: Documented deliberate work protection feature - every validation creates recoverable snapshots of all files (staged, unstaged, untracked)
-  - No user action required - happens automatically during validation
+- **Automatic Work Protection**: Every validation creates recoverable snapshots of all files
+  - Automatic - no user action required
   - Zero storage overhead - git deduplicates unchanged files
-  - Simple recovery using standard git commands and tree hashes
-  - Works alongside git commits as safety net for uncommitted work
+  - Recover work using standard git commands and tree hashes
 
 ### Documentation
 
-- **NEW**: Added comprehensive Work Protection Guide (`docs/work-protection.md`)
-  - 10+ real-world recovery scenarios (accidental git restore, bad refactoring, editor crashes)
-  - Recovery command cookbook for common use cases
-  - Comparison tables: vibe-validate vs git stash, vs git reflog, vs manual commits
-  - Technical deep dive on git internals and storage efficiency
-  - FAQ with 15+ common questions
-  - Best practices for maximizing protection benefits
-- **UPDATED**: Main README now prominently features work protection benefits
-  - Updated tagline to include "automatic work protection"
-  - New "Automatic Work Protection" section with real-world scenarios
-  - Added to Key Features list
-  - Added to all "vs. Alternatives" comparisons
-- **UPDATED**: All package READMEs document protection capabilities
-  - `packages/cli/README.md`: Added "Work Protection & Recovery" section
-  - `packages/git/README.md`: Updated features and benefits, added "Automatic Work Protection" section
-  - `packages/history/README.md`: Added "Work Protection" section explaining recovery workflow
-- **UPDATED**: Getting Started guide explains protection from first validation
-  - Added to "What is vibe-validate?" bullet points
-  - New "Bonus: Your Work is Now Protected" section after Quick Start
-  - Explains automatic checkpoint saves concept
-- **UPDATED**: Git Validation Tracking architecture doc includes protection details
-  - New "Automatic Work Protection Benefit" section
-  - Technical explanation of how `git write-tree` creates persistent objects
-  - Recovery examples and marketing value
-- **UPDATED**: Claude Code skill includes work recovery workflows
-  - Added "Work Protection" to Core Principles
-  - New section 8: "Work Recovery & Protection" with recovery patterns
-  - Added troubleshooting entry: "I accidentally deleted my work"
-  - Added best practices: "Validate frequently for safety" and "Check history before panic"
-- **CONSOLIDATED**: Skill and documentation structure reorganized for single source of truth
-  - Moved skill from `docs/skills/vibe-validate/` to `docs/skill/` (singular, clearer)
-  - Consolidated all skill resources to `docs/skill/resources/` (shared resources)
-  - Moved CLI and configuration references to shared resources (single source)
-  - Removed duplicate skill files from `plugins/claude-code/skills/`
-  - Maintained backward-compatible symlink at `plugins/claude-code/agents/vibe-validate.md`
-  - All references updated to point to new locations
+- Added comprehensive Work Protection Guide with recovery scenarios and command cookbook
+- Updated all READMEs and guides to document work protection feature
+- Reorganized Claude Code skill structure for better maintainability
+- Consolidated skill resources to single source of truth in `docs/skill/resources/`
 
-### No Breaking Changes
+### Known Limitations
 
-This release is purely documentation - no code changes, no API changes, fully backward compatible.
+- **Claude Code Skill**: Auto-installs on `npm install -g` but not on `npm uninstall -g`
+  - Upgrading automatically cleans and reinstalls
+  - Manual cleanup: `rm -rf ~/.claude/skills/vibe-validate`
+  - Only affects global installations
 
 ## [0.17.0] - 2025-11-30
 
