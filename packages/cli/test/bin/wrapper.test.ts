@@ -46,7 +46,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
       });
 
       expect(result.status).toBe(0);
-      expect(result.stdout.toString()).toContain('0.17.1-rc.2'); // BUMP_VERSION_UPDATE
+      expect(result.stdout.toString()).toContain('0.17.1-rc.3'); // BUMP_VERSION_UPDATE
 
       // Check if VV_CONTEXT was set (we can't directly access it, but we know it works if version prints)
     });
@@ -59,7 +59,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
       });
 
       expect(result.status).toBe(0);
-      expect(result.stdout.toString()).toContain('0.17.1-rc.2'); // BUMP_VERSION_UPDATE
+      expect(result.stdout.toString()).toContain('0.17.1-rc.3'); // BUMP_VERSION_UPDATE
     });
 
     it('should work from deeply nested subdirectories', () => {
@@ -70,7 +70,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
       });
 
       expect(result.status).toBe(0);
-      expect(result.stdout.toString()).toContain('0.17.1-rc.2'); // BUMP_VERSION_UPDATE
+      expect(result.stdout.toString()).toContain('0.17.1-rc.3'); // BUMP_VERSION_UPDATE
     });
   });
 
