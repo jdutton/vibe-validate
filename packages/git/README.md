@@ -4,7 +4,7 @@ Git utilities for vibe-validate - deterministic tree hash calculation, branch sy
 
 ## Features
 
-- **Deterministic Git Tree Hash**: Content-based hashing using `git write-tree` (no timestamps)
+- **Deterministic Git Tree Hash with Automatic Work Protection**: Content-based hashing using `git write-tree` (no timestamps) - automatically creates recoverable snapshots of all files
 - **Branch Sync Checking**: Safe branch synchronization verification without auto-merging
 - **Post-Merge Cleanup**: Automated cleanup of merged branches after PR completion
 
@@ -114,6 +114,8 @@ git reset                   // Restore index to clean state
 - Enables reliable validation state caching
 - Includes all files (staged, unstaged, untracked)
 - No side effects (index restored after hash)
+- Automatic work protection (all files stored as git objects)
+- Recoverable snapshots of uncommitted work
 
 ### Safe Branch Sync
 
@@ -130,6 +132,56 @@ git reset                   // Restore index to clean state
 - Only deletes branches confirmed merged into main
 - Never deletes main branch
 - Provides clear feedback on all operations
+
+## Automatic Work Protection
+
+A valuable side benefit of the deterministic tree hash calculation is automatic work protection.
+
+### Technical Implementation
+
+When `getGitTreeHash()` runs, it:
+1. Creates temporary index: `.git/vibe-validate-temp-index`
+2. Copies current index to temp index
+3. Runs `git add --all` in temp index (stages everything)
+4. Runs `git write-tree` (creates git objects for all files)
+5. Deletes temp index (your real index remains untouched)
+
+**Critical insight**: Step 4 creates permanent git objects in `.git/objects/` for every file, even though the temp index is deleted. These objects remain accessible via the tree hash.
+
+### What Gets Protected
+
+Every file in your working directory (respecting .gitignore):
+- ✅ Staged changes (in git index)
+- ✅ Unstaged modifications (tracked files)
+- ✅ Untracked files (new files not yet added)
+
+**Not protected** (by design):
+- ❌ Files in .gitignore (secrets, credentials, build artifacts)
+
+### Storage Overhead
+
+**Zero additional overhead**: Git's content-addressable storage automatically deduplicates identical file content. If a file hasn't changed between validations, no additional storage is used.
+
+### Recovery Examples
+
+```bash
+# Scenario: Accidentally deleted file that was never committed
+$ echo "Important work" > new-feature.ts
+$ vv validate  # Tree hash: abc123...
+$ rm new-feature.ts  # Oops!
+
+# Recovery:
+$ git cat-file -p abc123def:new-feature.ts > new-feature.ts
+
+# Scenario: Want to see file content from 2 hours ago
+$ vv history list
+2025-12-02 14:30:15  abc123...  # 2 hours ago
+2025-12-02 16:45:22  def456...  # Current
+
+$ git cat-file -p abc123def:src/feature.ts  # View old version
+```
+
+See [Work Protection Guide](../../docs/work-protection.md) for more examples.
 
 ## License
 

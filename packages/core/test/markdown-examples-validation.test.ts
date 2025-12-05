@@ -95,6 +95,11 @@ function findMarkdownFiles(dir: string, files: string[] = []): string[] {
       continue;
     }
 
+    // Skip symlinks to avoid following them and creating duplicate paths
+    if (stat.isSymbolicLink()) {
+      continue;
+    }
+
     if (stat.isDirectory()) {
       findMarkdownFiles(fullPath, files);
     } else if (entry.endsWith('.md')) {

@@ -15,7 +15,8 @@ export default defineConfig({
     ],
     // Prevent Vitest worker timeouts by limiting concurrency
     // Reduced from 5 to 3 to prevent resource exhaustion with coverage (v0.15.0)
-    maxConcurrency: 3,
+    // Further reduced to 1 to prevent onTaskUpdate timeouts (v0.17.1)
+    maxConcurrency: 1,
     fileParallelism: false,
     // Increased from 10000 to 30000 for tests that spawn processes (v0.15.0)
     testTimeout: 30000,
@@ -24,7 +25,7 @@ export default defineConfig({
     poolOptions: {
       forks: {
         singleFork: false,
-        maxForks: 3,
+        maxForks: 1,
       },
     },
     coverage: {

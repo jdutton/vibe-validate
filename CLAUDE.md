@@ -180,6 +180,20 @@ The script automatically updates:
 4. Push: `git push origin main && git push origin vX.Y.Z`
 5. Publish: See "Publishing" section below
 
+## Publishing
+
+**CRITICAL**: ALWAYS use `pnpm publish:all` to publish. NEVER publish individual packages.
+
+```bash
+# Publish all packages (determines tag from version):
+pnpm publish:all
+
+# From non-main branch:
+pnpm publish:all --allow-branch <branch-name>
+```
+
+See [Publishing Guide](docs/publishing.md) for recovery procedures and details.
+
 ## Code Quality Monitoring
 
 ### SonarCloud
@@ -306,7 +320,7 @@ removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
    pnpm generate-cli-docs
    ```
 
-2. **Never manually edit `docs/cli-reference.md`**
+2. **Never manually edit `docs/skill/resources/cli-reference.md`**
    - This file is auto-generated from `--help --verbose` output
    - Manual edits will be overwritten
    - A test enforces this (will fail if docs don't match CLI output)

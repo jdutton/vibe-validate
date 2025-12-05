@@ -600,6 +600,77 @@ duckdb analysis.db "COPY validation_runs FROM 'history.jsonl'"
 
 **Conclusion**: State file is fundamentally limited - git notes superior.
 
+## Automatic Work Protection Benefit
+
+The deterministic tree hash calculation provides an invaluable safety feature: automatic work protection.
+
+### How It Works
+
+The process described above (Step 3 in "Core Components") creates git objects for ALL files:
+
+```bash
+# Step 3: Stage all changes in temp index
+GIT_INDEX_FILE="$TEMP_INDEX" git add --all
+
+# Step 4: Calculate tree hash (CREATES GIT OBJECTS!)
+TREE_HASH=$(GIT_INDEX_FILE="$TEMP_INDEX" git write-tree)
+```
+
+**Critical insight**: `git write-tree` creates persistent git objects in `.git/objects/` for every file. These objects remain even after the temp index is deleted.
+
+### Accidental Protection
+
+This means every validation run creates a recoverable snapshot of:
+- All staged changes
+- All unstaged modifications
+- All untracked files (respecting .gitignore)
+
+**User benefit**: If you accidentally delete or modify files, you can recover them from any validation point using the tree hash.
+
+### Recovery Example
+
+```bash
+# Developer has unstaged changes
+$ cat src/feature.ts
+"3 hours of brilliant work"
+
+# Validation runs (tree hash: abc123...)
+$ validate-tool validate
+
+# Developer accidentally reverts
+$ git restore .
+
+# Work is gone from file system!
+$ cat src/feature.ts
+"Old committed version"
+
+# BUT the tree hash saved it!
+$ validate-tool history list
+2025-12-02 14:30:15  abc123...  feature-branch  ✓ PASSED
+
+# Recover the work
+$ git cat-file -p abc123...:src/feature.ts > src/feature.ts
+# Work restored!
+```
+
+### Why This Matters
+
+Unlike git stash (requires manual action), vibe-validate provides automatic protection:
+- No user action required
+- Happens every validation run
+- Creates historical timeline of code states
+- Zero additional disk space (git deduplicates)
+
+### Marketing Value
+
+This is a unique differentiator:
+- ✅ **No other validation tool provides automatic work protection**
+- ✅ **Combines caching performance with safety net**
+- ✅ **Zero overhead (free benefit of deterministic hashing)**
+- ✅ **Simple recovery (standard git commands)**
+
+See [Work Protection Guide](work-protection.md) for comprehensive recovery examples.
+
 ---
 
 ## Real-World Example: TypeScript Project

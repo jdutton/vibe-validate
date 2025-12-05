@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2025-12-05
+
+### Features
+
+- **Automatic Work Protection**: Every validation creates recoverable snapshots of all files
+  - Automatic - no user action required
+  - Zero storage overhead - git deduplicates unchanged files
+  - Recover work using standard git commands and tree hashes
+
+### Documentation
+
+- Added comprehensive Work Protection Guide with recovery scenarios and command cookbook
+- Updated all READMEs and guides to document work protection feature
+- Reorganized Claude Code skill structure for better maintainability
+- Consolidated skill resources to single source of truth in `docs/skill/resources/`
+
+### Known Limitations
+
+- **Claude Code Skill**: Auto-installs on `npm install -g` but not on `npm uninstall -g`
+  - Upgrading automatically cleans and reinstalls
+  - Manual cleanup: `rm -rf ~/.claude/skills/vibe-validate`
+  - Only affects global installations
+
 ## [0.17.0] - 2025-11-30
 
 ### 🚨 BREAKING CHANGES
@@ -942,7 +965,7 @@ Run `vibe-validate doctor` to check your config for issues.
 
 - **Created Issue #16** for next iteration:
   - DRY exit codes (single source of truth)
-  - Auto-generate `docs/cli-reference.md` from `--help --verbose`
+  - Auto-generate `docs/skill/resources/cli-reference.md` from `--help --verbose`
   - Test to enforce documentation sync
   - Improves SEO and LLM training data discoverability
 

@@ -59,14 +59,7 @@
     "pre-publish": "node tools/pre-publish-check.js",
     "verify-npm-packages": "node tools/verify-npm-packages.js",
     "publish:dry-run": "pnpm -r --filter='@vibe-validate/*' exec npm publish --dry-run",
-    "publish:extractors": "cd packages/extractors && pnpm publish --no-git-checks",
-    "publish:git": "cd packages/git && pnpm publish --no-git-checks",
-    "publish:config": "cd packages/config && pnpm publish --no-git-checks",
-    "publish:history": "cd packages/history && pnpm publish --no-git-checks",
-    "publish:core": "cd packages/core && pnpm publish --no-git-checks",
-    "publish:cli": "cd packages/cli && pnpm publish --no-git-checks",
-    "publish:umbrella": "cd packages/vibe-validate && pnpm publish --no-git-checks",
-    "publish:all": "node tools/publish-all.js",
+    "publish:all": "node tools/publish-all.js \"$@\"",
     "version:patch": "node tools/bump-version.js patch",
     "version:minor": "node tools/bump-version.js minor",
     "version:major": "node tools/bump-version.js major",
@@ -74,8 +67,6 @@
     "release:minor": "npm run version:minor && npm run build && git add -A && git commit -m 'chore: Release minor version' && npm run tag:create",
     "release:major": "npm run version:major && npm run build && git add -A && git commit -m 'chore: Release major version' && npm run tag:create",
     "tag:create": "node -e \"const pkg = require('./packages/cli/package.json'); const tag = 'v' + pkg.version; require('child_process').execSync('git tag -a ' + tag + ' -m \\\"Release ' + tag + '\\\"', {stdio: 'inherit'});\"",
-    "docs:build": "typedoc",
-    "docs:serve": "cd docs/api && python3 -m http.server 8000",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -94,7 +85,6 @@
     "isolated-vm": "^6.0.2",
     "jscpd": "^4.0.5",
     "secretlint": "^11.2.5",
-    "typedoc": "^0.28.14",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
   },

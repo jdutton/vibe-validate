@@ -6,6 +6,7 @@ Welcome to vibe-validate! This guide will help you set up validation orchestrati
 
 vibe-validate is a **validation orchestration tool** designed for developers using AI assistants. It:
 
+- ✅ **Automatically protects your work** - every validation creates recoverable snapshots
 - ✅ **Caches validation results** using git tree hashes (dramatic speedup)
 - ✅ **Runs validation steps in parallel** for faster execution
 - ✅ **Formats errors for LLMs** - strips noise, provides actionable fixes
@@ -113,6 +114,40 @@ Now you can run:
 npm run validate
 npm run pre-commit
 ```
+
+### Bonus: Your Work is Now Protected
+
+Congratulations! By running your first validation, you've created a safety snapshot of all your files.
+
+If you accidentally delete or modify files, you can recover them:
+
+```bash
+# View your validation history
+vv history list
+
+# Shows something like:
+# 2025-12-02 15:30:45  abc123def  main  ✓ PASSED
+
+# That tree hash (abc123def) contains all your files
+# You can view any file from that point:
+git cat-file -p abc123def:src/index.ts
+
+# Or recover it:
+git cat-file -p abc123def:src/index.ts > src/index.ts
+```
+
+**What just happened?**
+
+vibe-validate created git objects for every file in your working directory (respecting .gitignore). Even if files are unstaged or untracked, they're now recoverable via the tree hash.
+
+**When does this happen?**
+- Every time you run `vv validate`
+- Every time you run `vv pre-commit`
+- Every time you run `vv run <command>` (v0.15.0+)
+
+Think of it as automatic "checkpoint saves" for your codebase.
+
+Learn more: [Work Protection Guide](work-protection.md)
 
 ## Understanding the Configuration
 
