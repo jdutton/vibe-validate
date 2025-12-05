@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Known Limitations
+
+- **Claude Code Skill Installation**: Skill auto-installs on `npm install -g` but NOT on `npm uninstall -g`
+  - Upgrading vibe-validate automatically cleans and reinstalls the skill
+  - Manual cleanup: `rm -rf ~/.claude/skills/vibe-validate` if needed
+  - Only affects global installations - local project installs don't touch skill directory
+
 ## [0.17.1] - 2025-12-02
 
 ### Features

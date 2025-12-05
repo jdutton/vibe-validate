@@ -3,7 +3,7 @@
 ## Overview
 
 The `vv run` capability provides **immediate benefits without any project configuration**. Just wrap any command to get:
-- **312x speedup** via git tree hash caching
+- **Dramatic speedup** via git tree hash caching
 - **95% token reduction** via smart error extraction
 - **Zero configuration** required
 
@@ -42,7 +42,7 @@ vv run ./gradlew build
 vv run npm test
 
 # Second run (no code changes): uses cache
-vv run npm test  # Instant! (312x faster)
+vv run npm test  # Instant! (dramatically faster)
 
 # After code change: re-runs automatically
 vv run npm test  # Executes again

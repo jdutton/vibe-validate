@@ -4,7 +4,7 @@
 
 Configure your project to use vibe-validate for comprehensive validation with:
 - **Pre-commit validation** guardrails (prevent broken code from being committed)
-- **Git-aware caching** (312x speedup)
+- **Git-aware caching** (dramatic speedup)
 - **Team-wide consistency** (shared validation configuration)
 - **CI/CD integration** (same validation locally and in CI)
 
