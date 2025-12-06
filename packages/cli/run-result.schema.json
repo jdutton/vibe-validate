@@ -170,6 +170,9 @@
         },
         "isCachedResult": {
           "type": "boolean"
+        },
+        "requestedCommand": {
+          "type": "string"
         }
       },
       "required": [

@@ -290,6 +290,8 @@ removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
 - Unit tests for all public APIs
 - Integration tests for workflows
 - Mock git commands (don't require real git repo)
+- **ALWAYS follow DRY and shift-left principles. Validate before committing.**
+- **NO EXCUSES: If you find a problem during your work, fix it. Follow the "Boy Scout Rule" - leave code better than you found it.**
 - **Test-Driven Development (TDD) REQUIRED**: All features and bug fixes MUST follow TDD:
   1. Write failing tests FIRST that demonstrate the desired behavior
   2. Run tests to confirm they fail for the right reason

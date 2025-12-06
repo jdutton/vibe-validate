@@ -44,6 +44,18 @@ export const RunResultSchema = OperationMetadataSchema
 
     /** Whether this result is from cache (true) or fresh execution (false/omitted) */
     isCachedResult: z.boolean().optional(),
+
+    /**
+     * The original command requested by the user (v0.17.3+)
+     *
+     * Only present when the actual executed command differs from what was requested.
+     * This happens when nested vibe-validate commands are detected and unwrapped.
+     *
+     * Example: User runs `vv run "vv run 'echo test'"`, which executes `echo test`.
+     * - command: "echo test" (what actually executed)
+     * - requestedCommand: "vv run 'echo test'" (what user requested)
+     */
+    requestedCommand: z.string().optional(),
   }).passthrough(); // Allow additional fields from nested YAML merging (e.g., phases)
 
 /**

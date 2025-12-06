@@ -354,6 +354,140 @@ describe('run command integration', () => {
       // Should have output files
       expect(secondParsed.outputFiles.combined).toBeDefined();
     });
+
+    // Issue #73 (expanded): Nested command caching regression fix
+    describe('nested command caching (Issue #73 expanded)', () => {
+      it('should share cache between nested and direct command invocations', () => {
+        // Clear any existing cache for this test
+        const testMessage = `test-nested-cache-${Date.now()}`;
+        const testCommand = `echo ${testMessage}`; // Unquoted for simplicity
+
+        // First run: nested vv run
+        const nestedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const nestedParsed = parseRunYamlOutput(nestedRun);
+        expect(nestedParsed.exitCode).toBe(0);
+        expect(nestedParsed.command).toBe(testCommand); // Should unwrap to innermost command
+        expect(nestedParsed.requestedCommand).toContain('run'); // Should show what was requested
+        const treeHash = nestedParsed.treeHash;
+
+        // Verify cache was written
+        const notesRefs = execSync(
+          `git for-each-ref refs/notes/vibe-validate/run/${treeHash}`,
+          { encoding: 'utf-8' }
+        );
+        expect(notesRefs).not.toBe(''); // Cache exists (may include entries from other tests)
+
+        // Second run: direct command (should hit cache)
+        const directRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const directParsed = parseRunYamlOutput(directRun);
+        expect(directParsed.exitCode).toBe(0);
+        expect(directParsed.command).toBe(testCommand);
+        expect(directParsed.isCachedResult).toBe(true); // Should be cached!
+        expect(directParsed.treeHash).toBe(treeHash); // Same tree hash
+        expect(directParsed.requestedCommand).toBeUndefined(); // No nesting in direct call
+      });
+
+      it('should share cache between direct and nested command invocations (reverse order)', () => {
+        // Test the reverse: direct first, then nested
+        const testMessage = `test-reverse-${Date.now()}`;
+        const testCommand = `echo ${testMessage}`;
+
+        // First run: direct command
+        const directRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const directParsed = parseRunYamlOutput(directRun);
+        expect(directParsed.exitCode).toBe(0);
+        expect(directParsed.command).toBe(testCommand);
+        const treeHash = directParsed.treeHash;
+
+        // Second run: nested command (should hit cache from inner)
+        const nestedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const nestedParsed = parseRunYamlOutput(nestedRun);
+        expect(nestedParsed.exitCode).toBe(0);
+        expect(nestedParsed.command).toBe(testCommand); // Unwrapped
+        expect(nestedParsed.isCachedResult).toBe(true); // Inner hit cache!
+        expect(nestedParsed.requestedCommand).toContain('run'); // Shows nesting
+        expect(nestedParsed.treeHash).toBe(treeHash);
+      });
+
+      it('should propagate isCachedResult from inner to outer nested command', () => {
+        // Test that cache hit status propagates correctly through nesting
+        const testCommand = `echo "test-propagate-${Date.now()}"`;
+
+        // First run: cache miss
+        const firstRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const firstParsed = parseRunYamlOutput(firstRun);
+        expect(firstParsed.exitCode).toBe(0);
+        expect(firstParsed.isCachedResult).toBeUndefined(); // First run, no cache
+
+        // Second run: nested command should show cache hit
+        const nestedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const nestedParsed = parseRunYamlOutput(nestedRun);
+        expect(nestedParsed.exitCode).toBe(0);
+        expect(nestedParsed.isCachedResult).toBe(true); // Should propagate from inner!
+        expect(nestedParsed.requestedCommand).toContain('run'); // Shows what was requested
+      });
+
+      it('should add requestedCommand field when commands differ', () => {
+        // Test that requestedCommand field is added for transparency
+        const testMessage = `test-requested-${Date.now()}`;
+        const testCommand = `echo ${testMessage}`;
+        const wrappedCommand = `${CLI_PATH} run '${testCommand}'`;
+
+        const nestedRun = execSync(`${CLI_PATH} run "${wrappedCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const parsed = parseRunYamlOutput(nestedRun);
+        expect(parsed.exitCode).toBe(0);
+
+        // Should show both what was requested and what executed
+        expect(parsed.command).toBe(testCommand); // What actually executed
+        expect(parsed.requestedCommand).toBeDefined(); // What was requested
+        expect(parsed.requestedCommand).toContain('run'); // Should contain wrapper
+        expect(parsed.requestedCommand).not.toBe(parsed.command); // Different values
+      });
+
+      it('should not add requestedCommand when commands are the same', () => {
+        // Test that requestedCommand is only added when needed
+        const testMessage = `test-no-requested-${Date.now()}`;
+        const testCommand = `echo ${testMessage}`;
+
+        const directRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const parsed = parseRunYamlOutput(directRun);
+        expect(parsed.exitCode).toBe(0);
+        expect(parsed.command).toBe(testCommand);
+        expect(parsed.requestedCommand).toBeUndefined(); // No nesting, no field
+      });
+    });
   });
 
   describe('performance', () => {

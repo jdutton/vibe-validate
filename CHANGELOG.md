@@ -17,7 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Impact**: 312x speedup unavailable for 12 days (Nov 24 - Dec 6, 2025)
   - **Solution**: Changed to use actual tree hash variable instead of `'HEAD'` literal
   - **Affected versions**: v0.17.0, v0.17.1, v0.17.2, and prereleases v0.17.0-rc.7 through rc.13
-  - **Fixed in**: commit fd54e44
+
+- **Improved nested `vv run` command caching efficiency** (Issue #73 expanded scope)
+  - **Previous Behavior**: After the critical cache fix above, nested `vv run` commands worked but created unnecessary duplicate cache entries
+    - Running `vv run "vv run 'echo test'"` would store TWO cache entries for the same result
+    - Both outer and inner commands would cache independently with different keys
+    - Cache worked correctly but accumulated redundant entries over time
+  - **Improvement**: Outer `vv run` now skips caching when nested command is detected - only innermost command caches its result
+    - **Cleaner cache**: One cache entry per unique command instead of duplicates
+    - **Bidirectional caching**: Nested and direct invocations now explicitly share the same single cache entry
+    - **Cache hit propagation**: `isCachedResult: true` properly flows from inner to outer results
+    - **Transparency**: Added optional `requestedCommand` field showing original wrapped command when it differs from executed command
+  - **Technical Details**:
+    - Modified `storeCacheResult()` to skip caching when `result.command !== commandString` (indicates nested YAML detected)
+    - Added `requestedCommand` optional field to `RunResult` schema (v0.17.3+)
+    - Enhanced `mergeNestedYaml()` to preserve transparency about command wrapping
 
 ### Features
 

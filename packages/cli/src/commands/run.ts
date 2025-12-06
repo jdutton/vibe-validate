@@ -335,6 +335,19 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
       return;
     }
 
+    // CRITICAL FIX (Issue #73 expanded): Skip caching if nested vibe-validate command was detected
+    // When result.command differs from commandString, it means we detected YAML output from a nested
+    // vibe-validate invocation and unwrapped to the actual command. The inner command already cached
+    // its result, so we don't need to (and shouldn't) cache again at the outer level.
+    // This prevents duplicate cache entries and ensures only the innermost command caches.
+    if (result.command !== commandString) {
+      logDebug('cache', 'Skipping cache storage: nested vibe-validate command already cached by inner execution', {
+        requestedCommand: commandString,
+        actualCommand: result.command,
+      });
+      return;
+    }
+
     // Get tree hash
     const treeHash = await getGitTreeHash();
 
@@ -347,7 +360,7 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
     // Get working directory
     const workdir = getWorkingDirectory(explicitCwd);
 
-    // Encode cache key
+    // Encode cache key (using commandString since we verified it equals result.command above)
     const cacheKey = encodeRunCacheKey(commandString, workdir);
 
     // Construct git notes ref path
@@ -651,6 +664,7 @@ function mergeNestedYaml(
       return {
         ...innerResult, // Preserve ALL inner fields
         command: unwrappedCommand, // Use unwrapped command (e.g., "eslint ..." instead of "pnpm lint")
+        ...(unwrappedCommand !== outerCommand ? { requestedCommand: outerCommand } : {}), // Show what user requested if different
         exitCode: outerExitCode, // Override with outer exit code
         durationSecs: outerDurationSecs, // Override with outer duration
         timestamp: parsed.timestamp ?? innerResult.timestamp ?? new Date().toISOString(),
@@ -670,6 +684,7 @@ function mergeNestedYaml(
     return {
       ...innerResult,
       command: unwrappedCommand, // Use inner command (unwrapped)
+      ...(unwrappedCommand !== outerCommand ? { requestedCommand: outerCommand } : {}), // Show what user requested if different
       exitCode: outerExitCode,
       durationSecs: outerDurationSecs,
       treeHash: innerResult.treeHash ?? 'unknown', // Use inner treeHash or fallback to unknown

@@ -44,6 +44,7 @@
     "run": "node packages/cli/dist/bin/vv run",
     "lint": "node packages/cli/dist/bin/vv run \"eslint --max-warnings=0 \\\"packages/**/*.ts\\\" \\\"tools/**/*.js\\\"\"",
     "typecheck": "node packages/cli/dist/bin/vv run \"pnpm -r typecheck\"",
+    "duplication-check": "node tools/jscpd-check-new.js",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "dev": "pnpm -r --parallel dev",
     "validate": "node packages/cli/dist/bin/vv validate",
