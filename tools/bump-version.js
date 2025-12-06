@@ -288,39 +288,64 @@ log('Updating Claude Code plugin versions...', 'blue');
 const pluginFiles = [
   { path: join(PROJECT_ROOT, 'plugins/claude-code/.claude-plugin/plugin.json'), name: 'Plugin manifest' },
   { path: join(PROJECT_ROOT, '.claude-plugin/marketplace.json'), name: 'Marketplace config' },
+  { path: join(PROJECT_ROOT, 'docs/skill/SKILL.md'), name: 'Skill documentation', isYamlFrontMatter: true },
 ];
 
 let pluginUpdatedCount = 0;
 let pluginSkippedCount = 0;
 
-for (const { path: pluginPath, name } of pluginFiles) {
+for (const { path: pluginPath, name, isYamlFrontMatter } of pluginFiles) {
   try {
     const content = readFileSync(pluginPath, 'utf8');
-    const config = JSON.parse(content);
 
-    // Update version field (plugin.json has direct version, marketplace.json has nested)
     let oldVersion;
     let updated = false;
 
-    if (pluginPath.endsWith('plugin.json') && config.version) {
-      oldVersion = config.version;
-      if (oldVersion !== newVersion) {
-        const updatedContent = content.replace(
-          /"version":\s*"[^"]+"/,
-          `"version": "${newVersion}"`
-        );
-        writeFileSync(pluginPath, updatedContent, 'utf8');
-        updated = true;
+    // Handle YAML front matter files (SKILL.md)
+    if (isYamlFrontMatter) {
+      // Match: version: 0.17.2 # Tracks vibe-validate package version
+      const versionPattern = /^version:\s*(\d+\.\d+\.\d+(?:-[\w.]+)?)\s*#\s*Tracks vibe-validate package version/m;
+      const match = content.match(versionPattern);
+
+      if (match) {
+        oldVersion = match[1];
+        if (oldVersion !== newVersion) {
+          const updatedContent = content.replace(
+            versionPattern,
+            `version: ${newVersion} # Tracks vibe-validate package version`
+          );
+          writeFileSync(pluginPath, updatedContent, 'utf8');
+          updated = true;
+        }
+      } else {
+        log(`  - ${name}: skipped (version tracking comment not found)`, 'yellow');
+        pluginSkippedCount++;
+        continue;
       }
-    } else if (pluginPath.endsWith('marketplace.json') && config.plugins?.[0]?.version) {
-      oldVersion = config.plugins[0].version;
-      if (oldVersion !== newVersion) {
-        const updatedContent = content.replace(
-          /"version":\s*"[^"]+"/,
-          `"version": "${newVersion}"`
-        );
-        writeFileSync(pluginPath, updatedContent, 'utf8');
-        updated = true;
+    } else {
+      // Handle JSON files (plugin.json, marketplace.json)
+      const config = JSON.parse(content);
+
+      if (pluginPath.endsWith('plugin.json') && config.version) {
+        oldVersion = config.version;
+        if (oldVersion !== newVersion) {
+          const updatedContent = content.replace(
+            /"version":\s*"[^"]+"/,
+            `"version": "${newVersion}"`
+          );
+          writeFileSync(pluginPath, updatedContent, 'utf8');
+          updated = true;
+        }
+      } else if (pluginPath.endsWith('marketplace.json') && config.plugins?.[0]?.version) {
+        oldVersion = config.plugins[0].version;
+        if (oldVersion !== newVersion) {
+          const updatedContent = content.replace(
+            /"version":\s*"[^"]+"/,
+            `"version": "${newVersion}"`
+          );
+          writeFileSync(pluginPath, updatedContent, 'utf8');
+          updated = true;
+        }
       }
     }
 

@@ -295,6 +295,28 @@ describe('doctor command', () => {
       });
     });
 
+    it('should skip workflow sync check when disableWorkflowCheck is true', async () => {
+      vi.mocked(execSync).mockReturnValue('v22.0.0' as any);
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      // Config with disableWorkflowCheck enabled
+      const configWithDisabled = {
+        ...mockConfig,
+        ci: { disableWorkflowCheck: true }
+      };
+      vi.mocked(loadConfig).mockResolvedValue(configWithDisabled);
+
+      // Mock checkSync to return out of sync (but should be ignored)
+      vi.mocked(checkSync).mockReturnValue({ inSync: false, diff: 'Out of sync' });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'GitHub Actions workflow', {
+        passed: true,
+        messageContains: 'Workflow sync check disabled'
+      });
+    });
+
     it('should provide actionable suggestions for failures', async () => {
       // Mock old Node version
       mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });

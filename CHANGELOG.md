@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.3] - 2025-12-06
+
+### Features
+
+- **Custom Workflow Support**: Added `ci.disableWorkflowCheck` config option for projects requiring manual workflow customization
+  - Set to `true` to suppress "workflow out of sync" warnings from `doctor` command
+  - Useful for multi-language projects or custom CI setups that can't use auto-generated workflows
+  - See troubleshooting docs at `docs/heterogeneous-projects.md`
+
+### Documentation
+
+- Improved `doctor` command error messages with troubleshooting links and workflow regeneration guidance
+- Added comprehensive troubleshooting section for workflow sync issues
+- Claude Code SKILL.md now includes version field that tracks vibe-validate package version
+
 ## [0.17.2] - 2025-12-06
 
 ### Bug Fixes
