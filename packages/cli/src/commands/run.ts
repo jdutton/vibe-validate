@@ -283,7 +283,7 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
 
     // Try to read git note using secure readNote function
-    const noteContent = readNote(refPath, 'HEAD');
+    const noteContent = readNote(refPath, treeHash);
 
     if (!noteContent) {
       // Cache miss
@@ -365,7 +365,7 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
 
     try {
       // Use secure addNote with stdin piping (no shell, no heredoc)
-      addNote(refPath, 'HEAD', noteYaml, true);
+      addNote(refPath, treeHash, noteYaml, true);
     // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical
     } catch (_error) {
       // Cache storage failed - not critical, continue
