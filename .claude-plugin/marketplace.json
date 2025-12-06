@@ -9,7 +9,7 @@
       "name": "vibe-validate",
       "source": "./plugins/claude-code",
       "description": "Expert agent for vibe-validate validation orchestration",
-      "version": "0.17.1",
+      "version": "0.17.2",
       "strict": true
     }
   ]
