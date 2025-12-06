@@ -20,6 +20,46 @@ describe('snapshot command', () => {
   let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456789012345678901234567890abcd';
 
+  // Helper to run snapshot command and extract exit code
+  async function runSnapshotCommand(args: string[] = ['snapshot']): Promise<number> {
+    try {
+      await env.program.parseAsync(args, { from: 'user' });
+      return 0;
+    } catch (err: unknown) {
+      // Extract exit code from process.exit mock error
+      if (err instanceof Error && err.message.startsWith('process.exit')) {
+        const match = err.message.match(/process\.exit\((\d+)\)/);
+        return match ? Number.parseInt(match[1], 10) : 1;
+      }
+      if (err && typeof err === 'object' && 'exitCode' in err) {
+        return (err as { exitCode: number }).exitCode;
+      }
+      throw err;
+    }
+  }
+
+  // Helper to get all console.log output as strings
+  function getLogOutput(): string[] {
+    return vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+  }
+
+  // Helper to create mock history note
+  function createMockHistory(passed: boolean): HistoryNote {
+    return {
+      runs: [
+        {
+          result: {
+            passed,
+            timestamp: '2025-12-05T10:30:15.000Z',
+            treeHash: mockTreeHash,
+            summary: passed ? 'Validation passed' : 'Validation failed',
+            phases: [],
+          },
+        },
+      ],
+    };
+  }
+
   beforeEach(() => {
     env = setupCommanderTest();
 
@@ -58,202 +98,91 @@ describe('snapshot command', () => {
   describe('snapshot display', () => {
     it('should display snapshot hash', async () => {
       snapshotCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        // Commander throws when exitOverride is set, expect exit code 0
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
-      // Should show snapshot hash
-      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-      expect(allLogCalls.some(call => call.includes(mockTreeHash))).toBe(true);
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(0);
+      expect(getLogOutput().some(call => call.includes(mockTreeHash))).toBe(true);
     });
 
     it('should show "Validation Status: Not yet validated" when no history', async () => {
-      vi.mocked(hasHistoryForTree).mockResolvedValue(false);
-
       snapshotCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
-      // Should show "Validation Status: Not yet validated"
-      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-      expect(allLogCalls.some(call => call.includes('Validation Status:') && call.includes('Not yet validated'))).toBe(true);
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(0);
+      expect(getLogOutput().some(call => call.includes('Validation Status:') && call.includes('Not yet validated'))).toBe(true);
     });
 
     it('should show recovery instructions', async () => {
       snapshotCommand(env.program);
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(0);
 
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
-      // Should show recovery instructions
-      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-      expect(allLogCalls.some(call => call.includes('Recovery Instructions'))).toBe(true);
-      expect(allLogCalls.some(call => call.includes('git ls-tree'))).toBe(true);
-      expect(allLogCalls.some(call => call.includes('git show'))).toBe(true);
-      expect(allLogCalls.some(call => call.includes('git read-tree'))).toBe(true);
+      const output = getLogOutput();
+      expect(output.some(call => call.includes('Recovery Instructions'))).toBe(true);
+      expect(output.some(call => call.includes('git ls-tree'))).toBe(true);
+      expect(output.some(call => call.includes('git show'))).toBe(true);
+      expect(output.some(call => call.includes('git read-tree'))).toBe(true);
     });
   });
 
   describe('validation status display', () => {
     it('should show "Validation Status: ✅ Passed" when validation passed', async () => {
-      const mockHistoryNote: HistoryNote = {
-        runs: [
-          {
-            result: {
-              passed: true,
-              timestamp: '2025-12-05T10:30:15.000Z',
-              treeHash: mockTreeHash,
-              summary: 'Validation passed',
-              phases: [],
-            },
-          },
-        ],
-      };
-
       vi.mocked(hasHistoryForTree).mockResolvedValue(true);
-      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
+      vi.mocked(readHistoryNote).mockResolvedValue(createMockHistory(true));
 
       snapshotCommand(env.program);
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(0);
 
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
-      // Should show "Validation Status: ✅ Passed"
-      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-      expect(allLogCalls.some(call => call.includes('Validation Status:') && call.includes('Passed'))).toBe(true);
-      expect(allLogCalls.some(call => call.includes('Last validated:'))).toBe(true);
+      const output = getLogOutput();
+      expect(output.some(call => call.includes('Validation Status:') && call.includes('Passed'))).toBe(true);
+      expect(output.some(call => call.includes('Last validated:'))).toBe(true);
     });
 
     it('should show "Validation Status: ❌ Failed" and suggest running state when validation failed', async () => {
-      const mockHistoryNote: HistoryNote = {
-        runs: [
-          {
-            result: {
-              passed: false,
-              timestamp: '2025-12-05T10:30:15.000Z',
-              treeHash: mockTreeHash,
-              summary: 'Validation failed',
-              phases: [],
-            },
-          },
-        ],
-      };
-
       vi.mocked(hasHistoryForTree).mockResolvedValue(true);
-      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
+      vi.mocked(readHistoryNote).mockResolvedValue(createMockHistory(false));
 
       snapshotCommand(env.program);
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(0);
 
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
-      // Should show "Validation Status: ❌ Failed"
-      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-      expect(allLogCalls.some(call => call.includes('Validation Status:') && call.includes('Failed'))).toBe(true);
-
-      // Should suggest running state for details
+      const output = getLogOutput();
+      expect(output.some(call => call.includes('Validation Status:') && call.includes('Failed'))).toBe(true);
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('state'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('detailed error information'));
     });
 
     it('should use program name in state suggestion', async () => {
-      const mockHistoryNote: HistoryNote = {
-        runs: [
-          {
-            result: {
-              passed: false,
-              timestamp: '2025-12-05T10:30:15.000Z',
-              treeHash: mockTreeHash,
-              summary: 'Validation failed',
-              phases: [],
-            },
-          },
-        ],
-      };
-
       vi.mocked(hasHistoryForTree).mockResolvedValue(true);
-      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
+      vi.mocked(readHistoryNote).mockResolvedValue(createMockHistory(false));
 
-      // Set program name to match how user invoked it
       env.program.name('vv');
       snapshotCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
-      // Should use "vv state" not "vibe-validate state"
-      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-      expect(allLogCalls.some(call => call.includes("'vv state'"))).toBe(true);
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(0);
+      expect(getLogOutput().some(call => call.includes("'vv state'"))).toBe(true);
     });
   });
 
   describe('verbose mode', () => {
     it('should show additional information in verbose mode', async () => {
       snapshotCommand(env.program);
+      const exitCode = await runSnapshotCommand(['snapshot', '--verbose']);
+      expect(exitCode).toBe(0);
 
-      try {
-        await env.program.parseAsync(['snapshot', '--verbose'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
-      // Should show additional information
-      const allLogCalls = vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-      expect(allLogCalls.some(call => call.includes('Additional Information'))).toBe(true);
-      expect(allLogCalls.some(call => call.includes('What is a snapshot?'))).toBe(true);
-      expect(allLogCalls.some(call => call.includes('When are snapshots created?'))).toBe(true);
+      const output = getLogOutput();
+      expect(output.some(call => call.includes('Additional Information'))).toBe(true);
+      expect(output.some(call => call.includes('What is a snapshot?'))).toBe(true);
+      expect(output.some(call => call.includes('When are snapshots created?'))).toBe(true);
     });
   });
 
   describe('error handling', () => {
     it('should handle getGitTreeHash errors gracefully', async () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('Git tree hash failed'));
-
       snapshotCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
-
-      // Should show error message
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to get snapshot'),
         expect.any(Error)
@@ -263,17 +192,10 @@ describe('snapshot command', () => {
     it('should handle readHistoryNote errors gracefully', async () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(true);
       vi.mocked(readHistoryNote).mockRejectedValue(new Error('Failed to read history'));
-
       snapshotCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
-
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to get snapshot'),
         expect.any(Error)
@@ -284,28 +206,16 @@ describe('snapshot command', () => {
   describe('exit codes', () => {
     it('should exit with code 0 on success', async () => {
       snapshotCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(0);
     });
 
     it('should exit with code 1 on error', async () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('Git tree hash failed'));
-
       snapshotCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['snapshot'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      const exitCode = await runSnapshotCommand();
+      expect(exitCode).toBe(1);
     });
   });
 });

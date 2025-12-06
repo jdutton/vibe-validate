@@ -19,6 +19,10 @@ export function snapshotCommand(program: Command): void {
       try {
         await executeSnapshotCommand(options, program.name());
       } catch (error) {
+        // Re-throw if this is from process.exit (test mock)
+        if (error instanceof Error && error.message.startsWith('process.exit')) {
+          throw error;
+        }
         console.error(chalk.red('❌ Failed to get snapshot:'), error);
         process.exit(1);
       }
