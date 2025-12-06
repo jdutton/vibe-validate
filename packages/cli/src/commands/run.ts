@@ -11,12 +11,13 @@ import { join, resolve, relative } from 'node:path';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 import type { OutputLine } from '@vibe-validate/core';
-import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote } from '@vibe-validate/git';
+import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
 import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import yaml from 'yaml';
 import chalk from 'chalk';
+import { logDebug, logWarning } from '../utils/logger.js';
 
 export function runCommand(program: Command): void {
   program
@@ -270,6 +271,7 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
 
     // Skip caching if not in git repository
     if (treeHash === 'unknown') {
+      logDebug('cache', 'Cache lookup skipped: not in git repository');
       return null;
     }
 
@@ -280,15 +282,20 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     const cacheKey = encodeRunCacheKey(commandString, workdir);
 
     // Construct git notes ref path: refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
-    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
+    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
+
+    logDebug('cache', 'Cache lookup', { treeHash, cacheKey, refPath });
 
     // Try to read git note using secure readNote function
     const noteContent = readNote(refPath, treeHash);
 
     if (!noteContent) {
       // Cache miss
+      logDebug('cache', 'Cache miss');
       return null;
     }
+
+    logDebug('cache', 'Cache hit');
 
     // Parse cached note
     const cachedNote = yaml.parse(noteContent) as RunCacheNote;
@@ -310,9 +317,8 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     };
 
     return result;
-  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache lookup failure is non-critical, proceed with execution
-  } catch (_error) {
-    // Cache lookup failed - proceed with execution
+  } catch (error) {
+    logWarning('cache', 'Cache lookup failed - proceeding with execution', error as Error);
     return null;
   }
 }
@@ -325,6 +331,7 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
     // Only cache successful runs (v0.15.0+)
     // Failed runs may be transient or environment-specific
     if (result.exitCode !== 0) {
+      logDebug('cache', 'Skipping cache storage: command failed', { exitCode: result.exitCode });
       return;
     }
 
@@ -333,6 +340,7 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
 
     // Skip caching if not in git repository
     if (treeHash === 'unknown') {
+      logDebug('cache', 'Cache storage skipped: not in git repository');
       return;
     }
 
@@ -343,7 +351,9 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
     const cacheKey = encodeRunCacheKey(commandString, workdir);
 
     // Construct git notes ref path
-    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
+    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
+
+    logDebug('cache', 'Storing cache result', { treeHash, cacheKey, refPath });
 
     // Build cache note (extraction already cleaned in runner)
     // Token optimization: Only include extraction when exitCode !== 0 OR there are actual errors
@@ -366,13 +376,12 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
     try {
       // Use secure addNote with stdin piping (no shell, no heredoc)
       addNote(refPath, treeHash, noteYaml, true);
-    // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical
-    } catch (_error) {
-      // Cache storage failed - not critical, continue
+      logDebug('cache', 'Cache stored successfully');
+    } catch (error) {
+      logWarning('cache', 'Failed to store cache result', error as Error);
     }
-  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical, continue execution
-  } catch (_error) {
-    // Cache storage failed - not critical, continue
+  } catch (error) {
+    logWarning('cache', 'Cache storage failed', error as Error);
   }
 }
 

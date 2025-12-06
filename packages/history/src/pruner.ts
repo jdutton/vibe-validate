@@ -2,7 +2,7 @@
  * History pruning utilities
  */
 
-import { removeNote, removeNotesRefs } from '@vibe-validate/git';
+import { removeNote, removeNotesRefs, type TreeHash, type NotesRef } from '@vibe-validate/git';
 import type { PruneResult, HistoryConfig } from './types.js';
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
 import { getAllHistoryNotes } from './reader.js';
@@ -64,11 +64,11 @@ export async function pruneHistoryByAge(
       // All runs in this note are old - delete entire note
       // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const treeHash = note.treeHash!;
+      const treeHash = note.treeHash! as TreeHash;
 
       if (!dryRun) {
         // Use secure removeNote function (no command injection risk)
-        removeNote(notesRef, treeHash);
+        removeNote(notesRef as NotesRef, treeHash);
       }
 
       notesPruned++;
@@ -107,11 +107,11 @@ export async function pruneAllHistory(
   for (const note of allNotes) {
     // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const treeHash = note.treeHash!;
+    const treeHash = note.treeHash! as TreeHash;
 
     if (!dryRun) {
       // Use secure removeNote function (no command injection risk)
-      removeNote(notesRef, treeHash);
+      removeNote(notesRef as NotesRef, treeHash);
     }
 
     notesPruned++;
@@ -149,11 +149,11 @@ export async function pruneLegacyNotes(dryRun: boolean = false): Promise<PruneRe
     for (const note of allNotes) {
       // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const treeHash = note.treeHash!;
+      const treeHash = note.treeHash! as TreeHash;
 
       if (!dryRun) {
         // Use secure removeNote function (no command injection risk)
-        removeNote(legacyRef, treeHash);
+        removeNote(legacyRef as NotesRef, treeHash);
       }
 
       notesPruned++;

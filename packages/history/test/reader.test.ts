@@ -3,16 +3,19 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { execSync } from 'node:child_process';
 import {
   readHistoryNote,
   listHistoryTreeHashes,
   getAllHistoryNotes,
   hasHistoryForTree,
 } from '../src/reader.js';
+import { readNote, listNotes } from '@vibe-validate/git';
 
-// Mock child_process
-vi.mock('child_process');
+// Mock @vibe-validate/git
+vi.mock('@vibe-validate/git', () => ({
+  readNote: vi.fn(),
+  listNotes: vi.fn(),
+}));
 
 describe('reader', () => {
   beforeEach(() => {
@@ -38,7 +41,7 @@ runs:
       phases: []
 `;
 
-      vi.mocked(execSync).mockReturnValue(mockYaml);
+      vi.mocked(readNote).mockReturnValue(mockYaml);
 
       const result = await readHistoryNote('abc123def456');
 
@@ -48,31 +51,26 @@ runs:
       expect(result?.runs[0].id).toBe('run-1');
       expect(result?.runs[0].passed).toBe(true);
 
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=vibe-validate/validate show abc123def456',
-        expect.objectContaining({
-          encoding: 'utf8',
-          timeout: 30000,
-        })
+      expect(readNote).toHaveBeenCalledWith(
+        'vibe-validate/validate',
+        'abc123def456'
       );
     });
 
     it('should use custom notes ref when provided', async () => {
       const mockYaml = 'treeHash: abc123\nruns: []';
-      vi.mocked(execSync).mockReturnValue(mockYaml);
+      vi.mocked(readNote).mockReturnValue(mockYaml);
 
       await readHistoryNote('abc123def456', 'custom/notes/ref');
 
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=custom/notes/ref show abc123def456',
-        expect.any(Object)
+      expect(readNote).toHaveBeenCalledWith(
+        'custom/notes/ref',
+        'abc123def456'
       );
     });
 
     it('should return null when note does not exist', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('No note found');
-      });
+      vi.mocked(readNote).mockReturnValue(null);
 
       const result = await readHistoryNote('nonexistent');
 
@@ -80,7 +78,7 @@ runs:
     });
 
     it('should return null on any error', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(readNote).mockImplementation(() => {
         throw new Error('Git command failed');
       });
 
@@ -119,7 +117,7 @@ runs:
       phases: []
 `;
 
-      vi.mocked(execSync).mockReturnValue(mockYaml);
+      vi.mocked(readNote).mockReturnValue(mockYaml);
 
       const result = await readHistoryNote('abc123def456');
 
@@ -176,7 +174,7 @@ runs:
       phases: []
 `;
 
-      vi.mocked(execSync).mockReturnValue(mockYaml);
+      vi.mocked(readNote).mockReturnValue(mockYaml);
 
       const result = await readHistoryNote('abc123def456');
 
@@ -190,13 +188,13 @@ runs:
 
   describe('listHistoryTreeHashes', () => {
     it('should list all tree hashes with notes', async () => {
-      const mockOutput = `
-note1sha abc123def456
-note2sha 789012abc345
-note3sha fedcba987654
-`;
+      const mockNotes: Array<[string, string]> = [
+        ['abc123def456', 'note content 1'],
+        ['789012abc345', 'note content 2'],
+        ['fedcba987654', 'note content 3'],
+      ];
 
-      vi.mocked(execSync).mockReturnValue(mockOutput);
+      vi.mocked(listNotes).mockReturnValue(mockNotes);
 
       const result = await listHistoryTreeHashes();
 
@@ -206,29 +204,20 @@ note3sha fedcba987654
         'fedcba987654',
       ]);
 
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=vibe-validate/validate list',
-        expect.objectContaining({
-          encoding: 'utf8',
-          timeout: 30000,
-        })
-      );
+      expect(listNotes).toHaveBeenCalledWith('vibe-validate/validate');
     });
 
     it('should use custom notes ref when provided', async () => {
-      const mockOutput = 'note1sha abc123def456';
-      vi.mocked(execSync).mockReturnValue(mockOutput);
+      const mockNotes: Array<[string, string]> = [['abc123def456', 'note content']];
+      vi.mocked(listNotes).mockReturnValue(mockNotes);
 
       await listHistoryTreeHashes('custom/notes/ref');
 
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=custom/notes/ref list',
-        expect.any(Object)
-      );
+      expect(listNotes).toHaveBeenCalledWith('custom/notes/ref');
     });
 
     it('should return empty array when no notes exist', async () => {
-      vi.mocked(execSync).mockReturnValue('');
+      vi.mocked(listNotes).mockReturnValue([]);
 
       const result = await listHistoryTreeHashes();
 
@@ -236,7 +225,7 @@ note3sha fedcba987654
     });
 
     it('should return empty array on error', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(listNotes).mockImplementation(() => {
         throw new Error('Git command failed');
       });
 
@@ -246,15 +235,13 @@ note3sha fedcba987654
     });
 
     it('should filter out empty lines', async () => {
-      const mockOutput = `
-note1sha abc123def456
+      // listNotes already filters empty lines, but test the behavior
+      const mockNotes: Array<[string, string]> = [
+        ['abc123def456', 'note content 1'],
+        ['789012abc345', 'note content 2'],
+      ];
 
-note2sha 789012abc345
-
-
-`;
-
-      vi.mocked(execSync).mockReturnValue(mockOutput);
+      vi.mocked(listNotes).mockReturnValue(mockNotes);
 
       const result = await listHistoryTreeHashes();
 
@@ -265,8 +252,8 @@ note2sha 789012abc345
     });
 
     it('should handle single tree hash', async () => {
-      const mockOutput = 'note1sha abc123def456\n';
-      vi.mocked(execSync).mockReturnValue(mockOutput);
+      const mockNotes: Array<[string, string]> = [['abc123def456', 'note content']];
+      vi.mocked(listNotes).mockReturnValue(mockNotes);
 
       const result = await listHistoryTreeHashes();
 
@@ -276,15 +263,18 @@ note2sha 789012abc345
 
   describe('getAllHistoryNotes', () => {
     it('should get all notes for all tree hashes', async () => {
-      // Mock listHistoryTreeHashes
-      const mockListOutput = 'note1sha abc123\nnote2sha def456';
+      // Mock listNotes
+      const mockNotes: Array<[string, string]> = [
+        ['abc123', 'note content 1'],
+        ['def456', 'note content 2'],
+      ];
       const mockNote1 = 'treeHash: abc123\nruns: []';
       const mockNote2 = 'treeHash: def456\nruns: []';
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(mockListOutput) // list call
-        .mockReturnValueOnce(mockNote1) // first show call
-        .mockReturnValueOnce(mockNote2); // second show call
+      vi.mocked(listNotes).mockReturnValue(mockNotes);
+      vi.mocked(readNote)
+        .mockReturnValueOnce(mockNote1) // first read call
+        .mockReturnValueOnce(mockNote2); // second read call
 
       const result = await getAllHistoryNotes();
 
@@ -292,32 +282,26 @@ note2sha 789012abc345
       expect(result[0].treeHash).toBe('abc123');
       expect(result[1].treeHash).toBe('def456');
 
-      // Should call list once and show twice
-      expect(execSync).toHaveBeenCalledTimes(3);
+      // Should call listNotes once and readNote twice
+      expect(listNotes).toHaveBeenCalledTimes(1);
+      expect(readNote).toHaveBeenCalledTimes(2);
     });
 
     it('should use custom notes ref', async () => {
-      const mockListOutput = 'note1sha abc123';
+      const mockNotes: Array<[string, string]> = [['abc123', 'note content']];
       const mockNote = 'treeHash: abc123\nruns: []';
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(mockListOutput)
-        .mockReturnValueOnce(mockNote);
+      vi.mocked(listNotes).mockReturnValue(mockNotes);
+      vi.mocked(readNote).mockReturnValue(mockNote);
 
       await getAllHistoryNotes('custom/notes/ref');
 
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=custom/notes/ref list',
-        expect.any(Object)
-      );
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=custom/notes/ref show abc123',
-        expect.any(Object)
-      );
+      expect(listNotes).toHaveBeenCalledWith('custom/notes/ref');
+      expect(readNote).toHaveBeenCalledWith('custom/notes/ref', 'abc123');
     });
 
     it('should return empty array when no tree hashes exist', async () => {
-      vi.mocked(execSync).mockReturnValue('');
+      vi.mocked(listNotes).mockReturnValue([]);
 
       const result = await getAllHistoryNotes();
 
@@ -325,16 +309,18 @@ note2sha 789012abc345
     });
 
     it('should skip notes that fail to read', async () => {
-      const mockListOutput = 'note1sha abc123\nnote2sha def456\nnote3sha ghi789';
+      const mockNotes: Array<[string, string]> = [
+        ['abc123', 'note content 1'],
+        ['def456', 'note content 2'],
+        ['ghi789', 'note content 3'],
+      ];
       const mockNote1 = 'treeHash: abc123\nruns: []';
       const mockNote3 = 'treeHash: ghi789\nruns: []';
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(mockListOutput)
+      vi.mocked(listNotes).mockReturnValue(mockNotes);
+      vi.mocked(readNote)
         .mockReturnValueOnce(mockNote1)
-        .mockImplementationOnce(() => {
-          throw new Error('Failed to read note');
-        })
+        .mockReturnValueOnce(null) // Failed to read def456
         .mockReturnValueOnce(mockNote3);
 
       const result = await getAllHistoryNotes();
@@ -346,33 +332,31 @@ note2sha 789012abc345
     });
 
     it('should handle no notes gracefully', async () => {
-      vi.mocked(execSync).mockReturnValue('');
+      vi.mocked(listNotes).mockReturnValue([]);
 
       const result = await getAllHistoryNotes();
 
       expect(result).toEqual([]);
-      expect(execSync).toHaveBeenCalledTimes(1); // Only list call
+      expect(listNotes).toHaveBeenCalledTimes(1); // Only list call
     });
   });
 
   describe('hasHistoryForTree', () => {
     it('should return true when history exists', async () => {
       const mockYaml = 'treeHash: abc123\nruns: []';
-      vi.mocked(execSync).mockReturnValue(mockYaml);
+      vi.mocked(readNote).mockReturnValue(mockYaml);
 
       const result = await hasHistoryForTree('abc123def456');
 
       expect(result).toBe(true);
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=vibe-validate/validate show abc123def456',
-        expect.any(Object)
+      expect(readNote).toHaveBeenCalledWith(
+        'vibe-validate/validate',
+        'abc123def456'
       );
     });
 
     it('should return false when history does not exist', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('No note found');
-      });
+      vi.mocked(readNote).mockReturnValue(null);
 
       const result = await hasHistoryForTree('nonexistent');
 
@@ -381,18 +365,18 @@ note2sha 789012abc345
 
     it('should use custom notes ref', async () => {
       const mockYaml = 'treeHash: abc123\nruns: []';
-      vi.mocked(execSync).mockReturnValue(mockYaml);
+      vi.mocked(readNote).mockReturnValue(mockYaml);
 
       await hasHistoryForTree('abc123def456', 'custom/notes/ref');
 
-      expect(execSync).toHaveBeenCalledWith(
-        'git notes --ref=custom/notes/ref show abc123def456',
-        expect.any(Object)
+      expect(readNote).toHaveBeenCalledWith(
+        'custom/notes/ref',
+        'abc123def456'
       );
     });
 
     it('should return false on any error', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(readNote).mockImplementation(() => {
         throw new Error('Git command failed');
       });
 

@@ -104,6 +104,8 @@ body:
           required: true
         - label: I have tested with the latest version of vibe-validate
           required: true
+        - label: I have run the command with VV_DEBUG=1 and included debug output (if applicable)
+          required: false
         - label: I have removed any sensitive information from logs/config files
           required: true
 

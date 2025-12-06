@@ -105,6 +105,37 @@ describe('git-executor - validateTreeHash - valid hashes', () => {
   });
 });
 
+describe('git-executor - validateTreeHash - symbolic refs rejection', () => {
+  it('should reject HEAD', () => {
+    expect(() => validateTreeHash('HEAD')).toThrow('must be hexadecimal');
+  });
+
+  it('should reject branch names', () => {
+    expect(() => validateTreeHash('main')).toThrow('must be hexadecimal');
+    expect(() => validateTreeHash('feature/foo')).toThrow('must be hexadecimal');
+    expect(() => validateTreeHash('bugfix-123')).toThrow('must be hexadecimal');
+  });
+
+  it('should reject remote refs', () => {
+    expect(() => validateTreeHash('origin/main')).toThrow('must be hexadecimal');
+    expect(() => validateTreeHash('upstream/develop')).toThrow('must be hexadecimal');
+  });
+
+  it('should reject tag names', () => {
+    expect(() => validateTreeHash('v1.0.0')).toThrow('must be hexadecimal');
+    expect(() => validateTreeHash('release-2024')).toThrow('must be hexadecimal');
+  });
+
+  it('should accept valid full hash', () => {
+    expect(() => validateTreeHash('abc123def456789012345678901234567890abcd')).not.toThrow();
+  });
+
+  it('should accept valid abbreviated hash', () => {
+    expect(() => validateTreeHash('abc123')).not.toThrow();
+    expect(() => validateTreeHash('0123abcd')).not.toThrow();
+  });
+});
+
 describe('git-executor - validateTreeHash - command injection prevention', () => {
   it('should reject non-hexadecimal characters', () => {
     expect(() => validateTreeHash('not-a-hash')).toThrow('must be hexadecimal');

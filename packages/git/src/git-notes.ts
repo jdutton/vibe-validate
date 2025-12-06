@@ -13,24 +13,26 @@ import {
   validateNotesRef,
   validateTreeHash,
 } from './git-executor.js';
+import type { TreeHash, NotesRef } from './types.js';
 
 /**
  * Add or update a git note
  *
  * @param notesRef - The notes reference (e.g., 'vibe-validate/validate')
- * @param object - The git object to attach the note to (tree hash, commit SHA, etc.)
+ * @param object - The git tree hash to attach the note to (must be from getGitTreeHash())
  * @param content - The note content
  * @param force - Whether to overwrite existing note
  * @returns true if note was added successfully
  *
  * @example
  * ```typescript
+ * const treeHash = await getGitTreeHash();
  * addNote('vibe-validate/validate', treeHash, noteContent, true);
  * ```
  */
 export function addNote(
-  notesRef: string,
-  object: string,
+  notesRef: NotesRef,
+  object: TreeHash,
   content: string,
   force: boolean = false
 ): boolean {
@@ -56,18 +58,19 @@ export function addNote(
  * Read a git note
  *
  * @param notesRef - The notes reference
- * @param object - The git object to read the note from
+ * @param object - The git tree hash to read the note from (must be from getGitTreeHash())
  * @returns The note content, or null if no note exists
  *
  * @example
  * ```typescript
+ * const treeHash = await getGitTreeHash();
  * const note = readNote('vibe-validate/validate', treeHash);
  * if (note) {
  *   console.log('Note content:', note);
  * }
  * ```
  */
-export function readNote(notesRef: string, object: string): string | null {
+export function readNote(notesRef: NotesRef, object: TreeHash): string | null {
   validateNotesRef(notesRef);
   validateTreeHash(object);
 
@@ -83,16 +86,17 @@ export function readNote(notesRef: string, object: string): string | null {
  * Remove a git note
  *
  * @param notesRef - The notes reference
- * @param object - The git object to remove the note from
+ * @param object - The git tree hash to remove the note from (must be from getGitTreeHash())
  * @returns true if note was removed, false if it didn't exist
  *
  * @example
  * ```typescript
+ * const treeHash = await getGitTreeHash();
  * const removed = removeNote('vibe-validate/validate', treeHash);
  * console.log(removed ? 'Removed' : 'Did not exist');
  * ```
  */
-export function removeNote(notesRef: string, object: string): boolean {
+export function removeNote(notesRef: NotesRef, object: TreeHash): boolean {
   validateNotesRef(notesRef);
   validateTreeHash(object);
 
@@ -115,7 +119,7 @@ export function removeNote(notesRef: string, object: string): boolean {
  * }
  * ```
  */
-export function listNotes(notesRef: string): Array<[string, string]> {
+export function listNotes(notesRef: NotesRef): Array<[TreeHash, string]> {
   validateNotesRef(notesRef);
 
   // Get list of objects that have notes
@@ -128,7 +132,7 @@ export function listNotes(notesRef: string): Array<[string, string]> {
     return [];
   }
 
-  const notes: Array<[string, string]> = [];
+  const notes: Array<[TreeHash, string]> = [];
 
   // Parse "note_sha object_sha" pairs
   for (const line of objectsResult.stdout.split('\n')) {
@@ -136,9 +140,9 @@ export function listNotes(notesRef: string): Array<[string, string]> {
     if (!objectSha) continue;
 
     // Read the note content
-    const content = readNote(notesRef, objectSha);
+    const content = readNote(notesRef, objectSha as TreeHash);
     if (content !== null) {
-      notes.push([objectSha, content]);
+      notes.push([objectSha as TreeHash, content]);
     }
   }
 
@@ -149,17 +153,18 @@ export function listNotes(notesRef: string): Array<[string, string]> {
  * Check if a note exists
  *
  * @param notesRef - The notes reference
- * @param object - The git object to check
+ * @param object - The git tree hash to check
  * @returns true if note exists, false otherwise
  *
  * @example
  * ```typescript
+ * const treeHash = await getGitTreeHash();
  * if (hasNote('vibe-validate/validate', treeHash)) {
  *   console.log('Note exists');
  * }
  * ```
  */
-export function hasNote(notesRef: string, object: string): boolean {
+export function hasNote(notesRef: NotesRef, object: TreeHash): boolean {
   validateNotesRef(notesRef);
   validateTreeHash(object);
 

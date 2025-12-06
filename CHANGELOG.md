@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.17.3] - 2025-12-06
 
+### Bug Fixes
+
+- **CRITICAL: `vv run` caching completely broken** (Issue #73, Regression in v0.17.0-rc.7, stable releases v0.17.0-v0.17.2)
+  - **Problem**: Cache was not working at all - every command executed fully instead of returning cached results
+  - **Root Cause**: Security refactoring (commit 778cede, PR #58) passed string literal `'HEAD'` to git notes functions that require hexadecimal tree hashes, causing silent validation failures
+  - **Impact**: 312x speedup unavailable for 12 days (Nov 24 - Dec 6, 2025)
+  - **Solution**: Changed to use actual tree hash variable instead of `'HEAD'` literal
+  - **Affected versions**: v0.17.0, v0.17.1, v0.17.2, and prereleases v0.17.0-rc.7 through rc.13
+  - **Fixed in**: commit fd54e44
+
 ### Features
 
 - **Custom Workflow Support**: Added `ci.disableWorkflowCheck` config option for projects requiring manual workflow customization
