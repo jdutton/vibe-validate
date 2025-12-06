@@ -137,6 +137,10 @@
             },
             "coverage": {
               "type": "boolean"
+            },
+            "disableWorkflowCheck": {
+              "type": "boolean",
+              "default": false
             }
           },
           "additionalProperties": false

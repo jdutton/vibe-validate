@@ -113,6 +113,17 @@ export const CIConfigSchema = z.object({
 
   /** Enable coverage reporting (default: false) */
   coverage: z.boolean().optional(),
+
+  /**
+   * Disable workflow sync check in doctor command (default: false)
+   *
+   * Set to true if your workflow requires manual customization that can't be
+   * generated automatically (e.g., multi-language projects requiring Java setup,
+   * custom environment variables, or non-standard CI providers).
+   *
+   * When enabled, `vibe-validate doctor` will skip workflow sync validation.
+   */
+  disableWorkflowCheck: z.boolean().optional().default(false),
 }).strict();
 
 export type CIConfig = z.infer<typeof CIConfigSchema>;

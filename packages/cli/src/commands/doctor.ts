@@ -328,6 +328,15 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
       };
     }
 
+    // Check if workflow check is disabled in config
+    if (config.ci?.disableWorkflowCheck === true) {
+      return {
+        name: 'GitHub Actions workflow',
+        passed: true,
+        message: 'Workflow sync check disabled (ci.disableWorkflowCheck: true)',
+      };
+    }
+
     // Use CI config from vibe-validate config
     const generateOptions = ciConfigToWorkflowOptions(config);
 
@@ -341,7 +350,14 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
         name: 'GitHub Actions workflow',
         passed: false,
         message: `Workflow is out of sync: ${diff ?? 'differs from config'}`,
-        suggestion: 'Manual: npx vibe-validate generate-workflow\n   💡 Or run: vibe-validate init --setup-workflow',
+        suggestion: [
+          'Manual: npx vibe-validate generate-workflow',
+          '💡 Or run: vibe-validate init --setup-workflow',
+          '',
+          'If regenerated workflow won\'t work for your project:',
+          '   See: https://github.com/jdutton/vibe-validate/blob/main/docs/heterogeneous-projects.md#issue-github-actions-workflow-out-of-sync',
+          '   Set ci.disableWorkflowCheck: true in config'
+        ].join('\n   '),
       };
   } catch (error) {
     return {

@@ -791,16 +791,59 @@ command: mvn test
 
 ### Issue: GitHub Actions workflow out of sync
 
-**Symptom**: CI fails but local validation passes.
+**Symptom**: `vibe-validate doctor` reports "Workflow is out of sync".
 
-**Cause**: Workflow was generated from old config.
+**Diagnosis steps**:
 
-**Fix**: Regenerate workflow after config changes:
+1. **Try regenerating the workflow**:
+   ```bash
+   vv generate-workflow --output .github/workflows/validation.yml
+   ```
+
+2. **Compare the generated workflow with your current one**:
+   ```bash
+   git diff .github/workflows/validation.yml
+   ```
+
+3. **Determine if auto-generation works for your project**:
+
+**Case A: Generated workflow works** (simple Node.js/TypeScript project):
 ```bash
-vv generate-workflow --output .github/workflows/validation.yml
+# Accept the generated workflow
 git add .github/workflows/validation.yml
 git commit -m "chore: Regenerate workflow"
 ```
+
+**Case B: Generated workflow won't work** (multi-language, custom setup needs):
+
+Your project may require manual workflow customization if it needs:
+- **Multiple language runtimes** (Java + Node.js, Python + TypeScript, etc.)
+- **Custom setup actions** (`setup-java`, `setup-python`, custom Docker images)
+- **Environment variables** (paths to built artifacts, test configuration)
+- **Cross-platform matrix testing** beyond what vibe-validate generates
+
+**Solution**: Disable automatic workflow sync checking:
+
+```yaml
+# vibe-validate.config.yaml
+ci:
+  disableWorkflowCheck: true  # Suppress workflow sync warnings
+
+  # Your manual workflow stays as-is
+  # No more "out of sync" warnings from doctor
+```
+
+**When to use `disableWorkflowCheck: true`**:
+- ✅ Multi-language projects (Java + TypeScript, Python + Node.js)
+- ✅ Projects requiring `setup-java`, `setup-python`, or similar actions
+- ✅ Projects needing job-level environment variables
+- ✅ Custom CI providers (not GitHub Actions)
+
+**When NOT to use it**:
+- ❌ Pure Node.js/TypeScript projects (auto-generation works great)
+- ❌ Projects without special CI requirements
+
+After setting `disableWorkflowCheck: true`, run `vibe-validate doctor` again - the workflow warning will disappear.
 
 ---
 
