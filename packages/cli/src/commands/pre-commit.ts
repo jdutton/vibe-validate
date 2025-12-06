@@ -6,7 +6,7 @@
  */
 
 import type { Command } from 'commander';
-import { checkBranchSync, getPartiallyStagedFiles, isCurrentBranchBehindTracking } from '@vibe-validate/git';
+import { checkBranchSync, getPartiallyStagedFiles, isCurrentBranchBehindTracking, getGitTreeHash } from '@vibe-validate/git';
 import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
@@ -22,14 +22,33 @@ import {
 } from '../utils/secret-scanning.js';
 import chalk from 'chalk';
 
+/**
+ * Show work protection recovery instructions with snapshot hash
+ */
+function showWorkProtectionMessage(treeHash: string | null, recoveryCommand: string, programName: string): void {
+  if (treeHash) {
+    console.error(chalk.green(`\n   ✓ Work protected by snapshot: ${treeHash.slice(0, 12)}...`));
+    console.error(chalk.yellow(`   Safe to run:`));
+    console.error(chalk.gray(`     ${recoveryCommand}`));
+    console.error(chalk.yellow('\n   If files get lost or corrupted, view recovery guidance:'));
+    console.error(chalk.gray(`     ${programName} snapshot --help --verbose`));
+  } else {
+    console.error(chalk.yellow('\n   ⚠️  No snapshot created - proceed with caution'));
+    console.error(chalk.yellow('   To fix, run:'));
+    console.error(chalk.gray(`     ${recoveryCommand}`));
+  }
+}
+
 export function preCommitCommand(program: Command): void {
-  program
+  const cmd = program
     .command('pre-commit')
     .description('Run branch sync check + validation (recommended before commit)')
     .option('--skip-sync', 'Skip branch sync check')
-    .option('-v, --verbose', 'Show detailed progress and output')
-    // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 47 acceptable for pre-commit workflow orchestration (coordinates git sync, config loading, validation, and error handling)
-    .action(async (options) => {
+    .option('-v, --verbose', 'Show detailed progress and output');
+
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 47 acceptable for pre-commit workflow orchestration (coordinates git sync, config loading, validation, and error handling)
+  cmd.action(async (options) => {
+    const programName = program.name();
       try {
         // Step 1: Load configuration (needed for git settings)
         const config = await loadConfig();
@@ -39,7 +58,23 @@ export function preCommitCommand(program: Command): void {
           process.exit(1);
         }
 
-        // Step 2: Check for partially staged files
+        // Step 2: Create worktree snapshot BEFORE any git operations (CRITICAL for work protection)
+        console.log(chalk.blue('📸 Creating worktree snapshot...'));
+        let treeHash: string | null = null;
+
+        try {
+          treeHash = await getGitTreeHash();
+          console.log(chalk.gray(`   Snapshot: ${treeHash.slice(0, 12)}...`));
+        } catch (error) {
+          console.warn(chalk.yellow('⚠️  Could not create snapshot'));
+          if (options.verbose) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(chalk.gray(`   ${errorMessage}`));
+          }
+        }
+        console.log(''); // Blank line for readability
+
+        // Step 3: Check for partially staged files
         console.log(chalk.blue('🔍 Checking for partially staged files...'));
         const partiallyStagedFiles = getPartiallyStagedFiles();
 
@@ -69,10 +104,10 @@ export function preCommitCommand(program: Command): void {
           console.error(chalk.red(`❌ Current branch is behind its remote tracking branch`));
           console.error(chalk.yellow(`   Behind by ${behindTracking} commit(s)`));
           console.error(chalk.yellow('   Someone else has pushed changes to this branch.'));
-          console.error(chalk.yellow('\n   To fix, pull and merge the remote changes:'));
-          console.error(chalk.gray('   git pull'));
-          console.error(chalk.yellow('\n   Or rebase if you prefer:'));
-          console.error(chalk.gray('   git pull --rebase'));
+
+          showWorkProtectionMessage(treeHash, 'git pull', programName);
+
+          console.error(chalk.gray('\n   Alternative: git pull --rebase'));
           console.error(chalk.gray('\n   Skip this check with: --skip-sync (not recommended)'));
           process.exit(1);
         }
@@ -97,8 +132,9 @@ export function preCommitCommand(program: Command): void {
           if (!syncResult.isUpToDate && syncResult.hasRemote) {
             console.error(chalk.red(`❌ Branch is behind ${remoteBranch}`));
             console.error(chalk.yellow(`   Behind by ${syncResult.behindBy} commit(s)`));
-            console.error(chalk.yellow(`   Please merge ${remoteBranch} before committing:`));
-            console.error(chalk.gray(`   git merge ${remoteBranch}`));
+
+            showWorkProtectionMessage(treeHash, `git merge ${remoteBranch}`, programName);
+
             process.exit(1);
           }
 

@@ -185,6 +185,16 @@ vibe-validate state --verbose # Show full error output
 
 ---
 
+### `snapshot`
+
+Show current worktree snapshot and recovery instructions
+
+**Options:**
+
+- `-v, --verbose` - Show detailed snapshot information
+
+---
+
 ### `sync-check`
 
 Check if branch is behind remote main branch
