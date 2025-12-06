@@ -13,6 +13,7 @@ import { validateCommand } from './commands/validate.js';
 import { initCommand } from './commands/init.js';
 import { preCommitCommand } from './commands/pre-commit.js';
 import { stateCommand } from './commands/state.js';
+import { snapshotCommand } from './commands/snapshot.js';
 import { syncCheckCommand } from './commands/sync-check.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
@@ -57,6 +58,7 @@ validateCommand(program);            // vibe-validate validate
 initCommand(program);                 // vibe-validate init
 preCommitCommand(program);            // vibe-validate pre-commit
 stateCommand(program);                // vibe-validate state
+snapshotCommand(program);             // vibe-validate snapshot
 syncCheckCommand(program);            // vibe-validate sync-check
 cleanupCommand(program);              // vibe-validate cleanup
 configCommand(program);               // vibe-validate config
@@ -95,6 +97,10 @@ const verboseHelpRegistry: Partial<Record<string, VerboseHelpLoader>> = {
   'state': async () => {
     const { showStateVerboseHelp } = await import('./commands/state.js');
     return showStateVerboseHelp;
+  },
+  'snapshot': async () => {
+    const { showSnapshotVerboseHelp } = await import('./commands/snapshot.js');
+    return showSnapshotVerboseHelp;
   },
   'sync-check': async () => {
     const { showSyncCheckVerboseHelp } = await import('./commands/sync-check.js');

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.2] - 2025-12-06
+
+### Bug Fixes
+
+- **Pre-commit Work Protection Timing**: Fixed execution order in `pre-commit` command to create worktree snapshot BEFORE branch sync checks
+  - Previously suggested `git pull`/`git merge` before snapshotting, risking work loss on merge conflicts
+  - Snapshot now created immediately after config loading
+  - All subsequent git operations are now protected
+  - Fixes Issue #69
+
+### Features
+
+- **New `snapshot` command**: View current worktree snapshot state and recovery instructions
+  - Shows validation status with clarified "Validation Status:" label
+  - Provides step-by-step recovery instructions for different scenarios
+  - Uses correct program name (vv vs vibe-validate) in suggestions
+  - Suggests running `state` command for failed validations
+
+### Internal Improvements
+
+- Refactored test helpers to reduce code duplication (51.3% → minimal)
+- Improved process.exit mock handling in snapshot command tests
+
 ## [0.17.1] - 2025-12-05
 
 ### Features

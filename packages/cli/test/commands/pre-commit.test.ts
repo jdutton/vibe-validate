@@ -26,6 +26,8 @@ vi.mock('@vibe-validate/git', async () => {
     ...actual,
     checkBranchSync: vi.fn(),
     getGitTreeHash: vi.fn(),
+    isCurrentBranchBehindTracking: vi.fn(),
+    getPartiallyStagedFiles: vi.fn().mockReturnValue([]),
   };
 });
 
@@ -75,7 +77,15 @@ describe('pre-commit command', () => {
     // Reset mocks
     vi.mocked(core.runValidation).mockReset();
     vi.mocked(git.checkBranchSync).mockReset();
+    vi.mocked(git.getGitTreeHash).mockReset();
+    vi.mocked(git.isCurrentBranchBehindTracking).mockReset();
+    vi.mocked(git.getPartiallyStagedFiles).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
+
+    // Set default mock values (tests can override)
+    vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+    vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
+    vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
   });
 
   afterEach(() => {
@@ -669,4 +679,174 @@ describe('pre-commit command', () => {
   // - Fallback behavior when gitleaks config exists but command unavailable
   // - Defense-in-depth (both tools configured)
   // - Explicit command mode vs autodetect mode
+
+  describe('work protection (Issue #69)', () => {
+    it('should create worktree snapshot BEFORE checking branch sync', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date
+      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      preCommitCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0);
+        }
+      }
+
+      // Verify getGitTreeHash was called
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+
+      // Verify getGitTreeHash was called BEFORE checkBranchSync (using invocationCallOrder)
+      const getTreeHashOrder = vi.mocked(git.getGitTreeHash).mock.invocationCallOrder[0];
+      const checkSyncOrder = vi.mocked(git.checkBranchSync).mock.invocationCallOrder[0];
+      expect(getTreeHashOrder).toBeLessThan(checkSyncOrder);
+    });
+
+    it('should show recovery instructions with snapshot hash when branch is behind tracking', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
+
+      // Mock isCurrentBranchBehindTracking to return behind by 3 commits
+      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(3);
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: false,
+        behindBy: 3,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+
+      preCommitCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1); // Should fail when behind
+        }
+      }
+
+      // Snapshot should have been created before the error
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+    });
+
+    it('should show recovery instructions with snapshot hash when branch is behind origin/main', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
+
+      // Mock no tracking branch issue
+      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(null);
+
+      // But behind origin/main
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: false,
+        behindBy: 2,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+
+      preCommitCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1); // Should fail when behind
+        }
+      }
+
+      // Snapshot should have been created before the error
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+
+      // And before sync check (using invocationCallOrder)
+      const getTreeHashOrder = vi.mocked(git.getGitTreeHash).mock.invocationCallOrder[0];
+      const checkSyncOrder = vi.mocked(git.checkBranchSync).mock.invocationCallOrder[0];
+      expect(getTreeHashOrder).toBeLessThan(checkSyncOrder);
+    });
+
+    it('should handle snapshot creation failure gracefully', async () => {
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: {
+          phases: [],
+        },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
+      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date
+
+      // Mock snapshot failure
+      vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('Git tree hash failed'));
+
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: true,
+        behindBy: 0,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      preCommitCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          // Should still succeed (fail-safe philosophy)
+          expect(err.exitCode).toBe(0);
+        }
+      }
+
+      // Should have attempted snapshot
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+
+      // But validation should still run (fail-safe)
+      expect(core.runValidation).toHaveBeenCalled();
+    });
+  });
 });
