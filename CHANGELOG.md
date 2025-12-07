@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Added `requestedCommand` optional field to `RunResult` schema (v0.17.3+)
     - Enhanced `mergeNestedYaml()` to preserve transparency about command wrapping
 
+- **Fixed `--force` flag not propagating to nested `vv run` commands** (Issue #73 side effect)
+  - **Problem**: When running `vv validate --force` or nested `vv run --force` commands, the inner commands still used cached results instead of forcing fresh execution
+  - **Root Cause**: The nested caching efficiency fix correctly prevented outer caching, but the `--force` flag wasn't being passed to child processes
+  - **Impact**: Users expecting `--force` to bypass ALL caching only saw outer layer bypass - inner commands still used stale cache
+  - **Solution**: Added `VV_FORCE_EXECUTION=1` environment variable that propagates naturally through nested commands
+    - When `--force` flag is present, set `VV_FORCE_EXECUTION=1` in environment
+    - Cache lookup checks for this env var and skips cache when detected
+    - Works for both direct `vv run --force` and nested `vv validate --force` scenarios
+  - **Verification**: Running `vv validate --force --yaml` now correctly shows `isCachedResult: false` for all validation steps
+
 ### Features
 
 - **Custom Workflow Support**: Added `ci.disableWorkflowCheck` config option for projects requiring manual workflow customization

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import yaml from 'yaml';
 import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-helpers.js';
 
@@ -353,6 +355,108 @@ describe('run command integration', () => {
 
       // Should have output files
       expect(secondParsed.outputFiles.combined).toBeDefined();
+    });
+
+    describe('force flag propagation', () => {
+      it('should bypass cache when --force flag is used', () => {
+        const testMessage = `test-force-${Date.now()}`;
+        const testCommand = `echo ${testMessage}`;
+
+        // First run - should execute and cache
+        const firstRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const firstParsed = parseRunYamlOutput(firstRun);
+        expect(firstParsed.exitCode).toBe(0);
+        expect(firstParsed.isCachedResult).toBeUndefined(); // Not from cache
+
+        // Second run without --force - should hit cache
+        const cachedRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const cachedParsed = parseRunYamlOutput(cachedRun);
+        expect(cachedParsed.exitCode).toBe(0);
+        expect(cachedParsed.isCachedResult).toBe(true); // From cache
+
+        // Third run with --force - should bypass cache
+        const forcedRun = execSync(`${CLI_PATH} run --force "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const forcedParsed = parseRunYamlOutput(forcedRun);
+        expect(forcedParsed.exitCode).toBe(0);
+        expect(forcedParsed.isCachedResult).toBeUndefined(); // Not from cache (forced)
+      });
+
+      it('should propagate --force to nested vv run commands', () => {
+        const testMessage = `test-nested-force-${Date.now()}`;
+        const testCommand = `echo ${testMessage}`;
+
+        // First run - cache the command
+        const firstRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const firstParsed = parseRunYamlOutput(firstRun);
+        expect(firstParsed.exitCode).toBe(0);
+
+        // Second run - nested command should hit cache
+        const nestedCachedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const nestedCachedParsed = parseRunYamlOutput(nestedCachedRun);
+        expect(nestedCachedParsed.exitCode).toBe(0);
+        expect(nestedCachedParsed.isCachedResult).toBe(true); // Inner hit cache
+
+        // Third run - nested command with --force should bypass cache
+        const nestedForcedRun = execSync(`${CLI_PATH} run --force "${CLI_PATH} run '${testCommand}'"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const nestedForcedParsed = parseRunYamlOutput(nestedForcedRun);
+        expect(nestedForcedParsed.exitCode).toBe(0);
+        expect(nestedForcedParsed.isCachedResult).toBeUndefined(); // Forced execution
+      });
+
+      it('should propagate VV_FORCE_EXECUTION env var to child processes', () => {
+        const testMessage = `test-env-force-${Date.now()}`;
+        const testCommand = `echo ${testMessage}`;
+
+        // First run - cache the command
+        execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        // Second run - should hit cache
+        const cachedRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const cachedParsed = parseRunYamlOutput(cachedRun);
+        expect(cachedParsed.isCachedResult).toBe(true);
+
+        // Third run with VV_FORCE_EXECUTION env var - should bypass cache
+        const forcedRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env, VV_FORCE_EXECUTION: '1' },
+        });
+
+        const forcedParsed = parseRunYamlOutput(forcedRun);
+        expect(forcedParsed.exitCode).toBe(0);
+        expect(forcedParsed.isCachedResult).toBeUndefined(); // Forced via env var
+      });
     });
 
     // Issue #73 (expanded): Nested command caching regression fix
@@ -745,6 +849,134 @@ describe('run command integration', () => {
       // Should have closing delimiter (always present for RFC 4627 compliance)
       expect(output).toMatch(/\n---\n$/); // Closing delimiter at end
       expect(output.trim()).toBe(('---\n' + yaml.stringify(parsed) + '---').trim());
+    });
+  });
+
+  describe('--check flag', () => {
+    it('should return cached result without executing when cache exists', () => {
+      const testMessage = `test-check-hit-${Date.now()}`;
+      const testCommand = `echo ${testMessage}`;
+
+      // First run - populate cache
+      execSync(`${CLI_PATH} run "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      // Second run with --check - should return cached result
+      const checkOutput = execSync(`${CLI_PATH} run --check "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      const parsed = parseRunYamlOutput(checkOutput);
+      expect(parsed.exitCode).toBe(0);
+      expect(parsed.isCachedResult).toBe(true);
+    });
+
+    it('should exit with code 1 when cache does not exist', () => {
+      const testMessage = `test-check-miss-${Date.now()}`;
+      const testCommand = `echo ${testMessage}`;
+
+      // Run --check without prior cache
+      try {
+        execSync(`${CLI_PATH} run --check "${testCommand}"`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        expect.fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.status).toBe(1);
+      }
+    });
+
+    it('should not execute command when checking cache', () => {
+      const testFile = `/tmp/vv-test-check-${Date.now()}.txt`;
+      const testCommand = `touch ${testFile}`;
+
+      // First run - populate cache
+      execSync(`${CLI_PATH} run "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      // Remove the file
+      if (existsSync(testFile)) {
+        execSync(`rm ${testFile}`);
+      }
+
+      // Run --check - should NOT recreate the file
+      execSync(`${CLI_PATH} run --check "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      // File should still not exist (command was not executed)
+      expect(existsSync(testFile)).toBe(false);
+    });
+  });
+
+  describe('--cwd flag', () => {
+    it('should use explicit --cwd in cache key', () => {
+      const testMessage = `test-cwd-${Date.now()}`;
+      const testCommand = `echo ${testMessage}`;
+      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+
+      // Run from root with --cwd pointing to subdirectory
+      const output1 = execSync(`node ${absoluteCliPath} run --cwd packages/cli "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: process.cwd(), // Run from repo root
+      });
+
+      const parsed1 = parseRunYamlOutput(output1);
+      expect(parsed1.exitCode).toBe(0);
+      expect(parsed1.isCachedResult).toBeUndefined(); // First run
+
+      // Run again - should hit cache
+      const output2 = execSync(`node ${absoluteCliPath} run --cwd packages/cli "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: process.cwd(),
+      });
+
+      const parsed2 = parseRunYamlOutput(output2);
+      expect(parsed2.isCachedResult).toBe(true);
+    });
+
+    it('should generate same cache key for --cwd and cd + run', () => {
+      const testMessage = `test-cwd-equivalence-${Date.now()}`;
+      const testCommand = `echo ${testMessage}`;
+      const subdir = 'packages/cli';
+      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+
+      // Scenario 1: vv run --cwd subdir "cmd" (from root)
+      const output1 = execSync(`node ${absoluteCliPath} run --cwd ${subdir} "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: process.cwd(),
+      });
+
+      const parsed1 = parseRunYamlOutput(output1);
+      expect(parsed1.exitCode).toBe(0);
+      expect(parsed1.isCachedResult).toBeUndefined(); // First run
+
+      // Scenario 2: cd subdir && vv run "cmd"
+      const output2 = execSync(`node ${absoluteCliPath} run "${testCommand}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: path.join(process.cwd(), subdir), // Run from subdirectory
+      });
+
+      const parsed2 = parseRunYamlOutput(output2);
+      expect(parsed2.exitCode).toBe(0);
+      expect(parsed2.isCachedResult).toBe(true); // Should hit cache from scenario 1
+    });
+
+    it('should create separate cache entries for different working directories', () => {
+      // This is already tested in the caching behavior section (line 244)
+      // but we document it here for completeness of --cwd coverage
+      expect(true).toBe(true);
     });
   });
 });

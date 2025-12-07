@@ -65,11 +65,21 @@ export interface DoctorResult {
 }
 
 /**
+ * Version checker interface for dependency injection (enables fast tests)
+ */
+export interface VersionChecker {
+  /** Fetch latest version from npm registry */
+  fetchLatestVersion(): Promise<string>;
+}
+
+/**
  * Options for running doctor checks
  */
 export interface DoctorOptions {
   /** Show all checks including passing ones */
   verbose?: boolean;
+  /** Version checker (for testing - defaults to npm registry) */
+  versionChecker?: VersionChecker;
 }
 
 /**
@@ -453,9 +463,21 @@ function getUpgradeCommand(context: string): string {
 }
 
 /**
+ * Default version checker - uses npm registry
+ */
+const defaultVersionChecker: VersionChecker = {
+  async fetchLatestVersion(): Promise<string> {
+    return execSync('npm view vibe-validate version', {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }).trim();
+  },
+};
+
+/**
  * Check if vibe-validate version is up to date
  */
-async function checkVersion(): Promise<DoctorCheckResult> {
+async function checkVersion(versionChecker: VersionChecker = defaultVersionChecker): Promise<DoctorCheckResult> {
   try {
     // Get current version from package.json
     const packageJsonPath = new URL('../../package.json', import.meta.url);
@@ -467,10 +489,7 @@ async function checkVersion(): Promise<DoctorCheckResult> {
 
     // Fetch latest version from npm registry
     try {
-      const latestVersion = execSync('npm view vibe-validate version', {
-        encoding: 'utf8',
-        stdio: 'pipe',
-      }).trim();
+      const latestVersion = await versionChecker.fetchLatestVersion();
 
       // Compare versions using semver library (handles prereleases correctly)
       // semver.lt() returns true if currentVersion < latestVersion
@@ -959,7 +978,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
  * Run all doctor checks
  */
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
-  const { verbose = false } = options;
+  const { verbose = false, versionChecker } = options;
   const allChecks: DoctorCheckResult[] = [];
 
   // Load config once to avoid duplicate warnings
@@ -976,7 +995,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   }
 
   // Run all checks
-  allChecks.push(await checkVersion());
+  allChecks.push(await checkVersion(versionChecker));
   allChecks.push(checkNodeVersion());
   allChecks.push(checkGitInstalled());
   allChecks.push(checkGitRepository());

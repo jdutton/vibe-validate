@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { initializeGitRepo } from './helpers/integration-setup-helpers.js';
 
@@ -747,6 +747,128 @@ git:
       expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run phases again
       expect(forcedRun.stdout).not.toContain('already passed'); // Should NOT show cache message
     }, 30000); // Increase timeout for full workflow
+
+    it('should set VV_FORCE_EXECUTION=1 when validate --force is used', async () => {
+      // Create a config that writes the env var to a file so we can verify it
+      const envCheckFile = join(testDir, 'env-check.txt');
+      const configContent = `validation:
+  phases:
+    - name: Test Phase
+      parallel: false
+      steps:
+        - name: Check Env Var
+          command: node -e "require('fs').writeFileSync('${envCheckFile.replace(/\\/g, '\\\\')}', process.env.VV_FORCE_EXECUTION || 'NOT_SET')"
+git:
+  mainBranch: main
+`;
+      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
+
+      // Initialize git
+      const { execSync } = await import('node:child_process');
+      initializeGitRepo(testDir);
+      execSync('git add .', { cwd: testDir });
+      execSync('git commit -m "Initial commit"', { cwd: testDir });
+
+      // Run validate with --force
+      const forcedRun = await executeCLI(['validate', '--force']);
+
+      expect(forcedRun.code).toBe(0);
+
+      // Read the file to check if env var was set
+      const envValue = readFileSync(envCheckFile, 'utf-8');
+      expect(envValue).toBe('1');
+    }, 30000);
+
+    it('should bypass cache when VV_FORCE_EXECUTION=1 env var is set', async () => {
+      // Create a config with passing step
+      const configContent = `validation:
+  phases:
+    - name: Test Phase
+      parallel: true
+      steps:
+        - name: Pass Test
+          command: echo "test passed"
+git:
+  mainBranch: main
+`;
+      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
+
+      // Create .gitignore to exclude state file (prevents tree hash changes)
+      writeFileSync(join(testDir, '.gitignore'), '.vibe-validate-state.yaml\n');
+
+      // Initialize git
+      const { execSync: execSyncImport } = await import('node:child_process');
+      initializeGitRepo(testDir);
+      execSyncImport('git add .', { cwd: testDir });
+      execSyncImport('git commit -m "Initial commit"', { cwd: testDir });
+
+      // 1. First run - should execute validation
+      const firstRun = await executeCLI(['validate']);
+      expect(firstRun.code).toBe(0);
+      expect(firstRun.stdout).toContain('phase_start: Test Phase');
+
+      // 2. Second run without force - should use cache
+      const cachedRun = await executeCLI(['validate']);
+      expect(cachedRun.code).toBe(0);
+      expect(cachedRun.stdout).toContain('already passed');
+      expect(cachedRun.stdout).not.toContain('phase_start');
+
+      // 3. Third run with VV_FORCE_EXECUTION=1 env var - should bypass cache
+      const { spawn } = await import('node:child_process');
+      const child = spawn('node', [binPath, 'validate'], {
+        cwd: testDir,
+        env: { ...process.env, VV_FORCE_EXECUTION: '1' },
+      });
+
+      let stdout = '';
+      let stderr = '';
+      child.stdout?.on('data', (data) => { stdout += data.toString(); });
+      child.stderr?.on('data', (data) => { stderr += data.toString(); });
+
+      const exitCode = await new Promise<number>((resolve) => {
+        child.on('close', (code) => resolve(code ?? 1));
+      });
+
+      expect(exitCode).toBe(0);
+      expect(stdout + stderr).toContain('phase_start: Test Phase'); // Should run phases again
+      expect(stdout + stderr).not.toContain('already passed'); // Should NOT show cache message
+    }, 30000);
+
+    it('should propagate VV_FORCE_EXECUTION to nested vv run commands in validation', async () => {
+      // Create a config that uses vv run inside a validation step
+      const configContent = `validation:
+  phases:
+    - name: Test Phase
+      parallel: false
+      steps:
+        - name: Nested VV Run
+          command: node ${binPath} run echo "nested command executed"
+git:
+  mainBranch: main
+`;
+      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
+
+      // Initialize git
+      const { execSync: execSyncImport } = await import('node:child_process');
+      initializeGitRepo(testDir);
+      execSyncImport('git add .', { cwd: testDir });
+      execSyncImport('git commit -m "Initial commit"', { cwd: testDir });
+
+      // First run - cache the nested vv run command
+      const firstRun = await executeCLI(['validate']);
+      expect(firstRun.code).toBe(0);
+
+      // Second run without force - nested command should hit cache
+      const cachedRun = await executeCLI(['validate']);
+      expect(cachedRun.code).toBe(0);
+      expect(cachedRun.stdout).toContain('already passed'); // Outer validation cached
+
+      // Third run with --force - should propagate to nested vv run
+      const forcedRun = await executeCLI(['validate', '--force']);
+      expect(forcedRun.code).toBe(0);
+      expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run validation
+      // The nested vv run should also bypass cache due to VV_FORCE_EXECUTION propagation
+    }, 30000);
   });
 
   describe('process lifecycle', () => {

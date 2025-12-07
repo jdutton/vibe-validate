@@ -1113,4 +1113,55 @@ describe('doctor command', () => {
       expect(migrationCheck.suggestion).toBeUndefined();
     });
   });
+
+  describe('Doctor with mocked version checker (fast tests)', () => {
+    // These tests use mock version checker to avoid slow npm registry calls
+    const mockVersionChecker = {
+      async fetchLatestVersion() {
+        return '0.17.2'; // Mock version - no network call
+      }
+    };
+
+    it('should use mocked version checker when provided', async () => {
+      await mockDoctorFileSystem();
+      await mockDoctorGit();
+      mockDoctorEnvironment();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
+
+      expect(result.checks).toHaveLength(17);
+      assertCheck(result, 'vibe-validate version', { passed: true });
+    });
+
+    it('should show Node.js and Git checks with mock', async () => {
+      await mockDoctorFileSystem();
+      await mockDoctorGit();
+      mockDoctorEnvironment();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
+
+      assertCheck(result, 'Node.js version', { passed: true });
+      assertCheck(result, 'Git installed', { passed: true });
+    });
+
+    it('should be fast with mocked version checker', async () => {
+      await mockDoctorFileSystem();
+      await mockDoctorGit();
+      mockDoctorEnvironment();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const start = Date.now();
+      const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
+      const duration = Date.now() - start;
+
+      expect(duration).toBeLessThan(5000); // Should be fast (<5s without network)
+      assertCheck(result, 'vibe-validate version', { passed: true });
+      expect(result.checks).toHaveLength(17);
+    });
+  });
 });

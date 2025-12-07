@@ -252,7 +252,9 @@ export async function runValidateWorkflow(
     }
 
     // Check cache: if validation already passed for this tree hash, skip re-running
-    if (treeHashBefore && !options.force) {
+    // Skip cache if --force flag is set OR VV_FORCE_EXECUTION env var is set
+    const forceExecution = (options.force ?? false) || process.env.VV_FORCE_EXECUTION === '1';
+    if (treeHashBefore && !forceExecution) {
       const cachedResult = await checkCache(treeHashBefore, yaml);
       if (cachedResult) {
         return cachedResult;
@@ -265,6 +267,12 @@ export async function runValidateWorkflow(
       if (!yaml) {
         console.log(''); // Blank line for readability (human mode only)
       }
+    }
+
+    // Set VV_FORCE_EXECUTION environment variable when --force flag is present
+    // This propagates the force flag to nested vv run commands naturally
+    if (options.force) {
+      process.env.VV_FORCE_EXECUTION = '1';
     }
 
     // Run validation

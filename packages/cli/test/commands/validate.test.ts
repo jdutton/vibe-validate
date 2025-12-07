@@ -93,6 +93,7 @@ describe('validate command', () => {
     // Reset mocks
     vi.mocked(core.runValidation).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
+    vi.mocked(configLoader.loadConfigWithDir).mockReset();
     vi.mocked(git.getGitTreeHash).mockReset();
     vi.mocked(history.readHistoryNote).mockReset();
     vi.mocked(history.checkWorktreeStability).mockReset();
@@ -139,6 +140,13 @@ describe('validate command', () => {
       shouldWarn: false,
       warningMessage: '',
     });
+
+    // Clean up environment variables to prevent test pollution
+    // (Tests may set VV_FORCE_EXECUTION, VV_CONTEXT, etc.)
+    delete process.env.VV_FORCE_EXECUTION;
+    delete process.env.VV_CONTEXT;
+    delete process.env.CLAUDE_CODE;
+    delete process.env.CI;
   });
 
   afterEach(() => {
@@ -943,9 +951,6 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
-      // Clear all mock calls from previous tests (prevents test pollution)
-      vi.clearAllMocks();
-
       // Mock valid config (required for validation to proceed)
       const mockConfig: VibeValidateConfig = {
         validation: {

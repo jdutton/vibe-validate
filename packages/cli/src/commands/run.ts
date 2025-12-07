@@ -97,6 +97,12 @@ export function runCommand(program: Command): void {
         // when running via validate command. For standalone run commands, plugins
         // are not needed since run is primarily for caching/extraction, not validation.
 
+        // Set VV_FORCE_EXECUTION environment variable when --force flag is present
+        // This propagates the force flag to nested vv run commands naturally
+        if (actualOptions.force) {
+          process.env.VV_FORCE_EXECUTION = '1';
+        }
+
         // Handle --check flag (cache status check only)
         if (actualOptions.check) {
           const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
@@ -114,11 +120,13 @@ export function runCommand(program: Command): void {
           return;
         }
 
-        // Try to get cached result (unless --force)
+        // Try to get cached result (unless --force or VV_FORCE_EXECUTION is set)
         let result: RunResult;
         let context = { preamble: '', stderr: '' };
 
-        if (!actualOptions.force) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || is correct here: force flag can be explicitly false, and we need to check env var as fallback
+        const shouldForce = actualOptions.force || process.env.VV_FORCE_EXECUTION === '1';
+        if (!shouldForce) {
           const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
           if (cachedResult) {
             result = cachedResult;
@@ -266,6 +274,12 @@ function getWorkingDirectory(explicitCwd?: string): string {
  */
 async function tryGetCachedResult(commandString: string, explicitCwd?: string): Promise<RunResult | null> {
   try {
+    // Skip cache lookup if VV_FORCE_EXECUTION is set (propagated from parent)
+    if (process.env.VV_FORCE_EXECUTION === '1') {
+      logDebug('cache', 'Cache lookup skipped: VV_FORCE_EXECUTION=1');
+      return null;
+    }
+
     // Get tree hash
     const treeHash = await getGitTreeHash();
 
@@ -784,6 +798,7 @@ $ vibe-validate run --check "pnpm test"
 $ vibe-validate run --force "pnpm test"
 # Always executes, updates cache (ignores existing cache)
 # Useful for flaky tests or time-sensitive commands
+# Propagates to nested vv run commands via VV_FORCE_EXECUTION env var
 \`\`\`
 
 **Working directory** (--cwd):

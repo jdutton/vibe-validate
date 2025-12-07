@@ -3,20 +3,16 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { execSync } from 'node:child_process';
 import { pruneHistoryByAge, pruneAllHistory } from '../src/pruner.js';
 import * as reader from '../src/reader.js';
+import * as git from '@vibe-validate/git';
 import type { HistoryNote } from '../src/types.js';
 
-// Mock dependencies
-vi.mock('child_process');
+// Mock dependencies using secure git API
+vi.mock('@vibe-validate/git');
 vi.mock('../src/reader.js');
 
-// SKIPPED (GH-57 Phase 4): These tests need refactoring for new secure git API
-// The tests currently expect old execSync mocking, but pruner.ts now uses
-// secure @vibe-validate/git functions (removeNote, removeNotesRefs).
-// Temporarily skipping to allow Phase 1 security fixes to merge.
-describe.skip('pruner', () => {
+describe('pruner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -32,7 +28,7 @@ describe.skip('pruner', () => {
         expect(result.runsPruned).toBe(0);
         expect(result.notesRemaining).toBe(0);
         expect(result.prunedTreeHashes).toEqual([]);
-        expect(execSync).not.toHaveBeenCalled();
+        expect(git.removeNote).not.toHaveBeenCalled();
       });
     });
 
@@ -69,7 +65,7 @@ describe.skip('pruner', () => {
         expect(result.runsPruned).toBe(0);
         expect(result.notesRemaining).toBe(1);
         expect(result.prunedTreeHashes).toEqual([]);
-        expect(execSync).not.toHaveBeenCalled();
+        expect(git.removeNote).not.toHaveBeenCalled();
       });
     });
 
@@ -102,7 +98,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneHistoryByAge(90);
 
@@ -111,12 +107,9 @@ describe.skip('pruner', () => {
         expect(result.notesRemaining).toBe(0);
         expect(result.prunedTreeHashes).toEqual(['old-abc123']);
 
-        expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/validate remove old-abc123',
-          expect.objectContaining({
-            encoding: 'utf8',
-            timeout: 30000,
-          })
+        expect(git.removeNote).toHaveBeenCalledWith(
+          'vibe-validate/validate',
+          'old-abc123'
         );
       });
 
@@ -168,7 +161,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneHistoryByAge(90);
 
@@ -176,7 +169,7 @@ describe.skip('pruner', () => {
         expect(result.runsPruned).toBe(2);
         expect(result.notesRemaining).toBe(0);
         expect(result.prunedTreeHashes).toEqual(['old-1', 'old-2']);
-        expect(execSync).toHaveBeenCalledTimes(2);
+        expect(git.removeNote).toHaveBeenCalledTimes(2);
       });
 
       it('should count multiple runs in pruned notes', async () => {
@@ -237,7 +230,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNoteWithMultipleRuns);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneHistoryByAge(90);
 
@@ -295,7 +288,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(mixedNotes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneHistoryByAge(90);
 
@@ -305,11 +298,11 @@ describe.skip('pruner', () => {
         expect(result.prunedTreeHashes).toEqual(['old-abc123']);
 
         // Should only delete old note
-        expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/validate remove old-abc123',
-          expect.any(Object)
+        expect(git.removeNote).toHaveBeenCalledWith(
+          'vibe-validate/validate',
+          'old-abc123'
         );
-        expect(execSync).toHaveBeenCalledTimes(1);
+        expect(git.removeNote).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -351,7 +344,7 @@ describe.skip('pruner', () => {
         expect(result.prunedTreeHashes).toEqual(['old-abc123']);
 
         // But should NOT actually delete
-        expect(execSync).not.toHaveBeenCalled();
+        expect(git.removeNote).not.toHaveBeenCalled();
       });
     });
 
@@ -384,7 +377,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         await pruneHistoryByAge(90, {
           gitNotes: {
@@ -393,9 +386,9 @@ describe.skip('pruner', () => {
         });
 
         expect(reader.getAllHistoryNotes).toHaveBeenCalledWith('custom/notes/ref');
-        expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=custom/notes/ref remove old-abc123',
-          expect.any(Object)
+        expect(git.removeNote).toHaveBeenCalledWith(
+          'custom/notes/ref',
+          'old-abc123'
         );
       });
     });
@@ -451,11 +444,9 @@ describe.skip('pruner', () => {
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
 
         // First delete fails, second succeeds
-        vi.mocked(execSync)
-          .mockImplementationOnce(() => {
-            throw new Error('Git error');
-          })
-          .mockReturnValueOnce('');
+        vi.mocked(git.removeNote)
+          .mockRejectedValueOnce(new Error('Git error'))
+          .mockResolvedValueOnce();
 
         const result = await pruneHistoryByAge(90);
 
@@ -497,14 +488,14 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneHistoryByAge(90);
 
         // Should only prune the one with runs
         expect(result.notesPruned).toBe(1);
         expect(result.prunedTreeHashes).toEqual(['old-note']);
-        expect(execSync).toHaveBeenCalledTimes(1);
+        expect(git.removeNote).toHaveBeenCalledTimes(1);
       });
     });
   });
@@ -520,7 +511,7 @@ describe.skip('pruner', () => {
         expect(result.runsPruned).toBe(0);
         expect(result.notesRemaining).toBe(0);
         expect(result.prunedTreeHashes).toEqual([]);
-        expect(execSync).not.toHaveBeenCalled();
+        expect(git.removeNote).not.toHaveBeenCalled();
       });
     });
 
@@ -570,7 +561,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneAllHistory();
 
@@ -579,13 +570,13 @@ describe.skip('pruner', () => {
         expect(result.notesRemaining).toBe(0);
         expect(result.prunedTreeHashes).toEqual(['abc123', 'def456']);
 
-        expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/validate remove abc123',
-          expect.any(Object)
+        expect(git.removeNote).toHaveBeenCalledWith(
+          'vibe-validate/validate',
+          'abc123'
         );
-        expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=vibe-validate/validate remove def456',
-          expect.any(Object)
+        expect(git.removeNote).toHaveBeenCalledWith(
+          'vibe-validate/validate',
+          'def456'
         );
       });
 
@@ -644,7 +635,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneAllHistory();
 
@@ -661,7 +652,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         const result = await pruneAllHistory();
 
@@ -705,7 +696,7 @@ describe.skip('pruner', () => {
         expect(result.prunedTreeHashes).toEqual(['abc123']);
 
         // But should NOT actually delete
-        expect(execSync).not.toHaveBeenCalled();
+        expect(git.removeNote).not.toHaveBeenCalled();
       });
     });
 
@@ -735,7 +726,7 @@ describe.skip('pruner', () => {
         ];
 
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(execSync).mockReturnValue('');
+        vi.mocked(git.removeNote).mockResolvedValue();
 
         await pruneAllHistory({
           gitNotes: {
@@ -744,9 +735,9 @@ describe.skip('pruner', () => {
         });
 
         expect(reader.getAllHistoryNotes).toHaveBeenCalledWith('custom/notes/ref');
-        expect(execSync).toHaveBeenCalledWith(
-          'git notes --ref=custom/notes/ref remove abc123',
-          expect.any(Object)
+        expect(git.removeNote).toHaveBeenCalledWith(
+          'custom/notes/ref',
+          'abc123'
         );
       });
     });
@@ -799,11 +790,9 @@ describe.skip('pruner', () => {
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
 
         // First delete fails, second succeeds
-        vi.mocked(execSync)
-          .mockImplementationOnce(() => {
-            throw new Error('Git error');
-          })
-          .mockReturnValueOnce('');
+        vi.mocked(git.removeNote)
+          .mockRejectedValueOnce(new Error('Git error'))
+          .mockResolvedValueOnce();
 
         const result = await pruneAllHistory();
 
