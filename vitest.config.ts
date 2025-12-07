@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    setupFiles: ['./vitest.setup.ts'],
     include: [
       'packages/*/test/**/*.test.ts',
       'packages/extractors/src/extractors/**/*.test.ts', // Co-located plugin tests
@@ -51,6 +52,8 @@ export default defineConfig({
         'packages/cli/src/services/ci-provider.ts',
         // Zod schemas (type definitions with validation)
         'packages/cli/src/schemas/**/*.ts',
+        // Integration test files (don't collect coverage from test files)
+        'packages/*/test/integration/**/*.ts',
       ],
       thresholds: {
         // v0.14.2: Enforced quality gates at 80% minimum

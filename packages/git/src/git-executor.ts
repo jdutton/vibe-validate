@@ -269,11 +269,18 @@ export function validateTreeHash(treeHash: string): void {
 
   // Must be hex characters only
   if (!/^[0-9a-f]+$/.test(treeHash)) {
-    throw new Error(`Invalid tree hash: must be hexadecimal: ${treeHash}`);
+    throw new Error(
+      `Invalid tree hash: must be hexadecimal (lowercase a-f, 0-9 only), got: "${treeHash}"\n` +
+      `Symbolic refs like 'HEAD', 'main', 'origin/main' are not supported.\n` +
+      `Use getGitTreeHash() to get the current working tree hash.`
+    );
   }
 
   // Must be reasonable length (4-40 chars for abbreviated or full hash)
   if (treeHash.length < 4 || treeHash.length > 40) {
-    throw new Error(`Invalid tree hash: invalid length: ${treeHash}`);
+    throw new Error(
+      `Invalid tree hash: invalid length (must be 4-40 chars), got: ${treeHash.length} chars\n` +
+      `Received: "${treeHash}"`
+    );
   }
 }

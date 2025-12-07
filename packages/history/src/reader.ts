@@ -2,17 +2,12 @@
  * Git notes reader
  */
 
-import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
 import { safeValidateResult } from '@vibe-validate/core';
+import { listNotes, readNote, type TreeHash, type NotesRef } from '@vibe-validate/git';
 import type { HistoryNote } from './types.js';
 
-const GIT_TIMEOUT = 30000;
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: GIT_TIMEOUT,
-  stdio: ['pipe', 'pipe', 'ignore'] as ['pipe', 'pipe', 'ignore'],
-};
+// Removed: Git operations now use secure @vibe-validate/git functions
 
 /**
  * Read validation history note for a tree hash
@@ -26,10 +21,12 @@ export async function readHistoryNote(
   notesRef: string = 'vibe-validate/validate'
 ): Promise<HistoryNote | null> {
   try {
-    const yaml = execSync(
-      `git notes --ref=${notesRef} show ${treeHash}`,
-      GIT_OPTIONS
-    );
+    // Use secure readNote function (no command injection risk)
+    const yaml = readNote(notesRef as NotesRef, treeHash as TreeHash);
+
+    if (!yaml) {
+      return null;
+    }
 
     const parsed = parseYaml(yaml);
 
@@ -80,21 +77,15 @@ export async function listHistoryTreeHashes(
   notesRef: string = 'vibe-validate/validate'
 ): Promise<string[]> {
   try {
-    const output = execSync(`git notes --ref=${notesRef} list`, GIT_OPTIONS);
+    // Use secure listNotes function (no command injection risk)
+    const notes = listNotes(notesRef as NotesRef);
 
-    if (!output.trim()) {
+    if (notes.length === 0) {
       return [];
     }
 
-    // Output format: "<note-sha> <tree-hash>"
-    const treeHashes = output
-      .trim()
-      .split('\n')
-      .map((line) => {
-        const parts = line.split(' ');
-        return parts[1]; // tree hash
-      })
-      .filter(Boolean);
+    // Extract tree hashes from [treeHash, content] pairs
+    const treeHashes = notes.map(([treeHash]) => treeHash);
 
     return treeHashes;
   } catch {

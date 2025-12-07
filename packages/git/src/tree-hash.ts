@@ -13,6 +13,7 @@
 
 import { execSync } from 'node:child_process';
 import { copyFileSync, unlinkSync } from 'node:fs';
+import type { TreeHash } from './types.js';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 const GIT_OPTIONS = {
@@ -37,10 +38,10 @@ const GIT_OPTIONS = {
  *
  * CRITICAL: Uses GIT_INDEX_FILE to avoid corrupting real index during git commit hooks
  *
- * @returns Git tree SHA-1 hash (40 hex characters)
+ * @returns Git tree SHA-1 hash (40 hex characters) as branded TreeHash type
  * @throws Error if not in a git repository or git command fails
  */
-export async function getGitTreeHash(): Promise<string> {
+export async function getGitTreeHash(): Promise<TreeHash> {
   try {
     // Check if we're in a git repository
     execSync('git rev-parse --is-inside-work-tree', GIT_OPTIONS);
@@ -95,7 +96,7 @@ export async function getGitTreeHash(): Promise<string> {
       // Step 4: Get tree hash using temp index (content-based, no timestamps)
       const treeHash = execSync('git write-tree', tempIndexOptions).trim();
 
-      return treeHash;
+      return treeHash as TreeHash;
 
     } finally {
       // Step 5: Always clean up temp index file
@@ -115,7 +116,7 @@ export async function getGitTreeHash(): Promise<string> {
 
     if (errorMessage.includes('not a git repository')) {
       // Not in git repo - return "unknown" (caller should skip caching)
-      return 'unknown';
+      return 'unknown' as TreeHash;
     }
 
     // Other git errors
@@ -128,13 +129,13 @@ export async function getGitTreeHash(): Promise<string> {
  *
  * This is useful for comparing committed state vs working tree state.
  *
- * @returns Git tree SHA-1 hash of HEAD commit
+ * @returns Git tree SHA-1 hash of HEAD commit as branded TreeHash type
  * @throws Error if not in a git repository or HEAD doesn't exist
  */
-export async function getHeadTreeHash(): Promise<string> {
+export async function getHeadTreeHash(): Promise<TreeHash> {
   try {
     const treeHash = execSync('git rev-parse HEAD^{tree}', GIT_OPTIONS).trim();
-    return treeHash;
+    return treeHash as TreeHash;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get HEAD tree hash: ${errorMessage}`);

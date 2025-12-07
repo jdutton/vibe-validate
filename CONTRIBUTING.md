@@ -10,6 +10,7 @@ Thank you for your interest in contributing to vibe-validate! This document prov
 - [Testing](#testing)
 - [Linking to Test Projects](#linking-to-test-projects)
 - [Code Quality Standards](#code-quality-standards)
+- [Security-Critical Code Guidelines](#security-critical-code-guidelines)
 - [Submitting Changes](#submitting-changes)
 
 ## Development Setup
@@ -439,6 +440,193 @@ Before committing, ensure:
   - Config validation
   - Process cleanup
   - Error extractors
+
+## Security-Critical Code Guidelines
+
+**MANDATORY**: All contributors MUST follow these security guidelines to prevent command injection vulnerabilities and ensure type safety.
+
+### Git Command Execution Policy
+
+**ALL git commands in vibe-validate MUST use the secure @vibe-validate/git package.**
+
+#### Rules
+
+1. **NEVER use `execSync('git ...')` or string interpolation with git commands**
+   - Direct execSync with git is BANNED - it enables command injection attacks
+
+2. **NEVER use shell piping (`|`) or heredocs (`<<`) with user-controlled variables**
+   - Shell features bypass our security validation
+
+3. **ALWAYS use functions from `@vibe-validate/git`:**
+   - Low-level: `executeGitCommand()`, `execGitCommand()`, `tryGitCommand()`
+   - High-level: `addNote()`, `readNote()`, `removeNote()`, `listNotes()`, etc.
+
+4. **ALWAYS validate inputs using:**
+   - `validateGitRef()` - for branch names, refs
+   - `validateNotesRef()` - for git notes refs
+   - `validateTreeHash()` - for tree hashes (CRITICAL: must be hex-only)
+
+#### Why This Matters
+
+**Real-world vulnerability prevented by these rules:**
+
+```typescript
+// ❌ VULNERABLE - Command injection attack vector
+const treeHash = 'HEAD; rm -rf /';  // Malicious input
+execSync(`git notes --ref=vibe-validate/validate show ${treeHash}`);
+// Executes: git notes show HEAD; rm -rf /
+
+// ✅ SECURE - Validated and safe
+import { readNote, validateTreeHash } from '@vibe-validate/git';
+validateTreeHash(treeHash);  // THROWS: "must be hexadecimal"
+readNote('vibe-validate/validate', treeHash);  // Never reaches here
+```
+
+### Branded Types for Git Objects
+
+**USE branded types to prevent compile-time errors with git operations.**
+
+#### Why Branded Types Matter
+
+The original Issue #73 bug occurred because a developer used `'HEAD'` (a symbolic ref) instead of a tree hash. Branded types prevent this at compile time:
+
+```typescript
+// ❌ WRONG - Would have compiled before branded types
+import { addNote } from '@vibe-validate/git';
+addNote('vibe-validate/run/abc123', 'HEAD', noteContent);
+// Runtime: Creates cache under 'HEAD' instead of tree hash
+
+// ✅ CORRECT - Branded types catch this at compile time
+import { addNote, getGitTreeHash } from '@vibe-validate/git';
+import type { TreeHash, NotesRef } from '@vibe-validate/git';
+
+const treeHash = await getGitTreeHash();  // Returns TreeHash
+const notesRef = 'vibe-validate/run/abc123' as NotesRef;
+addNote(notesRef, treeHash, noteContent);  // Type-safe!
+
+// This would fail TypeScript compilation:
+// addNote(notesRef, 'HEAD', noteContent);
+//                   ^^^^^^ Type 'string' not assignable to 'TreeHash'
+```
+
+#### Branded Types Reference
+
+```typescript
+import type { TreeHash, CommitSha, NotesRef } from '@vibe-validate/git';
+
+// TreeHash - for tree hashes from getGitTreeHash()
+const treeHash: TreeHash = await getGitTreeHash();
+
+// CommitSha - for commit SHAs
+const commitSha: CommitSha = 'abc123def456...' as CommitSha;
+
+// NotesRef - for git notes references
+const notesRef: NotesRef = 'vibe-validate/validate' as NotesRef;
+```
+
+### Never Swallow Errors Silently
+
+**ALWAYS log errors, even in catch blocks.**
+
+#### Why This Matters
+
+Silent failures hide bugs from both developers and users. The Issue #73 cache regression went undetected because errors were silently caught.
+
+```typescript
+// ❌ WRONG - Silent failure hides bugs
+try {
+  await addNote(notesRef, treeHash, content);
+} catch (_error) {
+  // Cache write failed - but nobody knows!
+}
+
+// ✅ CORRECT - Log warnings for debugging
+import { logWarning } from '../utils/logger.js';
+
+try {
+  await addNote(notesRef, treeHash, content);
+} catch (error) {
+  logWarning('cache', 'Failed to write cache', error as Error);
+  // User sees error when VV_DEBUG=1
+}
+```
+
+### Write Integration Tests That Verify Side Effects
+
+**Unit tests with heavy mocking don't catch real bugs.**
+
+#### Why This Matters
+
+The Issue #73 bug had passing unit tests because mocks returned fake success. Integration tests with real git commands would have caught it immediately.
+
+```typescript
+// ❌ INADEQUATE - Mock-heavy unit test
+vi.mock('@vibe-validate/git');
+vi.mocked(addNote).mockResolvedValue(undefined);
+await cacheResult(treeHash, result);
+expect(addNote).toHaveBeenCalled();  // ✅ Test passes, ❌ Cache broken in prod
+
+// ✅ BETTER - Integration test verifies real side effects
+it('should write git notes refs when caching', async () => {
+  const treeHash = await getGitTreeHash();
+  await cacheResult(treeHash, result);
+
+  // Verify git notes actually exist
+  const notesRefs = execSync(
+    `git for-each-ref refs/notes/vibe-validate/run/${treeHash}`,
+    { encoding: 'utf-8' }
+  );
+  expect(notesRefs).not.toBe('');  // Real verification!
+});
+```
+
+### Minimize Mocking in Tests
+
+**Mock only external dependencies (network, filesystem). Don't mock our own code.**
+
+#### Guidelines
+
+- ✅ **DO mock**: Network calls, file system operations, external APIs
+- ❌ **DON'T mock**: Your own functions, internal modules
+- ✅ **DO use**: Real git commands in temp directories for integration tests
+- ❌ **DON'T use**: Heavy mocking that hides integration issues
+
+### Debug Logging for Troubleshooting
+
+**Use structured debug logging for operations that can fail silently.**
+
+```typescript
+import { logDebug, logWarning, logError } from '../utils/logger.js';
+
+// Debug logs (VV_DEBUG=1 only)
+logDebug('cache', 'Cache lookup', { treeHash, cacheKey });
+
+// Warnings (VV_DEBUG=1 only)
+logWarning('cache', 'Cache lookup failed', error);
+
+// Errors (always shown)
+logError('validation', 'Failed to parse config', error);
+```
+
+Users can enable debug logging with `VV_DEBUG=1 vibe-validate run ...`
+
+### Security Review Checklist
+
+Before submitting code that touches git operations:
+
+- ✅ Uses `@vibe-validate/git` functions (not execSync)
+- ✅ Uses branded types (TreeHash, NotesRef, CommitSha)
+- ✅ Validates all user-controlled inputs
+- ✅ Logs errors (no silent catch blocks)
+- ✅ Has integration tests verifying side effects
+- ✅ Minimizes mocking
+
+### Resources
+
+- **Git executor**: `packages/git/src/git-executor.ts`
+- **Security tests**: `packages/git/test/git-executor.test.ts`
+- **Branded types**: `packages/git/src/types.ts`
+- **Logger utility**: `packages/cli/src/utils/logger.ts`
 
 ## Submitting Changes
 

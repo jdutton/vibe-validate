@@ -32,8 +32,38 @@ describe('Plugin Loader', () => {
       expect(plugin.extract).toBeInstanceOf(Function);
     });
 
-    it.skip('should load a plugin from npm package', async () => {
-      // Skip until we have a test npm package
+    it('should load a plugin from npm package', async () => {
+      // Mock the npm package import using vi.doMock
+      const mockPlugin: ExtractorPlugin = {
+        metadata: {
+          name: 'example-extractor',
+          version: '1.0.0',
+          author: 'Test Author',
+          description: 'Example extractor for testing',
+          tags: ['test'],
+        },
+        priority: 50,
+        detect: vi.fn(() => ({ confidence: 50, patterns: ['test'], reason: 'test' })),
+        extract: vi.fn(() => ({
+          errors: [],
+          summary: 'test',
+          totalErrors: 0,
+        })),
+        samples: [
+          {
+            name: 'test-sample',
+            description: 'Test sample',
+            input: 'test input',
+            expected: { totalErrors: 0 },
+          },
+        ],
+      };
+
+      // Mock the dynamic import for this specific package
+      vi.doMock('@vibe-validate/extractor-example', () => ({
+        default: mockPlugin,
+      }));
+
       const plugin = await loadPlugin({
         type: 'package',
         package: '@vibe-validate/extractor-example',
@@ -41,6 +71,11 @@ describe('Plugin Loader', () => {
 
       expect(plugin).toBeDefined();
       expect(plugin.metadata.name).toBe('example-extractor');
+      expect(plugin.detect).toBeInstanceOf(Function);
+      expect(plugin.extract).toBeInstanceOf(Function);
+
+      // Clean up mock
+      vi.doUnmock('@vibe-validate/extractor-example');
     });
 
     it('should reject plugin with missing metadata', async () => {

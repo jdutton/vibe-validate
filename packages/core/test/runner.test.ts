@@ -345,13 +345,14 @@ describe('runner', () => {
       );
     });
 
-    it.skip('should include failed step output in result', async () => {
+    it('should include failed step output in result', async () => {
       const config: ValidationConfig = {
         phases: [
           {
             name: 'Fail',
             parallel: true,
-            steps: [{ name: 'Bad', command: 'echo "error message" && exit 1' }],
+            // Use output >50 chars to avoid fail-fast heuristic (see runner.ts:711)
+            steps: [{ name: 'Bad', command: 'echo "This is an error message with enough content to trigger extraction properly" && exit 1' }],
           },
         ],
         logPath: join(testDir, 'log.txt'),

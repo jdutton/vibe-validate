@@ -6,15 +6,18 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { execSync } from 'node:child_process';
 import {
   listRunCacheEntries,
   getRunCacheEntry,
   getAllRunCacheForTree,
 } from '../src/run-cache-reader.js';
+import { readNote, listNotesRefs } from '@vibe-validate/git';
 
-// Mock child_process
-vi.mock('child_process');
+// Mock @vibe-validate/git
+vi.mock('@vibe-validate/git', () => ({
+  readNote: vi.fn(),
+  listNotesRefs: vi.fn(),
+}));
 
 describe('run cache reader', () => {
   beforeEach(() => {
@@ -23,13 +26,13 @@ describe('run cache reader', () => {
 
   describe('listRunCacheEntries', () => {
     it('should list all run cache entries for a tree hash', async () => {
-      const mockOutput = `
-refs/notes/vibe-validate/run/abc123/npm%20test abc123
-refs/notes/vibe-validate/run/abc123/pnpm%20lint def456
-refs/notes/vibe-validate/run/abc123/packages%2Fcli%3Anpm%20test ghi789
-`;
+      const mockRefs = [
+        'refs/notes/vibe-validate/run/abc123/npm%20test',
+        'refs/notes/vibe-validate/run/abc123/pnpm%20lint',
+        'refs/notes/vibe-validate/run/abc123/packages%2Fcli%3Anpm%20test',
+      ];
 
-      vi.mocked(execSync).mockReturnValue(mockOutput as any);
+      vi.mocked(listNotesRefs).mockReturnValue(mockRefs);
 
       const result = await listRunCacheEntries('abc123');
 
@@ -49,7 +52,7 @@ refs/notes/vibe-validate/run/abc123/packages%2Fcli%3Anpm%20test ghi789
     });
 
     it('should return empty array when no run cache exists', async () => {
-      vi.mocked(execSync).mockReturnValue('' as any);
+      vi.mocked(listNotesRefs).mockReturnValue([]);
 
       const result = await listRunCacheEntries('abc123');
 
@@ -57,7 +60,7 @@ refs/notes/vibe-validate/run/abc123/packages%2Fcli%3Anpm%20test ghi789
     });
 
     it('should handle git command errors gracefully', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(listNotesRefs).mockImplementation(() => {
         throw new Error('Git command failed');
       });
 
@@ -80,7 +83,7 @@ errors: []
 summary: All tests passed
 `;
 
-      vi.mocked(execSync).mockReturnValue(mockYaml as any);
+      vi.mocked(readNote).mockReturnValue(mockYaml);
 
       const result = await getRunCacheEntry('abc123', 'npm%20test');
 
@@ -91,9 +94,7 @@ summary: All tests passed
     });
 
     it('should return null when entry does not exist', async () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('No note found');
-      });
+      vi.mocked(readNote).mockReturnValue(null);
 
       const result = await getRunCacheEntry('abc123', 'nonexistent');
 
@@ -101,7 +102,7 @@ summary: All tests passed
     });
 
     it('should handle YAML parsing errors', async () => {
-      vi.mocked(execSync).mockReturnValue('invalid yaml: [[[' as any);
+      vi.mocked(readNote).mockReturnValue('invalid yaml: [[[');
 
       const result = await getRunCacheEntry('abc123', 'npm%20test');
 
@@ -111,11 +112,11 @@ summary: All tests passed
 
   describe('getAllRunCacheForTree', () => {
     it('should get all run cache entries for a tree hash', async () => {
-      // Mock listRunCacheEntries
-      const mockListOutput = `
-refs/notes/vibe-validate/run/abc123/npm%20test note1
-refs/notes/vibe-validate/run/abc123/pnpm%20lint note2
-`;
+      // Mock listNotesRefs
+      const mockRefs = [
+        'refs/notes/vibe-validate/run/abc123/npm%20test',
+        'refs/notes/vibe-validate/run/abc123/pnpm%20lint',
+      ];
 
       const mockNote1 = `
 treeHash: abc123
@@ -139,10 +140,10 @@ errors: []
 summary: No linting errors
 `;
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(mockListOutput as any) // list call
-        .mockReturnValueOnce(mockNote1 as any) // first entry
-        .mockReturnValueOnce(mockNote2 as any); // second entry
+      vi.mocked(listNotesRefs).mockReturnValue(mockRefs);
+      vi.mocked(readNote)
+        .mockReturnValueOnce(mockNote1) // first entry
+        .mockReturnValueOnce(mockNote2); // second entry
 
       const result = await getAllRunCacheForTree('abc123');
 
@@ -153,7 +154,7 @@ summary: No linting errors
     });
 
     it('should return empty array when no run cache exists', async () => {
-      vi.mocked(execSync).mockReturnValue('' as any);
+      vi.mocked(listNotesRefs).mockReturnValue([]);
 
       const result = await getAllRunCacheForTree('abc123');
 
@@ -161,11 +162,11 @@ summary: No linting errors
     });
 
     it('should skip entries that fail to read', async () => {
-      const mockListOutput = `
-refs/notes/vibe-validate/run/abc123/npm%20test note1
-refs/notes/vibe-validate/run/abc123/pnpm%20lint note2
-refs/notes/vibe-validate/run/abc123/bad%20entry note3
-`;
+      const mockRefs = [
+        'refs/notes/vibe-validate/run/abc123/npm%20test',
+        'refs/notes/vibe-validate/run/abc123/pnpm%20lint',
+        'refs/notes/vibe-validate/run/abc123/bad%20entry',
+      ];
 
       const mockNote1 = `
 treeHash: abc123
@@ -178,13 +179,11 @@ errors: []
 summary: All tests passed
 `;
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(mockListOutput as any)
-        .mockReturnValueOnce(mockNote1 as any)
-        .mockImplementationOnce(() => {
-          throw new Error('Failed to read note');
-        })
-        .mockReturnValueOnce(mockNote1 as any);
+      vi.mocked(listNotesRefs).mockReturnValue(mockRefs);
+      vi.mocked(readNote)
+        .mockReturnValueOnce(mockNote1)
+        .mockReturnValueOnce(null) // Failed to read pnpm lint
+        .mockReturnValueOnce(mockNote1);
 
       const result = await getAllRunCacheForTree('abc123');
 

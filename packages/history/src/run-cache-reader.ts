@@ -5,16 +5,11 @@
  * where cacheKey = encodeURIComponent(workdir ? `${workdir}:${command}` : command)
  */
 
-import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
+import { readNote, listNotesRefs, type TreeHash, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from './types.js';
 
-const GIT_TIMEOUT = 30000;
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: GIT_TIMEOUT,
-  stdio: ['pipe', 'pipe', 'ignore'] as ['pipe', 'pipe', 'ignore'],
-};
+// Removed: Git operations now use secure @vibe-validate/git functions
 
 /**
  * Entry metadata from git notes list
@@ -33,22 +28,16 @@ export interface RunCacheEntryMeta {
  */
 export async function listRunCacheEntries(treeHash: string): Promise<RunCacheEntryMeta[]> {
   try {
-    // List all notes under refs/notes/vibe-validate/run/{treeHash}/*
-    const output = execSync(
-      `git for-each-ref --format="%(refname) %(objectname)" refs/notes/vibe-validate/run/${treeHash}/`,
-      GIT_OPTIONS
-    );
+    // Use secure listNotesRefs function (no command injection risk)
+    const refs = listNotesRefs(`refs/notes/vibe-validate/run/${treeHash}/`);
 
-    if (!output.trim()) {
+    if (refs.length === 0) {
       return [];
     }
 
-    // Parse output: "refs/notes/vibe-validate/run/{treeHash}/{cacheKey} {noteObjectName}"
-    const entries = output
-      .trim()
-      .split('\n')
-      .map((line) => {
-        const [refPath] = line.split(' ');
+    // Parse refPaths: "refs/notes/vibe-validate/run/{treeHash}/{cacheKey}"
+    const entries = refs
+      .map((refPath) => {
         // Extract cache key from ref path
         const regex = /refs\/notes\/vibe-validate\/run\/([^/]+)\/(.+)$/;
         const match = regex.exec(refPath);
@@ -82,8 +71,14 @@ export async function getRunCacheEntry(
   cacheKey: string
 ): Promise<RunCacheNote | null> {
   try {
-    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
-    const yaml = execSync(`git notes --ref=${refPath} show HEAD`, GIT_OPTIONS);
+    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
+
+    // Use secure readNote function (no command injection risk)
+    const yaml = readNote(refPath, treeHash as TreeHash);
+
+    if (!yaml) {
+      return null;
+    }
 
     const note = parseYaml(yaml) as RunCacheNote;
     return note;
@@ -123,24 +118,20 @@ export async function getAllRunCacheForTree(treeHash: string): Promise<RunCacheN
  */
 export async function listRunCacheTreeHashes(): Promise<string[]> {
   try {
-    // List all notes under refs/notes/vibe-validate/run/
-    const output = execSync(
-      'git for-each-ref --format="%(refname)" refs/notes/vibe-validate/run/',
-      GIT_OPTIONS
-    );
+    // Use secure listNotesRefs function (no command injection risk)
+    const refs = listNotesRefs('refs/notes/vibe-validate/run/');
 
-    if (!output.trim()) {
+    if (refs.length === 0) {
       return [];
     }
 
     // Parse output and extract unique tree hashes
     const treeHashes = new Set<string>();
-    const lines = output.trim().split('\n');
 
-    for (const line of lines) {
+    for (const refPath of refs) {
       // Extract tree hash from ref path: refs/notes/vibe-validate/run/{treeHash}/...
       const regex = /refs\/notes\/vibe-validate\/run\/([^/]+)/;
-      const match = regex.exec(line);
+      const match = regex.exec(refPath);
       if (match) {
         treeHashes.add(match[1]);
       }

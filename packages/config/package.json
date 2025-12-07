@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/config",
-  "version": "0.17.2",
+  "version": "0.17.3",
   "description": "Configuration system for vibe-validate with TypeScript-first design and config templates",
   "type": "module",
   "main": "./dist/index.js",

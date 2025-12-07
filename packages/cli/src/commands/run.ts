@@ -11,12 +11,13 @@ import { join, resolve, relative } from 'node:path';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 import type { OutputLine } from '@vibe-validate/core';
-import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote } from '@vibe-validate/git';
+import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
 import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import yaml from 'yaml';
 import chalk from 'chalk';
+import { logDebug, logWarning } from '../utils/logger.js';
 
 export function runCommand(program: Command): void {
   program
@@ -96,6 +97,12 @@ export function runCommand(program: Command): void {
         // when running via validate command. For standalone run commands, plugins
         // are not needed since run is primarily for caching/extraction, not validation.
 
+        // Set VV_FORCE_EXECUTION environment variable when --force flag is present
+        // This propagates the force flag to nested vv run commands naturally
+        if (actualOptions.force) {
+          process.env.VV_FORCE_EXECUTION = '1';
+        }
+
         // Handle --check flag (cache status check only)
         if (actualOptions.check) {
           const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
@@ -113,11 +120,22 @@ export function runCommand(program: Command): void {
           return;
         }
 
-        // Try to get cached result (unless --force)
+        // Try to get cached result (unless --force or VV_FORCE_EXECUTION is set)
         let result: RunResult;
         let context = { preamble: '', stderr: '' };
 
-        if (!actualOptions.force) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || is correct here: force flag can be explicitly false, and we need to check env var as fallback
+        const shouldForce = actualOptions.force || process.env.VV_FORCE_EXECUTION === '1';
+        if (shouldForce) {
+          // Force execution - skip cache
+          const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
+          result = executeResult.result;
+          context = executeResult.context;
+
+          // Update cache with fresh result
+          await storeCacheResult(commandString, result, actualOptions.cwd);
+        } else {
+          // Try cache first
           const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
           if (cachedResult) {
             result = cachedResult;
@@ -130,14 +148,6 @@ export function runCommand(program: Command): void {
             // Store result in cache
             await storeCacheResult(commandString, result, actualOptions.cwd);
           }
-        } else {
-          // Force flag - bypass cache and execute
-          const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
-          result = executeResult.result;
-          context = executeResult.context;
-
-          // Update cache with fresh result
-          await storeCacheResult(commandString, result, actualOptions.cwd);
         }
 
         // CRITICAL: Write complete YAML to stdout and flush BEFORE any stderr
@@ -265,11 +275,18 @@ function getWorkingDirectory(explicitCwd?: string): string {
  */
 async function tryGetCachedResult(commandString: string, explicitCwd?: string): Promise<RunResult | null> {
   try {
+    // Skip cache lookup if VV_FORCE_EXECUTION is set (propagated from parent)
+    if (process.env.VV_FORCE_EXECUTION === '1') {
+      logDebug('cache', 'Cache lookup skipped: VV_FORCE_EXECUTION=1');
+      return null;
+    }
+
     // Get tree hash
     const treeHash = await getGitTreeHash();
 
     // Skip caching if not in git repository
     if (treeHash === 'unknown') {
+      logDebug('cache', 'Cache lookup skipped: not in git repository');
       return null;
     }
 
@@ -280,15 +297,20 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     const cacheKey = encodeRunCacheKey(commandString, workdir);
 
     // Construct git notes ref path: refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
-    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
+    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
+
+    logDebug('cache', 'Cache lookup', { treeHash, cacheKey, refPath });
 
     // Try to read git note using secure readNote function
-    const noteContent = readNote(refPath, 'HEAD');
+    const noteContent = readNote(refPath, treeHash);
 
     if (!noteContent) {
       // Cache miss
+      logDebug('cache', 'Cache miss');
       return null;
     }
+
+    logDebug('cache', 'Cache hit');
 
     // Parse cached note
     const cachedNote = yaml.parse(noteContent) as RunCacheNote;
@@ -310,9 +332,8 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     };
 
     return result;
-  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache lookup failure is non-critical, proceed with execution
-  } catch (_error) {
-    // Cache lookup failed - proceed with execution
+  } catch (error) {
+    logWarning('cache', 'Cache lookup failed - proceeding with execution', error as Error);
     return null;
   }
 }
@@ -325,6 +346,20 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
     // Only cache successful runs (v0.15.0+)
     // Failed runs may be transient or environment-specific
     if (result.exitCode !== 0) {
+      logDebug('cache', 'Skipping cache storage: command failed', { exitCode: result.exitCode });
+      return;
+    }
+
+    // CRITICAL FIX (Issue #73 expanded): Skip caching if nested vibe-validate command was detected
+    // When result.command differs from commandString, it means we detected YAML output from a nested
+    // vibe-validate invocation and unwrapped to the actual command. The inner command already cached
+    // its result, so we don't need to (and shouldn't) cache again at the outer level.
+    // This prevents duplicate cache entries and ensures only the innermost command caches.
+    if (result.command !== commandString) {
+      logDebug('cache', 'Skipping cache storage: nested vibe-validate command already cached by inner execution', {
+        requestedCommand: commandString,
+        actualCommand: result.command,
+      });
       return;
     }
 
@@ -333,17 +368,20 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
 
     // Skip caching if not in git repository
     if (treeHash === 'unknown') {
+      logDebug('cache', 'Cache storage skipped: not in git repository');
       return;
     }
 
     // Get working directory
     const workdir = getWorkingDirectory(explicitCwd);
 
-    // Encode cache key
+    // Encode cache key (using commandString since we verified it equals result.command above)
     const cacheKey = encodeRunCacheKey(commandString, workdir);
 
     // Construct git notes ref path
-    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}`;
+    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
+
+    logDebug('cache', 'Storing cache result', { treeHash, cacheKey, refPath });
 
     // Build cache note (extraction already cleaned in runner)
     // Token optimization: Only include extraction when exitCode !== 0 OR there are actual errors
@@ -365,14 +403,13 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
 
     try {
       // Use secure addNote with stdin piping (no shell, no heredoc)
-      addNote(refPath, 'HEAD', noteYaml, true);
-    // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical
-    } catch (_error) {
-      // Cache storage failed - not critical, continue
+      addNote(refPath, treeHash, noteYaml, true);
+      logDebug('cache', 'Cache stored successfully');
+    } catch (error) {
+      logWarning('cache', 'Failed to store cache result', error as Error);
     }
-  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Cache storage failure is non-critical, continue execution
-  } catch (_error) {
-    // Cache storage failed - not critical, continue
+  } catch (error) {
+    logWarning('cache', 'Cache storage failed', error as Error);
   }
 }
 
@@ -642,6 +679,7 @@ function mergeNestedYaml(
       return {
         ...innerResult, // Preserve ALL inner fields
         command: unwrappedCommand, // Use unwrapped command (e.g., "eslint ..." instead of "pnpm lint")
+        ...(unwrappedCommand === outerCommand ? {} : { requestedCommand: outerCommand }), // Show what user requested if different
         exitCode: outerExitCode, // Override with outer exit code
         durationSecs: outerDurationSecs, // Override with outer duration
         timestamp: parsed.timestamp ?? innerResult.timestamp ?? new Date().toISOString(),
@@ -661,6 +699,7 @@ function mergeNestedYaml(
     return {
       ...innerResult,
       command: unwrappedCommand, // Use inner command (unwrapped)
+      ...(unwrappedCommand === outerCommand ? {} : { requestedCommand: outerCommand }), // Show what user requested if different
       exitCode: outerExitCode,
       durationSecs: outerDurationSecs,
       treeHash: innerResult.treeHash ?? 'unknown', // Use inner treeHash or fallback to unknown
@@ -760,6 +799,7 @@ $ vibe-validate run --check "pnpm test"
 $ vibe-validate run --force "pnpm test"
 # Always executes, updates cache (ignores existing cache)
 # Useful for flaky tests or time-sensitive commands
+# Propagates to nested vv run commands via VV_FORCE_EXECUTION env var
 \`\`\`
 
 **Working directory** (--cwd):

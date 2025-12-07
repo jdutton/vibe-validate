@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.17.3] - 2025-12-06
 
+### Bug Fixes
+
+- **CRITICAL: `vv run` caching completely broken** (Issue #73, Regression in v0.17.0-rc.7, stable releases v0.17.0-v0.17.2)
+  - **Problem**: Cache was not working at all - every command executed fully instead of returning cached results
+  - **Root Cause**: Security refactoring (commit 778cede, PR #58) passed string literal `'HEAD'` to git notes functions that require hexadecimal tree hashes, causing silent validation failures
+  - **Impact**: 312x speedup unavailable for 12 days (Nov 24 - Dec 6, 2025)
+  - **Solution**: Changed to use actual tree hash variable instead of `'HEAD'` literal
+  - **Affected versions**: v0.17.0, v0.17.1, v0.17.2, and prereleases v0.17.0-rc.7 through rc.13
+
+- **Improved nested `vv run` command caching efficiency** (Issue #73 expanded scope)
+  - **Previous Behavior**: After the critical cache fix above, nested `vv run` commands worked but created unnecessary duplicate cache entries
+    - Running `vv run "vv run 'echo test'"` would store TWO cache entries for the same result
+    - Both outer and inner commands would cache independently with different keys
+    - Cache worked correctly but accumulated redundant entries over time
+  - **Improvement**: Outer `vv run` now skips caching when nested command is detected - only innermost command caches its result
+    - **Cleaner cache**: One cache entry per unique command instead of duplicates
+    - **Bidirectional caching**: Nested and direct invocations now explicitly share the same single cache entry
+    - **Cache hit propagation**: `isCachedResult: true` properly flows from inner to outer results
+    - **Transparency**: Added optional `requestedCommand` field showing original wrapped command when it differs from executed command
+  - **Technical Details**:
+    - Modified `storeCacheResult()` to skip caching when `result.command !== commandString` (indicates nested YAML detected)
+    - Added `requestedCommand` optional field to `RunResult` schema (v0.17.3+)
+    - Enhanced `mergeNestedYaml()` to preserve transparency about command wrapping
+
+- **Fixed `--force` flag not propagating to nested `vv run` commands** (Issue #73 side effect)
+  - **Problem**: When running `vv validate --force` or nested `vv run --force` commands, the inner commands still used cached results instead of forcing fresh execution
+  - **Root Cause**: The nested caching efficiency fix correctly prevented outer caching, but the `--force` flag wasn't being passed to child processes
+  - **Impact**: Users expecting `--force` to bypass ALL caching only saw outer layer bypass - inner commands still used stale cache
+  - **Solution**: Added `VV_FORCE_EXECUTION=1` environment variable that propagates naturally through nested commands
+    - When `--force` flag is present, set `VV_FORCE_EXECUTION=1` in environment
+    - Cache lookup checks for this env var and skips cache when detected
+    - Works for both direct `vv run --force` and nested `vv validate --force` scenarios
+  - **Verification**: Running `vv validate --force --yaml` now correctly shows `isCachedResult: false` for all validation steps
+
 ### Features
 
 - **Custom Workflow Support**: Added `ci.disableWorkflowCheck` config option for projects requiring manual workflow customization
