@@ -64,11 +64,15 @@ describe('bin.ts - CLI entry point', () => {
   /**
    * Helper function to execute CLI and capture output
    */
-  function executeCLI(args: string[], timeoutMs: number = 10000): Promise<{ code: number; stdout: string; stderr: string }> {
+  function executeCLI(
+    args: string[],
+    timeoutMs: number = 10000,
+    customEnv?: Record<string, string>
+  ): Promise<{ code: number; stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
       const child = spawn('node', [binPath, ...args], {
         cwd: testDir,
-        env: { ...process.env, NO_COLOR: '1' }, // Disable colors for easier testing
+        env: { ...process.env, NO_COLOR: '1', ...customEnv }, // Disable colors for easier testing, merge custom env
       });
 
       let stdout = '';
@@ -757,7 +761,7 @@ git:
       parallel: false
       steps:
         - name: Check Env Var
-          command: node -e "require('fs').writeFileSync('${envCheckFile.replace(/\\/g, '\\\\')}', process.env.VV_FORCE_EXECUTION || 'NOT_SET')"
+          command: node -e "require('fs').writeFileSync('${envCheckFile.replaceAll('\\', '\\\\')}', process.env.VV_FORCE_EXECUTION || 'NOT_SET')"
 git:
   mainBranch: main
 `;
@@ -814,24 +818,10 @@ git:
       expect(cachedRun.stdout).not.toContain('phase_start');
 
       // 3. Third run with VV_FORCE_EXECUTION=1 env var - should bypass cache
-      const { spawn } = await import('node:child_process');
-      const child = spawn('node', [binPath, 'validate'], {
-        cwd: testDir,
-        env: { ...process.env, VV_FORCE_EXECUTION: '1' },
-      });
-
-      let stdout = '';
-      let stderr = '';
-      child.stdout?.on('data', (data) => { stdout += data.toString(); });
-      child.stderr?.on('data', (data) => { stderr += data.toString(); });
-
-      const exitCode = await new Promise<number>((resolve) => {
-        child.on('close', (code) => resolve(code ?? 1));
-      });
-
-      expect(exitCode).toBe(0);
-      expect(stdout + stderr).toContain('phase_start: Test Phase'); // Should run phases again
-      expect(stdout + stderr).not.toContain('already passed'); // Should NOT show cache message
+      const forceRun = await executeCLI(['validate'], 10000, { VV_FORCE_EXECUTION: '1' });
+      expect(forceRun.code).toBe(0);
+      expect(forceRun.stdout + forceRun.stderr).toContain('phase_start: Test Phase'); // Should run phases again
+      expect(forceRun.stdout + forceRun.stderr).not.toContain('already passed'); // Should NOT show cache message
     }, 30000);
 
     it('should propagate VV_FORCE_EXECUTION to nested vv run commands in validation', async () => {

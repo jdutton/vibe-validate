@@ -126,7 +126,16 @@ export function runCommand(program: Command): void {
 
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || is correct here: force flag can be explicitly false, and we need to check env var as fallback
         const shouldForce = actualOptions.force || process.env.VV_FORCE_EXECUTION === '1';
-        if (!shouldForce) {
+        if (shouldForce) {
+          // Force execution - skip cache
+          const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
+          result = executeResult.result;
+          context = executeResult.context;
+
+          // Update cache with fresh result
+          await storeCacheResult(commandString, result, actualOptions.cwd);
+        } else {
+          // Try cache first
           const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
           if (cachedResult) {
             result = cachedResult;
@@ -139,14 +148,6 @@ export function runCommand(program: Command): void {
             // Store result in cache
             await storeCacheResult(commandString, result, actualOptions.cwd);
           }
-        } else {
-          // Force flag - bypass cache and execute
-          const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
-          result = executeResult.result;
-          context = executeResult.context;
-
-          // Update cache with fresh result
-          await storeCacheResult(commandString, result, actualOptions.cwd);
         }
 
         // CRITICAL: Write complete YAML to stdout and flush BEFORE any stderr
@@ -678,7 +679,7 @@ function mergeNestedYaml(
       return {
         ...innerResult, // Preserve ALL inner fields
         command: unwrappedCommand, // Use unwrapped command (e.g., "eslint ..." instead of "pnpm lint")
-        ...(unwrappedCommand !== outerCommand ? { requestedCommand: outerCommand } : {}), // Show what user requested if different
+        ...(unwrappedCommand === outerCommand ? {} : { requestedCommand: outerCommand }), // Show what user requested if different
         exitCode: outerExitCode, // Override with outer exit code
         durationSecs: outerDurationSecs, // Override with outer duration
         timestamp: parsed.timestamp ?? innerResult.timestamp ?? new Date().toISOString(),
@@ -698,7 +699,7 @@ function mergeNestedYaml(
     return {
       ...innerResult,
       command: unwrappedCommand, // Use inner command (unwrapped)
-      ...(unwrappedCommand !== outerCommand ? { requestedCommand: outerCommand } : {}), // Show what user requested if different
+      ...(unwrappedCommand === outerCommand ? {} : { requestedCommand: outerCommand }), // Show what user requested if different
       exitCode: outerExitCode,
       durationSecs: outerDurationSecs,
       treeHash: innerResult.treeHash ?? 'unknown', // Use inner treeHash or fallback to unknown
