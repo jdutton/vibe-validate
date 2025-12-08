@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.4] - 2025-12-07
+
+### Bug Fixes
+
+- **Commands now work correctly from any subdirectory** (Issue #76)
+  - **Problem**: Running commands from subdirectories (like `packages/cli/`) caused failures or incorrect behavior
+  - **What was broken**:
+    - `vv doctor` reported "workflow file not found" even when the workflow existed at project root
+    - `vv generate-workflow` created workflow files in the wrong location
+    - Confusing error messages depending on where you ran commands
+  - **What's fixed**: All commands now work correctly regardless of which directory you run them from
+  - **Commands verified**: validate, state, config, snapshot, history, cleanup, pre-commit, watch-pr, init, run, doctor, generate-workflow
+
 ## [0.17.3] - 2025-12-06
 
 ### Bug Fixes
