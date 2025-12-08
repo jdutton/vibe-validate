@@ -23,6 +23,9 @@ jscpd-report/
 .DS_Store
 Thumbs.db
 
+# Backup files from editors/tools
+*.backup
+
 # IDE
 .vscode/
 .idea/

@@ -21,6 +21,7 @@ import { stringify as yamlStringify } from 'yaml';
 import { Command } from 'commander';
 import { loadConfig } from '../utils/config-loader.js';
 import { normalizeLineEndings } from '../utils/normalize-line-endings.js';
+import { findGitRoot } from '../utils/git-detection.js';
 import type { VibeValidateConfig, ValidationPhase } from '@vibe-validate/config';
 
 /**
@@ -84,6 +85,8 @@ export interface GenerateWorkflowOptions {
   useMatrix?: boolean;
   /** Fail fast in matrix (default: false) */
   matrixFailFast?: boolean;
+  /** Project root directory for detecting package.json and lockfiles (default: process.cwd()) */
+  projectRoot?: string;
 }
 
 /**
@@ -275,10 +278,11 @@ export function generateWorkflow(
   config: VibeValidateConfig,
   options: GenerateWorkflowOptions = {}
 ): string {
+  const projectRoot = options.projectRoot ?? process.cwd();
   const {
-    nodeVersions = [detectNodeVersion()],
+    nodeVersions = [detectNodeVersion(projectRoot)],
     os = ['ubuntu-latest'],
-    packageManager = detectPackageManager(),
+    packageManager = detectPackageManager(projectRoot),
     enableCoverage = false,
     coverageProvider = 'codecov',
     codecovTokenSecret = 'CODECOV_TOKEN',
@@ -645,13 +649,16 @@ export function ciConfigToWorkflowOptions(config: VibeValidateConfig): Partial<G
 
 /**
  * Check if workflow file is in sync with validation config
+ *
+ * @param config - Vibe-validate configuration
+ * @param options - Workflow generation options
+ * @param workflowPath - Path to workflow file (defaults to '.github/workflows/validate.yml' for backwards compatibility)
  */
 export function checkSync(
   config: VibeValidateConfig,
-  options: GenerateWorkflowOptions = {}
+  options: GenerateWorkflowOptions = {},
+  workflowPath: string = '.github/workflows/validate.yml'
 ): { inSync: boolean; diff?: string } {
-  const workflowPath = '.github/workflows/validate.yml';
-
   if (!existsSync(workflowPath)) {
     return {
       inSync: false,
@@ -706,11 +713,16 @@ export function generateWorkflowCommand(program: Command): void {
           process.exit(1);
         }
 
+        // Detect git root for project-relative operations
+        const gitRoot = findGitRoot();
+        const projectRoot = gitRoot ?? process.cwd();
+
         // Parse options with config.ci as defaults
         // Priority: CLI flags > config.ci > generateWorkflow defaults
         const ciOptions = ciConfigToWorkflowOptions(config);
         const generateOptions: GenerateWorkflowOptions = {
-          packageManager: detectPackageManager(),
+          projectRoot,
+          packageManager: detectPackageManager(projectRoot),
           enableCoverage: options.coverage ?? ciOptions.enableCoverage ?? false,
           nodeVersions: options.nodeVersions
             ? options.nodeVersions.split(',').map(v => v.trim())
@@ -744,7 +756,7 @@ export function generateWorkflowCommand(program: Command): void {
         } else {
           // Generate and write workflow
           const workflow = generateWorkflow(config, generateOptions);
-          const workflowPath = '.github/workflows/validate.yml';
+          const workflowPath = join(projectRoot, '.github/workflows/validate.yml');
 
           // Ensure directory exists
           const workflowDir = dirname(workflowPath);
