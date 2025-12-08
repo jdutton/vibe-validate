@@ -251,6 +251,13 @@ export async function mockDoctorFileSystem(config?: DoctorFileSystemConfig): Pro
     return true; // Default: files exist
   });
 
+  // Also mock findConfigPath() to be consistent with existsSync mock
+  const { findConfigPath } = await import('../../src/utils/config-loader.js');
+  const mockedFindConfigPath = vi.mocked(findConfigPath);
+  mockedFindConfigPath.mockReturnValue(
+    opts.configExists ? 'vibe-validate.config.yaml' : null
+  );
+
   return () => {
     vi.restoreAllMocks();
   };

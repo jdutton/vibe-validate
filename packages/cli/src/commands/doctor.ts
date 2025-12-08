@@ -11,6 +11,7 @@
  * @packageDocumentation
  */
 
+import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { Command } from 'commander';
@@ -23,6 +24,7 @@ import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-v
 import { formatTemplateList } from '../utils/template-discovery.js';
 import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
 import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
+import { findGitRoot } from '../utils/git-detection.js';
 import {
   executeGitCommand,
   isGitRepository,
@@ -47,6 +49,18 @@ export interface DoctorCheckResult {
 }
 
 /**
+ * Project context information
+ */
+export interface ProjectContext {
+  /** Current working directory */
+  currentDir: string;
+  /** Detected git repository root (null if not in git repo) */
+  gitRoot: string | null;
+  /** Detected config file path (null if not found) */
+  configPath: string | null;
+}
+
+/**
  * Overall doctor diagnostic result
  */
 export interface DoctorResult {
@@ -62,6 +76,8 @@ export interface DoctorResult {
   totalChecks: number;
   /** Number of checks that passed */
   passedChecks: number;
+  /** Project context information */
+  projectContext: ProjectContext;
 }
 
 /**
@@ -89,6 +105,16 @@ function checkNodeVersion(): DoctorCheckResult {
   try {
     const version = execSync('node --version', { encoding: 'utf8' }).trim();
     const majorVersion = Number.parseInt(version.replace('v', '').split('.')[0]);
+
+    // Validate that we got a valid version number
+    if (Number.isNaN(majorVersion) || majorVersion === 0 || !version) {
+      return {
+        name: 'Node.js version',
+        passed: false,
+        message: `Failed to detect Node.js version from output: "${version}"`,
+        suggestion: 'Install Node.js: https://nodejs.org/',
+      };
+    }
 
     return majorVersion >= 20 ? {
         name: 'Node.js version',
@@ -167,20 +193,27 @@ function checkGitRepository(): DoctorCheckResult {
 
 /**
  * Check if configuration file exists
+ *
+ * Uses findConfigPath() to walk up directory tree, consistent with validate command.
+ * This allows doctor to work from any subdirectory, not just project root.
  */
 function checkConfigFile(): DoctorCheckResult {
-  const yamlConfig = 'vibe-validate.config.yaml';
+  const configPath = findConfigPath();
 
-  return existsSync(yamlConfig) ? {
+  if (configPath) {
+    return {
       name: 'Configuration file',
       passed: true,
-      message: `Found: ${yamlConfig}`,
-    } : {
+      message: `Found: ${configPath}`,
+    };
+  } else {
+    return {
       name: 'Configuration file',
       passed: false,
       message: 'Configuration file not found',
       suggestion: 'Run: npx vibe-validate init',
     };
+  }
 }
 
 
@@ -317,9 +350,22 @@ async function checkPackageManager(config?: VibeValidateConfig | null): Promise<
 
 /**
  * Check if GitHub Actions workflow is in sync
+ *
+ * Uses findGitRoot() to locate repository root, allowing doctor to work
+ * correctly from any subdirectory within the project.
  */
 async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
-  const workflowPath = '.github/workflows/validate.yml';
+  // Find git root to locate .github directory
+  const gitRoot = findGitRoot();
+  if (!gitRoot) {
+    return {
+      name: 'GitHub Actions workflow',
+      passed: true,
+      message: 'Skipped (not in git repository)',
+    };
+  }
+
+  const workflowPath = join(gitRoot, '.github/workflows/validate.yml');
 
   if (!existsSync(workflowPath)) {
     return {
@@ -348,9 +394,12 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
     }
 
     // Use CI config from vibe-validate config
-    const generateOptions = ciConfigToWorkflowOptions(config);
+    const generateOptions = {
+      ...ciConfigToWorkflowOptions(config),
+      projectRoot: gitRoot,  // Ensure detection happens at git root, not cwd
+    };
 
-    const { inSync, diff } = checkSync(config, generateOptions);
+    const { inSync, diff } = checkSync(config, generateOptions, workflowPath);
 
     return inSync ? {
         name: 'GitHub Actions workflow',
@@ -381,10 +430,11 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
 
 /**
  * Check if pre-commit hook is installed
+ *
+ * Uses findGitRoot() to locate repository root, allowing doctor to work
+ * correctly from any subdirectory within the project.
  */
 async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
-  const huskyPath = '.husky/pre-commit';
-
   const preCommitEnabled = config?.hooks?.preCommit?.enabled ?? true; // Default true
   const expectedCommand = config?.hooks?.preCommit?.command ?? 'npx vibe-validate pre-commit';
 
@@ -396,6 +446,18 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
       message: 'Pre-commit hook disabled in config (user preference)',
     };
   }
+
+  // Find git root to locate .husky directory
+  const gitRoot = findGitRoot();
+  if (!gitRoot) {
+    return {
+      name: 'Pre-commit hook',
+      passed: true,
+      message: 'Skipped (not in git repository)',
+    };
+  }
+
+  const huskyPath = join(gitRoot, '.husky/pre-commit');
 
   // ⚠️ ENABLED but not installed
   if (!existsSync(huskyPath)) {
@@ -541,11 +603,25 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
 
 /**
  * Check if deprecated state file is in .gitignore
+ *
+ * Uses findGitRoot() to locate repository root, allowing doctor to work
+ * correctly from any subdirectory within the project.
  */
 function checkGitignoreStateFile(): DoctorCheckResult {
-  const gitignorePath = '.gitignore';
   // eslint-disable-next-line sonarjs/deprecation -- Intentionally checking deprecated file location for migration guidance
   const stateFileName = DEPRECATED_STATE_FILE;
+
+  // Find git root to locate .gitignore
+  const gitRoot = findGitRoot();
+  if (!gitRoot) {
+    return {
+      name: 'Gitignore state file',
+      passed: true,
+      message: 'Skipped (not in git repository)',
+    };
+  }
+
+  const gitignorePath = join(gitRoot, '.gitignore');
 
   // Check if .gitignore exists
   if (!existsSync(gitignorePath)) {
@@ -981,6 +1057,17 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   const { verbose = false, versionChecker } = options;
   const allChecks: DoctorCheckResult[] = [];
 
+  // Detect project context
+  const currentDir = process.cwd();
+  const gitRoot = findGitRoot();
+  const configPath = findConfigPath();
+
+  const projectContext: ProjectContext = {
+    currentDir,
+    gitRoot,
+    configPath,
+  };
+
   // Load config once to avoid duplicate warnings
   let config;
   let configWithErrors;
@@ -1033,6 +1120,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     verboseMode: verbose,
     totalChecks,
     passedChecks,
+    projectContext,
   };
 }
 
@@ -1062,8 +1150,26 @@ async function outputDoctorYaml(result: DoctorResult): Promise<void> {
 /**
  * Display doctor results in human-friendly format
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 23 acceptable for display formatting logic (formats multiple check results with context-aware messages, color coding, and actionable suggestions)
 function displayDoctorResults(result: DoctorResult): void {
   console.log('🩺 vibe-validate Doctor\n');
+
+  // Show project context if running from subdirectory or if locations differ
+  const { currentDir, gitRoot, configPath } = result.projectContext;
+  const isSubdirectory = gitRoot && gitRoot !== currentDir;
+  const configDir = configPath ? configPath.substring(0, configPath.lastIndexOf('/')) : null;
+
+  if (isSubdirectory || (configDir && configDir !== currentDir && configDir !== gitRoot)) {
+    console.log('📍 Project Context');
+    console.log(`   Current directory: ${currentDir}`);
+    if (gitRoot) {
+      console.log(`   Git repository:    ${gitRoot}${isSubdirectory ? ' (project root)' : ''}`);
+    }
+    if (configPath) {
+      console.log(`   Configuration:     ${configPath}`);
+    }
+    console.log('');
+  }
 
   const modeMessage = result.verboseMode
     ? 'Running diagnostic checks (verbose mode)...\n'

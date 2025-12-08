@@ -5,8 +5,61 @@
  * Used by both init and doctor commands.
  */
 
+import { join, dirname, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { GIT_DEFAULTS } from '@vibe-validate/config';
 import { executeGitCommand, isGitRepository } from '@vibe-validate/git';
+
+/**
+ * Find git repository root by walking up directory tree
+ *
+ * Searches for .git directory starting from startDir and walking up
+ * to the root directory. Similar to how findConfigPath() works.
+ *
+ * This allows doctor and other commands to work correctly from any subdirectory
+ * within a project, not just from the repository root.
+ *
+ * @param startDir Directory to start searching from (defaults to process.cwd())
+ * @returns Path to git repository root or null if not found
+ *
+ * @example
+ * ```typescript
+ * // From /repo/packages/cli
+ * const gitRoot = findGitRoot();
+ * // Returns: /repo
+ *
+ * // From /not-a-repo
+ * const gitRoot = findGitRoot();
+ * // Returns: null
+ * ```
+ */
+export function findGitRoot(startDir?: string): string | null {
+  let currentDir = resolve(startDir ?? process.cwd());
+  const root = resolve('/');
+
+  // Walk up directory tree until we find .git or reach root
+  while (currentDir !== root) {
+    const gitPath = join(currentDir, '.git');
+    if (existsSync(gitPath)) {
+      return currentDir;
+    }
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      // Reached root (shouldn't happen, but safety check)
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  // Check root directory as final attempt
+  const rootGitPath = join(root, '.git');
+  if (existsSync(rootGitPath)) {
+    return root;
+  }
+
+  return null;
+}
 
 /**
  * Result of git configuration detection
@@ -135,5 +188,92 @@ export function detectGitConfig(): DetectedGitConfig {
   } catch {
     // Failed to detect - use defaults
     return defaults;
+  }
+}
+
+/**
+ * Resolve path relative to git repository root
+ *
+ * DRY helper for commands that need to find files at git root.
+ * Automatically handles git root detection and path joining.
+ *
+ * @param relativePath - Path relative to git root (e.g., '.github/workflows/validate.yml')
+ * @param startDir - Directory to start searching from (defaults to process.cwd())
+ * @returns Absolute path or null if not in git repository
+ *
+ * @example
+ * ```typescript
+ * const workflowPath = resolveProjectPath('.github/workflows/validate.yml');
+ * if (workflowPath && existsSync(workflowPath)) {
+ *   // File exists at git root
+ * }
+ * ```
+ */
+export function resolveProjectPath(
+  relativePath: string,
+  startDir?: string
+): string | null {
+  const gitRoot = findGitRoot(startDir);
+  return gitRoot ? join(gitRoot, relativePath) : null;
+}
+
+/**
+ * Check if file exists relative to git repository root
+ *
+ * DRY helper that combines git root detection with file existence check.
+ * Useful for commands that need to verify files exist at project root.
+ *
+ * @param relativePath - Path relative to git root
+ * @param startDir - Directory to start searching from (defaults to process.cwd())
+ * @returns true if file exists, false otherwise (including not in git repo)
+ *
+ * @example
+ * ```typescript
+ * if (projectFileExists('.github/workflows/validate.yml')) {
+ *   // Workflow file exists at git root
+ * }
+ * ```
+ */
+export function projectFileExists(
+  relativePath: string,
+  startDir?: string
+): boolean {
+  const absolutePath = resolveProjectPath(relativePath, startDir);
+  return absolutePath ? existsSync(absolutePath) : false;
+}
+
+/**
+ * Read file relative to git repository root
+ *
+ * DRY helper that combines git root detection with file reading.
+ * Useful for commands that need to read config/workflow files at project root.
+ *
+ * @param relativePath - Path relative to git root
+ * @param encoding - File encoding (defaults to 'utf8')
+ * @param startDir - Directory to start searching from (defaults to process.cwd())
+ * @returns File contents or null if not found or not in git repository
+ *
+ * @example
+ * ```typescript
+ * const workflowContent = readProjectFile('.github/workflows/validate.yml');
+ * if (workflowContent) {
+ *   // Process workflow file
+ * }
+ * ```
+ */
+export function readProjectFile(
+  relativePath: string,
+  encoding: BufferEncoding = 'utf8',
+  startDir?: string
+): string | null {
+  const absolutePath = resolveProjectPath(relativePath, startDir);
+  if (!absolutePath || !existsSync(absolutePath)) {
+    return null;
+  }
+
+  try {
+    return readFileSync(absolutePath, encoding);
+  } catch {
+    return null;
   }
 }

@@ -518,6 +518,7 @@ describe('doctor command', () => {
       vi.mocked(existsSync).mockImplementation((path: string) =>
         path.toString() !== DEPRECATED_STATE_FILE
       );
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
       const result = await runDoctor({ verbose: true });
@@ -764,6 +765,7 @@ describe('doctor command', () => {
         if (path.toString() === 'vibe-validate.config.js') return false;
         return true;
       });
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -802,6 +804,7 @@ describe('doctor command', () => {
 
     it('should pass when using YAML format', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
       vi.mocked(loadConfig).mockResolvedValue({
         validation: { phases: [] },
       } as any);
@@ -1162,6 +1165,545 @@ describe('doctor command', () => {
       expect(duration).toBeLessThan(5000); // Should be fast (<5s without network)
       assertCheck(result, 'vibe-validate version', { passed: true });
       expect(result.checks).toHaveLength(17);
+    });
+  });
+
+  // ==========================================================================
+  // Exception Handling and Edge Cases
+  // ==========================================================================
+
+  describe('checkNodeVersion() - Malformed version output', () => {
+    it('should handle malformed node version output', async () => {
+      mockDoctorEnvironment({}, { nodeVersion: 'invalid-version' });
+      await mockDoctorFileSystem();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Node.js version', {
+        passed: false,
+        messageContains: 'Failed to detect'
+      });
+    });
+
+    it('should handle empty node version output', async () => {
+      mockDoctorEnvironment({}, { nodeVersion: '' });
+      await mockDoctorFileSystem();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Node.js version', {
+        passed: false,
+        messageContains: 'Failed to detect'
+      });
+    });
+
+    it('should handle node version without "v" prefix and dots', async () => {
+      mockDoctorEnvironment({}, { nodeVersion: '22' });
+      await mockDoctorFileSystem();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Node.js version', {
+        passed: true
+      });
+    });
+  });
+
+  describe('checkGitRepository() - Exception handling', () => {
+    it('should handle git repository check throwing permission error', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+
+      const { isGitRepository } = await import('@vibe-validate/git');
+      vi.mocked(isGitRepository).mockImplementation(() => {
+        throw new Error('EACCES: permission denied');
+      });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Git repository', {
+        passed: false,
+        messageContains: 'Error checking git repository'
+      });
+    });
+
+    it('should handle git repository check throwing ENOENT error', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+
+      const { isGitRepository } = await import('@vibe-validate/git');
+      vi.mocked(isGitRepository).mockImplementation(() => {
+        throw new Error('ENOENT: .git directory not accessible');
+      });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Git repository', {
+        passed: false,
+        messageContains: 'Error checking git repository'
+      });
+    });
+  });
+
+  describe('checkConfigValid() - Exception handling', () => {
+    it('should handle unexpected exception during config validation', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+
+      vi.mocked(loadConfig).mockRejectedValue(new Error('YAML parser crashed: unexpected token'));
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Configuration valid', {
+        passed: false,
+        messageContains: 'Found vibe-validate.config.yaml but it contains validation errors',
+        suggestionContains: 'Fix syntax/validation errors'
+      });
+    });
+
+    it('should handle config validation throwing TypeError', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+
+      vi.mocked(loadConfig).mockRejectedValue(new TypeError('Cannot read property of undefined'));
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Configuration valid', {
+        passed: false,
+        messageContains: 'Found vibe-validate.config.yaml but it contains validation errors'
+      });
+    });
+  });
+
+  describe('checkPackageManager() - Config check failure', () => {
+    it('should gracefully skip package manager check when config processing throws', async () => {
+      mockDoctorEnvironment();
+
+      vi.mocked(loadConfig).mockImplementation(() => {
+        throw new Error('Config processing crashed');
+      });
+
+      const result = await runDoctor({ verbose: true });
+
+      const pmCheck = findCheck(result, 'Package manager');
+      expect(pmCheck.passed).toBe(true);
+      expect(pmCheck.message).toContain('Skipped');
+      expect(pmCheck.message).toContain('no config');
+    });
+  });
+
+  describe('checkWorkflowSync() - Exception handling', () => {
+    it('should handle exception when checking workflow sync', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockImplementation(() => {
+        throw new Error('YAML parse error in workflow file');
+      });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'GitHub Actions workflow', {
+        passed: false,
+        messageContains: 'Failed to check workflow sync',
+        suggestionContains: 'Verify workflow file syntax'
+      });
+    });
+  });
+
+  describe('checkPreCommitHook() - Alternative command detection', () => {
+    it('should recognize pre-commit hook that uses validate command', async () => {
+      const { readFileSync } = await import('node:fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return JSON.stringify({ version: '0.9.11' }) as any;
+        }
+        if (path.toString().includes('.gitignore')) {
+          return 'node_modules\ndist\n' as any;
+        }
+        return '#!/bin/sh\nnpx vibe-validate validate' as any; // Using validate command
+      });
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      mockDoctorEnvironment();
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Pre-commit hook', {
+        passed: true,
+        messageContains: 'installed and runs vibe-validate'
+      });
+    });
+  });
+
+  describe('checkVersion() - Context environment variables', () => {
+    const mockOutdatedChecker = {
+      fetchLatestVersion: async () => '0.9.11'  // Return latest version
+    };
+
+    afterEach(() => {
+      delete process.env.VV_CONTEXT;
+    });
+
+    it('should show local install command when VV_CONTEXT=local', async () => {
+      process.env.VV_CONTEXT = 'local';
+      await mockDoctorFileSystem({ packageVersion: '0.9.10' });
+      mockDoctorEnvironment();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true, versionChecker: mockOutdatedChecker });
+
+      assertCheck(result, 'vibe-validate version', {
+        passed: true,
+        messageContains: '0.9.10 (local)',
+        suggestionContains: 'npm install -D vibe-validate@latest'
+      });
+      expect(findCheck(result, 'vibe-validate version').suggestion).toContain('pnpm add -D');
+    });
+
+    it('should show global install command when VV_CONTEXT=global', async () => {
+      process.env.VV_CONTEXT = 'global';
+      await mockDoctorFileSystem({ packageVersion: '0.9.10' });
+      mockDoctorEnvironment();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true, versionChecker: mockOutdatedChecker });
+
+      assertCheck(result, 'vibe-validate version', {
+        passed: true,
+        messageContains: '0.9.10 (global)',
+        suggestionContains: 'npm install -g vibe-validate@latest'
+      });
+    });
+
+    it('should show dev context label when VV_CONTEXT=dev', async () => {
+      process.env.VV_CONTEXT = 'dev';
+      await mockDoctorFileSystem({ packageVersion: '0.9.10' });
+      mockDoctorEnvironment();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true, versionChecker: mockOutdatedChecker });
+
+      const versionCheck = findCheck(result, 'vibe-validate version');
+      expect(versionCheck.message).toContain('(dev)');
+    });
+  });
+
+  describe('checkVersion() - Package.json read errors', () => {
+    it('should handle package.json ENOENT error gracefully', async () => {
+      mockDoctorEnvironment();
+
+      const { readFileSync } = await import('node:fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          throw new Error('ENOENT: no such file or directory');
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'vibe-validate version', {
+        passed: true,
+        messageContains: 'Unable to determine version'
+      });
+    });
+
+    it('should handle package.json JSON parse error gracefully', async () => {
+      mockDoctorEnvironment();
+
+      const { readFileSync } = await import('node:fs');
+      vi.mocked(readFileSync).mockImplementation((path: any) => {
+        if (path.toString().includes('package.json')) {
+          return 'invalid json {{{' as any;
+        }
+        return 'npm run pre-commit' as any;
+      });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'vibe-validate version', {
+        passed: true,
+        messageContains: 'Unable to determine version'
+      });
+    });
+  });
+
+  describe('checkHistoryHealth() - Exception handling', () => {
+    it('should handle validation history health check throwing error', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+      await mockDoctorGit();
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      // Import and mock the history health check function dynamically
+      const historyModule = await import('@vibe-validate/history');
+      const mockCheckHealth = vi.spyOn(historyModule, 'checkHistoryHealth');
+      mockCheckHealth.mockRejectedValue(
+        new Error('Git notes corrupted: invalid object format')
+      );
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Validation history', {
+        passed: true,
+        messageContains: 'History unavailable'
+      });
+      expect(findCheck(result, 'Validation history').message).toContain('Git notes corrupted');
+
+      mockCheckHealth.mockRestore();
+    });
+  });
+
+  describe('checkRemoteMainBranch() - Network failures', () => {
+    it('should handle network error when checking remote branch', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+      await mockDoctorGit({
+        customCommands: {
+          'remote': {
+            success: true,
+            stdout: 'origin\n',
+            stderr: '',
+            exitCode: 0
+          },
+          'ls-remote --heads origin main': {
+            success: false,
+            stdout: '',
+            stderr: 'fatal: could not read from remote repository\n\nPlease make sure you have the correct access rights',
+            exitCode: 128
+          }
+        }
+      });
+
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Git remote main branch', {
+        passed: false,
+        messageContains: 'does not exist on remote'
+      });
+    });
+
+    it('should handle timeout when checking remote branch', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+      await mockDoctorGit({
+        customCommands: {
+          'remote': {
+            success: true,
+            stdout: 'origin\n',
+            stderr: '',
+            exitCode: 0
+          },
+          'ls-remote --heads origin main': {
+            success: false,
+            stdout: '',
+            stderr: 'fatal: unable to access: Operation timed out',
+            exitCode: 128
+          }
+        }
+      });
+
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Git remote main branch', {
+        passed: false
+      });
+    });
+  });
+
+  describe('checkSecretScanning() - Tool detection edge cases', () => {
+    it('should suggest installing gitleaks when config exists but tool unavailable', async () => {
+      mockDoctorEnvironment({
+        'gitleaks version': new Error('command not found'),
+        'gitleaks --version': new Error('command not found')
+      });
+
+      // eslint-disable-next-line sonarjs/no-invariant-returns -- Test mock always returns true for simplicity
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        const pathStr = path.toString();
+        if (pathStr.includes('.gitleaks.toml')) return true; // Config exists
+        if (pathStr.includes('vibe-validate.config.yaml')) return true;
+        return true;
+      });
+
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+
+      const configWithScanning = {
+        ...mockConfig,
+        hooks: {
+          preCommit: {
+            enabled: true,
+            secretScanning: { enabled: true }
+          }
+        }
+      };
+      vi.mocked(loadConfig).mockResolvedValue(configWithScanning);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Pre-commit secret scanning', {
+        passed: true,
+        suggestionContains: 'Install gitleaks'
+      });
+    });
+  });
+
+  // ==========================================================================
+  // INTEGRATION SCENARIOS
+  // ==========================================================================
+
+  describe('Integration: Multiple failures at once', () => {
+    it('should report multiple independent failures correctly', async () => {
+      mockDoctorEnvironment({
+        'node --version': 'v18.0.0' // Too old
+      }, { nodeVersion: 'v18.0.0' });
+
+      // Mock git to throw error
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        if (args[0] === '--version') {
+          throw new Error('git: command not found');
+        }
+        return { success: true, stdout: '', stderr: '', exitCode: 0 };
+      });
+
+      vi.mocked(findConfigPath).mockReturnValue(null); // No config
+      vi.mocked(loadConfig).mockResolvedValue(null);
+
+      const result = await runDoctor({ verbose: true });
+
+      expect(result.allPassed).toBe(false);
+      expect(result.passedChecks).toBeLessThan(result.totalChecks - 2);
+
+      assertCheck(result, 'Node.js version', { passed: false });
+      assertCheck(result, 'Git installed', { passed: false });
+      assertCheck(result, 'Configuration file', { passed: false });
+    });
+
+    it('should show multiple failure suggestions in order', async () => {
+      mockDoctorEnvironment({
+        'node --version': 'v18.0.0'
+      }, { nodeVersion: 'v18.0.0' });
+
+      // Mock git to throw error
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
+        if (args[0] === '--version') {
+          throw new Error('git: command not found');
+        }
+        return { success: true, stdout: '', stderr: '', exitCode: 0 };
+      });
+
+      vi.mocked(findConfigPath).mockReturnValue(null);
+      vi.mocked(loadConfig).mockResolvedValue(null);
+
+      const result = await runDoctor({ verbose: true });
+
+      const failedChecks = result.checks.filter(c => !c.passed);
+      expect(failedChecks.length).toBeGreaterThanOrEqual(3);
+
+      // All failed checks should have suggestions
+      for (const check of failedChecks) {
+        expect(check.suggestion).toBeDefined();
+        expect(check.suggestion!.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('Integration: Config errors + workflow sync interaction', () => {
+    it('should skip workflow check when config is invalid', async () => {
+      mockDoctorEnvironment();
+
+      vi.mocked(findConfigPath).mockReturnValue(null);
+      vi.mocked(loadConfig).mockResolvedValue(null);
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        const pathStr = path.toString();
+        if (pathStr.includes('.github/workflows/validate.yml')) return true;
+        if (pathStr === 'vibe-validate.config.yaml') return false;
+        return true;
+      });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Configuration valid', { passed: false });
+      assertCheck(result, 'GitHub Actions workflow', {
+        passed: true,
+        messageContains: 'Skipped (no config)'
+      });
+    });
+
+    it('should check workflow when config is valid', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        return path.toString().includes('.github/workflows/validate.yml') || true;
+      });
+      vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Configuration valid', { passed: true });
+      assertCheck(result, 'GitHub Actions workflow', {
+        passed: true,
+        messageContains: 'in sync'
+      });
+    });
+  });
+
+  describe('Integration: Cache migration + history health together', () => {
+    it('should handle both legacy cache migration and large history', async () => {
+      await mockDoctorFileSystem();
+      mockDoctorEnvironment();
+      await mockDoctorGit({
+        validationHistoryRefs: ['refs/notes/vibe-validate/runs'], // Old format
+        runCacheRefs: [] // No new cache
+      });
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      // Import and mock the history health check function dynamically
+      const historyModule = await import('@vibe-validate/history');
+      const mockCheckHealth = vi.spyOn(historyModule, 'checkHistoryHealth');
+      mockCheckHealth.mockResolvedValue({
+        totalNotes: 500,
+        oldNotesCount: 450,
+        shouldWarn: true,
+        message: '500 tree hashes tracked, 450 can be cleaned up'
+      } as any);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Validation history migration', {
+        passed: true,
+        messageContains: 'Automatically removed'
+      });
+
+      assertCheck(result, 'Validation history', {
+        passed: true,
+        messageContains: '500 tree hashes tracked'
+      });
+
+      mockCheckHealth.mockRestore();
     });
   });
 });

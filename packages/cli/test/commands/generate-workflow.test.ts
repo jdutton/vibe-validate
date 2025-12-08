@@ -757,4 +757,8 @@ describe('generate-workflow command', () => {
       });
     });
   });
+
+  // Note: Subdirectory support tests moved to generate-workflow-subdirectory.system.test.ts
+  // The tests require real filesystem operations which conflict with the fs mocking in this file.
+  // See generate-workflow-subdirectory.system.test.ts for comprehensive subdirectory testing.
 });
