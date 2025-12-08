@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/history",
-  "version": "0.17.3",
+  "version": "0.17.4",
   "description": "Validation history tracking via git notes for vibe-validate",
   "type": "module",
   "main": "./dist/index.js",
