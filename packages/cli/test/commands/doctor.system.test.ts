@@ -60,6 +60,15 @@ function runDoctorCommand(cwd: string): {
   }
 }
 
+/**
+ * Extract check status lines from doctor output
+ */
+function extractCheckStatuses(output: string): string[] {
+  const lines = output.split('\n');
+  const checkLines = lines.filter(line => line.match(/^[✅❌]/));
+  return checkLines.map(line => line.trim());
+}
+
 describe('doctor command - system tests (self-hosting)', () => {
   describe('running from project root', () => {
     it('should pass all checks when run from project root', () => {
@@ -142,16 +151,9 @@ describe('doctor command - system tests (self-hosting)', () => {
       const cliResult = runDoctorCommand(CLI_DIR);
 
       // Extract check statuses (✅ or ❌) for each check
-      const extractChecks = (output: string) => {
-        const lines = output.split('\n');
-        return lines
-          .filter(line => line.match(/^[✅❌]/))
-          .map(line => line.trim());
-      };
-
-      const rootChecks = extractChecks(rootResult.output);
-      const packagesChecks = extractChecks(packagesResult.output);
-      const cliChecks = extractChecks(cliResult.output);
+      const rootChecks = extractCheckStatuses(rootResult.output);
+      const packagesChecks = extractCheckStatuses(packagesResult.output);
+      const cliChecks = extractCheckStatuses(cliResult.output);
 
       // All three should have same checks
       expect(packagesChecks).toEqual(rootChecks);
