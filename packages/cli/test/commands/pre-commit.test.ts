@@ -28,6 +28,7 @@ vi.mock('@vibe-validate/git', async () => {
     getGitTreeHash: vi.fn(),
     isCurrentBranchBehindTracking: vi.fn(),
     getPartiallyStagedFiles: vi.fn().mockReturnValue([]),
+    isMergeInProgress: vi.fn(),
   };
 });
 
@@ -80,12 +81,14 @@ describe('pre-commit command', () => {
     vi.mocked(git.getGitTreeHash).mockReset();
     vi.mocked(git.isCurrentBranchBehindTracking).mockReset();
     vi.mocked(git.getPartiallyStagedFiles).mockReset();
+    vi.mocked(git.isMergeInProgress).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
 
     // Set default mock values (tests can override)
     vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
     vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
+    vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
   });
 
   afterEach(() => {
@@ -679,6 +682,78 @@ describe('pre-commit command', () => {
   // - Fallback behavior when gitleaks config exists but command unavailable
   // - Defense-in-depth (both tools configured)
   // - Explicit command mode vs autodetect mode
+
+  describe('merge detection', () => {
+    it('should skip branch sync check when merge is in progress', async () => {
+      // ARRANGE: Merge in progress
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: { phases: [] },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.isMergeInProgress).mockReturnValue(true); // MERGE_HEAD exists
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: false, // Behind, but won't be checked
+        behindBy: 3,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        phasesRun: 0,
+        stepsRun: 0,
+        duration: 100,
+      });
+
+      preCommitCommand(env.program);
+
+      // ACT
+      try {
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(0); // Should succeed
+        }
+      }
+
+      // ASSERT: checkBranchSync should NOT be called during merge
+      expect(git.isMergeInProgress).toHaveBeenCalled();
+      expect(git.checkBranchSync).not.toHaveBeenCalled();
+    });
+
+    it('should enforce branch sync check when NOT in merge', async () => {
+      // ARRANGE: Normal commit, branch behind
+      const mockConfig: VibeValidateConfig = {
+        version: '1.0',
+        validation: { phases: [] },
+      };
+
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge
+      vi.mocked(git.checkBranchSync).mockResolvedValue({
+        isUpToDate: false,
+        behindBy: 3,
+        currentBranch: 'feature/test',
+        hasRemote: true,
+      });
+
+      preCommitCommand(env.program);
+
+      // ACT
+      try {
+        await env.program.parseAsync(['pre-commit'], { from: 'user' });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1); // Should fail
+        }
+      }
+
+      // ASSERT: checkBranchSync should be called and block commit
+      expect(git.isMergeInProgress).toHaveBeenCalled();
+      expect(git.checkBranchSync).toHaveBeenCalled();
+    });
+  });
 
   describe('work protection (Issue #69)', () => {
     it('should create worktree snapshot BEFORE checking branch sync', async () => {

@@ -54,7 +54,8 @@ export {
   getHeadTreeSha,
   verifyRef,
   verifyRefOrThrow,
-  hasNotesRef
+  hasNotesRef,
+  isMergeInProgress
 } from './git-commands.js';
 
 // Secure git command execution (low-level - use high-level APIs when possible)
