@@ -99,6 +99,72 @@ export interface DoctorOptions {
 }
 
 /**
+ * Check if CLI build is in sync with source code (development mode only)
+ *
+ * Detects when running from vibe-validate source tree and the built CLI
+ * version doesn't match the source package.json version. This is the most
+ * confusing scenario for developers - everything seems to work but uses
+ * an old schema.
+ */
+function checkCliBuildSync(): DoctorCheckResult {
+  try {
+    // Check if we're in the vibe-validate source tree
+    const gitRoot = findGitRoot();
+    if (!gitRoot) {
+      return {
+        name: 'CLI build status',
+        passed: true,
+        message: 'Skipped (not in git repository)',
+      };
+    }
+
+    const sourcePackageJsonPath = join(gitRoot, 'packages/cli/package.json');
+
+    // Not in vibe-validate source tree
+    if (!existsSync(sourcePackageJsonPath)) {
+      return {
+        name: 'CLI build status',
+        passed: true,
+        message: 'Skipped (not in vibe-validate source tree)',
+      };
+    }
+
+    // Get running version
+    const runningPackageJsonPath = new URL('../../package.json', import.meta.url);
+    const runningPackageJson = JSON.parse(readFileSync(runningPackageJsonPath, 'utf8'));
+    const runningVersion = runningPackageJson.version;
+
+    // Get source version
+    const sourcePackageJson = JSON.parse(readFileSync(sourcePackageJsonPath, 'utf8'));
+    const sourceVersion = sourcePackageJson.version;
+
+    // Compare versions - this is the confusing scenario that needs detection
+    if (runningVersion !== sourceVersion) {
+      return {
+        name: 'CLI build status',
+        passed: false,
+        message: `Build is stale: running v${runningVersion}, source v${sourceVersion}`,
+        suggestion: 'Rebuild packages: pnpm -r build',
+      };
+    }
+
+    return {
+      name: 'CLI build status',
+      passed: true,
+      message: `Build is up to date (v${runningVersion})`,
+    };
+  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Non-critical dev-only check, errors safely ignored
+  } catch (_error) {
+    // Any errors are non-critical - this is a development-only check
+    return {
+      name: 'CLI build status',
+      passed: true,
+      message: 'Skipped (could not determine build status)',
+    };
+  }
+}
+
+/**
  * Check Node.js version meets requirements
  */
 function checkNodeVersion(): DoctorCheckResult {
@@ -1083,6 +1149,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
 
   // Run all checks
   allChecks.push(await checkVersion(versionChecker));
+  allChecks.push(checkCliBuildSync());
   allChecks.push(checkNodeVersion());
   allChecks.push(checkGitInstalled());
   allChecks.push(checkGitRepository());
