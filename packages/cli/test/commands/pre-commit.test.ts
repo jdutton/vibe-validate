@@ -684,31 +684,36 @@ describe('pre-commit command', () => {
   // - Explicit command mode vs autodetect mode
 
   describe('merge detection', () => {
-    it('should skip branch sync check when merge is in progress', async () => {
-      // ARRANGE: Merge in progress
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: { phases: [] },
-      };
+    const mockConfig: VibeValidateConfig = {
+      version: '1.0',
+      validation: { phases: [] },
+    };
 
+    const setupMergeTest = (isMerging: boolean) => {
       vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.isMergeInProgress).mockReturnValue(true); // MERGE_HEAD exists
+      vi.mocked(git.isMergeInProgress).mockReturnValue(isMerging);
       vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: false, // Behind, but won't be checked
+        isUpToDate: false, // Branch is behind
         behindBy: 3,
         currentBranch: 'feature/test',
         hasRemote: true,
       });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
 
+      // Only mock validation for merge case (normal case exits before validation)
+      if (isMerging) {
+        vi.mocked(core.runValidation).mockResolvedValue({
+          passed: true,
+          phasesRun: 0,
+          stepsRun: 0,
+          duration: 100,
+        });
+      }
+    };
+
+    it('should skip branch sync check when merge is in progress', async () => {
+      setupMergeTest(true);
       preCommitCommand(env.program);
 
-      // ACT
       try {
         await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
@@ -717,30 +722,14 @@ describe('pre-commit command', () => {
         }
       }
 
-      // ASSERT: checkBranchSync should NOT be called during merge
       expect(git.isMergeInProgress).toHaveBeenCalled();
       expect(git.checkBranchSync).not.toHaveBeenCalled();
     });
 
     it('should enforce branch sync check when NOT in merge', async () => {
-      // ARRANGE: Normal commit, branch behind
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: { phases: [] },
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: false,
-        behindBy: 3,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-
+      setupMergeTest(false);
       preCommitCommand(env.program);
 
-      // ACT
       try {
         await env.program.parseAsync(['pre-commit'], { from: 'user' });
       } catch (err: unknown) {
@@ -749,7 +738,6 @@ describe('pre-commit command', () => {
         }
       }
 
-      // ASSERT: checkBranchSync should be called and block commit
       expect(git.isMergeInProgress).toHaveBeenCalled();
       expect(git.checkBranchSync).toHaveBeenCalled();
     });
