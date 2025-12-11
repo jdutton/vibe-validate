@@ -110,7 +110,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(17);
+      expect(result.checks).toHaveLength(18);
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -241,7 +241,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verify that all 16 checks ran (not just the config check)
-      expect(result.checks).toHaveLength(17);
+      expect(result.checks).toHaveLength(18);
 
       // Config check should fail
       assertCheck(result, 'Configuration valid', {
@@ -255,10 +255,10 @@ describe('doctor command', () => {
       assertCheck(result, 'Git installed', { passed: true });
       assertCheck(result, 'Git repository', { passed: true });
 
-      // Summary should show 16/17 passed (only config check fails)
+      // Summary should show 17/18 passed (only config check fails)
       expect(result.allPassed).toBe(false);
-      expect(result.totalChecks).toBe(17);
-      expect(result.passedChecks).toBe(16);
+      expect(result.totalChecks).toBe(18);
+      expect(result.passedChecks).toBe(17);
     });
 
     it('should detect not in git repository', async () => {
@@ -385,7 +385,7 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true });
 
-      expect(result.checks).toHaveLength(17);
+      expect(result.checks).toHaveLength(18);
       expect(result.verboseMode).toBe(true);
     });
 
@@ -435,7 +435,7 @@ describe('doctor command', () => {
 
       // Verbose mode should show ALL 16 checks (including passing ones)
       expect(result.verboseMode).toBe(true);
-      expect(result.checks).toHaveLength(17); // All checks
+      expect(result.checks).toHaveLength(18); // All checks
       expect(result.allPassed).toBe(false); // Has failures
 
       const failedChecks = result.checks.filter(c => !c.passed);
@@ -1134,7 +1134,7 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
 
-      expect(result.checks).toHaveLength(17);
+      expect(result.checks).toHaveLength(18);
       assertCheck(result, 'vibe-validate version', { passed: true });
     });
 
@@ -1164,8 +1164,59 @@ describe('doctor command', () => {
 
       expect(duration).toBeLessThan(5000); // Should be fast (<5s without network)
       assertCheck(result, 'vibe-validate version', { passed: true });
-      expect(result.checks).toHaveLength(17);
+      expect(result.checks).toHaveLength(18);
     });
+  });
+
+  // ==========================================================================
+  // CLI Build Sync Check (Development Mode)
+  // ==========================================================================
+
+  describe('checkCliBuildSync() - Developer build verification', () => {
+    it('should skip check when not in vibe-validate source tree', async () => {
+      // Mock being in a different project (no packages/cli/package.json)
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'CLI build status', {
+        passed: true,
+        messageContains: 'Skipped'
+      });
+    });
+
+    it('should pass when build is up to date', async () => {
+      // Mock being in vibe-validate source tree with matching versions
+      const { readFileSync } = await import('node:fs');
+      vi.mocked(existsSync).mockImplementation((_path: string) => {
+        // Simulate vibe-validate source tree structure where all files exist
+        return true;
+      });
+
+      vi.mocked(readFileSync).mockImplementation((path: string | URL) => {
+        const pathStr = path.toString();
+        if (pathStr.includes('package.json')) {
+          // Both running and source versions are the same
+          return JSON.stringify({ version: '0.17.4' });
+        }
+        return 'npm run pre-commit';
+      });
+
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'CLI build status', {
+        passed: true,
+        messageContains: 'up to date'
+      });
+    });
+
+    // Note: Testing version mismatch is difficult in unit tests because when running
+    // from local dist/, both running and source versions point to the same package.json.
+    // The check works correctly in production: when using a globally installed vv and
+    // running doctor from within the source tree, it will detect the mismatch.
   });
 
   // ==========================================================================
