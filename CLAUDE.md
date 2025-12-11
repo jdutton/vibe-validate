@@ -603,6 +603,17 @@ Every time you run tests, validation, or encounter errors, ask yourself:
 
 **Remember**: Every time you use vibe-validate while developing it, you're gathering real-world feedback. Use it!
 
+### NEVER Bypass Validation
+
+**CRITICAL RULE**: If you find yourself needing `git commit --no-verify`, you have FAILED customers and the project.
+
+- ✅ **Do**: Fix the issue causing validation to fail
+- ✅ **Do**: Sync with origin/main using proper workflow (stash → merge → unstash)
+- ❌ **Never**: Use `--no-verify` to skip pre-commit checks
+- ❌ **Never**: Bypass validation "just this once"
+
+**Why it matters**: Every `--no-verify` is a signal that vibe-validate is blocking legitimate work. If YOU can't use it properly while building it, customers won't either.
+
 ### Example Scenarios
 
 **Good Experience:**

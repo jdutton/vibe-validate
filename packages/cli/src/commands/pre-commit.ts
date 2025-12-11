@@ -6,7 +6,7 @@
  */
 
 import type { Command } from 'commander';
-import { checkBranchSync, getPartiallyStagedFiles, isCurrentBranchBehindTracking, getGitTreeHash } from '@vibe-validate/git';
+import { checkBranchSync, getPartiallyStagedFiles, isCurrentBranchBehindTracking, getGitTreeHash, isMergeInProgress } from '@vibe-validate/git';
 import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
@@ -118,30 +118,37 @@ export function preCommitCommand(program: Command): void {
           console.log(chalk.green('✅ Current branch is up to date with remote'));
         }
 
-        // Step 4: Check branch sync (unless skipped)
+        // Step 4: Check branch sync (unless skipped or in merge)
         if (!options.skipSync) {
           // Construct remote branch reference using helper
           const remoteBranch = getRemoteBranch(config.git);
 
-          console.log(chalk.blue(`🔄 Checking branch sync with ${remoteBranch}...`));
-
-          const syncResult = await checkBranchSync({
-            remoteBranch,
-          });
-
-          if (!syncResult.isUpToDate && syncResult.hasRemote) {
-            console.error(chalk.red(`❌ Branch is behind ${remoteBranch}`));
-            console.error(chalk.yellow(`   Behind by ${syncResult.behindBy} commit(s)`));
-
-            showWorkProtectionMessage(treeHash, `git merge ${remoteBranch}`, programName);
-
-            process.exit(1);
-          }
-
-          if (syncResult.hasRemote) {
-            console.log(chalk.green(`✅ Branch is up to date with ${remoteBranch}`));
+          // Check if we're in the middle of a merge (MERGE_HEAD exists)
+          // During a merge, being behind origin/main is expected - the merge commit will resolve it
+          if (isMergeInProgress()) {
+            console.log(chalk.blue(`🔄 Merge in progress - skipping branch sync check`));
+            console.log(chalk.gray(`   (This merge commit will sync with ${remoteBranch})`));
           } else {
-            console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or no remote)'));
+            console.log(chalk.blue(`🔄 Checking branch sync with ${remoteBranch}...`));
+
+            const syncResult = await checkBranchSync({
+              remoteBranch,
+            });
+
+            if (!syncResult.isUpToDate && syncResult.hasRemote) {
+              console.error(chalk.red(`❌ Branch is behind ${remoteBranch}`));
+              console.error(chalk.yellow(`   Behind by ${syncResult.behindBy} commit(s)`));
+
+              showWorkProtectionMessage(treeHash, `git merge ${remoteBranch}`, programName);
+
+              process.exit(1);
+            }
+
+            if (syncResult.hasRemote) {
+              console.log(chalk.green(`✅ Branch is up to date with ${remoteBranch}`));
+            } else {
+              console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or no remote)'));
+            }
           }
         }
 
@@ -255,10 +262,12 @@ The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure yo
 
 1. Checks for partially staged files (fails if detected)
 2. Checks if current branch is behind its remote tracking branch (fails if detected)
-3. Runs sync-check (fails if branch behind origin/main)
+3. Runs sync-check (fails if branch behind origin/main, skipped during merge)
 4. Runs secret scanning (if enabled in config)
 5. Runs validate (with caching)
 6. Reports git status (warns about unstaged files)
+
+**Note:** When completing a merge commit (MERGE_HEAD exists), the branch sync check is automatically skipped since the merge commit itself resolves the out-of-sync state.
 
 ## Options
 
@@ -404,9 +413,14 @@ git merge origin/main
 
 # Resolve conflicts if any
 
-# Retry pre-commit
+# Retry pre-commit (sync check auto-skipped during merge)
 vibe-validate pre-commit
+
+# Complete the merge
+git commit -m "Merge origin/main into feature-branch"
 \`\`\`
+
+**Note:** Once you start the merge (\`git merge origin/main\`), pre-commit will automatically skip the branch sync check when you commit, since the merge itself brings you up to date.
 
 ### If validation fails
 

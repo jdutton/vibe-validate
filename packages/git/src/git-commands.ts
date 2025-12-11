@@ -87,3 +87,11 @@ export function verifyRefOrThrow(ref: string): string {
 export function hasNotesRef(notesRef: string): boolean {
   return tryGitCommand(['rev-parse', '--verify', notesRef]);
 }
+
+/**
+ * Check if git is currently in the middle of a merge
+ * @returns true if MERGE_HEAD exists (merge in progress), false otherwise
+ */
+export function isMergeInProgress(): boolean {
+  return tryGitCommand(['rev-parse', '--verify', '--quiet', 'MERGE_HEAD']);
+}
