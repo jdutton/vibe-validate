@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Fixed HIGH severity vulnerability in glob package (command injection)
+- Fixed MODERATE severity vulnerability in js-yaml package (prototype pollution)
+- Updated to TypeScript ES2024 target (backward compatible)
+
+### Features
+
+- `vv doctor` now detects stale builds and dependencies
+
+### Bug Fixes
+
+- Pre-commit hook no longer falsely flags the local branch as stale during merge commits
+
+### Documentation
+
+- Improved README.md to clarify the benefits of the project, and reduced verbosity
+- Cleaned up repository root (moved files to `.github/`, removed unnecessary files)
+
 ## [0.17.4] - 2025-12-07
 
 ### Bug Fixes
