@@ -260,86 +260,19 @@ validation:
 
 ---
 
-## Extending vibe-validate: Custom Extractors
+## Error Extractors
 
-vibe-validate ships with 14+ built-in extractors for popular tools (TypeScript, ESLint, Vitest, Jest, Playwright, Maven, and more). But you can add support for ANY tool by creating custom extractors.
+vibe-validate includes 14+ built-in extractors that parse verbose output from popular tools and extract only the failures in LLM-friendly YAML format (95% token reduction).
 
-### What Are Extractors?
-
-Extractors parse verbose test/lint output and extract **only the failures** in LLM-friendly YAML format:
-
-**Before (1500 tokens):**
-```
-> vitest run
- FAIL  src/utils.test.ts > calculateTotal
-   AssertionError: expected 42 to equal 43
-   [verbose stack trace...]
-   [progress bars, timing info, module loading...]
-```
-
-**After (75 tokens - 95% reduction):**
-```yaml
-errors:
-  - file: src/utils.test.ts
-    line: 15
-    message: "AssertionError: expected 42 to equal 43"
-summary: "1 test failure"
-guidance: "Fix assertion in calculateTotal test"
-```
-
-### Built-in Extractors
-
+**Supported tools:**
 - **Testing**: Vitest, Jest, Mocha, Playwright, Jasmine, AVA, TAP, JUnit XML
 - **Linting**: ESLint, TypeScript compiler
 - **Build Tools**: Maven (compiler, Surefire, Checkstyle)
-- **Fallback**: Generic extractor (regex-based line:column:message parsing)
+- **Fallback**: Generic extractor (regex-based parsing for any tool)
 
-### Adding Extractors for Your Tools
-
-**Three ways to extend:**
-
-1. **Create a custom extractor locally** (JavaScript/TypeScript file)
-2. **Install community extractors** from npm (coming in v0.18.0)
-3. **Contribute extractors back** to vibe-validate (helps everyone!)
-
-### How to Contribute Extractors
-
-We welcome extractor contributions for any language, framework, or tool! Here's how:
-
-**1. Check if an extractor exists:**
-```bash
-# View current extractors
-ls packages/extractors/src/extractors/
-```
-
-**2. Create a new extractor:**
-- Follow the pattern in existing extractors (e.g., `packages/extractors/src/extractors/vitest/`)
-- Implement `detect()` (identifies your tool's output) and `extract()` (parses errors)
-- Add comprehensive tests (see `packages/extractors/test/`)
-
-**3. Test your extractor:**
-```bash
-# Run extractor tests
-pnpm --filter @vibe-validate/extractors test
-
-# Test with real output
-vv run <your-tool-command>
-```
-
-**4. Submit a PR:**
-- See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development workflow
-- Include: extractor code, tests, example output
-- Benefits: faster review, helps the community, your tool gets first-class support
-
-**Why contribute back?**
-- **Maintenance**: We handle updates as tools evolve
-- **Quality**: Community testing across projects
-- **Distribution**: Available to all vibe-validate users immediately
-- **Recognition**: You're credited as the extractor author
-
-**Need help?** Open an issue describing your tool/framework. We'll guide you through the extractor creation process.
-
-**📖 Extractor architecture details:** [docs/extractor-plugin-architecture.md](docs/extractor-plugin-architecture.md)
+**Extending extractors:**
+- Custom extractors can be added as plugins (local or npm packages)
+- Contributions welcome! See [docs/extractor-plugin-architecture.md](docs/extractor-plugin-architecture.md)
 
 ---
 
