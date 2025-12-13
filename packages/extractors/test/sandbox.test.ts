@@ -13,6 +13,11 @@ import {
 } from '../src/sandbox.js';
 import type { FormattedError } from '../src/types.js';
 
+// Test helper: named function declaration for sandboxing tests
+function extract(content: string): FormattedError[] {
+  return [{ message: content, severity: 'error' }];
+}
+
 describe('Sandbox Module', () => {
   describe('runInSandbox', () => {
     it('should execute simple extractor code successfully', async () => {
@@ -272,10 +277,6 @@ describe('Sandbox Module', () => {
 
   describe('createSandboxedCode', () => {
     it('should handle named function declarations', () => {
-      function extract(content: string): FormattedError[] {
-        return [{ message: content, severity: 'error' }];
-      }
-
       const code = createSandboxedCode(extract);
 
       expect(code).toContain('function extract(');

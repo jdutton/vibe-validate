@@ -16,6 +16,28 @@ vi.mock('@vibe-validate/history', () => ({
 import { getGitTreeHash } from '@vibe-validate/git';
 import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
 
+// Helper to get all console.log output as strings
+function getLogOutput(): string[] {
+  return vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+}
+
+// Helper to create mock history note
+function createMockHistory(passed: boolean): HistoryNote {
+  return {
+    runs: [
+      {
+        result: {
+          passed,
+          timestamp: '2025-12-05T10:30:15.000Z',
+          treeHash: 'abc123def456789012345678901234567890abcd',
+          summary: passed ? 'Validation passed' : 'Validation failed',
+          phases: [],
+        },
+      },
+    ],
+  };
+}
+
 describe('snapshot command', () => {
   let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456789012345678901234567890abcd';
@@ -36,28 +58,6 @@ describe('snapshot command', () => {
       }
       throw err;
     }
-  }
-
-  // Helper to get all console.log output as strings
-  function getLogOutput(): string[] {
-    return vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-  }
-
-  // Helper to create mock history note
-  function createMockHistory(passed: boolean): HistoryNote {
-    return {
-      runs: [
-        {
-          result: {
-            passed,
-            timestamp: '2025-12-05T10:30:15.000Z',
-            treeHash: mockTreeHash,
-            summary: passed ? 'Validation passed' : 'Validation failed',
-            phases: [],
-          },
-        },
-      ],
-    };
   }
 
   beforeEach(() => {
