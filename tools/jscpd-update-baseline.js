@@ -9,7 +9,7 @@
 import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const BASELINE_FILE = '.jscpd-baseline.json';
+const BASELINE_FILE = '.github/.jscpd-baseline.json';
 
 const JSCPD_CONFIG = [
   '--min-lines', '5',
