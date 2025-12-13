@@ -15,6 +15,35 @@ const __dirname = dirname(__filename);
 
 const { extract: extractAvaErrors, detect: detectAva } = avaExtractor;
 
+// Helper: Verify expected vs actual error
+function verifyError(expected: Record<string, unknown>, actual: Record<string, unknown>) {
+  if (expected.file) expect(actual.file).toBe(expected.file);
+  if (expected.line) expect(actual.line).toBe(expected.line);
+  if (expected.message) expect(actual.message).toContain(expected.message);
+}
+
+// Helper: Verify errors array
+function verifyErrors(expected: Array<Record<string, unknown>>, actual: Array<Record<string, unknown>>) {
+  expect(actual).toHaveLength(expected.length);
+  for (let i = 0; i < expected.length; i++) {
+    verifyError(expected[i], actual[i]);
+  }
+}
+
+// Helper: Test a single sample
+function testSample(sample: typeof avaExtractor.samples[number]) {
+  const input = sample.input ?? readFileSync(join(__dirname, sample.inputFile!), 'utf-8');
+  const result = extractAvaErrors(input);
+
+  if (sample.expected!.totalErrors !== undefined) {
+    expect(result.totalErrors).toBe(sample.expected!.totalErrors);
+  }
+
+  if (sample.expected!.errors) {
+    verifyErrors(sample.expected!.errors, result.errors);
+  }
+}
+
 describe('Ava Extractor Plugin', () => {
   describe('Detection', () => {
     it('should detect Ava output with high confidence', () => {
@@ -449,35 +478,6 @@ PASS tests/test.js
   });
 
   describe('Plugin Samples', () => {
-    // Helper: Verify expected vs actual error
-    function verifyError(expected: Record<string, unknown>, actual: Record<string, unknown>) {
-      if (expected.file) expect(actual.file).toBe(expected.file);
-      if (expected.line) expect(actual.line).toBe(expected.line);
-      if (expected.message) expect(actual.message).toContain(expected.message);
-    }
-
-    // Helper: Verify errors array
-    function verifyErrors(expected: Array<Record<string, unknown>>, actual: Array<Record<string, unknown>>) {
-      expect(actual).toHaveLength(expected.length);
-      for (let i = 0; i < expected.length; i++) {
-        verifyError(expected[i], actual[i]);
-      }
-    }
-
-    // Helper: Test a single sample
-    function testSample(sample: typeof avaExtractor.samples[number]) {
-      const input = sample.input ?? readFileSync(join(__dirname, sample.inputFile!), 'utf-8');
-      const result = extractAvaErrors(input);
-
-      if (sample.expected!.totalErrors !== undefined) {
-        expect(result.totalErrors).toBe(sample.expected!.totalErrors);
-      }
-
-      if (sample.expected!.errors) {
-        verifyErrors(sample.expected!.errors, result.errors);
-      }
-    }
-
     it('should pass all registered samples', () => {
       for (const sample of avaExtractor.samples) {
         testSample(sample);
