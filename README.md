@@ -1,56 +1,126 @@
 # vibe-validate
 
-> Git-aware validation orchestration with automatic work protection and dramatically faster cached runs
+[![CI](https://github.com/jdutton/vibe-validate/actions/workflows/validate.yml/badge.svg)](https://github.com/jdutton/vibe-validate/actions) [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![npm downloads](https://img.shields.io/npm/dm/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![Node](https://img.shields.io/node/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+> **Faster Agentic Coding with confidence in every commit**
 
-**What it does**: Caches your validation results (tests, lint, typecheck) using git tree hashes. When code hasn't changed, validation completes in under a second instead of minutes.
+**Built by AI, for AI and Developers** - supports all major AI coding assistants (Claude Code, Cursor, Aider, Continue, Windsurf, and more).
 
-**Who it's for**: TypeScript/JavaScript developers and multi-language monorepos, especially those using AI assistants (Claude Code, Cursor, Aider, Continue)
+## Why vibe-validate?
+
+### 1. **Shift Left: Never Commit Broken Code**
+Never commit or push code with test failures, lint violations, or leaked secrets. Pre-commit validation ensures agents and humans **never forget**.
+
+**How it works:**
+- ✅ Pre-commit hooks ensure validation has run before every commit (with smart caching)
+- 🔐 Secret scanning detects credentials before they're pushed (Gitleaks integration)
+- 🔄 Branch sync enforcement keeps you current with main
+- 🎯 CI passes because local validation is identical
+
+**Impact:** Stop the "push → wait for CI → fix → repeat" cycle. Catch problems in seconds, not minutes.
+
+---
+
+### 2. **Fast Validation With Smart Caching**
+Test validation completes in under 1 second when code hasn't changed. Git worktree checksums provide deterministic caching - same code = same hash = instant results.
+
+**How it works:**
+- ⚡ **Instant** pass on unchanged code (< 1s vs 90s)
+- 🔐 Content-based caching using git tree hashes
+- 📊 Parallel phase execution runs checks simultaneously
+- 📜 Validation history tracked against git worktree checksums
+
+**Impact:** Validate constantly without waiting. Fast feedback = faster iteration.
+
+---
+
+### 3. **AI-Optimized Output Saves 95% of Context Window**
+Extract actionable failures from verbose test logs. AI agents get structured YAML with file:line:message - not 200 lines of test runner boilerplate.
+
+**How it works:**
+- 🤖 Auto-detects Claude Code, Cursor, Aider, Continue
+- 📋 Structured extraction: file, line number, error message, guidance
+- 💰 **95% reduction** in context window usage (1500 tokens → 75 tokens)
+- 🎯 Strips ANSI codes, progress bars, and noise
+
+**Impact:** AI agents stay focused on fixing actual problems instead of parsing logs.
+
+---
+
+### 4. **Tools Optimized for Agents Speed Debugging and Development**
+Built-in tools for AI agents and developers: health diagnostics, PR monitoring, branch sync enforcement, and actionable error guidance.
+
+**How it works:**
+- 🩺 `vv doctor` - diagnose setup issues before they block you
+- 👀 `vv watch-pr` - monitor CI without opening browser
+- 🔄 Automatic branch sync enforcement during pre-commit
+- 🎯 `vv history` - view validation timeline and debug trends
+
+**Impact:** Spend less time on tooling and environment issues. More time shipping features.
+
+---
+
+### 5. **Automatic Git Snapshots Protect Your Work**
+Every validation creates git snapshots of your worktree (staged, unstaged, untracked files). Retrieve lost work or compare history when tests passed vs. failed.
+
+**How it works:**
+- 🛡️ Automatic - no user action required
+- ⏱️ Timestamped snapshots with every validation
+- 🔄 Recovery with standard git commands (`git cat-file`, `vv history`)
+- 📜 Compare worktree state when tests passed vs. failed
+
+**Impact:** Recover from bad refactoring, accidental reverts, or editor crashes. Your last validation is your safety net.
+
+---
 
 **For AI Assistants**: Get all command help at once with `vv --help --verbose` (or `npx vibe-validate --help --verbose` before install) or see the [Complete CLI Reference](docs/skill/resources/cli-reference.md)
 
-## Quick Start (4 commands)
+## Quick Start
 
+### Installation
+
+**Recommended: Install globally** (works for all projects):
 ```bash
-# 1. Install
+npm install -g vibe-validate
+```
+
+**Node.js projects: ALSO add as dev dependency** (for version locking + CI):
+```bash
 npm install -D vibe-validate
-
-# 2. Initialize (creates config, detects your project type)
-npx vibe-validate init
-
-# 3. Check setup health (ALWAYS run after install/upgrade!)
-npx vibe-validate doctor
-
-# 4. Validate (run before every commit - uses cache when code unchanged)
-npx vibe-validate validate
 ```
 
-**When code changes**: seconds to minutes (runs all checks)
-**When code unchanged**: under a second (content-based caching!)
+**Why global?**
+- ✅ `vibe-validate` command (and `vv` shortcut) available everywhere immediately
+- ✅ Works across all projects (Node.js, Python, Rust, Go, etc.)
+- ✅ One installation for your entire machine
+- ✅ Claude Code skill installed at user level
 
-**💡 Tip for AI Agents**: Always run `npx vibe-validate doctor` after upgrading to detect deprecated files and get migration guidance.
+**Why ALSO add as dev dependency for Node.js?**
+- ✅ Locks version in package.json (entire team uses same version)
+- ✅ CI installs automatically (`npm ci` - no global install needed)
+- ✅ npm scripts work without global install: `"validate": "vibe-validate validate"`
+- ✅ `npx vibe-validate` and npm scripts prefer local version over global
 
-## Shorter Commands with `vv` Alias
+**Command aliases:** `vibe-validate` (full name) and `vv` (shortcut) are interchangeable. Both work globally and locally.
 
-Once installed, use the shorter `vv` command instead of `npx vibe-validate`:
+### Usage (3 commands)
 
 ```bash
-vv validate      # Same as: npx vibe-validate validate
-vv doctor        # Same as: npx vibe-validate doctor
-vv run npm test  # Same as: npx vibe-validate run npm test
+# 1. Initialize (creates config, detects your project type)
+vv init
+
+# 2. Check setup health (ALWAYS run after install/upgrade!)
+vv doctor
+
+# 3. Validate (run before every commit - uses cache when code unchanged)
+vv validate
 ```
 
-**Benefits:**
-- **Shorter**: Type `vv` instead of `npx vibe-validate` (85% less typing!)
-- **Context-aware**: Automatically finds the right installation (dev, local, or global)
-- **Works everywhere**: From any subdirectory in your project
-- **Perfect for AI agents**: Less tokens, clearer commands
+**Performance:**
+- **When code changes**: seconds to minutes (runs all checks)
+- **When code unchanged**: under a second (content-based caching!)
 
-**When to use what:**
-- Use `vv` after installation for day-to-day work
-- Use `npx vibe-validate` before installation to try it out
+**💡 Tip for AI Agents**: Always run `vv doctor` after upgrading to detect deprecated files and get migration guidance.
 
 ## Integration with package.json
 
@@ -80,854 +150,81 @@ npm run pre-commit    # Pre-commit workflow (branch sync + validation)
 
 ## Try It Out (No Installation)
 
-Evaluate if your project is suitable for vibe-validate:
+Test vibe-validate in any project (Node.js, Python, Rust, Go, etc.) without installing:
 
 ```bash
 # Check if your project meets prerequisites
-npx @vibe-validate/cli@latest doctor
+npx vibe-validate@latest doctor
 ```
 
 **Prerequisites checked:**
-- ✅ Node.js 20+ installed
+- ✅ Node.js 20+ installed (required for vibe-validate CLI)
 - ✅ Git repository initialized
-- ✅ Package manager available (npm/pnpm)
+- ✅ Package manager available (npm/pnpm) if Node.js project
 
-**Additional guidance:** `doctor` will also provide setup recommendations for configuration, pre-commit hooks, and GitHub Actions workflow sync to help you get started.
+**Note:** vibe-validate requires Node.js 20+ to run the CLI, but it can validate projects in ANY language. The validation commands you configure can be Python pytest, Rust cargo test, Go go test, etc.
 
-## Why vibe-validate?
+---
 
-**Built for agentic coding workflows** to help deterministically enforce SDLC best practices and minimize context window usage when working with AI assistants like [Claude Code](https://claude.ai/code).
-
-## Automatic Work Protection
-
-Every validation run automatically protects your work - without any user action required.
-
-### How It Works
-
-When vibe-validate calculates the git tree hash for caching, it creates git objects for ALL your files:
-- ✅ Staged changes
-- ✅ Unstaged modifications
-- ✅ Untracked files (not in .gitignore)
-
-These git objects persist in `.git/objects/` even if your files are accidentally deleted or modified.
-
-### Real-World Recovery Scenarios
-
-**Scenario 1: Accidental Revert**
-```bash
-# You've been coding for 3 hours (unstaged changes)
-$ cat src/feature.ts
-"Brilliant new code from 3 hours of work"
-
-# You accidentally revert everything
-$ git restore .
-
-# Your unstaged work is gone from the file system!
-$ cat src/feature.ts
-"Old committed version"
-
-# But vibe-validate saved it! Find your last validation:
-$ vv history list
-2025-12-02 14:30:15  abc123def  feature-branch  ✓ PASSED
-
-# View what was in that tree hash:
-$ vv history show abc123def --file src/feature.ts
-"Brilliant new code from 3 hours of work"
-
-# Recover your work:
-$ git cat-file -p abc123def:src/feature.ts > src/feature.ts
-# Work restored!
-```
-
-**Scenario 2: Bad Find/Replace**
-```bash
-# You run a find/replace that goes wrong
-# Realize it 30 minutes later after more edits
-
-# Check recent validation history:
-$ vv history list --limit 5
-2025-12-02 15:45:10  xyz789abc  feature-branch  ✓ PASSED  # After bad replace
-2025-12-02 15:10:22  def456ghi  feature-branch  ✓ PASSED  # Before bad replace
-
-# Compare what changed:
-$ git diff def456ghi xyz789abc -- src/
-
-# Restore specific files from before the bad replace:
-$ git cat-file -p def456ghi:src/broken.ts > src/broken.ts
-```
-
-**Scenario 3: Editor Crash**
-```bash
-# Your editor crashes before saving
-# Files revert to last saved state
-
-# But if you ran validation during your work session:
-$ vv history list --limit 1
-2025-12-02 14:15:30  ghi789jkl  feature-branch  ✓ PASSED
-
-# Your in-progress work is in that tree hash:
-$ vv history show ghi789jkl --file src/
-# Shows all files as they were during that validation
-```
-
-### Benefits
-
-- **Zero overhead**: Git deduplicates objects automatically (no extra disk space for unchanged files)
-- **No user action required**: Protection happens automatically every validation run
-- **Historical snapshots**: Every validation creates a snapshot you can reference later
-- **Complements git**: Works alongside git commits, provides safety net for uncommitted work
-- **Recovery commands**: Simple `git cat-file` commands to recover any file from any validation point
-
-### When Work is Protected
-
-Your work is automatically captured whenever you run:
-- `vv validate` - Full validation pipeline
-- `vv pre-commit` - Pre-commit workflow
-- `vv run <command>` - Individual command execution (v0.15.0+)
-
-Each run creates a tree hash that captures the complete state of your working directory.
-
-### Viewing Your Protected Snapshots
+## Essential Commands
 
 ```bash
-# List all validation snapshots with timestamps
-$ vv history list
+# Initialize configuration
+vv init
 
-# Show complete details of a specific snapshot
-$ vv history show <tree-hash>
+# Run validation (cached when code unchanged)
+vv validate
 
-# List files in a specific snapshot
-$ git ls-tree <tree-hash>
+# Pre-commit workflow (branch sync + validation)
+vv pre-commit
 
-# View specific file content from a snapshot
-$ git cat-file -p <tree-hash>:path/to/file.ts
-```
+# Health check and diagnostics
+vv doctor
 
-### What Gets Protected
+# View validation state
+vv state
 
-✅ **Protected** (captured in tree hash):
-- Tracked files (staged or modified)
-- Untracked files (not in .gitignore)
-- New files you just created
-- All modifications in working directory
+# View validation history
+vv history list
 
-❌ **Not protected** (security by design):
-- Files in `.gitignore` (secrets, API keys, credentials)
-- Build artifacts (dist/, node_modules/)
-- Temporary files (*.tmp, *.swp)
-
-### Comparison to Git Stash
-
-| Feature | vibe-validate | git stash |
-|---------|---------------|-----------|
-| User action required | ❌ Automatic | ✅ Manual (`git stash`) |
-| Captures unstaged changes | ✅ Yes | ✅ Yes |
-| Captures untracked files | ✅ Yes | ⚠️ Only with `-u` flag |
-| Timestamp-indexed | ✅ Via history list | ⚠️ Stash stack only |
-| Keeps working directory | ✅ Yes | ❌ Clears changes |
-| Tied to validation events | ✅ Yes | ❌ No |
-| Multiple snapshots per code state | ✅ Yes (multi-run support) | ❌ No |
-
-**Think of it as**: Automatic "checkpoint saves" every time you validate - but your game (working directory) keeps running.
-
-### Core Design Goals
-
-1. **Validate before pushing** - Prevent broken PRs by catching issues locally before they reach CI
-2. **PR/local sync** - Guarantee PR validation passes because it's identical to local testing
-3. **Speed up validation** - Parallel execution + smart caching + fail-fast = faster iteration
-4. **Minimize context window usage** - Agent-optimized error formatting with test filters
-5. **Keep branches synchronized** - Enforce branch sync with main during development
-
-### Key Features
-
-- **Automatic work protection** - Every validation creates recoverable snapshots of all files (staged, unstaged, untracked)
-- **Dramatically faster cached validation** (< 1s vs seconds/minutes when code unchanged)
-- **Git tree hash caching** - Content-based, deterministic (includes untracked files)
-- **Heterogeneous project support** - Perfect for multi-language monorepos (Java + TypeScript + Python)
-- **Parallel phase execution** - Run independent checks simultaneously
-- **Smart concurrency control** - Prevents duplicate runs, wait-for-completion mode for hooks
-- **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue
-- **Branch sync enforcement** - Pre-commit hook ensures branches stay current
-- **GitHub Actions generator** - CI/CD workflow auto-generated from config
-
-### vs. Alternatives
-
-**vs. Running commands manually** (`npm test && npm run lint && ...`):
-- ✅ Dramatically faster with caching
-- ✅ Parallel execution
-- ✅ Branch sync checking
-- ✅ Agent-friendly error output
-- ✅ Automatic work protection / Accidental change recovery
-
-**vs. Nx/Turborepo**:
-- ✅ Simpler setup (one config file vs complex workspace)
-- ✅ Language-agnostic (not tied to npm workspaces)
-- ✅ Designed for AI assistants (Claude Code integration)
-- ✅ SDLC enforcement (pre-commit, branch sync)
-- ✅ Automatic work protection / Accidental change recovery
-
-**vs. Pre-commit framework (Python)**:
-- ✅ Native Node.js (no Python dependency)
-- ✅ Full validation orchestration (not just pre-commit)
-- ✅ Caching between local/CI runs
-- ✅ GitHub Actions generator
-- ✅ Automatic work protection / Accidental change recovery
-
-**Primarily tested with:** [Claude Code](https://claude.ai/code) - Anthropic's AI-powered coding assistant
-
-## Common Commands
-
-```bash
-# Run validation (uses cache if code unchanged)
-npx vibe-validate validate
-
-# Diagnose vibe-validate configuration and environment
-npx vibe-validate doctor
-
-# Pre-commit workflow (recommended before every commit)
-npx vibe-validate pre-commit
-
-# View validation state for current tree
-npx vibe-validate state
-
-# View validation history across all commits
-npx vibe-validate history list
-
-# Monitor PR CI checks in real-time
-npx vibe-validate watch-pr
+# Monitor PR CI status
+vv watch-pr
 
 # Generate GitHub Actions workflow
-npx vibe-validate generate-workflow
-
-# Force re-validation (bypass cache)
-npx vibe-validate validate --force
+vv generate-workflow
 ```
 
-## Example: Before & After
+**📖 Full command reference:** Run `vv --help --verbose` or see [Complete CLI Reference](docs/skill/resources/cli-reference.md)
 
-**Before** (traditional workflow):
-```bash
-npm run typecheck && npm run lint && npm test
-# Always takes 60-90 seconds, even if nothing changed
-```
-
-**After** (with vibe-validate):
-```bash
-npx vibe-validate validate
-# First run: seconds to minutes (cache miss)
-# Every run after: < 1s if code unchanged (cache hit)
-# Speedup: dramatic when code unchanged
-```
-
-## CLI Commands
-
-### `vibe-validate init`
-
-Interactive setup wizard that creates a configuration file.
-
-```bash
-# Minimal template (default)
-npx vibe-validate init
-
-# With specific template
-npx vibe-validate init --template typescript-library
-npx vibe-validate init --template typescript-nodejs
-npx vibe-validate init --template typescript-react
-```
-
-**Creates**: `vibe-validate.config.yaml` in your project root.
-
-### `vibe-validate validate`
-
-Runs the full validation pipeline with automatic caching.
-
-```bash
-# Run validation (uses cache if code unchanged)
-npx vibe-validate validate
-
-# Force re-validation (bypass cache)
-npx vibe-validate validate --force
-
-# Verbose output with detailed progress
-npx vibe-validate validate --verbose
-
-# Check validation status without running
-npx vibe-validate validate --check
-```
-
-**Features**:
-- ✅ Git tree hash caching (automatic)
-- ✅ Parallel phase execution
-- ✅ Smart error formatting (auto-detects tool type)
-- ✅ Exit code 0 (pass) or 1 (fail)
-
-### `vibe-validate pre-commit`
-
-Complete pre-commit workflow: branch sync check + cached validation.
-
-```bash
-# Run before every commit (recommended)
-npx vibe-validate pre-commit
-```
-
-**What it does**:
-1. Checks if branch is behind `origin/main` (stops if true)
-2. Calculates git tree hash of working tree
-3. Skips validation if hash matches cached state (< 1s)
-4. Runs full validation if hash differs (seconds to minutes)
-5. Caches result for next run
-
-**When to use**:
-- **Before every commit** (prevents broken code from being committed)
-- **Before pushing to GitHub** (ensures CI will pass)
-- **After pulling changes** (verify branch is still valid)
-
-### `vibe-validate sync-check`
-
-Checks if current branch is behind `origin/main` without auto-merging.
-
-```bash
-npx vibe-validate sync-check
-```
-
-**Exit codes**:
-- `0` - Up to date or no remote tracking
-- `1` - Branch is behind origin/main (needs merge)
-- `2` - Error condition (git command failed)
-
-**Safety**: Never auto-merges. Always requires explicit manual action.
-
-### `vibe-validate state`
-
-Shows current validation state.
-
-```bash
-# Human-friendly summary
-npx vibe-validate state
-
-# Full error output (no truncation)
-npx vibe-validate state --verbose
-```
-
-**Output includes**:
-- Validation pass/fail status
-- Timestamp of last validation
-- Git tree hash (for cache key)
-- Failed step details (if any)
-- Agent-friendly error summary
-
-### `vibe-validate config`
-
-Shows current configuration with validation.
-
-```bash
-# Display configuration
-npx vibe-validate config
-
-# Validate configuration only
-npx vibe-validate config --validate
-```
-
-**Features**:
-- ✅ Shows resolved configuration
-- ✅ Validates config schema (Zod validation)
-- ✅ Reports any configuration errors
-
-### `vibe-validate cleanup`
-
-Post-merge branch cleanup (use after PR merge).
-
-```bash
-npx vibe-validate cleanup
-```
-
-**What it does**:
-1. Switches to `main` branch
-2. Pulls latest changes from `origin/main`
-3. Identifies merged branches
-4. Deletes confirmed-merged branches
-5. Provides cleanup summary
-
-**Safety**: Only deletes branches confirmed merged via git log inspection.
-
-### `vibe-validate generate-workflow`
-
-Generate GitHub Actions workflow from vibe-validate configuration.
-
-```bash
-# Generate workflow file
-npx vibe-validate generate-workflow
-
-# Check if workflow is in sync with config
-npx vibe-validate generate-workflow --check
-
-# Show generated workflow without writing
-npx vibe-validate generate-workflow --dry-run
-
-# Customize matrix strategy
-npx vibe-validate generate-workflow --node-versions=20,22,24 --os=ubuntu-latest,macos-latest
-
-# Enable coverage reporting
-npx vibe-validate generate-workflow --coverage
-
-# Fail fast in matrix mode
-npx vibe-validate generate-workflow --fail-fast
-```
-
-**Options**:
-- `--node-versions <versions>` - Comma-separated Node.js versions (default: auto-detected from package.json)
-- `--os <systems>` - Comma-separated OS values (default: ubuntu-latest)
-- `--fail-fast` - Fail fast in matrix strategy (default: false)
-- `--coverage` - Enable coverage reporting with Codecov
-- `--dry-run` - Show generated workflow without writing to file
-- `--check` - Check if workflow is in sync with config (exit 0 if in sync, 1 if not)
-
-**Matrix Mode**:
-- Automatically enabled when multiple Node versions or OSes specified
-- Runs single `validate` job with matrix strategy
-- Includes validation state artifact upload on failure
-
-**Non-Matrix Mode** (default for single Node version):
-- Creates individual GitHub Actions jobs for each validation step
-- Respects phase dependencies from config
-- Better visualization in GitHub Actions UI
-
-**Example Generated Workflow**:
-```yaml
-name: Validation Pipeline
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  validate:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        node: ["22"]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-      - run: npm ci
-      - run: npm run validate
-```
-
-**Exit Codes**:
-- `0` - Success (workflow generated or in sync)
-- `1` - Failure (generation failed or workflow out of sync)
-
-### `vibe-validate doctor`
-
-Diagnose vibe-validate setup and environment health.
-
-```bash
-# Run all health checks
-npx vibe-validate doctor
-
-# Output as YAML for programmatic access
-npx vibe-validate doctor --yaml
-```
-
-**What it checks**:
-- Node.js version (>= 20 required)
-- Git repository initialization
-- Package manager availability
-- Configuration file existence and validity
-- Git notes history health
-- Deprecated state file detection
-- Pre-commit hook installation
-- GitHub Actions workflow sync
-- Secret scanning configuration
-
-**Recommended usage**:
-- After installation: `npx @vibe-validate/cli@latest doctor`
-- After upgrades: Always run doctor to detect deprecated files
-- Before troubleshooting: Check for configuration issues
-
-**Exit Codes**:
-- `0` - All checks passed or only advisory warnings
-- `1` - Critical issues found (blocking validation)
-
-### `vibe-validate history`
-
-View and manage validation history stored in git notes.
-
-```bash
-# List all validation runs
-npx vibe-validate history list
-
-# List with YAML output
-npx vibe-validate history list --yaml
-
-# Filter by branch
-npx vibe-validate history list --branch main
-
-# Limit results
-npx vibe-validate history list --limit 10
-
-# Show specific validation result
-npx vibe-validate history show <tree-hash>
-npx vibe-validate history show abc123def
-
-# Check history storage health
-npx vibe-validate history health
-
-# Cleanup old history
-npx vibe-validate history prune --older-than 30
-npx vibe-validate history prune --all
-npx vibe-validate history prune --dry-run
-```
-
-**Subcommands**:
-- `list` - View validation timeline across all tree hashes
-- `show <hash>` - Inspect specific validation result in detail
-- `health` - Check git notes storage health and size
-- `prune` - Remove old validation history (by age or all)
-
-**Use cases**:
-- Debug validation issues: See what passed/failed previously
-- Track validation trends: Monitor test stability over time
-- Manage storage: Clean up old validation history
-- Compare results: See how validation changes between commits
-
-### `vibe-validate watch-pr`
-
-Monitor GitHub Actions CI checks for a pull request in real-time.
-
-```bash
-# Auto-detect PR from current branch
-npx vibe-validate watch-pr
-
-# Specify PR number
-npx vibe-validate watch-pr 123
-
-# YAML output (for scripting)
-npx vibe-validate watch-pr 123 --yaml
-
-# Custom timeout and fail-fast
-npx vibe-validate watch-pr --timeout 600 --fail-fast
-
-# Different CI provider (future)
-npx vibe-validate watch-pr --provider gitlab-ci
-```
-
-**Features**:
-- Auto-detects PR number from current branch
-- Live status updates of all CI checks
-- Extracts vibe-validate state from failed runs
-- Provides actionable recovery commands
-- Supports fail-fast mode (exit on first failure)
-- Configurable timeout
-
-**Exit Codes**:
-- `0` - All checks passed
-- `1` - One or more checks failed
-- `2` - Timeout or unable to fetch PR status
-
-**Use cases**:
-- Monitor CI without switching to browser
-- Debug CI failures with extracted state
-- Automate PR merge workflows
-- Get immediate feedback on PR status
+---
 
 ## Configuration
 
-### Quick Start with Templates
+Run `vv init` to create `vibe-validate.config.yaml`:
 
-vibe-validate includes configuration templates for common project types:
-
-```bash
-# Minimal template (default) - Bare-bones starting point
-npx vibe-validate init
-
-# Library - For npm packages and shared libraries
-npx vibe-validate init --template typescript-library
-
-# Node.js Application - For servers/CLI apps
-npx vibe-validate init --template typescript-nodejs
-
-# React Application - For React/Next.js apps
-npx vibe-validate init --template typescript-react
-```
-
-All templates are available in the [config-templates directory](https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates).
-
-### Configuration File Example
-
-`vibe-validate.config.yaml`:
-
-<!-- config:example -->
 ```yaml
 # vibe-validate.config.yaml
-
-# JSON Schema for IDE autocomplete and validation
 $schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 
-# Git integration settings
-git:
-  mainBranch: main
-  remoteOrigin: origin
-  autoSync: false  # Never auto-merge - safety first
-
-# Validation configuration
 validation:
   phases:
     - name: Pre-Qualification
       parallel: true
       steps:
-        - name: TypeScript Type Check
+        - name: TypeScript
           command: pnpm typecheck
         - name: ESLint
           command: pnpm lint
 
     - name: Testing
-      parallel: false
       steps:
         - name: Unit Tests
           command: pnpm test
-
-    - name: Build
-      parallel: false
-      steps:
-        - name: Build
-          command: pnpm build
-
-  failFast: true  # Stop on first phase failure
 ```
 
-### Customizing Templates
+**📖 Templates & customization:** [config-templates directory](https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates)
 
-Start with a template and add custom phases:
-
-```yaml
-# Copy a template first
-# curl -o vibe-validate.config.yaml \
-#   https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml
-
-# Then add custom phases
-validation:
-  phases:
-    - name: Pre-Qualification
-      # ... (from template)
-
-    - name: Testing
-      # ... (from template)
-
-    - name: Security Scan
-      parallel: false
-      steps:
-        - name: npm audit
-          command: npm audit --audit-level=high
-        - name: License check
-          command: npx license-checker --summary
-
-    - name: Build
-      # ... (from template)
-```
-
-### Customizing Main Branch
-
-By default, vibe-validate assumes your main branch is `main`. To use a different branch:
-
-```yaml
-git:
-  mainBranch: master  # or 'develop', 'trunk', etc.
-  remoteOrigin: origin
-  autoSync: false
-```
-
-**Or via CLI:**
-```bash
-npx vibe-validate sync-check --main-branch master
-```
-
-**Note:** The `pre-commit` command respects `git.mainBranch` from your config file.
-
-## Workflows
-
-### Development Workflow
-
-```bash
-# 1. Start new feature
-git checkout -b feature/new-feature
-
-# 2. Make changes
-# ... edit code ...
-
-# 3. Validate before commit
-npx vibe-validate pre-commit
-# ✅ Branch sync: OK
-# ✅ Validation: Cached (< 1s) - code unchanged
-# ✅ Ready to commit
-
-# 4. Commit changes
-git add .
-git commit -m "feat: add new feature"
-
-# 5. Push and create PR
-git push origin feature/new-feature
-gh pr create
-```
-
-### CI/CD Integration
-
-#### GitHub Actions
-
-`.github/workflows/validate.yml`:
-
-```yaml
-name: Validate
-on: [push, pull_request]
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install
-      - run: npx vibe-validate validate
-        # State files are always YAML (human and machine readable)
-```
-
-**Benefits**:
-- Exit code 0/1 for pass/fail
-- YAML state files (machine-readable and human-reviewable)
-- Parallel execution (faster CI)
-- Consistent with local validation
-
-### Pre-commit Hook
-
-Add to `package.json`:
-
-```json
-{
-  "scripts": {
-    "prepare": "husky install",
-    "pre-commit": "vibe-validate pre-commit"
-  }
-}
-```
-
-`.husky/pre-commit`:
-
-```bash
-#!/bin/sh
-npm run pre-commit
-```
-
-**Benefits**:
-- Prevents broken code from being committed
-- Fast cached validation (< 1s on repeat)
-- Branch sync enforcement
-- No manual intervention needed
-
-## Integration with AI Assistants
-
-### Claude Code
-
-vibe-validate automatically detects Claude Code and provides agent-optimized output:
-
-```bash
-# Claude Code automatically uses YAML format
-npx vibe-validate validate
-# Output optimized for LLM consumption:
-# - Error output embedded in YAML
-# - ANSI codes stripped
-# - Actionable fix suggestions
-```
-
-**CLAUDE.md setup**:
-
-```markdown
-## Development Workflow
-
-**MANDATORY before every commit**:
-\`\`\`bash
-npx vibe-validate pre-commit
-\`\`\`
-
-Never commit without passing validation.
-```
-
-### Cursor / Aider / Continue
-
-Works automatically via environment variable detection:
-
-- `CURSOR=true` → Cursor-optimized output
-- `AIDER=true` → Aider-optimized output
-- `CONTINUE=true` → Continue-optimized output
-
-All AI assistants get:
-- ✅ Noise-free error output
-- ✅ Smart error formatting (TypeScript, ESLint, Vitest)
-- ✅ Actionable fix suggestions
-- ✅ Fast cached validation
-
-## Performance
-
-### Caching Strategy
-
-vibe-validate uses **deterministic git tree hashing** for cache keys:
-
-```bash
-# First run (cache miss)
-$ npx vibe-validate validate
-Phase 1: Pre-Qualification ━━━━━━━━━━━━━━━ 15s
-Phase 2: Testing ━━━━━━━━━━━━━━━━━━━━━━━━ 75s
-✅ Validation passed (90.5s)
-
-# Second run (cache hit, no code changes)
-$ npx vibe-validate validate
-✅ Validation cached (< 1s)
-```
-
-**Cache key calculation**:
-1. `git add --intent-to-add .` (mark untracked files, no staging)
-2. `git write-tree` (deterministic content hash)
-3. `git reset` (restore index to clean state)
-
-**Why it works**:
-- Content-based (not timestamp-based)
-- Includes untracked files
-- Deterministic (same code = same hash)
-- No side effects (index restored)
-
-### Performance Metrics
-
-Real-world project (TypeScript Node.js app):
-
-| Validation Step | Duration |
-|----------------|----------|
-| TypeScript | 8.2s |
-| ESLint | 4.1s |
-| Vitest Unit | 12.3s |
-| Integration | 22.7s |
-| Build | 43.2s |
-| **Total (parallel)** | **90.5s** |
-| **Cached** | **< 1s** |
-| **Speedup** | **Dramatic** |
-
-## Packages
-
-This is a monorepo containing:
-
-- **[vibe-validate](packages/vibe-validate)** - Umbrella package (install this)
-- **[@vibe-validate/cli](packages/cli)** - Command-line interface
-- **[@vibe-validate/core](packages/core)** - Validation orchestration engine
-- **[@vibe-validate/config](packages/config)** - Configuration system with schema validation
-- **[@vibe-validate/extractors](packages/extractors)** - Error parsing & LLM optimization
-- **[@vibe-validate/git](packages/git)** - Git workflow utilities
-
-**For most users**: Install `vibe-validate` which automatically includes all necessary packages.
+---
 
 ## Requirements
 
@@ -937,45 +234,51 @@ This is a monorepo containing:
 
 ## Troubleshooting
 
-### Validation is slow every time
+**Cache not working?** Run `vv doctor` to diagnose issues.
 
-**Problem**: Cache not working, validation runs every time.
+**Validation passes locally but fails in CI?** Run `vv validate --force` locally to reproduce CI environment.
 
-**Solution**: Check for:
-1. In a git repository (`git rev-parse --git-dir`)
-2. Git notes enabled (default in most git setups)
-3. Run `vibe-validate doctor` to diagnose issues
+**Branch sync issues?** Run `git fetch origin` and verify with `git branch -vv`.
 
-### Validation passes locally but fails in CI
+**Config not found?** Run `vv init` to create `vibe-validate.config.yaml` in project root.
 
-**Problem**: Tests are flaky or environment-dependent.
+**📖 Full troubleshooting guide:** [docs/](docs/)
 
-**Solution**:
-1. Run `npx vibe-validate validate --force` locally
-2. Check for hardcoded paths or environment variables
-3. Ensure test isolation (no shared state)
+---
 
-### Branch sync check fails
+## Learn More
 
-**Problem**: `sync-check` reports branch is behind, but it's not.
+**📖 Documentation:**
+- [Getting Started Guide](docs/getting-started.md)
+- [Secret Scanning](docs/secret-scanning.md)
+- [Work Protection & Recovery](docs/work-protection.md)
+- [Agent Integration Guide](docs/agent-integration-guide.md)
+- [CI Debugging](docs/ci-debugging.md)
+- [Complete CLI Reference](docs/skill/resources/cli-reference.md)
 
-**Solution**:
-1. Fetch latest from origin: `git fetch origin`
-2. Check remote tracking: `git branch -vv`
-3. Ensure `origin/main` exists: `git ls-remote origin main`
+**🔧 Monorepo Packages:** `vibe-validate` (umbrella) • `@vibe-validate/cli` • `@vibe-validate/core` • `@vibe-validate/config` • `@vibe-validate/extractors` • `@vibe-validate/git`
 
-### Config file not found
+---
 
-**Problem**: `vibe-validate validate` says no config found.
+## Error Extractors
 
-**Solution**:
-1. Run `npx vibe-validate init` to create config
-2. Ensure file is in project root
-3. Check file is named `vibe-validate.config.yaml`
+vibe-validate includes 14+ built-in extractors that parse verbose output from popular tools and extract only the failures in LLM-friendly YAML format (95% token reduction).
+
+**Supported tools:**
+- **Testing**: Vitest, Jest, Mocha, Playwright, Jasmine, AVA, TAP, JUnit XML
+- **Linting**: ESLint, TypeScript compiler
+- **Build Tools**: Maven (compiler, Surefire, Checkstyle)
+- **Fallback**: Generic extractor (regex-based parsing for any tool)
+
+**Extending extractors:**
+- Custom extractors can be added as plugins (local or npm packages)
+- Contributions welcome! See [docs/extractor-plugin-architecture.md](docs/extractor-plugin-architecture.md)
+
+---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 

@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: ['./.github/vitest.setup.ts'],
     include: [
       'packages/*/test/**/*.test.ts',
       'packages/extractors/src/extractors/**/*.test.ts', // Co-located plugin tests
