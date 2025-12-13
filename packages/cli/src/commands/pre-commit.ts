@@ -6,7 +6,14 @@
  */
 
 import type { Command } from 'commander';
-import { checkBranchSync, getPartiallyStagedFiles, isCurrentBranchBehindTracking, getGitTreeHash, isMergeInProgress } from '@vibe-validate/git';
+import {
+  checkBranchSync,
+  getPartiallyStagedFiles,
+  isCurrentBranchBehindTracking,
+  getGitTreeHash,
+  isMergeInProgress,
+  isToolAvailable
+} from '@vibe-validate/git';
 import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
@@ -18,7 +25,6 @@ import {
   showSecretsDetectedError,
   formatToolName,
   hasGitleaksConfig,
-  isGitleaksAvailable,
 } from '../utils/secret-scanning.js';
 import chalk from 'chalk';
 
@@ -179,7 +185,7 @@ export function preCommitCommand(program: Command): void {
 
               // Handle skipped scans (e.g., gitleaks not available but config exists)
               if (result.skipped) {
-                if (hasGitleaksConfig() && !isGitleaksAvailable()) {
+                if (hasGitleaksConfig() && !isToolAvailable('gitleaks')) {
                   console.warn(chalk.yellow(`⚠️  Found .gitleaks.toml but gitleaks command not available, skipping`));
                   console.warn(chalk.gray('   Install gitleaks: brew install gitleaks'));
                 }

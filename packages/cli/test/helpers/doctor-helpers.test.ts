@@ -33,22 +33,22 @@ describe('doctor-helpers', () => {
   });
 
   describe('mockDoctorEnvironment', () => {
-    it('should export and be callable', () => {
+    it('should export and be callable', async () => {
       expect(mockDoctorEnvironment).toBeDefined();
       expect(typeof mockDoctorEnvironment).toBe('function');
 
-      const cleanup = mockDoctorEnvironment();
+      const cleanup = await mockDoctorEnvironment();
       expect(typeof cleanup).toBe('function');
       cleanup();
     });
 
-    it('should accept config options', () => {
+    it('should accept config options', async () => {
       const config: DoctorEnvironmentConfig = {
         nodeVersion: 'v18.0.0',
         gitVersion: 'git version 2.40.0'
       };
 
-      const cleanup = mockDoctorEnvironment({}, config);
+      const cleanup = await mockDoctorEnvironment({}, config);
       expect(typeof cleanup).toBe('function');
       cleanup();
     });

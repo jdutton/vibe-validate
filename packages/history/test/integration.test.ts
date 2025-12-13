@@ -16,6 +16,9 @@ import type { ValidationResult } from '@vibe-validate/core';
 vi.mock('@vibe-validate/git', () => ({
   getGitTreeHash: vi.fn(() => Promise.resolve('abc123def456')),
   hasWorkingTreeChanges: vi.fn(() => Promise.resolve(false)),
+  getCurrentBranch: vi.fn(() => 'main'),
+  getHeadCommitSha: vi.fn(() => '9abc3c4'),
+  addNote: vi.fn(() => true),
 }));
 
 vi.mock('child_process', () => ({

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
+import { safeExecResult } from '@vibe-validate/git';
 import { join } from 'node:path';
 
 // Doctor integration tests - verifies CLI works end-to-end with real npm registry
@@ -19,23 +19,18 @@ describe('Doctor Command Integration', () => {
    * CRITICAL: Uses 15s timeout to prevent hung child processes (issue discovered 2025-11-06)
    */
   function executeCLI(args: string[]): { stdout: string; stderr: string; exitCode: number } {
-    try {
-      const stdout = execSync(`node "${cliPath}" ${args.join(' ')}`, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 15000, // 15s timeout - prevents hung processes
-        killSignal: 'SIGTERM', // Ensure child is killed on timeout
-      });
-      return { stdout, stderr: '', exitCode: 0 };
-    } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
-      // execSync throws on non-zero exit, but we want to see the output
-      return {
-        stdout: error.stdout || '',
-        stderr: error.stderr || '',
-        exitCode: error.status || 1,
-      };
-    }
+    const result = safeExecResult('node', [cliPath, ...args], {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 15000, // 15s timeout - prevents hung processes
+    });
+
+    return {
+      stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
+      exitCode: result.status ?? 1,
+    };
   }
 
   /**

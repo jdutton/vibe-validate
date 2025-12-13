@@ -15,7 +15,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '../packages/git/dist/safe-exec.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -70,7 +70,7 @@ function publishPackage(packageName, tag) {
   console.log(`\n📦 Publishing ${packageName}...`);
 
   try {
-    execSync(`pnpm publish --no-git-checks --tag ${tag}`, {
+    safeExecSync('pnpm', ['publish', '--no-git-checks', '--tag', tag], {
       cwd: packagePath,
       stdio: 'inherit',
     });
@@ -88,12 +88,8 @@ function publishPackage(packageName, tag) {
 function runPrePublishChecks(args = []) {
   console.log('🔍 Running pre-publish checks...\n');
 
-  // Build command with arguments
-  const argsStr = args.length > 0 ? ' ' + args.join(' ') : '';
-  const command = `node tools/pre-publish-check.js${argsStr}`;
-
   try {
-    execSync(command, {
+    safeExecSync('node', ['tools/pre-publish-check.js', ...args], {
       cwd: ROOT,
       stdio: 'inherit',
     });

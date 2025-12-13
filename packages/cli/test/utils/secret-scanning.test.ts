@@ -3,10 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import {
-  isGitleaksAvailable,
   hasGitleaksConfig,
   hasSecretlintConfig,
   detectSecretScanningTools,
@@ -16,8 +14,11 @@ import {
 } from '../../src/utils/secret-scanning.js';
 
 // Mock Node.js modules
-vi.mock('node:child_process');
 vi.mock('node:fs');
+vi.mock('@vibe-validate/git', () => ({
+  isToolAvailable: vi.fn(() => true),
+  safeExecFromString: vi.fn(() => ''),
+}));
 
 describe('secret-scanning', () => {
   beforeEach(() => {
@@ -26,23 +27,6 @@ describe('secret-scanning', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  describe('isGitleaksAvailable', () => {
-    it('should return true when gitleaks is available', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('8.18.0'));
-
-      expect(isGitleaksAvailable()).toBe(true);
-      expect(execSync).toHaveBeenCalledWith('gitleaks --version', { stdio: 'ignore' });
-    });
-
-    it('should return false when gitleaks is not available', () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('Command not found');
-      });
-
-      expect(isGitleaksAvailable()).toBe(false);
-    });
   });
 
   describe('hasGitleaksConfig', () => {
@@ -84,8 +68,9 @@ describe('secret-scanning', () => {
   });
 
   describe('detectSecretScanningTools', () => {
-    it('should detect both tools when both are available and configured', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('8.18.0'));
+    it('should detect both tools when both are available and configured', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(true);
 
       const tools = detectSecretScanningTools('/test');
@@ -105,8 +90,9 @@ describe('secret-scanning', () => {
       });
     });
 
-    it('should detect gitleaks available but not configured', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('8.18.0'));
+    it('should detect gitleaks available but not configured', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(false);
 
       const tools = detectSecretScanningTools('/test');
@@ -118,10 +104,10 @@ describe('secret-scanning', () => {
       });
     });
 
-    it('should detect gitleaks configured but not available', () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('Command not found');
-      });
+    it('should detect gitleaks configured but not available', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
+
       vi.mocked(existsSync).mockImplementation((path) => {
         return path.toString().includes('gitleaks');
       });
@@ -135,10 +121,9 @@ describe('secret-scanning', () => {
       });
     });
 
-    it('should always report secretlint as available via npx', () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('Command not found');
-      });
+    it('should always report secretlint as available via npx', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
       vi.mocked(existsSync).mockReturnValue(false);
 
       const tools = detectSecretScanningTools('/test');
@@ -172,8 +157,9 @@ describe('secret-scanning', () => {
       });
     });
 
-    it('should run both tools when both configs exist (autodetect)', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('8.18.0'));
+    it('should run both tools when both configs exist (autodetect)', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(true);
 
       const tools = selectToolsToRun(undefined, '/test');
@@ -183,8 +169,9 @@ describe('secret-scanning', () => {
       expect(tools[1].tool).toBe('secretlint');
     });
 
-    it('should run only gitleaks when only gitleaks config exists', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('8.18.0'));
+    it('should run only gitleaks when only gitleaks config exists', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockImplementation((path) => {
         return path.toString().includes('gitleaks');
       });
@@ -195,10 +182,9 @@ describe('secret-scanning', () => {
       expect(tools[0].tool).toBe('gitleaks');
     });
 
-    it('should run only secretlint when only secretlint config exists', () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('gitleaks not found');
-      });
+    it('should run only secretlint when only secretlint config exists', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
       vi.mocked(existsSync).mockImplementation((path) => {
         return path.toString().includes('secretlint');
       });
@@ -209,8 +195,9 @@ describe('secret-scanning', () => {
       expect(tools[0].tool).toBe('secretlint');
     });
 
-    it('should fallback to gitleaks when no configs exist and gitleaks available', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('8.18.0'));
+    it('should fallback to gitleaks when no configs exist and gitleaks available', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(false);
 
       const tools = selectToolsToRun(undefined, '/test');
@@ -222,10 +209,10 @@ describe('secret-scanning', () => {
       });
     });
 
-    it('should fallback to secretlint when no configs and gitleaks unavailable', () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('gitleaks not found');
-      });
+    it('should fallback to secretlint when no configs and gitleaks unavailable', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
+
       vi.mocked(existsSync).mockReturnValue(false);
 
       const tools = selectToolsToRun(undefined, '/test');
@@ -237,10 +224,9 @@ describe('secret-scanning', () => {
       });
     });
 
-    it('should include gitleaks even when unavailable if config exists (will skip during execution)', () => {
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('gitleaks not found');
-      });
+    it('should include gitleaks even when unavailable if config exists (will skip during execution)', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
       vi.mocked(existsSync).mockImplementation((path) => {
         return path.toString().includes('gitleaks');
       });
@@ -251,8 +237,9 @@ describe('secret-scanning', () => {
       expect(tools[0].tool).toBe('gitleaks');
     });
 
-    it('should treat "autodetect" keyword as undefined', () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from('8.18.0'));
+    it('should treat "autodetect" keyword as undefined', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(false);
 
       const tools = selectToolsToRun('autodetect', '/test');
@@ -263,8 +250,9 @@ describe('secret-scanning', () => {
   });
 
   describe('runSecretScan', () => {
-    it('should return success result when scan passes', () => {
-      vi.mocked(execSync).mockReturnValue('No secrets found');
+    it('should return success result when scan passes', async () => {
+      const { safeExecFromString } = await import('@vibe-validate/git');
+      vi.mocked(safeExecFromString).mockReturnValue('No secrets found');
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
 
@@ -274,17 +262,13 @@ describe('secret-scanning', () => {
       expect(result.skipped).toBeUndefined();
     });
 
-    it('should return failure result when scan finds secrets', () => {
+    it('should return failure result when scan finds secrets', async () => {
+      const { safeExecFromString } = await import('@vibe-validate/git');
       const error: any = new Error('Secrets found');
       error.stderr = Buffer.from('Found secret: API key');
       error.stdout = Buffer.from('Scan output');
 
-      vi.mocked(execSync).mockImplementation((cmd) => {
-        // First call is for isGitleaksAvailable check
-        if (cmd === 'gitleaks --version') {
-          return 'gitleaks version 8.18.0';
-        }
-        // Second call is the actual scan command
+      vi.mocked(safeExecFromString).mockImplementation(() => {
         throw error;
       });
 
@@ -296,14 +280,9 @@ describe('secret-scanning', () => {
       expect(result.error).toBe('Found secret: API key');
     });
 
-    it('should skip gitleaks if command not available', () => {
-      vi.mocked(execSync).mockImplementation((cmd) => {
-        // First call is for isGitleaksAvailable check
-        if (cmd === 'gitleaks --version') {
-          throw new Error('Command not found');
-        }
-        throw new Error('Should not reach here');
-      });
+    it('should skip gitleaks if command not available', async () => {
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
 
@@ -312,11 +291,12 @@ describe('secret-scanning', () => {
       expect(result.skipReason).toBe('gitleaks command not available');
     });
 
-    it('should not skip secretlint (always available via npx)', () => {
+    it('should not skip secretlint (always available via npx)', async () => {
+      const { safeExecFromString } = await import('@vibe-validate/git');
       const error: any = new Error('Secrets found');
       error.stderr = Buffer.from('Found secret');
       error.stdout = Buffer.from('');
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(safeExecFromString).mockImplementation(() => {
         throw error;
       });
 
@@ -326,8 +306,9 @@ describe('secret-scanning', () => {
       expect(result.skipped).toBeUndefined();
     });
 
-    it('should include output when verbose is true', () => {
-      vi.mocked(execSync).mockReturnValue('Detailed output');
+    it('should include output when verbose is true', async () => {
+      const { safeExecFromString } = await import('@vibe-validate/git');
+      vi.mocked(safeExecFromString).mockReturnValue('Detailed output');
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', true);
 
@@ -335,8 +316,9 @@ describe('secret-scanning', () => {
       expect(result.output).toBe('Detailed output');
     });
 
-    it('should not include output when verbose is false', () => {
-      vi.mocked(execSync).mockReturnValue('Detailed output');
+    it('should not include output when verbose is false', async () => {
+      const { safeExecFromString } = await import('@vibe-validate/git');
+      vi.mocked(safeExecFromString).mockReturnValue('Detailed output');
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
 

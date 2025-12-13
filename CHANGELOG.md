@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **CRITICAL: Eliminated command injection vulnerability in history recorder**
+  - **Problem**: `packages/history/src/recorder.ts` used `execSync` with string interpolation for git notes operations, creating command injection risk
+  - **Solution**: Replaced with secure `addNote()` API from `@vibe-validate/git` package that uses stdin for content passing
+  - **Impact**: No more shell interpreter risks in validation history recording
+- **NEW: Secure command execution wrapper**
+  - Created `packages/cli/src/utils/safe-exec.ts` with `safeExecSync()`, `isToolAvailable()`, and `getToolVersion()` functions
+  - Uses `spawnSync` with `shell: false` and `which` package for absolute path resolution
+  - Comprehensive unit tests covering security scenarios (command injection, PATH manipulation, special characters)
+  - Replaced 4 tool detection calls (gh, gitleaks, node, npm/pnpm) with secure wrapper
+  - **Benefits**:
+    - No shell interpreter = no command injection attack surface
+    - Absolute paths prevent runtime PATH manipulation
+    - SonarQube compliant
+    - DRY - centralizes execution logic
+    - Self-documenting security intent
 - Fixed HIGH severity vulnerability in glob package (command injection)
 - Fixed MODERATE severity vulnerability in js-yaml package (prototype pollution)
 - Updated to TypeScript ES2024 target (backward compatible)

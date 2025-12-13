@@ -2,16 +2,15 @@
  * Git notes recorder
  */
 
-import { execSync } from 'node:child_process';
-import { writeFileSync, unlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
 import {
   getGitTreeHash,
   hasWorkingTreeChanges,
   getCurrentBranch as getGitBranch,
   getHeadCommitSha,
+  addNote,
+  type NotesRef,
+  type TreeHash,
 } from '@vibe-validate/git';
 import type { ValidationResult } from '@vibe-validate/core';
 import type {
@@ -24,13 +23,6 @@ import type {
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
 import { truncateValidationOutput } from './truncate.js';
 import { readHistoryNote } from './reader.js';
-
-const GIT_TIMEOUT = 30000;
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: GIT_TIMEOUT,
-  stdio: ['pipe', 'pipe', 'ignore'] as ['pipe', 'pipe', 'ignore'],
-};
 
 /**
  * Get current branch name
@@ -86,7 +78,7 @@ export async function recordValidationHistory(
   };
 
   // Type assertions safe: DEFAULT_HISTORY_CONFIG is Required<HistoryConfig>
-  const notesRef = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as string;
+  const notesRef = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as NotesRef;
   const maxRunsPerTree = (mergedConfig.gitNotes.maxRunsPerTree ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxRunsPerTree) as number;
   const maxOutputBytes = (mergedConfig.gitNotes.maxOutputBytes ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxOutputBytes) as number;
 
@@ -133,30 +125,22 @@ export async function recordValidationHistory(
       };
     }
 
-    // 4. Write note to temp file (use cross-platform temp directory)
-    const tempFile = join(tmpdir(), `note.vibe-validate.${treeHash.slice(0, 12)}.${process.pid}.yaml`);
+    // 4. Add note to git using secure API (force overwrite)
+    const noteContent = stringifyYaml(note);
+    const success = addNote(notesRef, treeHash as TreeHash, noteContent, true);
 
-    try {
-      writeFileSync(tempFile, stringifyYaml(note), 'utf8');
-
-      // 5. Add note to git (force overwrite)
-      execSync(
-        `git notes --ref=${notesRef} add -f -F "${tempFile}" ${treeHash}`,
-        { ...GIT_OPTIONS, stdio: 'ignore' }
-      );
-
+    if (!success) {
       return {
-        recorded: true,
+        recorded: false,
+        reason: 'Failed to add git note',
         treeHash,
       };
-    } finally {
-      // Cleanup temp file
-      try {
-        unlinkSync(tempFile);
-      } catch {
-        // Ignore cleanup errors
-      }
     }
+
+    return {
+      recorded: true,
+      treeHash,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {

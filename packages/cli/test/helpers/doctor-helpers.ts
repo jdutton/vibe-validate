@@ -100,6 +100,7 @@ export interface DoctorConfigMockConfig {
  * Setup environment mocks for doctor tests
  *
  * Mocks execSync calls for version checks and system commands.
+ * Also mocks getToolVersion from @vibe-validate/git.
  *
  * @param overrides - Custom responses for specific commands (supports Error for failures)
  * @param config - Configuration options for common values
@@ -120,10 +121,10 @@ export interface DoctorConfigMockConfig {
  * mockDoctorEnvironment({}, { includeGitCommands: false });
  * ```
  */
-export function mockDoctorEnvironment(
+export async function mockDoctorEnvironment(
   overrides?: Partial<Record<string, string | Error>>,
   config?: DoctorEnvironmentConfig
-): () => void {
+): Promise<() => void> {
   const opts = {
     nodeVersion: 'v22.0.0',
     gitVersion: 'git version 2.43.0',
@@ -167,6 +168,28 @@ export function mockDoctorEnvironment(
     }
 
     return '' as any;
+  });
+
+  // Also mock getToolVersion from @vibe-validate/git
+  const { getToolVersion } = await import('@vibe-validate/git');
+  const mockedGetToolVersion = vi.mocked(getToolVersion);
+  mockedGetToolVersion.mockImplementation((toolName: string) => {
+    // Check overrides first (for Error cases)
+    if (overrides) {
+      // Check both "toolname --version" and "toolname version" patterns
+      const versionKey1 = `${toolName} --version`;
+      const versionKey2 = `${toolName} version`;
+      if (overrides[versionKey1] instanceof Error || overrides[versionKey2] instanceof Error) {
+        return null; // Tool not available
+      }
+    }
+
+    if (toolName === 'node') return opts.nodeVersion;
+    if (toolName === 'git') return opts.gitVersion;
+    if (toolName === 'pnpm') return opts.pnpmVersion;
+    if (toolName === 'npm') return '10.0.0';
+    if (toolName === 'gitleaks') return null; // Default: not installed
+    return null;
   });
 
   return () => {
@@ -312,6 +335,13 @@ export async function mockDoctorGit(config?: DoctorGitMockConfig): Promise<() =>
         if (customResponse instanceof Error) throw customResponse;
         return customResponse;
       }
+    }
+
+    // Git remote command
+    if (args[0] === 'remote' && args.length === 1) {
+      return opts.hasRemote
+        ? { success: true, stdout: 'origin\n', stderr: '', exitCode: 0 }
+        : { success: true, stdout: '', stderr: '', exitCode: 0 };
     }
 
     // Legacy validation history check (old format)

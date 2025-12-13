@@ -10,7 +10,7 @@ import { mkdir, rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execSync } from 'node:child_process';
+import { safeExecFromString } from '@vibe-validate/git';
 import { parse as parseYaml } from 'yaml';
 
 describe('init command - schema validation', () => {
@@ -33,7 +33,7 @@ describe('init command - schema validation', () => {
   describe('schema URL in generated configs', () => {
     it('should generate config with version-pinned unpkg schema URL', async () => {
       // Run init command
-      execSync(`node ${cliPath} init --template typescript-library`, {
+      safeExecFromString(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
@@ -54,12 +54,12 @@ describe('init command - schema validation', () => {
     });
 
     it('should reference schema file with correct filename', () => {
-      execSync(`node ${cliPath} init --template typescript-library`, {
+      safeExecFromString(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
       const configPath = join(testDir, 'vibe-validate.config.yaml');
-      const configContent = execSync(`cat ${configPath}`, { encoding: 'utf-8' });
+      const configContent = safeExecFromString(`cat ${configPath}`, { encoding: 'utf-8' });
 
       // Verify the schema URL contains the correct filename
       expect(configContent).toContain('config.schema.json');
@@ -105,12 +105,12 @@ describe('init command - schema validation', () => {
 
     it('should be accessible via unpkg CDN URL', () => {
       // Generate config and verify it references the unpkg URL
-      execSync(`node ${cliPath} init --template typescript-library`, {
+      safeExecFromString(`node ${cliPath} init --template typescript-library`, {
         cwd: testDir,
       });
 
       const configPath = join(testDir, 'vibe-validate.config.yaml');
-      const configContent = execSync(`cat ${configPath}`, { encoding: 'utf-8' });
+      const configContent = safeExecFromString(`cat ${configPath}`, { encoding: 'utf-8' });
 
       // Should reference unpkg CDN URL for IDE support with version pinning
       expect(configContent).toContain('https://unpkg.com');
@@ -157,7 +157,7 @@ describe('init command - schema validation', () => {
         const dir = join(testDir, template);
         await mkdir(dir, { recursive: true });
 
-        execSync(`node ${cliPath} init --template ${template}`, {
+        safeExecFromString(`node ${cliPath} init --template ${template}`, {
           cwd: dir,
         });
 

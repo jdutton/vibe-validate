@@ -14,7 +14,7 @@
  *   - Node.js 20+
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '../packages/git/dist/safe-exec.js';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,7 +49,7 @@ log('📚 Generating CLI reference documentation...', 'yellow');
 // Generate CLI help output
 let helpOutput;
 try {
-  helpOutput = execSync(`node "${CLI_BIN}" --help --verbose`, {
+  helpOutput = safeExecSync('node', [CLI_BIN, '--help', '--verbose'], {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
   });

@@ -15,14 +15,9 @@
  * Pre-commit hook should detect and warn when current branch is behind its tracking branch.
  */
 
-import { execSync } from 'node:child_process';
+import { executeGitCommand } from './git-executor.js';
 
 const GIT_TIMEOUT = 30000;
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: GIT_TIMEOUT,
-  stdio: ['pipe', 'pipe', 'ignore'] as ['pipe', 'pipe', 'ignore'],
-};
 
 /**
  * Check if current branch is behind its remote tracking branch
@@ -45,24 +40,28 @@ export function isCurrentBranchBehindTracking(): number | null {
     // Get the upstream tracking branch for current branch
     // Example output: "origin/fix-issue-X"
     // Throws error if no upstream configured
-    const trackingBranch = execSync(
-      'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
-      GIT_OPTIONS
-    ).trim();
+    const trackingResult = executeGitCommand(
+      ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
+      { timeout: GIT_TIMEOUT, ignoreErrors: true }
+    );
 
-    if (!trackingBranch) {
-      // No tracking branch
+    if (!trackingResult.success || !trackingResult.stdout.trim()) {
+      // No tracking branch or command failed
       return null;
     }
 
     // Count commits behind: HEAD..@{u}
     // This shows commits in tracking branch that are not in HEAD
-    const behindOutput = execSync(
-      'git rev-list --count HEAD..@{u}',
-      GIT_OPTIONS
-    ).trim();
+    const behindResult = executeGitCommand(
+      ['rev-list', '--count', 'HEAD..@{u}'],
+      { timeout: GIT_TIMEOUT, ignoreErrors: true }
+    );
 
-    const behindCount = Number.parseInt(behindOutput, 10);
+    if (!behindResult.success) {
+      return null;
+    }
+
+    const behindCount = Number.parseInt(behindResult.stdout.trim(), 10);
 
     // Return 0 if parsing failed (defensive)
     return Number.isNaN(behindCount) ? 0 : behindCount;

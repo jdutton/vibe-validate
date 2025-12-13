@@ -7,22 +7,31 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { execSync } from 'node:child_process';
 import { getPartiallyStagedFiles } from '../src/staging.js';
+import * as gitExecutor from '../src/git-executor.js';
 
-// Mock execSync
-vi.mock('child_process', () => ({
-  execSync: vi.fn(),
+// Mock git-executor
+vi.mock('../src/git-executor.js', () => ({
+  executeGitCommand: vi.fn(),
 }));
-
-const mockExecSync = execSync as ReturnType<typeof vi.fn>;
 
 /**
  * Helper to mock git diff output for staged and unstaged files
  */
 function mockGitDiff(stagedFiles: string, unstagedFiles: string): void {
-  mockExecSync.mockReturnValueOnce(stagedFiles);
-  mockExecSync.mockReturnValueOnce(unstagedFiles);
+  vi.mocked(gitExecutor.executeGitCommand)
+    .mockReturnValueOnce({
+      success: true,
+      stdout: stagedFiles,
+      stderr: '',
+      exitCode: 0,
+    })
+    .mockReturnValueOnce({
+      success: true,
+      stdout: unstagedFiles,
+      stderr: '',
+      exitCode: 0,
+    });
 }
 
 describe('getPartiallyStagedFiles', () => {
@@ -31,9 +40,14 @@ describe('getPartiallyStagedFiles', () => {
   });
 
   it('should return empty array when no files are staged', () => {
-    mockExecSync.mockReturnValueOnce('');
+    vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({
+      success: true,
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
     expect(getPartiallyStagedFiles()).toEqual([]);
-    expect(mockExecSync).toHaveBeenCalledWith('git diff --name-only --cached', expect.any(Object));
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(['diff', '--name-only', '--cached'], expect.any(Object));
   });
 
   it('should return empty array when all staged files are fully staged', () => {
@@ -63,8 +77,11 @@ describe('getPartiallyStagedFiles', () => {
   });
 
   it('should return empty array on git command error', () => {
-    mockExecSync.mockImplementationOnce(() => {
-      throw new Error('Not a git repository');
+    vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({
+      success: false,
+      stdout: '',
+      stderr: 'Not a git repository',
+      exitCode: 128,
     });
     expect(getPartiallyStagedFiles()).toEqual([]);
   });

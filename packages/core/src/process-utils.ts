@@ -5,10 +5,10 @@
  * Used by validation runner for signal handling and fail-fast behavior.
  */
 
-import { ChildProcess, execSync, spawn } from 'node:child_process';
+import { ChildProcess, spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { getRepositoryRoot } from '@vibe-validate/git';
+import { getRepositoryRoot, safeExecSync } from '@vibe-validate/git';
 import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
 
@@ -90,7 +90,7 @@ export async function stopProcessGroup(
         // /T - Terminates all child processes
         // /F - Forcefully terminates the process
         try {
-          execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
+          safeExecSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' });
         } catch {
           // Process may already be dead, ignore error
         }

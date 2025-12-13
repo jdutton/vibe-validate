@@ -39,6 +39,20 @@ vi.mock('@vibe-validate/git', async () => {
     verifyRef: vi.fn(() => true),
     isGitRepository: vi.fn(() => true),
     listNotesRefs: vi.fn(() => []),
+    isToolAvailable: vi.fn((toolName: string) => {
+      if (toolName === 'node') return true;
+      if (toolName === 'git') return true;
+      if (toolName === 'pnpm') return true;
+      if (toolName === 'npm') return true;
+      return false;
+    }),
+    getToolVersion: vi.fn((toolName: string) => {
+      if (toolName === 'node') return 'v22.0.0';
+      if (toolName === 'git') return 'git version 2.43.0';
+      if (toolName === 'pnpm') return '9.0.0';
+      if (toolName === 'npm') return '10.0.0';
+      return null;
+    }),
     executeGitCommand: vi.fn((args: string[]) => {
       if (args[0] === 'remote') {
         return { success: true, stdout: 'origin\n', stderr: '', exitCode: 0 };

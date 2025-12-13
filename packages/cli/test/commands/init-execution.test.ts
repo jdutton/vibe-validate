@@ -9,7 +9,36 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { safeExecSync, safeExecResult } from '@vibe-validate/git';
+
+/**
+ * Execute CLI command and return combined output
+ * @throws Error with status, stdout, stderr for failures
+ */
+function execCLI(cliPath: string, args: string[], options?: { cwd?: string; encoding?: BufferEncoding }): string {
+  try {
+    return safeExecSync('node', [cliPath, ...args], { encoding: 'utf-8', ...options }) as string;
+  } catch (err: any) {
+    // For successful non-zero exits (like help commands), return output
+    if (err.stdout || err.stderr) {
+      return (err.stdout || '') + (err.stderr || '');
+    }
+    throw err;
+  }
+}
+
+/**
+ * Execute CLI command and return separated stdout/stderr
+ * Used for testing error handling
+ */
+function execCLIWithError(cliPath: string, args: string[], options?: { cwd?: string; encoding?: BufferEncoding }): { stdout: string; stderr: string; status: number | null } {
+  const result = safeExecResult('node', [cliPath, ...args], { encoding: 'utf-8', ...options });
+  return {
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+    status: result.status ?? null
+  };
+}
 
 describe('init command execution (regression tests)', () => {
   let testDir: string;
@@ -30,9 +59,8 @@ describe('init command execution (regression tests)', () => {
 
   describe('dry-run mode', () => {
     it('should preview config creation without writing files (minimal template)', () => {
-      const output = execSync(`node "${cliPath}" init --dry-run`, {
+      const output = execCLI(cliPath, ['init', '--dry-run'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       // Should show preview message
@@ -46,9 +74,8 @@ describe('init command execution (regression tests)', () => {
     });
 
     it('should preview with typescript-library template', () => {
-      const output = execSync(`node "${cliPath}" init --template typescript-library --dry-run`, {
+      const output = execCLI(cliPath, ['init', '--template', 'typescript-library', '--dry-run'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       expect(output).toContain('typescript-library');
@@ -57,9 +84,8 @@ describe('init command execution (regression tests)', () => {
     });
 
     it('should preview with typescript-nodejs template', () => {
-      const output = execSync(`node "${cliPath}" init --template typescript-nodejs --dry-run`, {
+      const output = execCLI(cliPath, ['init', '--template', 'typescript-nodejs', '--dry-run'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       expect(output).toContain('typescript-nodejs');
@@ -67,9 +93,8 @@ describe('init command execution (regression tests)', () => {
     });
 
     it('should preview with typescript-react template', () => {
-      const output = execSync(`node "${cliPath}" init --template typescript-react --dry-run`, {
+      const output = execCLI(cliPath, ['init', '--template', 'typescript-react', '--dry-run'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       expect(output).toContain('typescript-react');
@@ -77,26 +102,20 @@ describe('init command execution (regression tests)', () => {
     });
 
     it('should fail with clear error for non-existent template', () => {
-      try {
-        execSync(`node "${cliPath}" init --template nonexistent --dry-run`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error for non-existent template');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
-        expect(output).toContain('not found');
-        expect(error.status).toBe(1);
-      }
+      const result = execCLIWithError(cliPath, ['init', '--template', 'nonexistent', '--dry-run'], {
+        cwd: testDir,
+      });
+
+      const output = result.stderr + result.stdout;
+      expect(output).toContain('not found');
+      expect(result.status).toBe(1);
     });
   });
 
   describe('actual execution', () => {
     it('should create config file with minimal template', () => {
-      const output = execSync(`node "${cliPath}" init`, {
+      const output = execCLI(cliPath, ['init'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       // Should show success message
@@ -114,54 +133,48 @@ describe('init command execution (regression tests)', () => {
     });
 
     it('should create valid config from typescript-library template', () => {
-      execSync(`node "${cliPath}" init --template typescript-library`, {
+      execCLI(cliPath, ['init', '--template', 'typescript-library'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       const configPath = join(testDir, 'vibe-validate.config.yaml');
       expect(existsSync(configPath)).toBe(true);
 
       // Validate the created config
-      const validateOutput = execSync(`node "${cliPath}" config --validate`, {
+      const validateOutput = execCLI(cliPath, ['config', '--validate'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       expect(validateOutput).toContain('Configuration is valid');
     });
 
     it('should create valid config from typescript-nodejs template', () => {
-      execSync(`node "${cliPath}" init --template typescript-nodejs`, {
+      execCLI(cliPath, ['init', '--template', 'typescript-nodejs'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       const configPath = join(testDir, 'vibe-validate.config.yaml');
       expect(existsSync(configPath)).toBe(true);
 
       // Validate the created config
-      const validateOutput = execSync(`node "${cliPath}" config --validate`, {
+      const validateOutput = execCLI(cliPath, ['config', '--validate'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       expect(validateOutput).toContain('Configuration is valid');
     });
 
     it('should create valid config from typescript-react template', () => {
-      execSync(`node "${cliPath}" init --template typescript-react`, {
+      execCLI(cliPath, ['init', '--template', 'typescript-react'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       const configPath = join(testDir, 'vibe-validate.config.yaml');
       expect(existsSync(configPath)).toBe(true);
 
       // Validate the created config
-      const validateOutput = execSync(`node "${cliPath}" config --validate`, {
+      const validateOutput = execCLI(cliPath, ['config', '--validate'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       expect(validateOutput).toContain('Configuration is valid');
@@ -169,37 +182,29 @@ describe('init command execution (regression tests)', () => {
 
     it('should not overwrite existing config without --force', () => {
       // Create config first time
-      execSync(`node "${cliPath}" init`, {
+      execCLI(cliPath, ['init'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       // Try to create again without --force
-      try {
-        execSync(`node "${cliPath}" init`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error for existing config');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
-        expect(output).toContain('already exists');
-        expect(error.status).toBe(1);
-      }
+      const result = execCLIWithError(cliPath, ['init'], {
+        cwd: testDir,
+      });
+
+      const output = result.stderr + result.stdout;
+      expect(output).toContain('already exists');
+      expect(result.status).toBe(1);
     });
 
     it('should overwrite existing config with --force', () => {
       // Create config first time
-      execSync(`node "${cliPath}" init --template minimal`, {
+      execCLI(cliPath, ['init', '--template', 'minimal'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       // Overwrite with different template using --force
-      const output = execSync(`node "${cliPath}" init --template typescript-library --force`, {
+      const output = execCLI(cliPath, ['init', '--template', 'typescript-library', '--force'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       expect(output).toContain('Created');
@@ -213,30 +218,24 @@ describe('init command execution (regression tests)', () => {
 
   describe('template discovery', () => {
     it('should list available templates in error message for invalid template', () => {
-      try {
-        execSync(`node "${cliPath}" init --template invalid --dry-run`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect.fail('Should have thrown error');
-      } catch (error: any) {
-        // Combine both stderr and stdout as some messages may go to either
-        const output = (error.stderr || '') + (error.stdout || '');
+      const result = execCLIWithError(cliPath, ['init', '--template', 'invalid', '--dry-run'], {
+        cwd: testDir,
+      });
 
-        // Should show available templates
-        expect(output).toContain('Available templates');
-        expect(output).toContain('minimal');
-        expect(output).toContain('typescript-library');
-        expect(output).toContain('typescript-nodejs');
-        expect(output).toContain('typescript-react');
-      }
+      // Combine both stderr and stdout as some messages may go to either
+      const output = result.stderr + result.stdout;
+
+      // Should show available templates
+      expect(output).toContain('Available templates');
+      expect(output).toContain('minimal');
+      expect(output).toContain('typescript-library');
+      expect(output).toContain('typescript-nodejs');
+      expect(output).toContain('typescript-react');
     });
 
     it('should show template list in help output', () => {
-      const output = execSync(`node "${cliPath}" init --help`, {
+      const output = execCLI(cliPath, ['init', '--help'], {
         cwd: testDir,
-        encoding: 'utf-8',
       });
 
       // Should list available templates

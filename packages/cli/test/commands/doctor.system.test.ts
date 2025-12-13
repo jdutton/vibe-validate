@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
+import { safeExecFromString } from '@vibe-validate/git';
 import { join } from 'node:path';
 
 // Get the project root (vibe-validate repo root)
@@ -32,7 +32,7 @@ function runDoctorCommand(cwd: string): {
   const vvBinary = join(PROJECT_ROOT, 'packages/cli/dist/bin/vv');
 
   try {
-    const output = execSync(`node "${vvBinary}" doctor --verbose`, {
+    const output = safeExecFromString(`node "${vvBinary}" doctor --verbose`, {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',

@@ -15,7 +15,7 @@ import { mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execSync } from 'node:child_process';
+import { safeExecFromString } from '@vibe-validate/git';
 
 describe('init command - focused modes', () => {
   let testDir: string;
@@ -36,7 +36,7 @@ describe('init command - focused modes', () => {
 
   describe('--dry-run', () => {
     it('should preview config creation without writing files', () => {
-      const result = execSync(`node ${cliPath} init --dry-run`, {
+      const result = safeExecFromString(`node ${cliPath} init --dry-run`, {
         cwd: testDir,
         encoding: 'utf8',
       });
@@ -51,7 +51,7 @@ describe('init command - focused modes', () => {
     });
 
     it('should show what would be created in dry-run mode', () => {
-      const result = execSync(`node ${cliPath} init --dry-run`, {
+      const result = safeExecFromString(`node ${cliPath} init --dry-run`, {
         cwd: testDir,
         encoding: 'utf8',
       });
@@ -63,7 +63,7 @@ describe('init command - focused modes', () => {
 
   describe('--setup-hooks', () => {
     it('should create .husky/pre-commit hook', async () => {
-      execSync(`node ${cliPath} init --setup-hooks`, {
+      safeExecFromString(`node ${cliPath} init --setup-hooks`, {
         cwd: testDir,
       });
 
@@ -76,7 +76,7 @@ describe('init command - focused modes', () => {
 
     it('should be idempotent - running twice produces same result', async () => {
       // First run
-      execSync(`node ${cliPath} init --setup-hooks`, {
+      safeExecFromString(`node ${cliPath} init --setup-hooks`, {
         cwd: testDir,
       });
 
@@ -84,7 +84,7 @@ describe('init command - focused modes', () => {
       const content1 = await readFile(preCommitPath, 'utf-8');
 
       // Second run
-      execSync(`node ${cliPath} init --setup-hooks`, {
+      safeExecFromString(`node ${cliPath} init --setup-hooks`, {
         cwd: testDir,
       });
 
@@ -95,7 +95,7 @@ describe('init command - focused modes', () => {
     });
 
     it('should not create config file when only setting up hooks', () => {
-      execSync(`node ${cliPath} init --setup-hooks`, {
+      safeExecFromString(`node ${cliPath} init --setup-hooks`, {
         cwd: testDir,
       });
 
@@ -113,7 +113,7 @@ describe('init command - focused modes', () => {
         'validation:\n  phases:\n    - name: Test\n      steps:\n        - name: Test\n          command: echo test\ngit:\n  mainBranch: main\n'
       );
 
-      execSync(`node ${cliPath} init --setup-workflow`, {
+      safeExecFromString(`node ${cliPath} init --setup-workflow`, {
         cwd: testDir,
       });
 
@@ -133,7 +133,7 @@ describe('init command - focused modes', () => {
       );
 
       // First run
-      execSync(`node ${cliPath} init --setup-workflow`, {
+      safeExecFromString(`node ${cliPath} init --setup-workflow`, {
         cwd: testDir,
       });
 
@@ -144,7 +144,7 @@ describe('init command - focused modes', () => {
       await writeFile(workflowPath, '# Custom workflow\n' + content1);
 
       // Second run should NOT overwrite
-      execSync(`node ${cliPath} init --setup-workflow`, {
+      safeExecFromString(`node ${cliPath} init --setup-workflow`, {
         cwd: testDir,
       });
 
@@ -154,7 +154,7 @@ describe('init command - focused modes', () => {
 
     it('should require config file to exist', () => {
       expect(() => {
-        execSync(`node ${cliPath} init --setup-workflow`, {
+        safeExecFromString(`node ${cliPath} init --setup-workflow`, {
           cwd: testDir,
           stdio: 'pipe',
         });
@@ -164,7 +164,7 @@ describe('init command - focused modes', () => {
 
   describe('--fix-gitignore (deprecated)', () => {
     it('should not create .gitignore (deprecated in v0.12.0)', async () => {
-      execSync(`node ${cliPath} init --fix-gitignore`, {
+      safeExecFromString(`node ${cliPath} init --fix-gitignore`, {
         cwd: testDir,
       });
 
@@ -178,7 +178,7 @@ describe('init command - focused modes', () => {
       const originalContent = 'node_modules/\n.env\n';
       await writeFile(gitignorePath, originalContent);
 
-      execSync(`node ${cliPath} init --fix-gitignore`, {
+      safeExecFromString(`node ${cliPath} init --fix-gitignore`, {
         cwd: testDir,
       });
 
@@ -191,7 +191,7 @@ describe('init command - focused modes', () => {
 
   describe('combined flags', () => {
     it('should support multiple focused modes together', async () => {
-      execSync(`node ${cliPath} init --setup-hooks --fix-gitignore`, {
+      safeExecFromString(`node ${cliPath} init --setup-hooks --fix-gitignore`, {
         cwd: testDir,
       });
 
@@ -203,7 +203,7 @@ describe('init command - focused modes', () => {
     });
 
     it('should support dry-run with focused modes', () => {
-      const result = execSync(`node ${cliPath} init --setup-hooks --dry-run`, {
+      const result = safeExecFromString(`node ${cliPath} init --setup-hooks --dry-run`, {
         cwd: testDir,
         encoding: 'utf8',
       });

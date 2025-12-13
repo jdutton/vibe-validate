@@ -91,3 +91,15 @@ export {
 export {
   isCurrentBranchBehindTracking
 } from './tracking-branch.js';
+
+// Safe command execution (secure wrapper for spawning processes)
+export {
+  safeExecSync,
+  safeExecFromString,
+  safeExecResult,
+  isToolAvailable,
+  getToolVersion,
+  CommandExecutionError,
+  type SafeExecOptions,
+  type SafeExecResult
+} from './safe-exec.js';

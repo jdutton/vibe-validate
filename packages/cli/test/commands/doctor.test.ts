@@ -41,6 +41,28 @@ vi.mock('@vibe-validate/git', async () => {
     verifyRef: vi.fn(() => true), // Default to successful verification
     isGitRepository: vi.fn(() => true),
     listNotesRefs: vi.fn(() => []),
+    isToolAvailable: vi.fn((toolName: string) => {
+      // Default: most tools not available (except standard ones)
+      if (toolName === 'node') return true;
+      if (toolName === 'git') return true;
+      if (toolName === 'pnpm') return true;
+      if (toolName === 'npm') return true;
+      return false; // gitleaks and other optional tools default to not available
+    }),
+    getToolVersion: vi.fn((toolName: string) => {
+      if (toolName === 'node') return 'v22.0.0';
+      if (toolName === 'git') return 'git version 2.43.0';
+      if (toolName === 'pnpm') return '9.0.0';
+      if (toolName === 'npm') return '10.0.0';
+      return null;
+    }),
+    safeExecSync: vi.fn((cmd: string, args: string[]) => {
+      if (cmd === 'node' && args[0] === '--version') return 'v22.0.0';
+      if (cmd === 'git' && args[0] === '--version') return 'git version 2.43.0';
+      if (cmd === 'pnpm' && args[0] === '--version') return '9.0.0';
+      if (cmd === 'npm' && args[0] === '--version') return '10.0.0';
+      return '';
+    }),
     executeGitCommand: vi.fn((args: string[]) => {
       // Mock git remote command
       if (args[0] === 'remote') {
@@ -103,7 +125,8 @@ describe('doctor command', () => {
   describe('runDoctor', () => {
     it('should return all checks passing when environment is healthy', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorGit();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -115,7 +138,7 @@ describe('doctor command', () => {
     });
 
     it('should detect Node.js version too old', async () => {
-      mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
+      await mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
@@ -129,7 +152,7 @@ describe('doctor command', () => {
     });
 
     it('should detect missing git', async () => {
-      mockDoctorEnvironment({ 'git --version': new Error('git not found') });
+      await mockDoctorEnvironment({ 'git --version': new Error('git not found') });
 
       // Override executeGitCommand to simulate git not installed
       const { executeGitCommand } = await import('@vibe-validate/git');
@@ -225,7 +248,7 @@ describe('doctor command', () => {
 
     it('should run all checks even when config has validation errors', async () => {
       await mockDoctorFileSystem({ packageVersion: '0.10.4' });
-      mockDoctorEnvironment({}, { vibeVersion: '0.10.4' });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.10.4' });
       vi.mocked(existsSync).mockImplementation((path: string) =>
         path.toString() !== DEPRECATED_STATE_FILE
       );
@@ -262,7 +285,7 @@ describe('doctor command', () => {
     });
 
     it('should detect not in git repository', async () => {
-      mockDoctorEnvironment({ 'git rev-parse --git-dir': new Error('not a git repository') }, { includeGitCommands: false });
+      await mockDoctorEnvironment({ 'git rev-parse --git-dir': new Error('not a git repository') }, { includeGitCommands: false });
 
       // Mock isGitRepository to return false for this test
       const { isGitRepository } = await import('@vibe-validate/git');
@@ -319,7 +342,7 @@ describe('doctor command', () => {
 
     it('should provide actionable suggestions for failures', async () => {
       // Mock old Node version
-      mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
+      await mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
 
       vi.mocked(existsSync).mockReturnValue(false); // No config
       vi.mocked(loadConfig).mockResolvedValue(null);
@@ -334,7 +357,7 @@ describe('doctor command', () => {
 
     it('should check package manager availability', async () => {
       // Mock pnpm not found
-      mockDoctorEnvironment({
+      await mockDoctorEnvironment({
         'pnpm --version': new Error('pnpm not found')
       });
 
@@ -378,7 +401,7 @@ describe('doctor command', () => {
   describe('--verbose flag', () => {
     it('should show all checks including passing ones in verbose mode', async () => {
       await mockDoctorFileSystem({ gitignoreContent: `${DEPRECATED_STATE_FILE}\n` });
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
@@ -391,7 +414,7 @@ describe('doctor command', () => {
 
     it('should show only summary in non-verbose mode when all pass', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -407,7 +430,7 @@ describe('doctor command', () => {
     });
 
     it('should show only failing checks in non-verbose mode', async () => {
-      mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
+      await mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
@@ -426,7 +449,7 @@ describe('doctor command', () => {
 
     it('should show all checks including passing in verbose mode when failures exist', async () => {
       await mockDoctorFileSystem({ gitignoreContent: `${DEPRECATED_STATE_FILE}\n` });
-      mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
+      await mockDoctorEnvironment({}, { nodeVersion: 'v18.0.0' });
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
@@ -460,7 +483,7 @@ describe('doctor command', () => {
       });
 
       // Mock healthy environment for all pre-commit tests
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
     });
 
@@ -475,7 +498,7 @@ describe('doctor command', () => {
       };
 
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(configWithDisabledHook);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -632,16 +655,24 @@ describe('doctor command', () => {
   });
 
   describe('version check', () => {
+    const mockCurrentVersionChecker = {
+      fetchLatestVersion: async () => '0.9.11'
+    };
+    const mockOldVersionChecker = {
+      fetchLatestVersion: async () => '0.9.11'
+    };
+
     beforeEach(async () => {
       await mockDoctorFileSystem({ gitignoreContent: `${DEPRECATED_STATE_FILE}\n` });
-      mockDoctorEnvironment();
+      await mockDoctorGit();
+      await mockDoctorEnvironment();
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
     });
 
     it('should pass when current version is up to date', async () => {
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctor({ verbose: true, versionChecker: mockCurrentVersionChecker });
 
       assertCheck(result, 'vibe-validate version', {
         passed: true,
@@ -652,7 +683,7 @@ describe('doctor command', () => {
     it('should warn when newer version is available', async () => {
       await mockDoctorFileSystem({ packageVersion: '0.9.10', gitignoreContent: `${DEPRECATED_STATE_FILE}\n` });
 
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctor({ verbose: true, versionChecker: mockOldVersionChecker });
 
       assertCheck(result, 'vibe-validate version', {
         passed: true, // Warning only, not a failure
@@ -662,7 +693,7 @@ describe('doctor command', () => {
     });
 
     it('should handle npm registry unavailable gracefully', async () => {
-      mockDoctorEnvironment({ 'npm view vibe-validate version': new Error('ENOTFOUND registry.npmjs.org') });
+      await mockDoctorEnvironment({ 'npm view vibe-validate version': new Error('ENOTFOUND registry.npmjs.org') });
 
       const result = await runDoctor({ verbose: true });
 
@@ -681,7 +712,7 @@ describe('doctor command', () => {
 
     it(`should warn when ${DEPRECATED_STATE_FILE} is in .gitignore (deprecated)`, async () => {
       await mockDoctorFileSystem({ gitignoreContent: `${DEPRECATED_STATE_FILE}\nnode_modules\n` });
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(existsSync).mockReturnValue(true);
 
       const result = await runDoctor({ verbose: true });
@@ -694,7 +725,7 @@ describe('doctor command', () => {
 
     it('should pass when .gitignore exists but state file not listed (state file deprecated)', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(existsSync).mockReturnValue(true);
 
       const result = await runDoctor({ verbose: true });
@@ -757,7 +788,7 @@ describe('doctor command', () => {
         return 'npm run pre-commit' as any;
       });
 
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       vi.mocked(existsSync).mockImplementation((path: string) => {
         if (path.toString() === 'vibe-validate.config.yaml') return true;
@@ -873,7 +904,7 @@ describe('doctor command', () => {
         },
       };
 
-      mockDoctorEnvironment({
+      await mockDoctorEnvironment({
         'gitleaks version': 'v8.18.0',
         'gitleaks --version': 'v8.18.0'
       });
@@ -907,7 +938,7 @@ describe('doctor command', () => {
           },
         };
 
-        mockDoctorEnvironment({
+        await mockDoctorEnvironment({
           'gitleaks version': new Error('Command not found'),
           'gitleaks --version': new Error('Command not found')
         });
@@ -968,7 +999,7 @@ describe('doctor command', () => {
         },
       };
 
-      mockDoctorEnvironment({
+      await mockDoctorEnvironment({
         'detect-secrets version': '1.4.0',
         'detect-secrets --version': '1.4.0'
       });
@@ -1028,7 +1059,7 @@ describe('doctor command', () => {
       await mockDoctorGit({
         validationHistoryRefs: []  // No old format refs
       });
-      mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
 
       // ACT
       const result = await runDoctor({ verbose: true });
@@ -1048,7 +1079,7 @@ describe('doctor command', () => {
         validationHistoryRefs: [],  // No old format refs
         runCacheRefs: ['refs/notes/vibe-validate/run/tree123/key456']
       });
-      mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
 
       // ACT
       const result = await runDoctor({ verbose: true });
@@ -1068,7 +1099,7 @@ describe('doctor command', () => {
         validationHistoryRefs: ['refs/notes/vibe-validate/runs']
       });
       // Setup environment mocks
-      mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
 
       const result = await runDoctor({ verbose: true });
 
@@ -1085,7 +1116,7 @@ describe('doctor command', () => {
       await mockDoctorGit({
         validationHistoryRefs: []
       });
-      mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
 
       const result = await runDoctor({ verbose: true });
 
@@ -1104,7 +1135,7 @@ describe('doctor command', () => {
           'for-each-ref --format=%(refname) refs/notes/vibe-validate/runs': new Error('Git command failed')
         }
       });
-      mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
 
       const result = await runDoctor({ verbose: true });
 
@@ -1128,7 +1159,7 @@ describe('doctor command', () => {
     it('should use mocked version checker when provided', async () => {
       await mockDoctorFileSystem();
       await mockDoctorGit();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -1141,7 +1172,7 @@ describe('doctor command', () => {
     it('should show Node.js and Git checks with mock', async () => {
       await mockDoctorFileSystem();
       await mockDoctorGit();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -1154,7 +1185,7 @@ describe('doctor command', () => {
     it('should be fast with mocked version checker', async () => {
       await mockDoctorFileSystem();
       await mockDoctorGit();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
@@ -1225,7 +1256,7 @@ describe('doctor command', () => {
 
   describe('checkNodeVersion() - Malformed version output', () => {
     it('should handle malformed node version output', async () => {
-      mockDoctorEnvironment({}, { nodeVersion: 'invalid-version' });
+      await mockDoctorEnvironment({}, { nodeVersion: 'invalid-version' });
       await mockDoctorFileSystem();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
@@ -1233,12 +1264,12 @@ describe('doctor command', () => {
 
       assertCheck(result, 'Node.js version', {
         passed: false,
-        messageContains: 'Failed to detect'
+        messageContains: 'Failed to parse'
       });
     });
 
     it('should handle empty node version output', async () => {
-      mockDoctorEnvironment({}, { nodeVersion: '' });
+      await mockDoctorEnvironment({}, { nodeVersion: '' });
       await mockDoctorFileSystem();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
@@ -1251,7 +1282,7 @@ describe('doctor command', () => {
     });
 
     it('should handle node version without "v" prefix and dots', async () => {
-      mockDoctorEnvironment({}, { nodeVersion: '22' });
+      await mockDoctorEnvironment({}, { nodeVersion: '22' });
       await mockDoctorFileSystem();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
@@ -1266,7 +1297,7 @@ describe('doctor command', () => {
   describe('checkGitRepository() - Exception handling', () => {
     it('should handle git repository check throwing permission error', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       const { isGitRepository } = await import('@vibe-validate/git');
       vi.mocked(isGitRepository).mockImplementation(() => {
@@ -1283,7 +1314,7 @@ describe('doctor command', () => {
 
     it('should handle git repository check throwing ENOENT error', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       const { isGitRepository } = await import('@vibe-validate/git');
       vi.mocked(isGitRepository).mockImplementation(() => {
@@ -1302,7 +1333,7 @@ describe('doctor command', () => {
   describe('checkConfigValid() - Exception handling', () => {
     it('should handle unexpected exception during config validation', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       vi.mocked(loadConfig).mockRejectedValue(new Error('YAML parser crashed: unexpected token'));
       vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
@@ -1318,7 +1349,7 @@ describe('doctor command', () => {
 
     it('should handle config validation throwing TypeError', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       vi.mocked(loadConfig).mockRejectedValue(new TypeError('Cannot read property of undefined'));
       vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
@@ -1334,7 +1365,7 @@ describe('doctor command', () => {
 
   describe('checkPackageManager() - Config check failure', () => {
     it('should gracefully skip package manager check when config processing throws', async () => {
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       vi.mocked(loadConfig).mockImplementation(() => {
         throw new Error('Config processing crashed');
@@ -1352,7 +1383,7 @@ describe('doctor command', () => {
   describe('checkWorkflowSync() - Exception handling', () => {
     it('should handle exception when checking workflow sync', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
@@ -1387,7 +1418,7 @@ describe('doctor command', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       const result = await runDoctor({ verbose: true });
 
@@ -1410,7 +1441,7 @@ describe('doctor command', () => {
     it('should show local install command when VV_CONTEXT=local', async () => {
       process.env.VV_CONTEXT = 'local';
       await mockDoctorFileSystem({ packageVersion: '0.9.10' });
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
       const result = await runDoctor({ verbose: true, versionChecker: mockOutdatedChecker });
@@ -1426,7 +1457,7 @@ describe('doctor command', () => {
     it('should show global install command when VV_CONTEXT=global', async () => {
       process.env.VV_CONTEXT = 'global';
       await mockDoctorFileSystem({ packageVersion: '0.9.10' });
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
       const result = await runDoctor({ verbose: true, versionChecker: mockOutdatedChecker });
@@ -1441,7 +1472,7 @@ describe('doctor command', () => {
     it('should show dev context label when VV_CONTEXT=dev', async () => {
       process.env.VV_CONTEXT = 'dev';
       await mockDoctorFileSystem({ packageVersion: '0.9.10' });
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
       const result = await runDoctor({ verbose: true, versionChecker: mockOutdatedChecker });
@@ -1453,7 +1484,7 @@ describe('doctor command', () => {
 
   describe('checkVersion() - Package.json read errors', () => {
     it('should handle package.json ENOENT error gracefully', async () => {
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
@@ -1472,7 +1503,7 @@ describe('doctor command', () => {
     });
 
     it('should handle package.json JSON parse error gracefully', async () => {
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       const { readFileSync } = await import('node:fs');
       vi.mocked(readFileSync).mockImplementation((path: any) => {
@@ -1494,7 +1525,7 @@ describe('doctor command', () => {
   describe('checkHistoryHealth() - Exception handling', () => {
     it('should handle validation history health check throwing error', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       await mockDoctorGit();
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
 
@@ -1520,7 +1551,7 @@ describe('doctor command', () => {
   describe('checkRemoteMainBranch() - Network failures', () => {
     it('should handle network error when checking remote branch', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       await mockDoctorGit({
         customCommands: {
           'remote': {
@@ -1551,7 +1582,7 @@ describe('doctor command', () => {
 
     it('should handle timeout when checking remote branch', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       await mockDoctorGit({
         customCommands: {
           'remote': {
@@ -1582,7 +1613,9 @@ describe('doctor command', () => {
 
   describe('checkSecretScanning() - Tool detection edge cases', () => {
     it('should suggest installing gitleaks when config exists but tool unavailable', async () => {
-      mockDoctorEnvironment({
+      await mockDoctorFileSystem();
+      await mockDoctorGit();
+      await mockDoctorEnvironment({
         'gitleaks version': new Error('command not found'),
         'gitleaks --version': new Error('command not found')
       });
@@ -1623,7 +1656,7 @@ describe('doctor command', () => {
 
   describe('Integration: Multiple failures at once', () => {
     it('should report multiple independent failures correctly', async () => {
-      mockDoctorEnvironment({
+      await mockDoctorEnvironment({
         'node --version': 'v18.0.0' // Too old
       }, { nodeVersion: 'v18.0.0' });
 
@@ -1650,7 +1683,7 @@ describe('doctor command', () => {
     });
 
     it('should show multiple failure suggestions in order', async () => {
-      mockDoctorEnvironment({
+      await mockDoctorEnvironment({
         'node --version': 'v18.0.0'
       }, { nodeVersion: 'v18.0.0' });
 
@@ -1681,7 +1714,7 @@ describe('doctor command', () => {
 
   describe('Integration: Config errors + workflow sync interaction', () => {
     it('should skip workflow check when config is invalid', async () => {
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       vi.mocked(findConfigPath).mockReturnValue(null);
       vi.mocked(loadConfig).mockResolvedValue(null);
@@ -1703,7 +1736,7 @@ describe('doctor command', () => {
 
     it('should check workflow when config is valid', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
 
       vi.mocked(existsSync).mockImplementation((path: string) => {
         return path.toString().includes('.github/workflows/validate.yml') || true;
@@ -1725,7 +1758,7 @@ describe('doctor command', () => {
   describe('Integration: Cache migration + history health together', () => {
     it('should handle both legacy cache migration and large history', async () => {
       await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await mockDoctorEnvironment();
       await mockDoctorGit({
         validationHistoryRefs: ['refs/notes/vibe-validate/runs'], // Old format
         runCacheRefs: [] // No new cache

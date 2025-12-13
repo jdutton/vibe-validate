@@ -1,6 +1,5 @@
-import { execSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
-import { executeGitCommand } from '@vibe-validate/git';
+import { executeGitCommand, isToolAvailable, safeExecSync } from '@vibe-validate/git';
 import type {
   CIProvider,
   PullRequest,
@@ -24,7 +23,9 @@ export class GitHubActionsProvider implements CIProvider {
   async isAvailable(): Promise<boolean> {
     try {
       // Check if gh CLI is available
-      execSync('gh --version', { stdio: 'ignore' });
+      if (!isToolAvailable('gh')) {
+        return false;
+      }
 
       // Check if we're in a GitHub repo
       const result = executeGitCommand(['remote', 'get-url', 'origin']);
@@ -36,12 +37,12 @@ export class GitHubActionsProvider implements CIProvider {
 
   async detectPullRequest(): Promise<PullRequest | null> {
     try {
-      const prData = JSON.parse(
-        execSync('gh pr view --json number,title,url,headRefName', {
-          encoding: 'utf8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        })
-      );
+      const output = safeExecSync('gh', ['pr', 'view', '--json', 'number,title,url,headRefName'], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+
+      const prData = JSON.parse(output.toString());
 
       return {
         id: prData.number,
@@ -55,12 +56,12 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   async fetchCheckStatus(prId: number | string): Promise<CheckStatus> {
-    const data = JSON.parse(
-      execSync(`gh pr view ${prId} --json number,title,url,statusCheckRollup,headRefName`, {
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      })
-    );
+    const output = safeExecSync('gh', ['pr', 'view', String(prId), '--json', 'number,title,url,statusCheckRollup,headRefName'], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    const data = JSON.parse(output.toString());
 
     const checks = (data.statusCheckRollup ?? []).map((check: unknown) =>
       this.transformCheck(check)
@@ -83,23 +84,22 @@ export class GitHubActionsProvider implements CIProvider {
     // Get run details to find the check name
     let checkName = 'Unknown';
     try {
-      const runData = JSON.parse(
-        execSync(`gh run view ${runId} --json name`, {
-          encoding: 'utf8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        })
-      );
+      const runOutput = safeExecSync('gh', ['run', 'view', runId, '--json', 'name'], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+      const runData = JSON.parse(runOutput.toString());
       checkName = runData.name ?? checkName;
     } catch {
       // Ignore error, use default name
     }
 
     // Fetch full logs (includes "Display validation state on failure" step)
-    const logs = execSync(`gh run view ${runId} --log`, {
+    const logs = safeExecSync('gh', ['run', 'view', runId, '--log'], {
       encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: 'pipe',
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer to handle large logs
-    });
+    }).toString();
 
     const validationResult = this.extractValidationResult(logs);
 

@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { execSync } from 'node:child_process';
 import { GitHubActionsProvider } from '../../../src/services/ci-providers/github-actions.js';
-
-// Mock child_process
-vi.mock('node:child_process');
 
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', async () => {
@@ -16,23 +12,30 @@ vi.mock('@vibe-validate/git', async () => {
       stderr: '',
       exitCode: 0,
     })),
+    isToolAvailable: vi.fn(() => true), // Default: gh is available
+    safeExecSync: vi.fn(() => ''), // Default: empty response
   };
 });
 
 describe('GitHubActionsProvider', () => {
   let provider: GitHubActionsProvider;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     provider = new GitHubActionsProvider();
     vi.clearAllMocks();
+
+    // Re-establish default mocks after clearAllMocks
+    const { isToolAvailable, safeExecSync } = await import('@vibe-validate/git');
+    vi.mocked(isToolAvailable).mockReturnValue(true);
+    vi.mocked(safeExecSync).mockReturnValue('');
   });
 
   describe('isAvailable', () => {
     it('should return true when gh CLI is available and in GitHub repo', async () => {
-      const { executeGitCommand } = await import('@vibe-validate/git');
+      const { executeGitCommand, isToolAvailable } = await import('@vibe-validate/git');
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from('gh version 2.40.0'));
-      vi.mocked(executeGitCommand).mockReturnValueOnce({
+      vi.mocked(isToolAvailable).mockReturnValue(true);
+      vi.mocked(executeGitCommand).mockReturnValue({
         success: true,
         stdout: 'https://github.com/user/repo.git',
         stderr: '',
@@ -42,14 +45,13 @@ describe('GitHubActionsProvider', () => {
       const result = await provider.isAvailable();
 
       expect(result).toBe(true);
-      expect(execSync).toHaveBeenCalledWith('gh --version', { stdio: 'ignore' });
+      expect(isToolAvailable).toHaveBeenCalledWith('gh');
       expect(executeGitCommand).toHaveBeenCalledWith(['remote', 'get-url', 'origin']);
     });
 
     it('should return false when gh CLI is not available', async () => {
-      vi.mocked(execSync).mockImplementationOnce(() => {
-        throw new Error('gh: command not found');
-      });
+      const { isToolAvailable } = await import('@vibe-validate/git');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
 
       const result = await provider.isAvailable();
 
@@ -59,8 +61,7 @@ describe('GitHubActionsProvider', () => {
     it('should return false when not in GitHub repo', async () => {
       const { executeGitCommand } = await import('@vibe-validate/git');
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from('gh version 2.40.0'));
-      vi.mocked(executeGitCommand).mockReturnValueOnce({
+      vi.mocked(executeGitCommand).mockReturnValue({
         success: true,
         stdout: 'https://gitlab.com/user/repo.git',
         stderr: '',
@@ -75,6 +76,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('detectPullRequest', () => {
     it('should detect PR from current branch', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
       const prData = {
         number: 42,
         title: 'feat: add new feature',
@@ -82,7 +84,7 @@ describe('GitHubActionsProvider', () => {
         headRefName: 'feature-branch',
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(prData)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(prData));
 
       const result = await provider.detectPullRequest();
 
@@ -95,7 +97,8 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should return null when no PR is found', async () => {
-      vi.mocked(execSync).mockImplementationOnce(() => {
+      const { safeExecSync } = await import('@vibe-validate/git');
+      vi.mocked(safeExecSync).mockImplementation(() => {
         throw new Error('no pull requests found');
       });
 
@@ -107,6 +110,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('fetchCheckStatus', () => {
     it('should fetch and transform check status', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
       const ghResponse = {
         number: 42,
         title: 'feat: add new feature',
@@ -130,7 +134,7 @@ describe('GitHubActionsProvider', () => {
         ],
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(ghResponse)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
 
       const result = await provider.fetchCheckStatus(42);
 
@@ -158,6 +162,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should determine overall status as completed when all checks done', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -179,7 +184,7 @@ describe('GitHubActionsProvider', () => {
         ],
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(ghResponse)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
 
       const result = await provider.fetchCheckStatus(42);
 
@@ -188,6 +193,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should determine overall result as failure when any check fails', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -209,7 +215,7 @@ describe('GitHubActionsProvider', () => {
         ],
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(ghResponse)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
 
       const result = await provider.fetchCheckStatus(42);
 
@@ -220,6 +226,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('fetchFailureLogs', () => {
     it('should fetch logs and extract error details', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
       const runData = { name: 'ubuntu-latest (Node 20)' };
       const logs = `
 ##[group]Run pnpm test
@@ -230,9 +237,9 @@ FAIL test/example.test.ts
 ##[error]Process completed with exit code 1.
 `;
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(JSON.stringify(runData) as any)
-        .mockReturnValueOnce(logs as any);
+      vi.mocked(safeExecSync)
+        .mockReturnValueOnce(JSON.stringify(runData))
+        .mockReturnValueOnce(logs);
 
       const result = await provider.fetchFailureLogs('123456');
 
@@ -243,6 +250,7 @@ FAIL test/example.test.ts
     });
 
     it('should extract vibe-validate state file from logs', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
       const runData = { name: 'Test' };
       // GitHub Actions log format: "Job\tStep\tTimestamp Content"
       // v0.15.0+ format with phases[].steps[].extraction
@@ -270,9 +278,9 @@ Run validation\tDisplay state\t2025-10-20T10:00:01.800Z ========================
 More log output after
 `;
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(JSON.stringify(runData) as any)
-        .mockReturnValueOnce(logs as any);
+      vi.mocked(safeExecSync)
+        .mockReturnValueOnce(JSON.stringify(runData))
+        .mockReturnValueOnce(logs);
 
       const result = await provider.fetchFailureLogs('123456');
 
@@ -284,12 +292,13 @@ More log output after
     });
 
     it('should handle missing validation result gracefully', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
       const runData = { name: 'Test' };
       const logs = 'Regular log output without validation result';
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(JSON.stringify(runData) as any)
-        .mockReturnValueOnce(logs as any);
+      vi.mocked(safeExecSync)
+        .mockReturnValueOnce(JSON.stringify(runData))
+        .mockReturnValueOnce(logs);
 
       const result = await provider.fetchFailureLogs('123456');
 

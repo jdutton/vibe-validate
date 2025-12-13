@@ -8,7 +8,7 @@
  * Cross-platform replacement for capture-samples.sh
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '@vibe-validate/git';
 import { existsSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,14 +41,15 @@ function warning(message: string): void {
 
 function runCommand(command: string, outputFile?: string): void {
   try {
-    // NOSONAR: S4721 - execSync is safe here. This is a build-time script that only executes
-    // hardcoded npm commands (e.g., 'npm run test:jest') with no user input. All calls to
-    // runCommand use literal strings defined in this file.
-    const output = execSync(command, {
+    // Parse command string into command + args (e.g., "npm run test:jest" -> ["npm", "run", "test:jest"])
+    const parts = command.split(' ');
+    const cmd = parts[0];
+    const args = parts.slice(1);
+
+    const output = safeExecSync(cmd, args, {
       cwd: ROOT_DIR,
       encoding: 'utf8',
       stdio: outputFile ? 'pipe' : 'inherit',
-      shell: true,
     });
 
     if (outputFile && output) {

@@ -11,16 +11,11 @@
  * git write-tree produces content-based hashes only (no timestamps).
  */
 
-import { execSync } from 'node:child_process';
 import { copyFileSync, unlinkSync } from 'node:fs';
 import type { TreeHash } from './types.js';
+import { executeGitCommand } from './git-executor.js';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: GIT_TIMEOUT,
-  stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
-};
 
 /**
  * Get deterministic git tree hash representing current working tree state
@@ -44,10 +39,10 @@ const GIT_OPTIONS = {
 export async function getGitTreeHash(): Promise<TreeHash> {
   try {
     // Check if we're in a git repository
-    execSync('git rev-parse --is-inside-work-tree', GIT_OPTIONS);
+    executeGitCommand(['rev-parse', '--is-inside-work-tree'], { timeout: GIT_TIMEOUT });
 
     // Get git directory and create temp index path
-    const gitDir = execSync('git rev-parse --git-dir', GIT_OPTIONS).trim();
+    const gitDir = executeGitCommand(['rev-parse', '--git-dir'], { timeout: GIT_TIMEOUT }).stdout.trim();
     const tempIndexFile = `${gitDir}/vibe-validate-temp-index`;
 
     try {
@@ -58,9 +53,9 @@ export async function getGitTreeHash(): Promise<TreeHash> {
       copyFileSync(currentIndex, tempIndexFile);
 
       // Step 2: Use temp index for all operations (doesn't affect real index)
-      const tempIndexOptions: typeof GIT_OPTIONS & { env: NodeJS.ProcessEnv } = {
-        ...GIT_OPTIONS,
-        env: { ...process.env, GIT_INDEX_FILE: tempIndexFile }
+      const tempIndexEnv = {
+        ...process.env,
+        GIT_INDEX_FILE: tempIndexFile
       };
 
       // Step 3: Stage all changes (tracked + untracked) in temp index
@@ -78,23 +73,26 @@ export async function getGitTreeHash(): Promise<TreeHash> {
       //   - Breaks cache sharing: same code produces different hashes
       //
       // We need actual content staged so git write-tree includes working directory changes
-      try {
-        execSync('git add --all', {
-          ...tempIndexOptions,
-          stdio: ['pipe', 'pipe', 'pipe'] // Capture stderr for error handling
-        });
-      } catch (addError) {
+      const addResult = executeGitCommand(['add', '--all'], {
+        timeout: GIT_TIMEOUT,
+        env: tempIndexEnv,
+        ignoreErrors: true
+      });
+
+      if (!addResult.success) {
         // If no changes to add, git add fails with "nothing to add"
         // This is fine - just means we have no modifications
-        const errorMessage = addError instanceof Error ? addError.message : String(addError);
-        if (!errorMessage.includes('nothing')) {
-          // Real error - re-throw
-          throw addError;
+        if (!addResult.stderr.includes('nothing')) {
+          // Real error - throw with details
+          throw new Error(`git add failed: ${addResult.stderr}`);
         }
       }
 
       // Step 4: Get tree hash using temp index (content-based, no timestamps)
-      const treeHash = execSync('git write-tree', tempIndexOptions).trim();
+      const treeHash = executeGitCommand(['write-tree'], {
+        timeout: GIT_TIMEOUT,
+        env: tempIndexEnv
+      }).stdout.trim();
 
       return treeHash as TreeHash;
 
@@ -134,7 +132,9 @@ export async function getGitTreeHash(): Promise<TreeHash> {
  */
 export async function getHeadTreeHash(): Promise<TreeHash> {
   try {
-    const treeHash = execSync('git rev-parse HEAD^{tree}', GIT_OPTIONS).trim();
+    const treeHash = executeGitCommand(['rev-parse', 'HEAD^{tree}'], {
+      timeout: GIT_TIMEOUT
+    }).stdout.trim();
     return treeHash as TreeHash;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

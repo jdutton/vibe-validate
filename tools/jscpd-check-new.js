@@ -6,26 +6,27 @@
  * Compares current scan to baseline, ignoring existing technical debt.
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '../packages/git/dist/safe-exec.js';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 
 const BASELINE_FILE = '.github/.jscpd-baseline.json';
 
-const JSCPD_CONFIG = [
+const JSCPD_ARGS = [
+  '.',
   '--min-lines', '5',
   '--min-tokens', '50',
   '--reporters', 'json',
   '--format', 'typescript,javascript',
   '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
   '--output', './jscpd-report'
-].join(' ');
+];
 
 /**
  * Run jscpd and return results
  */
 function runJscpd() {
   try {
-    execSync(`npx jscpd . ${JSCPD_CONFIG}`, { encoding: 'utf-8', stdio: 'pipe' });
+    safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
   } catch {
     // jscpd exits with error if duplications found, but we still get JSON
   }

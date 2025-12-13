@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { safeExecFromString } from '@vibe-validate/git';
 
 describe('All commands work from subdirectories (system tests)', () => {
   // Get the project root (vibe-validate repo root)
@@ -22,7 +22,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     it('should work from project root', () => {
       // validate --check returns exit code 1 if not validated, which is OK
       try {
-        const output = execSync('vv validate --check', {
+        const output = safeExecFromString('vv validate --check', {
           cwd: PROJECT_ROOT,
           encoding: 'utf-8',
           stdio: 'pipe',
@@ -36,7 +36,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
     it('should work from subdirectory (packages/)', () => {
       try {
-        const output = execSync('vv validate --check', {
+        const output = safeExecFromString('vv validate --check', {
           cwd: PACKAGES_DIR,
           encoding: 'utf-8',
           stdio: 'pipe',
@@ -50,7 +50,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
     it('should work from deep subdirectory (packages/cli/)', () => {
       try {
-        const output = execSync('vv validate --check', {
+        const output = safeExecFromString('vv validate --check', {
           cwd: CLI_DIR,
           encoding: 'utf-8',
           stdio: 'pipe',
@@ -65,7 +65,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('state command', () => {
     it('should work from project root', () => {
-      const output = execSync('vv state', {
+      const output = safeExecFromString('vv state', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -77,7 +77,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from subdirectory (packages/)', () => {
-      const output = execSync('vv state', {
+      const output = safeExecFromString('vv state', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -89,7 +89,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv state', {
+      const output = safeExecFromString('vv state', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -102,7 +102,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('config command', () => {
     it('should work from project root', () => {
-      const output = execSync('vv config show', {
+      const output = safeExecFromString('vv config show', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -114,7 +114,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from subdirectory (packages/)', () => {
-      const output = execSync('vv config show', {
+      const output = safeExecFromString('vv config show', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -126,7 +126,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv config show', {
+      const output = safeExecFromString('vv config show', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -140,7 +140,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('snapshot command', () => {
     it('should work from project root', () => {
-      const output = execSync('vv snapshot', {
+      const output = safeExecFromString('vv snapshot', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -152,7 +152,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from subdirectory (packages/)', () => {
-      const output = execSync('vv snapshot', {
+      const output = safeExecFromString('vv snapshot', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -164,7 +164,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv snapshot', {
+      const output = safeExecFromString('vv snapshot', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -177,7 +177,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('history command', () => {
     it('should work from project root', () => {
-      const output = execSync('vv history list', {
+      const output = safeExecFromString('vv history list', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -188,7 +188,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from subdirectory (packages/)', () => {
-      const output = execSync('vv history list', {
+      const output = safeExecFromString('vv history list', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -199,7 +199,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv history list', {
+      const output = safeExecFromString('vv history list', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -211,7 +211,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('cleanup command', () => {
     it('should work from project root', () => {
-      const output = execSync('vv cleanup --dry-run', {
+      const output = safeExecFromString('vv cleanup --dry-run', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -222,7 +222,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from subdirectory (packages/)', () => {
-      const output = execSync('vv cleanup --dry-run', {
+      const output = safeExecFromString('vv cleanup --dry-run', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -233,7 +233,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv cleanup --dry-run', {
+      const output = safeExecFromString('vv cleanup --dry-run', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -245,7 +245,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('pre-commit command', () => {
     it('should show help from project root', () => {
-      const output = execSync('vv pre-commit --help', {
+      const output = safeExecFromString('vv pre-commit --help', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -256,7 +256,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should show help from subdirectory (packages/)', () => {
-      const output = execSync('vv pre-commit --help', {
+      const output = safeExecFromString('vv pre-commit --help', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -266,7 +266,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should show help from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv pre-commit --help', {
+      const output = safeExecFromString('vv pre-commit --help', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -278,7 +278,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('watch-pr command', () => {
     it('should show help from project root', () => {
-      const output = execSync('vv watch-pr --help', {
+      const output = safeExecFromString('vv watch-pr --help', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -289,7 +289,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should show help from subdirectory (packages/)', () => {
-      const output = execSync('vv watch-pr --help', {
+      const output = safeExecFromString('vv watch-pr --help', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -299,7 +299,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should show help from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv watch-pr --help', {
+      const output = safeExecFromString('vv watch-pr --help', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -311,7 +311,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('init command', () => {
     it('should show help from project root', () => {
-      const output = execSync('vv init --help', {
+      const output = safeExecFromString('vv init --help', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -322,7 +322,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should show help from subdirectory (packages/)', () => {
-      const output = execSync('vv init --help', {
+      const output = safeExecFromString('vv init --help', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -332,7 +332,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should show help from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv init --help', {
+      const output = safeExecFromString('vv init --help', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -344,7 +344,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('run command', () => {
     it('should work from project root', () => {
-      const output = execSync('vv run echo "test from root"', {
+      const output = safeExecFromString('vv run echo "test from root"', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -356,7 +356,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from subdirectory (packages/)', () => {
-      const output = execSync('vv run echo "test from subdir"', {
+      const output = safeExecFromString('vv run echo "test from subdir"', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -368,7 +368,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = execSync('vv run echo "test from deep subdir"', {
+      const output = safeExecFromString('vv run echo "test from deep subdir"', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -381,19 +381,19 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('Regression: All commands should produce same results regardless of cwd', () => {
     it('state command should show same tree hash from all directories', () => {
-      const rootOutput = execSync('vv state', {
+      const rootOutput = safeExecFromString('vv state', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
       });
 
-      const subdirOutput = execSync('vv state', {
+      const subdirOutput = safeExecFromString('vv state', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
       });
 
-      const deepOutput = execSync('vv state', {
+      const deepOutput = safeExecFromString('vv state', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -416,19 +416,19 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('config command should show same configuration from all directories', () => {
-      const rootOutput = execSync('vv config show', {
+      const rootOutput = safeExecFromString('vv config show', {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
       });
 
-      const subdirOutput = execSync('vv config show', {
+      const subdirOutput = safeExecFromString('vv config show', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
       });
 
-      const deepOutput = execSync('vv config show', {
+      const deepOutput = safeExecFromString('vv config show', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',

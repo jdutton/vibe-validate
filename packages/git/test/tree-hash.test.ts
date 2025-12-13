@@ -6,13 +6,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { execSync } from 'node:child_process';
 import { copyFileSync, unlinkSync } from 'node:fs';
 import { getGitTreeHash } from '../src/tree-hash.js';
+import * as gitExecutor from '../src/git-executor.js';
 
-// Mock execSync
-vi.mock('child_process', () => ({
-  execSync: vi.fn(),
+// Mock git-executor
+vi.mock('../src/git-executor.js', () => ({
+  executeGitCommand: vi.fn(),
 }));
 
 // Mock fs operations (SECURITY: We use fs instead of shell commands)
@@ -21,7 +21,6 @@ vi.mock('fs', () => ({
   unlinkSync: vi.fn(),
 }));
 
-const mockExecSync = execSync as ReturnType<typeof vi.fn>;
 const mockCopyFileSync = copyFileSync as ReturnType<typeof vi.fn>;
 const mockUnlinkSync = unlinkSync as ReturnType<typeof vi.fn>;
 
@@ -35,18 +34,39 @@ describe('getGitTreeHash', () => {
   });
 
   it('should calculate tree hash using git write-tree', async () => {
-    // Mock git commands (return strings since encoding: 'utf8' is set)
-    mockExecSync.mockReturnValueOnce('');  // git rev-parse --is-inside-work-tree
-    mockExecSync.mockReturnValueOnce('.git');  // git rev-parse --git-dir
-    mockExecSync.mockReturnValueOnce('');  // git add --all (with temp index)
-    mockExecSync.mockReturnValueOnce('abc123def456\n');  // git write-tree (with temp index)
+    // Mock git commands
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      })  // git rev-parse --is-inside-work-tree
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '.git',
+        stderr: '',
+        exitCode: 0,
+      })  // git rev-parse --git-dir
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      })  // git add --all (with temp index)
+      .mockReturnValueOnce({
+        success: true,
+        stdout: 'abc123def456\n',
+        stderr: '',
+        exitCode: 0,
+      });  // git write-tree (with temp index)
 
     const hash = await getGitTreeHash();
 
     expect(hash).toBe('abc123def456');
 
-    // Verify correct git commands were called (4 times, not 6 - fs operations not via execSync)
-    expect(mockExecSync).toHaveBeenCalledTimes(4);
+    // Verify correct git commands were called (4 times, not 6 - fs operations not via executeGitCommand)
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(4);
 
     // Verify fs.copyFileSync was called (SECURITY: replaces cp shell command)
     expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
@@ -56,28 +76,28 @@ describe('getGitTreeHash', () => {
     );
 
     // Verify correct git commands were called
-    expect(mockExecSync).toHaveBeenNthCalledWith(
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       1,
-      'git rev-parse --is-inside-work-tree',
+      ['rev-parse', '--is-inside-work-tree'],
       expect.any(Object)
     );
-    expect(mockExecSync).toHaveBeenNthCalledWith(
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       2,
-      'git rev-parse --git-dir',
+      ['rev-parse', '--git-dir'],
       expect.any(Object)
     );
-    expect(mockExecSync).toHaveBeenNthCalledWith(
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       3,
-      'git add --all',
+      ['add', '--all'],
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_INDEX_FILE: expect.stringContaining('vibe-validate-temp-index')
         })
       })
     );
-    expect(mockExecSync).toHaveBeenNthCalledWith(
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       4,
-      'git write-tree',
+      ['write-tree'],
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_INDEX_FILE: expect.stringContaining('vibe-validate-temp-index')
@@ -94,15 +114,15 @@ describe('getGitTreeHash', () => {
 
   it('should return same hash for identical content', async () => {
     // Simulate running twice with same content
-    mockExecSync
-      .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree (1st run)
-      .mockReturnValueOnce('.git')  // git rev-parse --git-dir (1st run)
-      .mockReturnValueOnce('')  // git add (1st run)
-      .mockReturnValueOnce('sameHash123\n')  // git write-tree (1st run)
-      .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree (2nd run)
-      .mockReturnValueOnce('.git')  // git rev-parse --git-dir (2nd run)
-      .mockReturnValueOnce('')  // git add (2nd run)
-      .mockReturnValueOnce('sameHash123\n');  // git write-tree (2nd run)
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (1st run)
+      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir (1st run)
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (1st run)
+      .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (1st run)
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 });  // git write-tree (2nd run)
 
     const hash1 = await getGitTreeHash();
     const hash2 = await getGitTreeHash();
@@ -117,14 +137,14 @@ describe('getGitTreeHash', () => {
   });
 
   it('should use temporary index file to avoid corrupting real index', async () => {
-    mockExecSync.mockImplementation((cmd) => {
-      if (cmd === 'git write-tree') {
-        return 'abc123\n';
+    vi.mocked(gitExecutor.executeGitCommand).mockImplementation((args) => {
+      if (args[0] === 'write-tree') {
+        return { success: true, stdout: 'abc123\n', stderr: '', exitCode: 0 };
       }
-      if (cmd === 'git rev-parse --git-dir') {
-        return '.git';
+      if (args[0] === 'rev-parse' && args[1] === '--git-dir') {
+        return { success: true, stdout: '.git', stderr: '', exitCode: 0 };
       }
-      return '';
+      return { success: true, stdout: '', stderr: '', exitCode: 0 };
     });
 
     await getGitTreeHash();
@@ -137,8 +157,8 @@ describe('getGitTreeHash', () => {
     );
 
     // Verify GIT_INDEX_FILE is used for git operations
-    const writeTreeCall = mockExecSync.mock.calls.find(
-      ([cmd]) => cmd === 'git write-tree'
+    const writeTreeCall = vi.mocked(gitExecutor.executeGitCommand).mock.calls.find(
+      ([args]) => args[0] === 'write-tree'
     );
     expect(writeTreeCall?.[1]).toHaveProperty('env');
     expect((writeTreeCall?.[1] as any).env).toHaveProperty('GIT_INDEX_FILE');
@@ -151,11 +171,11 @@ describe('getGitTreeHash', () => {
   });
 
   it('should trim whitespace from hash', async () => {
-    mockExecSync
-      .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree
-      .mockReturnValueOnce('.git')  // git rev-parse --git-dir
-      .mockReturnValueOnce('')  // git add
-      .mockReturnValueOnce('  abc123  \n\n');  // git write-tree
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree
+      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add
+      .mockReturnValueOnce({ success: true, stdout: '  abc123  \n\n', stderr: '', exitCode: 0 });  // git write-tree
 
     const hash = await getGitTreeHash();
 
@@ -163,7 +183,7 @@ describe('getGitTreeHash', () => {
   });
 
   it('should handle git errors gracefully', async () => {
-    mockExecSync.mockImplementation(() => {
+    vi.mocked(gitExecutor.executeGitCommand).mockImplementation(() => {
       throw new Error('git command failed');
     });
 
@@ -171,11 +191,11 @@ describe('getGitTreeHash', () => {
   });
 
   it('should handle empty repository', async () => {
-    mockExecSync
-      .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree
-      .mockReturnValueOnce('.git')  // git rev-parse --git-dir
-      .mockReturnValueOnce('')  // git add
-      .mockReturnValueOnce('4b825dc642cb6eb9a060e54bf8d69288fbee4904\n');  // git write-tree (empty tree)
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree
+      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add
+      .mockReturnValueOnce({ success: true, stdout: '4b825dc642cb6eb9a060e54bf8d69288fbee4904\n', stderr: '', exitCode: 0 });  // git write-tree (empty tree)
 
     const hash = await getGitTreeHash();
 
@@ -185,30 +205,30 @@ describe('getGitTreeHash', () => {
   it('should not include timestamps in hash', async () => {
     // This is a critical test - hash should be content-based only
     // We verify this by checking that git write-tree is used (not git stash create)
-    mockExecSync.mockReturnValue('abc123\n');
-    mockExecSync.mockReturnValueOnce('');  // git rev-parse --is-inside-work-tree
-    mockExecSync.mockReturnValueOnce('.git');  // git rev-parse --git-dir
+    vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({ success: true, stdout: 'abc123\n', stderr: '', exitCode: 0 });
+    vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 });  // git rev-parse --is-inside-work-tree
+    vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 });  // git rev-parse --git-dir
 
     await getGitTreeHash();
 
     // Ensure we never call git stash create (which includes timestamps)
-    const stashCall = mockExecSync.mock.calls.find(
-      ([cmd]) => typeof cmd === 'string' && cmd.includes('stash create')
+    const stashCall = vi.mocked(gitExecutor.executeGitCommand).mock.calls.find(
+      ([args]) => Array.isArray(args) && args.join(' ').includes('stash create')
     );
     expect(stashCall).toBeUndefined();
 
     // Ensure we DO call git write-tree (content-based, deterministic)
-    const writeTreeCall = mockExecSync.mock.calls.find(
-      ([cmd]) => cmd === 'git write-tree'
+    const writeTreeCall = vi.mocked(gitExecutor.executeGitCommand).mock.calls.find(
+      ([args]) => args[0] === 'write-tree'
     );
     expect(writeTreeCall).toBeDefined();
   });
 
   it('should clean up temp index even if write-tree fails', async () => {
-    mockExecSync
-      .mockReturnValueOnce('')  // git rev-parse --is-inside-work-tree
-      .mockReturnValueOnce('.git')  // git rev-parse --git-dir
-      .mockReturnValueOnce('')  // git add
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree
+      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add
       .mockImplementationOnce(() => {  // git write-tree throws
         throw new Error('write-tree failed');
       });

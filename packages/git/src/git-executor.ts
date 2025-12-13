@@ -49,6 +49,12 @@ export interface GitExecutionOptions {
    * @default false
    */
   suppressStderr?: boolean;
+
+  /**
+   * Custom environment variables to pass to git command
+   * Merged with process.env
+   */
+  env?: NodeJS.ProcessEnv;
 }
 
 /**
@@ -111,6 +117,7 @@ export function executeGitCommand(
     stdin,
     ignoreErrors = false,
     suppressStderr = false,
+    env,
   } = options;
 
   // Validate arguments
@@ -123,6 +130,7 @@ export function executeGitCommand(
     encoding,
     timeout,
     maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+    env: env ? { ...process.env, ...env } : process.env,
   };
 
   // Configure stdio
