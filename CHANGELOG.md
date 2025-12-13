@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- Added SonarCloud Quality Gate and Codecov coverage badges to README
 - Improved README.md to clarify the benefits of the project, and reduced verbosity
 - Cleaned up repository root (moved files to `.github/`, removed unnecessary files)
 

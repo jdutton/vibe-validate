@@ -202,15 +202,15 @@ describe('createSandboxedExtractor', () => {
     });
 
     it('should handle extractors that use string manipulation', async () => {
-      const plugin = createMockPlugin((output) => {
+      // Helper: Parse output and create result
+      function parseOutput(output: string) {
         const lines = output.split('\n');
-        const errors = lines
-          .filter(line => line.includes('ERROR'))
-          .map((line, idx) => ({
-            file: 'test.ts',
-            line: idx + 1,
-            message: line.trim(),
-          }));
+        const errorLines = lines.filter(line => line.includes('ERROR'));
+        const errors = errorLines.map((line, idx) => ({
+          file: 'test.ts',
+          line: idx + 1,
+          message: line.trim(),
+        }));
 
         return {
           errors,
@@ -229,7 +229,9 @@ describe('createSandboxedExtractor', () => {
             issues: [],
           },
         };
-      });
+      }
+
+      const plugin = createMockPlugin(parseOutput);
 
       const wrappedExtract = createSandboxedExtractor(plugin, { trust: 'sandbox' });
       const result = await wrappedExtract('INFO: Starting\nERROR: Failed\nINFO: Done');

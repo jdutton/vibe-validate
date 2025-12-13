@@ -1,6 +1,6 @@
 # vibe-validate
 
-[![CI](https://github.com/jdutton/vibe-validate/actions/workflows/validate.yml/badge.svg)](https://github.com/jdutton/vibe-validate/actions) [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![npm downloads](https://img.shields.io/npm/dm/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![Node](https://img.shields.io/node/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/jdutton/vibe-validate/actions/workflows/validate.yml/badge.svg)](https://github.com/jdutton/vibe-validate/actions) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=jdutton_vibe-validate&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=jdutton_vibe-validate) [![codecov](https://codecov.io/gh/jdutton/vibe-validate/branch/main/graph/badge.svg)](https://codecov.io/gh/jdutton/vibe-validate) [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![npm downloads](https://img.shields.io/npm/dm/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![Node](https://img.shields.io/node/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Faster Agentic Coding with confidence in every commit**
 
