@@ -491,6 +491,7 @@ Example CHANGELOG entry:
 - Keep commits focused and atomic
 
 ### Pull Request Workflow
+- **Update CHANGELOG.md BEFORE creating PR** - Write for users of the project, NOT developers (1-2 lines, no internal details)
 - **No direct pushes to main** - ALL changes must go through pull requests
 - **Branch naming convention**: `type/brief-description`
 - **All validation must pass** before merge approval
