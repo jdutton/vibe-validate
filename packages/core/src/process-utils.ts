@@ -7,7 +7,7 @@
 
 import { ChildProcess, spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, normalize, resolve } from 'node:path';
 import { getRepositoryRoot, safeExecSync } from '@vibe-validate/git';
 import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
@@ -38,10 +38,14 @@ export function resolveGitRelativePath(cwd: string): string {
     throw new Error('Not in a git repository - cannot resolve cwd relative to git root');
   }
 
-  const resolved = resolve(gitRoot, cwd);
+  // Normalize git root path (git returns forward slashes on Windows, Node uses backslashes)
+  const normalizedGitRoot = normalize(gitRoot);
+  const resolved = resolve(normalizedGitRoot, cwd);
 
   // Security: Prevent directory traversal outside git root
-  if (!resolved.startsWith(gitRoot)) {
+  // Normalize both paths for comparison (handles Windows slash differences)
+  const normalizedResolved = normalize(resolved);
+  if (!normalizedResolved.startsWith(normalizedGitRoot)) {
     throw new Error(`Invalid cwd: "${cwd}" - must be within git repository`);
   }
 

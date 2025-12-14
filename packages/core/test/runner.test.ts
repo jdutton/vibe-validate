@@ -557,7 +557,8 @@ rawOutput: ""
               steps: [
                 {
                   name: 'ESLint with YAML',
-                  command: `node -e 'console.log(${JSON.stringify(yamlOutput)}); process.exit(1)'`,
+                  // Use single quotes for -e (works with shell:true on all platforms)
+                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(yamlOutput)}); process.exit(1)`),
                 },
               ],
             },
@@ -610,7 +611,8 @@ invalid indentation
               steps: [
                 {
                   name: 'Invalid YAML',
-                  command: `node -e 'console.log(${JSON.stringify(invalidYamlOutput)}); process.exit(1)'`,
+                  // Use JSON.stringify to properly quote and escape for shell:true
+                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(invalidYamlOutput)}); process.exit(1)`),
                 },
               ],
             },
@@ -652,7 +654,8 @@ invalid indentation
               steps: [
                 {
                   name: 'Windows YAML',
-                  command: `node -e 'process.stdout.write(${JSON.stringify(windowsYamlOutput)}); process.exit(1)'`,
+                  // Use JSON.stringify to properly quote and escape for shell:true
+                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(windowsYamlOutput)}); process.exit(1)`),
                 },
               ],
             },
@@ -691,7 +694,8 @@ Not YAML frontmatter
               steps: [
                 {
                   name: 'Dashes in error',
-                  command: `node -e 'console.log(${JSON.stringify(outputWithDashesInError)}); process.exit(1)'`,
+                  // Use JSON.stringify to properly quote and escape for shell:true
+                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(outputWithDashesInError)}); process.exit(1)`),
                 },
               ],
             },
@@ -737,7 +741,8 @@ rawOutput: |
               steps: [
                 {
                   name: 'Multiple separators',
-                  command: `node -e 'console.log(${JSON.stringify(multipleYamlOutput)}); process.exit(1)'`,
+                  // Use JSON.stringify to properly quote and escape for shell:true
+                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(multipleYamlOutput)}); process.exit(1)`),
                 },
               ],
             },

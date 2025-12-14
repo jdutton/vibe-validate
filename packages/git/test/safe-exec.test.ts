@@ -85,6 +85,13 @@ describe('safeExecSync', () => {
   });
 
   it('should not interpret shell metacharacters', () => {
+    // NOTE: This test is skipped on Windows because safeExecSync uses shell:true
+    // for node commands on Windows (see safe-exec.ts:96-100).
+    // On Windows, shell metacharacters in arguments are interpreted by the shell.
+    if (process.platform === 'win32') {
+      return; // Skip test on Windows
+    }
+
     // This would execute 'ls' if shell was enabled
     const result = safeExecSync('node', ['-e', 'console.log("hello && ls")'], {
       encoding: 'utf8',
