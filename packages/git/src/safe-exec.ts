@@ -12,13 +12,16 @@ function resolveCommandPath(command: string, context: string): string {
     const execPath = process.execPath;
 
     // Always log diagnostic info on Windows to debug CI issues
-    console.error(`[${context}] Windows node resolution:`);
-    console.error(`  which.sync('node'): ${whichPath ?? 'null'}`);
-    console.error(`  process.execPath: ${execPath}`);
+    // Using console.log to ensure output appears (console.error might be suppressed)
+    console.log('='.repeat(80));
+    console.log(`[${context}] Windows node resolution DEBUG:`);
+    console.log(`  which.sync('node'): ${whichPath ?? 'null'}`);
+    console.log(`  process.execPath: ${execPath}`);
     if (whichPath) {
-      console.error(`  which path exists: ${existsSync(whichPath)}`);
+      console.log(`  which path exists: ${existsSync(whichPath)}`);
     }
-    console.error(`  execPath exists: ${existsSync(execPath)}`);
+    console.log(`  execPath exists: ${existsSync(execPath)}`);
+    console.log('='.repeat(80));
 
     return execPath;
   }
