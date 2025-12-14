@@ -7,14 +7,11 @@
  */
 
 import { safeExecSync } from '../packages/git/dist/safe-exec.js';
-import { readFileSync, existsSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
-// For Node.js fs operations (supports backslashes on Windows)
-const JSCPD_OUTPUT_DIR = join('.', 'jscpd-report');
-// For jscpd CLI (requires forward slashes for cross-platform compatibility)
-const JSCPD_OUTPUT_PATH = './jscpd-report';
+const JSCPD_OUTPUT_DIR = './jscpd-report';
 
 const JSCPD_ARGS = [
   '.',
@@ -23,80 +20,24 @@ const JSCPD_ARGS = [
   '--reporters', 'json',
   '--format', 'typescript,javascript',
   '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
-  '--output', JSCPD_OUTPUT_PATH  // Always use forward slashes for jscpd (works on Windows too)
+  '--output', JSCPD_OUTPUT_DIR
 ];
 
 /**
  * Run jscpd and return results
  */
 function runJscpd() {
-  console.log(`🔍 Running jscpd on ${process.platform}...`);
-  console.log(`   Working directory: ${process.cwd()}`);
-  console.log(`   jscpd --output arg: ${JSCPD_OUTPUT_PATH} (forward slashes for cross-platform)`);
-  console.log(`   Node.js check path: ${JSCPD_OUTPUT_DIR}`);
-  console.log(`   Report path: ${join(JSCPD_OUTPUT_DIR, 'jscpd-report.json')}`);
-
-  // Ensure output directory exists (may be required on Windows)
-  if (!existsSync(JSCPD_OUTPUT_DIR)) {
-    console.log(`   Creating output directory: ${JSCPD_OUTPUT_DIR}`);
-    mkdirSync(JSCPD_OUTPUT_DIR, { recursive: true });
-  }
-
   try {
-    const result = safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
-    console.log('   jscpd completed successfully');
-    if (result) {
-      console.log(`   Output: ${result.toString().substring(0, 200)}`);
-    }
-  } catch (error) {
-    // jscpd exits with error if duplications found, but we still get JSON
-    console.log(`   jscpd exited with error (this may be normal if duplications found)`);
-    if (error.status) {
-      console.log(`   Exit code: ${error.status}`);
-    }
-    if (error.stderr) {
-      console.error(`   stderr: ${error.stderr.toString()}`);
-    }
-    if (error.stdout) {
-      console.log(`   stdout: ${error.stdout.toString().substring(0, 200)}`);
-    }
+    safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
+  } catch (_error) {
+    // jscpd exits with error if duplications found, but we still get JSON report
   }
 
   const reportPath = join(JSCPD_OUTPUT_DIR, 'jscpd-report.json');
-  console.log(`\n📋 Checking for report at: ${reportPath}`);
-
   if (!existsSync(reportPath)) {
-    // Use console.log instead of console.error to ensure it appears in stdout/errorSummary
-    console.log(`\n❌ ERROR: jscpd report not generated!`);
-    console.log(`   Expected file: ${reportPath}`);
-    console.log(`   Working dir: ${process.cwd()}`);
-    console.log(`   Platform: ${process.platform}`);
-
-    // List what's in jscpd-report directory if it exists
-    if (existsSync(JSCPD_OUTPUT_DIR)) {
-      console.log(`   jscpd-report directory EXISTS`);
-      try {
-        const files = readdirSync(JSCPD_OUTPUT_DIR);
-        console.log(`   Files in directory: ${JSON.stringify(files)}`);
-      } catch (e) {
-        console.log(`   Cannot list directory: ${e.message}`);
-      }
-    } else {
-      console.log(`   jscpd-report directory DOES NOT EXIST`);
-    }
-
-    // Try to list current directory to see what's there
-    try {
-      const currentDirFiles = readdirSync('.');
-      console.log(`   Current dir files (first 20): ${JSON.stringify(currentDirFiles.slice(0, 20))}`);
-    } catch (e) {
-      console.log(`   Cannot list current dir: ${e.message}`);
-    }
-
     throw new Error(`jscpd report not found at ${reportPath}`);
   }
 
-  console.log('   ✅ Report found, parsing...\n');
   return JSON.parse(readFileSync(reportPath, 'utf-8'));
 }
 
