@@ -789,7 +789,9 @@ rawOutput: |
 
       const outputFiles = result.phases![0].steps[0].outputFiles;
       expect(outputFiles?.combined).toBeDefined();
-      expect(outputFiles?.combined).toContain('/vibe-validate/steps/');
+      // Normalize path separators for Windows (\ -> /)
+      const normalizedPath = outputFiles?.combined?.replace(/\\/g, '/');
+      expect(normalizedPath).toContain('/vibe-validate/steps/');
       expect(outputFiles?.combined).toContain('.jsonl');
 
       // Verify files exist
@@ -1009,7 +1011,9 @@ rawOutput: |
       expect(result.passed).toBe(true);
       expect(result.outputFiles).toBeDefined();
       expect(result.outputFiles?.combined).toBeDefined();
-      expect(result.outputFiles?.combined).toContain('/validation-');
+      // Normalize path separators for Windows (\ -> /)
+      const normalizedPath1 = result.outputFiles?.combined?.replace(/\\/g, '/');
+      expect(normalizedPath1).toContain('/validation-');
       expect(result.outputFiles?.combined).toContain('.log');
 
       // Verify file exists
@@ -1041,7 +1045,9 @@ rawOutput: |
       expect(result.passed).toBe(false);
       expect(result.outputFiles).toBeDefined();
       expect(result.outputFiles?.combined).toBeDefined();
-      expect(result.outputFiles?.combined).toContain('/validation-');
+      // Normalize path separators for Windows (\ -> /)
+      const normalizedPath2 = result.outputFiles?.combined?.replace(/\\/g, '/');
+      expect(normalizedPath2).toContain('/validation-');
       expect(result.outputFiles?.combined).toContain('.log');
 
       // Verify file exists
