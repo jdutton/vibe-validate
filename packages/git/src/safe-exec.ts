@@ -56,6 +56,33 @@ export class CommandExecutionError extends Error {
 }
 
 /**
+ * Determine if shell should be used for command execution on Windows
+ *
+ * CONFIRMED NECESSARY: Windows requires shell:true for:
+ * 1. node command (ENOENT with shell:false even with full path)
+ * 2. .cmd/.bat/.ps1 scripts (Windows shell scripts require shell interpreter)
+ *
+ * This is safe because paths are validated by which.sync() before execution.
+ *
+ * @param command - Command name (e.g., 'node', 'pnpm')
+ * @param commandPath - Resolved absolute path to command
+ * @returns true if shell should be used, false otherwise
+ */
+function shouldUseShell(command: string, commandPath: string): boolean {
+  if (process.platform !== 'win32') {
+    return false;
+  }
+
+  // Node command requires shell on Windows
+  if (command === 'node') {
+    return true;
+  }
+
+  // Windows shell scripts require shell
+  return commandPath.endsWith('.cmd') || commandPath.endsWith('.bat') || commandPath.endsWith('.ps1');
+}
+
+/**
  * Safe command execution using spawnSync + which pattern
  *
  * More secure than execSync:
@@ -92,15 +119,11 @@ export function safeExecSync(
   // Resolve command path using which (pure Node.js, no shell)
   const commandPath = which.sync(command);
 
-  // Build spawn options
-  // CONFIRMED NECESSARY: Windows requires shell:true for node command to avoid ENOENT
-  // Even with full path (C:\...\node.EXE) and simplified Node.js commands,
-  // Windows fails with ENOENT when shell:false. Root cause: Windows executable resolution.
-  // This is safe because we only enable shell for 'node' with validated args from which.sync()
-  const useShell = process.platform === 'win32' && command === 'node';
+  // Determine if shell is needed (Windows-specific logic)
+  const useShell = shouldUseShell(command, commandPath);
 
   const spawnOptions: SpawnSyncOptions = {
-    shell: useShell, // shell:true on Windows for node, shell:false otherwise for security
+    shell: useShell, // shell:true on Windows for node and shell scripts, shell:false otherwise for security
     stdio: options.stdio ?? 'pipe',
     env: options.env,
     cwd: options.cwd,
@@ -159,8 +182,8 @@ export function safeExecResult(
   try {
     const commandPath = which.sync(command);
 
-    // CONFIRMED NECESSARY: Windows requires shell:true for node (see above)
-    const useShell = process.platform === 'win32' && command === 'node';
+    // Determine if shell is needed (Windows-specific logic)
+    const useShell = shouldUseShell(command, commandPath);
 
     const spawnOptions: SpawnSyncOptions = {
       shell: useShell,

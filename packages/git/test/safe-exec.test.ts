@@ -372,11 +372,11 @@ describe('Security - Command Injection Prevention', () => {
   it('should handle environment variable expansion safely', () => {
     const maliciousEnv = '${PATH}';
 
-    // Use node -e instead of echo for cross-platform consistency
-    // echo behaves differently on Windows (PowerShell strips braces)
+    // Use node -e with single quotes in the JS code to avoid shell quote issues on Windows
+    // On Windows with shell:true, double quotes can interfere with cmd.exe/PowerShell parsing
     const result = safeExecSync(
       'node',
-      ['-e', `console.log("${maliciousEnv}")`],
+      ['-e', `console.log('${maliciousEnv}')`], // Use single quotes inside the JS
       { encoding: 'utf8' },
     );
 
