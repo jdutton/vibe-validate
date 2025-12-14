@@ -639,52 +639,153 @@ try {
   }
 
   // Test 5: Test the exact command from failing CLI integration tests
-  info('\nTesting exact failing test scenario:', '');
-  info('  Simulating: execCLIWithStderr(["run", ...])', '');
+  section('Testing Exact Failing Test Scenarios');
 
-  // This simulates what the test does: safeExecResult('node', [CLI_BIN, 'run', ...])
   const CLI_BIN = 'packages/cli/dist/bin.js';
+  const testCommand = whichPath || which.sync('node');
+
+  // Scenario A: Test with 'echo' (shell built-in) - THE ACTUAL FAILING TEST
+  info('Scenario A: node bin.js run "echo test" (shell built-in)', '');
 
   try {
-    // Test with which.sync (current approach)
-    const testCommand = whichPath || which.sync('node');
-    const testArgs = [CLI_BIN, '--version'];
-
-    const testResult = spawnSync(testCommand, testArgs, {
+    // Test A1: shell:false with echo (should fail - echo is shell built-in)
+    const echoArgs = [CLI_BIN, 'run', 'echo test'];
+    const echoNoShell = spawnSync(testCommand, echoArgs, {
       encoding: 'utf-8',
       shell: false,
     });
 
-    if (testResult.error) {
-      error(`Test scenario with which.sync FAILED: ${testResult.error.message}`);
-      info('  This matches the CI failure!', '');
-      info('  Error code', (testResult.error as any).code);
-      info('  Command path', testCommand);
-      info('  Arguments', JSON.stringify(testArgs));
+    if (echoNoShell.error) {
+      error(`  A1. shell:false + echo: FAILED - ${echoNoShell.error.message}`);
+      info('     Error code', (echoNoShell.error as any).code);
+      info('     This matches the CI failure!', '');
     } else {
-      success('Test scenario with which.sync succeeded');
-      info('  Output', testResult.stdout?.toString().trim().substring(0, 50));
+      success(`  A1. shell:false + echo: SUCCESS`);
+      info('     Exit code', echoNoShell.status);
     }
   } catch (err) {
-    error(`Test scenario exception: ${err}`);
+    error(`  A1 exception: ${err}`);
   }
 
-  // Test 6: Same test but with process.execPath
   try {
-    const testArgs = [CLI_BIN, '--version'];
-    const testResultExec = spawnSync(execPath, testArgs, {
+    // Test A2: shell:true with echo (should work)
+    const echoArgs = [CLI_BIN, 'run', 'echo test'];
+    const echoWithShell = spawnSync(testCommand, echoArgs, {
+      encoding: 'utf-8',
+      shell: true,
+    });
+
+    if (echoWithShell.error) {
+      error(`  A2. shell:true + echo: FAILED - ${echoWithShell.error.message}`);
+    } else {
+      success(`  A2. shell:true + echo: SUCCESS`);
+      info('     Exit code', echoWithShell.status);
+    }
+  } catch (err) {
+    error(`  A2 exception: ${err}`);
+  }
+
+  // Scenario B: Test with 'node --version' (NOT a shell built-in)
+  info('\nScenario B: node bin.js run "node --version" (not built-in)', '');
+
+  try {
+    // Test B1: shell:false with node --version (should work if node spawning works)
+    const nodeArgs = [CLI_BIN, 'run', 'node --version'];
+    const nodeNoShell = spawnSync(testCommand, nodeArgs, {
       encoding: 'utf-8',
       shell: false,
     });
 
-    if (testResultExec.error) {
-      error(`Test scenario with process.execPath FAILED: ${testResultExec.error.message}`);
+    if (nodeNoShell.error) {
+      error(`  B1. shell:false + node: FAILED - ${nodeNoShell.error.message}`);
+      info('     Error code', (nodeNoShell.error as any).code);
     } else {
-      success('Test scenario with process.execPath succeeded');
-      info('  Output', testResultExec.stdout?.toString().trim().substring(0, 50));
+      success(`  B1. shell:false + node: SUCCESS`);
+      info('     Exit code', nodeNoShell.status);
     }
   } catch (err) {
-    error(`Test scenario with execPath exception: ${err}`);
+    error(`  B1 exception: ${err}`);
+  }
+
+  try {
+    // Test B2: shell:true with node --version
+    const nodeArgs = [CLI_BIN, 'run', 'node --version'];
+    const nodeWithShell = spawnSync(testCommand, nodeArgs, {
+      encoding: 'utf-8',
+      shell: true,
+    });
+
+    if (nodeWithShell.error) {
+      error(`  B2. shell:true + node: FAILED - ${nodeWithShell.error.message}`);
+    } else {
+      success(`  B2. shell:true + node: SUCCESS`);
+      info('     Exit code', nodeWithShell.status);
+    }
+  } catch (err) {
+    error(`  B2 exception: ${err}`);
+  }
+
+  // Scenario C: Test with 'node -e' (JavaScript execution)
+  info('\nScenario C: node bin.js run "node -e \\"console.log(...)\\"', '');
+
+  try {
+    // Test C1: shell:false with node -e
+    const jsArgs = [CLI_BIN, 'run', 'node -e "console.log(\'hello\')"'];
+    const jsNoShell = spawnSync(testCommand, jsArgs, {
+      encoding: 'utf-8',
+      shell: false,
+    });
+
+    if (jsNoShell.error) {
+      error(`  C1. shell:false + node -e: FAILED - ${jsNoShell.error.message}`);
+    } else {
+      success(`  C1. shell:false + node -e: SUCCESS`);
+      info('     Exit code', jsNoShell.status);
+    }
+  } catch (err) {
+    error(`  C1 exception: ${err}`);
+  }
+
+  try {
+    // Test C2: shell:true with node -e
+    const jsArgs = [CLI_BIN, 'run', 'node -e "console.log(\'hello\')"'];
+    const jsWithShell = spawnSync(testCommand, jsArgs, {
+      encoding: 'utf-8',
+      shell: true,
+    });
+
+    if (jsWithShell.error) {
+      error(`  C2. shell:true + node -e: FAILED - ${jsWithShell.error.message}`);
+    } else {
+      success(`  C2. shell:true + node -e: SUCCESS`);
+      info('     Exit code', jsWithShell.status);
+    }
+  } catch (err) {
+    error(`  C2 exception: ${err}`);
+  }
+
+  // Scenario D: Explicit cmd.exe invocation (Windows-specific)
+  if (process.platform === 'win32') {
+    info('\nScenario D: Explicit cmd.exe invocation (Windows only)', '');
+
+    try {
+      // Test D1: Explicitly call cmd.exe /c node ...
+      const cmdPath = process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe';
+      const cmdArgs = ['/c', 'node', CLI_BIN, 'run', 'echo test'];
+      const cmdResult = spawnSync(cmdPath, cmdArgs, {
+        encoding: 'utf-8',
+        shell: false,
+      });
+
+      if (cmdResult.error) {
+        error(`  D1. cmd.exe /c node: FAILED - ${cmdResult.error.message}`);
+      } else {
+        success(`  D1. cmd.exe /c node: SUCCESS`);
+        info('     Exit code', cmdResult.status);
+      }
+    } catch (err) {
+      error(`  D1 exception: ${err}`);
+    }
   }
 
 } catch (err) {

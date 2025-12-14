@@ -24,8 +24,13 @@ Comprehensive Windows diagnostics for debugging CI issues with node path resolut
 11. jscpd (code duplication checker) availability and execution
 12. Shell and environment variable behavior
 13. Concurrent execution tests
-14. execSync vs spawnSync comparison (NEW - tests if execSync works where spawnSync fails)
-15. Summary and recommendations
+14. execSync vs spawnSync comparison (tests if execSync works where spawnSync fails)
+15. Exact failing test scenarios (NEW - tests shell:true vs shell:false with echo, node, and explicit cmd.exe)
+    - Scenario A: `node bin.js run "echo test"` (shell built-in)
+    - Scenario B: `node bin.js run "node --version"` (not a built-in)
+    - Scenario C: `node bin.js run "node -e ..."`
+    - Scenario D: Explicit `cmd.exe /c node ...` invocation
+16. Summary and recommendations
 
 **Usage:**
 ```bash

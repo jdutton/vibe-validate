@@ -90,15 +90,15 @@ export function safeExecSync(
   options: SafeExecOptions = {},
 ): Buffer | string {
   // Resolve command path using which (pure Node.js, no shell)
-  // Special case: On Windows, use process.execPath for 'node' command
-  // This avoids ENOENT issues with which.sync on Windows CI environments
-  const commandPath = (process.platform === 'win32' && command === 'node')
-    ? process.execPath
-    : which.sync(command);
+  const commandPath = which.sync(command);
 
   // Build spawn options
+  // On Windows, use shell:true for 'node' command to avoid ENOENT issues
+  // This is safe because we're only enabling shell for the 'node' command with known args
+  const useShell = process.platform === 'win32' && command === 'node';
+
   const spawnOptions: SpawnSyncOptions = {
-    shell: false, // Prevents command injection - args passed directly to executable
+    shell: useShell, // shell:true on Windows for node, shell:false otherwise
     stdio: options.stdio ?? 'pipe',
     env: options.env,
     cwd: options.cwd,
@@ -153,14 +153,13 @@ export function safeExecResult(
   options: SafeExecOptions = {},
 ): SafeExecResult {
   try {
-    // Special case: On Windows, use process.execPath for 'node' command
-    // This avoids ENOENT issues with which.sync on Windows CI environments
-    const commandPath = (process.platform === 'win32' && command === 'node')
-      ? process.execPath
-      : which.sync(command);
+    const commandPath = which.sync(command);
+
+    // On Windows, use shell:true for 'node' command to avoid ENOENT issues
+    const useShell = process.platform === 'win32' && command === 'node';
 
     const spawnOptions: SpawnSyncOptions = {
-      shell: false,
+      shell: useShell,
       stdio: options.stdio ?? 'pipe',
       env: options.env,
       cwd: options.cwd,
