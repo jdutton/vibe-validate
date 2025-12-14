@@ -80,22 +80,23 @@ export class GitHubActionsProvider implements CIProvider {
     };
   }
 
-  async fetchFailureLogs(runId: string): Promise<FailureLogs> {
-    // Get run details to find the check name
+  async fetchFailureLogs(jobId: string): Promise<FailureLogs> {
+    // Get job details to find the check name
     let checkName = 'Unknown';
     try {
-      const runOutput = safeExecSync('gh', ['run', 'view', runId, '--json', 'name'], {
+      const jobOutput = safeExecSync('gh', ['run', 'view', '--job', jobId, '--json', 'name'], {
         encoding: 'utf8',
         stdio: 'pipe',
       });
-      const runData = JSON.parse(runOutput.toString());
-      checkName = runData.name ?? checkName;
+      const jobData = JSON.parse(jobOutput.toString());
+      checkName = jobData.name ?? checkName;
     } catch {
       // Ignore error, use default name
     }
 
-    // Fetch full logs (includes "Display validation state on failure" step)
-    const logs = safeExecSync('gh', ['run', 'view', runId, '--log'], {
+    // Fetch logs for specific job (critical for matrix workflows)
+    // Using --job ensures we get logs for THIS job only, not all jobs in the workflow run
+    const logs = safeExecSync('gh', ['run', 'view', '--log', '--job', jobId], {
       encoding: 'utf8',
       stdio: 'pipe',
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer to handle large logs
@@ -104,7 +105,7 @@ export class GitHubActionsProvider implements CIProvider {
     const validationResult = this.extractValidationResult(logs);
 
     return {
-      checkId: runId,
+      checkId: jobId,
       checkName,
       rawLogs: logs,
       failedStep: this.extractFailedStep(logs),
@@ -321,12 +322,16 @@ export class GitHubActionsProvider implements CIProvider {
       }
     }
 
-    // Extract run ID from details URL if available
+    // Extract run ID and job ID from details URL if available
+    // URL format: https://github.com/user/repo/actions/runs/<runId>/job/<jobId>
     let checkId = 'unknown';
     if (typeof check.detailsUrl === 'string') {
-      const runIdMatch = /\/runs\/(\d+)/.exec(check.detailsUrl);
-      if (runIdMatch) {
-        checkId = runIdMatch[1];
+      // eslint-disable-next-line security/detect-unsafe-regex -- Safe: Simple pattern with no backtracking risk
+      const urlMatch = /\/runs\/(\d+)(?:\/job\/(\d+))?/.exec(check.detailsUrl);
+      if (urlMatch) {
+        const [, runId, jobId] = urlMatch;
+        // Use job ID if available (for matrix jobs), otherwise use run ID
+        checkId = jobId || runId;
       }
     }
 

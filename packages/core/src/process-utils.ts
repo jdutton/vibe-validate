@@ -49,7 +49,8 @@ export function resolveGitRelativePath(cwd: string): string {
     throw new Error(`Invalid cwd: "${cwd}" - must be within git repository`);
   }
 
-  return resolved;
+  // Convert to forward slashes (git convention) for consistency across platforms
+  return resolved.split('\\').join('/');
 }
 
 /**

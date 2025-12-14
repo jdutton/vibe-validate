@@ -222,6 +222,63 @@ describe('GitHubActionsProvider', () => {
       expect(result.status).toBe('completed');
       expect(result.result).toBe('failure');
     });
+
+    it('should extract job ID from matrix job URLs', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
+      const ghResponse = {
+        number: 42,
+        title: 'test',
+        url: 'https://github.com/user/repo/pull/42',
+        headRefName: 'test',
+        statusCheckRollup: [
+          {
+            name: 'ubuntu-latest (Node 22)',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            detailsUrl: 'https://github.com/user/repo/actions/runs/20212253630/job/58019844806',
+          },
+          {
+            name: 'windows-latest (Node 22)',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            detailsUrl: 'https://github.com/user/repo/actions/runs/20212253630/job/58019844813',
+          },
+        ],
+      };
+
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
+
+      const result = await provider.fetchCheckStatus(42);
+
+      // Each matrix job should have its unique job ID, not the shared run ID
+      expect(result.checks[0].id).toBe('58019844806');
+      expect(result.checks[1].id).toBe('58019844813');
+    });
+
+    it('should fallback to run ID when job ID is not present (non-matrix jobs)', async () => {
+      const { safeExecSync } = await import('@vibe-validate/git');
+      const ghResponse = {
+        number: 42,
+        title: 'test',
+        url: 'https://github.com/user/repo/pull/42',
+        headRefName: 'test',
+        statusCheckRollup: [
+          {
+            name: 'Single job',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            detailsUrl: 'https://github.com/user/repo/actions/runs/123456',
+          },
+        ],
+      };
+
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
+
+      const result = await provider.fetchCheckStatus(42);
+
+      // Non-matrix job should use run ID since there's no /job/ in the URL
+      expect(result.checks[0].id).toBe('123456');
+    });
   });
 
   describe('fetchFailureLogs', () => {
