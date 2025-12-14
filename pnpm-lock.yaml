@@ -65,6 +65,9 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.26)(tsx@4.21.0)(yaml@2.8.2)
+      which:
+        specifier: ^5.0.0
+        version: 5.0.0
 
   packages/cli:
     dependencies:
