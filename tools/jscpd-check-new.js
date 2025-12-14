@@ -7,7 +7,7 @@
  */
 
 import { safeExecSync } from '../packages/git/dist/safe-exec.js';
-import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
@@ -26,23 +26,57 @@ const JSCPD_ARGS = [
  * Run jscpd and return results
  */
 function runJscpd() {
+  console.log(`🔍 Running jscpd on ${process.platform}...`);
+  console.log(`   Working directory: ${process.cwd()}`);
+  console.log(`   Output path: ${join('.', 'jscpd-report', 'jscpd-report.json')}`);
+
   try {
-    safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
+    const result = safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
+    console.log('   jscpd completed successfully');
+    if (result) {
+      console.log(`   Output: ${result.toString().substring(0, 200)}`);
+    }
   } catch (error) {
     // jscpd exits with error if duplications found, but we still get JSON
-    // Log error for debugging Windows CI issues
+    console.log(`   jscpd exited with error (this may be normal if duplications found)`);
+    if (error.status) {
+      console.log(`   Exit code: ${error.status}`);
+    }
     if (error.stderr) {
-      console.error('jscpd stderr:', error.stderr.toString());
+      console.error(`   stderr: ${error.stderr.toString()}`);
+    }
+    if (error.stdout) {
+      console.log(`   stdout: ${error.stdout.toString().substring(0, 200)}`);
     }
   }
 
   const reportPath = join('.', 'jscpd-report', 'jscpd-report.json');
+  console.log(`\n📋 Checking for report at: ${reportPath}`);
+
   if (!existsSync(reportPath)) {
-    console.error(`❌ jscpd report not generated at: ${reportPath}`);
+    console.error(`\n❌ jscpd report not generated!`);
+    console.error(`   Expected: ${reportPath}`);
     console.error(`   Current directory: ${process.cwd()}`);
+    console.error(`   Platform: ${process.platform}`);
+
+    // List what's in jscpd-report directory if it exists
+    const reportDir = join('.', 'jscpd-report');
+    if (existsSync(reportDir)) {
+      console.error(`   jscpd-report directory exists, listing contents...`);
+      try {
+        const files = readdirSync(reportDir);
+        console.error(`   Files: ${files.join(', ')}`);
+      } catch (e) {
+        console.error(`   Could not list directory: ${e.message}`);
+      }
+    } else {
+      console.error(`   jscpd-report directory does not exist!`);
+    }
+
     process.exit(1);
   }
 
+  console.log('   ✅ Report found, parsing...\n');
   return JSON.parse(readFileSync(reportPath, 'utf-8'));
 }
 
