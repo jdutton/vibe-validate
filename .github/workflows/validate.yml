@@ -34,8 +34,6 @@ jobs:
         run: pnpm -r build
       - name: Run validation
         run: pnpm validate
-        env:
-          DEBUG_SAFE_EXEC: "1"
     strategy:
       fail-fast: false
       matrix:
