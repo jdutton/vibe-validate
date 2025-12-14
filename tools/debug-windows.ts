@@ -259,8 +259,83 @@ try {
   error(`Exception spawning 'node' with shell: ${err}`);
 }
 
-// Test 8: Case Sensitivity Tests
-section('8. Case Sensitivity Tests');
+// Test 8: npm and .cmd File Handling
+section('8. npm and .cmd File Handling on Windows');
+try {
+  info('Testing npm availability', '');
+
+  // Check for npm
+  const npmWhich = which.sync('npm', { nothrow: true });
+  info('which.sync("npm")', npmWhich ?? 'null');
+  if (npmWhich) {
+    info('  Exists?', existsSync(npmWhich));
+    info('  Extension', npmWhich.slice(npmWhich.lastIndexOf('.')));
+  }
+
+  // Check for npm.cmd explicitly
+  const npmCmdWhich = which.sync('npm.cmd', { nothrow: true });
+  info('which.sync("npm.cmd")', npmCmdWhich ?? 'null');
+  if (npmCmdWhich) {
+    info('  Exists?', existsSync(npmCmdWhich));
+  }
+
+  // Try to spawn npm
+  info('Testing npm spawning', '');
+
+  // Without shell
+  try {
+    const npmNoShell = spawnSync('npm', ['--version'], { encoding: 'utf-8', shell: false });
+    if (npmNoShell.error) {
+      error('npm (no shell) failed: ' + npmNoShell.error.message);
+    } else {
+      success('npm (no shell) succeeded');
+      info('  Output', npmNoShell.stdout?.toString().trim());
+    }
+  } catch (err) {
+    error(`Exception with npm no shell: ${err}`);
+  }
+
+  // With shell
+  try {
+    const npmShell = spawnSync('npm', ['--version'], { encoding: 'utf-8', shell: true });
+    if (npmShell.error) {
+      error('npm (with shell) failed: ' + npmShell.error.message);
+    } else {
+      success('npm (with shell) succeeded');
+      info('  Output', npmShell.stdout?.toString().trim());
+    }
+  } catch (err) {
+    error(`Exception with npm with shell: ${err}`);
+  }
+
+  // Check pnpm (our actual package manager)
+  info('Testing pnpm availability', '');
+  const pnpmWhich = which.sync('pnpm', { nothrow: true });
+  info('which.sync("pnpm")', pnpmWhich ?? 'null');
+  if (pnpmWhich) {
+    info('  Exists?', existsSync(pnpmWhich));
+    info('  Extension', pnpmWhich.slice(pnpmWhich.lastIndexOf('.')));
+
+    // Try to get version
+    try {
+      const pnpmVersion = spawnSync(pnpmWhich, ['--version'], { encoding: 'utf-8' });
+      if (pnpmVersion.error) {
+        error('pnpm version failed: ' + pnpmVersion.error.message);
+      } else {
+        success('pnpm version succeeded');
+        info('  Output', pnpmVersion.stdout?.toString().trim());
+      }
+    } catch (err) {
+      error(`Exception with pnpm: ${err}`);
+    }
+  }
+
+} catch (err) {
+  error(`Failed npm/cmd testing: ${err}`);
+}
+
+// Test 9: Case Sensitivity Tests
+section('9. Case Sensitivity Tests');
 if (whichPath) {
   const upperPath = whichPath.toUpperCase();
   const lowerPath = whichPath.toLowerCase();
@@ -273,8 +348,8 @@ if (whichPath) {
   ));
 }
 
-// Test 9: Import safe-exec and test
-section('9. Testing @vibe-validate/git safe-exec');
+// Test 10: Import safe-exec and test
+section('10. Testing @vibe-validate/git safe-exec');
 try {
   // Try to import the package
   const safeExecModule = await import('@vibe-validate/git');
@@ -321,8 +396,8 @@ try {
   error(`Failed to import or test @vibe-validate/git: ${err}`);
 }
 
-// Test 10: jscpd (Code Duplication Checker)
-section('10. Testing jscpd on Windows');
+// Test 11: jscpd (Code Duplication Checker)
+section('11. Testing jscpd on Windows');
 try {
   // Check if jscpd is available
   const jscpdAvailable = which.sync('jscpd', { nothrow: true });
@@ -400,8 +475,8 @@ try {
   error(`Failed to test jscpd: ${err}`);
 }
 
-// Test 11: Shell and Environment Variable Behavior
-section('11. Shell and Environment Variable Behavior');
+// Test 12: Shell and Environment Variable Behavior
+section('12. Shell and Environment Variable Behavior');
 try {
   info('Testing environment variable expansion', '');
 
@@ -434,8 +509,8 @@ try {
   error(`Failed environment variable tests: ${err}`);
 }
 
-// Test 12: Concurrent Execution
-section('12. Concurrent Execution Tests');
+// Test 13: Concurrent Execution
+section('13. Concurrent Execution Tests');
 try {
   info('Testing concurrent which.sync calls', '');
 
@@ -493,8 +568,8 @@ try {
   error(`Failed concurrent execution tests: ${err}`);
 }
 
-// Test 13: Summary
-section('13. Summary & Recommendations');
+// Test 14: Summary
+section('14. Summary & Recommendations');
 
 const issues: string[] = [];
 const recommendations: string[] = [];
