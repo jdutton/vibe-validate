@@ -321,8 +321,180 @@ try {
   error(`Failed to import or test @vibe-validate/git: ${err}`);
 }
 
-// Test 10: Summary
-section('10. Summary & Recommendations');
+// Test 10: jscpd (Code Duplication Checker)
+section('10. Testing jscpd on Windows');
+try {
+  // Check if jscpd is available
+  const jscpdAvailable = which.sync('jscpd', { nothrow: true });
+  if (jscpdAvailable) {
+    success('jscpd is available in PATH');
+    info('  Path', jscpdAvailable);
+    info('  Exists?', existsSync(jscpdAvailable));
+
+    // Try to run jscpd --version
+    try {
+      const jscpdVersion = spawnSync(jscpdAvailable, ['--version'], { encoding: 'utf-8' });
+      if (jscpdVersion.error) {
+        error(`jscpd --version failed: ${jscpdVersion.error.message}`);
+      } else {
+        success('jscpd --version succeeded');
+        info('  Exit code', jscpdVersion.status);
+        info('  Output', jscpdVersion.stdout?.toString().trim());
+      }
+    } catch (err) {
+      error(`Exception running jscpd: ${err}`);
+    }
+
+    // Test with a simple directory
+    info('Testing jscpd on tools directory', '');
+    try {
+      const jscpdTest = spawnSync(jscpdAvailable, ['tools', '--min-tokens', '50', '--format', 'json'], {
+        encoding: 'utf-8',
+        timeout: 10000,
+      });
+      if (jscpdTest.error) {
+        error(`jscpd test failed: ${jscpdTest.error.message}`);
+        info('  Error code', (jscpdTest.error as any).code);
+      } else {
+        success('jscpd test completed');
+        info('  Exit code', jscpdTest.status);
+        if (jscpdTest.stdout) {
+          const outputLines = jscpdTest.stdout.toString().split('\n').length;
+          info('  Output lines', outputLines);
+        }
+        if (jscpdTest.stderr) {
+          warn('  Stderr present');
+          info('  Stderr lines', jscpdTest.stderr.toString().split('\n').length);
+        }
+      }
+    } catch (err) {
+      error(`Exception testing jscpd: ${err}`);
+    }
+  } else {
+    warn('jscpd not found in PATH');
+    info('This is expected on fresh Windows CI - jscpd is installed as dev dependency');
+
+    // Try via node_modules
+    const nodeModulesJscpd = join(process.cwd(), 'node_modules', '.bin', 'jscpd.cmd');
+    info('Checking node_modules/.bin/jscpd.cmd', nodeModulesJscpd);
+    info('  Exists?', existsSync(nodeModulesJscpd));
+
+    if (existsSync(nodeModulesJscpd)) {
+      try {
+        const jscpdTest = spawnSync(nodeModulesJscpd, ['--version'], {
+          encoding: 'utf-8',
+          shell: true, // .cmd files need shell on Windows
+        });
+        if (jscpdTest.error) {
+          error(`node_modules jscpd failed: ${jscpdTest.error.message}`);
+        } else {
+          success('node_modules jscpd works');
+          info('  Output', jscpdTest.stdout?.toString().trim());
+        }
+      } catch (err) {
+        error(`Exception with node_modules jscpd: ${err}`);
+      }
+    }
+  }
+} catch (err) {
+  error(`Failed to test jscpd: ${err}`);
+}
+
+// Test 11: Shell and Environment Variable Behavior
+section('11. Shell and Environment Variable Behavior');
+try {
+  info('Testing environment variable expansion', '');
+
+  // Test with shell: false (our default)
+  const noShellResult = spawnSync('node', ['-e', 'console.log("$PATH")'], {
+    encoding: 'utf-8',
+    shell: false,
+  });
+  info('With shell: false', noShellResult.stdout?.toString().trim());
+
+  // Test with shell: true
+  const shellResult = spawnSync('node', ['-e', 'console.log("$PATH")'], {
+    encoding: 'utf-8',
+    shell: true,
+  });
+  info('With shell: true', shellResult.stdout?.toString().trim());
+
+  // Test ${PATH} syntax
+  const bracesResult = spawnSync('node', ['-e', 'console.log("${PATH}")'], {
+    encoding: 'utf-8',
+    shell: false,
+  });
+  info('With braces ${PATH}', bracesResult.stdout?.toString().trim());
+
+  // Check PowerShell vs cmd behavior
+  info('Default shell on Windows', process.env.COMSPEC || 'unknown');
+  info('PowerShell available?', which.sync('pwsh', { nothrow: true }) ? 'yes' : 'no');
+
+} catch (err) {
+  error(`Failed environment variable tests: ${err}`);
+}
+
+// Test 12: Concurrent Execution
+section('12. Concurrent Execution Tests');
+try {
+  info('Testing concurrent which.sync calls', '');
+
+  const start = Date.now();
+  const promises = [];
+
+  for (let i = 0; i < 10; i++) {
+    promises.push(
+      Promise.resolve().then(() => {
+        try {
+          const path = which.sync('node', { nothrow: true });
+          return { success: true, path, index: i };
+        } catch (err) {
+          return { success: false, error: String(err), index: i };
+        }
+      })
+    );
+  }
+
+  Promise.all(promises).then(results => {
+    const successes = results.filter(r => r.success).length;
+    const failures = results.filter(r => !r.success).length;
+    const duration = Date.now() - start;
+
+    info('Completed in', `${duration}ms`);
+    info('Successes', successes);
+    info('Failures', failures);
+
+    if (failures > 0) {
+      warn('Some concurrent calls failed:');
+      results.filter(r => !r.success).forEach(r => {
+        info(`  [${r.index}]`, (r as any).error);
+      });
+    }
+  });
+
+  // Synchronous version (for comparison)
+  info('Testing synchronous which.sync calls', '');
+  const syncStart = Date.now();
+  let syncFailures = 0;
+
+  for (let i = 0; i < 10; i++) {
+    try {
+      which.sync('node', { nothrow: true });
+    } catch (err) {
+      syncFailures++;
+    }
+  }
+
+  const syncDuration = Date.now() - syncStart;
+  info('Synchronous duration', `${syncDuration}ms`);
+  info('Synchronous failures', syncFailures);
+
+} catch (err) {
+  error(`Failed concurrent execution tests: ${err}`);
+}
+
+// Test 13: Summary
+section('13. Summary & Recommendations');
 
 const issues: string[] = [];
 const recommendations: string[] = [];

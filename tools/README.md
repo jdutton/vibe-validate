@@ -18,7 +18,8 @@ Comprehensive Windows diagnostics for debugging CI issues with node path resolut
 5. File extension handling (PATHEXT)
 6. Spawn tests with different approaches
 7. Integration with @vibe-validate/git safe-exec
-8. Summary and recommendations
+8. jscpd (code duplication checker) availability and execution
+9. Summary and recommendations
 
 **Usage:**
 ```bash
