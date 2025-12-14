@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- **CRITICAL: Fixed CI workflow validation check** - Workflow was incorrectly passing even when tests failed because grep matched nested `passed: true` fields instead of top-level validation result (simplified to use exit codes)
 - Pre-commit hook no longer falsely flags the local branch as stale during merge commits
 
 ### Documentation
