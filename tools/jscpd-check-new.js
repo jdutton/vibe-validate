@@ -8,8 +8,9 @@
 
 import { safeExecSync } from '../packages/git/dist/safe-exec.js';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const BASELINE_FILE = '.github/.jscpd-baseline.json';
+const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
 
 const JSCPD_ARGS = [
   '.',
@@ -27,13 +28,18 @@ const JSCPD_ARGS = [
 function runJscpd() {
   try {
     safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
-  } catch {
+  } catch (error) {
     // jscpd exits with error if duplications found, but we still get JSON
+    // Log error for debugging Windows CI issues
+    if (error.stderr) {
+      console.error('jscpd stderr:', error.stderr.toString());
+    }
   }
 
-  const reportPath = './jscpd-report/jscpd-report.json';
+  const reportPath = join('.', 'jscpd-report', 'jscpd-report.json');
   if (!existsSync(reportPath)) {
-    console.error('❌ jscpd report not generated');
+    console.error(`❌ jscpd report not generated at: ${reportPath}`);
+    console.error(`   Current directory: ${process.cwd()}`);
     process.exit(1);
   }
 

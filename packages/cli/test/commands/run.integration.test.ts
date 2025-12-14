@@ -34,7 +34,18 @@ function execCLI(cliArgs: string[], options?: { encoding?: BufferEncoding; stdio
  * @throws Error if command fails without producing output
  */
 function execCLIWithStderr(cliArgs: string[], options?: { encoding?: BufferEncoding; stdio?: any; cwd?: string; env?: Record<string, string> }): { stdout: string; stderr: string; combined: string; status?: number } {
-  const result = safeExecResult('node', [CLI_BIN, ...cliArgs], { encoding: 'utf-8', ...options });
+  const result = safeExecResult('node', [CLI_BIN, ...cliArgs], {
+    encoding: 'utf-8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'Test User',
+      GIT_AUTHOR_EMAIL: 'test@example.com',
+      GIT_COMMITTER_NAME: 'Test User',
+      GIT_COMMITTER_EMAIL: 'test@example.com',
+      ...options?.env, // Allow test-specific overrides
+    },
+    ...options
+  });
 
   const stdout = result.stdout.toString();
   const stderr = result.stderr.toString();
@@ -57,9 +68,20 @@ function execCLIWithStderr(cliArgs: string[], options?: { encoding?: BufferEncod
 /**
  * Execute vibe-validate CLI with absolute path
  */
-function execCLIAbsolute(absolutePath: string, cliArgs: string[], options?: { encoding?: BufferEncoding; stdio?: any; cwd?: string }): string {
+function execCLIAbsolute(absolutePath: string, cliArgs: string[], options?: { encoding?: BufferEncoding; stdio?: any; cwd?: string; env?: Record<string, string> }): string {
   try {
-    return safeExecSync('node', [absolutePath, ...cliArgs], options ?? { encoding: 'utf-8' }) as string;
+    return safeExecSync('node', [absolutePath, ...cliArgs], {
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'Test User',
+        GIT_AUTHOR_EMAIL: 'test@example.com',
+        GIT_COMMITTER_NAME: 'Test User',
+        GIT_COMMITTER_EMAIL: 'test@example.com',
+        ...options?.env,
+      },
+      ...options
+    }) as string;
   } catch (err: any) {
     // For successful non-zero exits (like help commands), return stdout
     if (err.stdout) {
