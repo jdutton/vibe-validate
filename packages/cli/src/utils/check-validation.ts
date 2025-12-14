@@ -8,8 +8,9 @@
 import { getGitTreeHash } from '@vibe-validate/git';
 import { readHistoryNote } from '@vibe-validate/history';
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import { displayCachedResult } from './display-cached-result.js';
+import { outputYamlResult } from './yaml-output.js';
 import chalk from 'chalk';
-import { stringify as yamlStringify } from 'yaml';
 
 /**
  * Check validation status for current working tree
@@ -37,8 +38,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
         exists: false,
         error: `Not in git repository: ${errorMessage}`,
       };
-      process.stdout.write('---\n');
-      process.stdout.write(yamlStringify(errorOutput));
+      await outputYamlResult(errorOutput);
     } else {
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  Not in git repository'));
@@ -61,8 +61,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
         treeHash: currentTreeHash,
         error: `Failed to read validation history: ${errorMessage}`,
       };
-      process.stdout.write('---\n');
-      process.stdout.write(yamlStringify(errorOutput));
+      await outputYamlResult(errorOutput);
     } else {
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  Failed to read validation history'));
@@ -79,8 +78,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
         exists: false,
         treeHash: currentTreeHash,
       };
-      process.stdout.write('---\n');
-      process.stdout.write(yamlStringify(noHistoryOutput));
+      await outputYamlResult(noHistoryOutput);
     } else {
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  No validation history for current working tree'));
@@ -99,17 +97,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
 
     if (yaml) {
       // YAML mode: Output failed result as YAML to stdout
-      process.stdout.write('---\n');
-      process.stdout.write(yamlStringify(mostRecent.result));
-
-      // Wait for stdout to flush before exiting
-      await new Promise<void>(resolve => {
-        if (process.stdout.write('')) {
-          resolve();
-        } else {
-          process.stdout.once('drain', resolve);
-        }
-      });
+      await outputYamlResult(mostRecent.result);
     } else {
       // Human-readable mode: Display failure details
       console.log(chalk.red('❌ Last validation failed for current working tree'));
@@ -139,30 +127,10 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
   // Validation passed!
   if (yaml) {
     // YAML mode: Output validation result as YAML to stdout
-    process.stdout.write('---\n');
-    process.stdout.write(yamlStringify(passingRun.result));
-
-    // Wait for stdout to flush before exiting
-    await new Promise<void>(resolve => {
-      if (process.stdout.write('')) {
-        resolve();
-      } else {
-        process.stdout.once('drain', resolve);
-      }
-    });
+    await outputYamlResult(passingRun.result);
   } else {
     // Human-readable mode: Display status message
-    const durationSecs = (passingRun.duration / 1000).toFixed(1);
-    console.log(chalk.green('✅ Validation already passed for current working tree'));
-    console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
-    console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
-    console.log(chalk.gray(`   Duration: ${durationSecs}s`));
-    console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
-
-    if (passingRun.result?.phases) {
-      const totalSteps = passingRun.result.phases.reduce((sum, phase) => sum + (phase.steps?.length ?? 0), 0);
-      console.log(chalk.gray(`   Phases: ${passingRun.result.phases.length}, Steps: ${totalSteps}`));
-    }
+    displayCachedResult(passingRun, currentTreeHash);
   }
 
   process.exit(0);

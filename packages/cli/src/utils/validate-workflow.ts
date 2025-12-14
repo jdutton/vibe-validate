@@ -17,8 +17,10 @@ import {
 } from '@vibe-validate/history';
 import type { AgentContext } from './context-detector.js';
 import { createRunnerConfig } from './runner-adapter.js';
-import chalk from 'chalk';
+import { outputYamlResult } from './yaml-output.js';
+import { displayCachedResult } from './display-cached-result.js';
 import { stringify as yamlStringify } from 'yaml';
+import chalk from 'chalk';
 
 export interface ValidateWorkflowOptions {
   force?: boolean;
@@ -29,40 +31,6 @@ export interface ValidateWorkflowOptions {
   context: AgentContext;
 }
 
-/**
- * Wait for stdout to flush before continuing
- *
- * Critical for YAML output when stdout is redirected to a file (CI).
- * Without this, process.exit() can kill the process before the write buffer flushes.
- *
- * @internal
- */
-async function flushStdout(): Promise<void> {
-  await new Promise<void>(resolve => {
-    if (process.stdout.write('')) {
-      resolve();
-    } else {
-      process.stdout.once('drain', resolve);
-    }
-  });
-}
-
-/**
- * Output validation result as YAML
- *
- * @param result - Validation result to output
- * @internal
- */
-async function outputYaml(result: unknown): Promise<void> {
-  // Small delay to ensure stderr is flushed before writing to stdout
-  await new Promise(resolve => setTimeout(resolve, 10));
-
-  // Output YAML document separator (RFC 4627)
-  process.stdout.write('---\n');
-  process.stdout.write(yamlStringify(result));
-
-  await flushStdout();
-}
 
 /**
  * Check cache for passing validation run
@@ -91,19 +59,9 @@ async function checkCache(
         result.isCachedResult = true;
 
         if (yaml) {
-          await outputYaml(result);
+          await outputYamlResult(result);
         } else {
-          const durationSecs = (passingRun.duration / 1000).toFixed(1);
-          console.log(chalk.green('✅ Validation already passed for current working tree'));
-          console.log(chalk.gray(`   Tree hash: ${treeHash.substring(0, 12)}...`));
-          console.log(chalk.gray(`   Last validated: ${passingRun.timestamp}`));
-          console.log(chalk.gray(`   Duration: ${durationSecs}s`));
-          console.log(chalk.gray(`   Branch: ${passingRun.branch}`));
-
-          if (passingRun.result.phases) {
-            const totalSteps = passingRun.result.phases.reduce((sum, phase) => sum + phase.steps.length, 0);
-            console.log(chalk.gray(`   Phases: ${passingRun.result.phases.length}, Steps: ${totalSteps}`));
-          }
+          displayCachedResult(passingRun, treeHash);
         }
 
         return result;
@@ -303,15 +261,21 @@ export async function runValidateWorkflow(
         // Small delay to ensure stderr error messages are flushed first
         await new Promise(resolve => setTimeout(resolve, 10));
 
-        // Output YAML document separator and result to stderr
+        // Output YAML document with separators to stderr
         process.stderr.write('\n---\n');
-        process.stderr.write(yamlStringify(result));
+        const yamlContent = yamlStringify(result);
+        process.stderr.write(yamlContent);
+        // Write closing YAML document separator (ensure newline before it)
+        if (!yamlContent.endsWith('\n')) {
+          process.stderr.write('\n');
+        }
+        process.stderr.write('---\n');
       }
     }
 
     // Output YAML validation result if --yaml flag is set (to stdout)
     if (yaml) {
-      await outputYaml(result);
+      await outputYamlResult(result);
     }
 
     return result;
@@ -327,7 +291,7 @@ export async function runValidateWorkflow(
         errorStack: error instanceof Error ? error.stack : undefined,
       };
 
-      await outputYaml(errorResult);
+      await outputYamlResult(errorResult);
     }
 
     // Re-throw to allow caller to handle exit

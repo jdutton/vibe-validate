@@ -26,6 +26,7 @@
     { "path": "./packages/git" },
     { "path": "./packages/extractors" },
     { "path": "./packages/config" },
+    { "path": "./packages/history" },
     { "path": "./packages/cli" }
   ]
 }
