@@ -136,7 +136,12 @@ export class GitHubActionsProvider implements CIProvider {
       if (parts.length < 3) return '';
       const contentWithTimestamp = parts.slice(2).join('\t');
       // Strip timestamp (format: "2025-10-21T00:56:24.8654285Z <content>")
-      return contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '').replace(/^[0-9T:.Z-]+$/, '');
+      const afterTimestampRemoval = contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '');
+      // Remove line if it's ONLY a timestamp (but keep "---" separator)
+      if (/^[0-9T:.Z-]+$/.test(afterTimestampRemoval) && afterTimestampRemoval !== '---') {
+        return '';
+      }
+      return afterTimestampRemoval;
     };
   }
 
@@ -147,17 +152,26 @@ export class GitHubActionsProvider implements CIProvider {
     lines: string[],
     extractContent: (_line: string) => string
   ): { startIdx: number; endIdx: number } | null {
-    // Find start: line containing "VALIDATION RESULT" (skip ANSI-coded lines)
-    const startIdx = lines.findIndex(l => {
-      return l.includes('VALIDATION RESULT') && !l.includes('[36;1m') && !l.includes('[0m');
-    });
+    // Find start: line containing "---" (YAML document separator)
+    // Must be followed by validation result fields like "passed:", "timestamp:", etc.
+    let startIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const content = extractContent(lines[i]).trim();
+      if (content === '---') {
+        // Check if next few lines look like validation result YAML
+        if (this.looksLikeValidationResult(lines, i + 1, extractContent)) {
+          startIdx = i;
+          break;
+        }
+      }
+    }
 
     if (startIdx < 0) {
       return null;
     }
 
-    // Find end: closing separator after YAML content
-    const endIdx = this.findClosingSeparator(lines, startIdx, extractContent);
+    // Find end: next "---" separator or end of meaningful YAML content
+    const endIdx = this.findYamlEnd(lines, startIdx + 1, extractContent);
     if (endIdx < 0) {
       return null;
     }
@@ -166,30 +180,57 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   /**
-   * Find the closing separator (====) after YAML content
+   * Check if lines starting at startIdx look like validation result YAML
    */
-  private findClosingSeparator(
+  private looksLikeValidationResult(
+    lines: string[],
+    startIdx: number,
+    extractContent: (_line: string) => string
+  ): boolean {
+    // Check first 10 lines for validation result fields
+    for (let i = startIdx; i < Math.min(startIdx + 10, lines.length); i++) {
+      const content = extractContent(lines[i]).trim();
+      // Look for key validation result fields
+      if (content.startsWith('passed:') ||
+          content.startsWith('failedStep:') ||
+          (content.startsWith('treeHash:') && content.length > 20)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Find the end of YAML content (next --- separator or end of document)
+   */
+  private findYamlEnd(
     lines: string[],
     startIdx: number,
     extractContent: (_line: string) => string
   ): number {
-    let foundYamlContent = false;
+    let lastContentLine = startIdx;
 
-    for (let i = startIdx + 1; i < lines.length; i++) {
+    for (let i = startIdx; i < lines.length; i++) {
       const content = extractContent(lines[i]).trim();
 
-      // Check if we've seen YAML content
-      if (content.startsWith('passed:') || content.startsWith('timestamp:') || content.startsWith('treeHash:')) {
-        foundYamlContent = true;
+      // Stop at next YAML document separator
+      if (content === '---' || content === '...') {
+        return i;
       }
 
-      // Look for closing separator (40+ equals signs) after YAML content
-      if (foundYamlContent && /^={40,}$/.exec(content)) {
-        return i;
+      // Track last non-empty line
+      if (content.length > 0) {
+        lastContentLine = i;
+      }
+
+      // If we see GitHub Actions markers after YAML content, we're done
+      if (content.startsWith('##[') && i > startIdx + 5) {
+        return lastContentLine + 1;
       }
     }
 
-    return -1;
+    // Return last content line + 1 if we hit end of logs
+    return lastContentLine + 1;
   }
 
   /**
@@ -200,12 +241,17 @@ export class GitHubActionsProvider implements CIProvider {
     boundaries: { startIdx: number; endIdx: number },
     extractContent: (_line: string) => string
   ): string {
-    // YAML starts at startIdx + 2 (skip "VALIDATION RESULT" and separator)
-    const yamlStartIdx = boundaries.startIdx + 2;
+    // YAML starts at startIdx + 1 (skip the "---" separator)
+    const yamlStartIdx = boundaries.startIdx + 1;
     const yamlLines: string[] = [];
 
     for (let i = yamlStartIdx; i < boundaries.endIdx; i++) {
-      yamlLines.push(extractContent(lines[i]));
+      const content = extractContent(lines[i]);
+      // Include all lines (even empty ones) to preserve YAML structure
+      // Only skip GitHub Actions markers
+      if (!content.startsWith('##[')) {
+        yamlLines.push(content);
+      }
     }
 
     return yamlLines.join('\n').trim();

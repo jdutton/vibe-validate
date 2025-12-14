@@ -109,8 +109,10 @@ export function safeExecSync(
     encoding: options.encoding,
   };
 
-  // Execute with absolute path
-  const result = spawnSync(commandPath, args, spawnOptions);
+  // Execute with absolute path (or command name if using shell on Windows)
+  // When shell:true, use command name so shell can resolve it properly
+  const execCommand = useShell ? command : commandPath;
+  const result = spawnSync(execCommand, args, spawnOptions);
 
   // Check for spawn errors
   if (result.error) {
@@ -170,7 +172,9 @@ export function safeExecResult(
       encoding: options.encoding,
     };
 
-    const result = spawnSync(commandPath, args, spawnOptions);
+    // When shell:true, use command name so shell can resolve it properly
+    const execCommand = useShell ? command : commandPath;
+    const result = spawnSync(execCommand, args, spawnOptions);
 
     return {
       status: result.status ?? -1,

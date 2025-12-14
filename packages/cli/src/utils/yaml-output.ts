@@ -36,6 +36,9 @@ export async function outputYamlResult(result: unknown): Promise<void> {
   // Write pure YAML
   process.stdout.write(stringifyYaml(result));
 
+  // Write closing YAML document separator
+  process.stdout.write('---\n');
+
   // CRITICAL: Wait for stdout to flush before exiting
   await new Promise<void>(resolve => {
     if (process.stdout.write('')) {
