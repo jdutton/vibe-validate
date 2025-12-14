@@ -7,10 +7,14 @@
  */
 
 import { safeExecSync } from '../packages/git/dist/safe-exec.js';
-import { readFileSync, existsSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
+// For Node.js fs operations (supports backslashes on Windows)
+const JSCPD_OUTPUT_DIR = join('.', 'jscpd-report');
+// For jscpd CLI (requires forward slashes for cross-platform compatibility)
+const JSCPD_OUTPUT_PATH = './jscpd-report';
 
 const JSCPD_ARGS = [
   '.',
@@ -19,7 +23,7 @@ const JSCPD_ARGS = [
   '--reporters', 'json',
   '--format', 'typescript,javascript',
   '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
-  '--output', './jscpd-report'
+  '--output', JSCPD_OUTPUT_PATH  // Always use forward slashes for jscpd (works on Windows too)
 ];
 
 /**
@@ -28,7 +32,15 @@ const JSCPD_ARGS = [
 function runJscpd() {
   console.log(`🔍 Running jscpd on ${process.platform}...`);
   console.log(`   Working directory: ${process.cwd()}`);
-  console.log(`   Output path: ${join('.', 'jscpd-report', 'jscpd-report.json')}`);
+  console.log(`   jscpd --output arg: ${JSCPD_OUTPUT_PATH} (forward slashes for cross-platform)`);
+  console.log(`   Node.js check path: ${JSCPD_OUTPUT_DIR}`);
+  console.log(`   Report path: ${join(JSCPD_OUTPUT_DIR, 'jscpd-report.json')}`);
+
+  // Ensure output directory exists (may be required on Windows)
+  if (!existsSync(JSCPD_OUTPUT_DIR)) {
+    console.log(`   Creating output directory: ${JSCPD_OUTPUT_DIR}`);
+    mkdirSync(JSCPD_OUTPUT_DIR, { recursive: true });
+  }
 
   try {
     const result = safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
@@ -50,7 +62,7 @@ function runJscpd() {
     }
   }
 
-  const reportPath = join('.', 'jscpd-report', 'jscpd-report.json');
+  const reportPath = join(JSCPD_OUTPUT_DIR, 'jscpd-report.json');
   console.log(`\n📋 Checking for report at: ${reportPath}`);
 
   if (!existsSync(reportPath)) {
@@ -61,11 +73,10 @@ function runJscpd() {
     console.log(`   Platform: ${process.platform}`);
 
     // List what's in jscpd-report directory if it exists
-    const reportDir = join('.', 'jscpd-report');
-    if (existsSync(reportDir)) {
+    if (existsSync(JSCPD_OUTPUT_DIR)) {
       console.log(`   jscpd-report directory EXISTS`);
       try {
-        const files = readdirSync(reportDir);
+        const files = readdirSync(JSCPD_OUTPUT_DIR);
         console.log(`   Files in directory: ${JSON.stringify(files)}`);
       } catch (e) {
         console.log(`   Cannot list directory: ${e.message}`);
