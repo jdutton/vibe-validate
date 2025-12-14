@@ -6,6 +6,7 @@ import { preCommitCommand } from '../../src/commands/pre-commit.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
+import * as utils from '@vibe-validate/utils';
 import * as history from '@vibe-validate/history';
 import * as configLoader from '../../src/utils/config-loader.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
@@ -19,6 +20,16 @@ vi.mock('@vibe-validate/core', async () => {
   };
 });
 
+// Mock the utils module
+vi.mock('@vibe-validate/utils', async () => {
+  const actual = await vi.importActual<typeof utils>('@vibe-validate/utils');
+  return {
+    ...actual,
+    safeExecFromString: vi.fn(),
+    isToolAvailable: vi.fn(),
+  };
+});
+
 // Mock the git module
 vi.mock('@vibe-validate/git', async () => {
   const actual = await vi.importActual<typeof git>('@vibe-validate/git');
@@ -29,8 +40,6 @@ vi.mock('@vibe-validate/git', async () => {
     isCurrentBranchBehindTracking: vi.fn(),
     getPartiallyStagedFiles: vi.fn().mockReturnValue([]),
     isMergeInProgress: vi.fn(),
-    safeExecFromString: vi.fn(),
-    isToolAvailable: vi.fn(),
   };
 });
 
@@ -84,8 +93,8 @@ describe('pre-commit command', () => {
     vi.mocked(git.isCurrentBranchBehindTracking).mockReset();
     vi.mocked(git.getPartiallyStagedFiles).mockReset();
     vi.mocked(git.isMergeInProgress).mockReset();
-    vi.mocked(git.safeExecFromString).mockReset();
-    vi.mocked(git.isToolAvailable).mockReset();
+    vi.mocked(utils.safeExecFromString).mockReset();
+    vi.mocked(utils.isToolAvailable).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
 
     // Set default mock values (tests can override)
@@ -93,8 +102,8 @@ describe('pre-commit command', () => {
     vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
     vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
-    vi.mocked(git.safeExecFromString).mockReturnValue(''); // Default empty output
-    vi.mocked(git.isToolAvailable).mockReturnValue(false); // No tools available by default
+    vi.mocked(utils.safeExecFromString).mockReturnValue(''); // Default empty output
+    vi.mocked(utils.isToolAvailable).mockReturnValue(false); // No tools available by default
   });
 
   afterEach(() => {
@@ -322,7 +331,7 @@ describe('pre-commit command', () => {
       const error: any = new Error('Command failed');
       error.stdout = '';
       error.stderr = 'Secrets detected';
-      vi.mocked(git.safeExecFromString).mockImplementation(() => {
+      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
         throw error;
       });
 
@@ -457,7 +466,7 @@ describe('pre-commit command', () => {
       const error: any = new Error('Command not found');
       error.stdout = '';
       error.stderr = 'nonexistent-tool: command not found';
-      vi.mocked(git.safeExecFromString).mockImplementation(() => {
+      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
         throw error;
       });
 
@@ -552,7 +561,7 @@ describe('pre-commit command', () => {
       const error: any = new Error('Command failed');
       error.stdout = 'Found: AWS_SECRET_KEY=abc123';
       error.stderr = 'Secret detected in staged files';
-      vi.mocked(git.safeExecFromString).mockImplementation(() => {
+      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
         throw error;
       });
 

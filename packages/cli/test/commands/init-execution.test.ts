@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { safeExecSync, safeExecResult } from '@vibe-validate/git';
+import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
 
 /**
  * Execute CLI command and return combined output

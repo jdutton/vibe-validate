@@ -15,7 +15,7 @@ import {
 
 // Mock Node.js modules
 vi.mock('node:fs');
-vi.mock('@vibe-validate/git', () => ({
+vi.mock('@vibe-validate/utils', () => ({
   isToolAvailable: vi.fn(() => true),
   safeExecFromString: vi.fn(() => ''),
 }));
@@ -69,7 +69,7 @@ describe('secret-scanning', () => {
 
   describe('detectSecretScanningTools', () => {
     it('should detect both tools when both are available and configured', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(true);
 
@@ -91,7 +91,7 @@ describe('secret-scanning', () => {
     });
 
     it('should detect gitleaks available but not configured', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(false);
 
@@ -105,7 +105,7 @@ describe('secret-scanning', () => {
     });
 
     it('should detect gitleaks configured but not available', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(false);
 
       vi.mocked(existsSync).mockImplementation((path) => {
@@ -122,7 +122,7 @@ describe('secret-scanning', () => {
     });
 
     it('should always report secretlint as available via npx', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(false);
       vi.mocked(existsSync).mockReturnValue(false);
 
@@ -158,7 +158,7 @@ describe('secret-scanning', () => {
     });
 
     it('should run both tools when both configs exist (autodetect)', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(true);
 
@@ -170,7 +170,7 @@ describe('secret-scanning', () => {
     });
 
     it('should run only gitleaks when only gitleaks config exists', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockImplementation((path) => {
         return path.toString().includes('gitleaks');
@@ -183,7 +183,7 @@ describe('secret-scanning', () => {
     });
 
     it('should run only secretlint when only secretlint config exists', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(false);
       vi.mocked(existsSync).mockImplementation((path) => {
         return path.toString().includes('secretlint');
@@ -196,7 +196,7 @@ describe('secret-scanning', () => {
     });
 
     it('should fallback to gitleaks when no configs exist and gitleaks available', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(false);
 
@@ -210,7 +210,7 @@ describe('secret-scanning', () => {
     });
 
     it('should fallback to secretlint when no configs and gitleaks unavailable', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(false);
 
       vi.mocked(existsSync).mockReturnValue(false);
@@ -225,7 +225,7 @@ describe('secret-scanning', () => {
     });
 
     it('should include gitleaks even when unavailable if config exists (will skip during execution)', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(false);
       vi.mocked(existsSync).mockImplementation((path) => {
         return path.toString().includes('gitleaks');
@@ -238,7 +238,7 @@ describe('secret-scanning', () => {
     });
 
     it('should treat "autodetect" keyword as undefined', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(existsSync).mockReturnValue(false);
 
@@ -251,7 +251,7 @@ describe('secret-scanning', () => {
 
   describe('runSecretScan', () => {
     it('should return success result when scan passes', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/git');
+      const { safeExecFromString } = await import('@vibe-validate/utils');
       vi.mocked(safeExecFromString).mockReturnValue('No secrets found');
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
@@ -263,7 +263,7 @@ describe('secret-scanning', () => {
     });
 
     it('should return failure result when scan finds secrets', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/git');
+      const { safeExecFromString } = await import('@vibe-validate/utils');
       const error: any = new Error('Secrets found');
       error.stderr = Buffer.from('Found secret: API key');
       error.stdout = Buffer.from('Scan output');
@@ -281,7 +281,7 @@ describe('secret-scanning', () => {
     });
 
     it('should skip gitleaks if command not available', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(false);
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
@@ -292,7 +292,7 @@ describe('secret-scanning', () => {
     });
 
     it('should not skip secretlint (always available via npx)', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/git');
+      const { safeExecFromString } = await import('@vibe-validate/utils');
       const error: any = new Error('Secrets found');
       error.stderr = Buffer.from('Found secret');
       error.stdout = Buffer.from('');
@@ -307,7 +307,7 @@ describe('secret-scanning', () => {
     });
 
     it('should include output when verbose is true', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/git');
+      const { safeExecFromString } = await import('@vibe-validate/utils');
       vi.mocked(safeExecFromString).mockReturnValue('Detailed output');
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', true);
@@ -317,7 +317,7 @@ describe('secret-scanning', () => {
     });
 
     it('should not include output when verbose is false', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/git');
+      const { safeExecFromString } = await import('@vibe-validate/utils');
       vi.mocked(safeExecFromString).mockReturnValue('Detailed output');
 
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);

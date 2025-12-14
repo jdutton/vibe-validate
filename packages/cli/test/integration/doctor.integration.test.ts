@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { safeExecResult } from '@vibe-validate/git';
+import { safeExecResult } from '@vibe-validate/utils';
 import { join } from 'node:path';
 
 // Doctor integration tests - verifies CLI works end-to-end with real npm registry

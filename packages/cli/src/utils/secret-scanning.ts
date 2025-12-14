@@ -9,7 +9,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import chalk from 'chalk';
-import { isToolAvailable, safeExecFromString } from '@vibe-validate/git';
+import { isToolAvailable, safeExecFromString } from '@vibe-validate/utils';
 
 /**
  * Secret scanning tool type

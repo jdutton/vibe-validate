@@ -6,10 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { safeExecSync } from '@vibe-validate/git';
+import { safeExecSync, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
 
 /**
  * Execute CLI command and return output
@@ -31,9 +30,9 @@ describe('create-extractor command', () => {
   const cliPath = join(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory for test
-    testDir = join(tmpdir(), `vibe-validate-create-extractor-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
+    // Create temp directory for test (normalized to handle Windows short names)
+    testDir = join(normalizedTmpdir(), `vibe-validate-create-extractor-${Date.now()}`);
+    mkdirSyncReal(testDir, { recursive: true });
   });
 
   afterEach(() => {

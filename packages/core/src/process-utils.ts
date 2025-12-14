@@ -8,7 +8,8 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { join, normalize, resolve } from 'node:path';
-import { getRepositoryRoot, safeExecSync } from '@vibe-validate/git';
+import { getRepositoryRoot } from '@vibe-validate/git';
+import { safeExecSync } from '@vibe-validate/utils';
 import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
 

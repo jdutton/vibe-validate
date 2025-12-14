@@ -1,7 +1,7 @@
 {
-  "name": "@vibe-validate/git",
+  "name": "@vibe-validate/utils",
   "version": "0.17.4",
-  "description": "Git utilities for vibe-validate - tree hash calculation, branch sync, and post-merge cleanup",
+  "description": "Common utilities for vibe-validate packages (command execution, path normalization)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,8 +13,7 @@
   },
   "files": [
     "dist",
-    "README.md",
-    "LICENSE"
+    "README.md"
   ],
   "scripts": {
     "build": "tsc",
@@ -23,19 +22,18 @@
     "test:watch": "vitest"
   },
   "keywords": [
-    "git",
-    "validation",
-    "tree-hash",
-    "branch-sync",
-    "cleanup",
-    "sdlc"
+    "utilities",
+    "command-execution",
+    "path-helpers",
+    "cross-platform",
+    "windows"
   ],
   "author": "Jeff Dutton",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jdutton/vibe-validate.git",
-    "directory": "packages/git"
+    "directory": "packages/utils"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -44,10 +42,11 @@
     "access": "public"
   },
   "dependencies": {
-    "@vibe-validate/utils": "workspace:*"
+    "which": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.2",
+    "@types/which": "^3.0.4",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9"
   }

@@ -13,11 +13,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 ```
 vibe-validate/
 ├── packages/
-│   ├── core/          # Validation orchestration engine
-│   ├── git/           # Git workflow utilities
-│   ├── extractors/    # Error extraction & LLM optimization
-│   ├── config/        # Configuration system with schema validation
-│   └── cli/           # Command-line interface
+│   ├── utils/          # Common utilities (command execution, path helpers)
+│   │   ├── safe-exec   # Security-critical command execution
+│   │   ├── path-helpers# Cross-platform path normalization
+│   ├── config/         # Configuration system (depends on: none)
+│   ├── extractors/     # Error extraction & LLM optimization (depends on: config)
+│   ├── git/            # Git workflow utilities (depends on: utils)
+│   ├── core/           # Validation orchestration engine (depends on: config, git, extractors, utils)
+│   ├── history/        # History tracking (depends on: core, git, utils)
+│   ├── cli/            # Command-line interface (depends on: ALL)
+│   └── vibe-validate/  # Umbrella package
 ├── config-templates/  # YAML configuration templates
 ├── docs/              # Comprehensive documentation
 └── package.json       # Monorepo root
@@ -207,7 +212,7 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 
 ### Command Execution Policy (MANDATORY)
 
-**NEVER use `execSync()` anywhere in the codebase.** Always use secure execution functions from `@vibe-validate/git`.
+**NEVER use `execSync()` anywhere in the codebase.** Always use secure execution functions from `@vibe-validate/utils`.
 
 **Security benefits:**
 - No shell interpreter (eliminates command injection risk)
@@ -221,7 +226,28 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 - `isToolAvailable(toolName)` - Check if command exists
 - `getToolVersion(toolName)` - Get version string
 
-**Implementation details:** See `packages/git/src/safe-exec.ts` for usage patterns and `packages/git/test/safe-exec.test.ts` for command injection test cases.
+**Implementation details:** See `packages/utils/src/safe-exec.ts` for usage patterns and `packages/utils/test/safe-exec.test.ts` for command injection test cases.
+
+## Where to Put Utilities
+
+### Production Utilities (@vibe-validate/utils)
+Use `@vibe-validate/utils` for generic, non-domain-specific utilities:
+- Command execution (safeExec*)
+- File system helpers (path normalization, cross-platform)
+- String utilities (if generic, not domain-specific)
+- **Rule:** NO dependencies on other vibe-validate packages
+
+### Domain-Specific Utilities
+Place utilities in the appropriate domain package:
+- Git utilities → `@vibe-validate/git`
+- Config utilities → `@vibe-validate/config`
+- Extractor utilities → `@vibe-validate/extractors`
+- Validation utilities → `@vibe-validate/core`
+
+### Test Utilities
+- Use production utilities from `@vibe-validate/utils` when possible
+- Keep test-specific mocks/helpers in each package's `test/helpers/`
+- **NO shared test utilities package** (use inline or duplicate if needed)
 
 ## Key Design Principles
 

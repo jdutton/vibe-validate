@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock the modules before importing helpers
 vi.mock('node:child_process');
 vi.mock('node:fs');
+vi.mock('@vibe-validate/utils');
 vi.mock('@vibe-validate/git');
 vi.mock('../../src/utils/config-loader.js');
 

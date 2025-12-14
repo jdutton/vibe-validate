@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GitHubActionsProvider } from '../../../src/services/ci-providers/github-actions.js';
 
+// Mock @vibe-validate/utils
+vi.mock('@vibe-validate/utils', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
+  return {
+    ...actual,
+    isToolAvailable: vi.fn(() => true), // Default: gh is available
+    safeExecSync: vi.fn(() => ''), // Default: empty response
+  };
+});
+
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', async () => {
   const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
@@ -12,8 +22,6 @@ vi.mock('@vibe-validate/git', async () => {
       stderr: '',
       exitCode: 0,
     })),
-    isToolAvailable: vi.fn(() => true), // Default: gh is available
-    safeExecSync: vi.fn(() => ''), // Default: empty response
   };
 });
 
@@ -25,14 +33,15 @@ describe('GitHubActionsProvider', () => {
     vi.clearAllMocks();
 
     // Re-establish default mocks after clearAllMocks
-    const { isToolAvailable, safeExecSync } = await import('@vibe-validate/git');
+    const { isToolAvailable, safeExecSync } = await import('@vibe-validate/utils');
     vi.mocked(isToolAvailable).mockReturnValue(true);
     vi.mocked(safeExecSync).mockReturnValue('');
   });
 
   describe('isAvailable', () => {
     it('should return true when gh CLI is available and in GitHub repo', async () => {
-      const { executeGitCommand, isToolAvailable } = await import('@vibe-validate/git');
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
 
       vi.mocked(isToolAvailable).mockReturnValue(true);
       vi.mocked(executeGitCommand).mockReturnValue({
@@ -50,7 +59,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should return false when gh CLI is not available', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
       vi.mocked(isToolAvailable).mockReturnValue(false);
 
       const result = await provider.isAvailable();
@@ -76,7 +85,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('detectPullRequest', () => {
     it('should detect PR from current branch', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const prData = {
         number: 42,
         title: 'feat: add new feature',
@@ -97,7 +106,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should return null when no PR is found', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       vi.mocked(safeExecSync).mockImplementation(() => {
         throw new Error('no pull requests found');
       });
@@ -110,7 +119,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('fetchCheckStatus', () => {
     it('should fetch and transform check status', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'feat: add new feature',
@@ -162,7 +171,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should determine overall status as completed when all checks done', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -193,7 +202,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should determine overall result as failure when any check fails', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -224,7 +233,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should extract job ID from matrix job URLs', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -256,7 +265,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should fallback to run ID when job ID is not present (non-matrix jobs)', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -283,7 +292,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('fetchFailureLogs', () => {
     it('should fetch logs and extract error details', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const runData = { name: 'ubuntu-latest (Node 20)' };
       const logs = `
 ##[group]Run pnpm test
@@ -307,7 +316,7 @@ FAIL test/example.test.ts
     });
 
     it('should extract vibe-validate state file from logs', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const runData = { name: 'Test' };
       // GitHub Actions log format: "Job\tStep\tTimestamp Content"
       // v0.17.5+ format with --- separators
@@ -347,7 +356,7 @@ More log output after
     });
 
     it('should handle missing validation result gracefully', async () => {
-      const { safeExecSync } = await import('@vibe-validate/git');
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const runData = { name: 'Test' };
       const logs = 'Regular log output without validation result';
 

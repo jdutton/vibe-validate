@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { join } from 'node:path';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 
 describe('All commands work from subdirectories (system tests)', () => {
   // Get the project root (vibe-validate repo root)

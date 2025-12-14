@@ -17,7 +17,7 @@
  *   1 - Not ready (with explanation)
  */
 
-import { safeExecSync } from '../packages/git/dist/safe-exec.js';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join , dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -15,7 +15,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { safeExecSync } from '../packages/git/dist/safe-exec.js';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -118,9 +118,10 @@ function main() {
 
   // Publish packages in dependency order
   const packages = [
+    'utils',         // foundational package (no dependencies)
+    'config',        // no dependencies
     'extractors',
-    'git',
-    'config',
+    'git',           // depends on utils
     'history',
     'core',
     'cli',

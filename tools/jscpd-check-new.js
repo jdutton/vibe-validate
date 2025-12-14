@@ -6,7 +6,7 @@
  * Compares current scan to baseline, ignoring existing technical debt.
  */
 
-import { safeExecSync } from '../packages/git/dist/safe-exec.js';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 

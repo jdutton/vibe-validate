@@ -1,5 +1,6 @@
 import { parse as parseYaml } from 'yaml';
-import { executeGitCommand, isToolAvailable, safeExecSync } from '@vibe-validate/git';
+import { executeGitCommand } from '@vibe-validate/git';
+import { isToolAvailable, safeExecSync } from '@vibe-validate/utils';
 import type {
   CIProvider,
   PullRequest,

@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { safeExecSync, safeExecResult } from '@vibe-validate/git';
+import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
 import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-helpers.js';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Integration tests for the run command with REAL command execution
@@ -13,7 +14,10 @@ import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-h
  * run.system.test.ts (run with: pnpm test:system)
  */
 
-const CLI_BIN = 'packages/cli/dist/bin.js';
+// Get the workspace root by going up from this test file location
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
+const CLI_BIN = path.join(WORKSPACE_ROOT, 'packages/cli/dist/bin.js');
 
 /**
  * Execute vibe-validate CLI command with proper argument handling

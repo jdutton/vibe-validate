@@ -4,7 +4,7 @@
  * Eliminates duplication of execSync try/catch patterns across test files.
  */
 
-import { safeExecSync } from '@vibe-validate/git';
+import { safeExecSync } from '@vibe-validate/utils';
 import yaml from 'yaml';
 
 /**

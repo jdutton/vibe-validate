@@ -117,6 +117,9 @@ importers:
       '@types/semver':
         specifier: ^7.7.1
         version: 7.7.1
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -154,6 +157,9 @@ importers:
       '@vibe-validate/git':
         specifier: workspace:*
         version: link:../git
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
       strip-ansi:
         specifier: ^7.1.2
         version: 7.1.2
@@ -213,16 +219,13 @@ importers:
 
   packages/git:
     dependencies:
-      which:
-        specifier: ^5.0.0
-        version: 5.0.0
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/node':
         specifier: ^22.19.2
         version: 22.19.2
-      '@types/which':
-        specifier: ^3.0.4
-        version: 3.0.4
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -255,6 +258,25 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@22.19.2)
 
+  packages/utils:
+    dependencies:
+      which:
+        specifier: ^5.0.0
+        version: 5.0.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.2
+        version: 22.19.2
+      '@types/which':
+        specifier: ^3.0.4
+        version: 3.0.4
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.2)
+
   packages/vibe-validate:
     dependencies:
       '@vibe-validate/cli':
@@ -264,9 +286,9 @@ importers:
       '@types/node':
         specifier: ^20.19.26
         version: 20.19.26
-      '@vibe-validate/git':
+      '@vibe-validate/utils':
         specifier: workspace:*
-        version: link:../git
+        version: link:../utils
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { safeExecSync } from '../src/safe-exec.js';
+import { safeExecSync } from '@vibe-validate/utils';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

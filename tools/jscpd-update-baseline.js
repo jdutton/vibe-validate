@@ -6,7 +6,7 @@
  * Use this when you've successfully reduced duplication.
  */
 
-import { safeExecSync } from '../packages/git/dist/safe-exec.js';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const BASELINE_FILE = '.github/.jscpd-baseline.json';

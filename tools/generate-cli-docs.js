@@ -14,7 +14,7 @@
  *   - Node.js 20+
  */
 
-import { safeExecSync } from '../packages/git/dist/safe-exec.js';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

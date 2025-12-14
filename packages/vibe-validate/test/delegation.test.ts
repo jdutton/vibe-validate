@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { safeExecSync } from '@vibe-validate/git';
+import { safeExecSync } from '@vibe-validate/utils';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';

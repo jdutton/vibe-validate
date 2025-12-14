@@ -15,7 +15,7 @@ import { mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 
 describe('init command - focused modes', () => {
   let testDir: string;

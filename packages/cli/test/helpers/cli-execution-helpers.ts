@@ -4,12 +4,12 @@
  * Provides utilities for running CLI commands with proper error handling
  * and output capture.
  *
- * SECURITY: Uses safeExecFromString from @vibe-validate/git instead of raw execSync
+ * SECURITY: Uses safeExecFromString from @vibe-validate/utils instead of raw execSync
  * to maintain consistency with production code and pass security audits.
  */
 
 import type { ExecSyncOptions } from 'node:child_process';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 
 /**
  * Result from executing a CLI command

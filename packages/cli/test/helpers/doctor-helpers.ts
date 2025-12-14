@@ -100,7 +100,7 @@ export interface DoctorConfigMockConfig {
  * Setup environment mocks for doctor tests
  *
  * Mocks execSync calls for version checks and system commands.
- * Also mocks getToolVersion from @vibe-validate/git.
+ * Also mocks getToolVersion from @vibe-validate/utils.
  *
  * @param overrides - Custom responses for specific commands (supports Error for failures)
  * @param config - Configuration options for common values
@@ -170,8 +170,8 @@ export async function mockDoctorEnvironment(
     return '' as any;
   });
 
-  // Also mock getToolVersion from @vibe-validate/git
-  const { getToolVersion } = await import('@vibe-validate/git');
+  // Also mock getToolVersion from @vibe-validate/utils
+  const { getToolVersion } = await import('@vibe-validate/utils');
   const mockedGetToolVersion = vi.mocked(getToolVersion);
   mockedGetToolVersion.mockImplementation((toolName: string) => {
     // Check overrides first (for Error cases)

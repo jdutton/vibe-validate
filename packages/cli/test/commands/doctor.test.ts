@@ -34,13 +34,10 @@ vi.mock('child_process', async () => {
   };
 });
 
-vi.mock('@vibe-validate/git', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+vi.mock('@vibe-validate/utils', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
   return {
     ...actual,
-    verifyRef: vi.fn(() => true), // Default to successful verification
-    isGitRepository: vi.fn(() => true),
-    listNotesRefs: vi.fn(() => []),
     isToolAvailable: vi.fn((toolName: string) => {
       // Default: most tools not available (except standard ones)
       if (toolName === 'node') return true;
@@ -63,6 +60,16 @@ vi.mock('@vibe-validate/git', async () => {
       if (cmd === 'npm' && args[0] === '--version') return '10.0.0';
       return '';
     }),
+  };
+});
+
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+  return {
+    ...actual,
+    verifyRef: vi.fn(() => true), // Default to successful verification
+    isGitRepository: vi.fn(() => true),
+    listNotesRefs: vi.fn(() => []),
     executeGitCommand: vi.fn((args: string[]) => {
       // Mock git remote command
       if (args[0] === 'remote') {

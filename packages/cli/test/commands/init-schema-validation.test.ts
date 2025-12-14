@@ -10,7 +10,7 @@ import { mkdir, rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 import { parse as parseYaml } from 'yaml';
 
 describe('init command - schema validation', () => {

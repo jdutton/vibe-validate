@@ -4,10 +4,10 @@
  * Provides utilities for setting up test environments with temp directories,
  * git repositories, and cleanup.
  *
- * SECURITY: Uses safeExecFromString from @vibe-validate/git instead of raw execSync.
+ * SECURITY: Uses safeExecFromString from @vibe-validate/utils instead of raw execSync.
  */
 
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

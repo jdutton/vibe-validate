@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { safeExecResult } from '@vibe-validate/git';
+import { safeExecResult } from '@vibe-validate/utils';
 import { setupTestEnvironment, cleanupTempTestDir } from '../helpers/integration-setup-helpers.js';
 
 /**

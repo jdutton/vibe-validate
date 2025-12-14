@@ -11,9 +11,9 @@ import {
   getPartiallyStagedFiles,
   isCurrentBranchBehindTracking,
   getGitTreeHash,
-  isMergeInProgress,
-  isToolAvailable
+  isMergeInProgress
 } from '@vibe-validate/git';
+import { isToolAvailable } from '@vibe-validate/utils';
 import { getRemoteBranch } from '@vibe-validate/config';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';

@@ -792,8 +792,143 @@ try {
   error(`Failed execSync vs spawnSync comparison: ${err}`);
 }
 
-// Test 15: Summary
-section('15. Summary & Recommendations');
+// Test 15: tmpdir() and Path Normalization (Windows 8.3 Short Names)
+section('15. tmpdir() and Path Normalization (Windows 8.3 Short Names)');
+try {
+  info('Understanding Windows path behavior', '');
+
+  // Import tmpdir and realpathSync
+  const { tmpdir } = await import('node:os');
+  const { realpathSync, mkdirSync, rmSync } = await import('node:fs');
+
+  // Get tmpdir path
+  const tempPath = tmpdir();
+  info('tmpdir() returns', tempPath);
+  info('Contains ~ (8.3 short name)?', tempPath.includes('~'));
+
+  // Check if it exists
+  if (existsSync(tempPath)) {
+    success('tmpdir() path exists');
+
+    // Get real path (resolves short names to long names)
+    try {
+      const realTemp = realpathSync(tempPath);
+      info('realpathSync(tmpdir())', realTemp);
+      info('Paths are identical?', tempPath === realTemp);
+      info('Paths differ?', tempPath !== realTemp);
+
+      if (tempPath !== realTemp) {
+        warn('tmpdir() returns SHORT path, realpathSync() returns LONG path');
+        info('  This is the root cause of test failures on Windows!');
+        info('  Length diff', `short: ${tempPath.length}, long: ${realTemp.length}`);
+      } else {
+        success('tmpdir() already returns normalized path');
+      }
+    } catch (err) {
+      error(`realpathSync failed: ${err}`);
+    }
+  } else {
+    error('tmpdir() path does not exist!');
+  }
+
+  // Test directory creation and path resolution
+  info('\nTesting directory creation and resolution', '');
+
+  // Create a test directory with timestamp
+  const testDirName = `vibe-test-${Date.now()}`;
+  const testDirShort = join(tempPath, testDirName);
+
+  try {
+    mkdirSync(testDirShort, { recursive: true });
+    success(`Created directory: ${testDirName}`);
+
+    // Check if directory exists at SHORT path
+    info('existsSync(SHORT path)?', existsSync(testDirShort));
+
+    // Get real (long) path
+    const testDirLong = realpathSync(testDirShort);
+    info('realpathSync(SHORT path)', testDirLong);
+    info('existsSync(LONG path)?', existsSync(testDirLong));
+
+    // Check if they're different
+    if (testDirShort !== testDirLong) {
+      warn('Created directory has DIFFERENT short vs long paths!');
+      info('  SHORT', testDirShort);
+      info('  LONG ', testDirLong);
+      info('  Both exist?', existsSync(testDirShort) && existsSync(testDirLong));
+
+      // Test file creation with both paths
+      const testFile = 'test.txt';
+      const { writeFileSync } = await import('node:fs');
+
+      writeFileSync(join(testDirShort, testFile), 'test content');
+      success('Created file using SHORT path');
+
+      info('File exists via SHORT path?', existsSync(join(testDirShort, testFile)));
+      info('File exists via LONG path?', existsSync(join(testDirLong, testFile)));
+
+      if (!existsSync(join(testDirLong, testFile))) {
+        error('❌ File NOT accessible via LONG path!');
+        error('   This is the bug! Tests use SHORT path, command creates LONG path');
+      } else {
+        success('✅ File accessible via both SHORT and LONG paths');
+      }
+    } else {
+      success('Paths are already normalized (no short names)');
+    }
+
+    // Clean up
+    rmSync(testDirShort, { recursive: true, force: true });
+    success('Cleaned up test directory');
+  } catch (err) {
+    error(`Test directory operations failed: ${err}`);
+  }
+
+  // Test common path operations
+  info('\nTesting common path operations', '');
+
+  const testPaths = [
+    tempPath,
+    'C:\\Windows\\System32',
+    'C:\\PROGRA~1', // Common short name for Program Files
+    'C:\\PROGRA~2', // Common short name for Program Files (x86)
+  ];
+
+  for (const testPath of testPaths) {
+    if (existsSync(testPath)) {
+      try {
+        const real = realpathSync(testPath);
+        if (testPath === real) {
+          success(`${testPath} → already normalized`);
+        } else {
+          warn(`${testPath} → ${real}`);
+        }
+      } catch (err) {
+        error(`realpathSync(${testPath}) failed: ${err}`);
+      }
+    } else {
+      info(`${testPath}`, 'does not exist (skipped)');
+    }
+  }
+
+  // Key insights summary
+  info('\n📚 Key Insights for Windows Testing', '');
+  info('1. tmpdir() may return 8.3 short names', 'e.g., RUNNER~1 instead of runneradmin');
+  info('2. Node.js operations create directories with LONG names', '');
+  info('3. existsSync() checks EXACT path', 'not case-insensitive!');
+  info('4. realpathSync() normalizes to LONG path', 'ALWAYS use after tmpdir()!');
+  info('5. Windows file system is case-insensitive', 'but path strings are case-sensitive');
+  info('\n💡 Fix Pattern', '');
+  info('  WRONG:', 'testDir = join(tmpdir(), "test-dir")');
+  info('  RIGHT:', 'testDir = realpathSync(join(tmpdir(), "test-dir"))');
+  info('  BETTER:', 'mkdirSync(testDir); testDir = realpathSync(testDir);');
+
+} catch (err) {
+  error(`Failed tmpdir/path normalization tests: ${err}`);
+}
+
+// Test 16: Summary
+section('16. Summary & Recommendations');
 
 const issues: string[] = [];
 const recommendations: string[] = [];

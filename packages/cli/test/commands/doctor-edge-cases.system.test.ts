@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 

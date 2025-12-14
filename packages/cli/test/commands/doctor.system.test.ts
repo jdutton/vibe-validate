@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 import { join } from 'node:path';
 
 // Get the project root (vibe-validate repo root)

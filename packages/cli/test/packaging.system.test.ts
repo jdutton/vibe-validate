@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 import { mkdtempSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';

@@ -9,7 +9,7 @@ import {
   readProjectFile,
 } from '../../src/utils/git-detection.js';
 
-// Mock @vibe-validate/git instead of child_process
+// Mock @vibe-validate/utils instead of child_process
 vi.mock('@vibe-validate/git', async () => {
   const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
   return {

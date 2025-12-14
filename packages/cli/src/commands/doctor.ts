@@ -18,12 +18,11 @@ import * as semver from 'semver';
 import { stringify as stringifyYaml } from 'yaml';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import {
-  getToolVersion,
-  safeExecSync,
   executeGitCommand,
   isGitRepository,
   verifyRef
 } from '@vibe-validate/git';
+import { getToolVersion, safeExecSync } from '@vibe-validate/utils';
 import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
 import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { safeExecFromString } from '@vibe-validate/git';
+import { safeExecFromString } from '@vibe-validate/utils';
 import { executeCommandWithYaml } from '../helpers/test-command-runner.js';
 import { parseRunYamlOutput } from '../helpers/run-command-helpers.js';
 
