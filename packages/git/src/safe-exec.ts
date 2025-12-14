@@ -1,5 +1,32 @@
 import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import which from 'which';
+
+/**
+ * Resolve command path, with Windows-specific handling for 'node'
+ * @internal
+ */
+function resolveCommandPath(command: string, context: string): string {
+  if (command === 'node' && process.platform === 'win32') {
+    const whichPath = which.sync(command, { nothrow: true });
+    const execPath = process.execPath;
+
+    // Log diagnostic info on Windows if DEBUG_SAFE_EXEC is set
+    if (process.env.DEBUG_SAFE_EXEC) {
+      console.error(`[${context}] Windows node resolution:`);
+      console.error(`  which.sync('node'): ${whichPath}`);
+      console.error(`  process.execPath: ${execPath}`);
+      if (whichPath) {
+        console.error(`  which path exists: ${existsSync(whichPath)}`);
+      }
+      console.error(`  execPath exists: ${existsSync(execPath)}`);
+    }
+
+    return execPath;
+  }
+
+  return which.sync(command);
+}
 
 /**
  * Options for safe command execution
@@ -90,7 +117,8 @@ export function safeExecSync(
   options: SafeExecOptions = {},
 ): Buffer | string {
   // Resolve command path using which (pure Node.js, no shell)
-  const commandPath = which.sync(command);
+  // On Windows, use process.execPath for 'node' to avoid PATHEXT issues
+  const commandPath = resolveCommandPath(command, 'safe-exec');
 
   // Build spawn options
   const spawnOptions: SpawnSyncOptions = {
@@ -149,7 +177,7 @@ export function safeExecResult(
   options: SafeExecOptions = {},
 ): SafeExecResult {
   try {
-    const commandPath = which.sync(command);
+    const commandPath = resolveCommandPath(command, 'safe-exec-result');
 
     const spawnOptions: SpawnSyncOptions = {
       shell: false,
