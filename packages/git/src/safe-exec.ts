@@ -90,7 +90,11 @@ export function safeExecSync(
   options: SafeExecOptions = {},
 ): Buffer | string {
   // Resolve command path using which (pure Node.js, no shell)
-  const commandPath = which.sync(command);
+  // Special case: On Windows, use process.execPath for 'node' command
+  // This avoids ENOENT issues with which.sync on Windows CI environments
+  const commandPath = (process.platform === 'win32' && command === 'node')
+    ? process.execPath
+    : which.sync(command);
 
   // Build spawn options
   const spawnOptions: SpawnSyncOptions = {
@@ -149,7 +153,11 @@ export function safeExecResult(
   options: SafeExecOptions = {},
 ): SafeExecResult {
   try {
-    const commandPath = which.sync(command);
+    // Special case: On Windows, use process.execPath for 'node' command
+    // This avoids ENOENT issues with which.sync on Windows CI environments
+    const commandPath = (process.platform === 'win32' && command === 'node')
+      ? process.execPath
+      : which.sync(command);
 
     const spawnOptions: SpawnSyncOptions = {
       shell: false,

@@ -18,8 +18,14 @@ Comprehensive Windows diagnostics for debugging CI issues with node path resolut
 5. File extension handling (PATHEXT)
 6. Spawn tests with different approaches
 7. Integration with @vibe-validate/git safe-exec
-8. jscpd (code duplication checker) availability and execution
-9. Summary and recommendations
+8. npm and .cmd file handling on Windows
+9. Case sensitivity tests
+10. Integration with @vibe-validate/git safe-exec
+11. jscpd (code duplication checker) availability and execution
+12. Shell and environment variable behavior
+13. Concurrent execution tests
+14. execSync vs spawnSync comparison (NEW - tests if execSync works where spawnSync fails)
+15. Summary and recommendations
 
 **Usage:**
 ```bash

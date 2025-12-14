@@ -9,6 +9,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+// @ts-expect-error - which is available via @vibe-validate/git dependency
 import which from 'which';
 
 // ANSI colors (work on Windows Terminal)
@@ -568,8 +569,130 @@ try {
   error(`Failed concurrent execution tests: ${err}`);
 }
 
-// Test 14: Summary
-section('14. Summary & Recommendations');
+// Test 14: execSync vs spawnSync Comparison
+section('14. execSync vs spawnSync Comparison');
+try {
+  info('Testing if execSync works where spawnSync fails', '');
+
+  // Import execSync
+  const { execSync } = await import('node:child_process');
+
+  // Test 1: execSync with 'node --version' (same as failing tests)
+  try {
+    const execSyncResult = execSync('node --version', { encoding: 'utf-8' });
+    success('execSync("node --version") succeeded');
+    info('  Output', execSyncResult.trim());
+  } catch (err) {
+    error(`execSync("node --version") failed: ${err}`);
+  }
+
+  // Test 2: spawnSync with which.sync path
+  if (whichPath) {
+    try {
+      const spawnResult = spawnSync(whichPath, ['--version'], {
+        encoding: 'utf-8',
+        shell: false,
+      });
+      if (spawnResult.error) {
+        error(`spawnSync(which.sync, ["--version"], {shell: false}) failed: ${spawnResult.error.message}`);
+        info('  Error code', (spawnResult.error as any).code);
+        info('  Error path', (spawnResult.error as any).path);
+      } else {
+        success('spawnSync(which.sync, ["--version"], {shell: false}) succeeded');
+        info('  Output', spawnResult.stdout?.toString().trim());
+      }
+    } catch (err) {
+      error(`spawnSync exception: ${err}`);
+    }
+  }
+
+  // Test 3: spawnSync with process.execPath
+  try {
+    const spawnExecResult = spawnSync(execPath, ['--version'], {
+      encoding: 'utf-8',
+      shell: false,
+    });
+    if (spawnExecResult.error) {
+      error(`spawnSync(process.execPath, ["--version"], {shell: false}) failed: ${spawnExecResult.error.message}`);
+    } else {
+      success('spawnSync(process.execPath, ["--version"], {shell: false}) succeeded');
+      info('  Output', spawnExecResult.stdout?.toString().trim());
+    }
+  } catch (err) {
+    error(`spawnSync(process.execPath) exception: ${err}`);
+  }
+
+  // Test 4: spawnSync with 'node' and shell: true
+  try {
+    const spawnShellResult = spawnSync('node', ['--version'], {
+      encoding: 'utf-8',
+      shell: true,
+    });
+    if (spawnShellResult.error) {
+      error('spawnSync("node", ["--version"], {shell: true}) failed');
+    } else {
+      success('spawnSync("node", ["--version"], {shell: true}) succeeded');
+      info('  Output', spawnShellResult.stdout?.toString().trim());
+    }
+  } catch (err) {
+    error(`spawnSync shell:true exception: ${err}`);
+  }
+
+  // Test 5: Test the exact command from failing CLI integration tests
+  info('\nTesting exact failing test scenario:', '');
+  info('  Simulating: execCLIWithStderr(["run", ...])', '');
+
+  // This simulates what the test does: safeExecResult('node', [CLI_BIN, 'run', ...])
+  const CLI_BIN = 'packages/cli/dist/bin.js';
+
+  try {
+    // Test with which.sync (current approach)
+    const testCommand = whichPath || which.sync('node');
+    const testArgs = [CLI_BIN, '--version'];
+
+    const testResult = spawnSync(testCommand, testArgs, {
+      encoding: 'utf-8',
+      shell: false,
+    });
+
+    if (testResult.error) {
+      error(`Test scenario with which.sync FAILED: ${testResult.error.message}`);
+      info('  This matches the CI failure!', '');
+      info('  Error code', (testResult.error as any).code);
+      info('  Command path', testCommand);
+      info('  Arguments', JSON.stringify(testArgs));
+    } else {
+      success('Test scenario with which.sync succeeded');
+      info('  Output', testResult.stdout?.toString().trim().substring(0, 50));
+    }
+  } catch (err) {
+    error(`Test scenario exception: ${err}`);
+  }
+
+  // Test 6: Same test but with process.execPath
+  try {
+    const testArgs = [CLI_BIN, '--version'];
+    const testResultExec = spawnSync(execPath, testArgs, {
+      encoding: 'utf-8',
+      shell: false,
+    });
+
+    if (testResultExec.error) {
+      error(`Test scenario with process.execPath FAILED: ${testResultExec.error.message}`);
+    } else {
+      success('Test scenario with process.execPath succeeded');
+      info('  Output', testResultExec.stdout?.toString().trim().substring(0, 50));
+    }
+  } catch (err) {
+    error(`Test scenario with execPath exception: ${err}`);
+  }
+
+} catch (err) {
+  error(`Failed execSync vs spawnSync comparison: ${err}`);
+}
+
+// Test 15: Summary
+section('15. Summary & Recommendations');
 
 const issues: string[] = [];
 const recommendations: string[] = [];
