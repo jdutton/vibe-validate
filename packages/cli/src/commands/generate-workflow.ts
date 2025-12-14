@@ -352,6 +352,9 @@ export function generateWorkflow(
     jobSteps.push({
       name: 'Run validation',
       run: validateCommand,
+      env: {
+        DEBUG_SAFE_EXEC: '1',
+      },
     });
 
     jobs['validate'] = {
