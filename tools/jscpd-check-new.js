@@ -54,26 +54,35 @@ function runJscpd() {
   console.log(`\n📋 Checking for report at: ${reportPath}`);
 
   if (!existsSync(reportPath)) {
-    console.error(`\n❌ jscpd report not generated!`);
-    console.error(`   Expected: ${reportPath}`);
-    console.error(`   Current directory: ${process.cwd()}`);
-    console.error(`   Platform: ${process.platform}`);
+    // Use console.log instead of console.error to ensure it appears in stdout/errorSummary
+    console.log(`\n❌ ERROR: jscpd report not generated!`);
+    console.log(`   Expected file: ${reportPath}`);
+    console.log(`   Working dir: ${process.cwd()}`);
+    console.log(`   Platform: ${process.platform}`);
 
     // List what's in jscpd-report directory if it exists
     const reportDir = join('.', 'jscpd-report');
     if (existsSync(reportDir)) {
-      console.error(`   jscpd-report directory exists, listing contents...`);
+      console.log(`   jscpd-report directory EXISTS`);
       try {
         const files = readdirSync(reportDir);
-        console.error(`   Files: ${files.join(', ')}`);
+        console.log(`   Files in directory: ${JSON.stringify(files)}`);
       } catch (e) {
-        console.error(`   Could not list directory: ${e.message}`);
+        console.log(`   Cannot list directory: ${e.message}`);
       }
     } else {
-      console.error(`   jscpd-report directory does not exist!`);
+      console.log(`   jscpd-report directory DOES NOT EXIST`);
     }
 
-    process.exit(1);
+    // Try to list current directory to see what's there
+    try {
+      const currentDirFiles = readdirSync('.');
+      console.log(`   Current dir files (first 20): ${JSON.stringify(currentDirFiles.slice(0, 20))}`);
+    } catch (e) {
+      console.log(`   Cannot list current dir: ${e.message}`);
+    }
+
+    throw new Error(`jscpd report not found at ${reportPath}`);
   }
 
   console.log('   ✅ Report found, parsing...\n');
