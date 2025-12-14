@@ -78,8 +78,9 @@ function shouldUseShell(command: string, commandPath: string): boolean {
     return true;
   }
 
-  // Windows shell scripts require shell
-  return commandPath.endsWith('.cmd') || commandPath.endsWith('.bat') || commandPath.endsWith('.ps1');
+  // Windows shell scripts require shell (case-insensitive check)
+  const lowerPath = commandPath.toLowerCase();
+  return lowerPath.endsWith('.cmd') || lowerPath.endsWith('.bat') || lowerPath.endsWith('.ps1');
 }
 
 /**
