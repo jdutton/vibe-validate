@@ -115,8 +115,8 @@ describe('runner', () => {
   describe('runStepsInParallel', () => {
     it('should run multiple steps in parallel', async () => {
       const steps: ValidationStep[] = [
-        { name: 'Step1', command: 'echo "test1"' },
-        { name: 'Step2', command: 'echo "test2"' },
+        { name: 'Step1', command: 'node -e "console.log(\'test1\')"' },
+        { name: 'Step2', command: 'node -e "console.log(\'test2\')"' },
       ];
 
       const result = await runStepsInParallel(steps, 'Test Phase', false);
@@ -130,8 +130,8 @@ describe('runner', () => {
 
     it('should detect failed step', async () => {
       const steps: ValidationStep[] = [
-        { name: 'Success', command: 'echo "ok"' },
-        { name: 'Failure', command: 'exit 1' },
+        { name: 'Success', command: 'node -e "console.log(\'ok\')"' },
+        { name: 'Failure', command: 'node -e "process.exit(1)"' },
       ];
 
       const result = await runStepsInParallel(steps, 'Test Phase', false);
@@ -142,7 +142,7 @@ describe('runner', () => {
 
     it('should capture stdout and stderr', async () => {
       const steps: ValidationStep[] = [
-        { name: 'Output', command: 'echo "stdout" && echo "stderr" >&2' },
+        { name: 'Output', command: 'node -e "console.log(\'stdout\'); console.error(\'stderr\')"' },
       ];
 
       const result = await runStepsInParallel(steps, 'Test Phase', false);
@@ -154,7 +154,7 @@ describe('runner', () => {
 
     it('should track step duration', async () => {
       const steps: ValidationStep[] = [
-        { name: 'Quick', command: 'sleep 0.1' },
+        { name: 'Quick', command: 'node -e "setTimeout(() => process.exit(0), 100)"' },
       ];
 
       const result = await runStepsInParallel(steps, 'Test Phase', false);
@@ -179,8 +179,8 @@ describe('runner', () => {
 
     it('should handle fail-fast mode (kill other processes on first failure)', async () => {
       const steps: ValidationStep[] = [
-        { name: 'Fast', command: 'exit 1' },
-        { name: 'Slow', command: 'sleep 5 && echo "done"' },
+        { name: 'Fast', command: 'node -e "process.exit(1)"' },
+        { name: 'Slow', command: 'node -e "setTimeout(() => { console.log(\'done\'); process.exit(0); }, 5000)"' },
       ];
 
       const startTime = Date.now();
@@ -193,8 +193,8 @@ describe('runner', () => {
 
     it('should not kill other processes when fail-fast disabled', async () => {
       const steps: ValidationStep[] = [
-        { name: 'Fast', command: 'exit 1' },
-        { name: 'Quick', command: 'echo "done"' },
+        { name: 'Fast', command: 'node -e "process.exit(1)"' },
+        { name: 'Quick', command: 'node -e "console.log(\'done\')"' },
       ];
 
       const result = await runStepsInParallel(steps, 'Test Phase', false);
@@ -206,8 +206,8 @@ describe('runner', () => {
 
     it('should provide meaningful extraction for killed processes (fail-fast)', async () => {
       const steps: ValidationStep[] = [
-        { name: 'Fast Fail', command: 'exit 1' },
-        { name: 'Slow Process', command: 'sleep 10 && echo "done"' },
+        { name: 'Fast Fail', command: 'node -e "process.exit(1)"' },
+        { name: 'Slow Process', command: 'node -e "setTimeout(() => { console.log(\'done\'); process.exit(0); }, 10000)"' },
       ];
 
       const result = await runStepsInParallel(steps, 'Test Phase', true);
@@ -248,12 +248,12 @@ describe('runner', () => {
           {
             name: 'Phase1',
             parallel: true,
-            steps: [{ name: 'Step1', command: 'echo "phase1"' }],
+            steps: [{ name: 'Step1', command: 'node -e "console.log(\'phase1\')"' }],
           },
           {
             name: 'Phase2',
             parallel: true,
-            steps: [{ name: 'Step2', command: 'echo "phase2"' }],
+            steps: [{ name: 'Step2', command: 'node -e "console.log(\'phase2\')"' }],
           },
         ],
         logPath: join(testDir, 'log.txt'),
@@ -273,17 +273,17 @@ describe('runner', () => {
           {
             name: 'Pass',
             parallel: true,
-            steps: [{ name: 'Ok', command: 'echo "ok"' }],
+            steps: [{ name: 'Ok', command: 'node -e "console.log(\'ok\')"' }],
           },
           {
             name: 'Fail',
             parallel: true,
-            steps: [{ name: 'Bad', command: 'exit 1' }],
+            steps: [{ name: 'Bad', command: 'node -e "process.exit(1)"' }],
           },
           {
             name: 'Skip',
             parallel: true,
-            steps: [{ name: 'Never', command: 'echo "skipped"' }],
+            steps: [{ name: 'Never', command: 'node -e "console.log(\'skipped\')"' }],
           },
         ],
         logPath: join(testDir, 'log.txt'),
@@ -307,7 +307,7 @@ describe('runner', () => {
           {
             name: 'Test',
             parallel: true,
-            steps: [{ name: 'Step', command: 'echo "test"' }],
+            steps: [{ name: 'Step', command: 'node -e "console.log(\'test\')"' }],
           },
         ],
         logPath: join(testDir, 'log.txt'),
@@ -327,7 +327,7 @@ describe('runner', () => {
           {
             name: 'Test',
             parallel: true,
-            steps: [{ name: 'Step', command: 'echo "test"' }],
+            steps: [{ name: 'Step', command: 'node -e "console.log(\'test\')"' }],
           },
         ],
         logPath: join(testDir, 'log.txt'),
@@ -352,7 +352,7 @@ describe('runner', () => {
             name: 'Fail',
             parallel: true,
             // Use output >50 chars to avoid fail-fast heuristic (see runner.ts:711)
-            steps: [{ name: 'Bad', command: 'echo "This is an error message with enough content to trigger extraction properly" && exit 1' }],
+            steps: [{ name: 'Bad', command: 'node -e "console.log(\'This is an error message with enough content to trigger extraction properly\'); process.exit(1)"' }],
           },
         ],
         logPath: join(testDir, 'log.txt'),
@@ -376,8 +376,8 @@ describe('runner', () => {
             name: 'Test',
             parallel: true,
             steps: [
-              { name: 'Step1', command: 'echo "output1"' },
-              { name: 'Step2', command: 'echo "output2"' },
+              { name: 'Step1', command: 'node -e "console.log(\'output1\')"' },
+              { name: 'Step2', command: 'node -e "console.log(\'output2\')"' },
             ],
           },
         ],
@@ -425,7 +425,7 @@ describe('runner', () => {
               steps: [
                 {
                   name: 'Failing Step',
-                  command: 'exit 1', // Intentional failure
+                  command: 'node -e "process.exit(1)"', // Intentional failure
                 },
               ],
             },
@@ -459,7 +459,7 @@ describe('runner', () => {
               steps: [
                 {
                   name: 'Failing Step',
-                  command: 'echo "ERROR: test failed" && exit 1',
+                  command: 'node -e "console.log(\'ERROR: test failed\'); process.exit(1)"',
                 },
               ],
             },
@@ -497,7 +497,7 @@ describe('runner', () => {
               steps: [
                 {
                   name: 'Passing Step',
-                  command: 'echo "success" && exit 0',
+                  command: 'node -e "console.log(\'success\'); process.exit(0)"',
                 },
               ],
             },
@@ -557,7 +557,7 @@ rawOutput: ""
               steps: [
                 {
                   name: 'ESLint with YAML',
-                  command: `echo '${yamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                  command: `node -e 'console.log(${JSON.stringify(yamlOutput)}); process.exit(1)'`,
                 },
               ],
             },
@@ -610,7 +610,7 @@ invalid indentation
               steps: [
                 {
                   name: 'Invalid YAML',
-                  command: `echo '${invalidYamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                  command: `node -e 'console.log(${JSON.stringify(invalidYamlOutput)}); process.exit(1)'`,
                 },
               ],
             },
@@ -652,7 +652,7 @@ invalid indentation
               steps: [
                 {
                   name: 'Windows YAML',
-                  command: `printf '${windowsYamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                  command: `node -e 'process.stdout.write(${JSON.stringify(windowsYamlOutput)}); process.exit(1)'`,
                 },
               ],
             },
@@ -691,7 +691,7 @@ Not YAML frontmatter
               steps: [
                 {
                   name: 'Dashes in error',
-                  command: `echo '${outputWithDashesInError.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                  command: `node -e 'console.log(${JSON.stringify(outputWithDashesInError)}); process.exit(1)'`,
                 },
               ],
             },
@@ -737,7 +737,7 @@ rawOutput: |
               steps: [
                 {
                   name: 'Multiple separators',
-                  command: `echo '${multipleYamlOutput.replace(/'/g, String.raw`'\''`)}' && exit 1`,
+                  command: `node -e 'console.log(${JSON.stringify(multipleYamlOutput)}); process.exit(1)'`,
                 },
               ],
             },
@@ -771,7 +771,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Failing Step',
-                command: 'echo "error output" && exit 1',
+                command: 'node -e "console.log(\'error output\'); process.exit(1)"',
               },
             ],
           },
@@ -814,7 +814,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Passing Step',
-                command: 'echo "success output" && exit 0',
+                command: 'node -e "console.log(\'success output\'); process.exit(0)"',
               },
             ],
           },
@@ -853,7 +853,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Passing Step',
-                command: 'echo "success" && exit 0',
+                command: 'node -e "console.log(\'success\'); process.exit(0)"',
               },
             ],
           },
@@ -882,7 +882,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Mixed Output Step',
-                command: 'echo "stdout line" && echo "stderr line" >&2 && exit 1',
+                command: 'node -e "console.log(\'stdout line\'); console.error(\'stderr line\'); process.exit(1)"',
               },
             ],
           },
@@ -919,7 +919,7 @@ rawOutput: |
             steps: [
               {
                 name: 'TypeScript Compiler',
-                command: 'echo "error" && exit 1',
+                command: 'node -e "console.log(\'error\'); process.exit(1)"',
               },
             ],
           },
@@ -947,11 +947,11 @@ rawOutput: |
             steps: [
               {
                 name: 'Step 1',
-                command: 'echo "step1 error" && exit 1',
+                command: 'node -e "console.log(\'step1 error\'); process.exit(1)"',
               },
               {
                 name: 'Step 2',
-                command: 'echo "step2 error" && exit 1',
+                command: 'node -e "console.log(\'step2 error\'); process.exit(1)"',
               },
             ],
           },
@@ -996,7 +996,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Passing Step',
-                command: 'echo "success" && exit 0',
+                command: 'node -e "console.log(\'success\'); process.exit(0)"',
               },
             ],
           },
@@ -1030,7 +1030,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Failing Step',
-                command: 'echo "error" && exit 1',
+                command: 'node -e "console.log(\'error\'); process.exit(1)"',
               },
             ],
           },
@@ -1064,7 +1064,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Passing Step',
-                command: 'echo "success" && exit 0',
+                command: 'node -e "console.log(\'success\'); process.exit(0)"',
               },
             ],
           },
@@ -1089,7 +1089,7 @@ rawOutput: |
             steps: [
               {
                 name: 'Failing Step',
-                command: 'echo "error" && exit 1',
+                command: 'node -e "console.log(\'error\'); process.exit(1)"',
               },
             ],
           },
@@ -1128,7 +1128,7 @@ rawOutput: |
         phases: [
           {
             name: 'Test',
-            steps: [{ name: 'Pass', command: 'echo "test"' }],
+            steps: [{ name: 'Pass', command: 'node -e "console.log(\'test\')"' }],
           },
         ],
         env: {},
@@ -1164,7 +1164,7 @@ rawOutput: |
         phases: [
           {
             name: 'Test',
-            steps: [{ name: 'Pass', command: 'echo "test"' }],
+            steps: [{ name: 'Pass', command: 'node -e "console.log(\'test\')"' }],
           },
         ],
         env: {},
@@ -1191,7 +1191,7 @@ rawOutput: |
         phases: [
           {
             name: 'Test',
-            steps: [{ name: 'Pass', command: 'echo "test"' }],
+            steps: [{ name: 'Pass', command: 'node -e "console.log(\'test\')"' }],
           },
         ],
         env: {},
