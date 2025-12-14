@@ -68,6 +68,7 @@
     "release:minor": "npm run version:minor && npm run build && git add -A && git commit -m 'chore: Release minor version' && npm run tag:create",
     "release:major": "npm run version:major && npm run build && git add -A && git commit -m 'chore: Release major version' && npm run tag:create",
     "tag:create": "node -e \"const pkg = require('./packages/cli/package.json'); const tag = 'v' + pkg.version; require('child_process').execSync('git tag -a ' + tag + ' -m \\\"Release ' + tag + '\\\"', {stdio: 'inherit'});\"",
+    "debug:windows": "tsx tools/debug-windows.ts",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -86,6 +87,7 @@
     "isolated-vm": "^6.0.2",
     "jscpd": "^4.0.5",
     "secretlint": "^11.2.5",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   },
