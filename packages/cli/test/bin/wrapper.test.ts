@@ -227,13 +227,13 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
   describe('Real-World Scenarios', () => {
     it('should support run command with extraction', () => {
-      const result = spawnSync('node', [wrapperPath, 'run', 'echo "test"'], {
+      const result = spawnSync('node', [wrapperPath, 'run', 'node -e "console.log(\'test\')"'], {
         cwd: join(__dirname, '../../../..'),
         env: { ...process.env },
       });
 
       expect(result.status).toBe(0);
-      expect(result.stdout.toString()).toContain('command: echo');
+      expect(result.stdout.toString()).toContain('command: node');
     });
 
     it('should support state command', () => {

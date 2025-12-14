@@ -93,12 +93,12 @@ export function safeExecSync(
   const commandPath = which.sync(command);
 
   // Build spawn options
-  // On Windows, use shell:true for 'node' command to avoid ENOENT issues
-  // This is safe because we're only enabling shell for the 'node' command with known args
-  const useShell = process.platform === 'win32' && command === 'node';
+  // NOTE: Previously used shell:true on Windows for node command to work around ENOENT.
+  // Now that test commands are simplified (no bash syntax), testing if still needed.
+  const useShell = false; // Always use shell:false for security
 
   const spawnOptions: SpawnSyncOptions = {
-    shell: useShell, // shell:true on Windows for node, shell:false otherwise
+    shell: useShell, // shell:false for security - no shell interpreter
     stdio: options.stdio ?? 'pipe',
     env: options.env,
     cwd: options.cwd,
@@ -155,8 +155,8 @@ export function safeExecResult(
   try {
     const commandPath = which.sync(command);
 
-    // On Windows, use shell:true for 'node' command to avoid ENOENT issues
-    const useShell = process.platform === 'win32' && command === 'node';
+    // NOTE: Testing without shell:true hack now that commands are simplified
+    const useShell = false;
 
     const spawnOptions: SpawnSyncOptions = {
       shell: useShell,

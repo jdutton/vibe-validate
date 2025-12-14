@@ -96,9 +96,9 @@ describe('run command integration', () => {
     it('should handle real nested vibe-validate run commands (2 levels)', () => {
       // Execute: vibe-validate run "echo test"
       // This produces real YAML output
-      const innerCommand = `node ${CLI_BIN} run "echo 'Hello from inner command'"`;
+      const innerCommand = String.raw`node ${CLI_BIN} run "node -e \"console.log('Hello from inner command')\""`;
 
-      // Wrap it: vibe-validate run "vibe-validate run 'echo test'"
+      // Wrap it: vibe-validate run "vibe-validate run 'node -e ...'"
       const output = execCLI(['run', innerCommand]);
 
       // Parse YAML output
@@ -107,7 +107,7 @@ describe('run command integration', () => {
 
       // Should unwrap to innermost command (not wrapper)
       expect(parsed.command).toBeDefined();
-      expect(parsed.command).toContain('echo');
+      expect(parsed.command).toContain('node');
 
       // Should preserve exit code
       expect(parsed.exitCode).toBe(0);
@@ -168,7 +168,7 @@ describe('run command integration', () => {
 
   describe('caching behavior', () => {
     it('should write git notes refs when caching successful commands', () => {
-      const command = `echo "Cache write test ${Date.now()}"`;
+      const command = `node -e "console.log('Cache write test ${Date.now()}')"`;
 
       // First run - should execute and cache
       const firstRun = execCLI(['run', command]);
@@ -212,29 +212,29 @@ describe('run command integration', () => {
 
       try {
         // Run command first time - should execute (no cache)
-        const firstRun = execCLI(['run', "echo 'Cache test'"]);
+        const firstRun = execCLI(['run', "node -e \"console.log('Cache test')\""]);
         // Parse YAML output - opening delimiter only (no display flags)
         expect(firstRun).toMatch(/^---\n/);
         const firstParsed = parseRunYamlOutput(firstRun);
         expect(firstParsed.exitCode).toBe(0);
-        expect(firstParsed.command).toBe('echo \'Cache test\'');
+        expect(firstParsed.command).toBe('node -e "console.log(\'Cache test\')"');
 
         // Run again immediately - should hit cache (same tree hash)
-        const cachedRun = execCLI(['run', "echo 'Cache test'"]);
+        const cachedRun = execCLI(['run', "node -e \"console.log('Cache test')\""]);
         expect(cachedRun).toMatch(/^---\n/);
         const cachedParsed = parseRunYamlOutput(cachedRun);
         expect(cachedParsed.exitCode).toBe(0);
 
         // Create a new file to change tree hash
-        safeExecSync('sh', ['-c', String.raw`echo "test" > ${tmpFile}`], { encoding: 'utf-8' });
+        safeExecSync('node', ['-e', String.raw`require('fs').writeFileSync('${tmpFile}', 'test\n')`], { encoding: 'utf-8' });
 
         // Run same command again - cache should be invalidated due to tree hash change
         // Should execute again (not from cache)
-        const thirdRun = execCLI(['run', "echo 'Cache test'"]);
+        const thirdRun = execCLI(['run', "node -e \"console.log('Cache test')\""]);
         expect(thirdRun).toMatch(/^---\n/);
         const thirdParsed = parseRunYamlOutput(thirdRun);
         expect(thirdParsed.exitCode).toBe(0);
-        expect(thirdParsed.command).toBe('echo \'Cache test\'');
+        expect(thirdParsed.command).toBe('node -e "console.log(\'Cache test\')"');
 
         // Cleanup
         safeExecSync('rm', [tmpFile], { encoding: 'utf-8' });
@@ -667,7 +667,7 @@ describe('run command integration', () => {
 
     it('should display first N lines with --head flag', () => {
       // Display output goes to stderr, YAML goes to stdout
-      const { stdout, stderr } = execCLIWithStderr(['run', '--head', '2', String.raw`printf "line1\nline2\nline3\n"`]);
+      const { stdout, stderr } = execCLIWithStderr(['run', '--head', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
       // Extract YAML front matter from stdout
       const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
@@ -683,7 +683,7 @@ describe('run command integration', () => {
 
     it('should display last N lines with --tail flag', () => {
       // Display output goes to stderr, YAML goes to stdout
-      const { stdout, stderr } = execCLIWithStderr(['run', '--tail', '2', String.raw`printf "line1\nline2\nline3\n"`]);
+      const { stdout, stderr } = execCLIWithStderr(['run', '--tail', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
       // Extract YAML front matter from stdout
       const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
