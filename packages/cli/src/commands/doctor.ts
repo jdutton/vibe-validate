@@ -361,7 +361,7 @@ async function checkConfigValid(
             '',
             'Quick start:',
             'curl -o vibe-validate.config.yaml \\',
-            '  https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml',
+            '  https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/cli/config-templates/typescript-nodejs.yaml',
             '',
             'JSON Schema for IDE validation:',
             'https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json',

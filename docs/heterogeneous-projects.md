@@ -922,7 +922,13 @@ steps:
 
 ## Template Configuration
 
-See `config-templates/multi-language.yaml` for a ready-to-use template.
+Start with the `minimal` template and customize for your multi-language setup:
+
+```bash
+vv init --template minimal
+```
+
+See the [config templates guide](https://github.com/jdutton/vibe-validate/blob/main/packages/cli/config-templates/README.md) for available templates.
 
 ---
 

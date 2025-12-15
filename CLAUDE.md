@@ -23,7 +23,6 @@ vibe-validate/
 │   ├── history/        # History tracking (depends on: core, git, utils)
 │   ├── cli/            # Command-line interface (depends on: ALL)
 │   └── vibe-validate/  # Umbrella package
-├── config-templates/  # YAML configuration templates
 ├── docs/              # Comprehensive documentation
 └── package.json       # Monorepo root
 ```
