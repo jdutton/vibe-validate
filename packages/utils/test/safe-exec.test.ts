@@ -529,124 +529,68 @@ describe('safeExecFromString', () => {
     });
   });
 
-  describe('hasShellSyntax utility', () => {
-    it('should return false for simple commands', () => {
-      expect(hasShellSyntax('npm test')).toEqual({ hasShellSyntax: false });
-      expect(hasShellSyntax('git status')).toEqual({ hasShellSyntax: false });
-      expect(hasShellSyntax('node --version')).toEqual({ hasShellSyntax: false });
-    });
-
-    it('should detect quotes', () => {
-      const result = hasShellSyntax('echo "hello world"');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('quotes');
-      expect(result.example).toBeDefined();
-    });
-
-    it('should detect glob patterns', () => {
-      const result = hasShellSyntax('ls *.txt');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('glob patterns');
-    });
-
-    it('should detect variable expansion', () => {
-      const result = hasShellSyntax('echo $HOME');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('variable expansion');
-    });
-
-    it('should detect pipes', () => {
-      const result = hasShellSyntax('cat file | grep text');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('pipes/redirects/operators');
-    });
-
-    it('should detect AND operator (&&)', () => {
-      const result = hasShellSyntax('npm test && npm run build');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('pipes/redirects/operators');
-    });
-
-    it('should detect OR operator (||)', () => {
-      const result = hasShellSyntax('command1 || command2');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('pipes/redirects/operators');
-    });
-
-    it('should detect semicolons', () => {
-      const result = hasShellSyntax('command1; command2');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('pipes/redirects/operators');
-    });
-
-    it('should detect redirects', () => {
-      expect(hasShellSyntax('echo hello > file.txt').hasShellSyntax).toBe(true);
-      expect(hasShellSyntax('cat < input.txt').hasShellSyntax).toBe(true);
-    });
-
-    it('should detect background operator', () => {
-      const result = hasShellSyntax('long-command &');
-      expect(result.hasShellSyntax).toBe(true);
-      expect(result.pattern).toBe('pipes/redirects/operators');
-    });
-  });
-
   describe('shell syntax detection', () => {
-    it('should reject glob patterns (*)', () => {
-      expect(() => safeExecFromString('ls *.txt')).toThrow(/glob patterns/);
-    });
+    // Test data: [command, expectedPattern]
+    const shellSyntaxCases: Array<[string, string]> = [
+      ['echo "hello"', 'quotes'],
+      ["echo 'world'", 'quotes'],
+      ['echo `date`', 'quotes'],
+      ['ls *.txt', 'glob patterns'],
+      ['ls file?.txt', 'glob patterns'],
+      ['ls file[0-9].txt', 'glob patterns'],
+      ['echo $HOME', 'variable expansion'],
+      ['cat file | grep text', 'pipes/redirects/operators'],
+      ['echo hello > file.txt', 'pipes/redirects/operators'],
+      ['cat < input.txt', 'pipes/redirects/operators'],
+      ['command &', 'pipes/redirects/operators'],
+      ['command1; command2', 'pipes/redirects/operators'],
+      ['command1 && command2', 'pipes/redirects/operators'],
+      ['command1 || command2', 'pipes/redirects/operators'],
+    ];
 
-    it('should reject glob patterns (?)', () => {
-      expect(() => safeExecFromString('ls file?.txt')).toThrow(/glob patterns/);
-    });
+    const simpleCases = ['npm test', 'git status', 'node --version'];
 
-    it('should reject glob patterns ([])', () => {
-      expect(() => safeExecFromString('ls file[0-9].txt')).toThrow(/glob patterns/);
-    });
-
-    it('should reject variable expansion', () => {
-      expect(() => safeExecFromString('echo $HOME')).toThrow(/variable expansion/);
-    });
-
-    it('should reject pipes', () => {
-      expect(() => safeExecFromString('cat file | grep text')).toThrow(/pipes\/redirects\/operators/);
-    });
-
-    it('should reject redirects (>)', () => {
-      expect(() => safeExecFromString('echo hello > file.txt')).toThrow(/pipes\/redirects\/operators/);
-    });
-
-    it('should reject redirects (<)', () => {
-      expect(() => safeExecFromString('cat < file.txt')).toThrow(/pipes\/redirects\/operators/);
-    });
-
-    it('should reject background operator (&)', () => {
-      expect(() => safeExecFromString('command &')).toThrow(/pipes\/redirects\/operators/);
-    });
-
-    it('should reject command chaining (;)', () => {
-      expect(() => safeExecFromString('command1; command2')).toThrow(/pipes\/redirects\/operators/);
-    });
-
-    it('should reject AND operator (&&)', () => {
-      expect(() => safeExecFromString('command1 && command2')).toThrow(/pipes\/redirects\/operators/);
-    });
-
-    it('should reject OR operator (||)', () => {
-      expect(() => safeExecFromString('command1 || command2')).toThrow(/pipes\/redirects\/operators/);
-    });
-
-    it('should provide helpful error with example', () => {
-      try {
-        safeExecFromString('ls *.txt');
-        expect.fail('Should have thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error);
-        if (error instanceof Error) {
-          expect(error.message).toContain('glob patterns');
-          expect(error.message).toContain('safeExecSync');
+    describe('hasShellSyntax utility', () => {
+      it('should return false for simple commands', () => {
+        for (const cmd of simpleCases) {
+          expect(hasShellSyntax(cmd)).toEqual({ hasShellSyntax: false });
         }
-      }
+      });
+
+      it.each(shellSyntaxCases)(
+        'should detect %s as %s',
+        (command, expectedPattern) => {
+          const result = hasShellSyntax(command);
+          expect(result.hasShellSyntax).toBe(true);
+          expect(result.pattern).toBe(expectedPattern);
+          expect(result.example).toBeDefined();
+        },
+      );
+    });
+
+    describe('safeExecFromString rejection', () => {
+      it.each(shellSyntaxCases)(
+        'should reject %s (%s)',
+        (command, expectedPattern) => {
+          expect(() => safeExecFromString(command)).toThrow(
+            // eslint-disable-next-line security/detect-non-literal-regexp -- Test data is safe, from controlled test cases
+            new RegExp(expectedPattern.replaceAll('/', String.raw`\/`)),
+          );
+        },
+      );
+
+      it('should provide helpful error with example', () => {
+        try {
+          safeExecFromString('ls *.txt');
+          expect.fail('Should have thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(Error);
+          if (error instanceof Error) {
+            expect(error.message).toContain('glob patterns');
+            expect(error.message).toContain('safeExecSync');
+          }
+        }
+      });
     });
   });
 });

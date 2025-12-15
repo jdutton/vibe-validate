@@ -4,6 +4,7 @@
 
 import { existsSync } from 'node:fs';
 
+import * as utils from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -253,38 +254,44 @@ describe('secret-scanning', () => {
   });
 
   describe('runSecretScan', () => {
-    it('should execute default gitleaks command (no shell syntax)', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      vi.mocked(safeExecFromString).mockReturnValue('No secrets found');
+    // Helper to reduce duplication
+    const mockSuccess = (output = 'No secrets found') => {
+      vi.mocked(utils.safeExecFromString).mockReturnValue(output);
+    };
 
-      // Default command from detectSecretScanningTools
+    const mockError = (stderr: string, stdout = '') => {
+      const error: any = new Error('Command failed');
+      error.stderr = Buffer.from(stderr);
+      error.stdout = Buffer.from(stdout);
+      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
+        throw error;
+      });
+    };
+
+    it('should execute default gitleaks command (no shell syntax)', () => {
+      mockSuccess();
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged --verbose', false);
 
       expect(result.passed).toBe(true);
       expect(result.tool).toBe('gitleaks');
-      expect(safeExecFromString).toHaveBeenCalledWith(
+      expect(utils.safeExecFromString).toHaveBeenCalledWith(
         'gitleaks protect --staged --verbose',
         expect.any(Object)
       );
     });
 
-    it('should execute default secretlint command (no shell syntax)', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      vi.mocked(safeExecFromString).mockReturnValue('No secrets found');
-
+    it('should execute default secretlint command (no shell syntax)', () => {
+      mockSuccess();
       // CRITICAL TEST: Default secretlint command must not contain shell syntax
-      // If this uses '**/*' it will fail!
       const result = runSecretScan('secretlint', 'npx secretlint .', false);
 
       expect(result.passed).toBe(true);
       expect(result.tool).toBe('secretlint');
-      expect(safeExecFromString).toHaveBeenCalledWith('npx secretlint .', expect.any(Object));
+      expect(utils.safeExecFromString).toHaveBeenCalledWith('npx secretlint .', expect.any(Object));
     });
 
-    it('should return success result when scan passes', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      vi.mocked(safeExecFromString).mockReturnValue('No secrets found');
-
+    it('should return success result when scan passes', () => {
+      mockSuccess();
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
 
       expect(result.passed).toBe(true);
@@ -293,16 +300,8 @@ describe('secret-scanning', () => {
       expect(result.skipped).toBeUndefined();
     });
 
-    it('should return failure result when scan finds secrets', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      const error: any = new Error('Secrets found');
-      error.stderr = Buffer.from('Found secret: API key');
-      error.stdout = Buffer.from('Scan output');
-
-      vi.mocked(safeExecFromString).mockImplementation(() => {
-        throw error;
-      });
-
+    it('should return failure result when scan finds secrets', () => {
+      mockError('Found secret: API key', 'Scan output');
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
 
       expect(result.passed).toBe(false);
@@ -311,10 +310,8 @@ describe('secret-scanning', () => {
       expect(result.error).toBe('Found secret: API key');
     });
 
-    it('should skip gitleaks if command not available', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/utils');
-      vi.mocked(isToolAvailable).mockReturnValue(false);
-
+    it('should skip gitleaks if command not available', () => {
+      vi.mocked(utils.isToolAvailable).mockReturnValue(false);
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
 
       expect(result.passed).toBe(true);
@@ -322,30 +319,16 @@ describe('secret-scanning', () => {
       expect(result.skipReason).toBe('gitleaks command not available');
     });
 
-    it('should not skip secretlint (always available via npx)', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      const error: any = new Error('Secrets found');
-      error.stderr = Buffer.from('Found secret');
-      error.stdout = Buffer.from('');
-      vi.mocked(safeExecFromString).mockImplementation(() => {
-        throw error;
-      });
-
+    it('should not skip secretlint (always available via npx)', () => {
+      mockError('Found secret');
       const result = runSecretScan('secretlint', 'npx secretlint .', false);
 
       expect(result.passed).toBe(false);
       expect(result.skipped).toBeUndefined();
     });
 
-    it('should FAIL LOUD if default secretlint command errors (never skip silently)', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      const error: any = new Error('Command failed');
-      error.stderr = Buffer.from('npx: command not found');
-      error.stdout = Buffer.from('');
-      vi.mocked(safeExecFromString).mockImplementation(() => {
-        throw error;
-      });
-
+    it('should FAIL LOUD if default secretlint command errors (never skip silently)', () => {
+      mockError('npx: command not found');
       // CRITICAL: secretlint should NEVER skip silently - always fail loud
       const result = runSecretScan('secretlint', 'npx secretlint .', false);
 
@@ -354,20 +337,16 @@ describe('secret-scanning', () => {
       expect(result.skipped).toBeUndefined(); // NEVER skipped!
     });
 
-    it('should include output when verbose is true', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      vi.mocked(safeExecFromString).mockReturnValue('Detailed output');
-
+    it('should include output when verbose is true', () => {
+      mockSuccess('Detailed output');
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', true);
 
       expect(result.passed).toBe(true);
       expect(result.output).toBe('Detailed output');
     });
 
-    it('should not include output when verbose is false', async () => {
-      const { safeExecFromString } = await import('@vibe-validate/utils');
-      vi.mocked(safeExecFromString).mockReturnValue('Detailed output');
-
+    it('should not include output when verbose is false', () => {
+      mockSuccess('Detailed output');
       const result = runSecretScan('gitleaks', 'gitleaks protect --staged', false);
 
       expect(result.passed).toBe(true);

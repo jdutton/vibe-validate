@@ -366,9 +366,7 @@ export function hasShellSyntax(commandString: string): {
   example?: string;
 } {
   // Single-pass check with early return on first match
-  // eslint-disable-next-line unicorn/no-for-loop -- Performance: direct index access for O(n) single-pass algorithm
-  for (let i = 0; i < commandString.length; i++) {
-    const char = commandString[i];
+  for (const char of commandString) {
 
     // Check quotes: " ' `
     if (QUOTE_CHARS.has(char)) {
