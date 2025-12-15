@@ -7,9 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### New Packages
+### Bug Fixes
 
-- **@vibe-validate/utils** - Common utilities package (command execution, cross-platform path helpers)
+- **CRITICAL: Fixed CI workflow validation check** - Workflow was incorrectly passing even when tests failed because grep matched nested `passed: true` fields instead of top-level validation result (simplified to use exit codes)
+- Pre-commit hook no longer falsely flags the local branch as stale during merge commits
 
 ### Security
 
@@ -36,16 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `vv doctor` now detects stale builds and dependencies
 
-### Bug Fixes
-
-- **CRITICAL: Fixed CI workflow validation check** - Workflow was incorrectly passing even when tests failed because grep matched nested `passed: true` fields instead of top-level validation result (simplified to use exit codes)
-- Pre-commit hook no longer falsely flags the local branch as stale during merge commits
-
 ### Documentation
 
-- Added SonarCloud Quality Gate and Codecov coverage badges to README
+- Added SonarCloud Quality Gate and Codecov coverage badges to README.md
 - Improved README.md to clarify the benefits of the project, and reduced verbosity
 - Cleaned up repository root (moved files to `.github/`, removed unnecessary files)
+
+### New Package
+
+- **@vibe-validate/utils** - Common utilities package (command execution, cross-platform path helpers)
 
 ## [0.17.4] - 2025-12-07
 
