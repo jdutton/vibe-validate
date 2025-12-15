@@ -529,27 +529,34 @@ describe('safeExecFromString', () => {
     });
   });
 
+  // Test data for shell syntax detection
+  const shellSyntaxCases: Array<[string, string]> = [
+    ['echo "hello"', 'quotes'],
+    ["echo 'world'", 'quotes'],
+    ['echo `date`', 'quotes'],
+    ['ls *.txt', 'glob patterns'],
+    ['ls file?.txt', 'glob patterns'],
+    ['ls file[0-9].txt', 'glob patterns'],
+    ['echo $HOME', 'variable expansion'],
+    ['cat file | grep text', 'pipes/redirects/operators'],
+    ['echo hello > file.txt', 'pipes/redirects/operators'],
+    ['cat < input.txt', 'pipes/redirects/operators'],
+    ['command &', 'pipes/redirects/operators'],
+    ['command1; command2', 'pipes/redirects/operators'],
+    ['command1 && command2', 'pipes/redirects/operators'],
+    ['command1 || command2', 'pipes/redirects/operators'],
+  ];
+
+  const simpleCases = ['npm test', 'git status', 'node --version'];
+
+  // Helper to test command rejection (reduces nesting depth)
+  const expectCommandToThrowPattern = (command: string, expectedPattern: string) => {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- Test data is safe, from controlled test cases
+    const pattern = new RegExp(expectedPattern.replaceAll('/', String.raw`\/`));
+    expect(() => safeExecFromString(command)).toThrow(pattern);
+  };
+
   describe('shell syntax detection', () => {
-    // Test data: [command, expectedPattern]
-    const shellSyntaxCases: Array<[string, string]> = [
-      ['echo "hello"', 'quotes'],
-      ["echo 'world'", 'quotes'],
-      ['echo `date`', 'quotes'],
-      ['ls *.txt', 'glob patterns'],
-      ['ls file?.txt', 'glob patterns'],
-      ['ls file[0-9].txt', 'glob patterns'],
-      ['echo $HOME', 'variable expansion'],
-      ['cat file | grep text', 'pipes/redirects/operators'],
-      ['echo hello > file.txt', 'pipes/redirects/operators'],
-      ['cat < input.txt', 'pipes/redirects/operators'],
-      ['command &', 'pipes/redirects/operators'],
-      ['command1; command2', 'pipes/redirects/operators'],
-      ['command1 && command2', 'pipes/redirects/operators'],
-      ['command1 || command2', 'pipes/redirects/operators'],
-    ];
-
-    const simpleCases = ['npm test', 'git status', 'node --version'];
-
     describe('hasShellSyntax utility', () => {
       it('should return false for simple commands', () => {
         for (const cmd of simpleCases) {
@@ -569,17 +576,10 @@ describe('safeExecFromString', () => {
     });
 
     describe('safeExecFromString rejection', () => {
-      // Helper to reduce nesting depth
-      const expectToThrowPattern = (command: string, expectedPattern: string) => {
-        // eslint-disable-next-line security/detect-non-literal-regexp -- Test data is safe, from controlled test cases
-        const pattern = new RegExp(expectedPattern.replaceAll('/', String.raw`\/`));
-        expect(() => safeExecFromString(command)).toThrow(pattern);
-      };
-
       it.each(shellSyntaxCases)(
         'should reject %s (%s)',
         (command, expectedPattern) => {
-          expectToThrowPattern(command, expectedPattern);
+          expectCommandToThrowPattern(command, expectedPattern);
         },
       );
 

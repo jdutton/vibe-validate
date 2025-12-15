@@ -14,6 +14,7 @@ import {
   selectToolsToRun,
   runSecretScan,
   formatToolName,
+  showPerformanceWarning,
 } from '../../src/utils/secret-scanning.js';
 
 // Mock Node.js modules
@@ -361,6 +362,42 @@ describe('secret-scanning', () => {
 
     it('should format secretlint correctly', () => {
       expect(formatToolName('secretlint')).toBe('secretlint');
+    });
+  });
+
+  describe('showPerformanceWarning', () => {
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should not warn if duration is below threshold', () => {
+      showPerformanceWarning('secretlint', 3000, 5000);
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should warn with install suggestion when no explicit command', () => {
+      showPerformanceWarning('secretlint', 6000, 5000, false);
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      const allWarnings = consoleWarnSpy.mock.calls.map(call => call[0]).join('\n');
+      expect(allWarnings).toContain('secretlint');
+      expect(allWarnings).toContain('gitleaks');
+      expect(allWarnings).toContain('scanCommand');
+    });
+
+    it('should warn without install suggestion when explicit command provided', () => {
+      showPerformanceWarning('secretlint', 6000, 5000, true);
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      const allWarnings = consoleWarnSpy.mock.calls.map(call => call[0]).join('\n');
+      expect(allWarnings).toContain('secretlint');
+      expect(allWarnings).not.toContain('scanCommand');
     });
   });
 });
