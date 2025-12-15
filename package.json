@@ -87,6 +87,7 @@
     "isolated-vm": "^6.0.2",
     "jscpd": "^4.0.5",
     "secretlint": "^11.2.5",
+    "semver": "^7.7.3",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",

@@ -1,18 +1,38 @@
 # Publishing Guide
 
+> ⚠️ **IMPORTANT**: vibe-validate now uses **automated publishing** via GitHub Actions. Manual publishing procedures below are for fallback/recovery only.
+>
+> **For normal releases, see [Automated Publishing Guide](./automated-publishing.md)**
+
 ## Overview
 
-vibe-validate is a monorepo with 7 interdependent packages. They MUST be published together in dependency order.
+vibe-validate is a monorepo with 8 interdependent packages. They MUST be published together in dependency order.
 
-## Standard Publishing
+**Normal Release Process**: Push a version tag (e.g., `v0.17.6`) and GitHub Actions automatically publishes to npm and creates releases. See [automated-publishing.md](./automated-publishing.md) for details.
+
+**This Document**: Manual fallback procedures if automation fails.
+
+## Manual Publishing (Fallback Only)
+
+**Use this only if automated publishing fails.**
 
 ```bash
-node tools/publish-all.js
+# Ensure versions are correct
+pnpm bump-version <version>
+
+# Build all packages
+pnpm -r build
+
+# Run pre-publish checks
+node tools/pre-publish-check.js
+
+# Publish all packages
+pnpm publish:all
 ```
 
-Auto-determines npm tag from version:
+The `publish:all` script auto-determines npm tag from version:
 - `X.Y.Z` → `latest`
-- `X.Y.Z-rc.N` → `rc`
+- `X.Y.Z-rc.N` → `next` (changed from `rc` for automation)
 - `X.Y.Z-beta.N` → `beta`
 - `X.Y.Z-alpha.N` → `alpha`
 

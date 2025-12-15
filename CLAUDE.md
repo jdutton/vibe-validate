@@ -186,17 +186,60 @@ The script automatically updates:
 
 ## Publishing
 
-**CRITICAL**: ALWAYS use `pnpm publish:all` to publish. NEVER publish individual packages.
+### Automated Publishing (Primary Method)
+
+**CRITICAL**: Publishing is now automated via GitHub Actions. **DO NOT use `pnpm publish:all` manually** unless automation fails.
+
+**Normal Release Workflow:**
+
+1. **Update CHANGELOG.md** (MANDATORY before release)
+   - Add changes to appropriate version section
+   - Format: `## [X.Y.Z] - YYYY-MM-DD`
+   - Follow [Keep a Changelog](https://keepachangelog.com/) format
+
+2. **Bump version**:
+   ```bash
+   pnpm bump-version 0.17.6-rc.1  # For RC
+   pnpm bump-version 0.17.6       # For stable
+   ```
+
+3. **Commit and tag**:
+   ```bash
+   git add -A && git commit -m "chore: Release vX.Y.Z"
+   git tag vX.Y.Z
+   git push origin main vX.Y.Z
+   ```
+
+4. **Monitor GitHub Actions**:
+   - Visit: https://github.com/jdutton/vibe-validate/actions
+   - Workflow automatically publishes to npm and creates GitHub release
+
+**Publishing Behavior:**
+- **RC versions** (e.g., `v0.17.6-rc.1`): Publish to `@next` tag, NO GitHub release
+- **Stable versions** (e.g., `v0.17.6`): Publish to `@latest`, update `@next` if newer, create GitHub release
+
+### Manual Publishing (Fallback Only)
+
+**Use only if automated publishing fails:**
 
 ```bash
-# Publish all packages (determines tag from version):
-pnpm publish:all
+# Ensure versions are correct
+pnpm bump-version <version>
 
-# From non-main branch:
-pnpm publish:all --allow-branch <branch-name>
+# Build all packages
+pnpm -r build
+
+# Run pre-publish checks
+node tools/pre-publish-check.js
+
+# Publish all packages (determines tag from version)
+pnpm publish:all
 ```
 
-See [Publishing Guide](docs/publishing.md) for recovery procedures and details.
+**NEVER publish individual packages** - use `pnpm publish:all` or let automation handle it.
+
+See [Automated Publishing Guide](docs/automated-publishing.md) for setup and troubleshooting.
+See [Publishing Guide](docs/publishing.md) for manual recovery procedures.
 
 ## Code Quality Monitoring
 

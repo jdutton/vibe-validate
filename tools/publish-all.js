@@ -4,7 +4,7 @@
  *
  * Version patterns:
  * - X.Y.Z          → --tag latest (stable release)
- * - X.Y.Z-rc.N     → --tag rc (release candidate)
+ * - X.Y.Z-rc.N     → --tag next (release candidate)
  * - X.Y.Z-beta.N   → --tag beta (beta release)
  * - X.Y.Z-alpha.N  → --tag alpha (alpha release)
  * - X.Y.Z-canary.N → --tag canary (canary release)
@@ -41,7 +41,7 @@ function determineTag(version) {
 
   // Map common prerelease identifiers to dist-tags
   const tagMap = {
-    'rc': 'rc',
+    'rc': 'next',      // Changed from 'rc' to 'next' for consistency with automation
     'beta': 'beta',
     'alpha': 'alpha',
     'canary': 'canary',
