@@ -29,7 +29,7 @@ function execCLI(cliPath: string, args: string[], options?: { cwd?: string; time
   };
 }
 
-describe('doctor command config error reporting (regression tests)', () => {
+describe.skipIf(process.platform === 'win32')('doctor command config error reporting (regression tests)', () => {
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');
 

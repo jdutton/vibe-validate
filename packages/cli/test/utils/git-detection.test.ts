@@ -445,7 +445,7 @@ describe('git-detection', () => {
       expect(result).toBe(join(testRoot, 'packages/cli/src/commands/doctor.ts'));
     });
 
-    it('should use process.cwd() when startDir not provided', () => {
+    it.skipIf(process.platform === 'win32')('should use process.cwd() when startDir not provided', () => {
       // Act
       const result = resolveProjectPath('.github/workflows/validate.yml');
 

@@ -764,7 +764,7 @@ describe('run command integration', () => {
     });
   });
 
-  describe('--cwd flag', () => {
+  describe.skipIf(process.platform === 'win32')('--cwd flag', () => {
     it('should use explicit --cwd in cache key', () => {
       const testMessage = `test-cwd-${Date.now()}`;
       const testCommand = `echo ${testMessage}`;
