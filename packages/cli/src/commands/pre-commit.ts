@@ -201,7 +201,8 @@ export function preCommitCommand(program: Command): void {
 
               // Show performance warning if scan was slow (hardcoded 5s threshold)
               if (result.passed) {
-                showPerformanceWarning(tool, result.duration, 5000);
+                const hasExplicitCommand = secretScanning.scanCommand !== undefined && secretScanning.scanCommand !== 'autodetect';
+                showPerformanceWarning(tool, result.duration, 5000, hasExplicitCommand);
               }
             }
 

@@ -16,7 +16,7 @@
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecFromString } from '@vibe-validate/utils';
+import { safeExecSync } from '@vibe-validate/utils';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 // Get path to the vv binary from the built CLI package
@@ -96,9 +96,9 @@ function createTestEnv(envName: string, options: {
 
   // Initialize git if requested
   if (options.hasGit) {
-    safeExecFromString('git init', { cwd: envPath, stdio: 'ignore' });
-    safeExecFromString('git config user.name "Test User"', { cwd: envPath, stdio: 'ignore' });
-    safeExecFromString('git config user.email "test@example.com"', { cwd: envPath, stdio: 'ignore' });
+    safeExecSync('git', ['init'], { cwd: envPath, stdio: 'ignore' });
+    safeExecSync('git', ['config', 'user.name', 'Test User'], { cwd: envPath, stdio: 'ignore' });
+    safeExecSync('git', ['config', 'user.email', 'test@example.com'], { cwd: envPath, stdio: 'ignore' });
   }
 
   // Create config if requested

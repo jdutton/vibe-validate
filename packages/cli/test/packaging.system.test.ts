@@ -45,7 +45,7 @@ describe('npm package tarball (system test)', () => {
     tarballPath = join(tempDir, tarballName);
 
     // Extract tarball
-    safeExecFromString(`tar -xzf "${tarballPath}" -C "${tempDir}"`, { encoding: 'utf-8' });
+    safeExecSync('tar', ['-xzf', tarballPath, '-C', tempDir], { encoding: 'utf-8' });
 
     // pnpm pack creates a "package/" subdirectory
     const packageDir = join(tempDir, 'package');
@@ -178,7 +178,7 @@ describe('npm package tarball (system test)', () => {
       });
 
       // Install the tarball
-      safeExecFromString(`npm install "${tarballPath}"`, {
+      safeExecSync('npm', ['install', tarballPath], {
         cwd: installDir,
         stdio: 'ignore',
       });

@@ -345,7 +345,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
   describe('run command', () => {
     it('should work from project root', () => {
-      const output = safeExecFromString('vv run echo "test from root"', {
+      const output = safeExecSync('vv', ['run', 'echo', 'test-from-root'], {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -357,7 +357,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from subdirectory (packages/)', () => {
-      const output = safeExecFromString('vv run echo "test from subdir"', {
+      const output = safeExecSync('vv', ['run', 'echo', 'test-from-subdir'], {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
@@ -369,7 +369,7 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = safeExecFromString('vv run echo "test from deep subdir"', {
+      const output = safeExecSync('vv', ['run', 'echo', 'test-from-deep-subdir'], {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
