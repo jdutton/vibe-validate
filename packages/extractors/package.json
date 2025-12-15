@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/extractors",
-  "version": "0.17.6-rc.2",
+  "version": "0.17.6",
   "description": "LLM-optimized error extractors for validation output",
   "type": "module",
   "main": "./dist/index.js",

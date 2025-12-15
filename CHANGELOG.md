@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.6] - 2025-12-15
+
 ### Bug Fixes
 
 - **Fixed secret scanning failure with default secretlint command** (Issue #88, regression from v0.17.5)
