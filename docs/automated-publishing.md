@@ -146,14 +146,17 @@ npm view vibe-validate@next version
 
 **Use Case**: Testing before stable release
 
+**CHANGELOG Note**: RC versions do NOT need CHANGELOG entries. Keep changes under `## [Unreleased]` section until ready for stable release. The workflow skips CHANGELOG extraction for RCs.
+
+**Branch Note**: RC versions can be published from feature branches for testing. No need to merge to main first.
+
 ```bash
 # 1. Bump version to RC
 pnpm bump-version 0.17.6-rc.1
 
-# 2. Update CHANGELOG.md
-## [0.17.6-rc.1] - YYYY-MM-DD
-### Features
-- New feature description
+# 2. NO CHANGELOG update needed
+# Changes should already be under ## [Unreleased] section
+# (CHANGELOG extraction is skipped for RC versions)
 
 # 3. Commit
 git add -A
@@ -161,6 +164,9 @@ git commit -m "chore: Prepare v0.17.6-rc.1"
 
 # 4. Tag and push
 git tag v0.17.6-rc.1
+# Can push from feature branch for testing:
+git push origin <current-branch> v0.17.6-rc.1
+# Or from main:
 git push origin main v0.17.6-rc.1
 
 # 5. Monitor workflow
