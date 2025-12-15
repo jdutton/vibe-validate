@@ -9,25 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- **Automated npm Publishing via GitHub Actions**
-  - Push version tags (e.g., `v0.17.6`) to automatically publish all packages to npm
-  - RC versions (`v0.17.6-rc.1`) publish to `@next` tag without GitHub releases
-  - Stable versions publish to `@latest` and create GitHub releases with CHANGELOG content
-  - Rollback safety: automatically unpublishes or deprecates if any package fails
-  - Supports publishing from feature branches for RC testing
-
-### Improvements
-
-- **Pure TypeScript Project**
-  - Converted all tools/ scripts from JavaScript to TypeScript
-  - Direct TypeScript execution via `tsx` (no compiled .js files)
-  - ESLint support for TypeScript in tools/ directory
-
-### Documentation
-
-- Added comprehensive automated publishing guide (docs/automated-publishing.md)
-- Updated publishing procedures with automation-first workflow
-- Documented RC testing from feature branches
+- Automated npm publishing via GitHub Actions (push tags to publish, RC→@next, stable→@latest+release)
+- Converted all tools/ scripts to TypeScript with direct execution via tsx
 
 ## [0.17.5] - 2025-12-15
 
