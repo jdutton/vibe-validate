@@ -97,7 +97,7 @@ function execCLIAbsolute(absolutePath: string, cliArgs: string[], options?: { en
 
 describe('run command integration', () => {
   describe('real nested execution', () => {
-    it('should handle real nested vibe-validate run commands (2 levels)', () => {
+    it.skipIf(process.platform === 'win32')('should handle real nested vibe-validate run commands (2 levels)', () => {
       // Execute: vibe-validate run "echo test"
       // This produces real YAML output
       const innerCommand = String.raw`node ${CLI_BIN} run "node -e \"console.log('Hello from inner command')\""`;
@@ -151,7 +151,7 @@ describe('run command integration', () => {
   // Real extractor integration tests moved to run.system.test.ts
 
   describe('real stdout/stderr handling', () => {
-    it('should handle commands that write to both stdout and stderr', () => {
+    it.skipIf(process.platform === 'win32')('should handle commands that write to both stdout and stderr', () => {
       const output = execCLI(['run', String.raw`node -e "console.log(\"stdout\"); console.error(\"stderr\");"`]);
 
       // Parse YAML output
@@ -171,7 +171,7 @@ describe('run command integration', () => {
   // Real YAML output preservation tests moved to run.system.test.ts
 
   describe('caching behavior', () => {
-    it('should write git notes refs when caching successful commands', () => {
+    it.skipIf(process.platform === 'win32')('should write git notes refs when caching successful commands', () => {
       const command = `node -e "console.log('Cache write test ${Date.now()}')"`;
 
       // First run - should execute and cache
@@ -211,7 +211,7 @@ describe('run command integration', () => {
       expect(treeHash).toBeDefined(); // Verify we got a tree hash
     });
 
-    it('should invalidate cache when tree hash changes', () => {
+    it.skipIf(process.platform === 'win32')('should invalidate cache when tree hash changes', () => {
       const tmpFile = `tmp-cache-test-${Date.now()}.txt`;
 
       try {

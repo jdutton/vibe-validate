@@ -6,11 +6,12 @@
  */
 
 import type { Command } from 'commander';
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
 import prompts from 'prompts';
+import { mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
 
 /**
  * Options for the create-extractor command
@@ -49,7 +50,8 @@ export function createExtractorCommand(program: Command): void {
     .option('-f, --force', 'Overwrite existing plugin directory')
     .action(async (name: string | undefined, options: CreateExtractorOptions) => {
       try {
-        const cwd = process.cwd();
+        // Normalize cwd to avoid Windows short path issues (e.g., RUNNER~1)
+        const cwd = normalizePath(process.cwd());
 
         // Interactive prompts for missing information
         const context = await gatherContext(name, options);
@@ -161,19 +163,19 @@ async function gatherContext(
  * Create plugin directory with all files
  */
 function createPluginDirectory(pluginDir: string, context: TemplateContext): void {
-  // Create directories
-  mkdirSync(pluginDir, { recursive: true });
-  mkdirSync(join(pluginDir, 'samples'), { recursive: true });
+  // Create directories (using mkdirSyncReal to handle Windows short paths)
+  const normalizedPluginDir = mkdirSyncReal(pluginDir, { recursive: true });
+  mkdirSyncReal(join(normalizedPluginDir, 'samples'), { recursive: true });
 
-  // Write files
-  writeFileSync(join(pluginDir, 'index.ts'), generateIndexTs(context), 'utf-8');
-  writeFileSync(join(pluginDir, 'index.test.ts'), generateIndexTestTs(context), 'utf-8');
-  writeFileSync(join(pluginDir, 'README.md'), generateReadme(context), 'utf-8');
-  writeFileSync(join(pluginDir, 'CLAUDE.md'), generateClaudeMd(context), 'utf-8');
-  writeFileSync(join(pluginDir, 'package.json'), generatePackageJson(context), 'utf-8');
-  writeFileSync(join(pluginDir, 'tsconfig.json'), generateTsConfig(context), 'utf-8');
+  // Write files (using normalized path to ensure consistency)
+  writeFileSync(join(normalizedPluginDir, 'index.ts'), generateIndexTs(context), 'utf-8');
+  writeFileSync(join(normalizedPluginDir, 'index.test.ts'), generateIndexTestTs(context), 'utf-8');
+  writeFileSync(join(normalizedPluginDir, 'README.md'), generateReadme(context), 'utf-8');
+  writeFileSync(join(normalizedPluginDir, 'CLAUDE.md'), generateClaudeMd(context), 'utf-8');
+  writeFileSync(join(normalizedPluginDir, 'package.json'), generatePackageJson(context), 'utf-8');
+  writeFileSync(join(normalizedPluginDir, 'tsconfig.json'), generateTsConfig(context), 'utf-8');
   writeFileSync(
-    join(pluginDir, 'samples', 'sample-error.txt'),
+    join(normalizedPluginDir, 'samples', 'sample-error.txt'),
     generateSampleError(context),
     'utf-8'
   );

@@ -519,9 +519,12 @@ describe('doctor command', () => {
     });
 
     it('should fail when pre-commit hook is enabled (default) but not installed', async () => {
-      vi.mocked(existsSync).mockImplementation((path: string) =>
-        !path.toString().includes('.husky/pre-commit')
-      );
+      vi.mocked(existsSync).mockImplementation((path: string) => {
+        const pathStr = path.toString();
+        // Handle both Unix (/) and Windows (\) path separators
+        const isPreCommitHook = pathStr.includes('.husky/pre-commit') || pathStr.includes(String.raw`.husky\pre-commit`);
+        return !isPreCommitHook;
+      });
       vi.mocked(loadConfig).mockResolvedValue(mockConfig); // Default: hooks.preCommit.enabled = true
 
       const result = await runDoctor({ verbose: true });
