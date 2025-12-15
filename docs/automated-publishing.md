@@ -303,13 +303,13 @@ pnpm bump-version 0.17.6
 pnpm -r build
 
 # Run pre-publish checks
-node tools/pre-publish-check.js
+tsx tools/pre-publish-check.ts
 
 # Publish manually
 pnpm publish:all
 
 # Create GitHub release manually
-gh release create v0.17.6 --title "Release v0.17.6" --notes "$(node tools/extract-changelog.js 0.17.6 && cat .changelog-release.md)"
+gh release create v0.17.6 --title "Release v0.17.6" --notes "$(tsx tools/extract-changelog.ts 0.17.6 && cat .changelog-release.md)"
 ```
 
 See [docs/publishing.md](./publishing.md) for detailed manual procedures.
@@ -399,7 +399,7 @@ The workflow will fail early (before publishing) if versions don't match, CHANGE
 
 **A:** The publishing tools support dry-run mode:
 ```bash
-node tools/publish-with-rollback.js 0.17.6 --dry-run
+tsx tools/publish-with-rollback.ts 0.17.6 --dry-run
 ```
 
 This simulates the entire workflow locally without actual publishing.

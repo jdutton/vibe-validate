@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Intelligent publish script that determines npm dist-tag from package version
  *

@@ -46,18 +46,18 @@ jobs:
         run: pnpm -r build
 
       - name: Validate version consistency
-        run: node tools/validate-version.js ${{ steps.version.outputs.version }}
+        run: tsx tools/validate-version.ts ${{ steps.version.outputs.version }}
 
       - name: Determine version type and npm tags
         id: version_type
-        run: node tools/determine-publish-tags.js ${{ steps.version.outputs.version }}
+        run: tsx tools/determine-publish-tags.ts ${{ steps.version.outputs.version }}
 
       - name: Run pre-publish checks (CI mode)
-        run: node tools/pre-publish-check-ci.js
+        run: tsx tools/pre-publish-check-ci.ts
 
       - name: Publish packages with rollback safety
         id: publish
-        run: node tools/publish-with-rollback.js ${{ steps.version.outputs.version }}
+        run: tsx tools/publish-with-rollback.ts ${{ steps.version.outputs.version }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
@@ -65,7 +65,7 @@ jobs:
       - name: Extract CHANGELOG for release (stable only)
         if: steps.version_type.outputs.is_stable == 'true'
         id: changelog
-        run: node tools/extract-changelog.js ${{ steps.version.outputs.version }}
+        run: tsx tools/extract-changelog.ts ${{ steps.version.outputs.version }}
 
       - name: Create GitHub Release (stable only)
         if: steps.version_type.outputs.is_stable == 'true'

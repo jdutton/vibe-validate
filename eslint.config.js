@@ -129,9 +129,9 @@ export default [
   },
   {
     // General TypeScript files (production code with type-aware linting)
-    // Exclude test files - they have their own config above
+    // Exclude test files and tools - they have their own configs
     files: ['**/*.ts', '**/*.tsx'],
-    ignores: ['**/*.test.ts', '**/test/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/test/**/*.ts', 'tools/**/*.ts'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -268,10 +268,14 @@ export default [
   },
   {
     // Tools scripts - relaxed linting for build/utility scripts
-    files: ['tools/**/*.js'],
+    files: ['tools/**/*.ts'],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        project: false, // Tools are not included in tsconfig.json project references
+      },
       globals: {
         NodeJS: 'readonly',
         process: 'readonly',
@@ -280,6 +284,7 @@ export default [
       },
     },
     plugins: {
+      '@typescript-eslint': tseslint,
       unicorn,
       import: importPlugin,
       security,

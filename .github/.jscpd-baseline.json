@@ -145,12 +145,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 18,
       "fragment": ");\n\n// Colors for output\nconst colors = {\n  red: '\\x1b[0;31m',\n  green: '\\x1b[0;32m',\n  yellow: '\\x1b[1;33m',\n  blue: '\\x1b[0;34m',\n  reset: '\\x1b[0m',\n};\n\nfunction log(message, color = 'reset') {\n  console.log(`${colors[color]}${message}${colors.reset}`);\n}\n\n/**\n * Package publishing order (dependency-order)\n */",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/publish-with-rollback.js",
+        "name": "tools/publish-with-rollback.ts",
         "start": 40,
         "end": 57,
         "startLoc": {
@@ -165,7 +165,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 26,
         "end": 41,
         "startLoc": {
@@ -181,12 +181,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 14,
       "fragment": "} from 'node:fs';\nimport { join , dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst PROJECT_ROOT = join(__dirname, '..');\n\n// Colors for output\nconst colors = {\n  red: '\\x1b[0;31m',\n  green: '\\x1b[0;32m',\n  yellow: '\\x1b[1;33m',\n  reset",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/pre-publish-check.js",
+        "name": "tools/pre-publish-check.ts",
         "start": 21,
         "end": 34,
         "startLoc": {
@@ -201,7 +201,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 20,
         "end": 33,
         "startLoc": {
@@ -217,12 +217,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 11,
       "fragment": ",\n  reset: '\\x1b[0m',\n};\n\nfunction log(message, color = 'reset') {\n  console.log(`${colors[color]}${message}${colors.reset}`);\n}\n\n// Parse command-line arguments\nconst args = process.argv.slice(2);\nlet",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/pre-publish-check.js",
+        "name": "tools/pre-publish-check.ts",
         "start": 33,
         "end": 43,
         "startLoc": {
@@ -237,7 +237,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 33,
         "end": 44,
         "startLoc": {
@@ -253,12 +253,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 26,
       "fragment": "import { safeExecSync } from '../packages/utils/dist/safe-exec.js';\nimport { readdirSync, existsSync, readFileSync } from 'node:fs';\nimport { join, dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst PROJECT_ROOT = join(__dirname, '..');\n\n// Colors for output\nconst colors = {\n  red: '\\x1b[0;31m',\n  green: '\\x1b[0;32m',\n  yellow: '\\x1b[1;33m',\n  blue: '\\x1b[0;34m',\n  reset: '\\x1b[0m',\n};\n\nfunction log(message, color = 'reset') {\n  console.log(`${colors[color]}${message}${colors.reset}`);\n}\n\n// Parse command-line arguments\nconst args = process.argv.slice(2);\n\nif (args[",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/pre-publish-check-ci.js",
+        "name": "tools/pre-publish-check-ci.ts",
         "start": 26,
         "end": 51,
         "startLoc": {
@@ -273,7 +273,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/pre-publish-check.js",
+        "name": "tools/pre-publish-check.ts",
         "start": 20,
         "end": 44,
         "startLoc": {
@@ -289,12 +289,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 9,
       "fragment": "try {\n  safeExecSync('git', ['rev-parse', '--git-dir'], { stdio: 'pipe', cwd: PROJECT_ROOT });\n  log('✓ Git repository detected', 'green');\n} catch (_error) { // NOSONAR - Exception handled by logging and exiting\n  log('✗ Not a git repository', 'red');\n  process.exit(1);\n}\n\n// Check 2: Run validation",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/pre-publish-check-ci.js",
+        "name": "tools/pre-publish-check-ci.ts",
         "start": 73,
         "end": 81,
         "startLoc": {
@@ -309,7 +309,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/pre-publish-check.js",
+        "name": "tools/pre-publish-check.ts",
         "start": 80,
         "end": 88,
         "startLoc": {
@@ -325,12 +325,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 14,
       "fragment": "console.log('');\nconsole.log('Running validation checks...');\n\ntry {\n  safeExecSync('pnpm', ['validate'], { stdio: 'inherit', cwd: PROJECT_ROOT });\n  log('✓ All validation checks passed', 'green');\n} catch (_error) { // NOSONAR - Exception handled by logging and exiting\n  console.log('');\n  log('✗ Validation failed', 'red');\n  console.log('  Check the output above and fix all issues before publishing');\n  process.exit(1);\n}\n\n// Check 3: Packages are built",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/pre-publish-check-ci.js",
+        "name": "tools/pre-publish-check-ci.ts",
         "start": 82,
         "end": 95,
         "startLoc": {
@@ -345,7 +345,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/pre-publish-check.js",
+        "name": "tools/pre-publish-check.ts",
         "start": 175,
         "end": 188,
         "startLoc": {
@@ -361,12 +361,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 43,
       "fragment": "console.log('');\nconsole.log('Checking package builds...');\n\nconst packagesDir = join(PROJECT_ROOT, 'packages');\nconst missingBuilds = [];\n\ntry {\n  const packages = readdirSync(packagesDir, { withFileTypes: true })\n    .filter(dirent => dirent.isDirectory())\n    .map(dirent => dirent.name);\n\n  for (const pkg of packages) {\n    // Check if package is private (skip build check for private packages)\n    const pkgJsonPath = join(packagesDir, pkg, 'package.json');\n    if (existsSync(pkgJsonPath)) {\n      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));\n\n      // Skip private packages (like test beds)\n      if (pkgJson.private) {\n        continue;\n      }\n\n      // Skip umbrella package (vibe-validate) - it's just a wrapper with bin scripts\n      if (pkg === 'vibe-validate') {\n        continue;\n      }\n    }\n\n    const distDir = join(packagesDir, pkg, 'dist');\n    if (!existsSync(distDir)) {\n      missingBuilds.push(`packages/${pkg}/`);\n    }\n  }\n} catch (err) {\n  log('✗ Failed to check package builds', 'red');\n  console.error(err.message);\n  process.exit(1);\n}\n\nif (missingBuilds.length > 0) {\n  log('✗ Missing build outputs', 'red');\n  for (const pkg of missingBuilds) console.log(pkg);\n  console.log('  Run \\'pnpm -r build\\' to build all packages'",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/pre-publish-check-ci.js",
+        "name": "tools/pre-publish-check-ci.ts",
         "start": 96,
         "end": 138,
         "startLoc": {
@@ -381,7 +381,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/pre-publish-check.js",
+        "name": "tools/pre-publish-check.ts",
         "start": 189,
         "end": 231,
         "startLoc": {
@@ -397,12 +397,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 8,
       "fragment": "} from 'node:fs';\nimport { join, dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst PROJECT_ROOT = join(__dirname, '..');\nconst",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/generate-cli-docs.js",
+        "name": "tools/generate-cli-docs.ts",
         "start": 18,
         "end": 25,
         "startLoc": {
@@ -417,7 +417,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 20,
         "end": 28,
         "startLoc": {
@@ -433,12 +433,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 8,
       "fragment": "} from 'node:fs';\nimport { join, dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst PROJECT_ROOT = join(__dirname, '..');\nconst CHANGELOG_PATH",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/extract-changelog.js",
+        "name": "tools/extract-changelog.ts",
         "start": 23,
         "end": 30,
         "startLoc": {
@@ -453,7 +453,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 20,
         "end": 25,
         "startLoc": {
@@ -469,12 +469,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 21,
       "fragment": ");\n\n// Colors for output\nconst colors = {\n  red: '\\x1b[0;31m',\n  green: '\\x1b[0;32m',\n  yellow: '\\x1b[1;33m',\n  blue: '\\x1b[0;34m',\n  reset: '\\x1b[0m',\n};\n\nfunction log(message, color = 'reset') {\n  console.log(`${colors[color]}${message}${colors.reset}`);\n}\n\n/**\n * Extract version section from CHANGELOG\n * @param {string} changelogContent - Full CHANGELOG content\n * @param {string} version - Version to extract (e.g., '0.17.5')\n * @returns {string} - Extracted content for the version\n */",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/extract-changelog.js",
+        "name": "tools/extract-changelog.ts",
         "start": 31,
         "end": 51,
         "startLoc": {
@@ -489,7 +489,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 26,
         "end": 41,
         "startLoc": {
@@ -505,12 +505,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 20,
       "fragment": ";\n\n// Colors for output\nconst colors = {\n  red: '\\x1b[0;31m',\n  green: '\\x1b[0;32m',\n  yellow: '\\x1b[1;33m',\n  blue: '\\x1b[0;34m',\n  reset: '\\x1b[0m',\n};\n\nfunction log(message, color = 'reset') {\n  console.log(`${colors[color]}${message}${colors.reset}`);\n}\n\n/**\n * Output GitHub Actions output variable\n * @param {string} name - Variable name\n * @param {string} value - Variable value\n */",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/determine-publish-tags.js",
+        "name": "tools/determine-publish-tags.ts",
         "start": 28,
         "end": 47,
         "startLoc": {
@@ -525,7 +525,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 26,
         "end": 41,
         "startLoc": {
@@ -541,12 +541,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 14,
       "fragment": "function getNpmTagVersion(packageName, tag) {\n  const result = safeExecResult('npm', ['view', `${packageName}@${tag}`, 'version'], {\n    encoding: 'utf8',\n    stdio: 'pipe',\n  });\n\n  if (result.status === 0 && result.stdout) {\n    return result.stdout.trim();\n  }\n\n  return null;\n}\n\n// Parse command-line arguments",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/determine-publish-tags.js",
+        "name": "tools/determine-publish-tags.ts",
         "start": 64,
         "end": 77,
         "startLoc": {
@@ -561,7 +561,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/publish-with-rollback.js",
+        "name": "tools/publish-with-rollback.ts",
         "start": 109,
         "end": 124,
         "startLoc": {
@@ -577,12 +577,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 48,
       "fragment": ", readdirSync } from 'node:fs';\nimport { join, dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst PROJECT_ROOT = join(__dirname, '..');\n\n// Colors for output\nconst colors = {\n  red: '\\x1b[0;31m',\n  green: '\\x1b[0;32m',\n  yellow: '\\x1b[1;33m',\n  blue: '\\x1b[0;34m',\n  reset: '\\x1b[0m',\n};\n\nfunction log(message, color = 'reset') {\n  console.log(`${colors[color]}${message}${colors.reset}`);\n}\n\n// Parse command-line arguments\nconst args = process.argv.slice(2);\n\nif (args.length === 0 || args[0] === '--help' || args[0] === '-h') {\n  console.log(`\nVersion Bump Script\n\nUpdates version in ALL package.json files (root + all workspace packages).\n\nUsage:\n  node tools/bump-version.js <version|increment>\n  pnpm bump-version <version|increment>\n\nArguments:\n  version      Explicit version (e.g., 0.14.2, 1.0.0)\n  increment    patch, minor, or major (auto-calculates from current version)\n\nExamples:\n  node tools/bump-version.js 0.14.2       # Set to explicit version\n  node tools/bump-version.js patch        # Increment patch (0.14.2 -> 0.14.3)\n  node tools/bump-version.js minor        # Increment minor (0.14.2 -> 0.15.0)\n  node tools/bump-version.js major        # Increment major (0.14.2 -> 1.0.0)\n\nExit codes:\n  0 - Success\n  1 - Error (invalid version, file not found, etc.)\n  `",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/bump-version.js",
+        "name": "tools/bump-version.ts",
         "start": 21,
         "end": 68,
         "startLoc": {
@@ -597,7 +597,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 20,
         "end": 60,
         "startLoc": {
@@ -613,12 +613,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 13,
       "fragment": "= 0;\nlet skippedCount = 0;\n\ntry {\n  const packages = readdirSync(packagesDir, { withFileTypes: true })\n    .filter(dirent => dirent.isDirectory())\n    .map(dirent => dirent.name)\n    .sort();\n\n  for (const pkg of packages) {\n    const pkgPath = join(packagesDir, pkg, 'package.json');\n    try {\n      const result = updatePackageVersion",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/bump-version.js",
+        "name": "tools/bump-version.ts",
         "start": 199,
         "end": 211,
         "startLoc": {
@@ -633,7 +633,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 123,
         "end": 135,
         "startLoc": {
@@ -649,12 +649,12 @@
       }
     },
     {
-      "format": "javascript",
+      "format": "typescript",
       "lines": 11,
       "fragment": ");\n      if (result.skipped) {\n        let reasonText;\n        if (result.reason === 'no-version') {\n          reasonText = 'no version field';\n        } else {\n          reasonText = result.version ? `${result.reason}, v${result.version}` : result.reason;\n        }\n        log(`  - ${result.name}: skipped (${reasonText})`, 'yellow');\n        skippedCount++;\n      } else if (result.updated",
       "tokens": 0,
       "firstFile": {
-        "name": "tools/bump-version.js",
+        "name": "tools/bump-version.ts",
         "start": 211,
         "end": 221,
         "startLoc": {
@@ -669,7 +669,7 @@
         }
       },
       "secondFile": {
-        "name": "tools/validate-version.js",
+        "name": "tools/validate-version.ts",
         "start": 135,
         "end": 146,
         "startLoc": {

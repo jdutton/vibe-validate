@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Windows Debugging Script
  *
@@ -9,8 +9,13 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 // @ts-expect-error - which is available via @vibe-validate/git dependency
 import which from 'which';
+
+// ESM compatibility for __dirname and __filename
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ANSI colors (work on Windows Terminal)
 const colors = {
@@ -555,7 +560,7 @@ try {
   for (let i = 0; i < 10; i++) {
     try {
       which.sync('node', { nothrow: true });
-    } catch (err) {
+    } catch (_err) {
       // Intentionally count failures without logging - comparing failure rates between async/sync
       syncFailures++;
     }
