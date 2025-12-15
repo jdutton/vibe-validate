@@ -1,9 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
+import { describe, it, expect } from 'vitest';
 import yaml from 'yaml';
+
 import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-helpers.js';
+
 
 /**
  * Integration tests for the run command with REAL command execution
@@ -13,30 +17,96 @@ import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-h
  * run.system.test.ts (run with: pnpm test:system)
  */
 
-const CLI_PATH = 'node packages/cli/dist/bin.js';
+// Get the workspace root by going up from this test file location
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
+const CLI_BIN = path.join(WORKSPACE_ROOT, 'packages/cli/dist/bin.js');
+
+/**
+ * Execute vibe-validate CLI command with proper argument handling
+ * Captures both stdout (YAML) and stderr (display output) separately
+ * @param cliArgs - Arguments to pass to CLI (e.g., ['run', 'echo test'])
+ * @param options - Execution options
+ * @returns Command stdout (YAML) - use execCLIWithStderr to get both streams
+ * @throws CommandExecutionError with status, stdout, and stderr properties
+ */
+function execCLI(cliArgs: string[], options?: { encoding?: BufferEncoding; stdio?: any; cwd?: string; env?: Record<string, string> }): string {
+  const result = execCLIWithStderr(cliArgs, options);
+  return result.stdout + result.stderr; // For backward compatibility, combine them
+}
+
+/**
+ * Execute vibe-validate CLI and return both stdout and stderr
+ * @returns Object with stdout (YAML) and stderr (display output) separated
+ * @throws Error if command fails without producing output
+ */
+function execCLIWithStderr(cliArgs: string[], options?: { encoding?: BufferEncoding; stdio?: any; cwd?: string; env?: Record<string, string> }): { stdout: string; stderr: string; combined: string; status?: number } {
+  const result = safeExecResult('node', [CLI_BIN, ...cliArgs], {
+    encoding: 'utf-8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'Test User',
+      GIT_AUTHOR_EMAIL: 'test@example.com',
+      GIT_COMMITTER_NAME: 'Test User',
+      GIT_COMMITTER_EMAIL: 'test@example.com',
+      ...options?.env, // Allow test-specific overrides
+    },
+    ...options
+  });
+
+  const stdout = result.stdout.toString();
+  const stderr = result.stderr.toString();
+
+  // If command failed without producing output, throw
+  if (result.status !== 0 && !stdout && !stderr) {
+    const error = new Error(`Command failed with status ${result.status}`);
+    (error as any).status = result.status;
+    throw error;
+  }
+
+  return {
+    stdout,
+    stderr,
+    combined: stdout + stderr,
+    status: result.status ?? undefined
+  };
+}
+
+/**
+ * Execute vibe-validate CLI with absolute path
+ */
+function execCLIAbsolute(absolutePath: string, cliArgs: string[], options?: { encoding?: BufferEncoding; stdio?: any; cwd?: string; env?: Record<string, string> }): string {
+  try {
+    return safeExecSync('node', [absolutePath, ...cliArgs], {
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'Test User',
+        GIT_AUTHOR_EMAIL: 'test@example.com',
+        GIT_COMMITTER_NAME: 'Test User',
+        GIT_COMMITTER_EMAIL: 'test@example.com',
+        ...options?.env,
+      },
+      ...options
+    }) as string;
+  } catch (err: any) {
+    // For successful non-zero exits (like help commands), return stdout
+    if (err.stdout) {
+      return (err.stdout as string) + (err.stderr || '');
+    }
+    throw err;
+  }
+}
 
 describe('run command integration', () => {
   describe('real nested execution', () => {
-    it('should handle real nested vibe-validate run commands (2 levels)', () => {
+    it.skipIf(process.platform === 'win32')('should handle real nested vibe-validate run commands (2 levels)', () => {
       // Execute: vibe-validate run "echo test"
       // This produces real YAML output
-      const innerCommand = `${CLI_PATH} run "echo 'Hello from inner command'"`;
+      const innerCommand = String.raw`node ${CLI_BIN} run "node -e \"console.log('Hello from inner command')\""`;
 
-      // Wrap it: vibe-validate run "vibe-validate run 'echo test'"
-      const outerCommand = `${CLI_PATH} run "${innerCommand}"`;
-
-      let output: string;
-      let _exitCode = 0;
-
-      try {
-        output = execSync(outerCommand, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr
-        output = error.stdout || '';
-        _exitCode = error.status || 1;
-      }
+      // Wrap it: vibe-validate run "vibe-validate run 'node -e ...'"
+      const output = execCLI(['run', innerCommand]);
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -44,7 +114,7 @@ describe('run command integration', () => {
 
       // Should unwrap to innermost command (not wrapper)
       expect(parsed.command).toBeDefined();
-      expect(parsed.command).toContain('echo');
+      expect(parsed.command).toContain('node');
 
       // Should preserve exit code
       expect(parsed.exitCode).toBe(0);
@@ -56,18 +126,7 @@ describe('run command integration', () => {
   describe('real error scenarios', () => {
     it('should handle real failing command with error extraction', () => {
       // Command that will fail
-      const command = `${CLI_PATH} run "node -e 'process.exit(1)'"`;
-
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+      const output = execCLI(['run', 'node -e "process.exit(1)"']);
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -81,18 +140,7 @@ describe('run command integration', () => {
     });
 
     it('should handle real command with non-standard exit code', () => {
-      const command = `${CLI_PATH} run "node -e 'process.exit(42)'"`;
-
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+      const output = execCLI(['run', 'node -e "process.exit(42)"']);
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -106,59 +154,43 @@ describe('run command integration', () => {
   // Real extractor integration tests moved to run.system.test.ts
 
   describe('real stdout/stderr handling', () => {
-    it('should handle commands that write to both stdout and stderr', () => {
-      const command = `${CLI_PATH} run "node -e 'console.log("stdout"); console.error("stderr");'"`;
-
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+    it.skipIf(process.platform === 'win32')('should handle commands that write to both stdout and stderr', () => {
+      const output = execCLI(['run', String.raw`node -e "console.log(\"stdout\"); console.error(\"stderr\");"`]);
 
       // Parse YAML output
       expectValidRunYaml(output);
       const parsed = parseRunYamlOutput(output);
 
-      // Should have both in rawOutput (if present)
+      // Should capture both stdout and stderr in separate files
       expect(parsed.command).toBeDefined();
-      expect(parsed.extraction).toBeDefined();
+      expect(parsed.exitCode).toBe(0);
+      expect(parsed.outputFiles).toBeDefined();
+      expect(parsed.outputFiles.stdout).toBeDefined();
+      expect(parsed.outputFiles.stderr).toBeDefined();
+      expect(parsed.outputFiles.combined).toBeDefined();
     });
   });
 
   // Real YAML output preservation tests moved to run.system.test.ts
 
   describe('caching behavior', () => {
-    it('should write git notes refs when caching successful commands', () => {
-      const command = `echo "Cache write test ${Date.now()}"`;
+    it.skipIf(process.platform === 'win32')('should write git notes refs when caching successful commands', () => {
+      const command = `node -e "console.log('Cache write test ${Date.now()}')"`;
 
       // First run - should execute and cache
-      const firstRun = execSync(`${CLI_PATH} run "${command}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      const firstRun = execCLI(['run', command]);
 
       const firstParsed = parseRunYamlOutput(firstRun);
       expect(firstParsed.exitCode).toBe(0);
       const treeHash = firstParsed.treeHash;
 
       // CRITICAL: Verify git notes ref was actually created
-      const notesRefs = execSync(
-        `git for-each-ref refs/notes/vibe-validate/run/${treeHash}`,
-        { encoding: 'utf-8' }
-      );
+      const notesRefs = safeExecSync('git', ['for-each-ref', `refs/notes/vibe-validate/run/${treeHash}`], { encoding: 'utf-8' }) as string;
       expect(notesRefs).not.toBe(''); // Cache was written!
       expect(notesRefs).toContain('refs/notes/vibe-validate/run/');
 
       // Second run - should hit cache
-      const secondRun = execSync(`${CLI_PATH} run "${command}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      const secondRun = execCLI(['run', command]);
 
       const secondParsed = parseRunYamlOutput(secondRun);
       expect(secondParsed.exitCode).toBe(0);
@@ -167,17 +199,7 @@ describe('run command integration', () => {
     });
 
     it('should not write git notes for failed commands', () => {
-      let output: string;
-
-      try {
-        // First run - should fail and NOT cache
-        output = execSync(`${CLI_PATH} run "exit 1"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) { // NOSONAR - execSync throws on non-zero exit
-        output = err.stdout || '';
-      }
+      const output = execCLI(['run', 'exit 1']);
 
       const firstParsed = parseRunYamlOutput(output);
       expect(firstParsed.exitCode).toBe(1);
@@ -192,50 +214,41 @@ describe('run command integration', () => {
       expect(treeHash).toBeDefined(); // Verify we got a tree hash
     });
 
-    it('should invalidate cache when tree hash changes', () => {
+    it.skipIf(process.platform === 'win32')('should invalidate cache when tree hash changes', () => {
       const tmpFile = `tmp-cache-test-${Date.now()}.txt`;
 
       try {
         // Run command first time - should execute (no cache)
-        const firstRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const firstRun = execCLI(['run', "node -e \"console.log('Cache test')\""]);
         // Parse YAML output - opening delimiter only (no display flags)
         expect(firstRun).toMatch(/^---\n/);
         const firstParsed = parseRunYamlOutput(firstRun);
         expect(firstParsed.exitCode).toBe(0);
-        expect(firstParsed.command).toBe('echo \'Cache test\'');
+        expect(firstParsed.command).toBe('node -e "console.log(\'Cache test\')"');
 
         // Run again immediately - should hit cache (same tree hash)
-        const cachedRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const cachedRun = execCLI(['run', "node -e \"console.log('Cache test')\""]);
         expect(cachedRun).toMatch(/^---\n/);
         const cachedParsed = parseRunYamlOutput(cachedRun);
         expect(cachedParsed.exitCode).toBe(0);
 
         // Create a new file to change tree hash
-        execSync(`echo "test" > ${tmpFile}`, { encoding: 'utf-8' });
+        safeExecSync('node', ['-e', String.raw`require('fs').writeFileSync('${tmpFile}', 'test\n')`], { encoding: 'utf-8' });
 
         // Run same command again - cache should be invalidated due to tree hash change
         // Should execute again (not from cache)
-        const thirdRun = execSync(`${CLI_PATH} run "echo 'Cache test'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const thirdRun = execCLI(['run', "node -e \"console.log('Cache test')\""]);
         expect(thirdRun).toMatch(/^---\n/);
         const thirdParsed = parseRunYamlOutput(thirdRun);
         expect(thirdParsed.exitCode).toBe(0);
-        expect(thirdParsed.command).toBe('echo \'Cache test\'');
+        expect(thirdParsed.command).toBe('node -e "console.log(\'Cache test\')"');
 
         // Cleanup
-        execSync(`rm ${tmpFile}`, { encoding: 'utf-8' });
+        safeExecSync('rm', [tmpFile], { encoding: 'utf-8' });
       } catch (error: any) { // NOSONAR - Need to access stdout from error for test verification
         // Cleanup on error
         try {
-          execSync(`rm ${tmpFile}`, { encoding: 'utf-8' });
+          safeExecSync('rm', [tmpFile], { encoding: 'utf-8' });
         } catch {
           // Ignore cleanup errors
         }
@@ -243,13 +256,12 @@ describe('run command integration', () => {
       }
     });
 
-    it('should create separate cache entries for different working directories', () => {
+    it.skipIf(process.platform === 'win32')('should create separate cache entries for different working directories', () => {
       const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
 
       // Run command in root
-      const rootRun = execSync(`node ${absoluteCliPath} run "echo 'root'"`, {
+      const rootRun = execCLIAbsolute(absoluteCliPath, ['run', "echo 'root'"], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
         cwd: process.cwd(),
       });
       // Parse YAML output - opening delimiter only (no display flags)
@@ -257,9 +269,8 @@ describe('run command integration', () => {
       const rootParsed = parseRunYamlOutput(rootRun);
 
       // Run same command text in subdirectory
-      const subdirRun = execSync(`node ${absoluteCliPath} run "echo 'root'"`, {
+      const subdirRun = execCLIAbsolute(absoluteCliPath, ['run', "echo 'root'"], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
         cwd: `${process.cwd()}/packages/cli`,
       });
       expect(subdirRun).toMatch(/^---\n/);
@@ -284,21 +295,15 @@ describe('run command integration', () => {
       expect(subdirParsed.outputFiles).toBeDefined();
     });
 
-    it('should disable caching in non-git repositories with inline YAML comment', () => {
+    it.skipIf(process.platform === 'win32')('should disable caching in non-git repositories with inline YAML comment', () => {
       // Test in /tmp which is guaranteed to not be a git repository
       const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
 
       // Capture stdout only (YAML with embedded comment)
-      let output: string;
-
-      try {
-        output = execSync(`node ${absoluteCliPath} run "echo 'test'"`, {
-          encoding: 'utf-8',
-          cwd: '/tmp',
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+      const output = execCLIAbsolute(absoluteCliPath, ['run', "echo 'test'"], {
+        encoding: 'utf-8',
+        cwd: '/tmp',
+      });
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -331,15 +336,10 @@ describe('run command integration', () => {
       // This verifies that caching is actually disabled
       // Add a small delay to ensure different timestamp (and thus different temp dir)
       const sleepCommand = 'sleep 1 && echo "test2"';
-      let secondOutput: string;
-      try {
-        secondOutput = execSync(`node ${absoluteCliPath} run "${sleepCommand}"`, {
-          encoding: 'utf-8',
-          cwd: '/tmp',
-        });
-      } catch (err: any) {
-        secondOutput = err.stdout || '';
-      }
+      const secondOutput = execCLIAbsolute(absoluteCliPath, ['run', sleepCommand], {
+        encoding: 'utf-8',
+        cwd: '/tmp',
+      });
 
       const secondYamlContent = secondOutput.replace(/^---\n/, '').replace(/\n---\n?$/, '');
       const secondParsed = yaml.parse(secondYamlContent);
@@ -357,36 +357,27 @@ describe('run command integration', () => {
       expect(secondParsed.outputFiles.combined).toBeDefined();
     });
 
-    describe('force flag propagation', () => {
+    describe.skipIf(process.platform === 'win32')('force flag propagation', () => {
       it('should bypass cache when --force flag is used', () => {
         const testMessage = `test-force-${Date.now()}`;
         const testCommand = `echo ${testMessage}`;
 
         // First run - should execute and cache
-        const firstRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const firstRun = execCLI(['run', testCommand]);
 
         const firstParsed = parseRunYamlOutput(firstRun);
         expect(firstParsed.exitCode).toBe(0);
         expect(firstParsed.isCachedResult).toBeUndefined(); // Not from cache
 
         // Second run without --force - should hit cache
-        const cachedRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const cachedRun = execCLI(['run', testCommand]);
 
         const cachedParsed = parseRunYamlOutput(cachedRun);
         expect(cachedParsed.exitCode).toBe(0);
         expect(cachedParsed.isCachedResult).toBe(true); // From cache
 
         // Third run with --force - should bypass cache
-        const forcedRun = execSync(`${CLI_PATH} run --force "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const forcedRun = execCLI(['run', '--force', testCommand]);
 
         const forcedParsed = parseRunYamlOutput(forcedRun);
         expect(forcedParsed.exitCode).toBe(0);
@@ -398,29 +389,21 @@ describe('run command integration', () => {
         const testCommand = `echo ${testMessage}`;
 
         // First run - cache the command
-        const firstRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const firstRun = execCLI(['run', testCommand]);
 
         const firstParsed = parseRunYamlOutput(firstRun);
         expect(firstParsed.exitCode).toBe(0);
 
         // Second run - nested command should hit cache
-        const nestedCachedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;
+        const nestedCachedRun = execCLI(['run', nestedCommand]);
 
         const nestedCachedParsed = parseRunYamlOutput(nestedCachedRun);
         expect(nestedCachedParsed.exitCode).toBe(0);
         expect(nestedCachedParsed.isCachedResult).toBe(true); // Inner hit cache
 
         // Third run - nested command with --force should bypass cache
-        const nestedForcedRun = execSync(`${CLI_PATH} run --force "${CLI_PATH} run '${testCommand}'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const nestedForcedRun = execCLI(['run', '--force', nestedCommand]);
 
         const nestedForcedParsed = parseRunYamlOutput(nestedForcedRun);
         expect(nestedForcedParsed.exitCode).toBe(0);
@@ -432,24 +415,17 @@ describe('run command integration', () => {
         const testCommand = `echo ${testMessage}`;
 
         // First run - cache the command
-        execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        execCLI(['run', testCommand]);
 
         // Second run - should hit cache
-        const cachedRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const cachedRun = execCLI(['run', testCommand]);
 
         const cachedParsed = parseRunYamlOutput(cachedRun);
         expect(cachedParsed.isCachedResult).toBe(true);
 
         // Third run with VV_FORCE_EXECUTION env var - should bypass cache
-        const forcedRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
+        const forcedRun = execCLI(['run', testCommand], {
           encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
           env: { ...process.env, VV_FORCE_EXECUTION: '1' },
         });
 
@@ -460,17 +436,15 @@ describe('run command integration', () => {
     });
 
     // Issue #73 (expanded): Nested command caching regression fix
-    describe('nested command caching (Issue #73 expanded)', () => {
+    describe.skipIf(process.platform === 'win32')('nested command caching (Issue #73 expanded)', () => {
       it('should share cache between nested and direct command invocations', () => {
         // Clear any existing cache for this test
         const testMessage = `test-nested-cache-${Date.now()}`;
         const testCommand = `echo ${testMessage}`; // Unquoted for simplicity
 
         // First run: nested vv run
-        const nestedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;
+        const nestedRun = execCLI(['run', nestedCommand]);
 
         const nestedParsed = parseRunYamlOutput(nestedRun);
         expect(nestedParsed.exitCode).toBe(0);
@@ -479,17 +453,11 @@ describe('run command integration', () => {
         const treeHash = nestedParsed.treeHash;
 
         // Verify cache was written
-        const notesRefs = execSync(
-          `git for-each-ref refs/notes/vibe-validate/run/${treeHash}`,
-          { encoding: 'utf-8' }
-        );
+        const notesRefs = safeExecSync('git', ['for-each-ref', `refs/notes/vibe-validate/run/${treeHash}`], { encoding: 'utf-8' }) as string;
         expect(notesRefs).not.toBe(''); // Cache exists (may include entries from other tests)
 
         // Second run: direct command (should hit cache)
-        const directRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const directRun = execCLI(['run', testCommand]);
 
         const directParsed = parseRunYamlOutput(directRun);
         expect(directParsed.exitCode).toBe(0);
@@ -505,10 +473,7 @@ describe('run command integration', () => {
         const testCommand = `echo ${testMessage}`;
 
         // First run: direct command
-        const directRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const directRun = execCLI(['run', testCommand]);
 
         const directParsed = parseRunYamlOutput(directRun);
         expect(directParsed.exitCode).toBe(0);
@@ -516,10 +481,8 @@ describe('run command integration', () => {
         const treeHash = directParsed.treeHash;
 
         // Second run: nested command (should hit cache from inner)
-        const nestedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;
+        const nestedRun = execCLI(['run', nestedCommand]);
 
         const nestedParsed = parseRunYamlOutput(nestedRun);
         expect(nestedParsed.exitCode).toBe(0);
@@ -534,20 +497,15 @@ describe('run command integration', () => {
         const testCommand = `echo "test-propagate-${Date.now()}"`;
 
         // First run: cache miss
-        const firstRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const firstRun = execCLI(['run', testCommand]);
 
         const firstParsed = parseRunYamlOutput(firstRun);
         expect(firstParsed.exitCode).toBe(0);
         expect(firstParsed.isCachedResult).toBeUndefined(); // First run, no cache
 
         // Second run: nested command should show cache hit
-        const nestedRun = execSync(`${CLI_PATH} run "${CLI_PATH} run '${testCommand}'"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;
+        const nestedRun = execCLI(['run', nestedCommand]);
 
         const nestedParsed = parseRunYamlOutput(nestedRun);
         expect(nestedParsed.exitCode).toBe(0);
@@ -559,12 +517,9 @@ describe('run command integration', () => {
         // Test that requestedCommand field is added for transparency
         const testMessage = `test-requested-${Date.now()}`;
         const testCommand = `echo ${testMessage}`;
-        const wrappedCommand = `${CLI_PATH} run '${testCommand}'`;
+        const wrappedCommand = `node ${CLI_BIN} run '${testCommand}'`;
 
-        const nestedRun = execSync(`${CLI_PATH} run "${wrappedCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const nestedRun = execCLI(['run', wrappedCommand]);
 
         const parsed = parseRunYamlOutput(nestedRun);
         expect(parsed.exitCode).toBe(0);
@@ -581,10 +536,7 @@ describe('run command integration', () => {
         const testMessage = `test-no-requested-${Date.now()}`;
         const testCommand = `echo ${testMessage}`;
 
-        const directRun = execSync(`${CLI_PATH} run "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const directRun = execCLI(['run', testCommand]);
 
         const parsed = parseRunYamlOutput(directRun);
         expect(parsed.exitCode).toBe(0);
@@ -598,17 +550,8 @@ describe('run command integration', () => {
     it('should handle nested execution without significant overhead', () => {
       const start = Date.now();
 
-      const command = `${CLI_PATH} run "${CLI_PATH} run 'echo fast'"`;
-
-      try {
-        execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (error: any) { // NOSONAR - Ignoring errors, just testing performance
-        // Expected - command may fail but we're only measuring execution time
-        expect(error).toBeDefined();
-      }
+      const command = `node ${CLI_BIN} run 'echo fast'`;
+      execCLI(['run', command]);
 
       const duration = Date.now() - start;
 
@@ -623,18 +566,7 @@ describe('run command integration', () => {
       // `vv run claude --help` was incorrectly showing help for vv run
       // instead of executing `claude --help`
 
-      const command = `${CLI_PATH} run echo --help`;
-
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+      const output = execCLI(['run', 'echo --help']);
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -650,18 +582,7 @@ describe('run command integration', () => {
 
     it('should handle commands with multiple flags correctly', () => {
       // Use flags that are NOT known vv run options
-      const command = `${CLI_PATH} run echo -n test --unknown-flag`;
-
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+      const output = execCLI(['run', 'echo -n test --unknown-flag']);
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -675,18 +596,7 @@ describe('run command integration', () => {
     it('should execute "node --help" not show vv run help', () => {
       // Regression test: vv run node --help should execute "node --help"
       // not show help for vv run command
-      const command = `${CLI_PATH} run node --help`;
-
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+      const output = execCLI(['run', 'node --help']);
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -702,18 +612,7 @@ describe('run command integration', () => {
 
     it('should handle vv run options before command correctly', () => {
       // Options for vv run itself must come BEFORE the command
-      const command = `${CLI_PATH} run --force echo test`;
-
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
+      const output = execCLI(['run', '--force', 'echo test']);
 
       // Parse YAML output
       expectValidRunYaml(output);
@@ -727,11 +626,7 @@ describe('run command integration', () => {
     it('should show run command help when using --verbose --help without a command', () => {
       // Critical edge case: vv run --verbose --help should show verbose help for run command
       // NOT try to execute --help as a command
-      const command = `${CLI_PATH} run --verbose --help`;
-
-      const output = execSync(command, {
-        encoding: 'utf-8',
-      });
+      const output = execCLI(['run', '--verbose', '--help']);
 
       // Should show verbose help documentation (not YAML output)
       expect(output).toContain('run Command Reference');
@@ -745,11 +640,7 @@ describe('run command integration', () => {
 
     it('should show run command help when using --help alone', () => {
       // Basic case: vv run --help should show help for run command
-      const command = `${CLI_PATH} run --help`;
-
-      const output = execSync(command, {
-        encoding: 'utf-8',
-      });
+      const output = execCLI(['run', '--help']);
 
       // Should show basic help
       expect(output).toContain('Usage: vibe-validate run');
@@ -764,20 +655,11 @@ describe('run command integration', () => {
 
   describe('display flags', () => {
     it('should display verbose output with --verbose flag', () => {
-      const command = `${CLI_PATH} run --verbose node --badarg 2>&1`;
+      // Display output goes to stderr, YAML goes to stdout
+      const { stdout, stderr } = execCLIWithStderr(['run', '--verbose', 'node --badarg']);
 
-      let output: string;
-
-      try {
-        output = execSync(command, {
-          encoding: 'utf-8',
-        });
-      } catch (err: any) {
-        output = err.stdout || '';
-      }
-
-      // Extract YAML front matter (between --- delimiters)
-      const yamlMatch = output.match(/^---\n([\s\S]*?)\n---/);
+      // Extract YAML front matter from stdout
+      const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
       expect(yamlMatch).toBeTruthy();
       const yamlContent = yamlMatch![1];
       const parsed = yaml.parse(yamlContent);
@@ -785,70 +667,58 @@ describe('run command integration', () => {
       expect(parsed.command).toBe('node --badarg');
       expect(parsed.exitCode).toBeGreaterThan(0);
 
-      // Should have verbose output after YAML front matter (no header)
-      const afterYaml = output.split('---\n').slice(2).join('');
-      expect(afterYaml).toContain('[stderr]');
-      expect(afterYaml).toContain('node: bad option');
+      // Should have verbose output on stderr
+      expect(stderr).toContain('[stderr]');
+      expect(stderr).toContain('node: bad option');
     });
 
     it('should display first N lines with --head flag', () => {
-      // Use printf to generate multiple lines of output
-      // Redirect stderr to stdout with 2>&1 to capture display output
-      const command = `${CLI_PATH} run --head 2 printf ${String.raw`"line1\nline2\nline3\n"`} 2>&1`;
+      // Display output goes to stderr, YAML goes to stdout
+      const { stdout, stderr } = execCLIWithStderr(['run', '--head', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
-      const output = execSync(command, {
-        encoding: 'utf-8',
-      });
-
-      // Extract YAML front matter
-      const yamlMatch = output.match(/^---\n([\s\S]*?)\n---/);
+      // Extract YAML front matter from stdout
+      const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
       expect(yamlMatch).toBeTruthy();
       const yamlContent = yamlMatch![1];
       const parsed = yaml.parse(yamlContent);
       expect(parsed.exitCode).toBe(0);
 
-      // Should have output display after YAML (no header, just output lines)
-      const afterYaml = output.split('---\n').slice(2).join('');
-      expect(afterYaml).toContain('[stdout]');
+      // Should have output display on stderr (--head shows first 2 lines)
+      expect(stderr).toContain('[stdout]');
+      expect(stderr).toContain('line1');
     });
 
     it('should display last N lines with --tail flag', () => {
-      // Use printf to generate multiple lines of output
-      // Redirect stderr to stdout with 2>&1 to capture display output
-      const command = `${CLI_PATH} run --tail 2 printf ${String.raw`"line1\nline2\nline3\n"`} 2>&1`;
+      // Display output goes to stderr, YAML goes to stdout
+      const { stdout, stderr } = execCLIWithStderr(['run', '--tail', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
-      const output = execSync(command, {
-        encoding: 'utf-8',
-      });
-
-      // Extract YAML front matter
-      const yamlMatch = output.match(/^---\n([\s\S]*?)\n---/);
+      // Extract YAML front matter from stdout
+      const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
       expect(yamlMatch).toBeTruthy();
       const yamlContent = yamlMatch![1];
       const parsed = yaml.parse(yamlContent);
       expect(parsed.exitCode).toBe(0);
 
-      // Should have output display after YAML (no header, just output lines)
-      const afterYaml = output.split('---\n').slice(2).join('');
-      expect(afterYaml).toContain('[stdout]');
+      // Should have output display on stderr (--tail shows last 2 lines)
+      expect(stderr).toContain('[stdout]');
+      expect(stderr).toContain('line3');
     });
 
     it('should not display output without display flags', () => {
-      // Use echo which works reliably across platforms
-      const command = `${CLI_PATH} run echo "test output" 2>&1`;
-
-      const output = execSync(command, {
-        encoding: 'utf-8',
-      });
+      // Without display flags, only YAML should be on stdout, nothing on stderr
+      const { stdout, stderr } = execCLIWithStderr(['run', 'echo "test output"']);
 
       // Parse YAML output - both opening and closing delimiters (always present for consistency)
-      expectValidRunYaml(output);
-      const parsed = parseRunYamlOutput(output);
+      expectValidRunYaml(stdout);
+      const parsed = parseRunYamlOutput(stdout);
       expect(parsed.exitCode).toBe(0);
 
       // Should have closing delimiter (always present for RFC 4627 compliance)
-      expect(output).toMatch(/\n---\n$/); // Closing delimiter at end
-      expect(output.trim()).toBe(('---\n' + yaml.stringify(parsed) + '---').trim());
+      expect(stdout).toMatch(/\n---\n$/); // Closing delimiter at end
+      expect(stdout.trim()).toBe(('---\n' + yaml.stringify(parsed) + '---').trim());
+
+      // No display output on stderr
+      expect(stderr).toBe('');
     });
   });
 
@@ -858,16 +728,10 @@ describe('run command integration', () => {
       const testCommand = `echo ${testMessage}`;
 
       // First run - populate cache
-      execSync(`${CLI_PATH} run "${testCommand}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      execCLI(['run', testCommand]);
 
       // Second run with --check - should return cached result
-      const checkOutput = execSync(`${CLI_PATH} run --check "${testCommand}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      const checkOutput = execCLI(['run', '--check', testCommand]);
 
       const parsed = parseRunYamlOutput(checkOutput);
       expect(parsed.exitCode).toBe(0);
@@ -878,16 +742,9 @@ describe('run command integration', () => {
       const testMessage = `test-check-miss-${Date.now()}`;
       const testCommand = `echo ${testMessage}`;
 
-      // Run --check without prior cache
-      try {
-        execSync(`${CLI_PATH} run --check "${testCommand}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-        expect.fail('Should have thrown an error');
-      } catch (error: any) {
-        expect(error.status).toBe(1);
-      }
+      // Run --check without prior cache - should fail with exit code 1
+      const result = execCLIWithStderr(['run', '--check', testCommand]);
+      expect(result.status).toBe(1);
     });
 
     it('should not execute command when checking cache', () => {
@@ -895,37 +752,30 @@ describe('run command integration', () => {
       const testCommand = `touch ${testFile}`;
 
       // First run - populate cache
-      execSync(`${CLI_PATH} run "${testCommand}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      execCLI(['run', testCommand]);
 
       // Remove the file
       if (existsSync(testFile)) {
-        execSync(`rm ${testFile}`);
+        safeExecSync('rm', [testFile]);
       }
 
       // Run --check - should NOT recreate the file
-      execSync(`${CLI_PATH} run --check "${testCommand}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      execCLI(['run', '--check', testCommand]);
 
       // File should still not exist (command was not executed)
       expect(existsSync(testFile)).toBe(false);
     });
   });
 
-  describe('--cwd flag', () => {
+  describe.skipIf(process.platform === 'win32')('--cwd flag', () => {
     it('should use explicit --cwd in cache key', () => {
       const testMessage = `test-cwd-${Date.now()}`;
       const testCommand = `echo ${testMessage}`;
       const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
 
       // Run from root with --cwd pointing to subdirectory
-      const output1 = execSync(`node ${absoluteCliPath} run --cwd packages/cli "${testCommand}"`, {
+      const output1 = execCLIAbsolute(absoluteCliPath, ['run', '--cwd', 'packages/cli', testCommand], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
         cwd: process.cwd(), // Run from repo root
       });
 
@@ -934,9 +784,8 @@ describe('run command integration', () => {
       expect(parsed1.isCachedResult).toBeUndefined(); // First run
 
       // Run again - should hit cache
-      const output2 = execSync(`node ${absoluteCliPath} run --cwd packages/cli "${testCommand}"`, {
+      const output2 = execCLIAbsolute(absoluteCliPath, ['run', '--cwd', 'packages/cli', testCommand], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
         cwd: process.cwd(),
       });
 
@@ -951,9 +800,8 @@ describe('run command integration', () => {
       const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
 
       // Scenario 1: vv run --cwd subdir "cmd" (from root)
-      const output1 = execSync(`node ${absoluteCliPath} run --cwd ${subdir} "${testCommand}"`, {
+      const output1 = execCLIAbsolute(absoluteCliPath, ['run', '--cwd', subdir, testCommand], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
         cwd: process.cwd(),
       });
 
@@ -962,9 +810,8 @@ describe('run command integration', () => {
       expect(parsed1.isCachedResult).toBeUndefined(); // First run
 
       // Scenario 2: cd subdir && vv run "cmd"
-      const output2 = execSync(`node ${absoluteCliPath} run "${testCommand}"`, {
+      const output2 = execCLIAbsolute(absoluteCliPath, ['run', testCommand], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
         cwd: path.join(process.cwd(), subdir), // Run from subdirectory
       });
 

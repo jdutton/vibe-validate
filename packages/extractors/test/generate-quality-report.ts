@@ -13,13 +13,15 @@
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { autoDetectAndExtract } from '../src/smart-extractor.js';
+
 import {
   loadAllSamples,
   groupSamplesBy,
   getThreshold,
   computeQualityScore,
 } from './sample-loader.js';
-import { autoDetectAndExtract } from '../src/smart-extractor.js';
 import type { SampleTestResult, ActualExtraction } from './sample-types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -6,25 +6,26 @@
  * Use this when you've successfully reduced duplication.
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const BASELINE_FILE = '.github/.jscpd-baseline.json';
 
-const JSCPD_CONFIG = [
+const JSCPD_ARGS = [
+  '.',
   '--min-lines', '5',
   '--min-tokens', '50',
   '--reporters', 'json',
   '--format', 'typescript,javascript',
   '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
   '--output', './jscpd-report'
-].join(' ');
+];
 
 console.log('🔄 Updating duplication baseline...\n');
 
 // Run jscpd
 try {
-  execSync(`npx jscpd . ${JSCPD_CONFIG}`, { encoding: 'utf-8', stdio: 'pipe' });
+  safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
 } catch {
   // Expected - jscpd exits with error if duplications found
 }

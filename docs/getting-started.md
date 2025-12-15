@@ -367,7 +367,7 @@ vv cleanup
 
 - **Customize configuration**: See [Configuration Reference](configuration-reference.md)
 - **Learn CLI commands**: See [CLI Reference](cli-reference.md)
-- **Use config templates**: See [Config Templates Guide](../config-templates/README.md)
+- **Use config templates**: See [Config Templates Guide](../packages/cli/config-templates/README.md)
 - **Integrate with AI assistants**: See [Agent Integration Guide](agent-integration-guide.md)
 - **Understand error extractors**: See [Error Extractors Guide](error-extractors-guide.md)
 

@@ -1,0 +1,144 @@
+# Windows Debugging Workflow
+#
+# Comprehensive diagnostics for Windows CI issues.
+# Run manually via GitHub Actions UI or: gh workflow run debug-windows.yml
+#
+# This workflow is NOT auto-generated - edit directly.
+
+name: Windows Debugging
+
+on:
+  workflow_dispatch:  # Manual trigger only
+    inputs:
+      node_version:
+        description: 'Node.js version to test (default: 24)'
+        required: false
+        default: '24'
+  push:
+    branches:
+      - 'debug/**'  # Auto-run for debug branches
+
+jobs:
+  debug-windows:
+    name: Windows Debug (Node ${{ github.event.inputs.node_version || '24' }})
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '9'
+
+      - name: Setup Node.js ${{ github.event.inputs.node_version || '24' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ github.event.inputs.node_version || '24' }}
+          cache: pnpm
+
+      - name: Display Node.js environment
+        run: |
+          Write-Host "=== Node.js Environment ==="
+          Write-Host "Node version: $(node --version)"
+          Write-Host "npm version: $(npm --version)"
+          Write-Host "pnpm version: $(pnpm --version)"
+          Write-Host "Node path: $((Get-Command node).Source)"
+          Write-Host "Process PATH:"
+          $env:PATH -split ';' | ForEach-Object { Write-Host "  $_" }
+          Write-Host ""
+          Write-Host "PATHEXT: $env:PATHEXT"
+        shell: pwsh
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Run Windows debug script
+        run: node --import tsx tools/debug-windows.ts
+        continue-on-error: true
+
+      - name: Run debug script via pnpm
+        run: pnpm tsx tools/debug-windows.ts
+        continue-on-error: true
+
+      - name: Test raw Node.js spawn
+        run: |
+          Write-Host "=== Testing raw Node.js commands ==="
+
+          Write-Host "`nTest 1: node --version (direct)"
+          node --version
+
+          Write-Host "`nTest 2: Get-Command node"
+          $nodeCmd = Get-Command node
+          Write-Host "Source: $($nodeCmd.Source)"
+          Write-Host "Exists: $(Test-Path $nodeCmd.Source)"
+
+          Write-Host "`nTest 3: Spawn node via PowerShell"
+          $proc = Start-Process -FilePath "node" -ArgumentList "--version" -NoNewWindow -Wait -PassThru
+          Write-Host "Exit code: $($proc.ExitCode)"
+
+          Write-Host "`nTest 4: Test file existence"
+          $nodePath = $nodeCmd.Source
+          Write-Host "Node path: $nodePath"
+          Write-Host "File exists: $(Test-Path $nodePath)"
+          Write-Host "Is file: $((Get-Item $nodePath).PSIsContainer -eq $false)"
+
+          Write-Host "`nTest 5: Directory listing"
+          $nodeDir = Split-Path $nodePath
+          Write-Host "Node directory: $nodeDir"
+          Get-ChildItem $nodeDir | Select-Object Name, Length | Format-Table
+        shell: pwsh
+        continue-on-error: true
+
+      - name: Test @vibe-validate/git safe-exec
+        run: |
+          Write-Host "=== Testing @vibe-validate/git ==="
+          node -e "
+            const { safeExecSync, safeExecResult, isToolAvailable } = require('./packages/git/dist/safe-exec.js');
+
+            console.log('isToolAvailable(node):', isToolAvailable('node'));
+
+            try {
+              const result = safeExecResult('node', ['--version'], { encoding: 'utf-8' });
+              console.log('safeExecResult status:', result.status);
+              console.log('safeExecResult stdout:', result.stdout.toString());
+              if (result.error) {
+                console.log('safeExecResult error:', result.error.message);
+                console.log('Error code:', result.error.code);
+              }
+            } catch (err) {
+              console.error('Exception:', err.message);
+            }
+          "
+        shell: pwsh
+        continue-on-error: true
+
+      - name: Run actual tests to reproduce issue
+        run: pnpm --filter @vibe-validate/git test
+        continue-on-error: true
+
+      - name: Collect diagnostic information
+        if: always()
+        run: |
+          Write-Host "=== Final Diagnostic Summary ==="
+          Write-Host "Node.js version: $(node --version)"
+          Write-Host "Platform: $([System.Environment]::OSVersion.Platform)"
+          Write-Host "Architecture: $env:PROCESSOR_ARCHITECTURE"
+          Write-Host "Process execPath would be: $([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)"
+        shell: pwsh
+
+      - name: Upload debug output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-debug-node-${{ github.event.inputs.node_version || '24' }}
+          path: |
+            **/*.log
+            **/test-results/**
+          retention-days: 7

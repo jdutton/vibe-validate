@@ -10,9 +10,10 @@
  * 3. All checks pass (this project should be fully healthy)
  */
 
-import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
 import { join } from 'node:path';
+
+import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect } from 'vitest';
 
 // Get the project root (vibe-validate repo root)
 const PROJECT_ROOT = join(__dirname, '../../../..');
@@ -32,7 +33,7 @@ function runDoctorCommand(cwd: string): {
   const vvBinary = join(PROJECT_ROOT, 'packages/cli/dist/bin/vv');
 
   try {
-    const output = execSync(`node "${vvBinary}" doctor --verbose`, {
+    const output = safeExecFromString(`node "${vvBinary}" doctor --verbose`, {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',

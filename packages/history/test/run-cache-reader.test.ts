@@ -5,13 +5,14 @@
  * These functions read and enumerate run cache entries for the history command.
  */
 
+import { readNote, listNotesRefs } from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import {
   listRunCacheEntries,
   getRunCacheEntry,
   getAllRunCacheForTree,
 } from '../src/run-cache-reader.js';
-import { readNote, listNotesRefs } from '@vibe-validate/git';
 
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', () => ({

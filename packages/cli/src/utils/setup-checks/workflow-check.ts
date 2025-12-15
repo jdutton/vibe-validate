@@ -8,9 +8,12 @@
  * generate-workflow command to create a standard GitHub Actions workflow.
  */
 
-import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+
+import { generateWorkflow, type GenerateWorkflowOptions } from '../../commands/generate-workflow.js';
+import { loadConfig } from '../config-loader.js';
 import type {
   SetupCheck,
   CheckResult,
@@ -18,8 +21,6 @@ import type {
   PreviewResult,
   FixOptions,
 } from '../setup-engine.js';
-import { generateWorkflow, type GenerateWorkflowOptions } from '../../commands/generate-workflow.js';
-import { loadConfig } from '../config-loader.js';
 
 export class WorkflowSetupCheck implements SetupCheck {
   readonly id = 'workflow';

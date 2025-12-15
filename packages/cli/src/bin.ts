@@ -5,24 +5,26 @@
  * Main executable for the vibe-validate command-line tool.
  */
 
-import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateCommand } from './commands/validate.js';
-import { initCommand } from './commands/init.js';
-import { preCommitCommand } from './commands/pre-commit.js';
-import { stateCommand } from './commands/state.js';
-import { snapshotCommand } from './commands/snapshot.js';
-import { syncCheckCommand } from './commands/sync-check.js';
+
+import { Command } from 'commander';
+
 import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
-import { generateWorkflowCommand } from './commands/generate-workflow.js';
-import { doctorCommand } from './commands/doctor.js';
-import { registerWatchPRCommand } from './commands/watch-pr.js';
-import { historyCommand } from './commands/history.js';
-import { runCommand } from './commands/run.js';
 import { createExtractorCommand } from './commands/create-extractor.js';
+import { doctorCommand } from './commands/doctor.js';
+import { generateWorkflowCommand } from './commands/generate-workflow.js';
+import { historyCommand } from './commands/history.js';
+import { initCommand } from './commands/init.js';
+import { preCommitCommand } from './commands/pre-commit.js';
+import { runCommand } from './commands/run.js';
+import { snapshotCommand } from './commands/snapshot.js';
+import { stateCommand } from './commands/state.js';
+import { syncCheckCommand } from './commands/sync-check.js';
+import { validateCommand } from './commands/validate.js';
+import { registerWatchPRCommand } from './commands/watch-pr.js';
 
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation

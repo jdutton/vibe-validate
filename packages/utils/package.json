@@ -1,0 +1,53 @@
+{
+  "name": "@vibe-validate/utils",
+  "version": "0.17.4",
+  "description": "Common utilities for vibe-validate packages (command execution, path normalization)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "utilities",
+    "command-execution",
+    "path-helpers",
+    "cross-platform",
+    "windows"
+  ],
+  "author": "Jeff Dutton",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdutton/vibe-validate.git",
+    "directory": "packages/utils"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "which": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.2",
+    "@types/which": "^3.0.4",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  }
+}

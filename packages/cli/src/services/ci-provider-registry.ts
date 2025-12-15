@@ -14,7 +14,7 @@ import { GitHubActionsProvider } from './ci-providers/github-actions.js';
  * - etc.
  */
 export class CIProviderRegistry {
-  private providers: CIProvider[] = [
+  private readonly providers: CIProvider[] = [
     new GitHubActionsProvider(),
     // new GitLabCIProvider(),
     // new CircleCIProvider(),

@@ -32,52 +32,8 @@ jobs:
         run: pnpm install
       - name: Build packages
         run: pnpm -r build
-      - name: Run validation (Unix)
-        if: runner.os != 'Windows'
-        run: pnpm validate --yaml --verbose 1>validation-result.yaml || true
-      - name: Run validation (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |-
-          pnpm validate --yaml --verbose 1>validation-result.yaml
-          $exitCode = $LASTEXITCODE
-          exit 0  # Always succeed to allow result display
-      - name: Display validation result (Unix)
-        if: always() && runner.os != 'Windows'
-        run: >-
-          echo "=========================================="
-
-          echo "VALIDATION RESULT"
-
-          echo "=========================================="
-
-          cat validation-result.yaml 2>/dev/null || echo "❌ Could not read
-          validation result"
-
-          echo "=========================================="
-      - name: Display validation result (Windows)
-        if: always() && runner.os == 'Windows'
-        shell: powershell
-        run: >-
-          Write-Host '=========================================='
-
-          Write-Host 'VALIDATION RESULT'
-
-          Write-Host '=========================================='
-
-          if (Test-Path validation-result.yaml) { Get-Content
-          validation-result.yaml } else { Write-Host 'Could not read validation
-          result' }
-
-          Write-Host '=========================================='
-      - name: Check validation result (Unix)
-        if: always() && runner.os != 'Windows'
-        run: 'grep -q "passed: true" validation-result.yaml || exit 1'
-      - name: Check validation result (Windows)
-        if: always() && runner.os == 'Windows'
-        shell: powershell
-        run: 'if (!(Select-String -Path validation-result.yaml -Pattern "passed: true"
-          -Quiet)) { exit 1 }'
+      - name: Run validation
+        run: pnpm validate
     strategy:
       fail-fast: false
       matrix:

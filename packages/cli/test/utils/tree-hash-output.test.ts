@@ -2,9 +2,10 @@
  * Tests for tree-hash-output utility functions
  */
 
-import { describe, it, expect } from 'vitest';
-import { cleanRunCacheEntries, formatTreeHashOutput } from '../../src/utils/tree-hash-output.js';
 import type { RunCacheNote } from '@vibe-validate/history';
+import { describe, it, expect } from 'vitest';
+
+import { cleanRunCacheEntries, formatTreeHashOutput } from '../../src/utils/tree-hash-output.js';
 
 describe('tree-hash-output utility', () => {
   describe('cleanRunCacheEntries', () => {

@@ -7,8 +7,8 @@
  * @packageDocumentation
  */
 
-import { z } from 'zod';
 import { createSafeValidator, createStrictValidator } from '@vibe-validate/config';
+import { z } from 'zod';
 
 /**
  * Maximum number of errors to include in errors array

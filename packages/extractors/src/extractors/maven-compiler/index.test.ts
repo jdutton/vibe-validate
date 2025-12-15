@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { describe, it, expect } from 'vitest';
+
 import mavenCompilerExtractor from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

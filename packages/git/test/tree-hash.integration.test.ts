@@ -7,11 +7,13 @@
  * CRITICAL: Uses isolated temp repos - does NOT touch main .git directory
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { safeExecSync } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { getGitTreeHash } from '../src/tree-hash.js';
 
 describe('getGitTreeHash - integration tests', () => {
@@ -28,9 +30,9 @@ describe('getGitTreeHash - integration tests', () => {
     process.chdir(testRepoPath);
 
     // Initialize git repo
-    execSync('git init', { stdio: 'pipe' });
-    execSync('git config user.email "test@example.com"', { stdio: 'pipe' });
-    execSync('git config user.name "Test User"', { stdio: 'pipe' });
+    safeExecSync('git', ['init'], { stdio: 'pipe' });
+    safeExecSync('git', ['config', 'user.email', 'test@example.com'], { stdio: 'pipe' });
+    safeExecSync('git', ['config', 'user.name', 'Test User'], { stdio: 'pipe' });
   });
 
   afterEach(() => {
@@ -46,8 +48,8 @@ describe('getGitTreeHash - integration tests', () => {
   it('should detect unstaged modifications to tracked files', async () => {
     // Setup: Create and commit initial file
     writeFileSync(join(testRepoPath, 'test.txt'), 'version 1');
-    execSync('git add test.txt', { stdio: 'pipe' });
-    execSync('git commit -m "initial commit"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'test.txt'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial commit'], { stdio: 'pipe' });
 
     // Get hash for committed state
     const hashCommitted = await getGitTreeHash();
@@ -66,8 +68,8 @@ describe('getGitTreeHash - integration tests', () => {
   it('should detect new untracked files', async () => {
     // Setup: Create and commit initial file
     writeFileSync(join(testRepoPath, 'committed.txt'), 'committed content');
-    execSync('git add committed.txt', { stdio: 'pipe' });
-    execSync('git commit -m "initial commit"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'committed.txt'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial commit'], { stdio: 'pipe' });
 
     // Get hash for committed state
     const hashBefore = await getGitTreeHash();
@@ -85,16 +87,16 @@ describe('getGitTreeHash - integration tests', () => {
   it('should produce same hash for same content regardless of staging', async () => {
     // Setup: Create file
     writeFileSync(join(testRepoPath, 'test.txt'), 'content');
-    execSync('git add test.txt', { stdio: 'pipe' });
-    execSync('git commit -m "initial"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'test.txt'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial'], { stdio: 'pipe' });
 
     // Modify and stage
     writeFileSync(join(testRepoPath, 'test.txt'), 'modified content');
-    execSync('git add test.txt', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'test.txt'], { stdio: 'pipe' });
     const hashStaged = await getGitTreeHash();
 
     // Unstage (but keep working directory change)
-    execSync('git reset HEAD test.txt', { stdio: 'pipe' });
+    safeExecSync('git', ['reset', 'HEAD', 'test.txt'], { stdio: 'pipe' });
     const hashUnstaged = await getGitTreeHash();
 
     // Hash should be SAME because working directory content is identical
@@ -104,8 +106,8 @@ describe('getGitTreeHash - integration tests', () => {
   it('should produce deterministic hash for same content', async () => {
     // Create initial commit so index exists
     writeFileSync(join(testRepoPath, 'initial.txt'), 'initial');
-    execSync('git add initial.txt', { stdio: 'pipe' });
-    execSync('git commit -m "initial"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'initial.txt'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial'], { stdio: 'pipe' });
 
     // Create file
     writeFileSync(join(testRepoPath, 'test.txt'), 'deterministic content');
@@ -121,8 +123,8 @@ describe('getGitTreeHash - integration tests', () => {
   it('should handle empty repository', async () => {
     // Create initial commit so index exists
     writeFileSync(join(testRepoPath, 'initial.txt'), 'initial');
-    execSync('git add initial.txt', { stdio: 'pipe' });
-    execSync('git commit -m "initial"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'initial.txt'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial'], { stdio: 'pipe' });
 
     // Delete all files to make working tree "empty"
     rmSync(join(testRepoPath, 'initial.txt'));
@@ -136,8 +138,8 @@ describe('getGitTreeHash - integration tests', () => {
   it('should handle deleted files', async () => {
     // Setup: Create and commit file
     writeFileSync(join(testRepoPath, 'delete-me.txt'), 'content');
-    execSync('git add delete-me.txt', { stdio: 'pipe' });
-    execSync('git commit -m "add file"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'delete-me.txt'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'add file'], { stdio: 'pipe' });
 
     const hashBefore = await getGitTreeHash();
 
@@ -153,13 +155,13 @@ describe('getGitTreeHash - integration tests', () => {
   it('should NOT include .gitignore files (security)', async () => {
     // Setup: Create and commit initial file
     writeFileSync(join(testRepoPath, 'committed.txt'), 'committed');
-    execSync('git add committed.txt', { stdio: 'pipe' });
-    execSync('git commit -m "initial"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'committed.txt'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial'], { stdio: 'pipe' });
 
     // Create .gitignore
     writeFileSync(join(testRepoPath, '.gitignore'), 'secrets.txt\n.env\n');
-    execSync('git add .gitignore', { stdio: 'pipe' });
-    execSync('git commit -m "add gitignore"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', '.gitignore'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'add gitignore'], { stdio: 'pipe' });
 
     // Get hash WITHOUT secrets
     const hashWithoutSecrets = await getGitTreeHash();
@@ -183,10 +185,10 @@ describe('getGitTreeHash - integration tests', () => {
   it('should produce same hash across developers with same .gitignore', async () => {
     // Simulate Developer 1's repository
     writeFileSync(join(testRepoPath, '.gitignore'), '*.log\nbuild/\n');
-    execSync('git add .gitignore', { stdio: 'pipe' });
+    safeExecSync('git', ['add', '.gitignore'], { stdio: 'pipe' });
     writeFileSync(join(testRepoPath, 'app.js'), 'const x = 1;');
-    execSync('git add app.js', { stdio: 'pipe' });
-    execSync('git commit -m "initial"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', 'app.js'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial'], { stdio: 'pipe' });
 
     // Developer 1 has personal log file (ignored)
     writeFileSync(join(testRepoPath, 'debug.log'), 'dev1 debug logs');
@@ -211,8 +213,8 @@ describe('getGitTreeHash - integration tests', () => {
     // Reproduce the exact scenario the user reported
     writeFileSync(join(testRepoPath, 'file1.ts'), 'initial content');
     writeFileSync(join(testRepoPath, 'file2.ts'), 'initial content');
-    execSync('git add .', { stdio: 'pipe' });
-    execSync('git commit -m "initial"', { stdio: 'pipe' });
+    safeExecSync('git', ['add', '.'], { stdio: 'pipe' });
+    safeExecSync('git', ['commit', '-m', 'initial'], { stdio: 'pipe' });
 
     // Modify files (unstaged)
     writeFileSync(join(testRepoPath, 'file1.ts'), 'modified content');
@@ -224,7 +226,7 @@ describe('getGitTreeHash - integration tests', () => {
     const hashBeforeStaging = await getGitTreeHash();
 
     // Stage all changes (like user did)
-    execSync('git add --all', { stdio: 'pipe' });
+    safeExecSync('git', ['add', '--all'], { stdio: 'pipe' });
 
     // Get hash AFTER staging
     const hashAfterStaging = await getGitTreeHash();

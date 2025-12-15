@@ -4,8 +4,116 @@
  * Eliminates duplication of execSync try/catch patterns across test files.
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '@vibe-validate/utils';
 import yaml from 'yaml';
+
+/**
+ * Check if a character is a quote character
+ */
+function isQuoteChar(char: string): boolean {
+  return char === '"' || char === "'";
+}
+
+/**
+ * Process a quote character and return updated state
+ */
+function processQuote(
+  char: string,
+  currentlyInQuotes: boolean,
+  currentQuoteChar: string
+): { inQuotes: boolean; quoteChar: string; addChar: boolean } {
+  if (!currentlyInQuotes) {
+    // Starting a quoted section
+    return { inQuotes: true, quoteChar: char, addChar: false };
+  }
+
+  if (char === currentQuoteChar) {
+    // Ending the quoted section
+    return { inQuotes: false, quoteChar: '', addChar: false };
+  }
+
+  // Different quote type while inside quotes - treat as literal
+  return { inQuotes: true, quoteChar: currentQuoteChar, addChar: true };
+}
+
+/**
+ * Process a single character during command parsing
+ */
+function processCommandChar(
+  char: string,
+  prevChar: string,
+  state: { current: string; parts: string[]; inQuotes: boolean; quoteChar: string; i: number },
+  commandString: string
+): { skipExtra: number } {
+  // Handle escape sequences
+  if (char === '\\' && state.i + 1 < commandString.length) {
+    state.current += commandString[state.i + 1];
+    return { skipExtra: 1 }; // Skip next character
+  }
+
+  // Handle quotes
+  if (isQuoteChar(char) && prevChar !== '\\') {
+    const quoteResult = processQuote(char, state.inQuotes, state.quoteChar);
+    state.inQuotes = quoteResult.inQuotes;
+    state.quoteChar = quoteResult.quoteChar;
+    if (quoteResult.addChar) {
+      state.current += char;
+    }
+    return { skipExtra: 0 };
+  }
+
+  // Handle space delimiters
+  if (char === ' ' && !state.inQuotes) {
+    if (state.current) {
+      state.parts.push(state.current);
+      state.current = '';
+    }
+    return { skipExtra: 0 };
+  }
+
+  // Regular character or space inside quotes
+  state.current += char;
+  return { skipExtra: 0 };
+}
+
+/**
+ * Parse a command string into command and arguments
+ * Handles quoted strings properly, including nested quotes
+ *
+ * @param commandString - Command string to parse
+ * @returns [command, args[]]
+ *
+ * @example
+ * parseCommand('node bin.js run "echo test"')
+ * // Returns: ['node', ['bin.js', 'run', 'echo test']]
+ *
+ * @example
+ * parseCommand('node bin.js run "echo \'nested\'"')
+ * // Returns: ['node', ['bin.js', 'run', "echo 'nested'"]]
+ */
+function parseCommand(commandString: string): [string, string[]] {
+  const state = {
+    parts: [] as string[],
+    current: '',
+    inQuotes: false,
+    quoteChar: '',
+    i: 0,
+  };
+
+  while (state.i < commandString.length) {
+    const char = commandString[state.i];
+    const prevChar = state.i > 0 ? commandString[state.i - 1] : '';
+
+    const result = processCommandChar(char, prevChar, state, commandString);
+    state.i += 1 + result.skipExtra;
+  }
+
+  if (state.current) {
+    state.parts.push(state.current);
+  }
+
+  return [state.parts[0], state.parts.slice(1)];
+}
 
 export interface CommandResult {
   output: string;
@@ -41,7 +149,8 @@ export function executeCommand(
   let exitCode = 0;
 
   try {
-    output = execSync(command, execOptions);
+    const [cmd, args] = parseCommand(command);
+    output = safeExecSync(cmd, args, execOptions);
   } catch (err: any) {
     output = err.stdout || err.stderr || '';
     exitCode = err.status || 1;

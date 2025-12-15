@@ -3,12 +3,15 @@
  *
  * Provides utilities for setting up test environments with temp directories,
  * git repositories, and cleanup.
+ *
+ * SECURITY: Uses safeExecFromString from @vibe-validate/utils instead of raw execSync.
  */
 
-import { execSync } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { safeExecFromString } from '@vibe-validate/utils';
 
 /**
  * Creates a temporary test directory with a unique name
@@ -52,6 +55,8 @@ export function cleanupTempTestDir(dir: string): void {
  * Sets up a bare git repo with test user credentials. This is needed
  * for many vibe-validate commands that require a git context.
  *
+ * SECURITY: Uses safeExecFromString to prevent command injection vulnerabilities.
+ *
  * @param cwd - Directory to initialize as git repo
  *
  * @example
@@ -62,9 +67,9 @@ export function cleanupTempTestDir(dir: string): void {
  * ```
  */
 export function initializeGitRepo(cwd: string): void {
-  execSync('git init', { cwd, stdio: 'ignore' });
-  execSync('git config user.email "test@example.com"', { cwd, stdio: 'ignore' });
-  execSync('git config user.name "Test User"', { cwd, stdio: 'ignore' });
+  safeExecFromString('git init', { cwd, stdio: 'ignore' });
+  safeExecFromString('git config user.email "test@example.com"', { cwd, stdio: 'ignore' });
+  safeExecFromString('git config user.name "Test User"', { cwd, stdio: 'ignore' });
 }
 
 /**

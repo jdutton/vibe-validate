@@ -6,12 +6,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock the modules before importing helpers
-vi.mock('node:child_process');
-vi.mock('node:fs');
-vi.mock('@vibe-validate/git');
-vi.mock('../../src/utils/config-loader.js');
-
 import {
   mockDoctorEnvironment,
   mockDoctorFileSystem,
@@ -23,6 +17,13 @@ import {
   type DoctorGitMockConfig
 } from './doctor-helpers.js';
 
+// Mock the modules before importing helpers
+vi.mock('node:child_process');
+vi.mock('node:fs');
+vi.mock('@vibe-validate/utils');
+vi.mock('@vibe-validate/git');
+vi.mock('../../src/utils/config-loader.js');
+
 describe('doctor-helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,22 +34,22 @@ describe('doctor-helpers', () => {
   });
 
   describe('mockDoctorEnvironment', () => {
-    it('should export and be callable', () => {
+    it('should export and be callable', async () => {
       expect(mockDoctorEnvironment).toBeDefined();
       expect(typeof mockDoctorEnvironment).toBe('function');
 
-      const cleanup = mockDoctorEnvironment();
+      const cleanup = await mockDoctorEnvironment();
       expect(typeof cleanup).toBe('function');
       cleanup();
     });
 
-    it('should accept config options', () => {
+    it('should accept config options', async () => {
       const config: DoctorEnvironmentConfig = {
         nodeVersion: 'v18.0.0',
         gitVersion: 'git version 2.40.0'
       };
 
-      const cleanup = mockDoctorEnvironment({}, config);
+      const cleanup = await mockDoctorEnvironment({}, config);
       expect(typeof cleanup).toBe('function');
       cleanup();
     });

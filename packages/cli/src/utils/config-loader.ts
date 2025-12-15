@@ -4,8 +4,9 @@
  * Loads and validates vibe-validate configuration from project root.
  */
 
-import { join, dirname, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+
 import { findAndLoadConfig } from '@vibe-validate/config';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';

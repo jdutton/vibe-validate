@@ -2,10 +2,11 @@
  * Tests for vibe-validate wrapper's version detection and warning system
  */
 
-import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { describe, it, expect } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

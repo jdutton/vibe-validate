@@ -6,6 +6,7 @@
  * @package @vibe-validate/extractors
  */
 
+import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
@@ -13,7 +14,6 @@ import type {
   DetectionResult,
   ExtractorSample,
 } from '../../types.js';
-import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 
 /**
  * Deduplicate ESLint errors by file:line:column
@@ -104,7 +104,7 @@ function extract(output: string): ErrorExtractorResult {
     const modernMatch = /^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s+(\S+)$/.exec(line);
     if (modernMatch) {
       const ruleMessage = modernMatch[5].trim();
-      const ruleName = modernMatch[6].replace(/[[\]]/g, ''); // Remove brackets if present
+      const ruleName = modernMatch[6].replaceAll(/[[\]]/g, ''); // Remove brackets if present
       errors.push({
         file: modernMatch[1].trim(),
         line: Number.parseInt(modernMatch[2]),

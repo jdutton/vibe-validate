@@ -11,25 +11,32 @@
  * @packageDocumentation
  */
 
-import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
-import { Command } from 'commander';
-import * as semver from 'semver';
-import { stringify as stringifyYaml } from 'yaml';
-import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
-import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
-import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
+import { join } from 'node:path';
+
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
-import { formatTemplateList } from '../utils/template-discovery.js';
-import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
-import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
-import { findGitRoot } from '../utils/git-detection.js';
 import {
   executeGitCommand,
   isGitRepository,
   verifyRef
 } from '@vibe-validate/git';
+import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
+import { getToolVersion, safeExecSync } from '@vibe-validate/utils';
+import { type Command } from 'commander';
+import * as semver from 'semver';
+import { stringify as stringifyYaml } from 'yaml';
+
+import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
+import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
+import { findGitRoot } from '../utils/git-detection.js';
+import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
+import { formatTemplateList } from '../utils/template-discovery.js';
+
+import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
+
+
+
+
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
@@ -169,15 +176,25 @@ function checkCliBuildSync(): DoctorCheckResult {
  */
 function checkNodeVersion(): DoctorCheckResult {
   try {
-    const version = execSync('node --version', { encoding: 'utf8' }).trim();
-    const majorVersion = Number.parseInt(version.replace('v', '').split('.')[0]);
+    const version = getToolVersion('node');
 
     // Validate that we got a valid version number
-    if (Number.isNaN(majorVersion) || majorVersion === 0 || !version) {
+    if (!version) {
       return {
         name: 'Node.js version',
         passed: false,
-        message: `Failed to detect Node.js version from output: "${version}"`,
+        message: 'Failed to detect Node.js version',
+        suggestion: 'Install Node.js: https://nodejs.org/',
+      };
+    }
+
+    const majorVersion = Number.parseInt(version.replace('v', '').split('.')[0]);
+
+    if (Number.isNaN(majorVersion) || majorVersion === 0) {
+      return {
+        name: 'Node.js version',
+        passed: false,
+        message: `Failed to parse Node.js version from output: "${version}"`,
         suggestion: 'Install Node.js: https://nodejs.org/',
       };
     }
@@ -344,7 +361,7 @@ async function checkConfigValid(
             '',
             'Quick start:',
             'curl -o vibe-validate.config.yaml \\',
-            '  https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml',
+            '  https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/cli/config-templates/typescript-nodejs.yaml',
             '',
             'JSON Schema for IDE validation:',
             'https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json',
@@ -386,24 +403,24 @@ async function checkPackageManager(config?: VibeValidateConfig | null): Promise<
     const firstCommand = config.validation.phases[0]?.steps[0]?.command ?? '';
     const pm = firstCommand.startsWith('pnpm ') ? 'pnpm' : 'npm';
 
-    try {
-      const version = execSync(`${pm} --version`, { encoding: 'utf8' }).trim();
+    const version = getToolVersion(pm);
+
+    if (version) {
       return {
         name: 'Package manager',
         passed: true,
         message: `${pm} ${version} is available`,
       };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return {
-        name: 'Package manager',
-        passed: false,
-        message: `${pm} not found (required by config commands): ${errorMessage}`,
-        suggestion: pm === 'pnpm'
-          ? 'Install pnpm: npm install -g pnpm'
-          : 'npm should be installed with Node.js',
-      };
     }
+
+    return {
+      name: 'Package manager',
+      passed: false,
+      message: `${pm} not found (required by config commands)`,
+      suggestion: pm === 'pnpm'
+        ? 'Install pnpm: npm install -g pnpm'
+        : 'npm should be installed with Node.js',
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
@@ -595,10 +612,11 @@ function getUpgradeCommand(context: string): string {
  */
 const defaultVersionChecker: VersionChecker = {
   async fetchLatestVersion(): Promise<string> {
-    return execSync('npm view vibe-validate version', {
+    const version = safeExecSync('npm', ['view', 'vibe-validate', 'version'], {
       encoding: 'utf8',
       stdio: 'pipe',
-    }).trim();
+    });
+    return (version as string).trim();
   },
 };
 

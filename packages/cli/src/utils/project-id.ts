@@ -8,6 +8,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { executeGitCommand } from '@vibe-validate/git';
 
 /**

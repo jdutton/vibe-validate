@@ -5,8 +5,10 @@
  * reducing duplication across cache key tests.
  */
 
-import { expect } from 'vitest';
 import { createHash } from 'node:crypto';
+
+import { expect } from 'vitest';
+
 import { encodeRunCacheKey } from '../../src/cache-key.js';
 
 /**

@@ -7,9 +7,10 @@
  * Test-bed is excluded from main workspace to prevent validation failures.
  */
 
-import { test, expect } from '@playwright/test';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { test, expect } from '@playwright/test';
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);

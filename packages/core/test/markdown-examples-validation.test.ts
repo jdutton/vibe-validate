@@ -11,17 +11,20 @@
  * This ensures documentation examples stay in sync with actual schemas.
  */
 
-import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { parse as parseYaml } from 'yaml';
-import { safeValidateResult, PhaseResultSchema, StepResultSchema } from '../src/result-schema.js';
+
+import { createSafeValidator } from '@vibe-validate/config';
 import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
+import { describe, it, expect } from 'vitest';
+import { parse as parseYaml } from 'yaml';
+
+import { safeValidateConfig, GitConfigSchema } from '../../config/src/schema.js';
+import { safeValidateResult, PhaseResultSchema, StepResultSchema } from '../src/result-schema.js';
+
 
 // Import config validator and utilities from config package
 // Note: This is a cross-package import for testing purposes
-import { safeValidateConfig, GitConfigSchema } from '../../config/src/schema.js';
-import { createSafeValidator } from '@vibe-validate/config';
 
 /**
  * Schema validator configuration
@@ -144,8 +147,7 @@ function extractTaggedExamples(
   let codeBlockContent: string[] = [];
   let codeBlockStartLine = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (const [i, line] of lines.entries()) {
 
     // Check for tag
     const tagMatch = line.match(tagPattern);
@@ -270,7 +272,7 @@ describe('Markdown Examples Validation', () => {
 
       console.warn(
         `\n⚠️  Found ${unknownTagExamples.length} examples with unknown tags:\n` +
-        `  Tags: ${Array.from(unknownTags).join(', ')}\n` +
+        `  Tags: ${[...unknownTags].join(', ')}\n` +
         `  Locations:\n${relativePaths.map(p => `    - ${p}`).join('\n')}\n\n` +
         `  Known tags: ${VALIDATORS.flatMap(v => v.tags).join(', ')}\n`
       );
@@ -364,7 +366,7 @@ describe('Markdown Examples Validation', () => {
       byFile.set(relativePath, (byFile.get(relativePath) || 0) + 1);
     }
 
-    for (const [file, count] of Array.from(byFile.entries()).sort()) {
+    for (const [file, count] of [...byFile.entries()].sort()) {
       console.log(`  ${file}: ${count} example${count > 1 ? 's' : ''}`);
     }
 

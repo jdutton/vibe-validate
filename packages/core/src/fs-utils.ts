@@ -73,13 +73,13 @@ export function getTempDir(
   const shortHash = treeHash.substring(0, 6);
 
   // Time suffix: HH-mm-ss
-  const timeSuffix = now.toISOString().split('T')[1].substring(0, 8).replace(/:/g, '-');
+  const timeSuffix = now.toISOString().split('T')[1].substring(0, 8).replaceAll(':', '-');
 
   // Combined folder name
   let folderName = `${shortHash}-${timeSuffix}`;
   if (suffix) {
     // Sanitize suffix for filesystem
-    const safeSuffix = suffix.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    const safeSuffix = suffix.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
     folderName += `-${safeSuffix}`;
   }
 

@@ -6,6 +6,7 @@
  */
 
 import { zodToJsonSchema } from 'zod-to-json-schema';
+
 import { VibeValidateConfigSchema } from './schema.js';
 
 /**

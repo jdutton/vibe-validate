@@ -4,16 +4,47 @@
  * @package @vibe-validate/extractors
  */
 
-import { describe, it, expect } from 'vitest';
-import avaExtractor from './index.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { describe, it, expect } from 'vitest';
+
+import avaExtractor from './index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const { extract: extractAvaErrors, detect: detectAva } = avaExtractor;
+
+// Helper: Verify expected vs actual error
+function verifyError(expected: Record<string, unknown>, actual: Record<string, unknown>) {
+  if (expected.file) expect(actual.file).toBe(expected.file);
+  if (expected.line) expect(actual.line).toBe(expected.line);
+  if (expected.message) expect(actual.message).toContain(expected.message);
+}
+
+// Helper: Verify errors array
+function verifyErrors(expected: Array<Record<string, unknown>>, actual: Array<Record<string, unknown>>) {
+  expect(actual).toHaveLength(expected.length);
+  for (const [i, element] of expected.entries()) {
+    verifyError(element, actual[i]);
+  }
+}
+
+// Helper: Test a single sample
+function testSample(sample: typeof avaExtractor.samples[number]) {
+  const input = sample.input ?? readFileSync(join(__dirname, sample.inputFile!), 'utf-8');
+  const result = extractAvaErrors(input);
+
+  if (sample.expected!.totalErrors !== undefined) {
+    expect(result.totalErrors).toBe(sample.expected!.totalErrors);
+  }
+
+  if (sample.expected!.errors) {
+    verifyErrors(sample.expected!.errors, result.errors);
+  }
+}
 
 describe('Ava Extractor Plugin', () => {
   describe('Detection', () => {
@@ -451,23 +482,7 @@ PASS tests/test.js
   describe('Plugin Samples', () => {
     it('should pass all registered samples', () => {
       for (const sample of avaExtractor.samples) {
-        const input = sample.input ?? readFileSync(join(__dirname, sample.inputFile!), 'utf-8');
-        const result = extractAvaErrors(input);
-
-        if (sample.expected!.totalErrors !== undefined) {
-          expect(result.totalErrors).toBe(sample.expected!.totalErrors);
-        }
-
-        if (sample.expected!.errors) {
-          expect(result.errors).toHaveLength(sample.expected!.errors.length);
-          for (let i = 0; i < sample.expected!.errors.length; i++) {
-            const expectedError = sample.expected!.errors[i];
-            const actualError = result.errors[i];
-            if (expectedError.file) expect(actualError.file).toBe(expectedError.file);
-            if (expectedError.line) expect(actualError.line).toBe(expectedError.line);
-            if (expectedError.message) expect(actualError.message).toContain(expectedError.message);
-          }
-        }
+        testSample(sample);
       }
     });
   });

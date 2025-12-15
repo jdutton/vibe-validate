@@ -56,12 +56,18 @@ importers:
       secretlint:
         specifier: ^11.2.5
         version: 11.2.5
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.26)(tsx@4.21.0)(yaml@2.8.2)
+      which:
+        specifier: ^5.0.0
+        version: 5.0.0
 
   packages/cli:
     dependencies:
@@ -111,6 +117,9 @@ importers:
       '@types/semver':
         specifier: ^7.7.1
         version: 7.7.1
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -148,6 +157,9 @@ importers:
       '@vibe-validate/git':
         specifier: workspace:*
         version: link:../git
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
       strip-ansi:
         specifier: ^7.1.2
         version: 7.1.2
@@ -206,6 +218,10 @@ importers:
         version: 2.8.2
 
   packages/git:
+    dependencies:
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/node':
         specifier: ^22.19.2
@@ -242,6 +258,25 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@22.19.2)
 
+  packages/utils:
+    dependencies:
+      which:
+        specifier: ^5.0.0
+        version: 5.0.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.2
+        version: 22.19.2
+      '@types/which':
+        specifier: ^3.0.4
+        version: 3.0.4
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.2)
+
   packages/vibe-validate:
     dependencies:
       '@vibe-validate/cli':
@@ -251,6 +286,9 @@ importers:
       '@types/node':
         specifier: ^20.19.26
         version: 20.19.26
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -920,6 +958,9 @@ packages:
 
   '@types/semver@7.7.1':
     resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
+
+  '@types/which@3.0.4':
+    resolution: {integrity: sha512-liyfuo/106JdlgSchJzXEQCVArk0CvevqPote8F8HgWgJ3dRCcTHgJIsLDuee0kxk/mhbInzIZk3QWSZJ8R+2w==}
 
   '@typescript-eslint/eslint-plugin@8.49.0':
     resolution: {integrity: sha512-JXij0vzIaTtCwu6SxTh8qBc66kmf1xs7pI4UOiMDFVct6q86G0Zs7KRcEoJgY3Cav3x5Tq0MF5jwgpgLqgKG3A==}
@@ -1936,6 +1977,10 @@ packages:
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
 
+  isexe@3.1.1:
+    resolution: {integrity: sha512-LpB/54B+/2J5hqQ7imZHfdU31OlgQqx7ZicVlkm9kzg9/w8GKLEcFfJl/t7DCEDueOyBAD6zCCwTO6Fzs0NoEQ==}
+    engines: {node: '>=16'}
+
   isolated-vm@6.0.2:
     resolution: {integrity: sha512-Qw6AJuagG/VJuh2AIcSWmQPsAArti/L+lKhjXU+lyhYkbt3J57XZr+ZjgfTnOr4NJcY1r3f8f0eePS7MRGp+pg==}
     engines: {node: '>=22.0.0'}
@@ -2909,6 +2954,11 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
+  which@5.0.0:
+    resolution: {integrity: sha512-JEdGzHwwkrbWoGOlIHqQ5gtprKGOenpDHpxE9zVR1bWbOtYRyPPHMe9FaP6x61CmNaTThSkb0DAJte5jD+DmzQ==}
+    engines: {node: ^18.17.0 || >=20.5.0}
+    hasBin: true
+
   why-is-node-running@2.3.0:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
@@ -3467,6 +3517,8 @@ snapshots:
   '@types/sarif@2.1.7': {}
 
   '@types/semver@7.7.1': {}
+
+  '@types/which@3.0.4': {}
 
   '@typescript-eslint/eslint-plugin@8.49.0(@typescript-eslint/parser@8.49.0(eslint@9.39.1)(typescript@5.9.3))(eslint@9.39.1)(typescript@5.9.3)':
     dependencies:
@@ -4717,6 +4769,8 @@ snapshots:
 
   isexe@2.0.0: {}
 
+  isexe@3.1.1: {}
+
   isolated-vm@6.0.2:
     dependencies:
       prebuild-install: 7.1.3
@@ -5894,6 +5948,10 @@ snapshots:
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
+
+  which@5.0.0:
+    dependencies:
+      isexe: 3.1.1
 
   why-is-node-running@2.3.0:
     dependencies:

@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import vitestPlugin from './index.js';
 
 const { extract, detect } = vitestPlugin;
@@ -250,6 +251,48 @@ Test Files  3 passed (3)
 
       expect(result.errors).toHaveLength(0);
       expect(result.totalErrors).toBe(0);
+    });
+
+    it('should extract location from FAIL sections, not summary × lines', () => {
+      // Regression test for issue where summary × lines (without location markers)
+      // were extracted instead of FAIL lines (with ❯ location markers)
+      const output = `
+ ❯ packages/cli/test/multi-fail.test.ts (3 tests | 3 failed) 4ms
+   × failure 1 3ms
+     → expected 1 to be 2 // Object.is equality
+   × failure 2 1ms
+     → expected 'a' to be 'b' // Object.is equality
+   × failure 3 0ms
+     → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cli/test/multi-fail.test.ts > failure 1
+AssertionError: expected 1 to be 2 // Object.is equality
+ ❯ packages/cli/test/multi-fail.test.ts:4:13
+
+ FAIL  packages/cli/test/multi-fail.test.ts > failure 2
+AssertionError: expected 'a' to be 'b' // Object.is equality
+ ❯ packages/cli/test/multi-fail.test.ts:8:15
+
+ FAIL  packages/cli/test/multi-fail.test.ts > failure 3
+AssertionError: expected true to be false // Object.is equality
+ ❯ packages/cli/test/multi-fail.test.ts:12:16
+      `.trim();
+
+      const result = extract(output);
+
+      // Should extract 3 failures from FAIL sections (not summary × lines)
+      expect(result.errors).toHaveLength(3);
+      expect(result.totalErrors).toBe(3);
+
+      // ALL errors should have line numbers (from ❯ markers in FAIL sections)
+      expect(result.errors[0].line).toBe(4);
+      expect(result.errors[0].column).toBe(13);
+      expect(result.errors[1].line).toBe(8);
+      expect(result.errors[1].column).toBe(15);
+      expect(result.errors[2].line).toBe(12);
+      expect(result.errors[2].column).toBe(16);
     });
 
     it('should handle Jest output format', () => {

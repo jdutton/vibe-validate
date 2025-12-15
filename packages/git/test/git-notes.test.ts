@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import * as gitExecutor from '../src/git-executor.js';
 import {
   addNote,
   readNote,
@@ -10,7 +12,6 @@ import {
   hasNotesRef,
   getNotesRefSha,
 } from '../src/git-notes.js';
-import * as gitExecutor from '../src/git-executor.js';
 import type { TreeHash, NotesRef } from '../src/types.js';
 
 // Mock git-executor

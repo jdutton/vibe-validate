@@ -7,13 +7,13 @@
  * @package @vibe-validate/extractors
  */
 
+import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 import type {
   ExtractorPlugin,
   DetectionResult,
   ErrorExtractorResult,
   FormattedError,
 } from '../../types.js';
-import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 
 /**
  * Maven Surefire/Failsafe output format:

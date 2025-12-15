@@ -12,13 +12,15 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
+import { autoDetectAndExtract } from '../src/smart-extractor.js';
+
 import {
   loadAllSamples,
   groupSamplesBy,
   getThreshold,
   computeQualityScore,
 } from './sample-loader.js';
-import { autoDetectAndExtract } from '../src/smart-extractor.js';
 import type { SampleTestResult, ActualExtraction } from './sample-types.js';
 
 describe('Sample-Driven Extractor Tests', () => {

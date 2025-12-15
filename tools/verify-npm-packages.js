@@ -9,7 +9,7 @@
  *   node tools/verify-npm-packages.js --version 0.13.0
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -41,7 +41,7 @@ const results = [];
 
 for (const packageName of publishablePackages) {
   try {
-    const npmVersion = execSync(`npm view ${packageName}@${expectedVersion} version`, {
+    const npmVersion = safeExecSync('npm', ['view', `${packageName}@${expectedVersion}`, 'version'], {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
     }).trim();

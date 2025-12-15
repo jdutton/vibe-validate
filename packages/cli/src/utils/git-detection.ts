@@ -5,8 +5,9 @@
  * Used by both init and doctor commands.
  */
 
-import { join, dirname, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+
 import { GIT_DEFAULTS } from '@vibe-validate/config';
 import { executeGitCommand, isGitRepository } from '@vibe-validate/git';
 

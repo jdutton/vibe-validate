@@ -17,7 +17,7 @@
  *   1 - Not ready (with explanation)
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join , dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,7 +78,7 @@ console.log('');
 
 // Check 1: Git repository exists
 try {
-  execSync('git rev-parse --git-dir', { stdio: 'pipe', cwd: PROJECT_ROOT });
+  safeExecSync('git', ['rev-parse', '--git-dir'], { stdio: 'pipe', cwd: PROJECT_ROOT });
   log('✓ Git repository detected', 'green');
 } catch (_error) { // NOSONAR - Exception handled by logging and exiting
   log('✗ Not a git repository', 'red');
@@ -88,7 +88,7 @@ try {
 // Check 2: Current branch
 let currentBranch;
 try {
-  currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+  currentBranch = safeExecSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
     encoding: 'utf8',
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
@@ -113,7 +113,7 @@ if (allowCustomBranch && currentBranch !== 'main') {
 // Check 3: Working tree is clean
 let hasUncommittedChanges = false;
 try {
-  execSync('git diff-index --quiet HEAD --', { stdio: 'pipe', cwd: PROJECT_ROOT });
+  safeExecSync('git', ['diff-index', '--quiet', 'HEAD', '--'], { stdio: 'pipe', cwd: PROJECT_ROOT });
 } catch (_error) { // NOSONAR - Exception intentionally caught to set flag
   hasUncommittedChanges = true;
 }
@@ -123,7 +123,7 @@ if (hasUncommittedChanges) {
   console.log('');
 
   try {
-    const status = execSync('git status --short', { encoding: 'utf8', cwd: PROJECT_ROOT });
+    const status = safeExecSync('git', ['status', '--short'], { encoding: 'utf8', cwd: PROJECT_ROOT });
     console.log(status);
   } catch (_error) { // NOSONAR - Ignore if git status fails (non-critical)
     // Silently continue if git status fails
@@ -137,7 +137,7 @@ log('✓ No uncommitted changes', 'green');
 // Check 4: No untracked files (except common patterns)
 let untracked = '';
 try {
-  untracked = execSync('git ls-files --others --exclude-standard', {
+  untracked = safeExecSync('git', ['ls-files', '--others', '--exclude-standard'], {
     encoding: 'utf8',
     stdio: 'pipe',
     cwd: PROJECT_ROOT,
@@ -176,7 +176,7 @@ console.log('');
 console.log('Running validation checks...');
 
 try {
-  execSync('pnpm validate', { stdio: 'inherit', cwd: PROJECT_ROOT });
+  safeExecSync('pnpm', ['validate'], { stdio: 'inherit', cwd: PROJECT_ROOT });
   log('✓ All validation checks passed', 'green');
 } catch (_error) { // NOSONAR - Exception handled by logging and exiting
   console.log('');

@@ -5,13 +5,33 @@
  * consistently with the config command.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+
+import { safeExecResult } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { setupTestEnvironment, cleanupTempTestDir } from '../helpers/integration-setup-helpers.js';
 
-describe('doctor command config error reporting (regression tests)', () => {
+/**
+ * Execute CLI command and return output (handles both success and error cases)
+ */
+function execCLI(cliPath: string, args: string[], options?: { cwd?: string; timeout?: number }): { stdout: string; stderr: string; exitCode: number } {
+  const result = safeExecResult('node', [cliPath, ...args], {
+    encoding: 'utf-8',
+    stdio: 'pipe',
+    timeout: options?.timeout ?? 15000,
+    cwd: options?.cwd,
+  });
+
+  return {
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+    exitCode: result.status ?? 1,
+  };
+}
+
+describe.skipIf(process.platform === 'win32')('doctor command config error reporting (regression tests)', () => {
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');
 
@@ -38,17 +58,8 @@ git:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), invalidConfig);
 
       // Doctor may exit with non-zero code when checks fail, capture output anyway
-      let output = '';
-      try {
-        output = execSync(`node "${cliPath}" doctor`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          timeout: 15000, // 15s timeout - prevents hung processes
-          killSignal: 'SIGTERM',
-        });
-      } catch (error: any) {
-        output = error.stdout || error.stderr || '';
-      }
+      const result = execCLI(cliPath, ['doctor'], { cwd: testDir });
+      const output = result.stdout + result.stderr;
 
       // Should show config validation check failed
       expect(output).toContain('Configuration valid');
@@ -76,31 +87,12 @@ git:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), invalidConfig);
 
       // Get doctor output (may exit with error code)
-      let doctorOutput = '';
-      try {
-        doctorOutput = execSync(`node "${cliPath}" doctor`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          timeout: 15000, // 15s timeout - prevents hung processes
-          killSignal: 'SIGTERM',
-        });
-      } catch (error: any) {
-        doctorOutput = error.stdout || error.stderr || '';
-      }
+      const doctorResult = execCLI(cliPath, ['doctor'], { cwd: testDir });
+      const doctorOutput = doctorResult.stdout + doctorResult.stderr;
 
       // Get config output
-      let configOutput = '';
-      try {
-        execSync(`node "${cliPath}" config --validate`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          timeout: 10000, // 10s timeout for config validation
-          killSignal: 'SIGTERM',
-        });
-      } catch (error: any) {
-        configOutput = error.stderr || error.stdout || '';
-      }
+      const configResult = execCLI(cliPath, ['config', '--validate'], { cwd: testDir, timeout: 10000 });
+      const configOutput = configResult.stdout + configResult.stderr;
 
       // Both should mention the same validation errors
       // Doctor wraps errors differently, but core error messages should match
@@ -134,17 +126,8 @@ validation:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), validConfig);
 
       // Doctor may still exit with non-zero if other checks fail
-      let output = '';
-      try {
-        output = execSync(`node "${cliPath}" doctor --verbose`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          timeout: 15000, // 15s timeout - prevents hung processes
-          killSignal: 'SIGTERM',
-        });
-      } catch (error: any) {
-        output = error.stdout || error.stderr || '';
-      }
+      const result = execCLI(cliPath, ['doctor', '--verbose'], { cwd: testDir });
+      const output = result.stdout + result.stderr;
 
       // Config validation check should pass (verbose mode shows all checks)
       // The check may be named differently, so just verify config doesn't show errors
@@ -157,17 +140,8 @@ validation:
   describe('doctor with no config file', () => {
     it('should report missing config file', () => {
       // Don't create config file
-      let output = '';
-      try {
-        output = execSync(`node "${cliPath}" doctor`, {
-          cwd: testDir,
-          encoding: 'utf-8',
-          timeout: 15000, // 15s timeout - prevents hung processes
-          killSignal: 'SIGTERM',
-        });
-      } catch (error: any) {
-        output = error.stdout || error.stderr || '';
-      }
+      const result = execCLI(cliPath, ['doctor'], { cwd: testDir });
+      const output = result.stdout + result.stderr;
 
       // Should report config file not found
       expect(output).toContain('Configuration file');

@@ -4,11 +4,12 @@
  * Show or validate vibe-validate configuration.
  */
 
-import type { Command } from 'commander';
-import { loadConfigWithErrors, findConfigPath } from '../utils/config-loader.js';
-import { displayConfigErrors } from '../utils/config-error-reporter.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
+import type { Command } from 'commander';
+
+import { displayConfigErrors } from '../utils/config-error-reporter.js';
+import { loadConfigWithErrors, findConfigPath } from '../utils/config-loader.js';
 
 export function configCommand(program: Command): void {
   program

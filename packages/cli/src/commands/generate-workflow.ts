@@ -17,12 +17,14 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { stringify as yamlStringify } from 'yaml';
-import { Command } from 'commander';
-import { loadConfig } from '../utils/config-loader.js';
-import { normalizeLineEndings } from '../utils/normalize-line-endings.js';
-import { findGitRoot } from '../utils/git-detection.js';
+
 import type { VibeValidateConfig, ValidationPhase } from '@vibe-validate/config';
+import { type Command } from 'commander';
+import { stringify as yamlStringify } from 'yaml';
+
+import { loadConfig } from '../utils/config-loader.js';
+import { findGitRoot } from '../utils/git-detection.js';
+import { normalizeLineEndings } from '../utils/normalize-line-endings.js';
 
 /**
  * GitHub Actions workflow step structure
@@ -96,9 +98,9 @@ export interface GenerateWorkflowOptions {
 export function toJobId(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/(^-)|(-$)/g, '');
+    .replaceAll(/[^a-z0-9-]/g, '-')
+    .replaceAll(/-+/g, '-')
+    .replaceAll(/(^-)|(-$)/g, '');
 }
 
 /**
@@ -342,64 +344,16 @@ export function generateWorkflow(
       });
     }
 
-    // Run validation with --yaml --verbose flags for structured output
-    // Redirect stdout (YAML result) to file, stderr (verbose logs) to console
+    // Run validation - use exit code to determine success/failure
+    // No need for YAML output, grep checks, or platform-specific logic
+    // GitHub Actions will automatically fail the job if exit code != 0
     const validateCommand = packageManager === 'pnpm'
-      ? 'pnpm validate --yaml --verbose'
-      : 'npm run validate -- --yaml --verbose';
+      ? 'pnpm validate'
+      : 'npm run validate';
 
     jobSteps.push({
-      name: 'Run validation (Unix)',
-      if: "runner.os != 'Windows'",
-      run: `${validateCommand} 1>validation-result.yaml || true`,
-    });
-
-    jobSteps.push({
-      name: 'Run validation (Windows)',
-      if: "runner.os == 'Windows'",
-      shell: 'powershell',
-      run: `${validateCommand} 1>validation-result.yaml
-$exitCode = $LASTEXITCODE
-exit 0  # Always succeed to allow result display`,
-    });
-
-    // Display validation result from YAML file (always runs, even on failure)
-    jobSteps.push({
-      name: 'Display validation result (Unix)',
-      if: "always() && runner.os != 'Windows'",
-      run: `echo "=========================================="
-echo "VALIDATION RESULT"
-echo "=========================================="
-cat validation-result.yaml 2>/dev/null || echo "❌ Could not read validation result"
-echo "=========================================="`,
-    });
-
-    jobSteps.push({
-      name: 'Display validation result (Windows)',
-      if: "always() && runner.os == 'Windows'",
-      shell: 'powershell',
-      run: `Write-Host '=========================================='
-Write-Host 'VALIDATION RESULT'
-Write-Host '=========================================='
-if (Test-Path validation-result.yaml) { Get-Content validation-result.yaml } else { Write-Host 'Could not read validation result' }
-Write-Host '=========================================='`,
-    });
-
-    // Fail the job if validation failed (check YAML result - Unix)
-    // Match "passed: true" anywhere in file (YAML now has --- separator on line 1)
-    jobSteps.push({
-      name: 'Check validation result (Unix)',
-      if: "always() && runner.os != 'Windows'",
-      run: `grep -q "passed: true" validation-result.yaml || exit 1`,
-    });
-
-    // Fail the job if validation failed (check YAML result - Windows)
-    // Match "passed: true" anywhere in file (YAML now has --- separator on line 1)
-    jobSteps.push({
-      name: 'Check validation result (Windows)',
-      if: "always() && runner.os == 'Windows'",
-      shell: 'powershell',
-      run: `if (!(Select-String -Path validation-result.yaml -Pattern "passed: true" -Quiet)) { exit 1 }`,
+      name: 'Run validation',
+      run: validateCommand,
     });
 
     jobs['validate'] = {
@@ -485,8 +439,7 @@ Write-Host '=========================================='`,
 
     let previousJobIds: string[] | undefined;
 
-    for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
-      const phase = phases[phaseIndex];
+    for (const phase of phases) {
 
       // Determine needs based on previous phase
       let needs: string[] | undefined = previousJobIds;

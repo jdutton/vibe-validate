@@ -922,7 +922,7 @@ Ensure error extractors are working correctly (see [Error Extractors Guide](./er
 - [Getting Started Guide](./getting-started.md)
 - [Configuration Reference](./configuration-reference.md)
 - [CLI Reference](./cli-reference.md)
-- [Config Templates Guide](./../config-templates/README.md)
+- [Config Templates Guide](./../packages/cli/config-templates/README.md)
 - [Error Extractors Guide](./error-extractors-guide.md)
 
 ---

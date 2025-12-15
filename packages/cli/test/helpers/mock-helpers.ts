@@ -6,6 +6,7 @@
 
 import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+
 import type { Command } from 'commander';
 import { vi } from 'vitest';
 

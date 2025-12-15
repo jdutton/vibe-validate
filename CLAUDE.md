@@ -13,12 +13,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 ```
 vibe-validate/
 ├── packages/
-│   ├── core/          # Validation orchestration engine
-│   ├── git/           # Git workflow utilities
-│   ├── extractors/    # Error extraction & LLM optimization
-│   ├── config/        # Configuration system with schema validation
-│   └── cli/           # Command-line interface
-├── config-templates/  # YAML configuration templates
+│   ├── utils/          # Common utilities (command execution, path helpers)
+│   │   ├── safe-exec   # Security-critical command execution
+│   │   ├── path-helpers# Cross-platform path normalization
+│   ├── config/         # Configuration system (depends on: none)
+│   ├── extractors/     # Error extraction & LLM optimization (depends on: config)
+│   ├── git/            # Git workflow utilities (depends on: utils)
+│   ├── core/           # Validation orchestration engine (depends on: config, git, extractors, utils)
+│   ├── history/        # History tracking (depends on: core, git, utils)
+│   ├── cli/            # Command-line interface (depends on: ALL)
+│   └── vibe-validate/  # Umbrella package
 ├── docs/              # Comprehensive documentation
 └── package.json       # Monorepo root
 ```
@@ -205,49 +209,44 @@ Many issues are intentional (test fixtures) or false positives. Use `// NOSONAR`
 
 ## Security Requirements
 
-### Git Command Execution Policy (MANDATORY)
+### Command Execution Policy (MANDATORY)
 
-**ALL git commands in vibe-validate MUST be executed through the `@vibe-validate/git` package.**
+**NEVER use `execSync()` anywhere in the codebase.** Always use secure execution functions from `@vibe-validate/utils`.
 
-#### Rules
-1. **NEVER** use `execSync('git ...')` or string interpolation with git commands
-2. **NEVER** use shell piping (`|`) or heredocs (`<<`) with user-controlled variables
-3. **ALWAYS** use functions from `@vibe-validate/git`:
-   - Low-level: `executeGitCommand()`, `execGitCommand()`, `tryGitCommand()`
-   - High-level: `addNote()`, `readNote()`, `removeNote()`, etc.
-4. **ALWAYS** validate inputs using: `validateGitRef()`, `validateNotesRef()`, `validateTreeHash()`
+**Security benefits:**
+- No shell interpreter (eliminates command injection risk)
+- Commands resolved via `which` (no PATH searching during execution)
+- Arguments passed as arrays (no string interpolation)
 
-#### Rationale
-- Prevents command injection attacks
-- Eliminates shell special character risks
-- Centralizes git operations for easier maintenance
-- Enables consistent mocking in tests
+**Available functions:**
+- `safeExecSync(command, args, options)` - Execute and return output (throws on error)
+- `safeExecResult(command, args, options)` - Execute and return result object (no throw)
+- `safeExecFromString(commandString, options)` - Parse simple command strings
+- `isToolAvailable(toolName)` - Check if command exists
+- `getToolVersion(toolName)` - Get version string
 
-#### Examples
+**Implementation details:** See `packages/utils/src/safe-exec.ts` for usage patterns and `packages/utils/test/safe-exec.test.ts` for command injection test cases.
 
-**❌ WRONG - Command Injection Risk:**
-```typescript
-// DON'T DO THIS - vulnerable to command injection
-execSync(`git notes --ref=${notesRef} remove ${treeHash}`);
-execSync(`cat <<'EOF' | git notes add -f -F - HEAD\n${content}\nEOF`);
-execSync(`git for-each-ref refs/notes/${path} | xargs -I {} git update-ref -d {}`);
-```
+## Where to Put Utilities
 
-**✅ CORRECT - Secure API:**
-```typescript
-// Use secure functions from @vibe-validate/git
-import { removeNote, addNote, removeNotesRefs } from '@vibe-validate/git';
+### Production Utilities (@vibe-validate/utils)
+Use `@vibe-validate/utils` for generic, non-domain-specific utilities:
+- Command execution (safeExec*)
+- File system helpers (path normalization, cross-platform)
+- String utilities (if generic, not domain-specific)
+- **Rule:** NO dependencies on other vibe-validate packages
 
-removeNote(notesRef, treeHash);
-addNote(notesRef, 'HEAD', content, true);
-removeNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
-```
+### Domain-Specific Utilities
+Place utilities in the appropriate domain package:
+- Git utilities → `@vibe-validate/git`
+- Config utilities → `@vibe-validate/config`
+- Extractor utilities → `@vibe-validate/extractors`
+- Validation utilities → `@vibe-validate/core`
 
-#### For New Contributors
-- Read `packages/git/src/git-executor.ts` for secure execution patterns
-- All git operations go through spawnSync with array arguments
-- Inputs are validated before execution
-- See `packages/git/test/git-executor.test.ts` for command injection test cases
+### Test Utilities
+- Use production utilities from `@vibe-validate/utils` when possible
+- Keep test-specific mocks/helpers in each package's `test/helpers/`
+- **NO shared test utilities package** (use inline or duplicate if needed)
 
 ## Key Design Principles
 

@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
+
 import { CIProviderRegistry } from '../services/ci-provider-registry.js';
 import type {
   CIProvider,
@@ -339,9 +340,13 @@ function displayHumanCompletion(
           console.log(`\n   Failed tests/errors:`);
           for (const error of failedStep.extraction.errors.slice(0, 10)) {
             let location = 'Unknown location';
-            if (error.file && error.line) {
-              const columnPart = error.column ? `:${error.column}` : '';
-              location = `${error.file}:${error.line}${columnPart}`;
+            if (error.file) {
+              if (error.line) {
+                const columnPart = error.column ? `:${error.column}` : '';
+                location = `${error.file}:${error.line}${columnPart}`;
+              } else {
+                location = error.file;
+              }
             }
             const message = error.message ?? 'Error';
             console.log(`   ❌ ${location} - ${message}`);

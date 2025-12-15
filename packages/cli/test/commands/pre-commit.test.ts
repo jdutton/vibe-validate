@@ -1,14 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { preCommitCommand } from '../../src/commands/pre-commit.js';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
+import * as utils from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { preCommitCommand } from '../../src/commands/pre-commit.js';
 import * as configLoader from '../../src/utils/config-loader.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the core validation module
 vi.mock('@vibe-validate/core', async () => {
@@ -16,6 +19,16 @@ vi.mock('@vibe-validate/core', async () => {
   return {
     ...actual,
     runValidation: vi.fn(),
+  };
+});
+
+// Mock the utils module
+vi.mock('@vibe-validate/utils', async () => {
+  const actual = await vi.importActual<typeof utils>('@vibe-validate/utils');
+  return {
+    ...actual,
+    safeExecFromString: vi.fn(),
+    isToolAvailable: vi.fn(),
   };
 });
 
@@ -82,6 +95,8 @@ describe('pre-commit command', () => {
     vi.mocked(git.isCurrentBranchBehindTracking).mockReset();
     vi.mocked(git.getPartiallyStagedFiles).mockReset();
     vi.mocked(git.isMergeInProgress).mockReset();
+    vi.mocked(utils.safeExecFromString).mockReset();
+    vi.mocked(utils.isToolAvailable).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
 
     // Set default mock values (tests can override)
@@ -89,6 +104,8 @@ describe('pre-commit command', () => {
     vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
     vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
+    vi.mocked(utils.safeExecFromString).mockReturnValue(''); // Default empty output
+    vi.mocked(utils.isToolAvailable).mockReturnValue(false); // No tools available by default
   });
 
   afterEach(() => {
@@ -312,6 +329,14 @@ describe('pre-commit command', () => {
         hasRemote: true,
       });
 
+      // Mock secret scanning to fail (simulating secrets found)
+      const error: any = new Error('Command failed');
+      error.stdout = '';
+      error.stderr = 'Secrets detected';
+      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
+        throw error;
+      });
+
       preCommitCommand(env.program);
 
       try {
@@ -439,6 +464,14 @@ describe('pre-commit command', () => {
         hasRemote: true,
       });
 
+      // Mock tool execution to fail (simulating tool not found)
+      const error: any = new Error('Command not found');
+      error.stdout = '';
+      error.stderr = 'nonexistent-tool: command not found';
+      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
+        throw error;
+      });
+
       preCommitCommand(env.program);
 
       try {
@@ -524,6 +557,14 @@ describe('pre-commit command', () => {
         behindBy: 0,
         currentBranch: 'feature/test',
         hasRemote: true,
+      });
+
+      // Mock secret scanning to fail (simulating secrets found)
+      const error: any = new Error('Command failed');
+      error.stdout = 'Found: AWS_SECRET_KEY=abc123';
+      error.stderr = 'Secret detected in staged files';
+      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
+        throw error;
       });
 
       preCommitCommand(env.program);

@@ -6,34 +6,37 @@
  * Compares current scan to baseline, ignoring existing technical debt.
  */
 
-import { execSync } from 'node:child_process';
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const BASELINE_FILE = '.github/.jscpd-baseline.json';
+const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
+const JSCPD_OUTPUT_DIR = './jscpd-report';
 
-const JSCPD_CONFIG = [
+const JSCPD_ARGS = [
+  '.',
   '--min-lines', '5',
   '--min-tokens', '50',
   '--reporters', 'json',
   '--format', 'typescript,javascript',
   '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
-  '--output', './jscpd-report'
-].join(' ');
+  '--output', JSCPD_OUTPUT_DIR
+];
 
 /**
  * Run jscpd and return results
  */
 function runJscpd() {
   try {
-    execSync(`npx jscpd . ${JSCPD_CONFIG}`, { encoding: 'utf-8', stdio: 'pipe' });
-  } catch {
-    // jscpd exits with error if duplications found, but we still get JSON
+    safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
+  } catch (_error) {
+    // Intentionally ignoring error: jscpd exits with non-zero when duplications found,
+    // but still generates JSON report which we process below
   }
 
-  const reportPath = './jscpd-report/jscpd-report.json';
+  const reportPath = join(JSCPD_OUTPUT_DIR, 'jscpd-report.json');
   if (!existsSync(reportPath)) {
-    console.error('❌ jscpd report not generated');
-    process.exit(1);
+    throw new Error(`jscpd report not found at ${reportPath}`);
   }
 
   return JSON.parse(readFileSync(reportPath, 'utf-8'));

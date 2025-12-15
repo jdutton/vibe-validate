@@ -6,8 +6,9 @@
  */
 
 import { z } from 'zod';
-import { createSafeValidator, createStrictValidator } from './schema-utils.js';
+
 import { GIT_DEFAULTS } from './constants.js';
+import { createSafeValidator, createStrictValidator } from './schema-utils.js';
 
 /**
  * Validation Step Schema

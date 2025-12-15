@@ -3,9 +3,14 @@
  *
  * Provides utilities for running CLI commands with proper error handling
  * and output capture.
+ *
+ * SECURITY: Uses safeExecFromString from @vibe-validate/utils instead of raw execSync
+ * to maintain consistency with production code and pass security audits.
  */
 
-import { execSync, type ExecSyncOptions } from 'node:child_process';
+import type { ExecSyncOptions } from 'node:child_process';
+
+import { safeExecFromString } from '@vibe-validate/utils';
 
 /**
  * Result from executing a CLI command
@@ -22,11 +27,13 @@ export interface CliExecutionResult {
 /**
  * Executes a CLI command and captures output, handling both success and failure
  *
- * Unlike execSync which throws on non-zero exit, this function captures the
+ * Unlike raw execSync which throws on non-zero exit, this function captures the
  * output regardless of exit code, making it ideal for testing error scenarios.
  *
+ * SECURITY: Uses safeExecFromString to prevent command injection vulnerabilities.
+ *
  * @param command - Command to execute
- * @param options - Optional execSync options (cwd, encoding, etc.)
+ * @param options - Optional execution options (cwd, encoding, etc.)
  * @returns Execution result with stdout, stderr, and exitCode
  *
  * @example
@@ -49,7 +56,7 @@ export function executeCLI(
   options: Omit<ExecSyncOptions, 'encoding'> = {},
 ): CliExecutionResult {
   try {
-    const stdout = execSync(command, {
+    const stdout = safeExecFromString(command, {
       ...options,
       encoding: 'utf-8',
       stdio: 'pipe',
@@ -60,8 +67,8 @@ export function executeCLI(
       stderr: '',
       exitCode: 0,
     };
-  } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout/stderr/exit code
-    // execSync throws on non-zero exit, but we want to capture the output
+  } catch (error: any) {
+    // safeExecFromString throws on non-zero exit, but we want to capture the output
     return {
       stdout: error.stdout || '',
       stderr: error.stderr || '',

@@ -5,12 +5,15 @@
  * Used by validation runner for signal handling and fail-fast behavior.
  */
 
-import { ChildProcess, execSync, spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, normalize, resolve } from 'node:path';
+
 import { getRepositoryRoot } from '@vibe-validate/git';
-import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
+import { safeExecSync } from '@vibe-validate/utils';
+
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
+import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 
 /**
  * Get git repository root directory
@@ -38,14 +41,19 @@ export function resolveGitRelativePath(cwd: string): string {
     throw new Error('Not in a git repository - cannot resolve cwd relative to git root');
   }
 
-  const resolved = resolve(gitRoot, cwd);
+  // Normalize git root path (git returns forward slashes on Windows, Node uses backslashes)
+  const normalizedGitRoot = normalize(gitRoot);
+  const resolved = resolve(normalizedGitRoot, cwd);
 
   // Security: Prevent directory traversal outside git root
-  if (!resolved.startsWith(gitRoot)) {
+  // Normalize both paths for comparison (handles Windows slash differences)
+  const normalizedResolved = normalize(resolved);
+  if (!normalizedResolved.startsWith(normalizedGitRoot)) {
     throw new Error(`Invalid cwd: "${cwd}" - must be within git repository`);
   }
 
-  return resolved;
+  // Convert to forward slashes (git convention) for consistency across platforms
+  return resolved.split('\\').join('/');
 }
 
 /**
@@ -90,7 +98,7 @@ export async function stopProcessGroup(
         // /T - Terminates all child processes
         // /F - Forcefully terminates the process
         try {
-          execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
+          safeExecSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' });
         } catch {
           // Process may already be dead, ignore error
         }
@@ -195,7 +203,7 @@ export function spawnCommand(
 function stripAnsiCodes(text: string): string {
   // Control character \x1b is intentionally used to match ANSI escape codes
   // eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
-  return text.replace(/\x1b\[[0-9;]*m/g, '');
+  return text.replaceAll(/\x1b\[[0-9;]*m/g, '');
 }
 
 /**

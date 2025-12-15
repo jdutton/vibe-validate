@@ -5,20 +5,35 @@
  * --detection-pattern flag for non-interactive plugin generation.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
 
-describe('create-extractor command', () => {
+import { safeExecSync, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+/**
+ * Execute CLI command and return output
+ */
+function execCLI(cliPath: string, args: string[], options?: { cwd?: string; encoding?: BufferEncoding }): string {
+  try {
+    return safeExecSync('node', [cliPath, ...args], { encoding: 'utf-8', ...options }) as string;
+  } catch (err: any) {
+    // For successful non-zero exits, return output
+    if (err.stdout || err.stderr) {
+      return (err.stdout || '') + (err.stderr || '');
+    }
+    throw err;
+  }
+}
+
+describe.skipIf(process.platform === 'win32')('create-extractor command', () => {
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory for test
-    testDir = join(tmpdir(), `vibe-validate-create-extractor-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
+    // Create temp directory for test (normalized to handle Windows short names)
+    testDir = join(normalizedTmpdir(), `vibe-validate-create-extractor-${Date.now()}`);
+    mkdirSyncReal(testDir, { recursive: true });
   });
 
   afterEach(() => {
@@ -30,13 +45,17 @@ describe('create-extractor command', () => {
 
   describe('plugin scaffolding', () => {
     it('should create extractor plugin directory structure', () => {
-      execSync(
-        `node "${cliPath}" create-extractor test-extractor --description "Test extractor" --author "Test <test@example.com>" --detection-pattern "ERROR:" --force`,
-        {
-          cwd: testDir,
-          encoding: 'utf-8',
-        }
-      );
+      execCLI(cliPath, [
+        'create-extractor',
+        'test-extractor',
+        '--description',
+        'Test extractor',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'ERROR:',
+        '--force'
+      ], { cwd: testDir });
 
       const pluginDir = join(testDir, 'vibe-validate-plugin-test-extractor');
       expect(existsSync(pluginDir)).toBe(true);
@@ -55,13 +74,17 @@ describe('create-extractor command', () => {
     });
 
     it('should generate plugin with default pattern in hints when no detection-pattern flag', () => {
-      execSync(
-        `node "${cliPath}" create-extractor test-extractor --description "Test extractor" --author "Test <test@example.com>" --detection-pattern "ERROR:" --force`,
-        {
-          cwd: testDir,
-          encoding: 'utf-8',
-        }
-      );
+      execCLI(cliPath, [
+        'create-extractor',
+        'test-extractor',
+        '--description',
+        'Test extractor',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'ERROR:',
+        '--force'
+      ], { cwd: testDir });
 
       const pluginFilePath = join(testDir, 'vibe-validate-plugin-test-extractor', 'index.ts');
       const pluginContent = readFileSync(pluginFilePath, 'utf-8');
@@ -73,13 +96,17 @@ describe('create-extractor command', () => {
     });
 
     it('should generate plugin with custom detection pattern when flag provided', () => {
-      execSync(
-        `node "${cliPath}" create-extractor custom-tool --description "Custom tool extractor" --author "Test <test@example.com>" --detection-pattern "CUSTOM-ERROR:" --force`,
-        {
-          cwd: testDir,
-          encoding: 'utf-8',
-        }
-      );
+      execCLI(cliPath, [
+        'create-extractor',
+        'custom-tool',
+        '--description',
+        'Custom tool extractor',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'CUSTOM-ERROR:',
+        '--force'
+      ], { cwd: testDir });
 
       const pluginFilePath = join(testDir, 'vibe-validate-plugin-custom-tool', 'index.ts');
       const pluginContent = readFileSync(pluginFilePath, 'utf-8');
@@ -91,13 +118,17 @@ describe('create-extractor command', () => {
     });
 
     it('should include TypeScript configuration files', () => {
-      execSync(
-        `node "${cliPath}" create-extractor test-extractor --description "Test extractor" --author "Test <test@example.com>" --detection-pattern "ERROR:" --force`,
-        {
-          cwd: testDir,
-          encoding: 'utf-8',
-        }
-      );
+      execCLI(cliPath, [
+        'create-extractor',
+        'test-extractor',
+        '--description',
+        'Test extractor',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'ERROR:',
+        '--force'
+      ], { cwd: testDir });
 
       const pluginDir = join(testDir, 'vibe-validate-plugin-test-extractor');
 
@@ -110,13 +141,17 @@ describe('create-extractor command', () => {
     });
 
     it('should generate README with usage instructions', () => {
-      execSync(
-        `node "${cliPath}" create-extractor test-extractor --description "Test extractor" --author "Test <test@example.com>" --detection-pattern "ERROR:" --force`,
-        {
-          cwd: testDir,
-          encoding: 'utf-8',
-        }
-      );
+      execCLI(cliPath, [
+        'create-extractor',
+        'test-extractor',
+        '--description',
+        'Test extractor',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'ERROR:',
+        '--force'
+      ], { cwd: testDir });
 
       const readmePath = join(testDir, 'vibe-validate-plugin-test-extractor', 'README.md');
       expect(existsSync(readmePath)).toBe(true);

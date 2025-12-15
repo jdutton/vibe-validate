@@ -6,13 +6,13 @@
  * @package @vibe-validate/extractors
  */
 
+import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
   DetectionResult,
   ExtractorSample,
 } from '../../types.js';
-import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 
 interface TestFailure {
   file: string;
@@ -35,11 +35,12 @@ interface TestFailure {
 function parseFailureLine(
   line: string,
   currentFile: string,
-  hasFormat2: boolean
+  hasFormat2: boolean,
+  inDetailSection: boolean
 ): Partial<TestFailure> | null {
-  // Match Format 1: FAIL file.test.ts > test hierarchy
-  // BUT: Skip if we've seen Format 2 headers (to avoid processing duplicate FAIL lines)
-  const format1Match = !hasFormat2 && /(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/.exec(line);
+  // Match Format 1: FAIL/❌/× file.test.ts > test hierarchy
+  // When marker has explicit file path (Format 1), always parse - not a summary line
+  const format1Match = /(?:FAIL|❌|×)\s+([^\s]+\.test\.ts)\s*>\s*(.+)/.exec(line);
   if (format1Match) {
     return {
       file: format1Match[1],
@@ -51,9 +52,11 @@ function parseFailureLine(
   }
 
   // Match Format 2: × test hierarchy (without file path)
+  // Skip × lines in summary section (before "Failed Tests" separator) - they lack location markers
+  // Only process × lines if we're in detail section OR no FAIL lines exist
   // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework output (controlled output), limited line length
   const format2Match = /(?:×)\s+(.+?)(?:\s+\d+ms)?$/.exec(line);
-  if (format2Match && currentFile) {
+  if (format2Match && currentFile && inDetailSection) {
     return {
       file: currentFile,
       testHierarchy: format2Match[1].trim(),
@@ -340,7 +343,7 @@ function extractRuntimeError(output: string): TestFailure | null {
   }
 
   // Error message may span multiple lines (e.g., path on next line)
-  const errorMessage = unhandledMatch[1].trim().replace(/\n\s+/g, ' ');
+  const errorMessage = unhandledMatch[1].trim().replaceAll(/\n\s+/g, ' ');
 
   // Extract location from stack trace (❯ function file:line:col)
   // File path may contain colons (e.g., node:internal/fs/promises), so match ❯ function filepath:number:number
@@ -443,6 +446,7 @@ function extract(output: string): ErrorExtractorResult {
   let currentFailure: Partial<TestFailure> | null = null;
   let currentFile = ''; // Track file from ❯ lines for Format 2
   let hasFormat2 = false; // Track if we found Format 2 file headers
+  let inDetailSection = false; // Track if we're past summary section (after "Failed Tests" separator)
 
   // First, check for runtime errors (Unhandled Rejection, ENOENT, etc.)
   const runtimeError = extractRuntimeError(output);
@@ -467,6 +471,13 @@ function extract(output: string): ErrorExtractorResult {
     i++; // Increment at start so 'continue' statements don't bypass it
     const line = lines[i];
 
+    // Detect entry into detail section (after summary)
+    // "Failed Tests" separator or first "FAIL" line marks start of detailed output
+    // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework section headers (controlled output), limited line length
+    if (!inDetailSection && (/⎯+\s*Failed Tests/.test(line) || /^\s*FAIL\s+/.test(line))) {
+      inDetailSection = true;
+    }
+
     // Check for Format 2 file header
     const fileHeaderMatch = /❯\s+([^\s]+\.test\.ts)\s+\(/.exec(line);
     if (fileHeaderMatch) {
@@ -476,7 +487,7 @@ function extract(output: string): ErrorExtractorResult {
     }
 
     // Try to parse as failure line (Format 1 or Format 2)
-    const parsedFailure = parseFailureLine(line, currentFile, hasFormat2);
+    const parsedFailure = parseFailureLine(line, currentFile, hasFormat2, inDetailSection);
     if (parsedFailure) {
       if (currentFailure?.file) {
         failures.push(currentFailure as TestFailure);

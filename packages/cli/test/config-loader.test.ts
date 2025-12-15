@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { loadConfig, configExists, findConfigPath, loadConfigWithErrors, findConfigUp } from '../src/utils/config-loader.js';
 
 describe('config-loader', () => {

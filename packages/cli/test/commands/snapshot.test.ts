@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { snapshotCommand } from '../../src/commands/snapshot.js';
+import { getGitTreeHash } from '@vibe-validate/git';
 import type { HistoryNote } from '@vibe-validate/history';
+import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { snapshotCommand } from '../../src/commands/snapshot.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
@@ -13,8 +17,27 @@ vi.mock('@vibe-validate/history', () => ({
   readHistoryNote: vi.fn(),
 }));
 
-import { getGitTreeHash } from '@vibe-validate/git';
-import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
+// Helper to get all console.log output as strings
+function getLogOutput(): string[] {
+  return vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+}
+
+// Helper to create mock history note
+function createMockHistory(passed: boolean): HistoryNote {
+  return {
+    runs: [
+      {
+        result: {
+          passed,
+          timestamp: '2025-12-05T10:30:15.000Z',
+          treeHash: 'abc123def456789012345678901234567890abcd',
+          summary: passed ? 'Validation passed' : 'Validation failed',
+          phases: [],
+        },
+      },
+    ],
+  };
+}
 
 describe('snapshot command', () => {
   let env: CommanderTestEnv;
@@ -36,28 +59,6 @@ describe('snapshot command', () => {
       }
       throw err;
     }
-  }
-
-  // Helper to get all console.log output as strings
-  function getLogOutput(): string[] {
-    return vi.mocked(console.log).mock.calls.map(call => call.join(' '));
-  }
-
-  // Helper to create mock history note
-  function createMockHistory(passed: boolean): HistoryNote {
-    return {
-      runs: [
-        {
-          result: {
-            passed,
-            timestamp: '2025-12-05T10:30:15.000Z',
-            treeHash: mockTreeHash,
-            summary: passed ? 'Validation passed' : 'Validation failed',
-            phases: [],
-          },
-        },
-      ],
-    };
   }
 
   beforeEach(() => {

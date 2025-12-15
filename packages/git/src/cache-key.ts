@@ -33,7 +33,7 @@ function isComplexCommand(command: string): boolean {
  * Normalize whitespace in a simple command (collapse multiple spaces/tabs to single space)
  */
 function normalizeWhitespace(str: string): string {
-  return str.replace(/\s+/g, ' ');
+  return str.replaceAll(/\s+/g, ' ');
 }
 
 /**

@@ -5,9 +5,9 @@
  * runtime validation and JSON Schema generation for documentation.
  */
 
-import { z } from 'zod';
-import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
 import { createSafeValidator, createStrictValidator } from '@vibe-validate/config';
+import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
+import { z } from 'zod';
 
 /**
  * Base: Command Execution Schema

@@ -7,8 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- **CRITICAL: Fixed CI workflow validation check** (Issue #85) - Workflow was incorrectly passing even when tests failed because grep matched nested `passed: true` fields instead of top-level validation result (simplified to use exit codes)
+- Fixed Windows CI test failures, which were masked by the CI workflow bug
+- Pre-commit hook no longer falsely flags the local branch as stale during merge commits
+
 ### Security
 
+- **CRITICAL: Eliminated command injection vulnerability in history recorder**
+  - **Problem**: `packages/history/src/recorder.ts` used `execSync` with string interpolation for git notes operations, creating command injection risk
+  - **Solution**: Replaced with secure `addNote()` API from `@vibe-validate/git` package that uses stdin for content passing
+  - **Impact**: No more shell interpreter risks in validation history recording
+- **NEW: Secure command execution wrapper**
+  - Created `packages/cli/src/utils/safe-exec.ts` with `safeExecSync()`, `isToolAvailable()`, and `getToolVersion()` functions
+  - Uses `spawnSync` with `shell: false` and `which` package for absolute path resolution
+  - Comprehensive unit tests covering security scenarios (command injection, PATH manipulation, special characters)
+  - Replaced 4 tool detection calls (gh, gitleaks, node, npm/pnpm) with secure wrapper
+  - **Benefits**:
+    - No shell interpreter = no command injection attack surface
+    - Absolute paths prevent runtime PATH manipulation
+    - SonarQube compliant
+    - DRY - centralizes execution logic
+    - Self-documenting security intent
 - Fixed HIGH severity vulnerability in glob package (command injection)
 - Fixed MODERATE severity vulnerability in js-yaml package (prototype pollution)
 - Updated to TypeScript ES2024 target (backward compatible)
@@ -17,14 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `vv doctor` now detects stale builds and dependencies
 
-### Bug Fixes
-
-- Pre-commit hook no longer falsely flags the local branch as stale during merge commits
-
 ### Documentation
 
+- Added SonarCloud Quality Gate and Codecov coverage badges to README.md
 - Improved README.md to clarify the benefits of the project, and reduced verbosity
 - Cleaned up repository root (moved files to `.github/`, removed unnecessary files)
+
+### New Package
+
+- **@vibe-validate/utils** - Common utilities package (command execution, cross-platform path helpers)
 
 ## [0.17.4] - 2025-12-07
 
@@ -394,16 +416,16 @@ Major update bringing run command caching, code quality enforcement, smart defau
 
 ### 🎨 Improvements
 
-**Natural Command-Line Syntax for `run`** (Issue #1)
+**Natural Command-Line Syntax for `run`**
 - `vv run echo test` now works naturally without quotes
 - Options pass through correctly: `vv run eslint --max-warnings 0 src/`
 - Old quoted syntax still works for backwards compatibility: `vv run "npm test"`
 
-**Cleaner Help Output** (Issue #3)
+**Cleaner Help Output**
 - Replaced `---` section separators with `***` to avoid YAML front matter confusion
 - YAML document start markers (`---`) remain in code examples where appropriate
 
-**Simplified History Commands** (Issue #2)
+**Simplified History Commands**
 - Removed redundant `--all` flag from `history list --run`
 - More intuitive interface with sensible defaults
 
@@ -493,7 +515,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
 
 ### 🐛 Bug Fixes
 
-- **CRITICAL: Fixed broken `init` command (Issue #36)**
+- **CRITICAL: Fixed broken `init` command** (Issue #36)
   - **Problem**: `vibe-validate init` was completely broken for new users installing from npm
     - Error: "template 'minimal' not found"
     - Available templates: empty list

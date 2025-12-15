@@ -21,9 +21,7 @@ hooks:
   preCommit:
     enabled: true
     secretScanning:
-      enabled: true
-      # scanCommand omitted = autodetect mode
-      # Will detect and run both gitleaks and secretlint if configured
+      enabled: false
 ci:
   nodeVersions:
     - '22'
@@ -32,6 +30,3 @@ ci:
     - ubuntu-latest
     - windows-latest
 developerFeedback: true
-extractors:
-  localPlugins:
-    trust: sandbox

@@ -2,9 +2,10 @@
  * Tests for output truncation (v0.15.0: now a no-op)
  */
 
-import { describe, it, expect } from 'vitest';
-import { truncateValidationOutput } from '../src/truncate.js';
 import type { ValidationResult } from '@vibe-validate/core';
+import { describe, it, expect } from 'vitest';
+
+import { truncateValidationOutput } from '../src/truncate.js';
 
 describe('truncateValidationOutput', () => {
   it('should return the same result (v0.15.0: truncation no longer needed)', () => {

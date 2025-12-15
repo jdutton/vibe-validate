@@ -5,11 +5,13 @@
  * generate-workflow command works correctly from subdirectories.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { generateWorkflow, checkSync, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+import { generateWorkflow, checkSync, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
 
 describe('generate-workflow subdirectory support (system tests)', () => {
   const testRoot = join(process.cwd(), 'test-temp-generate-workflow-system');

@@ -5,8 +5,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getRemoteBranch, getMainBranch, getRemoteOrigin } from '../src/git-helpers.js';
+
 import { GIT_DEFAULTS } from '../src/constants.js';
+import { getRemoteBranch, getMainBranch, getRemoteOrigin } from '../src/git-helpers.js';
 
 describe('git-helpers', () => {
   describe('getRemoteBranch', () => {

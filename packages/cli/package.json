@@ -81,6 +81,7 @@
     "@types/node": "^20.19.26",
     "@types/prompts": "^2.4.9",
     "@types/semver": "^7.7.1",
+    "@vibe-validate/utils": "workspace:*",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9"
   }

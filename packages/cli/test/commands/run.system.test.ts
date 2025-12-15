@@ -1,7 +1,8 @@
+import { safeExecFromString } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
-import { executeCommandWithYaml } from '../helpers/test-command-runner.js';
+
 import { parseRunYamlOutput } from '../helpers/run-command-helpers.js';
+import { executeCommandWithYaml } from '../helpers/test-command-runner.js';
 
 /**
  * SYSTEM TESTS for the run command
@@ -31,7 +32,7 @@ describe('run command system tests', () => {
       let output: string;
 
       try {
-        output = execSync(level3, {
+        output = safeExecFromString(level3, {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
@@ -216,7 +217,7 @@ describe('run command system tests', () => {
       let output: string;
 
       try {
-        output = execSync(command, {
+        output = safeExecFromString(command, {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
           timeout: 10000,
@@ -248,7 +249,7 @@ describe('run command system tests', () => {
       const command = `${CLI_PATH} run "${CLI_PATH} run 'echo performance test'"`;
 
       try {
-        execSync(command, {
+        safeExecFromString(command, {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });

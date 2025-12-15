@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { cleanupCommand } from '../../src/commands/cleanup.js';
 import * as git from '@vibe-validate/git';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { cleanupCommand } from '../../src/commands/cleanup.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the git module

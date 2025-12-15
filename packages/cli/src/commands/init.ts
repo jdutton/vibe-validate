@@ -4,12 +4,14 @@
  * Interactive setup wizard for vibe-validate configuration.
  */
 
-import type { Command } from 'commander';
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
+
 import chalk from 'chalk';
+import type { Command } from 'commander';
+import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
+
 import { configExists } from '../utils/config-loader.js';
 import { detectGitConfig, type DetectedGitConfig } from '../utils/git-detection.js';
 import { GitignoreSetupCheck } from '../utils/setup-checks/gitignore-check.js';

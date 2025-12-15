@@ -16,7 +16,9 @@
 // SonarJS cannot detect assertions inside helper functions, resulting in false positives.
 
 import { describe, it, expect } from 'vitest';
+
 import { encodeRunCacheKey } from '../src/cache-key.js';
+
 import {
   expectCacheKey,
   expectValidHashFormat,

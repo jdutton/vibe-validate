@@ -6,9 +6,9 @@
  * @package @vibe-validate/extractors
  */
 
-import type { ErrorExtractorResult, ExtractorInput } from './types.js';
 import { EXTRACTOR_REGISTRY } from './extractor-registry.js';
 import genericPlugin from './extractors/generic/index.js';
+import type { ErrorExtractorResult, ExtractorInput } from './types.js';
 import { stripAnsiCodes } from './utils.js';
 
 /**

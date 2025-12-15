@@ -6,9 +6,10 @@
  * - secretlint (npm-based, containerized-friendly)
  */
 
-import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+import { isToolAvailable, safeExecFromString } from '@vibe-validate/utils';
 import chalk from 'chalk';
 
 /**
@@ -24,18 +25,6 @@ export interface ToolDetection {
   available: boolean;
   hasConfig: boolean;
   defaultCommand: string;
-}
-
-/**
- * Check if gitleaks command is available
- */
-export function isGitleaksAvailable(): boolean {
-  try {
-    execSync('gitleaks --version', { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -59,7 +48,7 @@ export function hasSecretlintConfig(cwd: string = process.cwd()): boolean {
  * Detect available secret scanning tools and their configurations
  */
 export function detectSecretScanningTools(cwd: string = process.cwd()): ToolDetection[] {
-  const gitleaksAvailable = isGitleaksAvailable();
+  const gitleaksAvailable = isToolAvailable('gitleaks');
   const gitleaksConfigured = hasGitleaksConfig(cwd);
   const secretlintConfigured = hasSecretlintConfig(cwd);
 
@@ -147,7 +136,7 @@ export function runSecretScan(
   const startTime = Date.now();
 
   // Special handling for gitleaks - check availability first
-  if (tool === 'gitleaks' && !isGitleaksAvailable()) {
+  if (tool === 'gitleaks' && !isToolAvailable('gitleaks')) {
     return {
       tool,
       passed: true, // Don't fail, just skip
@@ -158,7 +147,7 @@ export function runSecretScan(
   }
 
   try {
-    const result = execSync(command, {
+    const result = safeExecFromString(command, {
       encoding: 'utf8',
       stdio: 'pipe',
     });
@@ -169,7 +158,7 @@ export function runSecretScan(
       tool,
       passed: true,
       duration,
-      output: verbose ? result : undefined,
+      output: verbose ? result.toString() : undefined,
     };
   } catch (error: unknown) {
     const duration = Date.now() - startTime;

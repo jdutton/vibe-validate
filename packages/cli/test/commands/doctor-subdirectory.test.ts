@@ -8,9 +8,20 @@
 
 /* eslint-disable sonarjs/assertions-in-tests -- Using assertCheck() helper which wraps expect() */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import { runDoctor } from '../../src/commands/doctor.js';
+import { checkSync } from '../../src/commands/generate-workflow.js';
+import { loadConfig, findConfigPath, loadConfigWithErrors } from '../../src/utils/config-loader.js';
+import {
+  mockDoctorEnvironment,
+  mockDoctorFileSystem,
+  assertCheck,
+} from '../helpers/doctor-helpers.js';
 
 // Mock dependencies
 vi.mock('fs', () => ({
@@ -32,6 +43,34 @@ vi.mock('child_process', async () => {
   };
 });
 
+vi.mock('@vibe-validate/utils', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
+  return {
+    ...actual,
+    isToolAvailable: vi.fn((toolName: string) => {
+      if (toolName === 'node') return true;
+      if (toolName === 'git') return true;
+      if (toolName === 'pnpm') return true;
+      if (toolName === 'npm') return true;
+      return false;
+    }),
+    getToolVersion: vi.fn((toolName: string) => {
+      if (toolName === 'node') return 'v22.0.0';
+      if (toolName === 'git') return 'git version 2.43.0';
+      if (toolName === 'pnpm') return '9.0.0';
+      if (toolName === 'npm') return '10.0.0';
+      return null;
+    }),
+    safeExecSync: vi.fn((cmd: string, args: string[]) => {
+      if (cmd === 'node' && args[0] === '--version') return 'v22.0.0';
+      if (cmd === 'git' && args[0] === '--version') return 'git version 2.43.0';
+      if (cmd === 'pnpm' && args[0] === '--version') return '9.0.0';
+      if (cmd === 'npm' && args[0] === '--version') return '10.0.0';
+      return '';
+    }),
+  };
+});
+
 vi.mock('@vibe-validate/git', async () => {
   const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
   return {
@@ -50,16 +89,6 @@ vi.mock('@vibe-validate/git', async () => {
 
 vi.mock('../../src/utils/config-loader.js');
 vi.mock('../../src/commands/generate-workflow.js');
-
-import { runDoctor } from '../../src/commands/doctor.js';
-import { loadConfig, findConfigPath, loadConfigWithErrors } from '../../src/utils/config-loader.js';
-import { checkSync } from '../../src/commands/generate-workflow.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
-import {
-  mockDoctorEnvironment,
-  mockDoctorFileSystem,
-  assertCheck,
-} from '../helpers/doctor-helpers.js';
 
 describe('doctor command from subdirectories', () => {
   const mockConfig: VibeValidateConfig = {

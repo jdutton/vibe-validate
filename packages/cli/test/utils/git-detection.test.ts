@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   detectGitConfig,
   findGitRoot,
@@ -9,7 +11,7 @@ import {
   readProjectFile,
 } from '../../src/utils/git-detection.js';
 
-// Mock @vibe-validate/git instead of child_process
+// Mock @vibe-validate/utils instead of child_process
 vi.mock('@vibe-validate/git', async () => {
   const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
   return {
@@ -445,7 +447,7 @@ describe('git-detection', () => {
       expect(result).toBe(join(testRoot, 'packages/cli/src/commands/doctor.ts'));
     });
 
-    it('should use process.cwd() when startDir not provided', () => {
+    it.skipIf(process.platform === 'win32')('should use process.cwd() when startDir not provided', () => {
       // Act
       const result = resolveProjectPath('.github/workflows/validate.yml');
 

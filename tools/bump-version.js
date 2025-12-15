@@ -282,94 +282,51 @@ for (const testFile of testFilesWithVersions) {
 }
 
 console.log('');
-log('Updating Claude Code plugin versions...', 'blue');
+log('Updating Claude Code skill documentation...', 'blue');
 
-// Update plugin version files
-const pluginFiles = [
-  { path: join(PROJECT_ROOT, 'plugins/claude-code/.claude-plugin/plugin.json'), name: 'Plugin manifest' },
-  { path: join(PROJECT_ROOT, '.claude-plugin/marketplace.json'), name: 'Marketplace config' },
-  { path: join(PROJECT_ROOT, 'docs/skill/SKILL.md'), name: 'Skill documentation', isYamlFrontMatter: true },
-];
+// Update skill documentation version
+const skillFile = { path: join(PROJECT_ROOT, 'docs/skill/SKILL.md'), name: 'Skill documentation' };
 
-let pluginUpdatedCount = 0;
-let pluginSkippedCount = 0;
+let skillUpdatedCount = 0;
+let skillSkippedCount = 0;
 
-for (const { path: pluginPath, name, isYamlFrontMatter } of pluginFiles) {
-  try {
-    const content = readFileSync(pluginPath, 'utf8');
+try {
+  const content = readFileSync(skillFile.path, 'utf8');
 
-    let oldVersion;
-    let updated = false;
+  // Match: version: 0.17.2 # Tracks vibe-validate package version
+  const versionPattern = /^version:\s*(\d+\.\d+\.\d+(?:-[\w.]+)?)\s*#\s*Tracks vibe-validate package version/m;
+  const match = content.match(versionPattern);
 
-    // Handle YAML front matter files (SKILL.md)
-    if (isYamlFrontMatter) {
-      // Match: version: 0.17.2 # Tracks vibe-validate package version
-      const versionPattern = /^version:\s*(\d+\.\d+\.\d+(?:-[\w.]+)?)\s*#\s*Tracks vibe-validate package version/m;
-      const match = content.match(versionPattern);
-
-      if (match) {
-        oldVersion = match[1];
-        if (oldVersion !== newVersion) {
-          const updatedContent = content.replace(
-            versionPattern,
-            `version: ${newVersion} # Tracks vibe-validate package version`
-          );
-          writeFileSync(pluginPath, updatedContent, 'utf8');
-          updated = true;
-        }
-      } else {
-        log(`  - ${name}: skipped (version tracking comment not found)`, 'yellow');
-        pluginSkippedCount++;
-        continue;
-      }
+  if (match) {
+    const oldVersion = match[1];
+    if (oldVersion !== newVersion) {
+      const updatedContent = content.replace(
+        versionPattern,
+        `version: ${newVersion} # Tracks vibe-validate package version`
+      );
+      writeFileSync(skillFile.path, updatedContent, 'utf8');
+      log(`  ✓ ${skillFile.name}: ${oldVersion} → ${newVersion}`, 'green');
+      skillUpdatedCount++;
     } else {
-      // Handle JSON files (plugin.json, marketplace.json)
-      const config = JSON.parse(content);
-
-      if (pluginPath.endsWith('plugin.json') && config.version) {
-        oldVersion = config.version;
-        if (oldVersion !== newVersion) {
-          const updatedContent = content.replace(
-            /"version":\s*"[^"]+"/,
-            `"version": "${newVersion}"`
-          );
-          writeFileSync(pluginPath, updatedContent, 'utf8');
-          updated = true;
-        }
-      } else if (pluginPath.endsWith('marketplace.json') && config.plugins?.[0]?.version) {
-        oldVersion = config.plugins[0].version;
-        if (oldVersion !== newVersion) {
-          const updatedContent = content.replace(
-            /"version":\s*"[^"]+"/,
-            `"version": "${newVersion}"`
-          );
-          writeFileSync(pluginPath, updatedContent, 'utf8');
-          updated = true;
-        }
-      }
+      log(`  - ${skillFile.name}: already at ${newVersion}`, 'yellow');
+      skillSkippedCount++;
     }
-
-    if (updated) {
-      log(`  ✓ ${name}: ${oldVersion} → ${newVersion}`, 'green');
-      pluginUpdatedCount++;
-    } else {
-      log(`  - ${name}: already at ${newVersion}`, 'yellow');
-      pluginSkippedCount++;
-    }
-  } catch (error) {
-    // Plugin files are optional - don't fail if they don't exist
-    log(`  - ${name}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
-    pluginSkippedCount++;
+  } else {
+    log(`  - ${skillFile.name}: skipped (version tracking comment not found)`, 'yellow');
+    skillSkippedCount++;
   }
+} catch (error) {
+  log(`  - ${skillFile.name}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
+  skillSkippedCount++;
 }
 
 console.log('');
 log(`✅ Version bump complete!`, 'green');
 log(`   Packages updated: ${updatedCount + (updatedCount > 0 || skippedCount === 0 ? 1 : 0)}`, 'green');
 log(`   Test files updated: ${testUpdatedCount}`, 'green');
-log(`   Plugin files updated: ${pluginUpdatedCount}`, 'green');
-if (skippedCount > 0 || testSkippedCount > 0 || pluginSkippedCount > 0) {
-  log(`   Skipped: ${skippedCount + testSkippedCount + pluginSkippedCount} (already at ${newVersion})`, 'yellow');
+log(`   Skill documentation updated: ${skillUpdatedCount}`, 'green');
+if (skippedCount > 0 || testSkippedCount > 0 || skillSkippedCount > 0) {
+  log(`   Skipped: ${skippedCount + testSkippedCount + skillSkippedCount} (already at ${newVersion})`, 'yellow');
 }
 console.log('');
 console.log('Next steps:');

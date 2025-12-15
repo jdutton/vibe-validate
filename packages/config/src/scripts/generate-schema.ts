@@ -7,8 +7,9 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { vibeValidateJsonSchema } from '../schema-export.js';
 
 const __filename = fileURLToPath(import.meta.url);

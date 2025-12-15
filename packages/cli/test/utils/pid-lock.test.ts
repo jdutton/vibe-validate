@@ -4,10 +4,18 @@
  * Ensures cross-platform single-instance validation execution
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import os from 'node:os';
+import { join } from 'node:path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import {
+  acquireLock,
+  releaseLock,
+  checkLock,
+  type LockInfo,
+} from '../../src/utils/pid-lock.js';
 
 // Mock os.tmpdir before importing pid-lock
 const testDir = join(os.tmpdir(), 'vibe-validate-test');
@@ -18,13 +26,6 @@ vi.mock('os', async () => {
     tmpdir: () => testDir,
   };
 });
-
-import {
-  acquireLock,
-  releaseLock,
-  checkLock,
-  type LockInfo,
-} from '../../src/utils/pid-lock.js';
 
 describe('PID Lock Utilities', () => {
   const projectDir = '/Users/test/my-project';

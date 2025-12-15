@@ -7,9 +7,11 @@
  * @package @vibe-validate/extractors
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { describe, it, expect, vi } from 'vitest';
+
 import { loadPlugin, discoverPlugins, validatePluginInterface } from '../src/plugin-loader.js';
 import type { ExtractorPlugin } from '../src/types.js';
 

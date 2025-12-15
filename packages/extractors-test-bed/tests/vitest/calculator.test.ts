@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import { Calculator } from '../../src/calculator.js';
 
 describe('Calculator (Vitest)', () => {

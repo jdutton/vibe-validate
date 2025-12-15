@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import { GitignoreSetupCheck } from '../../../src/utils/setup-checks/gitignore-check.js';
 
 describe('GitignoreSetupCheck (deprecated)', () => {

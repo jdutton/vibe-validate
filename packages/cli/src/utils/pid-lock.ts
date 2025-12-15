@@ -68,8 +68,8 @@ export interface LockOptions {
 function encodeDirectoryPath(directory: string): string {
   return directory
     .replace(/^([A-Za-z]):/, '$1-') // Windows drive letter (C: → C-)
-    .replace(/\\/g, '_') // Windows backslashes
-    .replace(/\//g, '_'); // Unix forward slashes
+    .replaceAll('\\', '_') // Windows backslashes
+    .replaceAll('/', '_'); // Unix forward slashes
 }
 
 /**

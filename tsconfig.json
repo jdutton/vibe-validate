@@ -22,10 +22,12 @@
   },
   "files": [],
   "references": [
-    { "path": "./packages/core" },
+    { "path": "./packages/utils" },
+    { "path": "./packages/config" },
     { "path": "./packages/git" },
     { "path": "./packages/extractors" },
-    { "path": "./packages/config" },
+    { "path": "./packages/core" },
+    { "path": "./packages/history" },
     { "path": "./packages/cli" }
   ]
 }

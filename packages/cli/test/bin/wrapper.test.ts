@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { describe, it, expect } from 'vitest';
 
 /**
  * Unit tests for the smart vibe-validate wrapper
@@ -227,13 +228,13 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
   describe('Real-World Scenarios', () => {
     it('should support run command with extraction', () => {
-      const result = spawnSync('node', [wrapperPath, 'run', 'echo "test"'], {
+      const result = spawnSync('node', [wrapperPath, 'run', 'node -e "console.log(\'test\')"'], {
         cwd: join(__dirname, '../../../..'),
         env: { ...process.env },
       });
 
       expect(result.status).toBe(0);
-      expect(result.stdout.toString()).toContain('command: echo');
+      expect(result.stdout.toString()).toContain('command: node');
     });
 
     it('should support state command', () => {

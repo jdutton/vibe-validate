@@ -9,7 +9,7 @@
  * vibe-validate packages to create realistic errors with complex stack traces.
  */
 
-import { Calculator } from '../../src/calculator.js';
+import { loadConfigFromFile } from '@vibe-validate/config';
 import {
   extractTypeScriptErrors,
   extractVitestErrors,
@@ -17,7 +17,8 @@ import {
   autoDetectAndExtract,
   stripAnsiCodes
 } from '@vibe-validate/extractors';
-import { loadConfigFromFile } from '@vibe-validate/config';
+
+import { Calculator } from '../../src/calculator.js';
 
 // ============================================================================
 // REAL VIBE-VALIDATE USAGE (80%)

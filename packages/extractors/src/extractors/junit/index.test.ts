@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import junitPlugin from './index.js';
 
 const { detect, extract } = junitPlugin;

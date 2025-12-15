@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import playwrightPlugin from './index.js';
 
 describe('playwright extractor plugin', () => {

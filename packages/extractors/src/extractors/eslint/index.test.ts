@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import eslintPlugin from './index.js';
 
 describe('ESLint Plugin', () => {

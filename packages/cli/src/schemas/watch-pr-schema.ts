@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { ErrorExtractorResultSchema } from '@vibe-validate/extractors';
+import { z } from 'zod';
 
 /**
  * Zod schema for watch-pr command result

@@ -4,8 +4,9 @@
  * Eliminates duplication of assertion patterns in smart-extractor tests.
  */
 
-import type { ErrorExtractorResult } from '../../src/types.js';
 import { expect } from 'vitest';
+
+import type { ErrorExtractorResult } from '../../src/types.js';
 
 /**
  * Assert that an extractor was detected correctly

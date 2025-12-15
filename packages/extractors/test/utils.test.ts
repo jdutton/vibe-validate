@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { stripAnsiCodes, extractErrorLines } from '../src/utils.js';
 
 describe('utils', () => {

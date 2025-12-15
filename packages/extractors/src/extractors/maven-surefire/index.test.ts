@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import mavenSurefireExtractor from './index.js';
 
 describe('Maven Surefire Extractor Plugin', () => {

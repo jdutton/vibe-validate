@@ -7,11 +7,12 @@
  * Run with: pnpm test:system
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { execSync } from 'node:child_process';
 import { mkdtempSync, rmSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 describe('npm package tarball (system test)', () => {
   let tempDir: string;
@@ -25,7 +26,7 @@ describe('npm package tarball (system test)', () => {
 
     // Run pnpm pack in packages/cli (resolves workspace:* dependencies)
     const cliDir = join(__dirname, '..');
-    const output = execSync('pnpm pack --pack-destination ' + tempDir, {
+    const output = safeExecFromString('pnpm pack --pack-destination ' + tempDir, {
       cwd: cliDir,
       encoding: 'utf-8',
     });
@@ -44,7 +45,7 @@ describe('npm package tarball (system test)', () => {
     tarballPath = join(tempDir, tarballName);
 
     // Extract tarball
-    execSync(`tar -xzf "${tarballPath}" -C "${tempDir}"`, { encoding: 'utf-8' });
+    safeExecFromString(`tar -xzf "${tarballPath}" -C "${tempDir}"`, { encoding: 'utf-8' });
 
     // pnpm pack creates a "package/" subdirectory
     const packageDir = join(tempDir, 'package');
@@ -171,13 +172,13 @@ describe('npm package tarball (system test)', () => {
       installDir = mkdtempSync(join(tmpdir(), 'vibe-validate-e2e-test-'));
 
       // Initialize a package.json
-      execSync('npm init -y', {
+      safeExecFromString('npm init -y', {
         cwd: installDir,
         stdio: 'ignore',
       });
 
       // Install the tarball
-      execSync(`npm install "${tarballPath}"`, {
+      safeExecFromString(`npm install "${tarballPath}"`, {
         cwd: installDir,
         stdio: 'ignore',
       });
@@ -193,7 +194,7 @@ describe('npm package tarball (system test)', () => {
     it('should be able to run init command without errors', () => {
       // Run init with --dry-run to test template discovery
       // This is the critical test: can the init command FIND the templates at runtime?
-      const output = execSync('npx vibe-validate init --dry-run', {
+      const output = safeExecFromString('npx vibe-validate init --dry-run', {
         cwd: installDir,
         encoding: 'utf-8',
       });
@@ -213,7 +214,7 @@ describe('npm package tarball (system test)', () => {
 
     it('should discover templates from installed package location', () => {
       // Run init with --help to list available templates
-      const output = execSync('npx vibe-validate init --help', {
+      const output = safeExecFromString('npx vibe-validate init --help', {
         cwd: installDir,
         encoding: 'utf-8',
       });

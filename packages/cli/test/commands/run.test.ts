@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { runCommand } from '../../src/commands/run.js';
 import * as childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { createMockChildProcess } from '../helpers/mock-helpers.js';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { runCommand } from '../../src/commands/run.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+import { createMockChildProcess } from '../helpers/mock-helpers.js';
 
 // Mock child_process.spawn
 vi.mock('child_process', () => ({

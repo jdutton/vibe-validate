@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { syncCheckCommand } from '../../src/commands/sync-check.js';
 import * as git from '@vibe-validate/git';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { syncCheckCommand } from '../../src/commands/sync-check.js';
 import * as configLoader from '../../src/utils/config-loader.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 

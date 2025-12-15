@@ -1,6 +1,6 @@
 # vibe-validate
 
-[![CI](https://github.com/jdutton/vibe-validate/actions/workflows/validate.yml/badge.svg)](https://github.com/jdutton/vibe-validate/actions) [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![npm downloads](https://img.shields.io/npm/dm/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![Node](https://img.shields.io/node/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/jdutton/vibe-validate/actions/workflows/validate.yml/badge.svg)](https://github.com/jdutton/vibe-validate/actions) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=jdutton_vibe-validate&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=jdutton_vibe-validate) [![codecov](https://codecov.io/gh/jdutton/vibe-validate/branch/main/graph/badge.svg)](https://codecov.io/gh/jdutton/vibe-validate) [![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![npm downloads](https://img.shields.io/npm/dm/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![Node](https://img.shields.io/node/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Faster Agentic Coding with confidence in every commit**
 
@@ -48,28 +48,17 @@ Extract actionable failures from verbose test logs. AI agents get structured YAM
 ---
 
 ### 4. **Tools Optimized for Agents Speed Debugging and Development**
-Built-in tools for AI agents and developers: health diagnostics, PR monitoring, branch sync enforcement, and actionable error guidance.
+Built-in tools for AI agents and developers: health diagnostics, PR monitoring, branch sync enforcement, validation history, and automatic work protection.
 
 **How it works:**
 - 🩺 `vv doctor` - diagnose setup issues before they block you
 - 👀 `vv watch-pr` - monitor CI without opening browser
 - 🔄 Automatic branch sync enforcement during pre-commit
 - 🎯 `vv history` - view validation timeline and debug trends
+- 🛡️ Automatic git snapshots of your worktree with every validation
+- ⏱️ Recover lost work or compare state when tests passed vs. failed
 
-**Impact:** Spend less time on tooling and environment issues. More time shipping features.
-
----
-
-### 5. **Automatic Git Snapshots Protect Your Work**
-Every validation creates git snapshots of your worktree (staged, unstaged, untracked files). Retrieve lost work or compare history when tests passed vs. failed.
-
-**How it works:**
-- 🛡️ Automatic - no user action required
-- ⏱️ Timestamped snapshots with every validation
-- 🔄 Recovery with standard git commands (`git cat-file`, `vv history`)
-- 📜 Compare worktree state when tests passed vs. failed
-
-**Impact:** Recover from bad refactoring, accidental reverts, or editor crashes. Your last validation is your safety net.
+**Impact:** Spend less time on tooling and environment issues. Recover from bad refactoring, accidental reverts, or editor crashes. More time shipping features.
 
 ---
 

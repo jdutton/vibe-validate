@@ -7,7 +7,6 @@
  * @packageDocumentation
  */
 
-import { z } from 'zod';
 import {
   OperationMetadataSchema,
   CommandExecutionSchema,
@@ -15,6 +14,7 @@ import {
   createSafeValidator,
   createStrictValidator
 } from '@vibe-validate/core';
+import { z } from 'zod';
 
 /**
  * Run Result Schema

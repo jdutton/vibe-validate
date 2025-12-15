@@ -5,10 +5,10 @@
  * Helps users understand their work protection state and how to recover if needed.
  */
 
-import type { Command } from 'commander';
-import chalk from 'chalk';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
+import chalk from 'chalk';
+import type { Command } from 'commander';
 
 export function snapshotCommand(program: Command): void {
   program

@@ -13,10 +13,11 @@
  * Tests run in parallel for speed.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { execSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 // Get path to the vv binary from the built CLI package
 const PROJECT_ROOT = join(__dirname, '../../../..');
@@ -57,7 +58,7 @@ function runDoctorInDir(cwd: string): {
   allPassed: boolean;
 } {
   try {
-    const output = execSync(`node "${VV_BINARY}" doctor --verbose`, {
+    const output = safeExecFromString(`node "${VV_BINARY}" doctor --verbose`, {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',
@@ -95,9 +96,9 @@ function createTestEnv(envName: string, options: {
 
   // Initialize git if requested
   if (options.hasGit) {
-    execSync('git init', { cwd: envPath, stdio: 'ignore' });
-    execSync('git config user.name "Test User"', { cwd: envPath, stdio: 'ignore' });
-    execSync('git config user.email "test@example.com"', { cwd: envPath, stdio: 'ignore' });
+    safeExecFromString('git init', { cwd: envPath, stdio: 'ignore' });
+    safeExecFromString('git config user.name "Test User"', { cwd: envPath, stdio: 'ignore' });
+    safeExecFromString('git config user.email "test@example.com"', { cwd: envPath, stdio: 'ignore' });
   }
 
   // Create config if requested

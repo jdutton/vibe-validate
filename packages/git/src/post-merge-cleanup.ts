@@ -175,12 +175,10 @@ export class PostPRMergeCleanup {
    * Get list of local branches to check (excluding main branch)
    */
   private getLocalBranchesToCheck(): string[] {
-    const allBranches = execGitSync(['branch', '--format=%(refname:short)'])
+    return execGitSync(['branch', '--format=%(refname:short)'])
       .trim()
       .split('\n')
       .filter(branch => branch && branch !== this.mainBranch && !branch.startsWith('*'));
-
-    return allBranches;
   }
 
   /**

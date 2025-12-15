@@ -4,12 +4,14 @@
  * Check if current branch is behind remote main branch without auto-merging.
  */
 
-import type { Command } from 'commander';
-import { checkBranchSync } from '@vibe-validate/git';
 import { getRemoteBranch, getMainBranch } from '@vibe-validate/config';
+import { checkBranchSync } from '@vibe-validate/git';
+import chalk from 'chalk';
+import type { Command } from 'commander';
+
 import { loadConfig } from '../utils/config-loader.js';
 import { outputYamlResult } from '../utils/yaml-output.js';
-import chalk from 'chalk';
+
 
 export function syncCheckCommand(program: Command): void {
   program

@@ -12,23 +12,23 @@
  * @package @vibe-validate/extractors
  */
 
-import type { ErrorExtractorResult, DetectionResult } from './types.js';
 
 // Import all extractor plugins
-import typescriptPlugin from './extractors/typescript/index.js';
+import avaPlugin from './extractors/ava/index.js';
 import eslintPlugin from './extractors/eslint/index.js';
-import vitestPlugin from './extractors/vitest/index.js';
-import jestPlugin from './extractors/jest/index.js';
-import mochaPlugin from './extractors/mocha/index.js';
+import genericPlugin from './extractors/generic/index.js';
 import jasminePlugin from './extractors/jasmine/index.js';
-import playwrightPlugin from './extractors/playwright/index.js';
+import jestPlugin from './extractors/jest/index.js';
 import junitPlugin from './extractors/junit/index.js';
 import mavenCheckstylePlugin from './extractors/maven-checkstyle/index.js';
-import mavenSurefirePlugin from './extractors/maven-surefire/index.js';
 import mavenCompilerPlugin from './extractors/maven-compiler/index.js';
-import avaPlugin from './extractors/ava/index.js';
+import mavenSurefirePlugin from './extractors/maven-surefire/index.js';
+import mochaPlugin from './extractors/mocha/index.js';
+import playwrightPlugin from './extractors/playwright/index.js';
 import tapPlugin from './extractors/tap/index.js';
-import genericPlugin from './extractors/generic/index.js';
+import typescriptPlugin from './extractors/typescript/index.js';
+import vitestPlugin from './extractors/vitest/index.js';
+import type { ErrorExtractorResult, DetectionResult } from './types.js';
 
 /**
  * Trust level for extractor execution

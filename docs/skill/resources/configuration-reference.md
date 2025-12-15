@@ -694,7 +694,7 @@ npx vibe-validate init --template typescript-nodejs
 
 # Or copy directly from GitHub
 curl -o vibe-validate.config.yaml \
-  https://raw.githubusercontent.com/jdutton/vibe-validate/main/config-templates/typescript-nodejs.yaml
+  https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/cli/config-templates/typescript-nodejs.yaml
 ```
 
 ### Customizing Templates
@@ -976,5 +976,5 @@ Validation state is stored in git notes (not files):
 
 - [Getting Started](getting-started.md) - Initial setup
 - [CLI Reference](cli-reference.md) - Command-line options
-- [Config Templates Guide](../config-templates/README.md) - Using and customizing templates
+- [Config Templates Guide](./../../packages/cli/config-templates/README.md) - Using and customizing templates
 - [Error Extractors Guide](error-extractors-guide.md) - Error formatting details

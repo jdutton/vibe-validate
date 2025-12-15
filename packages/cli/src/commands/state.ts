@@ -4,12 +4,13 @@
  * Display current validation state from git notes cache.
  */
 
-import type { Command } from 'commander';
-import chalk from 'chalk';
-import { stringify as stringifyYaml } from 'yaml';
+import type { ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { readHistoryNote, hasHistoryForTree, getAllRunCacheForTree, type RunCacheNote } from '@vibe-validate/history';
-import type { ValidationResult } from '@vibe-validate/core';
+import chalk from 'chalk';
+import type { Command } from 'commander';
+import { stringify as stringifyYaml } from 'yaml';
+
 import { findConfigPath } from '../utils/config-loader.js';
 import { formatTreeHashOutput, cleanRunCacheEntries } from '../utils/tree-hash-output.js';
 

@@ -5,6 +5,7 @@
  */
 
 import { expect } from 'vitest';
+
 import type { ErrorExtractorResult } from '../src/types.js';
 
 /**

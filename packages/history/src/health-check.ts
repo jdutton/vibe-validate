@@ -2,9 +2,9 @@
  * History health check utilities
  */
 
+import { getAllHistoryNotes } from './reader.js';
 import type { HealthCheckResult, HistoryConfig } from './types.js';
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
-import { getAllHistoryNotes } from './reader.js';
 
 /**
  * Check validation history health

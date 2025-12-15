@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import genericExtractor from './index.js';
 
 const { extract: extractGenericErrors } = genericExtractor;

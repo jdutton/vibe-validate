@@ -5,10 +5,12 @@
  * @vibe-validate/cli and maintain single source of truth.
  */
 
-import { describe, it, expect } from 'vitest';
-import { execSync, spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { safeExecSync } from '@vibe-validate/utils';
+import { describe, it, expect } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,10 +18,24 @@ const __dirname = dirname(__filename);
 // Path to the meta-package bin directory
 const binDir = join(__dirname, '../bin');
 
+/**
+ * Execute CLI command and return output
+ */
+function execCLI(binPath: string, args: string[], options?: { cwd?: string }): string {
+  try {
+    return safeExecSync('node', [binPath, ...args], { encoding: 'utf-8', ...options }) as string;
+  } catch (err: any) {
+    // For successful non-zero exits, return output
+    if (err.stdout || err.stderr) {
+      return (err.stdout || '') + (err.stderr || '');
+    }
+    throw err;
+  }
+}
+
 describe('vibe-validate meta-package delegation', () => {
   it('should delegate vv wrapper to CLI', () => {
-    const result = execSync(`node ${join(binDir, 'vv')} --version`, {
-      encoding: 'utf-8',
+    const result = execCLI(join(binDir, 'vv'), ['--version'], {
       cwd: __dirname,
     });
 
@@ -28,8 +44,7 @@ describe('vibe-validate meta-package delegation', () => {
   });
 
   it('should delegate vibe-validate wrapper to CLI', () => {
-    const result = execSync(`node ${join(binDir, 'vibe-validate')} --version`, {
-      encoding: 'utf-8',
+    const result = execCLI(join(binDir, 'vibe-validate'), ['--version'], {
       cwd: __dirname,
     });
 
@@ -38,8 +53,7 @@ describe('vibe-validate meta-package delegation', () => {
   });
 
   it('should show version string (with or without -dev depending on context)', () => {
-    const result = execSync(`node ${join(binDir, 'vv')} --version`, {
-      encoding: 'utf-8',
+    const result = execCLI(join(binDir, 'vv'), ['--version'], {
       cwd: join(__dirname, '../../../..'), // workspace root
     });
 
@@ -65,8 +79,7 @@ describe('vibe-validate meta-package delegation', () => {
   });
 
   it('should pass through command line arguments', () => {
-    const result = execSync(`node ${join(binDir, 'vv')} doctor --help`, {
-      encoding: 'utf-8',
+    const result = execCLI(join(binDir, 'vv'), ['doctor', '--help'], {
       cwd: __dirname,
     });
 

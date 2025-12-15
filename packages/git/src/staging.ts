@@ -19,14 +19,9 @@
  * - Skip validation: `git commit --no-verify` (not recommended)
  */
 
-import { execSync } from 'node:child_process';
+import { executeGitCommand } from './git-executor.js';
 
 const GIT_TIMEOUT = 30000;
-const GIT_OPTIONS = {
-  encoding: 'utf8' as const,
-  timeout: GIT_TIMEOUT,
-  stdio: ['pipe', 'pipe', 'ignore'] as ['pipe', 'pipe', 'ignore'],
-};
 
 /**
  * Get list of files with partially staged changes
@@ -52,8 +47,16 @@ const GIT_OPTIONS = {
 export function getPartiallyStagedFiles(): string[] {
   try {
     // Get list of files with staged changes
-    const stagedOutput = execSync('git diff --name-only --cached', GIT_OPTIONS);
-    const stagedFiles = stagedOutput
+    const stagedResult = executeGitCommand(['diff', '--name-only', '--cached'], {
+      timeout: GIT_TIMEOUT,
+      ignoreErrors: true
+    });
+
+    if (!stagedResult.success) {
+      return [];
+    }
+
+    const stagedFiles = stagedResult.stdout
       .trim()
       .split('\n')
       .filter(Boolean);
@@ -64,20 +67,26 @@ export function getPartiallyStagedFiles(): string[] {
     }
 
     // Get list of files with unstaged changes
-    const unstagedOutput = execSync('git diff --name-only', GIT_OPTIONS);
+    const unstagedResult = executeGitCommand(['diff', '--name-only'], {
+      timeout: GIT_TIMEOUT,
+      ignoreErrors: true
+    });
+
+    if (!unstagedResult.success) {
+      return [];
+    }
+
     const unstagedFiles = new Set(
-      unstagedOutput
+      unstagedResult.stdout
         .trim()
         .split('\n')
         .filter(Boolean)
     );
 
     // Find intersection: files that appear in BOTH staged and unstaged
-    const partiallyStagedFiles = stagedFiles.filter((file) =>
+    return stagedFiles.filter((file) =>
       unstagedFiles.has(file)
     );
-
-    return partiallyStagedFiles;
   } catch {
     // Not a git repository, or git command failed
     // Return empty array - let pre-commit continue and fail elsewhere if needed

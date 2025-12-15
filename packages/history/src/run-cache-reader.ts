@@ -5,8 +5,9 @@
  * where cacheKey = encodeURIComponent(workdir ? `${workdir}:${command}` : command)
  */
 
-import { parse as parseYaml } from 'yaml';
 import { readNote, listNotesRefs, type TreeHash, type NotesRef } from '@vibe-validate/git';
+import { parse as parseYaml } from 'yaml';
+
 import type { RunCacheNote } from './types.js';
 
 // Removed: Git operations now use secure @vibe-validate/git functions
@@ -36,7 +37,7 @@ export async function listRunCacheEntries(treeHash: string): Promise<RunCacheEnt
     }
 
     // Parse refPaths: "refs/notes/vibe-validate/run/{treeHash}/{cacheKey}"
-    const entries = refs
+    return refs
       .map((refPath) => {
         // Extract cache key from ref path
         const regex = /refs\/notes\/vibe-validate\/run\/([^/]+)\/(.+)$/;
@@ -51,8 +52,6 @@ export async function listRunCacheEntries(treeHash: string): Promise<RunCacheEnt
         };
       })
       .filter(Boolean) as RunCacheEntryMeta[];
-
-    return entries;
   } catch {
     // No run cache exists - expected for tree hashes without run cache
     return [];
@@ -80,8 +79,7 @@ export async function getRunCacheEntry(
       return null;
     }
 
-    const note = parseYaml(yaml) as RunCacheNote;
-    return note;
+    return parseYaml(yaml) as RunCacheNote;
   } catch {
     // Entry doesn't exist or parse failed
     return null;
@@ -137,7 +135,7 @@ export async function listRunCacheTreeHashes(): Promise<string[]> {
       }
     }
 
-    return Array.from(treeHashes);
+    return [...treeHashes];
   } catch {
     // No run cache exists - expected for repos without run cache
     return [];

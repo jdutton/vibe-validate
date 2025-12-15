@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { EXTRACTOR_REGISTRY, getExtractorByName, type ExtractorDescriptor } from '../src/extractor-registry.js';
 import { createSandboxedExtractor } from '../src/sandboxed-extractor.js';
 import type { ExtractorPlugin } from '../src/types.js';

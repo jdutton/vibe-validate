@@ -8,11 +8,12 @@
  * - Are referenced correctly in documentation
  */
 
-import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { parse as parseYaml } from 'yaml';
 import { resolve } from 'node:path';
+
 import { safeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 
 // Templates moved to packages/cli/config-templates (permanent location)
 const TEMPLATES_DIR = resolve(__dirname, '../config-templates');

@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { execSync } from 'node:child_process';
+
 import { GitHubActionsProvider } from '../../../src/services/ci-providers/github-actions.js';
 
-// Mock child_process
-vi.mock('node:child_process');
+// Mock @vibe-validate/utils
+vi.mock('@vibe-validate/utils', async () => {
+  const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
+  return {
+    ...actual,
+    isToolAvailable: vi.fn(() => true), // Default: gh is available
+    safeExecSync: vi.fn(() => ''), // Default: empty response
+  };
+});
 
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', async () => {
@@ -22,17 +29,23 @@ vi.mock('@vibe-validate/git', async () => {
 describe('GitHubActionsProvider', () => {
   let provider: GitHubActionsProvider;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     provider = new GitHubActionsProvider();
     vi.clearAllMocks();
+
+    // Re-establish default mocks after clearAllMocks
+    const { isToolAvailable, safeExecSync } = await import('@vibe-validate/utils');
+    vi.mocked(isToolAvailable).mockReturnValue(true);
+    vi.mocked(safeExecSync).mockReturnValue('');
   });
 
   describe('isAvailable', () => {
     it('should return true when gh CLI is available and in GitHub repo', async () => {
       const { executeGitCommand } = await import('@vibe-validate/git');
+      const { isToolAvailable } = await import('@vibe-validate/utils');
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from('gh version 2.40.0'));
-      vi.mocked(executeGitCommand).mockReturnValueOnce({
+      vi.mocked(isToolAvailable).mockReturnValue(true);
+      vi.mocked(executeGitCommand).mockReturnValue({
         success: true,
         stdout: 'https://github.com/user/repo.git',
         stderr: '',
@@ -42,14 +55,13 @@ describe('GitHubActionsProvider', () => {
       const result = await provider.isAvailable();
 
       expect(result).toBe(true);
-      expect(execSync).toHaveBeenCalledWith('gh --version', { stdio: 'ignore' });
+      expect(isToolAvailable).toHaveBeenCalledWith('gh');
       expect(executeGitCommand).toHaveBeenCalledWith(['remote', 'get-url', 'origin']);
     });
 
     it('should return false when gh CLI is not available', async () => {
-      vi.mocked(execSync).mockImplementationOnce(() => {
-        throw new Error('gh: command not found');
-      });
+      const { isToolAvailable } = await import('@vibe-validate/utils');
+      vi.mocked(isToolAvailable).mockReturnValue(false);
 
       const result = await provider.isAvailable();
 
@@ -59,8 +71,7 @@ describe('GitHubActionsProvider', () => {
     it('should return false when not in GitHub repo', async () => {
       const { executeGitCommand } = await import('@vibe-validate/git');
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from('gh version 2.40.0'));
-      vi.mocked(executeGitCommand).mockReturnValueOnce({
+      vi.mocked(executeGitCommand).mockReturnValue({
         success: true,
         stdout: 'https://gitlab.com/user/repo.git',
         stderr: '',
@@ -75,6 +86,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('detectPullRequest', () => {
     it('should detect PR from current branch', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const prData = {
         number: 42,
         title: 'feat: add new feature',
@@ -82,7 +94,7 @@ describe('GitHubActionsProvider', () => {
         headRefName: 'feature-branch',
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(prData)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(prData));
 
       const result = await provider.detectPullRequest();
 
@@ -95,7 +107,8 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should return null when no PR is found', async () => {
-      vi.mocked(execSync).mockImplementationOnce(() => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
+      vi.mocked(safeExecSync).mockImplementation(() => {
         throw new Error('no pull requests found');
       });
 
@@ -107,6 +120,7 @@ describe('GitHubActionsProvider', () => {
 
   describe('fetchCheckStatus', () => {
     it('should fetch and transform check status', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'feat: add new feature',
@@ -130,7 +144,7 @@ describe('GitHubActionsProvider', () => {
         ],
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(ghResponse)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
 
       const result = await provider.fetchCheckStatus(42);
 
@@ -158,6 +172,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should determine overall status as completed when all checks done', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -179,7 +194,7 @@ describe('GitHubActionsProvider', () => {
         ],
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(ghResponse)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
 
       const result = await provider.fetchCheckStatus(42);
 
@@ -188,6 +203,7 @@ describe('GitHubActionsProvider', () => {
     });
 
     it('should determine overall result as failure when any check fails', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const ghResponse = {
         number: 42,
         title: 'test',
@@ -209,17 +225,75 @@ describe('GitHubActionsProvider', () => {
         ],
       };
 
-      vi.mocked(execSync).mockReturnValueOnce(Buffer.from(JSON.stringify(ghResponse)));
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
 
       const result = await provider.fetchCheckStatus(42);
 
       expect(result.status).toBe('completed');
       expect(result.result).toBe('failure');
     });
+
+    it('should extract job ID from matrix job URLs', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
+      const ghResponse = {
+        number: 42,
+        title: 'test',
+        url: 'https://github.com/user/repo/pull/42',
+        headRefName: 'test',
+        statusCheckRollup: [
+          {
+            name: 'ubuntu-latest (Node 22)',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            detailsUrl: 'https://github.com/user/repo/actions/runs/20212253630/job/58019844806',
+          },
+          {
+            name: 'windows-latest (Node 22)',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            detailsUrl: 'https://github.com/user/repo/actions/runs/20212253630/job/58019844813',
+          },
+        ],
+      };
+
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
+
+      const result = await provider.fetchCheckStatus(42);
+
+      // Each matrix job should have its unique job ID, not the shared run ID
+      expect(result.checks[0].id).toBe('58019844806');
+      expect(result.checks[1].id).toBe('58019844813');
+    });
+
+    it('should fallback to run ID when job ID is not present (non-matrix jobs)', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
+      const ghResponse = {
+        number: 42,
+        title: 'test',
+        url: 'https://github.com/user/repo/pull/42',
+        headRefName: 'test',
+        statusCheckRollup: [
+          {
+            name: 'Single job',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            detailsUrl: 'https://github.com/user/repo/actions/runs/123456',
+          },
+        ],
+      };
+
+      vi.mocked(safeExecSync).mockReturnValue(JSON.stringify(ghResponse));
+
+      const result = await provider.fetchCheckStatus(42);
+
+      // Non-matrix job should use run ID since there's no /job/ in the URL
+      expect(result.checks[0].id).toBe('123456');
+    });
   });
 
   describe('fetchFailureLogs', () => {
     it('should fetch logs and extract error details', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const runData = { name: 'ubuntu-latest (Node 20)' };
       const logs = `
 ##[group]Run pnpm test
@@ -230,9 +304,9 @@ FAIL test/example.test.ts
 ##[error]Process completed with exit code 1.
 `;
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(JSON.stringify(runData) as any)
-        .mockReturnValueOnce(logs as any);
+      vi.mocked(safeExecSync)
+        .mockReturnValueOnce(JSON.stringify(runData))
+        .mockReturnValueOnce(logs);
 
       const result = await provider.fetchFailureLogs('123456');
 
@@ -243,36 +317,35 @@ FAIL test/example.test.ts
     });
 
     it('should extract vibe-validate state file from logs', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const runData = { name: 'Test' };
       // GitHub Actions log format: "Job\tStep\tTimestamp Content"
-      // v0.15.0+ format with phases[].steps[].extraction
+      // v0.17.5+ format with --- separators
       const logs = `
 Some other log output
-Run validation\tDisplay state\t2025-10-20T10:00:00.000Z ==========================================
-Run validation\tDisplay state\t2025-10-20T10:00:00.100Z VALIDATION RESULT
-Run validation\tDisplay state\t2025-10-20T10:00:00.200Z ==========================================
-Run validation\tDisplay state\t2025-10-20T10:00:00.300Z passed: false
-Run validation\tDisplay state\t2025-10-20T10:00:00.400Z timestamp: '2025-10-20T10:00:00.000Z'
-Run validation\tDisplay state\t2025-10-20T10:00:00.500Z failedStep: Unit Tests
-Run validation\tDisplay state\t2025-10-20T10:00:00.600Z phases:
-Run validation\tDisplay state\t2025-10-20T10:00:00.700Z   - name: Testing
-Run validation\tDisplay state\t2025-10-20T10:00:00.800Z     passed: false
-Run validation\tDisplay state\t2025-10-20T10:00:00.900Z     steps:
-Run validation\tDisplay state\t2025-10-20T10:00:01.000Z       - name: Unit Tests
-Run validation\tDisplay state\t2025-10-20T10:00:01.100Z         command: pnpm test
-Run validation\tDisplay state\t2025-10-20T10:00:01.200Z         passed: false
-Run validation\tDisplay state\t2025-10-20T10:00:01.300Z         extraction:
-Run validation\tDisplay state\t2025-10-20T10:00:01.400Z           summary: "1 test failure"
-Run validation\tDisplay state\t2025-10-20T10:00:01.500Z           errors:
-Run validation\tDisplay state\t2025-10-20T10:00:01.600Z             - file: test/example.test.ts
-Run validation\tDisplay state\t2025-10-20T10:00:01.700Z               message: Test failed
-Run validation\tDisplay state\t2025-10-20T10:00:01.800Z ==========================================
+Run validation\tRun validation\t2025-10-20T10:00:00.000Z ---
+Run validation\tRun validation\t2025-10-20T10:00:00.100Z passed: false
+Run validation\tRun validation\t2025-10-20T10:00:00.200Z timestamp: '2025-10-20T10:00:00.000Z'
+Run validation\tRun validation\t2025-10-20T10:00:00.300Z failedStep: Unit Tests
+Run validation\tRun validation\t2025-10-20T10:00:00.400Z phases:
+Run validation\tRun validation\t2025-10-20T10:00:00.500Z   - name: Testing
+Run validation\tRun validation\t2025-10-20T10:00:00.600Z     passed: false
+Run validation\tRun validation\t2025-10-20T10:00:00.700Z     steps:
+Run validation\tRun validation\t2025-10-20T10:00:00.800Z       - name: Unit Tests
+Run validation\tRun validation\t2025-10-20T10:00:00.900Z         command: pnpm test
+Run validation\tRun validation\t2025-10-20T10:00:01.000Z         passed: false
+Run validation\tRun validation\t2025-10-20T10:00:01.100Z         extraction:
+Run validation\tRun validation\t2025-10-20T10:00:01.200Z           summary: "1 test failure"
+Run validation\tRun validation\t2025-10-20T10:00:01.300Z           errors:
+Run validation\tRun validation\t2025-10-20T10:00:01.400Z             - file: test/example.test.ts
+Run validation\tRun validation\t2025-10-20T10:00:01.500Z               message: Test failed
+Run validation\tRun validation\t2025-10-20T10:00:01.600Z ---
 More log output after
 `;
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(JSON.stringify(runData) as any)
-        .mockReturnValueOnce(logs as any);
+      vi.mocked(safeExecSync)
+        .mockReturnValueOnce(JSON.stringify(runData))
+        .mockReturnValueOnce(logs);
 
       const result = await provider.fetchFailureLogs('123456');
 
@@ -284,12 +357,13 @@ More log output after
     });
 
     it('should handle missing validation result gracefully', async () => {
+      const { safeExecSync } = await import('@vibe-validate/utils');
       const runData = { name: 'Test' };
       const logs = 'Regular log output without validation result';
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(JSON.stringify(runData) as any)
-        .mockReturnValueOnce(logs as any);
+      vi.mocked(safeExecSync)
+        .mockReturnValueOnce(JSON.stringify(runData))
+        .mockReturnValueOnce(logs);
 
       const result = await provider.fetchFailureLogs('123456');
 
@@ -300,20 +374,18 @@ More log output after
   describe('extractValidationResult', () => {
     it('should extract and parse YAML validation result', () => {
       // GitHub Actions log format: "Job\tStep\tTimestamp Content"
-      // v0.15.0+ format with phases[].steps[].command instead of rerunCommand
+      // v0.17.5+ format with --- separators
       const logs = `
 Some output before
-Run validation\tDisplay state\t2025-10-20T10:00:00.000Z ==========================================
-Run validation\tDisplay state\t2025-10-20T10:00:00.100Z VALIDATION RESULT
-Run validation\tDisplay state\t2025-10-20T10:00:00.200Z ==========================================
-Run validation\tDisplay state\t2025-10-20T10:00:00.300Z passed: false
-Run validation\tDisplay state\t2025-10-20T10:00:00.400Z failedStep: TypeScript Type Check
-Run validation\tDisplay state\t2025-10-20T10:00:00.500Z phases:
-Run validation\tDisplay state\t2025-10-20T10:00:00.600Z   - name: Pre-Qualification
-Run validation\tDisplay state\t2025-10-20T10:00:00.700Z     steps:
-Run validation\tDisplay state\t2025-10-20T10:00:00.800Z       - name: TypeScript Type Check
-Run validation\tDisplay state\t2025-10-20T10:00:00.900Z         command: pnpm typecheck
-Run validation\tDisplay state\t2025-10-20T10:00:01.000Z ==========================================
+Run validation\tRun validation\t2025-10-20T10:00:00.000Z ---
+Run validation\tRun validation\t2025-10-20T10:00:00.100Z passed: false
+Run validation\tRun validation\t2025-10-20T10:00:00.200Z failedStep: TypeScript Type Check
+Run validation\tRun validation\t2025-10-20T10:00:00.300Z phases:
+Run validation\tRun validation\t2025-10-20T10:00:00.400Z   - name: Pre-Qualification
+Run validation\tRun validation\t2025-10-20T10:00:00.500Z     steps:
+Run validation\tRun validation\t2025-10-20T10:00:00.600Z       - name: TypeScript Type Check
+Run validation\tRun validation\t2025-10-20T10:00:00.700Z         command: pnpm typecheck
+Run validation\tRun validation\t2025-10-20T10:00:00.800Z ---
 Output after
 `;
 
@@ -349,35 +421,33 @@ invalid: yaml: content: [
     });
 
     it('should extract validation result from real GitHub Actions CI log', () => {
-      // Real CI log sample from GitHub Actions run 18716369496
+      // Real CI log sample (updated to v0.17.5+ format with --- separators)
       // Format: "Job Name\tStep Name\tTimestamp Content"
       const logs = `
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4488358Z ==========================================
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4488753Z VALIDATION RESULT
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4489009Z ==========================================
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4498802Z passed: false
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4499371Z timestamp: 2025-10-22T12:37:45.190Z
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4500032Z treeHash: b131b1a1aa6eb1cf4bd4b23a71fd21560df01970
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4500551Z phases:
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4500886Z   - name: Pre-Qualification
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4501265Z     durationSecs: 3.1
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4501589Z     passed: true
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4501881Z     steps:
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4502219Z       - name: TypeScript Type Check
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4502627Z         passed: true
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4502965Z         durationSecs: 2.6
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4503367Z       - name: ESLint Code Quality
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4503981Z         passed: true
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504305Z         durationSecs: 3.1
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504607Z   - name: Testing
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4504805Z     durationSecs: 33.3
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505013Z     passed: false
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505200Z     steps:
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505400Z       - name: Unit Tests with Coverage
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505600Z         command: pnpm test:coverage
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4505800Z         passed: false
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4682467Z failedStep: Unit Tests with Coverage
-Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Unix)\t2025-10-22T12:37:45.4812713Z ==========================================
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4488358Z ---
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4498802Z passed: false
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4499371Z timestamp: 2025-10-22T12:37:45.190Z
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4500032Z treeHash: b131b1a1aa6eb1cf4bd4b23a71fd21560df01970
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4500551Z phases:
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4500886Z   - name: Pre-Qualification
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4501265Z     durationSecs: 3.1
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4501589Z     passed: true
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4501881Z     steps:
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4502219Z       - name: TypeScript Type Check
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4502627Z         passed: true
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4502965Z         durationSecs: 2.6
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4503367Z       - name: ESLint Code Quality
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4503981Z         passed: true
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4504305Z         durationSecs: 3.1
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4504607Z   - name: Testing
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4504805Z     durationSecs: 33.3
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4505013Z     passed: false
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4505200Z     steps:
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4505400Z       - name: Unit Tests with Coverage
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4505600Z         command: pnpm test:coverage
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4505800Z         passed: false
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4682467Z failedStep: Unit Tests with Coverage
+Run vibe-validate validation (ubuntu-latest, 22)\tRun validation\t2025-10-22T12:37:45.4812713Z ---
 `;
 
       const result = provider.extractValidationResult(logs);
@@ -397,20 +467,18 @@ Run vibe-validate validation (ubuntu-latest, 22)\tDisplay validation result (Uni
     });
 
     it('should use concise error summary when validation result is available', () => {
-      // Real CI log with validation result (v0.15.0+: uses step.command instead of rerunCommand)
+      // Real CI log with validation result (v0.17.5+: uses --- separators)
       const logs = `
 Some other log lines
-Run validation\tValidate\t2025-10-22T12:37:45.000Z ==========================================
-Run validation\tValidate\t2025-10-22T12:37:45.001Z VALIDATION RESULT
-Run validation\tValidate\t2025-10-22T12:37:45.002Z ==========================================
-Run validation\tValidate\t2025-10-22T12:37:45.003Z passed: false
-Run validation\tValidate\t2025-10-22T12:37:45.004Z failedStep: TypeScript Type Check
-Run validation\tValidate\t2025-10-22T12:37:45.005Z phases:
-Run validation\tValidate\t2025-10-22T12:37:45.006Z   - name: Pre-Qualification
-Run validation\tValidate\t2025-10-22T12:37:45.007Z     steps:
-Run validation\tValidate\t2025-10-22T12:37:45.008Z       - name: TypeScript Type Check
-Run validation\tValidate\t2025-10-22T12:37:45.009Z         command: pnpm typecheck
-Run validation\tValidate\t2025-10-22T12:37:45.010Z ==========================================
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z ---
+Run validation\tRun validation\t2025-10-22T12:37:45.001Z passed: false
+Run validation\tRun validation\t2025-10-22T12:37:45.002Z failedStep: TypeScript Type Check
+Run validation\tRun validation\t2025-10-22T12:37:45.003Z phases:
+Run validation\tRun validation\t2025-10-22T12:37:45.004Z   - name: Pre-Qualification
+Run validation\tRun validation\t2025-10-22T12:37:45.005Z     steps:
+Run validation\tRun validation\t2025-10-22T12:37:45.006Z       - name: TypeScript Type Check
+Run validation\tRun validation\t2025-10-22T12:37:45.007Z         command: pnpm typecheck
+Run validation\tRun validation\t2025-10-22T12:37:45.008Z ---
 ##[error]Process completed with exit code 1.
 `;
 
@@ -418,6 +486,115 @@ Run validation\tValidate\t2025-10-22T12:37:45.010Z =============================
       const result = (provider as any).extractErrorSummary(logs);
 
       expect(result).toBe('Failed step: TypeScript Type Check\nRerun: pnpm typecheck');
+    });
+
+    it('should extract validation result with closing --- separator', () => {
+      // New format (v0.17.5+): YAML output with closing --- separator
+      const logs = `
+Run validation\tRun validation\t2025-12-14T06:00:00.000Z ---
+Run validation\tRun validation\t2025-12-14T06:00:00.001Z passed: false
+Run validation\tRun validation\t2025-12-14T06:00:00.002Z timestamp: 2025-12-14T06:00:00.000Z
+Run validation\tRun validation\t2025-12-14T06:00:00.003Z treeHash: abc123def456
+Run validation\tRun validation\t2025-12-14T06:00:00.004Z summary: Test failed
+Run validation\tRun validation\t2025-12-14T06:00:00.005Z failedStep: Unit Tests
+Run validation\tRun validation\t2025-12-14T06:00:00.006Z phases:
+Run validation\tRun validation\t2025-12-14T06:00:00.007Z   - name: Testing
+Run validation\tRun validation\t2025-12-14T06:00:00.008Z     passed: false
+Run validation\tRun validation\t2025-12-14T06:00:00.009Z     steps:
+Run validation\tRun validation\t2025-12-14T06:00:00.010Z       - name: Unit Tests
+Run validation\tRun validation\t2025-12-14T06:00:00.011Z         command: pnpm test
+Run validation\tRun validation\t2025-12-14T06:00:00.012Z         passed: false
+Run validation\tRun validation\t2025-12-14T06:00:00.013Z ---
+Run validation\tRun validation\t2025-12-14T06:00:00.014Z Some other log output after validation
+Run validation\tRun validation\t2025-12-14T06:00:00.015Z More logs here
+`;
+
+      const result = provider.extractValidationResult(logs);
+
+      expect(result).not.toBeNull();
+      expect(result?.passed).toBe(false);
+      expect(result?.treeHash).toBe('abc123def456');
+      expect(result?.failedStep).toBe('Unit Tests');
+      expect(result?.phases?.[0]?.name).toBe('Testing');
+      expect(result?.phases?.[0]?.steps?.[0]?.command).toBe('pnpm test');
+    });
+
+    it('should not extract --- separator as part of YAML content', () => {
+      // Regression test: ensure content extractor doesn't remove --- separator
+      const logs = `
+Run validation\tRun validation\t2025-12-14T06:00:00.000Z ---
+Run validation\tRun validation\t2025-12-14T06:00:00.001Z passed: true
+Run validation\tRun validation\t2025-12-14T06:00:00.002Z ---
+`;
+
+      const result = provider.extractValidationResult(logs);
+
+      expect(result).not.toBeNull();
+      expect(result?.passed).toBe(true);
+    });
+
+    it('should preserve empty lines in YAML for multi-line strings', () => {
+      // Test that empty lines within YAML content are preserved
+      const logs = `
+Run validation\tRun validation\t2025-12-14T06:00:00.000Z ---
+Run validation\tRun validation\t2025-12-14T06:00:00.001Z passed: false
+Run validation\tRun validation\t2025-12-14T06:00:00.002Z failedStep: Tests
+Run validation\tRun validation\t2025-12-14T06:00:00.003Z phases:
+Run validation\tRun validation\t2025-12-14T06:00:00.004Z   - name: Testing
+Run validation\tRun validation\t2025-12-14T06:00:00.005Z     steps:
+Run validation\tRun validation\t2025-12-14T06:00:00.006Z       - name: Tests
+Run validation\tRun validation\t2025-12-14T06:00:00.007Z         output: |
+Run validation\tRun validation\t2025-12-14T06:00:00.008Z           Line 1
+Run validation\tRun validation\t2025-12-14T06:00:00.009Z
+Run validation\tRun validation\t2025-12-14T06:00:00.010Z           Line 3 after empty
+Run validation\tRun validation\t2025-12-14T06:00:00.011Z ---
+`;
+
+      const result = provider.extractValidationResult(logs);
+
+      expect(result).not.toBeNull();
+      expect(result?.passed).toBe(false);
+      // Verify the multi-line string was preserved correctly
+      expect(result?.phases?.[0]?.steps?.[0]?.output).toContain('Line 1');
+      expect(result?.phases?.[0]?.steps?.[0]?.output).toContain('Line 3 after empty');
+    });
+
+    it('should stop extraction at closing --- even with garbage after', () => {
+      // Test that extraction stops at closing --- and doesn't include subsequent content
+      const logs = `
+Run validation\tRun validation\t2025-12-14T06:00:00.000Z ---
+Run validation\tRun validation\t2025-12-14T06:00:00.001Z passed: true
+Run validation\tRun validation\t2025-12-14T06:00:00.002Z timestamp: 2025-12-14T06:00:00.000Z
+Run validation\tRun validation\t2025-12-14T06:00:00.003Z ---
+Run validation\tRun validation\t2025-12-14T06:00:00.004Z [Test 1/43]
+Run validation\tRun validation\t2025-12-14T06:00:00.005Z Test: some test > should do something
+Run validation\tRun validation\t2025-12-14T06:00:00.006Z Error: expected 1 to be +0 // Object.is equality
+Run validation\tRun validation\t2025-12-14T06:00:00.007Z This is not YAML and should not be included
+`;
+
+      const result = provider.extractValidationResult(logs);
+
+      expect(result).not.toBeNull();
+      expect(result?.passed).toBe(true);
+      expect(result?.timestamp).toBe('2025-12-14T06:00:00.000Z');
+      // Should not include any of the test output after closing ---
+      expect(JSON.stringify(result)).not.toContain('[Test 1/43]');
+      expect(JSON.stringify(result)).not.toContain('Object.is equality');
+    });
+
+    it('should handle missing closing --- gracefully (backwards compatibility)', () => {
+      // Old format without closing --- should still work by detecting end of YAML
+      const logs = `
+Run validation\tRun validation\t2025-12-14T06:00:00.000Z ---
+Run validation\tRun validation\t2025-12-14T06:00:00.001Z passed: true
+Run validation\tRun validation\t2025-12-14T06:00:00.002Z timestamp: 2025-12-14T06:00:00.000Z
+Run validation\tRun validation\t2025-12-14T06:00:00.003Z ##[error]Process completed with exit code 0
+`;
+
+      const result = provider.extractValidationResult(logs);
+
+      expect(result).not.toBeNull();
+      expect(result?.passed).toBe(true);
     });
   });
 });

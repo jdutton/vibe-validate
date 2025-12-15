@@ -1,6 +1,7 @@
-import { execSync } from 'node:child_process';
-import { parse as parseYaml } from 'yaml';
 import { executeGitCommand } from '@vibe-validate/git';
+import { isToolAvailable, safeExecSync } from '@vibe-validate/utils';
+import { parse as parseYaml } from 'yaml';
+
 import type {
   CIProvider,
   PullRequest,
@@ -24,7 +25,9 @@ export class GitHubActionsProvider implements CIProvider {
   async isAvailable(): Promise<boolean> {
     try {
       // Check if gh CLI is available
-      execSync('gh --version', { stdio: 'ignore' });
+      if (!isToolAvailable('gh')) {
+        return false;
+      }
 
       // Check if we're in a GitHub repo
       const result = executeGitCommand(['remote', 'get-url', 'origin']);
@@ -36,12 +39,12 @@ export class GitHubActionsProvider implements CIProvider {
 
   async detectPullRequest(): Promise<PullRequest | null> {
     try {
-      const prData = JSON.parse(
-        execSync('gh pr view --json number,title,url,headRefName', {
-          encoding: 'utf8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        })
-      );
+      const output = safeExecSync('gh', ['pr', 'view', '--json', 'number,title,url,headRefName'], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+
+      const prData = JSON.parse(output.toString());
 
       return {
         id: prData.number,
@@ -55,12 +58,12 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   async fetchCheckStatus(prId: number | string): Promise<CheckStatus> {
-    const data = JSON.parse(
-      execSync(`gh pr view ${prId} --json number,title,url,statusCheckRollup,headRefName`, {
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      })
-    );
+    const output = safeExecSync('gh', ['pr', 'view', String(prId), '--json', 'number,title,url,statusCheckRollup,headRefName'], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    const data = JSON.parse(output.toString());
 
     const checks = (data.statusCheckRollup ?? []).map((check: unknown) =>
       this.transformCheck(check)
@@ -79,32 +82,32 @@ export class GitHubActionsProvider implements CIProvider {
     };
   }
 
-  async fetchFailureLogs(runId: string): Promise<FailureLogs> {
-    // Get run details to find the check name
+  async fetchFailureLogs(jobId: string): Promise<FailureLogs> {
+    // Get job details to find the check name
     let checkName = 'Unknown';
     try {
-      const runData = JSON.parse(
-        execSync(`gh run view ${runId} --json name`, {
-          encoding: 'utf8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        })
-      );
-      checkName = runData.name ?? checkName;
+      const jobOutput = safeExecSync('gh', ['run', 'view', '--job', jobId, '--json', 'name'], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+      const jobData = JSON.parse(jobOutput.toString());
+      checkName = jobData.name ?? checkName;
     } catch {
       // Ignore error, use default name
     }
 
-    // Fetch full logs (includes "Display validation state on failure" step)
-    const logs = execSync(`gh run view ${runId} --log`, {
+    // Fetch logs for specific job (critical for matrix workflows)
+    // Using --job ensures we get logs for THIS job only, not all jobs in the workflow run
+    const logs = safeExecSync('gh', ['run', 'view', '--log', '--job', jobId], {
       encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: 'pipe',
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer to handle large logs
-    });
+    }).toString();
 
     const validationResult = this.extractValidationResult(logs);
 
     return {
-      checkId: runId,
+      checkId: jobId,
       checkName,
       rawLogs: logs,
       failedStep: this.extractFailedStep(logs),
@@ -136,7 +139,12 @@ export class GitHubActionsProvider implements CIProvider {
       if (parts.length < 3) return '';
       const contentWithTimestamp = parts.slice(2).join('\t');
       // Strip timestamp (format: "2025-10-21T00:56:24.8654285Z <content>")
-      return contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '').replace(/^[0-9T:.Z-]+$/, '');
+      const afterTimestampRemoval = contentWithTimestamp.replace(/^[0-9T:.Z-]+ /, '');
+      // Remove line if it's ONLY a timestamp (but keep "---" separator)
+      if (/^[0-9T:.Z-]+$/.test(afterTimestampRemoval) && afterTimestampRemoval !== '---') {
+        return '';
+      }
+      return afterTimestampRemoval;
     };
   }
 
@@ -147,17 +155,24 @@ export class GitHubActionsProvider implements CIProvider {
     lines: string[],
     extractContent: (_line: string) => string
   ): { startIdx: number; endIdx: number } | null {
-    // Find start: line containing "VALIDATION RESULT" (skip ANSI-coded lines)
-    const startIdx = lines.findIndex(l => {
-      return l.includes('VALIDATION RESULT') && !l.includes('[36;1m') && !l.includes('[0m');
-    });
+    // Find start: line containing "---" (YAML document separator)
+    // Must be followed by validation result fields like "passed:", "timestamp:", etc.
+    let startIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const content = extractContent(lines[i]).trim();
+      // Check if this is YAML separator followed by validation result
+      if (content === '---' && this.looksLikeValidationResult(lines, i + 1, extractContent)) {
+        startIdx = i;
+        break;
+      }
+    }
 
     if (startIdx < 0) {
       return null;
     }
 
-    // Find end: closing separator after YAML content
-    const endIdx = this.findClosingSeparator(lines, startIdx, extractContent);
+    // Find end: next "---" separator or end of meaningful YAML content
+    const endIdx = this.findYamlEnd(lines, startIdx + 1, extractContent);
     if (endIdx < 0) {
       return null;
     }
@@ -166,30 +181,57 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   /**
-   * Find the closing separator (====) after YAML content
+   * Check if lines starting at startIdx look like validation result YAML
    */
-  private findClosingSeparator(
+  private looksLikeValidationResult(
+    lines: string[],
+    startIdx: number,
+    extractContent: (_line: string) => string
+  ): boolean {
+    // Check first 10 lines for validation result fields
+    for (let i = startIdx; i < Math.min(startIdx + 10, lines.length); i++) {
+      const content = extractContent(lines[i]).trim();
+      // Look for key validation result fields
+      if (content.startsWith('passed:') ||
+          content.startsWith('failedStep:') ||
+          (content.startsWith('treeHash:') && content.length > 20)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Find the end of YAML content (next --- separator or end of document)
+   */
+  private findYamlEnd(
     lines: string[],
     startIdx: number,
     extractContent: (_line: string) => string
   ): number {
-    let foundYamlContent = false;
+    let lastContentLine = startIdx;
 
-    for (let i = startIdx + 1; i < lines.length; i++) {
+    for (let i = startIdx; i < lines.length; i++) {
       const content = extractContent(lines[i]).trim();
 
-      // Check if we've seen YAML content
-      if (content.startsWith('passed:') || content.startsWith('timestamp:') || content.startsWith('treeHash:')) {
-        foundYamlContent = true;
+      // Stop at next YAML document separator
+      if (content === '---' || content === '...') {
+        return i;
       }
 
-      // Look for closing separator (40+ equals signs) after YAML content
-      if (foundYamlContent && /^={40,}$/.exec(content)) {
-        return i;
+      // Track last non-empty line
+      if (content.length > 0) {
+        lastContentLine = i;
+      }
+
+      // If we see GitHub Actions markers after YAML content, we're done
+      if (content.startsWith('##[') && i > startIdx + 5) {
+        return lastContentLine + 1;
       }
     }
 
-    return -1;
+    // Return last content line + 1 if we hit end of logs
+    return lastContentLine + 1;
   }
 
   /**
@@ -200,12 +242,17 @@ export class GitHubActionsProvider implements CIProvider {
     boundaries: { startIdx: number; endIdx: number },
     extractContent: (_line: string) => string
   ): string {
-    // YAML starts at startIdx + 2 (skip "VALIDATION RESULT" and separator)
-    const yamlStartIdx = boundaries.startIdx + 2;
+    // YAML starts at startIdx + 1 (skip the "---" separator)
+    const yamlStartIdx = boundaries.startIdx + 1;
     const yamlLines: string[] = [];
 
     for (let i = yamlStartIdx; i < boundaries.endIdx; i++) {
-      yamlLines.push(extractContent(lines[i]));
+      const content = extractContent(lines[i]);
+      // Include all lines (even empty ones) to preserve YAML structure
+      // Only skip GitHub Actions markers
+      if (!content.startsWith('##[')) {
+        yamlLines.push(content);
+      }
     }
 
     return yamlLines.join('\n').trim();
@@ -216,8 +263,7 @@ export class GitHubActionsProvider implements CIProvider {
    */
   private parseAndEnrichValidationResult(yamlContent: string): ValidationResultContents | null {
     try {
-      const result = parseYaml(yamlContent) as ValidationResultContents;
-      return result;
+      return parseYaml(yamlContent) as ValidationResultContents;
     } catch {
       // Failed to parse validation YAML - return null
       return null;
@@ -275,12 +321,16 @@ export class GitHubActionsProvider implements CIProvider {
       }
     }
 
-    // Extract run ID from details URL if available
+    // Extract run ID and job ID from details URL if available
+    // URL format: https://github.com/user/repo/actions/runs/<runId>/job/<jobId>
     let checkId = 'unknown';
     if (typeof check.detailsUrl === 'string') {
-      const runIdMatch = /\/runs\/(\d+)/.exec(check.detailsUrl);
-      if (runIdMatch) {
-        checkId = runIdMatch[1];
+      // eslint-disable-next-line security/detect-unsafe-regex -- Safe: Simple pattern with no backtracking risk
+      const urlMatch = /\/runs\/(\d+)(?:\/job\/(\d+))?/.exec(check.detailsUrl);
+      if (urlMatch) {
+        const [, runId, jobId] = urlMatch;
+        // Use job ID if available (for matrix jobs), otherwise use run ID
+        checkId = jobId || runId;
       }
     }
 
@@ -378,17 +428,15 @@ export class GitHubActionsProvider implements CIProvider {
     // Use the validation result which already has parsed failures
     const validationResult = this.extractValidationResult(logs);
 
-    if (validationResult && !validationResult.passed) {
+    if (validationResult && !validationResult.passed && validationResult.failedStep) {
       // Show concise summary: just the failed step and how to rerun
-      if (validationResult.failedStep) {
-        // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
-        const failedStep = validationResult.phases
-          ?.flatMap(phase => phase.steps ?? [])
-          .find(step => step && step.name === validationResult.failedStep);
+      // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+      const failedStep = validationResult.phases
+        ?.flatMap(phase => phase.steps ?? [])
+        .find(step => step && step.name === validationResult.failedStep);
 
-        const rerunCommand = failedStep?.command ?? 'see full logs';
-        return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
-      }
+      const rerunCommand = failedStep?.command ?? 'see full logs';
+      return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
     }
 
     // Fallback: Look for ##[error] lines (for non-validation failures)
@@ -396,7 +444,7 @@ export class GitHubActionsProvider implements CIProvider {
       .split('\n')
       .filter((line) => line.includes('##[error]'))
       .slice(0, 5) // First 5 error lines
-      .map((line) => line.replace(/##\[error\]/g, '').trim())
+      .map((line) => line.replaceAll('##[error]', '').trim())
       .join('\n');
 
     return errorLines || undefined;

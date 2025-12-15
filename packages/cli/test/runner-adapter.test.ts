@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createRunnerConfig } from '../src/utils/runner-adapter.js';
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import type { AgentContext } from '../src/utils/context-detector.js';
+import { createRunnerConfig } from '../src/utils/runner-adapter.js';
 
 describe('runner-adapter', () => {
   let originalEnv: NodeJS.ProcessEnv;

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+
 import { extractYamlContent, extractYamlWithPreamble } from '../src/yaml-detection.js';
+
 import {
   createSimpleYaml,
   createYamlInput,

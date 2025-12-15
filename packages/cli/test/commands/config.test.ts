@@ -1,11 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { configCommand } from '../../src/commands/config.js';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
-import * as configLoader from '../../src/utils/config-loader.js';
+
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { configCommand } from '../../src/commands/config.js';
+import * as configLoader from '../../src/utils/config-loader.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the config loader
 vi.mock('../../src/utils/config-loader.js', async () => {

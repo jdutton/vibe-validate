@@ -7,6 +7,7 @@
  * @package @vibe-validate/extractors
  */
 
+import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
@@ -14,7 +15,6 @@ import type {
   DetectionResult,
   ExtractorSample,
 } from '../../types.js';
-import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 
 /**
  * Failure information extracted from JUnit XML
@@ -104,11 +104,11 @@ function extractFailures(xml: string): FailureInfo[] {
  */
 function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&gt;/g, '>')
-    .replace(/&lt;/g, '<')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, '&'); // Must be last to avoid double-decoding
+    .replaceAll('&gt;', '>')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&apos;', "'")
+    .replaceAll('&amp;', '&'); // Must be last to avoid double-decoding
 }
 
 /**

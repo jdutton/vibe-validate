@@ -3,19 +3,23 @@
  * These tests verify the full workflow works together
  */
 
+import type { ValidationResult } from '@vibe-validate/core';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import {
   recordValidationHistory,
   checkWorktreeStability,
   checkHistoryHealth,
   pruneHistoryByAge,
 } from '../src/index.js';
-import type { ValidationResult } from '@vibe-validate/core';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
   getGitTreeHash: vi.fn(() => Promise.resolve('abc123def456')),
   hasWorkingTreeChanges: vi.fn(() => Promise.resolve(false)),
+  getCurrentBranch: vi.fn(() => 'main'),
+  getHeadCommitSha: vi.fn(() => '9abc3c4'),
+  addNote: vi.fn(() => true),
 }));
 
 vi.mock('child_process', () => ({

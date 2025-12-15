@@ -3,8 +3,38 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { createSandboxedExtractor } from '../src/sandboxed-extractor.js';
 import type { ExtractorPlugin } from '../src/types.js';
+
+// Helper: Parse output and create result (for string manipulation test)
+function parseOutput(output: string) {
+  const lines = output.split('\n');
+  const errorLines = lines.filter(line => line.includes('ERROR'));
+  const errors = errorLines.map((line, idx) => ({
+    file: 'test.ts',
+    line: idx + 1,
+    message: line.trim(),
+  }));
+
+  return {
+    errors,
+    totalErrors: errors.length,
+    summary: `${errors.length} errors`,
+    guidance: 'Fix errors',
+    metadata: {
+      detection: {
+        extractor: 'test-extractor',
+        confidence: 100,
+        patterns: ['ERROR'],
+        reason: 'Found ERROR keyword',
+      },
+      confidence: 100,
+      completeness: 100,
+      issues: [],
+    },
+  };
+}
 
 // Mock extractor plugin for testing
 const createMockPlugin = (
@@ -202,34 +232,7 @@ describe('createSandboxedExtractor', () => {
     });
 
     it('should handle extractors that use string manipulation', async () => {
-      const plugin = createMockPlugin((output) => {
-        const lines = output.split('\n');
-        const errors = lines
-          .filter(line => line.includes('ERROR'))
-          .map((line, idx) => ({
-            file: 'test.ts',
-            line: idx + 1,
-            message: line.trim(),
-          }));
-
-        return {
-          errors,
-          totalErrors: errors.length,
-          summary: `${errors.length} errors`,
-          guidance: 'Fix errors',
-          metadata: {
-            detection: {
-              extractor: 'test-extractor',
-              confidence: 100,
-              patterns: ['ERROR'],
-              reason: 'Found ERROR keyword',
-            },
-            confidence: 100,
-            completeness: 100,
-            issues: [],
-          },
-        };
-      });
+      const plugin = createMockPlugin(parseOutput);
 
       const wrappedExtract = createSandboxedExtractor(plugin, { trust: 'sandbox' });
       const result = await wrappedExtract('INFO: Starting\nERROR: Failed\nINFO: Done');

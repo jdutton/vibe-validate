@@ -2,14 +2,18 @@
  * Tests for validation history recorder
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { recordValidationHistory, checkWorktreeStability } from '../src/recorder.js';
 import type { ValidationResult } from '@vibe-validate/core';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import { recordValidationHistory, checkWorktreeStability } from '../src/recorder.js';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
   getGitTreeHash: vi.fn(),
   hasWorkingTreeChanges: vi.fn(() => Promise.resolve(false)),
+  getCurrentBranch: vi.fn(() => 'feature/foo'),
+  getHeadCommitSha: vi.fn(() => '9abc3c4'),
+  addNote: vi.fn(),
 }));
 
 vi.mock('child_process', () => ({
@@ -26,13 +30,15 @@ vi.mock('../src/reader.js', () => ({
 }));
 
 describe('recordValidationHistory', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+
+    // Re-establish default success mock for addNote
+    const { addNote } = await import('@vibe-validate/git');
+    vi.mocked(addNote).mockReturnValue({ success: true, stdout: '', stderr: '', exitCode: 0 });
   });
 
   it('should record validation result to git notes', async () => {
-    const { execSync } = await import('node:child_process');
-    const { writeFileSync } = await import('node:fs');
     const treeHash = 'abc123def456';
 
     const result: ValidationResult = {
@@ -49,30 +55,19 @@ describe('recordValidationHistory', () => {
       ],
     };
 
-    // Mock git commands
-    vi.mocked(execSync).mockImplementation((cmd: string) => {
-      if (cmd.includes('rev-parse --abbrev-ref HEAD')) {
-        return 'feature/foo\n';
-      }
-      if (cmd.includes('rev-parse HEAD')) {
-        return '9abc3c4\n';
-      }
-      return '';
-    });
-
     const recordResult = await recordValidationHistory(treeHash, result);
 
     expect(recordResult.recorded).toBe(true);
     expect(recordResult.treeHash).toBe(treeHash);
 
-    // Verify git notes command was called
-    expect(execSync).toHaveBeenCalledWith(
-      expect.stringContaining('git notes --ref=vibe-validate/validate add'),
-      expect.any(Object)
+    // Verify addNote was called with correct parameters
+    const { addNote } = await import('@vibe-validate/git');
+    expect(addNote).toHaveBeenCalledWith(
+      'vibe-validate/validate',
+      treeHash,
+      expect.any(String), // YAML content
+      true // force flag
     );
-
-    // Verify YAML was written to temp file
-    expect(writeFileSync).toHaveBeenCalled();
   });
 
   it('should append to existing note', async () => {
@@ -151,12 +146,10 @@ describe('recordValidationHistory', () => {
   });
 
   it('should handle recording failures gracefully', async () => {
-    const { execSync } = await import('node:child_process');
+    const { addNote } = await import('@vibe-validate/git');
     const treeHash = 'abc123def456';
 
-    vi.mocked(execSync).mockImplementation(() => {
-      throw new Error('git notes command failed');
-    });
+    vi.mocked(addNote).mockReturnValue(false);
 
     const result: ValidationResult = {
       passed: true,
@@ -167,7 +160,7 @@ describe('recordValidationHistory', () => {
     const recordResult = await recordValidationHistory(treeHash, result);
 
     expect(recordResult.recorded).toBe(false);
-    expect(recordResult.reason).toContain('git notes command failed');
+    expect(recordResult.reason).toContain('Failed to add git note');
   });
 });
 
