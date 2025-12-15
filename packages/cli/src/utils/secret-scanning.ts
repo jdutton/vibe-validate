@@ -63,7 +63,7 @@ export function detectSecretScanningTools(cwd: string = process.cwd()): ToolDete
       tool: 'secretlint',
       available: true, // Always available via npx
       hasConfig: secretlintConfigured,
-      defaultCommand: 'npx secretlint "**/*"',
+      defaultCommand: 'npx secretlint .', // No glob patterns - safeExecFromString rejects them
     },
   ];
 }
@@ -135,7 +135,8 @@ export function runSecretScan(
 ): ScanResult {
   const startTime = Date.now();
 
-  // Special handling for gitleaks - check availability first
+  // Special handling for gitleaks - skip if not installed (native binary, optional)
+  // secretlint is ALWAYS available via npx - never skip, always fail loud if error
   if (tool === 'gitleaks' && !isToolAvailable('gitleaks')) {
     return {
       tool,
@@ -147,6 +148,28 @@ export function runSecretScan(
   }
 
   try {
+    // Parse and execute scanCommand string
+    //
+    // SECURITY: scanCommand comes from user config (vibe-validate.config.yaml)
+    // Same trust model as npm scripts - users control their own config files.
+    //
+    // LIMITATIONS:
+    // - Simple commands work: "gitleaks protect --staged"
+    // - Glob patterns FAIL: "npx secretlint **/*" (prevented by safeExecFromString)
+    // - Shell operators FAIL: "cmd1 && cmd2" (prevented by safeExecFromString)
+    // - Complex quoting FAILS: nested quotes, escapes (prevented by safeExecFromString)
+    //
+    // WHY safeExecFromString:
+    // - Handles simple quoted args: 'gitleaks protect --config ".gitleaks.toml"'
+    // - Fails fast on complex shell syntax (prevents silent bugs)
+    // - More robust than naive .split() which breaks with ANY quotes
+    //
+    // RECOMMENDATION for complex commands (globs, operators, etc):
+    // Move to package.json script and reference it:
+    //   Bad:  scanCommand: "npx secretlint **/*"  (glob patterns rejected)
+    //   Bad:  scanCommand: "cmd1 && cmd2"         (shell operators rejected)
+    //   Good: scanCommand: "npm run scan:secrets"
+    //         package.json: { "scan:secrets": "npx secretlint '**/*'" }
     const result = safeExecFromString(command, {
       encoding: 'utf8',
       stdio: 'pipe',
@@ -214,7 +237,8 @@ export function formatToolName(tool: SecretScanningTool): string {
 export function showPerformanceWarning(
   tool: SecretScanningTool,
   duration: number,
-  threshold: number
+  threshold: number,
+  hasExplicitCommand: boolean = false
 ): void {
   if (duration <= threshold) {
     return;
@@ -228,7 +252,11 @@ export function showPerformanceWarning(
     console.warn(chalk.gray('   Consider installing gitleaks for faster scanning:'));
     console.warn(chalk.gray('   • macOS: brew install gitleaks'));
     console.warn(chalk.gray('   • Linux: See https://github.com/gitleaks/gitleaks#installation'));
-    console.warn(chalk.gray('   • Or add explicit scanCommand in config\n'));
+    if (hasExplicitCommand) {
+      console.warn(chalk.gray(''));
+    } else {
+      console.warn(chalk.gray('   • Or add explicit scanCommand in config\n'));
+    }
   }
 }
 

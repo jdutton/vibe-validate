@@ -311,43 +311,174 @@ export function getToolVersion(
 }
 
 /**
- * Execute a command from a command string (convenience wrapper)
+ * Shell syntax character sets for hyper-efficient single-pass detection
  *
- * **WARNING**: This function parses command strings using simple whitespace splitting.
- * It does NOT handle shell quoting, escaping, or complex command syntax.
- * Use only for simple commands like "gitleaks protect --staged --verbose".
+ * Used by hasShellSyntax() and safeExecFromString() for shift-left validation.
  *
- * For complex commands with quoted arguments, pipes, or shell features,
- * use `safeExecSync()` directly with an explicit args array.
+ * Performance: O(n) single pass with O(1) Set lookups - no regex backtracking.
+ */
+const QUOTE_CHARS = new Set(['"', "'", '`']);
+const GLOB_CHARS = new Set(['*', '?', '[', ']']);
+const OPERATOR_CHARS = new Set(['|', '>', '<', '&', ';']);
+
+/**
+ * Metadata for each shell syntax type (used for error messages)
+ */
+const SHELL_SYNTAX_METADATA = {
+  quotes: { name: 'quotes', example: 'echo "hello"' },
+  globs: { name: 'glob patterns', example: 'ls *.txt' },
+  variables: { name: 'variable expansion', example: 'echo $HOME' },
+  operators: { name: 'pipes/redirects/operators', example: 'cat file | grep text' },
+} as const;
+
+/**
+ * Check if a command string contains shell-specific syntax
  *
- * @param commandString - Command string to execute (e.g., "git status --short")
+ * Detects patterns that require shell interpretation:
+ * - Quotes (", ', `)
+ * - Glob patterns (*, ?, [])
+ * - Variable expansion ($)
+ * - Pipes/redirects/operators (|, >, <, &, ;, &&, ||)
+ *
+ * Performance: Single-pass O(n) algorithm with O(1) Set lookups.
+ * Short-circuits on first match (no backtracking, no regex overhead).
+ *
+ * @param commandString - Command string to check
+ * @returns Object with detection result and details
+ *
+ * @example
+ * ```typescript
+ * const check1 = hasShellSyntax('npm test');
+ * console.log(check1); // { hasShellSyntax: false }
+ *
+ * const check2 = hasShellSyntax('npm test && npm run build');
+ * console.log(check2);
+ * // {
+ * //   hasShellSyntax: true,
+ * //   pattern: 'pipes/redirects/operators',
+ * //   example: 'cat file | grep text'
+ * // }
+ * ```
+ */
+export function hasShellSyntax(commandString: string): {
+  hasShellSyntax: boolean;
+  pattern?: string;
+  example?: string;
+} {
+  // Single-pass check with early return on first match
+  for (const char of commandString) {
+
+    // Check quotes: " ' `
+    if (QUOTE_CHARS.has(char)) {
+      return {
+        hasShellSyntax: true,
+        pattern: SHELL_SYNTAX_METADATA.quotes.name,
+        example: SHELL_SYNTAX_METADATA.quotes.example,
+      };
+    }
+
+    // Check glob patterns: * ? [ ]
+    if (GLOB_CHARS.has(char)) {
+      return {
+        hasShellSyntax: true,
+        pattern: SHELL_SYNTAX_METADATA.globs.name,
+        example: SHELL_SYNTAX_METADATA.globs.example,
+      };
+    }
+
+    // Check variable expansion: $
+    if (char === '$') {
+      return {
+        hasShellSyntax: true,
+        pattern: SHELL_SYNTAX_METADATA.variables.name,
+        example: SHELL_SYNTAX_METADATA.variables.example,
+      };
+    }
+
+    // Check operators: | > < & ;
+    if (OPERATOR_CHARS.has(char)) {
+      return {
+        hasShellSyntax: true,
+        pattern: SHELL_SYNTAX_METADATA.operators.name,
+        example: SHELL_SYNTAX_METADATA.operators.example,
+      };
+    }
+  }
+
+  return { hasShellSyntax: false };
+}
+
+/**
+ * Execute a command from a simple command string (convenience wrapper)
+ *
+ * **IMPORTANT: Shift-Left Validation** - This function actively rejects shell syntax
+ * to prevent subtle bugs where shell features are expected but not executed.
+ *
+ * **Supported:**
+ * - Simple commands: `git status`, `pnpm test`, `node --version`
+ * - Commands with flags: `git log --oneline --max-count 10`
+ * - Multiple unquoted arguments: `gh pr view 123`
+ *
+ * **NOT Supported (will throw error):**
+ * - Quotes: `echo "hello world"` ❌
+ * - Glob patterns: `ls *.txt` ❌
+ * - Variable expansion: `echo $HOME` ❌
+ * - Pipes/redirects: `cat file | grep text` ❌
+ * - Command chaining: `build && test` ❌
+ *
+ * **Why these restrictions?**
+ * We don't use a shell interpreter (for security), so shell features like
+ * glob expansion, variable substitution, and pipes don't work. By detecting
+ * and rejecting these patterns, we force you to use the safer `safeExecSync()`
+ * API with explicit argument arrays.
+ *
+ * @param commandString - Simple command string (no shell syntax)
  * @param options - Execution options
  * @returns Command output (Buffer or string depending on encoding option)
+ * @throws Error if command contains shell-specific syntax
  *
  * @example
  * ```typescript
- * // Simple command with flags
- * safeExecFromString('gitleaks protect --staged --verbose');
- *
- * // Multiple arguments
- * safeExecFromString('gh pr view --json number,title');
+ * // ✅ Simple commands (these work)
+ * safeExecFromString('git status');
+ * safeExecFromString('pnpm test --watch');
+ * safeExecFromString('gh pr view 123');
  * ```
  *
  * @example
  * ```typescript
- * // ❌ DON'T: Complex shell features won't work
- * safeExecFromString('cat file.txt | grep "error"'); // Pipe ignored
- * safeExecFromString('echo "hello world"'); // Quotes not parsed correctly
+ * // ❌ Shell syntax (these throw errors)
+ * safeExecFromString('echo "hello"');         // Quotes
+ * safeExecFromString('ls *.txt');             // Glob pattern
+ * safeExecFromString('cat file | grep text'); // Pipe
+ * safeExecFromString('echo $HOME');           // Variable expansion
  *
- * // ✅ DO: Use safeExecSync directly for these cases
- * safeExecSync('grep', ['error', 'file.txt']);
- * safeExecSync('echo', ['hello world']);
+ * // ✅ Use safeExecSync() instead with explicit arguments
+ * safeExecSync('echo', ['hello']);
+ * safeExecSync('ls', ['file1.txt', 'file2.txt']); // Or use glob library
+ * safeExecSync('grep', ['text', 'file']);
+ * safeExecSync('echo', [process.env.HOME || '']);
  * ```
+ *
  */
 export function safeExecFromString(
   commandString: string,
   options: SafeExecOptions = {}
 ): Buffer | string {
+  // Detect shell-specific syntax (shift-left validation)
+  // This prevents subtle bugs where shell features are expected but not executed
+  const check = hasShellSyntax(commandString);
+  if (check.hasShellSyntax) {
+    throw new Error(
+      `safeExecFromString does not support ${check.pattern}.\n` +
+        `Found in: ${commandString}\n\n` +
+        `Use safeExecSync() with explicit argument array instead:\n` +
+        `  // Bad: safeExecFromString('${check.example}')\n` +
+        `  // Good: safeExecSync('command', ['arg1', 'arg2'], options)\n\n` +
+        `This ensures no shell interpreter is used and arguments are explicit.`
+    );
+  }
+
   const parts = commandString.trim().split(/\s+/);
   const command = parts[0];
   const args = parts.slice(1);

@@ -5,7 +5,7 @@
  * and that the schema file exists in all expected locations.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -60,7 +60,7 @@ describe('init command - schema validation', () => {
       });
 
       const configPath = join(testDir, 'vibe-validate.config.yaml');
-      const configContent = safeExecFromString(`cat ${configPath}`, { encoding: 'utf-8' });
+      const configContent = readFileSync(configPath, 'utf-8');
 
       // Verify the schema URL contains the correct filename
       expect(configContent).toContain('config.schema.json');
@@ -111,7 +111,7 @@ describe('init command - schema validation', () => {
       });
 
       const configPath = join(testDir, 'vibe-validate.config.yaml');
-      const configContent = safeExecFromString(`cat ${configPath}`, { encoding: 'utf-8' });
+      const configContent = readFileSync(configPath, 'utf-8');
 
       // Should reference unpkg CDN URL for IDE support with version pinning
       expect(configContent).toContain('https://unpkg.com');

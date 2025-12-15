@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- **Fixed secret scanning failure with default secretlint command** (Issue #88, regression from v0.17.5)
+  - **Problem**: Users with secret scanning enabled but no gitleaks installed and no custom `scanCommand` got "Not found target files" error
+  - **Solution**: Default command no longer uses shell syntax that was being misinterpreted
+  - **Impact**: Affects ~5% of users (scanning enabled, no gitleaks binary, no custom config)
+
 ### Features
 
 - Automated npm publishing via GitHub Actions (push tags to publish, RC→@next, stable→@latest+release)

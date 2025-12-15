@@ -27,6 +27,7 @@ vi.mock('@vibe-validate/utils', async () => {
   const actual = await vi.importActual<typeof utils>('@vibe-validate/utils');
   return {
     ...actual,
+    safeExecSync: vi.fn(),
     safeExecFromString: vi.fn(),
     isToolAvailable: vi.fn(),
   };
@@ -95,6 +96,7 @@ describe('pre-commit command', () => {
     vi.mocked(git.isCurrentBranchBehindTracking).mockReset();
     vi.mocked(git.getPartiallyStagedFiles).mockReset();
     vi.mocked(git.isMergeInProgress).mockReset();
+    vi.mocked(utils.safeExecSync).mockReset();
     vi.mocked(utils.safeExecFromString).mockReset();
     vi.mocked(utils.isToolAvailable).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
@@ -104,6 +106,7 @@ describe('pre-commit command', () => {
     vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
     vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
+    vi.mocked(utils.safeExecSync).mockReturnValue(''); // Default empty output
     vi.mocked(utils.safeExecFromString).mockReturnValue(''); // Default empty output
     vi.mocked(utils.isToolAvailable).mockReturnValue(false); // No tools available by default
   });

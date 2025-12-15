@@ -1,4 +1,5 @@
-import { safeExecFromString } from '@vibe-validate/utils';
+import { spawnSync } from 'node:child_process';
+
 import { describe, it, expect } from 'vitest';
 
 import { parseRunYamlOutput } from '../helpers/run-command-helpers.js';
@@ -32,10 +33,14 @@ describe('run command system tests', () => {
       let output: string;
 
       try {
-        output = safeExecFromString(level3, {
+        // INTENTIONAL: Use shell:true for this test - testing complex quote handling
+        // This test verifies vv run's ability to unwrap nested quoted commands
+        const result = spawnSync(level3, [], {
+          shell: true,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
+        output = result.stdout || '';
       } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout
         output = error.stdout || '';
       }
@@ -217,11 +222,15 @@ describe('run command system tests', () => {
       let output: string;
 
       try {
-        output = safeExecFromString(command, {
+        // INTENTIONAL: Use shell:true for this test - testing quoted command wrapping
+        // This test verifies vv run can wrap commands that contain quotes
+        const result = spawnSync(command, [], {
+          shell: true,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
           timeout: 10000,
         });
+        output = result.stdout || '';
       } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout
         // validate --check may exit with non-zero if no validation state
         output = error.stdout || '';
@@ -249,7 +258,10 @@ describe('run command system tests', () => {
       const command = `${CLI_PATH} run "${CLI_PATH} run 'echo performance test'"`;
 
       try {
-        safeExecFromString(command, {
+        // INTENTIONAL: Use shell:true for this test - testing performance of nested commands
+        // This test measures execution time with complex quote handling
+        spawnSync(command, [], {
+          shell: true,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });

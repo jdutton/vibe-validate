@@ -1,0 +1,22 @@
+# Gitleaks configuration for vibe-validate
+# https://github.com/gitleaks/gitleaks
+
+[extend]
+# useDefault will extend the base configuration with all default gitleaks rules
+useDefault = true
+
+[allowlist]
+description = "Allowlist for test fixtures and false positives"
+
+# Allow test fixtures with dummy secrets
+paths = [
+  '''test/fixtures/''',
+  '''packages/.*/test/fixtures/''',
+]
+
+# Allow specific patterns that are false positives
+regexes = [
+  # Example API keys in documentation
+  '''example-api-key-[a-zA-Z0-9]+''',
+  '''sk-test-[a-zA-Z0-9]+''',
+]

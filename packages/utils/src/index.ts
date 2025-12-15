@@ -14,6 +14,7 @@ export {
   safeExecResult,
   isToolAvailable,
   getToolVersion,
+  hasShellSyntax,
   CommandExecutionError,
   type SafeExecOptions,
   type SafeExecResult

@@ -21,7 +21,7 @@ hooks:
   preCommit:
     enabled: true
     secretScanning:
-      enabled: false
+      enabled: true
 ci:
   nodeVersions:
     - '22'

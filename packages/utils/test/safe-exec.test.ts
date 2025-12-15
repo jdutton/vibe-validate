@@ -7,8 +7,10 @@ import { describe, it, expect } from 'vitest';
 import {
   safeExecSync,
   safeExecResult,
+  safeExecFromString,
   isToolAvailable,
   getToolVersion,
+  hasShellSyntax,
   CommandExecutionError,
 } from '../src/safe-exec.js';
 
@@ -438,5 +440,161 @@ describe('DRY Principle Validation', () => {
 
     // Both should produce identical safe behavior
     expect(exec1.trim()).toBe((exec2.stdout as string).trim());
+  });
+});
+
+describe('safeExecFromString', () => {
+  describe('quote detection (fail-fast validation)', () => {
+    it('should reject double quotes', () => {
+      expect(() => safeExecFromString('echo "hello"')).toThrow(
+        /does not support quotes/,
+      );
+    });
+
+    it('should reject single quotes', () => {
+      expect(() => safeExecFromString("echo 'hello'")).toThrow(
+        /does not support quotes/,
+      );
+    });
+
+    it('should reject backticks', () => {
+      expect(() => safeExecFromString('echo `date`')).toThrow(
+        /does not support quotes/,
+      );
+    });
+
+    it('should provide helpful error message with safeExecSync example', () => {
+      expect(() => safeExecFromString('tar -xzf "file.tar"')).toThrow(
+        /Use safeExecSync/,
+      );
+    });
+
+    it('should show the problematic command in error message', () => {
+      try {
+        safeExecFromString('npm install "package-name"');
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        if (error instanceof Error) {
+          expect(error.message).toContain('npm install "package-name"');
+        }
+      }
+    });
+  });
+
+  describe('backward compatibility (simple commands)', () => {
+    it('should allow simple commands without quotes', () => {
+      // Should not throw
+      expect(() => safeExecFromString('node --version')).not.toThrow();
+    });
+
+    it('should execute simple commands correctly', () => {
+      const result = safeExecFromString('node --version', { encoding: 'utf8' });
+      expect(result).toMatch(/^v\d+\.\d+\.\d+/);
+    });
+
+    it('should allow commands with multiple unquoted arguments', () => {
+      const result = safeExecFromString('echo hello world', { encoding: 'utf8' });
+      expect(result.trim()).toBe('hello world');
+    });
+
+    it('should allow commands with flags', () => {
+      const result = safeExecFromString('node --version', { encoding: 'utf8' });
+      expect(typeof result).toBe('string');
+    });
+
+    it('should handle commands with dashes and numbers', () => {
+      // Common pattern: git log --max-count 10
+      expect(() => safeExecFromString('git log --max-count 10')).not.toThrow();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should reject quotes at any position', () => {
+      expect(() => safeExecFromString('command "arg"')).toThrow();
+      expect(() => safeExecFromString('"command" arg')).toThrow();
+      expect(() => safeExecFromString('command arg "value"')).toThrow();
+    });
+
+    it('should reject mixed quote types', () => {
+      expect(() => safeExecFromString('echo "hello" \'world\'')).toThrow();
+    });
+
+    it('should handle empty command string', () => {
+      expect(() => safeExecFromString('')).toThrow();
+    });
+
+    it('should handle whitespace-only command string', () => {
+      expect(() => safeExecFromString('   ')).toThrow();
+    });
+  });
+
+  // Test data for shell syntax detection
+  const shellSyntaxCases: Array<[string, string]> = [
+    ['echo "hello"', 'quotes'],
+    ["echo 'world'", 'quotes'],
+    ['echo `date`', 'quotes'],
+    ['ls *.txt', 'glob patterns'],
+    ['ls file?.txt', 'glob patterns'],
+    ['ls file[0-9].txt', 'glob patterns'],
+    ['echo $HOME', 'variable expansion'],
+    ['cat file | grep text', 'pipes/redirects/operators'],
+    ['echo hello > file.txt', 'pipes/redirects/operators'],
+    ['cat < input.txt', 'pipes/redirects/operators'],
+    ['command &', 'pipes/redirects/operators'],
+    ['command1; command2', 'pipes/redirects/operators'],
+    ['command1 && command2', 'pipes/redirects/operators'],
+    ['command1 || command2', 'pipes/redirects/operators'],
+  ];
+
+  const simpleCases = ['npm test', 'git status', 'node --version'];
+
+  // Helper to test command rejection (reduces nesting depth)
+  const expectCommandToThrowPattern = (command: string, expectedPattern: string) => {
+    // eslint-disable-next-line security/detect-non-literal-regexp -- Test data is safe, from controlled test cases
+    const pattern = new RegExp(expectedPattern.replaceAll('/', String.raw`\/`));
+    expect(() => safeExecFromString(command)).toThrow(pattern);
+  };
+
+  describe('shell syntax detection', () => {
+    describe('hasShellSyntax utility', () => {
+      it('should return false for simple commands', () => {
+        for (const cmd of simpleCases) {
+          expect(hasShellSyntax(cmd)).toEqual({ hasShellSyntax: false });
+        }
+      });
+
+      it.each(shellSyntaxCases)(
+        'should detect %s as %s',
+        (command, expectedPattern) => {
+          const result = hasShellSyntax(command);
+          expect(result.hasShellSyntax).toBe(true);
+          expect(result.pattern).toBe(expectedPattern);
+          expect(result.example).toBeDefined();
+        },
+      );
+    });
+
+    describe('safeExecFromString rejection', () => {
+      it.each(shellSyntaxCases)(
+        'should reject %s (%s)',
+        (command, expectedPattern) => {
+          expectCommandToThrowPattern(command, expectedPattern);
+        },
+      );
+
+      it('should provide helpful error with example', () => {
+        try {
+          safeExecFromString('ls *.txt');
+          expect.fail('Should have thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(Error);
+          if (error instanceof Error) {
+            expect(error.message).toContain('glob patterns');
+            expect(error.message).toContain('safeExecSync');
+          }
+        }
+      });
+    });
   });
 });
