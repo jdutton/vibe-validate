@@ -479,7 +479,7 @@ async function executeSingleStep(
   const stepResult: StepResult = {
     ...stepResultBase,
     ...(extraction ? { extraction } : {}),
-    ...(isCachedResult !== undefined ? { isCachedResult } : {}),
+    ...(isCachedResult === undefined ? {} : { isCachedResult }),
     ...(outputFiles ? { outputFiles } : {}),
   } as StepResult;
 
@@ -821,7 +821,7 @@ export async function runStepsInParallel(
             exitCode: code,
             durationSecs,
             passed: code === 0,
-            ...(isCachedResult !== undefined ? { isCachedResult } : {}), // Include cache status if available
+            ...(isCachedResult === undefined ? {} : { isCachedResult }), // Include cache status if available
             ...(extraction ? { extraction } : {}), // Conditionally include extraction
             ...((outputFiles && (outputFilesFromNestedCommand || code !== 0 || debug)) ? { outputFiles } : {}), // Always show for nested commands, or when step failed/debug enabled (v0.15.0+)
           };

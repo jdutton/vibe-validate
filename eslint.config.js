@@ -129,9 +129,9 @@ export default [
   },
   {
     // General TypeScript files (production code with type-aware linting)
-    // Exclude test files - they have their own config above
+    // Exclude test files and tools - they have their own configs
     files: ['**/*.ts', '**/*.tsx'],
-    ignores: ['**/*.test.ts', '**/test/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/test/**/*.ts', 'tools/**/*.ts'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -230,6 +230,9 @@ export default [
       'sonarjs/no-collapsible-if': 'error', // Merge nested if statements
       'sonarjs/no-collection-size-mischeck': 'error', // Catch .length > 0 vs .length >= 1 bugs
 
+      // ESLint core rules - code quality
+      'no-negated-condition': 'error', // Avoid negated conditions with else clauses
+
       // Import rules - organization and quality
       ...importRules,
 
@@ -267,11 +270,15 @@ export default [
     },
   },
   {
-    // Tools scripts - relaxed linting for build/utility scripts
-    files: ['tools/**/*.js'],
+    // Tools scripts - strict linting (match production standards)
+    files: ['tools/**/*.ts'],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        project: false, // Tools are not included in tsconfig.json project references
+      },
       globals: {
         NodeJS: 'readonly',
         process: 'readonly',
@@ -280,59 +287,60 @@ export default [
       },
     },
     plugins: {
+      '@typescript-eslint': tseslint,
       unicorn,
       import: importPlugin,
       security,
       n: pluginNode,
     },
     rules: {
-      // Core JavaScript rules
+      // TypeScript rules
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
       'no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
       }],
+
+      // General rules
+      'no-console': 'off', // Tools use console for output
       'prefer-const': 'error',
       'no-var': 'error',
-      'no-console': 'off', // Tools use console for output
 
-      // Security - relaxed for tools
+      // Security - only relax what's legitimately needed
       'security/detect-child-process': 'off', // Tools spawn processes
       'security/detect-non-literal-fs-filename': 'off', // Tools use dynamic paths
-      'security/detect-object-injection': 'off',
-      'security/detect-unsafe-regex': 'off', // Tools use regexes for parsing (not user input)
-      'security/detect-eval-with-expression': 'off', // Some tools use eval for dynamic code execution
+      'security/detect-object-injection': 'off', // TypeScript provides safety
+      'security/detect-unsafe-regex': 'off', // Tools process known input
+      'security/detect-non-literal-regexp': 'warn',
 
-      // Import rules
-      'import/no-duplicates': 'error',
-
-      // SonarJS rules - catch issues but more lenient for tools
-      'sonarjs/cognitive-complexity': ['warn', 30],
-      'sonarjs/no-duplicate-string': 'off',
+      // SonarJS rules - strict enforcement
+      'sonarjs/no-ignored-exceptions': 'error', // Enforce exception handling
+      'sonarjs/cognitive-complexity': ['error', 20], // Slightly higher than production (15) but still strict
+      'sonarjs/no-duplicate-string': 'warn',
       'sonarjs/no-identical-functions': 'warn',
+      'sonarjs/no-nested-conditional': 'error', // Prevent nested ternaries
+      'sonarjs/no-inverted-boolean-check': 'error', // Simplify !(!condition)
+      'sonarjs/prefer-immediate-return': 'error',
+      'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-os-command-from-path': 'off', // Tools spawn processes
-      'sonarjs/os-command': 'off', // Tools intentionally execute system commands
-      'sonarjs/no-ignored-exceptions': 'off', // Tools may have intentional empty catch blocks
-      'sonarjs/no-unused-collection': 'off', // Tools may prepare data for future use
-      'sonarjs/no-dead-store': 'off', // Tools may have unused assignments during development
-      'sonarjs/code-eval': 'off', // Some tools use eval for dynamic code execution
-      'sonarjs/slow-regex': 'off', // Tools process known-safe input, no DoS risk
-      'sonarjs/unused-import': 'off', // May have imports for future development
-      'sonarjs/updated-loop-counter': 'off', // Tools may manually update loop counters for argument parsing
-      'sonarjs/no-unused-vars': 'off', // Already covered by no-unused-vars
-      'sonarjs/concise-regex': 'off', // Allow verbose regex for clarity in tools
-      'sonarjs/no-nested-template-literals': 'off', // Allow nested templates in tools
-      'sonarjs/todo-tag': 'off', // Allow task markers in development tools
+      'sonarjs/os-command': 'off', // Tools execute system commands
+
+      // ESLint core rules - code quality
+      'no-negated-condition': 'error', // Avoid negated conditions with else clauses
+
+      // Import rules - organization and quality
+      ...importRules,
+
+      // Unicorn rules - modern JavaScript best practices
+      ...unicornRules,
 
       // Node.js rules
       'n/no-path-concat': 'error',
-
-      // Unicorn rules - still enforce modern JavaScript
-      'unicorn/prefer-node-protocol': 'error',
-      'unicorn/prefer-number-properties': 'error',
-      'unicorn/no-array-for-each': 'off', // Allow forEach in tools for readability
-      'unicorn/prefer-top-level-await': 'off', // Tools may use promise chains
-      'unicorn/throw-new-error': 'error',
     },
   },
   {

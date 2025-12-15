@@ -92,12 +92,7 @@ async function recordHistory(
     // Check if worktree changed during validation
     const stability = await checkWorktreeStability(treeHashBefore);
 
-    if (!stability.stable) {
-      console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));
-      console.warn(chalk.yellow(`   Before: ${stability.treeHashBefore.slice(0, 12)}...`));
-      console.warn(chalk.yellow(`   After:  ${stability.treeHashAfter.slice(0, 12)}...`));
-      console.warn(chalk.yellow('   Results valid but history not recorded (unstable state)'));
-    } else {
+    if (stability.stable) {
       // Record to git notes
       const recordResult = await recordValidationHistory(treeHashBefore, result);
 
@@ -108,6 +103,11 @@ async function recordHistory(
       } else if (verbose) {
         console.warn(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason}`));
       }
+    } else {
+      console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));
+      console.warn(chalk.yellow(`   Before: ${stability.treeHashBefore.slice(0, 12)}...`));
+      console.warn(chalk.yellow(`   After:  ${stability.treeHashAfter.slice(0, 12)}...`));
+      console.warn(chalk.yellow('   Results valid but history not recorded (unstable state)'));
     }
   } catch (error) {
     // Silent failure - don't block validation

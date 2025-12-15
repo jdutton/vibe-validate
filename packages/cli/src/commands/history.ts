@@ -382,15 +382,15 @@ async function listHistory(options: {
     const limit = Number.parseInt(options.limit, 10);
 
     // Check if --run flag is present (with or without command)
-    if (options.run !== undefined) {
+    if (options.run === undefined) {
+      await listValidationHistory(limit, options.branch, options.yaml ?? false);
+    } else {
       // Determine command filter
       // - If --run has a string value, use it as filter
       // - If --run is true (boolean), show all (no filter)
       const commandFilter = typeof options.run === 'string' ? options.run : undefined;
 
       await listRunCacheHistory(limit, commandFilter, options.yaml ?? false);
-    } else {
-      await listValidationHistory(limit, options.branch, options.yaml ?? false);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

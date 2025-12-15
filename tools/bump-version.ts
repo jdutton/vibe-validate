@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Version Bump Script
  *
@@ -18,26 +18,14 @@
  *   1 - Error (invalid version, file not found, etc.)
  */
 
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, '..');
+import { PROJECT_ROOT, log, processWorkspacePackages } from './common.js';
 
-// Colors for output
-const colors = {
-  red: '\x1b[0;31m',
-  green: '\x1b[0;32m',
-  yellow: '\x1b[1;33m',
-  blue: '\x1b[0;34m',
-  reset: '\x1b[0m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
-}
+// Constants for duplicate string elimination
+const PACKAGE_JSON_FILENAME = 'package.json';
+const VIBE_VALIDATE_PKG_NAME = 'vibe-validate';
 
 // Parse command-line arguments
 const args = process.argv.slice(2);
@@ -148,7 +136,7 @@ function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
     }
 
     // Skip private packages unless root package.json
-    const isRootPackage = filePath.endsWith(join('vibe-validate', 'package.json'));
+    const isRootPackage = filePath.endsWith(join(VIBE_VALIDATE_PKG_NAME, PACKAGE_JSON_FILENAME));
     if (skipPrivate && !isRootPackage && pkg.private === true) {
       return { skipped: true, reason: 'private', name: pkg.name, version: oldVersion };
     }
@@ -174,17 +162,17 @@ function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
 }
 
 // Update root package.json
-const rootPackagePath = join(PROJECT_ROOT, 'package.json');
+const rootPackagePath = join(PROJECT_ROOT, PACKAGE_JSON_FILENAME);
 log('Updating root package.json...', 'blue');
 
 try {
   const result = updatePackageVersion(rootPackagePath, newVersion);
   if (result.skipped) {
-    log(`  - ${result.name || 'vibe-validate'}: skipped (${result.reason})`, 'yellow');
+    log(`  - ${result.name || VIBE_VALIDATE_PKG_NAME}: skipped (${result.reason})`, 'yellow');
   } else if (result.updated) {
-    log(`  ✓ ${result.name || 'vibe-validate'}: ${result.oldVersion} → ${result.newVersion}`, 'green');
+    log(`  ✓ ${result.name || VIBE_VALIDATE_PKG_NAME}: ${result.oldVersion} → ${result.newVersion}`, 'green');
   } else {
-    log(`  - ${result.name || 'vibe-validate'}: already at ${result.newVersion}`, 'yellow');
+    log(`  - ${result.name || VIBE_VALIDATE_PKG_NAME}: already at ${result.newVersion}`, 'yellow');
   }
 } catch (error) {
   log(`  ✗ ${error.message}`, 'red');
@@ -195,45 +183,22 @@ console.log('');
 log('Updating workspace packages...', 'blue');
 
 // Update all workspace packages
-const packagesDir = join(PROJECT_ROOT, 'packages');
-let updatedCount = 0;
-let skippedCount = 0;
-
-try {
-  const packages = readdirSync(packagesDir, { withFileTypes: true })
-    .filter(dirent => dirent.isDirectory())
-    .map(dirent => dirent.name)
-    .sort();
-
-  for (const pkg of packages) {
-    const pkgPath = join(packagesDir, pkg, 'package.json');
-    try {
-      const result = updatePackageVersion(pkgPath, newVersion);
-      if (result.skipped) {
-        let reasonText;
-        if (result.reason === 'no-version') {
-          reasonText = 'no version field';
-        } else {
-          reasonText = result.version ? `${result.reason}, v${result.version}` : result.reason;
-        }
-        log(`  - ${result.name}: skipped (${reasonText})`, 'yellow');
-        skippedCount++;
-      } else if (result.updated) {
-        log(`  ✓ ${result.name}: ${result.oldVersion} → ${result.newVersion}`, 'green');
-        updatedCount++;
-      } else {
-        log(`  - ${result.name}: already at ${result.newVersion}`, 'yellow');
-        skippedCount++;
-      }
-    } catch (error) {
-      log(`  ✗ ${pkg}: ${error.message}`, 'red');
-      process.exit(1);
+const counts = processWorkspacePackages(
+  (pkgPath) => updatePackageVersion(pkgPath, newVersion),
+  (result) => {
+    if (result.updated) {
+      log(`  ✓ ${result.name}: ${result.oldVersion} → ${result.newVersion}`, 'green');
+    } else {
+      log(`  - ${result.name}: already at ${result.newVersion}`, 'yellow');
     }
+  },
+  () => {
+    // Skip logging handled by processWorkspacePackages
   }
-} catch (error) {
-  log(`✗ Failed to read packages directory: ${error.message}`, 'red');
-  process.exit(1);
-}
+);
+
+const updatedCount = counts.processed;
+const skippedCount = counts.skipped;
 
 console.log('');
 log('Updating test version expectations...', 'blue');
@@ -253,7 +218,7 @@ for (const testFile of testFilesWithVersions) {
     // Find all lines with BUMP_VERSION_UPDATE marker
     // Pattern matches: .toContain('0.17.0-rc4'); // BUMP_VERSION_UPDATE
     const versionPattern = /(['"])\d+\.\d+\.\d+(-[\w.]+)?\1\);?\s*\/\/\s*BUMP_VERSION_UPDATE/g;
-    const matches = Array.from(content.matchAll(versionPattern));
+    const matches = [...content.matchAll(versionPattern)];
 
     if (matches.length === 0) {
       log(`  - ${testFile.split('/').pop()}: no version markers found`, 'yellow');
@@ -262,18 +227,18 @@ for (const testFile of testFilesWithVersions) {
     }
 
     // Replace all version strings marked with BUMP_VERSION_UPDATE
-    const updatedContent = content.replace(
+    const updatedContent = content.replaceAll(
       versionPattern,
       `$1${newVersion}$1); // BUMP_VERSION_UPDATE`
     );
 
-    if (updatedContent !== content) {
+    if (updatedContent === content) {
+      log(`  - ${testFile.split('/').pop()}: already at ${newVersion}`, 'yellow');
+      testSkippedCount++;
+    } else {
       writeFileSync(testFile, updatedContent, 'utf8');
       log(`  ✓ ${testFile.split('/').pop()}: updated ${matches.length} version expectation(s)`, 'green');
       testUpdatedCount++;
-    } else {
-      log(`  - ${testFile.split('/').pop()}: already at ${newVersion}`, 'yellow');
-      testSkippedCount++;
     }
   } catch (error) {
     log(`  - ${testFile.split('/').pop()}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
@@ -299,7 +264,10 @@ try {
 
   if (match) {
     const oldVersion = match[1];
-    if (oldVersion !== newVersion) {
+    if (oldVersion === newVersion) {
+      log(`  - ${skillFile.name}: already at ${newVersion}`, 'yellow');
+      skillSkippedCount++;
+    } else {
       const updatedContent = content.replace(
         versionPattern,
         `version: ${newVersion} # Tracks vibe-validate package version`
@@ -307,9 +275,6 @@ try {
       writeFileSync(skillFile.path, updatedContent, 'utf8');
       log(`  ✓ ${skillFile.name}: ${oldVersion} → ${newVersion}`, 'green');
       skillUpdatedCount++;
-    } else {
-      log(`  - ${skillFile.name}: already at ${newVersion}`, 'yellow');
-      skillSkippedCount++;
     }
   } else {
     log(`  - ${skillFile.name}: skipped (version tracking comment not found)`, 'yellow');

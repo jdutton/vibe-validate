@@ -1,0 +1,125 @@
+name: Publish to npm and Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    name: Publish Packages and Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # For creating GitHub releases
+      id-token: write  # For npm provenance
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for CHANGELOG extraction
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: "9"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=v$TAG" >> $GITHUB_OUTPUT
+          echo "📦 Version: $TAG"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Validate version consistency
+        run: pnpm exec tsx tools/validate-version.ts ${{ steps.version.outputs.version }}
+
+      - name: Determine version type and npm tags
+        id: version_type
+        run: pnpm exec tsx tools/determine-publish-tags.ts ${{ steps.version.outputs.version }}
+
+      - name: Run pre-publish checks
+        run: pnpm exec tsx tools/pre-publish-check.ts
+
+      - name: Publish packages with rollback safety
+        id: publish
+        run: pnpm exec tsx tools/publish-with-rollback.ts ${{ steps.version.outputs.version }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: Extract CHANGELOG for release (stable only)
+        if: steps.version_type.outputs.is_stable == 'true'
+        id: changelog
+        run: pnpm exec tsx tools/extract-changelog.ts ${{ steps.version.outputs.version }}
+
+      - name: Create GitHub Release (stable only)
+        if: steps.version_type.outputs.is_stable == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('.changelog-release.md', 'utf8');
+
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ steps.version.outputs.tag }}',
+              name: 'Release ${{ steps.version.outputs.tag }}',
+              body: body,
+              draft: false,
+              prerelease: false
+            });
+
+            console.log('✅ GitHub release created successfully');
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          rm -f .changelog-release.md .publish-manifest.json
+          echo "✅ Cleanup complete"
+
+      - name: Publish summary
+        if: success()
+        run: |
+          echo "## 📦 Publish Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Primary Tag:** \`@${{ steps.version_type.outputs.primary_tag }}\`" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.version_type.outputs.is_stable }}" = "true" ]; then
+            echo "**Type:** Stable release" >> $GITHUB_STEP_SUMMARY
+
+            if [ "${{ steps.version_type.outputs.update_next }}" = "true" ]; then
+              echo "**@next Tag:** Updated" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**@next Tag:** Not updated (already newer)" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**GitHub Release:** [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }})" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Type:** Pre-release (RC)" >> $GITHUB_STEP_SUMMARY
+            echo "**GitHub Release:** Not created for RC versions" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verify Installation" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm view vibe-validate@${{ steps.version_type.outputs.primary_tag }} version" >> $GITHUB_STEP_SUMMARY
+          echo "npm view vibe-validate@${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Features
+
+- Automated npm publishing via GitHub Actions (push tags to publish, RC→@next, stable→@latest+release)
+- Converted all tools/ scripts to TypeScript with direct execution via tsx
+
 ## [0.17.5] - 2025-12-15
 
 ### Bug Fixes

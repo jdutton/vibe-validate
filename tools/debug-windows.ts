@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Windows Debugging Script
  *
@@ -9,8 +9,14 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 // @ts-expect-error - which is available via @vibe-validate/git dependency
 import which from 'which';
+
+// ESM compatibility for __dirname and __filename
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ANSI colors (work on Windows Terminal)
 const colors = {
@@ -22,6 +28,12 @@ const colors = {
   blue: '\x1b[34m',
   cyan: '\x1b[36m',
 };
+
+// Constants for duplicate string elimination
+const LABEL_PROCESS_EXEC_PATH = 'process.execPath';
+// eslint-disable-next-line sonarjs/no-duplicate-string -- Constant definition for duplicate string elimination
+const LABEL_ERROR_CODE = '  Error code';
+const TEST_COMMAND_NODE_VERSION = 'node --version';
 
 function section(title: string) {
   console.log('\n' + '='.repeat(80));
@@ -50,7 +62,7 @@ section('1. Platform Detection');
 info('process.platform', process.platform);
 info('process.arch', process.arch);
 info('process.version', process.version);
-info('process.execPath', process.execPath);
+info(LABEL_PROCESS_EXEC_PATH, process.execPath);
 info('Is Windows?', process.platform === 'win32');
 info('__dirname', __dirname);
 info('__filename', __filename);
@@ -81,7 +93,7 @@ for (const varName of envVars) {
 // Test 3: process.execPath Analysis
 section('3. process.execPath Analysis');
 const execPath = process.execPath;
-info('process.execPath', execPath);
+info(LABEL_PROCESS_EXEC_PATH, execPath);
 info('Exists?', existsSync(execPath));
 
 if (existsSync(execPath)) {
@@ -148,9 +160,9 @@ try {
   const allPaths = which.sync('node', { all: true, nothrow: true }) as string[];
   info('which.sync("node", {all: true})', `Found ${allPaths?.length ?? 0} paths`);
   if (allPaths && allPaths.length > 0) {
-    allPaths.forEach((p, i) => {
+    for (const [i, p] of allPaths.entries()) {
       info(`  [${i}]`, `${p} (exists: ${existsSync(p)})`);
-    });
+    }
   }
 } catch (err) {
   error(`which.sync with all:true threw: ${err}`);
@@ -161,7 +173,7 @@ section('5. Path Comparison');
 const whichPath = which.sync('node', { nothrow: true });
 if (whichPath && execPath) {
   info('which.sync path', whichPath);
-  info('process.execPath', execPath);
+  info(LABEL_PROCESS_EXEC_PATH, execPath);
   info('Are equal?', whichPath === execPath);
   info('Lowercase equal?', whichPath.toLowerCase() === execPath.toLowerCase());
 
@@ -218,7 +230,7 @@ if (whichPath) {
     const result2 = spawnSync(whichPath, ['--version'], { encoding: 'utf-8' });
     if (result2.error) {
       error(`Spawn with which.sync path failed: ${result2.error.message}`);
-      info('  Error code', (result2.error as any).code);
+      info(LABEL_ERROR_CODE, (result2.error as any).code);
       info('  Error errno', (result2.error as any).errno);
       info('  Error syscall', (result2.error as any).syscall);
       info('  Error path', (result2.error as any).path);
@@ -345,7 +357,7 @@ if (whichPath) {
   info('UPPERCASE exists?', existsSync(upperPath));
   info('lowercase exists?', existsSync(lowerPath));
   info('MiXeDcAsE exists?', existsSync(
-    whichPath.split('').map((c, i) => i % 2 ? c.toUpperCase() : c.toLowerCase()).join('')
+    [...whichPath].map((c, i) => i % 2 ? c.toUpperCase() : c.toLowerCase()).join('')
   ));
 }
 
@@ -430,7 +442,7 @@ try {
       });
       if (jscpdTest.error) {
         error(`jscpd test failed: ${jscpdTest.error.message}`);
-        info('  Error code', (jscpdTest.error as any).code);
+        info(LABEL_ERROR_CODE, (jscpdTest.error as any).code);
       } else {
         success('jscpd test completed');
         info('  Exit code', jscpdTest.status);
@@ -520,6 +532,7 @@ try {
 
   for (let i = 0; i < 10; i++) {
     promises.push(
+      // eslint-disable-next-line unicorn/prefer-top-level-await -- Testing promise-wrapped execution pattern
       Promise.resolve().then(() => {
         try {
           const path = which.sync('node', { nothrow: true });
@@ -542,9 +555,9 @@ try {
 
   if (failures > 0) {
     warn('Some concurrent calls failed:');
-    results.filter(r => !r.success).forEach(r => {
+    for (const r of results.filter(r => !r.success)) {
       info(`  [${r.index}]`, (r as any).error);
-    });
+    }
   }
 
   // Synchronous version (for comparison)
@@ -555,9 +568,13 @@ try {
   for (let i = 0; i < 10; i++) {
     try {
       which.sync('node', { nothrow: true });
-    } catch (err) {
-      // Intentionally count failures without logging - comparing failure rates between async/sync
+    } catch (error) {
+      // Counting failures for diagnostic comparison between async/sync
       syncFailures++;
+      // Error details not logged to avoid noise - this is a performance/reliability test
+      if (error instanceof Error && error.message.includes('CRITICAL')) {
+        console.error('Unexpected critical error:', error.message);
+      }
     }
   }
 
@@ -577,9 +594,9 @@ try {
   // Import execSync
   const { execSync } = await import('node:child_process');
 
-  // Test 1: execSync with 'node --version' (same as failing tests)
+  // Test 1: execSync with TEST_COMMAND_NODE_VERSION (same as failing tests)
   try {
-    const execSyncResult = execSync('node --version', { encoding: 'utf-8' });
+    const execSyncResult = execSync(TEST_COMMAND_NODE_VERSION, { encoding: 'utf-8' });
     success('execSync("node --version") succeeded');
     info('  Output', execSyncResult.trim());
   } catch (err) {
@@ -595,7 +612,7 @@ try {
       });
       if (spawnResult.error) {
         error(`spawnSync(which.sync, ["--version"], {shell: false}) failed: ${spawnResult.error.message}`);
-        info('  Error code', (spawnResult.error as any).code);
+        info(LABEL_ERROR_CODE, (spawnResult.error as any).code);
         info('  Error path', (spawnResult.error as any).path);
       } else {
         success('spawnSync(which.sync, ["--version"], {shell: false}) succeeded');
@@ -685,12 +702,12 @@ try {
     error(`  A2 exception: ${err}`);
   }
 
-  // Scenario B: Test with 'node --version' (NOT a shell built-in)
+  // Scenario B: Test with TEST_COMMAND_NODE_VERSION (NOT a shell built-in)
   info('\nScenario B: node bin.js run "node --version" (not built-in)', '');
 
   try {
     // Test B1: shell:false with node --version (should work if node spawning works)
-    const nodeArgs = [CLI_BIN, 'run', 'node --version'];
+    const nodeArgs = [CLI_BIN, 'run', TEST_COMMAND_NODE_VERSION];
     const nodeNoShell = spawnSync(testCommand, nodeArgs, {
       encoding: 'utf-8',
       shell: false,
@@ -709,7 +726,7 @@ try {
 
   try {
     // Test B2: shell:true with node --version
-    const nodeArgs = [CLI_BIN, 'run', 'node --version'];
+    const nodeArgs = [CLI_BIN, 'run', TEST_COMMAND_NODE_VERSION];
     const nodeWithShell = spawnSync(testCommand, nodeArgs, {
       encoding: 'utf-8',
       shell: true,
@@ -817,12 +834,12 @@ try {
       info('Paths are identical?', tempPath === realTemp);
       info('Paths differ?', tempPath !== realTemp);
 
-      if (tempPath !== realTemp) {
+      if (tempPath === realTemp) {
+        success('tmpdir() already returns normalized path');
+      } else {
         warn('tmpdir() returns SHORT path, realpathSync() returns LONG path');
         info('  This is the root cause of test failures on Windows!');
         info('  Length diff', `short: ${tempPath.length}, long: ${realTemp.length}`);
-      } else {
-        success('tmpdir() already returns normalized path');
       }
     } catch (err) {
       error(`realpathSync failed: ${err}`);
@@ -851,7 +868,9 @@ try {
     info('existsSync(LONG path)?', existsSync(testDirLong));
 
     // Check if they're different
-    if (testDirShort !== testDirLong) {
+    if (testDirShort === testDirLong) {
+      success('Paths are already normalized (no short names)');
+    } else {
       warn('Created directory has DIFFERENT short vs long paths!');
       info('  SHORT', testDirShort);
       info('  LONG ', testDirLong);
@@ -867,14 +886,12 @@ try {
       info('File exists via SHORT path?', existsSync(join(testDirShort, testFile)));
       info('File exists via LONG path?', existsSync(join(testDirLong, testFile)));
 
-      if (!existsSync(join(testDirLong, testFile))) {
+      if (existsSync(join(testDirLong, testFile))) {
+        success('✅ File accessible via both SHORT and LONG paths');
+      } else {
         error('❌ File NOT accessible via LONG path!');
         error('   This is the bug! Tests use SHORT path, command creates LONG path');
-      } else {
-        success('✅ File accessible via both SHORT and LONG paths');
       }
-    } else {
-      success('Paths are already normalized (no short names)');
     }
 
     // Clean up
@@ -889,9 +906,9 @@ try {
 
   const testPaths = [
     tempPath,
-    'C:\\Windows\\System32',
-    'C:\\PROGRA~1', // Common short name for Program Files
-    'C:\\PROGRA~2', // Common short name for Program Files (x86)
+    String.raw`C:\Windows\System32`,
+    String.raw`C:\PROGRA~1`, // Common short name for Program Files
+    String.raw`C:\PROGRA~2`, // Common short name for Program Files (x86)
   ];
 
   for (const testPath of testPaths) {
@@ -959,15 +976,15 @@ if (issues.length === 0) {
   success('No issues detected!');
 } else {
   warn(`Found ${issues.length} issue(s):`);
-  issues.forEach((issue, i) => {
+  for (const [i, issue] of issues.entries()) {
     console.log(`  ${i + 1}. ${issue}`);
-  });
+  }
 
   console.log();
   info('Recommendations', '');
-  recommendations.forEach((rec, i) => {
+  for (const [i, rec] of recommendations.entries()) {
     console.log(`  ${i + 1}. ${rec}`);
-  });
+  }
 }
 
 console.log('\n' + '='.repeat(80));

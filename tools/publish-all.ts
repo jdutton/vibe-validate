@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Intelligent publish script that determines npm dist-tag from package version
  *
  * Version patterns:
  * - X.Y.Z          → --tag latest (stable release)
- * - X.Y.Z-rc.N     → --tag rc (release candidate)
+ * - X.Y.Z-rc.N     → --tag next (release candidate)
  * - X.Y.Z-beta.N   → --tag beta (beta release)
  * - X.Y.Z-alpha.N  → --tag alpha (alpha release)
  * - X.Y.Z-canary.N → --tag canary (canary release)
@@ -15,9 +15,10 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,7 +42,7 @@ function determineTag(version) {
 
   // Map common prerelease identifiers to dist-tags
   const tagMap = {
-    'rc': 'rc',
+    'rc': 'next',      // Changed from 'rc' to 'next' for consistency with automation
     'beta': 'beta',
     'alpha': 'alpha',
     'canary': 'canary',

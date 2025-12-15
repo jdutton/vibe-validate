@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Generate CLI Reference Documentation
  *
@@ -14,28 +14,15 @@
  *   - Node.js 20+
  */
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, '..');
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
+
+import { PROJECT_ROOT, log } from './common.js';
+
 const CLI_BIN = join(PROJECT_ROOT, 'packages/cli/dist/bin.js');
 const DOCS_FILE = join(PROJECT_ROOT, 'docs/skill/resources/cli-reference.md');
-
-// Colors for output
-const colors = {
-  green: '\x1b[0;32m',
-  yellow: '\x1b[1;33m',
-  red: '\x1b[0;31m',
-  reset: '\x1b[0m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
-}
 
 // Check if CLI is built
 if (!existsSync(CLI_BIN)) {

@@ -66,9 +66,7 @@ export function registerWatchPRCommand(program: Command): void {
         const exitCode = await watchPRCommand(prNumber, options);
         process.exit(exitCode);
       } catch (error) {
-        if (!options.yaml) {
-          console.error('❌ Error:', error instanceof Error ? error.message : String(error));
-        } else {
+        if (options.yaml) {
           // YAML mode: Output error to stdout
           process.stdout.write('---\n');
           process.stdout.write(
@@ -76,6 +74,8 @@ export function registerWatchPRCommand(program: Command): void {
               error: error instanceof Error ? error.message : String(error),
             })
           );
+        } else {
+          console.error('❌ Error:', error instanceof Error ? error.message : String(error));
         }
         process.exit(1);
       }
