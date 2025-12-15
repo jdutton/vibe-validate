@@ -7,11 +7,14 @@
  * logic directly through package.json fallbacks.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import os from 'node:os';
+import { join } from 'node:path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import * as projectId from '../../src/utils/project-id.js';
+
 const {
   getProjectIdFromGit,
   getProjectIdFromPackageJson,

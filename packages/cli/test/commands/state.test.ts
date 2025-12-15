@@ -1,8 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { stateCommand } from '../../src/commands/state.js';
 import type { ValidationResult } from '@vibe-validate/core';
+import { getGitTreeHash } from '@vibe-validate/git';
 import type { HistoryNote } from '@vibe-validate/history';
+import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { stateCommand } from '../../src/commands/state.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
@@ -13,9 +17,6 @@ vi.mock('@vibe-validate/history', () => ({
   hasHistoryForTree: vi.fn(),
   readHistoryNote: vi.fn(),
 }));
-
-import { getGitTreeHash } from '@vibe-validate/git';
-import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
 
 describe('state command', () => {
   let env: CommanderTestEnv;

@@ -7,10 +7,11 @@
  * SECURITY: Uses safeExecFromString from @vibe-validate/utils instead of raw execSync.
  */
 
-import { safeExecFromString } from '@vibe-validate/utils';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { safeExecFromString } from '@vibe-validate/utils';
 
 /**
  * Creates a temporary test directory with a unique name

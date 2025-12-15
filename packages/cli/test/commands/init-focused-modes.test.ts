@@ -10,12 +10,13 @@
  * - --fix-gitignore: Add state file to .gitignore only
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('init command - focused modes', () => {
   let testDir: string;

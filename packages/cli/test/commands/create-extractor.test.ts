@@ -5,10 +5,11 @@
  * --detection-pattern flag for non-interactive plugin generation.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { safeExecSync, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 /**
  * Execute CLI command and return output

@@ -37,6 +37,46 @@ function processQuote(
 }
 
 /**
+ * Process a single character during command parsing
+ */
+function processCommandChar(
+  char: string,
+  prevChar: string,
+  state: { current: string; parts: string[]; inQuotes: boolean; quoteChar: string; i: number },
+  commandString: string
+): { skipExtra: number } {
+  // Handle escape sequences
+  if (char === '\\' && state.i + 1 < commandString.length) {
+    state.current += commandString[state.i + 1];
+    return { skipExtra: 1 }; // Skip next character
+  }
+
+  // Handle quotes
+  if (isQuoteChar(char) && prevChar !== '\\') {
+    const quoteResult = processQuote(char, state.inQuotes, state.quoteChar);
+    state.inQuotes = quoteResult.inQuotes;
+    state.quoteChar = quoteResult.quoteChar;
+    if (quoteResult.addChar) {
+      state.current += char;
+    }
+    return { skipExtra: 0 };
+  }
+
+  // Handle space delimiters
+  if (char === ' ' && !state.inQuotes) {
+    if (state.current) {
+      state.parts.push(state.current);
+      state.current = '';
+    }
+    return { skipExtra: 0 };
+  }
+
+  // Regular character or space inside quotes
+  state.current += char;
+  return { skipExtra: 0 };
+}
+
+/**
  * Parse a command string into command and arguments
  * Handles quoted strings properly, including nested quotes
  *
@@ -52,50 +92,27 @@ function processQuote(
  * // Returns: ['node', ['bin.js', 'run', "echo 'nested'"]]
  */
 function parseCommand(commandString: string): [string, string[]] {
-  const parts: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  let quoteChar = '';
-  let i = 0;
+  const state = {
+    parts: [] as string[],
+    current: '',
+    inQuotes: false,
+    quoteChar: '',
+    i: 0,
+  };
 
-  while (i < commandString.length) {
-    const char = commandString[i];
-    const prevChar = i > 0 ? commandString[i - 1] : '';
+  while (state.i < commandString.length) {
+    const char = commandString[state.i];
+    const prevChar = state.i > 0 ? commandString[state.i - 1] : '';
 
-    // Handle escape sequences
-    if (char === '\\' && i + 1 < commandString.length) {
-      current += commandString[i + 1];
-      i += 2; // Skip both backslash and next character
-      continue;
-    }
-
-    // Handle quotes
-    if (isQuoteChar(char) && prevChar !== '\\') {
-      const quoteResult = processQuote(char, inQuotes, quoteChar);
-      inQuotes = quoteResult.inQuotes;
-      quoteChar = quoteResult.quoteChar;
-      if (quoteResult.addChar) {
-        current += char;
-      }
-    } else if (char === ' ' && !inQuotes) {
-      // Space outside quotes - delimiter
-      if (current) {
-        parts.push(current);
-        current = '';
-      }
-    } else {
-      // Regular character or space inside quotes
-      current += char;
-    }
-
-    i++;
+    const result = processCommandChar(char, prevChar, state, commandString);
+    state.i += 1 + result.skipExtra;
   }
 
-  if (current) {
-    parts.push(current);
+  if (state.current) {
+    state.parts.push(state.current);
   }
 
-  return [parts[0], parts.slice(1)];
+  return [state.parts[0], state.parts.slice(1)];
 }
 
 export interface CommandResult {

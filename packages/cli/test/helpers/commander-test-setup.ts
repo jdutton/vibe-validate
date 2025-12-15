@@ -7,8 +7,8 @@
  * @package @vibe-validate/cli
  */
 
-import { vi } from 'vitest';
 import { Command } from 'commander';
+import { vi } from 'vitest';
 
 /**
  * Commander test environment

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { registerWatchPRCommand } from '../../src/commands/watch-pr.js';
 import { CIProviderRegistry } from '../../src/services/ci-provider-registry.js';
 import type { CIProvider, CheckStatus } from '../../src/services/ci-provider.js';

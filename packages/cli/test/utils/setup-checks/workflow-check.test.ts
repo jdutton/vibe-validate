@@ -4,11 +4,13 @@
  * Following TDD: These tests are written BEFORE the implementation.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { WorkflowSetupCheck } from '../../../src/utils/setup-checks/workflow-check.js';
 
 describe('WorkflowSetupCheck', () => {

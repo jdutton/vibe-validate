@@ -6,8 +6,9 @@
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationConfig, ValidationPhase, ValidationStep, PhaseResult, StepResult } from '@vibe-validate/core';
-import type { AgentContext } from './context-detector.js';
 import chalk from 'chalk';
+
+import type { AgentContext } from './context-detector.js';
 
 export interface RunnerOptions {
   force?: boolean;

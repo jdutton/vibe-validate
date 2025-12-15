@@ -84,11 +84,9 @@ export function getPartiallyStagedFiles(): string[] {
     );
 
     // Find intersection: files that appear in BOTH staged and unstaged
-    const partiallyStagedFiles = stagedFiles.filter((file) =>
+    return stagedFiles.filter((file) =>
       unstagedFiles.has(file)
     );
-
-    return partiallyStagedFiles;
   } catch {
     // Not a git repository, or git command failed
     // Return empty array - let pre-commit continue and fail elsewhere if needed

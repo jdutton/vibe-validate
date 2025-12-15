@@ -5,13 +5,15 @@
  * Used by validation runner for signal handling and fail-fast behavior.
  */
 
-import { ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { join, normalize, resolve } from 'node:path';
+
 import { getRepositoryRoot } from '@vibe-validate/git';
 import { safeExecSync } from '@vibe-validate/utils';
-import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
+
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
+import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
 
 /**
  * Get git repository root directory
@@ -201,7 +203,7 @@ export function spawnCommand(
 function stripAnsiCodes(text: string): string {
   // Control character \x1b is intentionally used to match ANSI escape codes
   // eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
-  return text.replace(/\x1b\[[0-9;]*m/g, '');
+  return text.replaceAll(/\x1b\[[0-9;]*m/g, '');
 }
 
 /**

@@ -3,14 +3,15 @@
  * These tests verify the full workflow works together
  */
 
+import type { ValidationResult } from '@vibe-validate/core';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import {
   recordValidationHistory,
   checkWorktreeStability,
   checkHistoryHealth,
   pruneHistoryByAge,
 } from '../src/index.js';
-import type { ValidationResult } from '@vibe-validate/core';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({

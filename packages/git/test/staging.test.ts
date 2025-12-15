@@ -7,8 +7,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getPartiallyStagedFiles } from '../src/staging.js';
+
 import * as gitExecutor from '../src/git-executor.js';
+import { getPartiallyStagedFiles } from '../src/staging.js';
 
 // Mock git-executor
 vi.mock('../src/git-executor.js', () => ({

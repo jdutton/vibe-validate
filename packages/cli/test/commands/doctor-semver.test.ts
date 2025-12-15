@@ -4,8 +4,8 @@
  * Ensures proper handling of prerelease versions (e.g., 0.17.0 > 0.17.0-rc.11)
  */
 
-import { describe, it, expect } from 'vitest';
 import * as semver from 'semver';
+import { describe, it, expect } from 'vitest';
 
 describe('semver comparison in doctor command', () => {
   describe('stable vs prerelease', () => {

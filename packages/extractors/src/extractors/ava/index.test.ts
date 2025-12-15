@@ -4,11 +4,13 @@
  * @package @vibe-validate/extractors
  */
 
-import { describe, it, expect } from 'vitest';
-import avaExtractor from './index.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { describe, it, expect } from 'vitest';
+
+import avaExtractor from './index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,8 +27,8 @@ function verifyError(expected: Record<string, unknown>, actual: Record<string, u
 // Helper: Verify errors array
 function verifyErrors(expected: Array<Record<string, unknown>>, actual: Array<Record<string, unknown>>) {
   expect(actual).toHaveLength(expected.length);
-  for (let i = 0; i < expected.length; i++) {
-    verifyError(expected[i], actual[i]);
+  for (const [i, element] of expected.entries()) {
+    verifyError(element, actual[i]);
   }
 }
 

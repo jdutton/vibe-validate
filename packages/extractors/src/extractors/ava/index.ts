@@ -241,8 +241,8 @@ function extractFailures(output: string): FailureInfo[] {
   // These are the authoritative source - each one represents a failure
   const headerIndices: Array<{ index: number; testName: string }> = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
+  for (const [i, line] of lines.entries()) {
+    const trimmed = line.trim();
 
     // Detailed header: has ›, not a summary, not a file:// line, not code, reasonable length
     if (

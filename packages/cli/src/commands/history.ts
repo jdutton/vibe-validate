@@ -2,8 +2,6 @@
  * History command - View and manage validation history
  */
 
-import { Command } from 'commander';
-import { stringify as stringifyYaml } from 'yaml';
 import { getGitTreeHash } from '@vibe-validate/git';
 import {
   readHistoryNote,
@@ -18,6 +16,9 @@ import {
   type HistoryNote,
   type RunCacheNote,
 } from '@vibe-validate/history';
+import { type Command } from 'commander';
+import { stringify as stringifyYaml } from 'yaml';
+
 import { findConfigPath } from '../utils/config-loader.js';
 import { cleanRunCacheEntries } from '../utils/tree-hash-output.js';
 
@@ -43,6 +44,25 @@ function displayErrorSamples(extraction: RunCacheNote['extraction']): void {
 
   if (extraction.errors.length > 3) {
     console.log(`    ... and ${extraction.errors.length - 3} more errors`);
+  }
+}
+
+/**
+ * Display prune results summary
+ *
+ * @param result - The prune operation result
+ * @param dryRun - Whether this was a dry run
+ * @param showRemaining - Whether to show remaining count
+ */
+function displayPruneResults(
+  result: { notesPruned: number; runsPruned: number; notesRemaining?: number },
+  dryRun: boolean,
+  showRemaining: boolean = false
+): void {
+  console.log(`${dryRun ? 'Would prune' : 'Pruned'} ${result.notesPruned} tree hashes`);
+  console.log(`${dryRun ? 'Would remove' : 'Removed'} ${result.runsPruned} validation runs`);
+  if (showRemaining && result.notesRemaining !== undefined) {
+    console.log(`Remaining: ${result.notesRemaining} tree hashes`);
   }
 }
 
@@ -432,8 +452,8 @@ async function showHistory(
         console.log(`\nRun Cache for Tree Hash: ${treeHash}`);
         console.log(`Total Cached Commands: ${runCacheEntries.length}\n`);
 
-        for (let i = 0; i < runCacheEntries.length; i++) {
-          displayRunCacheEntry(runCacheEntries[i], i);
+        for (const [i, runCacheEntry] of runCacheEntries.entries()) {
+          displayRunCacheEntry(runCacheEntry, i);
         }
       }
       return;
@@ -524,8 +544,8 @@ async function showHistory(
         console.log(`Run Cache for Tree Hash: ${treeHash}`);
         console.log(`Total Cached Commands: ${runCacheEntries.length}\n`);
 
-        for (let i = 0; i < runCacheEntries.length; i++) {
-          displayRunCacheEntry(runCacheEntries[i], i, true);
+        for (const [i, runCacheEntry] of runCacheEntries.entries()) {
+          displayRunCacheEntry(runCacheEntry, i, true);
         }
       } else if (options.all && runCacheEntries.length === 0) {
         console.log('\nNo run cache entries found for this tree hash.');
@@ -582,8 +602,7 @@ async function pruneHistory(options: {
         return;
       }
 
-      console.log(`${dryRun ? 'Would prune' : 'Pruned'} ${result.notesPruned} tree hashes`);
-      console.log(`${dryRun ? 'Would remove' : 'Removed'} ${result.runsPruned} validation runs`);
+      displayPruneResults(result, dryRun);
 
       if (dryRun) {
         console.log(`\nRun without --dry-run to execute: vibe-validate history prune --all`);
@@ -610,9 +629,7 @@ async function pruneHistory(options: {
         return;
       }
 
-      console.log(`${dryRun ? 'Would prune' : 'Pruned'} ${result.notesPruned} tree hashes`);
-      console.log(`${dryRun ? 'Would remove' : 'Removed'} ${result.runsPruned} validation runs`);
-      console.log(`Remaining: ${result.notesRemaining} tree hashes`);
+      displayPruneResults(result, dryRun, true);
 
       if (dryRun) {
         console.log(`\nRun without --dry-run to execute: vibe-validate history prune --older-than ${days}`);

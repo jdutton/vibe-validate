@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { BranchSyncChecker, checkBranchSync, type SyncCheckResult, type GitExecutor } from '../src/branch-sync.js';
 
 describe('BranchSyncChecker', () => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { GitHubActionsProvider } from '../../../src/services/ci-providers/github-actions.js';
 
 // Mock @vibe-validate/utils

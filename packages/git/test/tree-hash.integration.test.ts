@@ -7,11 +7,13 @@
  * CRITICAL: Uses isolated temp repos - does NOT touch main .git directory
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { safeExecSync } from '@vibe-validate/utils';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { safeExecSync } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { getGitTreeHash } from '../src/tree-hash.js';
 
 describe('getGitTreeHash - integration tests', () => {

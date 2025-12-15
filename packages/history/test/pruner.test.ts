@@ -2,10 +2,11 @@
  * Tests for validation history pruning
  */
 
+import * as git from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { pruneHistoryByAge, pruneAllHistory } from '../src/pruner.js';
 import * as reader from '../src/reader.js';
-import * as git from '@vibe-validate/git';
 import type { HistoryNote } from '../src/types.js';
 
 // Mock dependencies using secure git API

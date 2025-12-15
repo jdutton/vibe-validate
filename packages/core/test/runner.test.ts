@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { getGitTreeHash } from '@vibe-validate/git';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   parseFailures,
   runStepsInParallel,
@@ -798,7 +800,7 @@ rawOutput: |
       const outputFiles = result.phases![0].steps[0].outputFiles;
       expect(outputFiles?.combined).toBeDefined();
       // Normalize path separators for Windows (\ -> /)
-      const normalizedPath = outputFiles?.combined?.replace(/\\/g, '/');
+      const normalizedPath = outputFiles?.combined?.replaceAll('\\', '/');
       expect(normalizedPath).toContain('/vibe-validate/steps/');
       expect(outputFiles?.combined).toContain('.jsonl');
 
@@ -1020,7 +1022,7 @@ rawOutput: |
       expect(result.outputFiles).toBeDefined();
       expect(result.outputFiles?.combined).toBeDefined();
       // Normalize path separators for Windows (\ -> /)
-      const normalizedPath1 = result.outputFiles?.combined?.replace(/\\/g, '/');
+      const normalizedPath1 = result.outputFiles?.combined?.replaceAll('\\', '/');
       expect(normalizedPath1).toContain('/validation-');
       expect(result.outputFiles?.combined).toContain('.log');
 
@@ -1054,7 +1056,7 @@ rawOutput: |
       expect(result.outputFiles).toBeDefined();
       expect(result.outputFiles?.combined).toBeDefined();
       // Normalize path separators for Windows (\ -> /)
-      const normalizedPath2 = result.outputFiles?.combined?.replace(/\\/g, '/');
+      const normalizedPath2 = result.outputFiles?.combined?.replaceAll('\\', '/');
       expect(normalizedPath2).toContain('/validation-');
       expect(result.outputFiles?.combined).toContain('.log');
 

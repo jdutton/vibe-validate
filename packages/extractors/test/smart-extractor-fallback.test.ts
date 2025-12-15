@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { autoDetectAndExtract } from '../src/smart-extractor.js';
 
 describe('Smart Extractor Fallback Strategy', () => {

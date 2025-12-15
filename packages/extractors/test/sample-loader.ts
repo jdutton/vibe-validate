@@ -8,9 +8,11 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYaml } from 'yaml';
+
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
+import { parse as parseYaml } from 'yaml';
+
 import type { Sample, SampleTestResult, QualityReport } from './sample-types.js';
 
 const SAMPLES_DIR = fileURLToPath(new URL('./samples/', import.meta.url));

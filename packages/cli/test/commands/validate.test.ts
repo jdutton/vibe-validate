@@ -1,16 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { validateCommand } from '../../src/commands/validate.js';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
-import * as configLoader from '../../src/utils/config-loader.js';
-import * as history from '@vibe-validate/history';
 import * as git from '@vibe-validate/git';
+import * as history from '@vibe-validate/history';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { validateCommand } from '../../src/commands/validate.js';
+import * as configLoader from '../../src/utils/config-loader.js';
 import * as pidLock from '../../src/utils/pid-lock.js';
 import * as projectId from '../../src/utils/project-id.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
 
 // Mock the core validation module
 vi.mock('@vibe-validate/core', async () => {

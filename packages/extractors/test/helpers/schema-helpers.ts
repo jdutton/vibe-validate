@@ -7,9 +7,10 @@
  * @packageDocumentation
  */
 
+import { parse as parseYaml } from 'yaml';
+
 import { validateExtractorResult } from '../../src/result-schema.js';
 import type { ErrorExtractorResult } from '../../src/result-schema.js';
-import { parse as parseYaml } from 'yaml';
 
 /**
  * Validate an ErrorExtractorResult in tests (strict - throws on invalid data)

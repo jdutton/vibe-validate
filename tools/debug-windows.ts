@@ -174,8 +174,8 @@ if (whichPath && execPath) {
     for (let i = 0; i < maxLen; i++) {
       if (whichPath[i] !== execPath[i]) {
         info(`  First diff at position ${i}`,
-          `which: "${whichPath[i]}" (${whichPath.charCodeAt(i)}), ` +
-          `exec: "${execPath[i]}" (${execPath.charCodeAt(i)})`);
+          `which: "${whichPath[i]}" (${whichPath.codePointAt(i)}), ` +
+          `exec: "${execPath[i]}" (${execPath.codePointAt(i)})`);
         break;
       }
     }
@@ -531,22 +531,21 @@ try {
     );
   }
 
-  Promise.all(promises).then(results => {
-    const successes = results.filter(r => r.success).length;
-    const failures = results.filter(r => !r.success).length;
-    const duration = Date.now() - start;
+  const results = await Promise.all(promises);
+  const successes = results.filter(r => r.success).length;
+  const failures = results.filter(r => !r.success).length;
+  const duration = Date.now() - start;
 
-    info('Completed in', `${duration}ms`);
-    info('Successes', successes);
-    info('Failures', failures);
+  info('Completed in', `${duration}ms`);
+  info('Successes', successes);
+  info('Failures', failures);
 
-    if (failures > 0) {
-      warn('Some concurrent calls failed:');
-      results.filter(r => !r.success).forEach(r => {
-        info(`  [${r.index}]`, (r as any).error);
-      });
-    }
-  });
+  if (failures > 0) {
+    warn('Some concurrent calls failed:');
+    results.filter(r => !r.success).forEach(r => {
+      info(`  [${r.index}]`, (r as any).error);
+    });
+  }
 
   // Synchronous version (for comparison)
   info('Testing synchronous which.sync calls', '');
@@ -557,6 +556,7 @@ try {
     try {
       which.sync('node', { nothrow: true });
     } catch (err) {
+      // Intentionally count failures without logging - comparing failure rates between async/sync
       syncFailures++;
     }
   }
@@ -770,7 +770,7 @@ try {
 
     try {
       // Test D1: Explicitly call cmd.exe /c node ...
-      const cmdPath = process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe';
+      const cmdPath = process.env.COMSPEC || String.raw`C:\Windows\System32\cmd.exe`;
       const cmdArgs = ['/c', 'node', CLI_BIN, 'run', 'echo test'];
       const cmdResult = spawnSync(cmdPath, cmdArgs, {
         encoding: 'utf-8',

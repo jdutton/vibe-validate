@@ -7,10 +7,12 @@
  * @package @vibe-validate/cli
  */
 
-import { vi, expect } from 'vitest';
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import { vi, expect } from 'vitest';
+
 import type { DoctorCheckResult } from '../../src/commands/doctor.js';
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
@@ -313,6 +315,44 @@ export async function mockDoctorFileSystem(config?: DoctorFileSystemConfig): Pro
  * });
  * ```
  */
+/**
+ * Handle custom git command overrides
+ */
+function handleCustomGitCommand(
+  args: string[],
+  customCommands?: Record<string, { success: boolean; stdout: string; stderr: string; exitCode: number } | Error>
+): { success: boolean; stdout: string; stderr: string; exitCode: number } | null {
+  if (!customCommands) return null;
+
+  const cmdKey = args.join(' ');
+  const customResponse = customCommands[cmdKey];
+  if (!customResponse) return null;
+
+  if (customResponse instanceof Error) throw customResponse;
+  return customResponse;
+}
+
+/**
+ * Handle git for-each-ref commands (validation history and cache)
+ */
+function handleGitForEachRef(args: string[], opts: { validationHistoryRefs?: string[]; runCacheRefs?: string[] }): { success: boolean; stdout: string; stderr: string; exitCode: number } | null {
+  if (args[0] !== 'for-each-ref') return null;
+
+  // Legacy validation history check
+  if (args[2] === 'refs/notes/vibe-validate/runs') {
+    const refs = opts.validationHistoryRefs?.join('\n') || '';
+    return { success: true, stdout: refs, stderr: '', exitCode: 0 };
+  }
+
+  // Current run cache check
+  if (args[2]?.startsWith('refs/notes/vibe-validate/run')) {
+    const refs = opts.runCacheRefs?.join('\n') || '';
+    return { success: true, stdout: refs, stderr: '', exitCode: 0 };
+  }
+
+  return null;
+}
+
 export async function mockDoctorGit(config?: DoctorGitMockConfig): Promise<() => void> {
   const opts = {
     isRepository: true,
@@ -328,14 +368,8 @@ export async function mockDoctorGit(config?: DoctorGitMockConfig): Promise<() =>
   const mockedExecuteGitCommand = vi.mocked(executeGitCommand);
   mockedExecuteGitCommand.mockImplementation((args: string[]) => {
     // Check custom commands first
-    if (opts.customCommands) {
-      const cmdKey = args.join(' ');
-      const customResponse = opts.customCommands[cmdKey];
-      if (customResponse) {
-        if (customResponse instanceof Error) throw customResponse;
-        return customResponse;
-      }
-    }
+    const customResult = handleCustomGitCommand(args, opts.customCommands);
+    if (customResult) return customResult;
 
     // Git remote command
     if (args[0] === 'remote' && args.length === 1) {
@@ -344,17 +378,9 @@ export async function mockDoctorGit(config?: DoctorGitMockConfig): Promise<() =>
         : { success: true, stdout: '', stderr: '', exitCode: 0 };
     }
 
-    // Legacy validation history check (old format)
-    if (args[0] === 'for-each-ref' && args[2] === 'refs/notes/vibe-validate/runs') {
-      const refs = opts.validationHistoryRefs?.join('\n') || '';
-      return { success: true, stdout: refs, stderr: '', exitCode: 0 };
-    }
-
-    // Current run cache check (new format)
-    if (args[0] === 'for-each-ref' && args[2]?.startsWith('refs/notes/vibe-validate/run')) {
-      const refs = opts.runCacheRefs?.join('\n') || '';
-      return { success: true, stdout: refs, stderr: '', exitCode: 0 };
-    }
+    // Git for-each-ref commands
+    const forEachRefResult = handleGitForEachRef(args, opts);
+    if (forEachRefResult) return forEachRefResult;
 
     // Update-ref for cleanup
     if (args[0] === 'update-ref' && args[1] === '-d') {

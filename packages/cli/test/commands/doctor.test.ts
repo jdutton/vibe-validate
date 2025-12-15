@@ -10,9 +10,22 @@
 
 /* eslint-disable sonarjs/assertions-in-tests -- Using assertCheck() helper which wraps expect() */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import { runDoctor, type DoctorCheckResult } from '../../src/commands/doctor.js';
+import { checkSync } from '../../src/commands/generate-workflow.js';
+import { loadConfig, findConfigPath, loadConfigWithErrors } from '../../src/utils/config-loader.js';
+import {
+  mockDoctorEnvironment,
+  mockDoctorFileSystem,
+  mockDoctorGit,
+  findCheck,
+  assertCheck
+} from '../helpers/doctor-helpers.js';
 
 // Mock dependencies
 vi.mock('fs', () => ({
@@ -83,18 +96,6 @@ vi.mock('@vibe-validate/git', async () => {
 
 vi.mock('../../src/utils/config-loader.js');
 vi.mock('../../src/commands/generate-workflow.js');
-
-import { runDoctor, type DoctorCheckResult } from '../../src/commands/doctor.js';
-import { loadConfig, findConfigPath, loadConfigWithErrors } from '../../src/utils/config-loader.js';
-import { checkSync } from '../../src/commands/generate-workflow.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
-import {
-  mockDoctorEnvironment,
-  mockDoctorFileSystem,
-  mockDoctorGit,
-  findCheck,
-  assertCheck
-} from '../helpers/doctor-helpers.js';
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';

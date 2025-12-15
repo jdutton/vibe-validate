@@ -8,9 +8,20 @@
 
 /* eslint-disable sonarjs/assertions-in-tests -- Using assertCheck() helper which wraps expect() */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import { runDoctor } from '../../src/commands/doctor.js';
+import { checkSync } from '../../src/commands/generate-workflow.js';
+import { loadConfig, findConfigPath, loadConfigWithErrors } from '../../src/utils/config-loader.js';
+import {
+  mockDoctorEnvironment,
+  mockDoctorFileSystem,
+  assertCheck,
+} from '../helpers/doctor-helpers.js';
 
 // Mock dependencies
 vi.mock('fs', () => ({
@@ -78,16 +89,6 @@ vi.mock('@vibe-validate/git', async () => {
 
 vi.mock('../../src/utils/config-loader.js');
 vi.mock('../../src/commands/generate-workflow.js');
-
-import { runDoctor } from '../../src/commands/doctor.js';
-import { loadConfig, findConfigPath, loadConfigWithErrors } from '../../src/utils/config-loader.js';
-import { checkSync } from '../../src/commands/generate-workflow.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
-import {
-  mockDoctorEnvironment,
-  mockDoctorFileSystem,
-  assertCheck,
-} from '../helpers/doctor-helpers.js';
 
 describe('doctor command from subdirectories', () => {
   const mockConfig: VibeValidateConfig = {

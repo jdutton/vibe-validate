@@ -18,6 +18,30 @@ const unicornRules = {
   'unicorn/no-useless-undefined': 'error', // Simplify unnecessary undefined
   'unicorn/prefer-ternary': 'off', // Too aggressive - doesn't account for readability
   'unicorn/prefer-string-raw': 'error', // Use String.raw for strings with backslashes
+  'unicorn/prefer-string-replace-all': 'error', // Prefer replaceAll() over replace() with regex (ES2021)
+  'unicorn/prefer-code-point': 'error', // Prefer codePointAt() over charCodeAt() for Unicode
+
+  // Bug prevention rules (common patterns)
+  'unicorn/prefer-array-find': 'error', // Prevent .filter()[0] → use .find()
+  'unicorn/prefer-array-some': 'error', // Prevent .find() for boolean checks → use .some()
+  'unicorn/prefer-includes': 'error', // Prevent indexOf() !== -1 → use .includes()
+  'unicorn/no-for-loop': 'error', // Prevent traditional for loops → use for...of
+  'unicorn/prefer-spread': 'error', // Prevent Array.from([...]) → use spread
+  'unicorn/prefer-set-has': 'error', // Optimize Set lookups over Array.includes()
+  'unicorn/no-instanceof-array': 'error', // Enforce Array.isArray() over instanceof
+  'unicorn/prefer-date-now': 'error', // Prefer Date.now() over new Date().getTime()
+};
+
+// Shared import organization rules (applies to both test and production code)
+const importRules = {
+  'import/no-duplicates': 'error',
+  'import/order': ['error', {
+    groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+    'newlines-between': 'always',
+    alphabetize: { order: 'asc', caseInsensitive: true },
+  }],
+  'import/first': 'error',
+  'import/newline-after-import': 'error',
 };
 
 export default [
@@ -96,8 +120,8 @@ export default [
         caughtErrorsIgnorePattern: '^_',
       }],
 
-      // Import rules - catch duplicate imports
-      'import/no-duplicates': 'error',
+      // Import rules - organization and quality
+      ...importRules,
 
       // Unicorn rules - apply same modern JavaScript standards to test code
       ...unicornRules,
@@ -150,6 +174,16 @@ export default [
       '@typescript-eslint/prefer-nullish-coalescing': 'error', // Promoted from warn - enforce ?? usage
       '@typescript-eslint/prefer-optional-chain': 'error', // Promote from warn - enforce ?. usage
 
+      // TypeScript type safety & optimization rules
+      '@typescript-eslint/consistent-type-imports': ['error', {
+        prefer: 'type-imports',
+        fixStyle: 'inline-type-imports',
+      }], // Bundle size optimization + clarity
+      '@typescript-eslint/switch-exhaustiveness-check': 'error', // Catch missing switch cases
+      '@typescript-eslint/no-unnecessary-condition': 'off', // Disabled: Too aggressive, catches defensive programming patterns (while(true), ??, ?.)
+      '@typescript-eslint/prefer-string-starts-ends-with': 'error', // Prefer startsWith/endsWith
+      '@typescript-eslint/prefer-readonly': 'warn', // Suggest immutability improvements
+
       // General rules
       'no-console': 'off', // CLI tool needs console output
       'no-undef': 'off', // TypeScript handles this
@@ -191,9 +225,13 @@ export default [
       'sonarjs/duplicates-in-character-class': 'error', // Promoted from warn
       'sonarjs/prefer-single-boolean-return': 'error', // Promoted from warn
       'sonarjs/no-unused-vars': 'warn', // Keep as warn (duplicate of @typescript-eslint/no-unused-vars)
+      'sonarjs/no-inverted-boolean-check': 'error', // Simplify !(!condition)
+      'sonarjs/prefer-immediate-return': 'error', // Remove unnecessary temp variables
+      'sonarjs/no-collapsible-if': 'error', // Merge nested if statements
+      'sonarjs/no-collection-size-mischeck': 'error', // Catch .length > 0 vs .length >= 1 bugs
 
-      // Import rules - catch duplicate imports
-      'import/no-duplicates': 'error',
+      // Import rules - organization and quality
+      ...importRules,
 
       // Unicorn rules - modern JavaScript best practices
       ...unicornRules,

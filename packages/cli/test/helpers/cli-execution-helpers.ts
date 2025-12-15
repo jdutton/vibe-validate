@@ -9,6 +9,7 @@
  */
 
 import type { ExecSyncOptions } from 'node:child_process';
+
 import { safeExecFromString } from '@vibe-validate/utils';
 
 /**

@@ -2,9 +2,10 @@
  * Tests for validation history recorder
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { recordValidationHistory, checkWorktreeStability } from '../src/recorder.js';
 import type { ValidationResult } from '@vibe-validate/core';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import { recordValidationHistory, checkWorktreeStability } from '../src/recorder.js';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({

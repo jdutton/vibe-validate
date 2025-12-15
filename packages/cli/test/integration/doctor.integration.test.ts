@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { safeExecResult } from '@vibe-validate/utils';
 import { join } from 'node:path';
+
+import { safeExecResult } from '@vibe-validate/utils';
+import { describe, it, expect } from 'vitest';
 
 // Doctor integration tests - verifies CLI works end-to-end with real npm registry
 // IMPORTANT: Only ONE test to avoid network calls (7-8s each). Other tests moved to unit tests.

@@ -2,8 +2,10 @@
  * Unit tests for secret scanning tool detection and execution
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync } from 'node:fs';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   hasGitleaksConfig,
   hasSecretlintConfig,

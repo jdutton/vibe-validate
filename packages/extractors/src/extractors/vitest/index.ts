@@ -6,13 +6,13 @@
  * @package @vibe-validate/extractors
  */
 
+import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
   DetectionResult,
   ExtractorSample,
 } from '../../types.js';
-import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 
 interface TestFailure {
   file: string;
@@ -343,7 +343,7 @@ function extractRuntimeError(output: string): TestFailure | null {
   }
 
   // Error message may span multiple lines (e.g., path on next line)
-  const errorMessage = unhandledMatch[1].trim().replace(/\n\s+/g, ' ');
+  const errorMessage = unhandledMatch[1].trim().replaceAll(/\n\s+/g, ' ');
 
   // Extract location from stack trace (❯ function file:line:col)
   // File path may contain colons (e.g., node:internal/fs/promises), so match ❯ function filepath:number:number

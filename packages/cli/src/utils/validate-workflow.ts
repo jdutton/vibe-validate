@@ -15,12 +15,13 @@ import {
   checkHistoryHealth,
   readHistoryNote,
 } from '@vibe-validate/history';
+import chalk from 'chalk';
+import { stringify as yamlStringify } from 'yaml';
+
 import type { AgentContext } from './context-detector.js';
+import { displayCachedResult } from './display-cached-result.js';
 import { createRunnerConfig } from './runner-adapter.js';
 import { outputYamlResult } from './yaml-output.js';
-import { displayCachedResult } from './display-cached-result.js';
-import { stringify as yamlStringify } from 'yaml';
-import chalk from 'chalk';
 
 export interface ValidateWorkflowOptions {
   force?: boolean;

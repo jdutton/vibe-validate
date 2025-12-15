@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import mochaPlugin from './index.js';
 
 describe('mocha extractor plugin', () => {

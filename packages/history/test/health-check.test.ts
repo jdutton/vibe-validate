@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { checkHistoryHealth } from '../src/health-check.js';
 import * as reader from '../src/reader.js';
 import type { HistoryNote } from '../src/types.js';

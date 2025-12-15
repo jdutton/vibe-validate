@@ -72,7 +72,7 @@ export function createYamlInput(options: YamlTestInput): string {
  * ```
  */
 export function toWindowsLineEndings(text: string): string {
-  return text.replace(/\r?\n/g, '\r\n');
+  return text.replaceAll(/\r?\n/g, '\r\n');
 }
 
 /**

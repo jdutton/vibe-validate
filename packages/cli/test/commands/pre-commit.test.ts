@@ -1,15 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { preCommitCommand } from '../../src/commands/pre-commit.js';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
-import * as utils from '@vibe-validate/utils';
 import * as history from '@vibe-validate/history';
+import * as utils from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { preCommitCommand } from '../../src/commands/pre-commit.js';
 import * as configLoader from '../../src/utils/config-loader.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the core validation module
 vi.mock('@vibe-validate/core', async () => {

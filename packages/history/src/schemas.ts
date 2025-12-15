@@ -7,12 +7,12 @@
  * @packageDocumentation
  */
 
-import { z } from 'zod';
 import {
   ValidationResultSchema,
   OperationMetadataSchema,
   CommandExecutionSchema,
 } from '@vibe-validate/core';
+import { z } from 'zod';
 
 /**
  * Output files structure for organized temp directory (v0.15.0+)

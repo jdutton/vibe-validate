@@ -8,8 +8,9 @@
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import chalk from 'chalk';
+
 import { isToolAvailable, safeExecFromString } from '@vibe-validate/utils';
+import chalk from 'chalk';
 
 /**
  * Secret scanning tool type

@@ -4,15 +4,17 @@
  * Runs validation phases with git tree hash caching and history recording.
  */
 
+import { getGitTreeHash } from '@vibe-validate/git';
+import chalk from 'chalk';
 import type { Command } from 'commander';
+
+import { displayConfigErrors } from '../utils/config-error-reporter.js';
 import { loadConfigWithErrors, loadConfigWithDir } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
-import { runValidateWorkflow } from '../utils/validate-workflow.js';
 import { acquireLock, releaseLock, checkLock, waitForLock, type LockOptions } from '../utils/pid-lock.js';
 import { detectProjectId } from '../utils/project-id.js';
-import { getGitTreeHash } from '@vibe-validate/git';
-import { displayConfigErrors } from '../utils/config-error-reporter.js';
-import chalk from 'chalk';
+import { runValidateWorkflow } from '../utils/validate-workflow.js';
+
 
 export function validateCommand(program: Command): void {
   program

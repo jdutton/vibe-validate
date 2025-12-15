@@ -7,8 +7,8 @@
  * @packageDocumentation
  */
 
-import type { GitConfig } from './schema.js';
 import { GIT_DEFAULTS } from './constants.js';
+import type { GitConfig } from './schema.js';
 
 /**
  * Construct remote branch reference from git config

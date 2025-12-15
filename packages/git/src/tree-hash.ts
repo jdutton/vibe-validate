@@ -12,8 +12,9 @@
  */
 
 import { copyFileSync, unlinkSync } from 'node:fs';
-import type { TreeHash } from './types.js';
+
 import { executeGitCommand } from './git-executor.js';
+import type { TreeHash } from './types.js';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
@@ -79,13 +80,10 @@ export async function getGitTreeHash(): Promise<TreeHash> {
         ignoreErrors: true
       });
 
-      if (!addResult.success) {
-        // If no changes to add, git add fails with "nothing to add"
-        // This is fine - just means we have no modifications
-        if (!addResult.stderr.includes('nothing')) {
-          // Real error - throw with details
-          throw new Error(`git add failed: ${addResult.stderr}`);
-        }
+      // If git add fails and it's not "nothing to add", throw error
+      if (!addResult.success && !addResult.stderr.includes('nothing')) {
+        // Real error - throw with details
+        throw new Error(`git add failed: ${addResult.stderr}`);
       }
 
       // Step 4: Get tree hash using temp index (content-based, no timestamps)

@@ -7,11 +7,12 @@
  * Run with: pnpm test:system
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { safeExecFromString } from '@vibe-validate/utils';
 import { mkdtempSync, rmSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 describe('npm package tarball (system test)', () => {
   let tempDir: string;

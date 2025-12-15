@@ -5,12 +5,14 @@
  * for the current working tree state using git notes.
  */
 
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { readHistoryNote } from '@vibe-validate/history';
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import chalk from 'chalk';
+
 import { displayCachedResult } from './display-cached-result.js';
 import { outputYamlResult } from './yaml-output.js';
-import chalk from 'chalk';
+
 
 /**
  * Check validation status for current working tree

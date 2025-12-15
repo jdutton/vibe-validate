@@ -6,9 +6,11 @@
  * - JSON schema must be included for watch-pr command
  */
 
-import { describe, it, expect } from 'vitest';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { describe, it, expect } from 'vitest';
+
 import { discoverTemplates } from '../src/utils/template-discovery.js';
 
 describe('npm packaging', () => {

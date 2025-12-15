@@ -5,10 +5,12 @@
  * consistently with the config command.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { safeExecResult } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { setupTestEnvironment, cleanupTempTestDir } from '../helpers/integration-setup-helpers.js';
 
 /**

@@ -5,12 +5,13 @@
  * and that the schema file exists in all expected locations.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { mkdir, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
 import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
 describe('init command - schema validation', () => {

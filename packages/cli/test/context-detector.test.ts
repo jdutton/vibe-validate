@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { detectContext, shouldBeVerbose } from '../src/utils/context-detector.js';
 
 describe('context-detector', () => {

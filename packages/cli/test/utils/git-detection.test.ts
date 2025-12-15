@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   detectGitConfig,
   findGitRoot,

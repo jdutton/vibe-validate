@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { snapshotCommand } from '../../src/commands/snapshot.js';
+import { getGitTreeHash } from '@vibe-validate/git';
 import type { HistoryNote } from '@vibe-validate/history';
+import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { snapshotCommand } from '../../src/commands/snapshot.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
@@ -12,9 +16,6 @@ vi.mock('@vibe-validate/history', () => ({
   hasHistoryForTree: vi.fn(),
   readHistoryNote: vi.fn(),
 }));
-
-import { getGitTreeHash } from '@vibe-validate/git';
-import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
 
 // Helper to get all console.log output as strings
 function getLogOutput(): string[] {

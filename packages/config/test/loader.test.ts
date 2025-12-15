@@ -2,10 +2,12 @@
  * Tests for configuration loader
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import {
   loadConfigFromFile,
   findAndLoadConfig,

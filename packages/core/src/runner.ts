@@ -15,23 +15,25 @@ import { writeFileSync, appendFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import stripAnsi from 'strip-ansi';
-import { getGitTreeHash } from '@vibe-validate/git';
+
+import type { ValidationPhase, ValidationStep, VibeValidateConfig } from '@vibe-validate/config';
 import { autoDetectAndExtract, type ErrorExtractorResult } from '@vibe-validate/extractors';
-import type { ValidationStep } from '@vibe-validate/config';
-import { stopProcessGroup, spawnCommand, resolveGitRelativePath } from './process-utils.js';
-import { parseVibeValidateOutput } from './run-output-parser.js';
+import { getGitTreeHash } from '@vibe-validate/git';
+import stripAnsi from 'strip-ansi';
+
 import {
   ensureDir,
   getTempDir,
   createLogFileWrite,
   createCombinedJsonl,
 } from './fs-utils.js';
+import { stopProcessGroup, spawnCommand, resolveGitRelativePath } from './process-utils.js';
 import type {
   ValidationResult,
   StepResult,
   PhaseResult,
 } from './result-schema.js';
+import { parseVibeValidateOutput } from './run-output-parser.js';
 
 /**
  * Runtime validation configuration
@@ -44,7 +46,7 @@ import type {
  */
 export interface ValidationConfig {
   /** Validation phases to execute */
-  phases: import('@vibe-validate/config').ValidationPhase[];
+  phases: ValidationPhase[];
 
   /** Path to log file (default: os.tmpdir()/validation-{timestamp}.log) */
   logPath?: string;
@@ -68,13 +70,13 @@ export interface ValidationConfig {
   env?: Record<string, string>;
 
   /** Extractor plugin configuration (for loading local/external plugins) */
-  extractors?: Pick<import('@vibe-validate/config').VibeValidateConfig, 'extractors'>['extractors'];
+  extractors?: Pick<VibeValidateConfig, 'extractors'>['extractors'];
 
   /** Callback when phase starts */
-  onPhaseStart?: (_phase: import('@vibe-validate/config').ValidationPhase) => void;
+  onPhaseStart?: (_phase: ValidationPhase) => void;
 
   /** Callback when phase completes */
-  onPhaseComplete?: (_phase: import('@vibe-validate/config').ValidationPhase, _result: PhaseResult) => void;
+  onPhaseComplete?: (_phase: ValidationPhase, _result: PhaseResult) => void;
 
   /** Callback when step starts */
   onStepStart?: (_step: ValidationStep) => void;
@@ -944,7 +946,7 @@ function createFailedValidationResult(
 export async function runValidation(config: ValidationConfig): Promise<ValidationResult> {
   const {
     phases,
-    logPath = join(tmpdir(), `validation-${new Date().toISOString().replace(/[:.]/g, '-')}.log`),
+    logPath = join(tmpdir(), `validation-${new Date().toISOString().replaceAll(/[:.]/g, '-')}.log`),
     enableFailFast = false,
     env = {},
     onPhaseStart,
@@ -1081,7 +1083,7 @@ export function setupSignalHandlers(activeProcesses: Set<ChildProcess>): void {
     console.log(`\n⚠️  Received ${signal}, cleaning up ${activeProcesses.size} active processes...`);
 
     // Kill all active processes
-    const cleanupPromises = Array.from(activeProcesses).map(proc =>
+    const cleanupPromises = [...activeProcesses].map(proc =>
       stopProcessGroup(proc, 'Validation step')
     );
 

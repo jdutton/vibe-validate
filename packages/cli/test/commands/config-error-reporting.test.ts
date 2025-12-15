@@ -5,14 +5,16 @@
  * when given invalid configuration files.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { join } from 'node:path';
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+import { executeCommand } from '../helpers/test-command-runner.js';
 import {
   createTempTestDir,
   cleanupTempTestDir,
   writeTestConfig,
 } from '../helpers/test-fixtures.js';
-import { executeCommand } from '../helpers/test-command-runner.js';
 
 describe.skipIf(process.platform === 'win32')('config command error reporting (regression tests)', () => {
   // Skipped on Windows: Node.js module loader errors when executing CLI with node command

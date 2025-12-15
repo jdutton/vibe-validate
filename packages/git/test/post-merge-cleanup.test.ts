@@ -5,8 +5,10 @@
  * deletes merged branches and syncs the main branch.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { spawnSync } from 'node:child_process';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { PostPRMergeCleanup, cleanupMergedBranches } from '../src/post-merge-cleanup.js';
 
 // Mock child_process

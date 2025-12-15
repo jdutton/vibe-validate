@@ -8,6 +8,7 @@
  */
 
 import type { ErrorExtractorResult, FormattedError, ExtractionMetadata } from '../types.js';
+
 import { formatCleanOutput } from './formatter-utils.js';
 import { generateGuidanceFromPatterns } from './guidance-generator.js';
 

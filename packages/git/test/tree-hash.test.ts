@@ -5,10 +5,12 @@
  * to ensure validation state caching works correctly across runs.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { copyFileSync, unlinkSync } from 'node:fs';
-import { getGitTreeHash } from '../src/tree-hash.js';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import * as gitExecutor from '../src/git-executor.js';
+import { getGitTreeHash } from '../src/tree-hash.js';
 
 // Mock git-executor
 vi.mock('../src/git-executor.js', () => ({

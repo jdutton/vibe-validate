@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
 import { safeExecFromString } from '@vibe-validate/utils';
-import { executeCommandWithYaml } from '../helpers/test-command-runner.js';
+import { describe, it, expect } from 'vitest';
+
 import { parseRunYamlOutput } from '../helpers/run-command-helpers.js';
+import { executeCommandWithYaml } from '../helpers/test-command-runner.js';
 
 /**
  * SYSTEM TESTS for the run command

@@ -6,6 +6,7 @@
  * @package @vibe-validate/extractors
  */
 
+import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
@@ -13,7 +14,6 @@ import type {
   DetectionResult,
   ExtractorSample,
 } from '../../types.js';
-import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 
 /**
  * Generate TypeScript-specific guidance based on error codes

@@ -11,9 +11,10 @@
  * @packageDocumentation
  */
 
-import { parse as parseYaml } from 'yaml';
-import { extractYamlContent } from '@vibe-validate/git';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
+import { extractYamlContent } from '@vibe-validate/git';
+import { parse as parseYaml } from 'yaml';
+
 import type { OutputFiles } from './result-schema.js';
 
 /**

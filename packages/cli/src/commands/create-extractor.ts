@@ -5,13 +5,14 @@
  * Creates a fully-functional plugin directory with tests, samples, and documentation.
  */
 
-import type { Command } from 'commander';
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import chalk from 'chalk';
-import prompts from 'prompts';
+
 import { mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
+import chalk from 'chalk';
+import type { Command } from 'commander';
+import prompts from 'prompts';
 
 /**
  * Options for the create-extractor command
@@ -314,7 +315,7 @@ export function extract${context.className}(
 /**
  * ${context.displayName} Extractor Plugin
  */
-const ${context.pluginName.replace(/-/g, '')}Extractor: ExtractorPlugin = {
+const ${context.pluginName.replaceAll('-', '')}Extractor: ExtractorPlugin = {
   metadata: {
     name: '${context.pluginName}',
     version: '1.0.0',
@@ -345,7 +346,7 @@ const ${context.pluginName.replace(/-/g, '')}Extractor: ExtractorPlugin = {
   ],
 };
 
-export default ${context.pluginName.replace(/-/g, '')}Extractor;
+export default ${context.pluginName.replaceAll('-', '')}Extractor;
 `;
 }
 

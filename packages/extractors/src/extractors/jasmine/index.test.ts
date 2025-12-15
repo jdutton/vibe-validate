@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import jasminePlugin from './index.js';
 
 describe('jasmine extractor plugin', () => {

@@ -8,9 +8,10 @@
  * self-hosting works from any subdirectory. No mocks - real execution.
  */
 
-import { describe, it, expect } from 'vitest';
 import { join } from 'node:path';
+
 import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect } from 'vitest';
 
 describe('All commands work from subdirectories (system tests)', () => {
   // Get the project root (vibe-validate repo root)

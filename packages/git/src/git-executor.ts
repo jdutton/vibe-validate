@@ -254,11 +254,9 @@ export function validateNotesRef(notesRef: string): void {
 
   // Notes refs should follow refs/notes/* pattern or short form
   // Short form: 'vibe-validate/validate' → 'refs/notes/vibe-validate/validate'
-  if (!notesRef.startsWith('refs/notes/') && notesRef.includes('/')) {
-    // Short form is valid, but must not contain spaces
-    if (/\s/.test(notesRef)) {
-      throw new Error(`Invalid notes ref: contains whitespace: ${notesRef}`);
-    }
+  // Short form is valid, but must not contain spaces
+  if (!notesRef.startsWith('refs/notes/') && notesRef.includes('/') && /\s/.test(notesRef)) {
+    throw new Error(`Invalid notes ref: contains whitespace: ${notesRef}`);
   }
 }
 

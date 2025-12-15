@@ -7,11 +7,12 @@
  * @packageDocumentation
  */
 
-import { validateRunResult } from '../../src/schemas/run-result-schema.js';
-import type { RunResult } from '../../src/schemas/run-result-schema.js';
 import { validateResult as validateValidationResult } from '@vibe-validate/core';
 import type { ValidationResult } from '@vibe-validate/core';
 import { parse as parseYaml } from 'yaml';
+
+import type { RunResult } from '../../src/schemas/run-result-schema.js';
+import { validateRunResult } from '../../src/schemas/run-result-schema.js';
 
 /**
  * Validate a RunResult in tests (strict - throws on invalid data)

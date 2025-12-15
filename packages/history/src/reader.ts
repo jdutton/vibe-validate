@@ -2,9 +2,10 @@
  * Git notes reader
  */
 
-import { parse as parseYaml } from 'yaml';
 import { safeValidateResult } from '@vibe-validate/core';
 import { listNotes, readNote, type TreeHash, type NotesRef } from '@vibe-validate/git';
+import { parse as parseYaml } from 'yaml';
+
 import type { HistoryNote } from './types.js';
 
 // Removed: Git operations now use secure @vibe-validate/git functions
@@ -85,9 +86,7 @@ export async function listHistoryTreeHashes(
     }
 
     // Extract tree hashes from [treeHash, content] pairs
-    const treeHashes = notes.map(([treeHash]) => treeHash);
-
-    return treeHashes;
+    return notes.map(([treeHash]) => treeHash);
   } catch {
     // No notes exist yet - expected for new repos
     return [];

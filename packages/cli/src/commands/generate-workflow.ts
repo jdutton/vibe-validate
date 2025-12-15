@@ -17,12 +17,14 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { stringify as yamlStringify } from 'yaml';
-import { Command } from 'commander';
-import { loadConfig } from '../utils/config-loader.js';
-import { normalizeLineEndings } from '../utils/normalize-line-endings.js';
-import { findGitRoot } from '../utils/git-detection.js';
+
 import type { VibeValidateConfig, ValidationPhase } from '@vibe-validate/config';
+import { type Command } from 'commander';
+import { stringify as yamlStringify } from 'yaml';
+
+import { loadConfig } from '../utils/config-loader.js';
+import { findGitRoot } from '../utils/git-detection.js';
+import { normalizeLineEndings } from '../utils/normalize-line-endings.js';
 
 /**
  * GitHub Actions workflow step structure
@@ -96,9 +98,9 @@ export interface GenerateWorkflowOptions {
 export function toJobId(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/(^-)|(-$)/g, '');
+    .replaceAll(/[^a-z0-9-]/g, '-')
+    .replaceAll(/-+/g, '-')
+    .replaceAll(/(^-)|(-$)/g, '');
 }
 
 /**
@@ -437,8 +439,7 @@ export function generateWorkflow(
 
     let previousJobIds: string[] | undefined;
 
-    for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
-      const phase = phases[phaseIndex];
+    for (const phase of phases) {
 
       // Determine needs based on previous phase
       let needs: string[] | undefined = previousJobIds;

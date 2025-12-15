@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import jestPlugin from './index.js';
 
 const { extract, detect } = jestPlugin;

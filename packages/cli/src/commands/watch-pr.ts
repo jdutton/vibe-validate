@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
+
 import { CIProviderRegistry } from '../services/ci-provider-registry.js';
 import type {
   CIProvider,

@@ -1,6 +1,7 @@
-import { parse as parseYaml } from 'yaml';
 import { executeGitCommand } from '@vibe-validate/git';
 import { isToolAvailable, safeExecSync } from '@vibe-validate/utils';
+import { parse as parseYaml } from 'yaml';
+
 import type {
   CIProvider,
   PullRequest,
@@ -159,12 +160,10 @@ export class GitHubActionsProvider implements CIProvider {
     let startIdx = -1;
     for (let i = 0; i < lines.length; i++) {
       const content = extractContent(lines[i]).trim();
-      if (content === '---') {
-        // Check if next few lines look like validation result YAML
-        if (this.looksLikeValidationResult(lines, i + 1, extractContent)) {
-          startIdx = i;
-          break;
-        }
+      // Check if this is YAML separator followed by validation result
+      if (content === '---' && this.looksLikeValidationResult(lines, i + 1, extractContent)) {
+        startIdx = i;
+        break;
       }
     }
 
@@ -264,8 +263,7 @@ export class GitHubActionsProvider implements CIProvider {
    */
   private parseAndEnrichValidationResult(yamlContent: string): ValidationResultContents | null {
     try {
-      const result = parseYaml(yamlContent) as ValidationResultContents;
-      return result;
+      return parseYaml(yamlContent) as ValidationResultContents;
     } catch {
       // Failed to parse validation YAML - return null
       return null;
@@ -430,17 +428,15 @@ export class GitHubActionsProvider implements CIProvider {
     // Use the validation result which already has parsed failures
     const validationResult = this.extractValidationResult(logs);
 
-    if (validationResult && !validationResult.passed) {
+    if (validationResult && !validationResult.passed && validationResult.failedStep) {
       // Show concise summary: just the failed step and how to rerun
-      if (validationResult.failedStep) {
-        // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
-        const failedStep = validationResult.phases
-          ?.flatMap(phase => phase.steps ?? [])
-          .find(step => step && step.name === validationResult.failedStep);
+      // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
+      const failedStep = validationResult.phases
+        ?.flatMap(phase => phase.steps ?? [])
+        .find(step => step && step.name === validationResult.failedStep);
 
-        const rerunCommand = failedStep?.command ?? 'see full logs';
-        return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
-      }
+      const rerunCommand = failedStep?.command ?? 'see full logs';
+      return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
     }
 
     // Fallback: Look for ##[error] lines (for non-validation failures)
@@ -448,7 +444,7 @@ export class GitHubActionsProvider implements CIProvider {
       .split('\n')
       .filter((line) => line.includes('##[error]'))
       .slice(0, 5) // First 5 error lines
-      .map((line) => line.replace(/##\[error\]/g, '').trim())
+      .map((line) => line.replaceAll('##[error]', '').trim())
       .join('\n');
 
     return errorLines || undefined;

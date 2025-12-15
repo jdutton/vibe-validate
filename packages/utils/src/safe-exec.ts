@@ -1,4 +1,5 @@
 import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
+
 import which from 'which';
 
 /**

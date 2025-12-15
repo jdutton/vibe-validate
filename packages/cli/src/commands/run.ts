@@ -5,19 +5,21 @@
  * Provides concise, structured error information to save AI agent context windows.
  */
 
-import type { Command } from 'commander';
 import { writeFile, readFile } from 'node:fs/promises';
 import { join, resolve, relative } from 'node:path';
-import { autoDetectAndExtract } from '@vibe-validate/extractors';
-import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
+
 import type { OutputLine } from '@vibe-validate/core';
+import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
+import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
-import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
-import { type RunResult } from '../schemas/run-result-schema.js';
-import yaml from 'yaml';
 import chalk from 'chalk';
+import type { Command } from 'commander';
+import yaml from 'yaml';
+
+import { type RunResult } from '../schemas/run-result-schema.js';
 import { logDebug, logWarning } from '../utils/logger.js';
+import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 
 export function runCommand(program: Command): void {
   program
@@ -419,7 +421,7 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
 function stripAnsiCodes(text: string): string {
   // Control character \x1b is intentionally used to match ANSI escape codes
   // eslint-disable-next-line no-control-regex, sonarjs/no-control-regex
-  return text.replace(/\x1b\[[0-9;]*m/g, '');
+  return text.replaceAll(/\x1b\[[0-9;]*m/g, '');
 }
 
 /**

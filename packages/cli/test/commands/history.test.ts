@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { historyCommand } from '../../src/commands/history.js';
-import * as history from '@vibe-validate/history';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
-import * as configLoader from '../../src/utils/config-loader.js';
 import * as git from '@vibe-validate/git';
+import * as history from '@vibe-validate/history';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { historyCommand } from '../../src/commands/history.js';
+import * as configLoader from '../../src/utils/config-loader.js';
+import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
 
 // Mock the history module
 vi.mock('@vibe-validate/history', async () => {

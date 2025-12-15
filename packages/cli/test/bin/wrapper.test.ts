@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { describe, it, expect } from 'vitest';
 
 /**
  * Unit tests for the smart vibe-validate wrapper

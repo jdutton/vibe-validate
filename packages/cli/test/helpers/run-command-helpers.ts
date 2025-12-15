@@ -5,8 +5,8 @@
  * run results in tests.
  */
 
-import yaml from 'yaml';
 import type { RunResult } from '@vibe-validate/core';
+import yaml from 'yaml';
 
 /**
  * Parses YAML output from vibe-validate run command

@@ -5,11 +5,12 @@
  * template location changes.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 /**
  * Execute CLI command and return combined output

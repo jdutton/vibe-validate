@@ -6,8 +6,8 @@
  * @package @vibe-validate/cli
  */
 
-import type { ValidationRun } from '@vibe-validate/history';
 import type { PhaseResult } from '@vibe-validate/core';
+import type { ValidationRun } from '@vibe-validate/history';
 import chalk from 'chalk';
 
 /**

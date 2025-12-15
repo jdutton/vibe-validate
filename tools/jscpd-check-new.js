@@ -30,7 +30,8 @@ function runJscpd() {
   try {
     safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
   } catch (_error) {
-    // jscpd exits with error if duplications found, but we still get JSON report
+    // Intentionally ignoring error: jscpd exits with non-zero when duplications found,
+    // but still generates JSON report which we process below
   }
 
   const reportPath = join(JSCPD_OUTPUT_DIR, 'jscpd-report.json');

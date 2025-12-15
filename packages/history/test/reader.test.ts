@@ -2,14 +2,15 @@
  * Tests for git notes reader
  */
 
+import { readNote, listNotes } from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import {
   readHistoryNote,
   listHistoryTreeHashes,
   getAllHistoryNotes,
   hasHistoryForTree,
 } from '../src/reader.js';
-import { readNote, listNotes } from '@vibe-validate/git';
 
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', () => ({

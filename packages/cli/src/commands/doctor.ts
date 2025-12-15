@@ -11,25 +11,32 @@
  * @packageDocumentation
  */
 
-import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { Command } from 'commander';
-import * as semver from 'semver';
-import { stringify as stringifyYaml } from 'yaml';
-import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
+import { join } from 'node:path';
+
+import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 import {
   executeGitCommand,
   isGitRepository,
   verifyRef
 } from '@vibe-validate/git';
-import { getToolVersion, safeExecSync } from '@vibe-validate/utils';
-import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
-import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
-import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
-import { formatTemplateList } from '../utils/template-discovery.js';
 import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
-import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
+import { getToolVersion, safeExecSync } from '@vibe-validate/utils';
+import { type Command } from 'commander';
+import * as semver from 'semver';
+import { stringify as stringifyYaml } from 'yaml';
+
+import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
+import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import { findGitRoot } from '../utils/git-detection.js';
+import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
+import { formatTemplateList } from '../utils/template-discovery.js';
+
+import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
+
+
+
+
 
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';

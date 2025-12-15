@@ -7,9 +7,10 @@
  * @packageDocumentation
  */
 
+import { parse as parseYaml } from 'yaml';
+
 import { validateResult } from '../../src/result-schema.js';
 import type { ValidationResult } from '../../src/result-schema.js';
-import { parse as parseYaml } from 'yaml';
 
 /**
  * Validate a ValidationResult in tests (strict - throws on invalid data)

@@ -7,9 +7,9 @@
  * @package @vibe-validate/extractors
  */
 
+import type { ExtractorTrustLevel } from './extractor-registry.js';
 import { runInSandbox } from './sandbox.js';
 import type { ExtractorPlugin, ErrorExtractorResult } from './types.js';
-import type { ExtractorTrustLevel } from './extractor-registry.js';
 
 /**
  * Options for sandboxed extractor creation

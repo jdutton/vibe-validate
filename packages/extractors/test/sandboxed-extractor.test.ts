@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { createSandboxedExtractor } from '../src/sandboxed-extractor.js';
 import type { ExtractorPlugin } from '../src/types.js';
 

@@ -3,10 +3,11 @@
  */
 
 import { removeNote, removeNotesRefs, type TreeHash, type NotesRef } from '@vibe-validate/git';
-import type { PruneResult, HistoryConfig } from './types.js';
-import { DEFAULT_HISTORY_CONFIG } from './types.js';
+
 import { getAllHistoryNotes } from './reader.js';
 import { listRunCacheTreeHashes, getAllRunCacheForTree } from './run-cache-reader.js';
+import type { PruneResult, HistoryConfig } from './types.js';
+import { DEFAULT_HISTORY_CONFIG } from './types.js';
 
 // Removed: Git operations now use secure @vibe-validate/git functions
 

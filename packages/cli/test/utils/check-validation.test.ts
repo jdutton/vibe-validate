@@ -4,12 +4,13 @@
  * This module uses git notes instead of state files.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { checkValidationStatus } from '../../src/utils/check-validation.js';
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
-import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { HistoryNote } from '@vibe-validate/history';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import { checkValidationStatus } from '../../src/utils/check-validation.js';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git');

@@ -2,11 +2,14 @@
  * Tests for generate-workflow command
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateWorkflow, checkSync, toJobId, getAllJobIds, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
-import type { VibeValidateConfig } from '@vibe-validate/config';
 import { readFileSync, existsSync } from 'node:fs';
+
+import type { VibeValidateConfig } from '@vibe-validate/config';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parse as parseYaml } from 'yaml';
+
+import { generateWorkflow, checkSync, toJobId, getAllJobIds, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
+
 
 // Mock fs module
 vi.mock('fs', () => ({

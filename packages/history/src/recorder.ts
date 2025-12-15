@@ -2,7 +2,7 @@
  * Git notes recorder
  */
 
-import { stringify as stringifyYaml } from 'yaml';
+import type { ValidationResult } from '@vibe-validate/core';
 import {
   getGitTreeHash,
   hasWorkingTreeChanges,
@@ -12,7 +12,10 @@ import {
   type NotesRef,
   type TreeHash,
 } from '@vibe-validate/git';
-import type { ValidationResult } from '@vibe-validate/core';
+import { stringify as stringifyYaml } from 'yaml';
+
+import { readHistoryNote } from './reader.js';
+import { truncateValidationOutput } from './truncate.js';
 import type {
   ValidationRun,
   HistoryNote,
@@ -21,8 +24,6 @@ import type {
   HistoryConfig,
 } from './types.js';
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
-import { truncateValidationOutput } from './truncate.js';
-import { readHistoryNote } from './reader.js';
 
 /**
  * Get current branch name

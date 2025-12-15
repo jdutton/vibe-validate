@@ -6,8 +6,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isCurrentBranchBehindTracking } from '../src/tracking-branch.js';
+
 import * as gitExecutor from '../src/git-executor.js';
+import { isCurrentBranchBehindTracking } from '../src/tracking-branch.js';
 
 // Mock git-executor
 vi.mock('../src/git-executor.js', () => ({

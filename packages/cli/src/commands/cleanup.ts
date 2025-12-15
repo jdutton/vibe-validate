@@ -4,11 +4,13 @@
  * Post-merge branch cleanup and temp file management.
  */
 
-import type { Command } from 'commander';
 import { cleanupMergedBranches } from '@vibe-validate/git';
+import chalk from 'chalk';
+import type { Command } from 'commander';
+
 import { cleanupOldTempFiles, getTempStorageInfo, formatBytes } from '../utils/temp-files.js';
 import { outputYamlResult } from '../utils/yaml-output.js';
-import chalk from 'chalk';
+
 
 export function cleanupCommand(program: Command): void {
   const cleanup = program

@@ -105,7 +105,7 @@ export interface FailureWithMessage {
  * const guidance = generateGuidanceFromPatterns(failures, customPatterns);
  * ```
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 17 acceptable for guidance generation (categorizes multiple error types across different test frameworks and generates actionable suggestions)
+ 
 export function generateGuidanceFromPatterns(
   failures: FailureWithMessage[],
   patterns: GuidancePattern[] = COMMON_GUIDANCE_PATTERNS
@@ -124,12 +124,10 @@ export function generateGuidanceFromPatterns(
       }
 
       // Check error type matches (if pattern specifies error types)
-      if (pattern.errorTypeMatchers && errorType) {
-        if (pattern.errorTypeMatchers.includes(errorType)) {
-          guidances.push(pattern.guidance);
-          seen.add(pattern.key);
-          continue;
-        }
+      if (pattern.errorTypeMatchers && errorType && pattern.errorTypeMatchers.includes(errorType)) {
+        guidances.push(pattern.guidance);
+        seen.add(pattern.key);
+        continue;
       }
 
       // Check message matches

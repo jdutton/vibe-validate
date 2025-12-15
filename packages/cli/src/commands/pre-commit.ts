@@ -5,7 +5,7 @@
  * This is the recommended workflow before committing code.
  */
 
-import type { Command } from 'commander';
+import { getRemoteBranch } from '@vibe-validate/config';
 import {
   checkBranchSync,
   getPartiallyStagedFiles,
@@ -14,10 +14,11 @@ import {
   isMergeInProgress
 } from '@vibe-validate/git';
 import { isToolAvailable } from '@vibe-validate/utils';
-import { getRemoteBranch } from '@vibe-validate/config';
+import chalk from 'chalk';
+import type { Command } from 'commander';
+
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
-import { runValidateWorkflow } from '../utils/validate-workflow.js';
 import {
   selectToolsToRun,
   runSecretScan,
@@ -26,7 +27,8 @@ import {
   formatToolName,
   hasGitleaksConfig,
 } from '../utils/secret-scanning.js';
-import chalk from 'chalk';
+import { runValidateWorkflow } from '../utils/validate-workflow.js';
+
 
 /**
  * Show work protection recovery instructions with snapshot hash

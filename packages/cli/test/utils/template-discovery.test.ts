@@ -7,9 +7,11 @@
  * 3. Doctor command lists match actual templates
  */
 
-import { describe, it, expect } from 'vitest';
 import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { describe, it, expect } from 'vitest';
+
 import { discoverTemplates, formatTemplateList } from '../../src/utils/template-discovery.js';
 
 describe('template-discovery', () => {
@@ -150,12 +152,12 @@ describe('template-discovery', () => {
         })
         .filter((name): name is string => name !== null);
 
-      const discoveredFilenames = templates.map(t => t.filename);
+      const discoveredFilenames = new Set(templates.map(t => t.filename));
 
       // Every formatted filename should exist in discovered templates
       for (const filename of formattedFilenames) {
         expect(
-          discoveredFilenames.includes(filename),
+          discoveredFilenames.has(filename),
           `Formatted list includes ${filename} but it was not discovered`
         ).toBe(true);
       }

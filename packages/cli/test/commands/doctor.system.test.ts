@@ -10,9 +10,10 @@
  * 3. All checks pass (this project should be fully healthy)
  */
 
-import { describe, it, expect } from 'vitest';
-import { safeExecFromString } from '@vibe-validate/utils';
 import { join } from 'node:path';
+
+import { safeExecFromString } from '@vibe-validate/utils';
+import { describe, it, expect } from 'vitest';
 
 // Get the project root (vibe-validate repo root)
 const PROJECT_ROOT = join(__dirname, '../../../..');
