@@ -292,7 +292,7 @@ describe('run command integration', () => {
       expect(subdirParsed.outputFiles).toBeDefined();
     });
 
-    it('should disable caching in non-git repositories with inline YAML comment', () => {
+    it.skipIf(process.platform === 'win32')('should disable caching in non-git repositories with inline YAML comment', () => {
       // Test in /tmp which is guaranteed to not be a git repository
       const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
 
