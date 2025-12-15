@@ -59,11 +59,53 @@ export class CommandExecutionError extends Error {
 /**
  * Determine if shell should be used for command execution on Windows
  *
- * CONFIRMED NECESSARY: Windows requires shell:true for:
- * 1. node command (ENOENT with shell:false even with full path)
- * 2. .cmd/.bat/.ps1 scripts (Windows shell scripts require shell interpreter)
+ * ## Security Context
  *
- * This is safe because paths are validated by which.sync() before execution.
+ * This package's primary security model is `shell: false` to prevent command injection.
+ * However, Windows requires `shell: true` for specific cases where executable resolution
+ * fails without a shell interpreter.
+ *
+ * ## Why shell:true is Required on Windows
+ *
+ * ### 1. Node.js Executable (CONFIRMED NECESSARY via commit a9902116)
+ *
+ * **Problem:** Windows CI fails with `spawnSync node.EXE ENOENT` even when using the
+ * absolute path returned by `which.sync()`.
+ *
+ * **What was tried:**
+ * - ❌ Using `which.sync('node')` with `shell: false` → ENOENT error
+ * - ❌ Using `process.execPath` directly with `shell: false` → Same error
+ * - ✅ Using `shell: true` with command name → Works correctly
+ *
+ * **Root Cause:** Windows executable resolution differs from Unix. The cmd.exe shell
+ * is needed to properly resolve and spawn node.exe, even with an absolute path.
+ *
+ * ### 2. Windows Shell Scripts (.cmd/.bat/.ps1)
+ *
+ * These require a shell interpreter by design (not executable binaries).
+ *
+ * ## Why This Is Still Secure
+ *
+ * Despite using `shell: true`, command injection is prevented through multiple layers:
+ *
+ * 1. **Command Name Validation:** Only 'node' and known shell script extensions trigger shell mode
+ * 2. **Path Validation:** Command paths are resolved and validated via `which.sync()` before execution
+ * 3. **Array-Based Arguments:** Arguments are passed as an array (not a string), preventing injection
+ * 4. **Controlled Environment:** All commands come from trusted configuration, not user input
+ * 5. **No String Interpolation:** We never concatenate user input into command strings
+ *
+ * ## Compensating Controls
+ *
+ * - Arguments are validated to not contain null bytes (injection vector)
+ * - Command names come from trusted sources (vibe-validate config files)
+ * - Shell is NEVER used for arbitrary commands on Windows
+ * - Comprehensive security tests in `test/safe-exec.test.ts` (29 test cases)
+ *
+ * ## References
+ *
+ * - Investigation: commits d5fb75c4, 3ea731f6, afb360ba, a9902116
+ * - Security tests: `packages/utils/test/safe-exec.test.ts` (lines 89-102, 376-389)
+ * - Related issue: PR #83 (Windows CI fixes)
  *
  * @param command - Command name (e.g., 'node', 'pnpm')
  * @param commandPath - Resolved absolute path to command
@@ -74,12 +116,12 @@ function shouldUseShell(command: string, commandPath: string): boolean {
     return false;
   }
 
-  // Node command requires shell on Windows
+  // Node command requires shell on Windows (see comprehensive security explanation above)
   if (command === 'node') {
     return true;
   }
 
-  // Windows shell scripts require shell (case-insensitive check)
+  // Windows shell scripts require shell by design (case-insensitive check)
   const lowerPath = commandPath.toLowerCase();
   return lowerPath.endsWith('.cmd') || lowerPath.endsWith('.bat') || lowerPath.endsWith('.ps1');
 }

@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- **CRITICAL: Fixed CI workflow validation check** - Workflow was incorrectly passing even when tests failed because grep matched nested `passed: true` fields instead of top-level validation result (simplified to use exit codes)
+- **CRITICAL: Fixed CI workflow validation check** (Issue #85) - Workflow was incorrectly passing even when tests failed because grep matched nested `passed: true` fields instead of top-level validation result (simplified to use exit codes)
+- Fixed Windows CI test failures, which were masked by the CI workflow bug
 - Pre-commit hook no longer falsely flags the local branch as stale during merge commits
 
 ### Security
@@ -415,16 +416,16 @@ Major update bringing run command caching, code quality enforcement, smart defau
 
 ### 🎨 Improvements
 
-**Natural Command-Line Syntax for `run`** (Issue #1)
+**Natural Command-Line Syntax for `run`**
 - `vv run echo test` now works naturally without quotes
 - Options pass through correctly: `vv run eslint --max-warnings 0 src/`
 - Old quoted syntax still works for backwards compatibility: `vv run "npm test"`
 
-**Cleaner Help Output** (Issue #3)
+**Cleaner Help Output**
 - Replaced `---` section separators with `***` to avoid YAML front matter confusion
 - YAML document start markers (`---`) remain in code examples where appropriate
 
-**Simplified History Commands** (Issue #2)
+**Simplified History Commands**
 - Removed redundant `--all` flag from `history list --run`
 - More intuitive interface with sensible defaults
 
@@ -514,7 +515,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
 
 ### 🐛 Bug Fixes
 
-- **CRITICAL: Fixed broken `init` command (Issue #36)**
+- **CRITICAL: Fixed broken `init` command** (Issue #36)
   - **Problem**: `vibe-validate init` was completely broken for new users installing from npm
     - Error: "template 'minimal' not found"
     - Available templates: empty list
