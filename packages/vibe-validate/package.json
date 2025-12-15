@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.17.4",
+  "version": "0.17.5-rc.1",
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development) - umbrella package",
   "type": "module",
   "bin": {
