@@ -232,13 +232,13 @@ for (const testFile of testFilesWithVersions) {
       `$1${newVersion}$1); // BUMP_VERSION_UPDATE`
     );
 
-    if (updatedContent !== content) {
+    if (updatedContent === content) {
+      log(`  - ${testFile.split('/').pop()}: already at ${newVersion}`, 'yellow');
+      testSkippedCount++;
+    } else {
       writeFileSync(testFile, updatedContent, 'utf8');
       log(`  ✓ ${testFile.split('/').pop()}: updated ${matches.length} version expectation(s)`, 'green');
       testUpdatedCount++;
-    } else {
-      log(`  - ${testFile.split('/').pop()}: already at ${newVersion}`, 'yellow');
-      testSkippedCount++;
     }
   } catch (error) {
     log(`  - ${testFile.split('/').pop()}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
@@ -264,7 +264,10 @@ try {
 
   if (match) {
     const oldVersion = match[1];
-    if (oldVersion !== newVersion) {
+    if (oldVersion === newVersion) {
+      log(`  - ${skillFile.name}: already at ${newVersion}`, 'yellow');
+      skillSkippedCount++;
+    } else {
       const updatedContent = content.replace(
         versionPattern,
         `version: ${newVersion} # Tracks vibe-validate package version`
@@ -272,9 +275,6 @@ try {
       writeFileSync(skillFile.path, updatedContent, 'utf8');
       log(`  ✓ ${skillFile.name}: ${oldVersion} → ${newVersion}`, 'green');
       skillUpdatedCount++;
-    } else {
-      log(`  - ${skillFile.name}: already at ${newVersion}`, 'yellow');
-      skillSkippedCount++;
     }
   } else {
     log(`  - ${skillFile.name}: skipped (version tracking comment not found)`, 'yellow');

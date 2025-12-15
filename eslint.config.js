@@ -230,6 +230,9 @@ export default [
       'sonarjs/no-collapsible-if': 'error', // Merge nested if statements
       'sonarjs/no-collection-size-mischeck': 'error', // Catch .length > 0 vs .length >= 1 bugs
 
+      // ESLint core rules - code quality
+      'no-negated-condition': 'error', // Avoid negated conditions with else clauses
+
       // Import rules - organization and quality
       ...importRules,
 
@@ -326,6 +329,9 @@ export default [
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-os-command-from-path': 'off', // Tools spawn processes
       'sonarjs/os-command': 'off', // Tools execute system commands
+
+      // ESLint core rules - code quality
+      'no-negated-condition': 'error', // Avoid negated conditions with else clauses
 
       // Import rules - organization and quality
       ...importRules,

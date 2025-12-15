@@ -834,12 +834,12 @@ try {
       info('Paths are identical?', tempPath === realTemp);
       info('Paths differ?', tempPath !== realTemp);
 
-      if (tempPath !== realTemp) {
+      if (tempPath === realTemp) {
+        success('tmpdir() already returns normalized path');
+      } else {
         warn('tmpdir() returns SHORT path, realpathSync() returns LONG path');
         info('  This is the root cause of test failures on Windows!');
         info('  Length diff', `short: ${tempPath.length}, long: ${realTemp.length}`);
-      } else {
-        success('tmpdir() already returns normalized path');
       }
     } catch (err) {
       error(`realpathSync failed: ${err}`);
@@ -868,7 +868,9 @@ try {
     info('existsSync(LONG path)?', existsSync(testDirLong));
 
     // Check if they're different
-    if (testDirShort !== testDirLong) {
+    if (testDirShort === testDirLong) {
+      success('Paths are already normalized (no short names)');
+    } else {
       warn('Created directory has DIFFERENT short vs long paths!');
       info('  SHORT', testDirShort);
       info('  LONG ', testDirLong);
@@ -884,14 +886,12 @@ try {
       info('File exists via SHORT path?', existsSync(join(testDirShort, testFile)));
       info('File exists via LONG path?', existsSync(join(testDirLong, testFile)));
 
-      if (!existsSync(join(testDirLong, testFile))) {
+      if (existsSync(join(testDirLong, testFile))) {
+        success('✅ File accessible via both SHORT and LONG paths');
+      } else {
         error('❌ File NOT accessible via LONG path!');
         error('   This is the bug! Tests use SHORT path, command creates LONG path');
-      } else {
-        success('✅ File accessible via both SHORT and LONG paths');
       }
-    } else {
-      success('Paths are already normalized (no short names)');
     }
 
     // Clean up

@@ -134,11 +134,11 @@ export function executeGitCommand(
   };
 
   // Configure stdio
-  if (stdin !== undefined) {
+  if (stdin === undefined) {
+    spawnOptions.stdio = ['ignore', 'pipe', suppressStderr ? 'ignore' : 'pipe'];
+  } else {
     spawnOptions.input = stdin;
     spawnOptions.stdio = ['pipe', 'pipe', suppressStderr ? 'ignore' : 'pipe'];
-  } else {
-    spawnOptions.stdio = ['ignore', 'pipe', suppressStderr ? 'ignore' : 'pipe'];
   }
 
   // Execute command

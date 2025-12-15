@@ -95,7 +95,9 @@ try {
 }
 
 // Check 2: Current branch (skip in CI - uses detached HEAD on tag checkout)
-if (!IS_CI) {
+if (IS_CI) {
+  log('⊘ Branch check skipped (CI mode)', 'yellow');
+} else {
   let currentBranch;
   try {
     currentBranch = safeExecSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
@@ -123,12 +125,12 @@ if (!IS_CI) {
   } else {
     log('✓ On main branch', 'green');
   }
-} else {
-  log('⊘ Branch check skipped (CI mode)', 'yellow');
 }
 
 // Check 3: Working tree is clean (skip in CI - always starts with clean checkout)
-if (!IS_CI) {
+if (IS_CI) {
+  log('⊘ Uncommitted changes check skipped (CI mode)', 'yellow');
+} else {
   let hasUncommittedChanges = false;
   try {
     safeExecSync('git', ['diff-index', '--quiet', 'HEAD', '--'], { stdio: 'pipe', cwd: PROJECT_ROOT });
@@ -164,12 +166,12 @@ if (!IS_CI) {
     process.exit(1);
   }
   log('✓ No uncommitted changes', 'green');
-} else {
-  log('⊘ Uncommitted changes check skipped (CI mode)', 'yellow');
 }
 
 // Check 4: No untracked files (skip in CI - not applicable)
-if (!IS_CI) {
+if (IS_CI) {
+  log('⊘ Untracked files check skipped (CI mode)', 'yellow');
+} else {
   let untracked = '';
   try {
     untracked = safeExecSync('git', ['ls-files', '--others', '--exclude-standard'], {
@@ -210,8 +212,6 @@ if (!IS_CI) {
     }
   }
   log('✓ No untracked files', 'green');
-} else {
-  log('⊘ Untracked files check skipped (CI mode)', 'yellow');
 }
 
 // Check 5: Run validation

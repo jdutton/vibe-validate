@@ -687,7 +687,7 @@ function mergeNestedYaml(
         timestamp: parsed.timestamp ?? innerResult.timestamp ?? new Date().toISOString(),
         treeHash: parsed.treeHash ?? innerResult.treeHash ?? 'unknown',
         extraction: parsed.extraction, // Use parsed extraction
-        ...(parsed.isCachedResult !== undefined ? { isCachedResult: parsed.isCachedResult } : {}),
+        ...(parsed.isCachedResult === undefined ? {} : { isCachedResult: parsed.isCachedResult }),
         ...(parsed.fullOutputFile ? { fullOutputFile: parsed.fullOutputFile } : {}),
       };
     }

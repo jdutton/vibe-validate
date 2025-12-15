@@ -79,16 +79,16 @@ function displayHumanSyncCheck(
     console.log(chalk.gray('ℹ️  No remote tracking branch'));
     console.log(chalk.gray('   (New branch or no remote configured)'));
     console.log(chalk.green('\n✅ Safe to proceed'));
-  } else if (!result.isUpToDate) {
+  } else if (result.isUpToDate) {
+    console.log(chalk.green(`✅ Up to date with origin/${mainBranch}`));
+    console.log(chalk.green('\n✅ Safe to proceed'));
+  } else {
     console.log(chalk.red(`❌ Branch is behind origin/${mainBranch}`));
     if (result.behindBy !== undefined) {
       console.log(chalk.yellow(`   Behind by ${result.behindBy} commit(s)`));
     }
     console.log(chalk.yellow('\n⚠️  Please merge before committing:'));
     console.log(chalk.gray(`   git merge origin/${mainBranch}`));
-  } else {
-    console.log(chalk.green(`✅ Up to date with origin/${mainBranch}`));
-    console.log(chalk.green('\n✅ Safe to proceed'));
   }
 
   console.log(chalk.gray('─'.repeat(50)));

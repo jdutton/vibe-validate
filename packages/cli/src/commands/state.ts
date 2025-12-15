@@ -206,7 +206,9 @@ function displayVerboseSummary(state: ValidationResult): void {
   console.log(chalk.gray('─'.repeat(50)));
 
   // Next steps
-  if (!state.passed) {
+  if (state.passed) {
+    console.log(chalk.green('\n✅ Validation passed! Safe to commit.'));
+  } else {
     console.log(chalk.yellow('\nNext Steps:'));
     console.log(chalk.gray('  1. Fix the failed step'));
     console.log(chalk.gray('  2. Re-run: vibe-validate validate'));
@@ -219,8 +221,6 @@ function displayVerboseSummary(state: ValidationResult): void {
         '   Help improve extraction: https://github.com/jdutton/vibe-validate/issues/new?template=extractor-improvement.yml',
       ),
     );
-  } else {
-    console.log(chalk.green('\n✅ Validation passed! Safe to commit.'));
   }
 
   console.log(chalk.gray('\n💡 Tip: View full history with: vibe-validate history list'));

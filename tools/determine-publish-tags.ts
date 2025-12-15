@@ -114,11 +114,7 @@ if (isStable) {
   try {
     const currentNextVersion = getNpmTagVersion('vibe-validate', 'next');
 
-    if (!currentNextVersion) {
-      log('  ⚠ No current @next version found on npm', 'yellow');
-      log('  → Will update @next to this stable version', 'green');
-      updateNext = true;
-    } else {
+    if (currentNextVersion) {
       log(`  Current @next version: ${currentNextVersion}`, 'blue');
 
       // Compare versions using semver
@@ -131,6 +127,10 @@ if (isStable) {
         log('  → Will NOT update @next (already newer or equal)', 'yellow');
         // updateNext remains false (no assignment needed)
       }
+    } else {
+      log('  ⚠ No current @next version found on npm', 'yellow');
+      log('  → Will update @next to this stable version', 'green');
+      updateNext = true;
     }
   } catch (error) {
     log(`  ✗ Failed to query npm registry: ${error.message}`, 'red');
