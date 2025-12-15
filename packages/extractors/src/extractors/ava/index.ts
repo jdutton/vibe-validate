@@ -232,6 +232,18 @@ export function extractAva(output: string, _command?: string): ErrorExtractorRes
  * Extract all failures from Ava output
  * Strategy: Find detailed headers (test names with ›), then parse each block
  */
+/**
+ * Enrich failure with error type detection and guidance
+ */
+function enrichFailureWithErrorType(failure: FailureInfo): void {
+  if (!failure.errorType && failure.message) {
+    failure.errorType = detectErrorType(failure.message);
+  }
+  if (failure.errorType) {
+    failure.guidance = getErrorGuidance(failure.errorType);
+  }
+}
+
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 23 acceptable for Ava output parsing (handles multiple output formats with fallback detection)
 function extractFailures(output: string): FailureInfo[] {
   const lines = output.split('\n');
@@ -271,12 +283,7 @@ function extractFailures(output: string): FailureInfo[] {
       parseDetailedBlock(lines, header.index + 1, failure);
 
       // Add error type detection and guidance
-      if (!failure.errorType && failure.message) {
-        failure.errorType = detectErrorType(failure.message);
-      }
-      if (failure.errorType) {
-        failure.guidance = getErrorGuidance(failure.errorType);
-      }
+      enrichFailureWithErrorType(failure);
 
       failures.push(failure);
     }
@@ -296,12 +303,7 @@ function extractFailures(output: string): FailureInfo[] {
         parseDetailedBlock(lines, i + 1, failure);
 
         // Add error type detection and guidance
-        if (!failure.errorType && failure.message) {
-          failure.errorType = detectErrorType(failure.message);
-        }
-        if (failure.errorType) {
-          failure.guidance = getErrorGuidance(failure.errorType);
-        }
+        enrichFailureWithErrorType(failure);
 
         failures.push(failure);
       }
