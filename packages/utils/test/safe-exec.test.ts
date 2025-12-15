@@ -569,13 +569,17 @@ describe('safeExecFromString', () => {
     });
 
     describe('safeExecFromString rejection', () => {
+      // Helper to reduce nesting depth
+      const expectToThrowPattern = (command: string, expectedPattern: string) => {
+        // eslint-disable-next-line security/detect-non-literal-regexp -- Test data is safe, from controlled test cases
+        const pattern = new RegExp(expectedPattern.replaceAll('/', String.raw`\/`));
+        expect(() => safeExecFromString(command)).toThrow(pattern);
+      };
+
       it.each(shellSyntaxCases)(
         'should reject %s (%s)',
         (command, expectedPattern) => {
-          expect(() => safeExecFromString(command)).toThrow(
-            // eslint-disable-next-line security/detect-non-literal-regexp -- Test data is safe, from controlled test cases
-            new RegExp(expectedPattern.replaceAll('/', String.raw`\/`)),
-          );
+          expectToThrowPattern(command, expectedPattern);
         },
       );
 
