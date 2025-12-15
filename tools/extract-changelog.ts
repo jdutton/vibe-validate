@@ -21,27 +21,12 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, '..');
+import { PROJECT_ROOT, log } from './common.js';
+
 const CHANGELOG_PATH = join(PROJECT_ROOT, 'CHANGELOG.md');
 const OUTPUT_PATH = join(PROJECT_ROOT, '.changelog-release.md');
-
-// Colors for output
-const colors = {
-  red: '\x1b[0;31m',
-  green: '\x1b[0;32m',
-  yellow: '\x1b[1;33m',
-  blue: '\x1b[0;34m',
-  reset: '\x1b[0m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
-}
 
 /**
  * Extract version section from CHANGELOG
@@ -51,11 +36,11 @@ function log(message, color = 'reset') {
  */
 function extractVersionSection(changelogContent, version) {
   // Escape version for regex (handles dots and dashes)
-  const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedVersion = version.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
   // Match: ## [VERSION] - YYYY-MM-DD
   // eslint-disable-next-line security/detect-non-literal-regexp -- escapedVersion is sanitized above
-  const versionHeaderPattern = new RegExp(`^## \\[${escapedVersion}\\] - \\d{4}-\\d{2}-\\d{2}$`, 'm');
+  const versionHeaderPattern = new RegExp(String.raw`^## \[${escapedVersion}\] - \d{4}-\d{2}-\d{2}$`, 'm');
   const versionHeaderMatch = changelogContent.match(versionHeaderPattern);
 
   if (!versionHeaderMatch) {
@@ -92,9 +77,7 @@ function extractVersionSection(changelogContent, version) {
   }
 
   // Extract content
-  const content = changelogContent.slice(contentStart, contentEnd).trim();
-
-  return content;
+  return changelogContent.slice(contentStart, contentEnd).trim();
 }
 
 // Parse command-line arguments

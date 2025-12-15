@@ -6,9 +6,10 @@
  * Compares current scan to baseline, ignoring existing technical debt.
  */
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 
 const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
 const JSCPD_OUTPUT_DIR = './jscpd-report';
@@ -29,9 +30,14 @@ const JSCPD_ARGS = [
 function runJscpd() {
   try {
     safeExecSync('npx', ['jscpd', ...JSCPD_ARGS], { encoding: 'utf-8', stdio: 'pipe' });
-  } catch (_error) {
-    // Intentionally ignoring error: jscpd exits with non-zero when duplications found,
+  } catch (error) {
+    // Expected behavior: jscpd exits with non-zero when duplications found,
     // but still generates JSON report which we process below
+    // Verify it's the expected failure (not a critical error like ENOENT)
+    if (error instanceof Error && error.message.includes('ENOENT')) {
+      throw new Error('jscpd executable not found. Install with: npm install -g jscpd');
+    }
+    // Otherwise continue - duplications found, but report still generated
   }
 
   const reportPath = join(JSCPD_OUTPUT_DIR, 'jscpd-report.json');

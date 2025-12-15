@@ -52,8 +52,8 @@ jobs:
         id: version_type
         run: pnpm exec tsx tools/determine-publish-tags.ts ${{ steps.version.outputs.version }}
 
-      - name: Run pre-publish checks (CI mode)
-        run: pnpm exec tsx tools/pre-publish-check-ci.ts
+      - name: Run pre-publish checks
+        run: pnpm exec tsx tools/pre-publish-check.ts
 
       - name: Publish packages with rollback safety
         id: publish

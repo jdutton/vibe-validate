@@ -17,26 +17,10 @@
  *   1 - Version mismatch detected or validation error
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, '..');
-
-// Colors for output
-const colors = {
-  red: '\x1b[0;31m',
-  green: '\x1b[0;32m',
-  yellow: '\x1b[1;33m',
-  blue: '\x1b[0;34m',
-  reset: '\x1b[0m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
-}
+import { log, processWorkspacePackages } from './common.js';
 
 // Parse command-line arguments
 const args = process.argv.slice(2);
@@ -119,48 +103,28 @@ function checkPackageVersion(filePath, expectedVersion, skipPrivate = true) {
 }
 
 // Check all workspace packages
-const packagesDir = join(PROJECT_ROOT, 'packages');
-let checkedCount = 0;
-let skippedCount = 0;
-
-try {
-  const packages = readdirSync(packagesDir, { withFileTypes: true })
-    .filter(dirent => dirent.isDirectory())
-    .map(dirent => dirent.name)
-    .sort();
-
-  for (const pkg of packages) {
-    const pkgPath = join(packagesDir, pkg, 'package.json');
-    try {
-      const result = checkPackageVersion(pkgPath, expectedVersion);
-
-      if (result.skipped) {
-        let reasonText;
-        if (result.reason === 'no-version') {
-          reasonText = 'no version field';
-        } else {
-          reasonText = result.version ? `${result.reason}, v${result.version}` : result.reason;
-        }
-        log(`  - ${result.name}: skipped (${reasonText})`, 'yellow');
-        skippedCount++;
-      } else if (result.valid) {
-        log(`  ✓ ${result.name}: ${result.version}`, 'green');
-        checkedCount++;
-      } else {
-        log(`  ✗ ${result.name}: ${result.actualVersion} (expected: ${result.expectedVersion})`, 'red');
-        mismatches.push(result);
-        hasErrors = true;
-        checkedCount++;
-      }
-    } catch (error) {
-      log(`  ✗ ${pkg}: ${error.message}`, 'red');
+const counts = processWorkspacePackages(
+  (pkgPath) => checkPackageVersion(pkgPath, expectedVersion),
+  (result) => {
+    if (result.valid) {
+      log(`  ✓ ${result.name}: ${result.version}`, 'green');
+    } else {
+      log(`  ✗ ${result.name}: ${result.actualVersion} (expected: ${result.expectedVersion})`, 'red');
+      mismatches.push(result);
       hasErrors = true;
     }
+  },
+  () => {
+    // Skip logging handled by processWorkspacePackages
+  },
+  (pkgName, error) => {
+    log(`  ✗ ${pkgName}: ${error.message}`, 'red');
+    hasErrors = true;
   }
-} catch (error) {
-  log(`✗ Failed to read packages directory: ${error.message}`, 'red');
-  process.exit(1);
-}
+);
+
+const checkedCount = counts.processed;
+const skippedCount = counts.skipped;
 
 console.log('');
 

@@ -23,22 +23,11 @@
  *   1 - Error (invalid version, network error, etc.)
  */
 
-import { safeExecResult } from '../packages/utils/dist/safe-exec.js';
 import { appendFileSync } from 'node:fs';
+
 import semver from 'semver';
 
-// Colors for output
-const colors = {
-  red: '\x1b[0;31m',
-  green: '\x1b[0;32m',
-  yellow: '\x1b[1;33m',
-  blue: '\x1b[0;34m',
-  reset: '\x1b[0m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
-}
+import { log, getNpmTagVersion } from './common.js';
 
 /**
  * Output GitHub Actions output variable
@@ -53,25 +42,6 @@ function setGitHubOutput(name, value) {
     // Running locally - output to console for debugging
     console.log(`[OUTPUT] ${name}=${value}`);
   }
-}
-
-/**
- * Query npm registry for current version on a dist-tag
- * @param {string} packageName - npm package name
- * @param {string} tag - dist-tag (e.g., 'next', 'latest')
- * @returns {string|null} - Version string or null if not found
- */
-function getNpmTagVersion(packageName, tag) {
-  const result = safeExecResult('npm', ['view', `${packageName}@${tag}`, 'version'], {
-    encoding: 'utf8',
-    stdio: 'pipe',
-  });
-
-  if (result.status === 0 && result.stdout) {
-    return result.stdout.trim();
-  }
-
-  return null;
 }
 
 // Parse command-line arguments

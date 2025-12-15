@@ -28,42 +28,32 @@
  *   1 - Failure (with rollback attempted)
  */
 
-import { safeExecSync, safeExecResult } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+
 import semver from 'semver';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, '..');
+import { safeExecSync, safeExecResult } from '../packages/utils/dist/safe-exec.js';
+
+import { PROJECT_ROOT, log, getNpmTagVersion } from './common.js';
+
 const MANIFEST_PATH = join(PROJECT_ROOT, '.publish-manifest.json');
 
-// Colors for output
-const colors = {
-  red: '\x1b[0;31m',
-  green: '\x1b[0;32m',
-  yellow: '\x1b[1;33m',
-  blue: '\x1b[0;34m',
-  reset: '\x1b[0m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
-}
+// Constants for duplicate string elimination
+const VIBE_VALIDATE_PKG_NAME = 'vibe-validate';
 
 /**
  * Package publishing order (dependency-order)
  */
 const PACKAGES = [
-  'utils',         // Foundational package (no dependencies)
-  'config',        // No dependencies
-  'extractors',    // Depends on config
-  'git',           // Depends on utils
-  'history',       // Depends on core, git, utils
-  'core',          // Depends on config, git, extractors, utils
-  'cli',           // Depends on ALL
-  'vibe-validate', // Umbrella package (depends on cli)
+  'utils',                    // Foundational package (no dependencies)
+  'config',                   // No dependencies
+  'extractors',               // Depends on config
+  'git',                      // Depends on utils
+  'history',                  // Depends on core, git, utils
+  'core',                     // Depends on config, git, extractors, utils
+  'cli',                      // Depends on ALL
+  VIBE_VALIDATE_PKG_NAME,     // Umbrella package (depends on cli)
 ];
 
 /**
@@ -104,27 +94,11 @@ function cleanupManifest() {
 }
 
 /**
- * Query npm registry for current version on a dist-tag
- */
-function getNpmTagVersion(packageName, tag) {
-  const result = safeExecResult('npm', ['view', `${packageName}@${tag}`, 'version'], {
-    encoding: 'utf8',
-    stdio: 'pipe',
-  });
-
-  if (result.status === 0 && result.stdout) {
-    return result.stdout.trim();
-  }
-
-  return null;
-}
-
-/**
  * Publish a single package
  */
 function publishPackage(packageName, version, tag, dryRun = false) {
   const packagePath = join(PROJECT_ROOT, 'packages', packageName);
-  const fullPackageName = packageName === 'vibe-validate' ? 'vibe-validate' : `@vibe-validate/${packageName}`;
+  const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
 
   log(`\n📦 Publishing ${fullPackageName}@${version} with tag @${tag}...`, 'blue');
 
@@ -162,7 +136,7 @@ function publishPackage(packageName, version, tag, dryRun = false) {
  * Add dist-tag to a package
  */
 function addDistTag(packageName, version, tag, dryRun = false) {
-  const fullPackageName = packageName === 'vibe-validate' ? 'vibe-validate' : `@vibe-validate/${packageName}`;
+  const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
 
   log(`  Adding @${tag} tag to ${fullPackageName}@${version}...`, 'blue');
 
@@ -188,7 +162,7 @@ function addDistTag(packageName, version, tag, dryRun = false) {
  * Attempt to unpublish a package
  */
 function unpublishPackage(packageName, version, dryRun = false) {
-  const fullPackageName = packageName === 'vibe-validate' ? 'vibe-validate' : `@vibe-validate/${packageName}`;
+  const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
 
   log(`  Unpublishing ${fullPackageName}@${version}...`, 'yellow');
 
@@ -214,7 +188,7 @@ function unpublishPackage(packageName, version, dryRun = false) {
  * Deprecate a package (fallback when unpublish fails)
  */
 function deprecatePackage(packageName, version, dryRun = false) {
-  const fullPackageName = packageName === 'vibe-validate' ? 'vibe-validate' : `@vibe-validate/${packageName}`;
+  const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
   const message = '⚠️ Incomplete publish - DO NOT USE. See https://github.com/jdutton/vibe-validate/issues';
 
   log(`  Deprecating ${fullPackageName}@${version}...`, 'yellow');
@@ -308,10 +282,9 @@ function rollback(dryRun = false) {
 }
 
 /**
- * Main publishing flow
+ * Parse and validate command-line arguments
  */
-function main() {
-  // Parse command-line arguments
+function parseArguments() {
   const args = process.argv.slice(2);
 
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -345,6 +318,115 @@ Exit codes:
     process.exit(1);
   }
 
+  return { version, dryRun };
+}
+
+/**
+ * Publish all packages with primary tag
+ */
+function publishAllPackages(version: string, primaryTag: string, dryRun: boolean): void {
+  log('📋 Phase 1: Publishing packages...', 'blue');
+  log('─'.repeat(60), 'blue');
+
+  for (const pkg of PACKAGES) {
+    const result = publishPackage(pkg, version, primaryTag, dryRun);
+
+    if (result.success) {
+      manifest.publishedPackages.push(pkg);
+      saveManifest();
+    } else {
+      log('\n❌ Publish failed!', 'red');
+      log(`   Package: ${pkg}`, 'red');
+      rollback(dryRun);
+      process.exit(1);
+    }
+  }
+
+  log('\n✅ Phase 1 complete - all packages published', 'green');
+}
+
+/**
+ * Update @next tag for stable releases if needed
+ */
+function updateNextTag(version: string, dryRun: boolean): void {
+  log('\n📋 Phase 2: Checking @next tag update...', 'blue');
+  log('─'.repeat(60), 'blue');
+
+  const currentNextVersion = getNpmTagVersion(VIBE_VALIDATE_PKG_NAME, 'next');
+
+  let shouldUpdateNext = false;
+  if (!currentNextVersion) {
+    log('  No current @next version found', 'yellow');
+    log('  → Will update @next to this stable version', 'green');
+    shouldUpdateNext = true;
+  } else if (semver.gt(version, currentNextVersion)) {
+    log(`  Current @next: ${currentNextVersion}`, 'blue');
+    log(`  New version: ${version} > ${currentNextVersion}`, 'green');
+    log('  → Will update @next to this stable version', 'green');
+    shouldUpdateNext = true;
+  } else {
+    log(`  Current @next: ${currentNextVersion}`, 'blue');
+    log(`  New version: ${version} <= ${currentNextVersion}`, 'yellow');
+    log('  → Skipping @next update (already newer or equal)', 'yellow');
+  }
+
+  if (shouldUpdateNext) {
+    log('\n  Adding @next tag to all packages...', 'blue');
+
+    for (const pkg of PACKAGES) {
+      const result = addDistTag(pkg, version, 'next', dryRun);
+
+      if (!result.success) {
+        log('\n❌ Failed to add @next tag!', 'red');
+        log(`   Package: ${pkg}`, 'red');
+        log('   All packages published but @next tag incomplete', 'red');
+        rollback(dryRun);
+        process.exit(1);
+      }
+    }
+
+    manifest.nextTagAdded = true;
+    saveManifest();
+    log('\n  ✅ @next tag added to all packages', 'green');
+  }
+
+  log('\n✅ Phase 2 complete', 'green');
+}
+
+/**
+ * Print success message and verification commands
+ */
+function printSuccess(version: string, primaryTag: string, dryRun: boolean): void {
+  console.log('');
+  log('='.repeat(60), 'green');
+  log('✅ PUBLISH SUCCESSFUL', 'green');
+  log('='.repeat(60), 'green');
+  log(`Version: ${version}`, 'green');
+  log(`Primary tag: @${primaryTag}`, 'green');
+  if (manifest.nextTagAdded) {
+    log(`@next tag: Updated`, 'green');
+  }
+  log(`Packages published: ${PACKAGES.length}`, 'green');
+  console.log('');
+
+  if (!dryRun) {
+    log('📦 Verify with:', 'blue');
+    log(`   npm view vibe-validate@${primaryTag} version`, 'reset');
+    log(`   npm view vibe-validate@${version}`, 'reset');
+    if (manifest.nextTagAdded) {
+      log(`   npm view vibe-validate@next version`, 'reset');
+    }
+    console.log('');
+  }
+}
+
+/**
+ * Main publishing flow
+ */
+function main() {
+  // Parse and validate arguments
+  const { version, dryRun } = parseArguments();
+
   // Determine version type and tags
   const isPrerelease = semver.prerelease(version) !== null;
   const isStable = !isPrerelease;
@@ -374,95 +456,16 @@ Exit codes:
   }
 
   // Phase 1: Publish all packages with primary tag
-  log('📋 Phase 1: Publishing packages...', 'blue');
-  log('─'.repeat(60), 'blue');
-
-  for (const pkg of PACKAGES) {
-    const result = publishPackage(pkg, version, primaryTag, dryRun);
-
-    if (result.success) {
-      manifest.publishedPackages.push(pkg);
-      saveManifest();
-    } else {
-      log('\n❌ Publish failed!', 'red');
-      log(`   Package: ${pkg}`, 'red');
-      rollback(dryRun);
-      process.exit(1);
-    }
-  }
-
-  log('\n✅ Phase 1 complete - all packages published', 'green');
+  publishAllPackages(version, primaryTag, dryRun);
 
   // Phase 2: For stable versions, add @next tag if needed
   if (isStable) {
-    log('\n📋 Phase 2: Checking @next tag update...', 'blue');
-    log('─'.repeat(60), 'blue');
-
-    const currentNextVersion = getNpmTagVersion('vibe-validate', 'next');
-
-    let shouldUpdateNext = false;
-    if (!currentNextVersion) {
-      log('  No current @next version found', 'yellow');
-      log('  → Will update @next to this stable version', 'green');
-      shouldUpdateNext = true;
-    } else if (semver.gt(version, currentNextVersion)) {
-      log(`  Current @next: ${currentNextVersion}`, 'blue');
-      log(`  New version: ${version} > ${currentNextVersion}`, 'green');
-      log('  → Will update @next to this stable version', 'green');
-      shouldUpdateNext = true;
-    } else {
-      log(`  Current @next: ${currentNextVersion}`, 'blue');
-      log(`  New version: ${version} <= ${currentNextVersion}`, 'yellow');
-      log('  → Skipping @next update (already newer or equal)', 'yellow');
-    }
-
-    if (shouldUpdateNext) {
-      log('\n  Adding @next tag to all packages...', 'blue');
-
-      for (const pkg of PACKAGES) {
-        const result = addDistTag(pkg, version, 'next', dryRun);
-
-        if (!result.success) {
-          log('\n❌ Failed to add @next tag!', 'red');
-          log(`   Package: ${pkg}`, 'red');
-          log('   All packages published but @next tag incomplete', 'red');
-          rollback(dryRun);
-          process.exit(1);
-        }
-      }
-
-      manifest.nextTagAdded = true;
-      saveManifest();
-      log('\n  ✅ @next tag added to all packages', 'green');
-    }
-
-    log('\n✅ Phase 2 complete', 'green');
+    updateNextTag(version, dryRun);
   }
 
   // Success!
   cleanupManifest();
-
-  console.log('');
-  log('='.repeat(60), 'green');
-  log('✅ PUBLISH SUCCESSFUL', 'green');
-  log('='.repeat(60), 'green');
-  log(`Version: ${version}`, 'green');
-  log(`Primary tag: @${primaryTag}`, 'green');
-  if (manifest.nextTagAdded) {
-    log(`@next tag: Updated`, 'green');
-  }
-  log(`Packages published: ${PACKAGES.length}`, 'green');
-  console.log('');
-
-  if (!dryRun) {
-    log('📦 Verify with:', 'blue');
-    log(`   npm view vibe-validate@${primaryTag} version`, 'reset');
-    log(`   npm view vibe-validate@${version}`, 'reset');
-    if (manifest.nextTagAdded) {
-      log(`   npm view vibe-validate@next version`, 'reset');
-    }
-    console.log('');
-  }
+  printSuccess(version, primaryTag, dryRun);
 
   process.exit(0);
 }

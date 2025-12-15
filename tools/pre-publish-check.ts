@@ -17,37 +17,41 @@
  *   1 - Not ready (with explanation)
  */
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
-import { join , dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, '..');
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 
-// Colors for output
-const colors = {
-  red: '\x1b[0;31m',
-  green: '\x1b[0;32m',
-  yellow: '\x1b[1;33m',
-  reset: '\x1b[0m',
-};
+import { PROJECT_ROOT, log } from './common.js';
 
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+/**
+ * Detect if running in CI environment
+ */
+function isCI(): boolean {
+  return !!(
+    process.env.CI ||
+    process.env.GITHUB_ACTIONS ||
+    process.env.GITLAB_CI ||
+    process.env.CIRCLECI ||
+    process.env.TRAVIS ||
+    process.env.JENKINS_URL
+  );
 }
+
+const IS_CI = isCI();
 
 // Parse command-line arguments
 const args = process.argv.slice(2);
 let allowedBranch = 'main';
 let allowCustomBranch = false;
 
-for (let i = 0; i < args.length; i++) {
+// Use while loop with explicit index control to handle argument consumption
+let i = 0;
+while (i < args.length) {
   if (args[i] === '--allow-branch' && args[i + 1]) {
     allowedBranch = args[i + 1];
     allowCustomBranch = true;
-    i++; // NOSONAR - Intentionally skip next arg (consumed as --allow-branch value)
+    i += 2; // Consume both --allow-branch and its value
   } else if (args[i] === '--help' || args[i] === '-h') {
     console.log(`
 Pre-Publish Validation Check
@@ -70,106 +74,145 @@ Exit codes:
     console.error('Usage: node tools/pre-publish-check.js [--allow-branch BRANCH]');
     process.exit(1);
   }
+  i++;
 }
 
-console.log('🔍 Pre-Publish Validation Check');
-console.log('================================');
+console.log(IS_CI ? '🔍 Pre-Publish Validation Check (CI Mode)' : '🔍 Pre-Publish Validation Check');
+console.log('==========================================');
 console.log('');
 
 // Check 1: Git repository exists
 try {
   safeExecSync('git', ['rev-parse', '--git-dir'], { stdio: 'pipe', cwd: PROJECT_ROOT });
   log('✓ Git repository detected', 'green');
-} catch (_error) { // NOSONAR - Exception handled by logging and exiting
+} catch (error) {
+  // Expected failure: not a git repository (fatal, cannot proceed)
   log('✗ Not a git repository', 'red');
-  process.exit(1);
-}
-
-// Check 2: Current branch
-let currentBranch;
-try {
-  currentBranch = safeExecSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-    encoding: 'utf8',
-    stdio: 'pipe',
-    cwd: PROJECT_ROOT,
-  }).trim();
-} catch (_error) { // NOSONAR - Exception handled by logging and exiting
-  log('✗ Failed to determine current branch', 'red');
-  process.exit(1);
-}
-
-if (currentBranch !== allowedBranch) {
-  log(`✗ Not on ${allowedBranch} branch (current: ${currentBranch})`, 'red');
-  console.log(`  Tip: Run 'git checkout ${allowedBranch}' or use --allow-branch flag`);
-  process.exit(1);
-}
-
-if (allowCustomBranch && currentBranch !== 'main') {
-  log(`⚠ On branch: ${currentBranch} (explicitly allowed)`, 'yellow');
-} else {
-  log('✓ On main branch', 'green');
-}
-
-// Check 3: Working tree is clean
-let hasUncommittedChanges = false;
-try {
-  safeExecSync('git', ['diff-index', '--quiet', 'HEAD', '--'], { stdio: 'pipe', cwd: PROJECT_ROOT });
-} catch (_error) { // NOSONAR - Exception intentionally caught to set flag
-  hasUncommittedChanges = true;
-}
-
-if (hasUncommittedChanges) {
-  log('✗ Uncommitted changes detected', 'red');
-  console.log('');
-
-  try {
-    const status = safeExecSync('git', ['status', '--short'], { encoding: 'utf8', cwd: PROJECT_ROOT });
-    console.log(status);
-  } catch (_error) { // NOSONAR - Ignore if git status fails (non-critical)
-    // Silently continue if git status fails
+  if (error instanceof Error && error.message.includes('ENOENT')) {
+    console.log('  Git executable not found. Please install git.');
   }
-
-  console.log('  Please commit or stash your changes before publishing');
   process.exit(1);
 }
-log('✓ No uncommitted changes', 'green');
 
-// Check 4: No untracked files (except common patterns)
-let untracked = '';
-try {
-  untracked = safeExecSync('git', ['ls-files', '--others', '--exclude-standard'], {
-    encoding: 'utf8',
-    stdio: 'pipe',
-    cwd: PROJECT_ROOT,
-  }).trim();
-} catch (_error) { // NOSONAR - Ignore errors (untracked files check is optional)
-  // Silently continue if command fails
-}
-
-if (untracked) {
-  // Filter out allowed patterns
-  const allowedPatterns = [
-    /node_modules/,
-    /dist/,
-    /\.DS_Store/,
-    /TODO\.md/,
-  ];
-
-  const untrackedLines = untracked.split('\n').filter(line => line.trim());
-  const filteredUntracked = untrackedLines.filter(line => {
-    return !allowedPatterns.some(pattern => pattern.test(line));
-  });
-
-  if (filteredUntracked.length > 0) {
-    log('✗ Untracked files detected', 'red');
-    console.log('');
-    for (const file of filteredUntracked) console.log(file);
-    console.log('');
-    console.log('  Please add these files to git or .gitignore before publishing');
+// Check 2: Current branch (skip in CI - uses detached HEAD on tag checkout)
+if (!IS_CI) {
+  let currentBranch;
+  try {
+    currentBranch = safeExecSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      cwd: PROJECT_ROOT,
+    }).trim();
+  } catch (error) {
+    // Expected failure: detached HEAD or git error (fatal, cannot proceed)
+    log('✗ Failed to determine current branch', 'red');
+    if (error instanceof Error && error.message.includes('HEAD')) {
+      console.log('  You may be in a detached HEAD state. Check git status.');
+    }
     process.exit(1);
   }
+
+  if (currentBranch !== allowedBranch) {
+    log(`✗ Not on ${allowedBranch} branch (current: ${currentBranch})`, 'red');
+    console.log(`  Tip: Run 'git checkout ${allowedBranch}' or use --allow-branch flag`);
+    process.exit(1);
+  }
+
+  if (allowCustomBranch && currentBranch !== 'main') {
+    log(`⚠ On branch: ${currentBranch} (explicitly allowed)`, 'yellow');
+  } else {
+    log('✓ On main branch', 'green');
+  }
+} else {
+  log('⊘ Branch check skipped (CI mode)', 'yellow');
 }
-log('✓ No untracked files', 'green');
+
+// Check 3: Working tree is clean (skip in CI - always starts with clean checkout)
+if (!IS_CI) {
+  let hasUncommittedChanges = false;
+  try {
+    safeExecSync('git', ['diff-index', '--quiet', 'HEAD', '--'], { stdio: 'pipe', cwd: PROJECT_ROOT });
+  } catch (error) {
+    // Expected failure: uncommitted changes detected (non-zero exit from diff-index)
+    // This is normal operation - the command exits non-zero when changes exist
+    hasUncommittedChanges = true;
+    // Verify it's the expected failure (not a critical git error)
+    if (error instanceof Error && error.message.includes('ENOENT')) {
+      log('✗ Git executable error', 'red');
+      console.error(error.message);
+      process.exit(1);
+    }
+  }
+
+  if (hasUncommittedChanges) {
+    log('✗ Uncommitted changes detected', 'red');
+    console.log('');
+
+    try {
+      const status = safeExecSync('git', ['status', '--short'], { encoding: 'utf8', cwd: PROJECT_ROOT });
+      console.log(status);
+    } catch (error) {
+      // Non-critical: git status display failed, but we already know changes exist
+      // Continue with generic error message below
+      console.log('  (Unable to show git status details)');
+      if (error instanceof Error && error.message) {
+        console.error(`  Debug: ${error.message}`);
+      }
+    }
+
+    console.log('  Please commit or stash your changes before publishing');
+    process.exit(1);
+  }
+  log('✓ No uncommitted changes', 'green');
+} else {
+  log('⊘ Uncommitted changes check skipped (CI mode)', 'yellow');
+}
+
+// Check 4: No untracked files (skip in CI - not applicable)
+if (!IS_CI) {
+  let untracked = '';
+  try {
+    untracked = safeExecSync('git', ['ls-files', '--others', '--exclude-standard'], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      cwd: PROJECT_ROOT,
+    }).trim();
+  } catch (error) {
+    // Non-critical: untracked files check is optional (best-effort)
+    // Continue with empty untracked list if git command fails
+    if (error instanceof Error && error.message.includes('ENOENT')) {
+      log('⚠ Warning: Could not check untracked files (git not available)', 'yellow');
+    }
+    // Continue with empty untracked string (no files to check)
+  }
+
+  if (untracked) {
+    // Filter out allowed patterns
+    const allowedPatterns = [
+      /node_modules/,
+      /dist/,
+      /\.DS_Store/,
+      /TODO\.md/,
+    ];
+
+    const untrackedLines = untracked.split('\n').filter(line => line.trim());
+    const filteredUntracked = untrackedLines.filter(line => {
+      return !allowedPatterns.some(pattern => pattern.test(line));
+    });
+
+    if (filteredUntracked.length > 0) {
+      log('✗ Untracked files detected', 'red');
+      console.log('');
+      for (const file of filteredUntracked) console.log(file);
+      console.log('');
+      console.log('  Please add these files to git or .gitignore before publishing');
+      process.exit(1);
+    }
+  }
+  log('✓ No untracked files', 'green');
+} else {
+  log('⊘ Untracked files check skipped (CI mode)', 'yellow');
+}
 
 // Check 5: Run validation
 console.log('');
@@ -178,10 +221,14 @@ console.log('Running validation checks...');
 try {
   safeExecSync('pnpm', ['validate'], { stdio: 'inherit', cwd: PROJECT_ROOT });
   log('✓ All validation checks passed', 'green');
-} catch (_error) { // NOSONAR - Exception handled by logging and exiting
+} catch (error) {
+  // Expected failure: validation checks failed (fatal, cannot proceed)
   console.log('');
   log('✗ Validation failed', 'red');
   console.log('  Check the output above and fix all issues before publishing');
+  if (error instanceof Error && error.message.includes('ENOENT')) {
+    console.log('  (pnpm not found - install pnpm to run validation)');
+  }
   process.exit(1);
 }
 

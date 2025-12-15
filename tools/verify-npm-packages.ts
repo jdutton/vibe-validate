@@ -9,10 +9,11 @@
  *   node tools/verify-npm-packages.js --version 0.13.0
  */
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -54,10 +55,16 @@ for (const packageName of publishablePackages) {
       console.log(`❌ ${packageName}: expected ${expectedVersion}, found ${npmVersion}`);
       allPublished = false;
     }
-  } catch (_error) {
+  } catch (error) {
+    // Expected failure: package not published or version not found on npm
+    // This is the primary check - if npm view fails, package is missing
     results.push({ package: packageName, status: 'missing', expected: expectedVersion });
     console.log(`❌ ${packageName}@${expectedVersion} - NOT PUBLISHED`);
     allPublished = false;
+    // Log unexpected errors for debugging
+    if (error instanceof Error && error.message.includes('ENOENT')) {
+      console.error(`  (npm executable not found)`);
+    }
   }
 }
 

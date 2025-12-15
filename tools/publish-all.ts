@@ -15,9 +15,10 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
