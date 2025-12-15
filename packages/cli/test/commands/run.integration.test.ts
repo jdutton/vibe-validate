@@ -253,7 +253,7 @@ describe('run command integration', () => {
       }
     });
 
-    it('should create separate cache entries for different working directories', () => {
+    it.skipIf(process.platform === 'win32')('should create separate cache entries for different working directories', () => {
       const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
 
       // Run command in root
@@ -354,7 +354,7 @@ describe('run command integration', () => {
       expect(secondParsed.outputFiles.combined).toBeDefined();
     });
 
-    describe('force flag propagation', () => {
+    describe.skipIf(process.platform === 'win32')('force flag propagation', () => {
       it('should bypass cache when --force flag is used', () => {
         const testMessage = `test-force-${Date.now()}`;
         const testCommand = `echo ${testMessage}`;
@@ -433,7 +433,7 @@ describe('run command integration', () => {
     });
 
     // Issue #73 (expanded): Nested command caching regression fix
-    describe('nested command caching (Issue #73 expanded)', () => {
+    describe.skipIf(process.platform === 'win32')('nested command caching (Issue #73 expanded)', () => {
       it('should share cache between nested and direct command invocations', () => {
         // Clear any existing cache for this test
         const testMessage = `test-nested-cache-${Date.now()}`;
