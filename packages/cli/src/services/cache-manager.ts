@@ -20,11 +20,12 @@
  * @packageDocumentation
  */
 
+import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
 import * as path from 'node:path';
 
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 
 import type { WatchPRResult } from '../schemas/watch-pr-result.schema.js';
 
@@ -60,7 +61,8 @@ export class CacheManager {
     const sanitizedRepoName = repoName.replaceAll('/', '_');
 
     // Cache directory: ${baseDir}/vibe-validate/<repo-name>/watch-pr/<pr-number>/
-    const base = baseDir ?? os.tmpdir();
+    // Use normalizedTmpdir() to resolve Windows short paths (RUNNER~1 -> runneradmin)
+    const base = baseDir ?? normalizedTmpdir();
     this.cacheDir = path.join(base, 'vibe-validate', sanitizedRepoName, 'watch-pr', String(prNumber));
 
     // Subdirectories
@@ -79,9 +81,8 @@ export class CacheManager {
   private initDirectories(): void {
     // Create directories synchronously during construction
     try {
-      const fs = require('node:fs');
-      fs.mkdirSync(this.logsDir, { recursive: true });
-      fs.mkdirSync(this.extractionsDir, { recursive: true });
+      fsSync.mkdirSync(this.logsDir, { recursive: true });
+      fsSync.mkdirSync(this.extractionsDir, { recursive: true });
     } catch (error) {
       // Log error during directory creation (will fail later with more context)
       console.warn('Failed to create cache directories:', error);
