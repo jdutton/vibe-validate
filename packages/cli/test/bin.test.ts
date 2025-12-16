@@ -533,7 +533,7 @@ describe('bin.ts - CLI entry point', () => {
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# watch-pr Command Reference');
-        expect(result.stdout).toContain('> Watch CI checks for a pull/merge request in real-time');
+        expect(result.stdout).toContain('> Watch CI checks for a pull request with LLM-friendly YAML output');
         expect(result.stdout).toContain('## Overview');
         expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
       });
