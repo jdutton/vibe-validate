@@ -535,4 +535,75 @@ describe('GitHubFetcher', () => {
       expect(duration).toMatch(/^\d+[hms]/); // Should calculate from start to now
     });
   });
+
+  describe('Cross-repo support', () => {
+    it('should create fetcher without repo (defaults to current repo)', () => {
+      const defaultFetcher = new GitHubFetcher();
+      expect(defaultFetcher).toBeDefined();
+      expect(defaultFetcher['repoFlag']).toEqual([]);
+    });
+
+    it('should create fetcher with owner/repo', () => {
+      const crossRepoFetcher = new GitHubFetcher('jdutton', 'other-repo');
+      expect(crossRepoFetcher).toBeDefined();
+      expect(crossRepoFetcher['repoFlag']).toEqual(['--repo', 'jdutton/other-repo']);
+    });
+
+    it('should pass --repo flag to gh pr view for PR details', async () => {
+      const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
+      const mockResponse = JSON.stringify({
+        number: 99,
+        title: 'Test PR',
+        url: 'https://github.com/test-owner/test-repo/pull/99',
+        headRefName: 'feature',
+        baseRefName: 'main',
+        author: { login: 'testuser' },
+        isDraft: false,
+        mergeable: 'MERGEABLE',
+        mergeStateStatus: 'CLEAN',
+        labels: [],
+        closingIssuesReferences: { nodes: [] },
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(mockResponse);
+
+      await crossRepoFetcher.fetchPRDetails(99);
+
+      expect(safeExecSync).toHaveBeenCalledWith(
+        'gh',
+        expect.arrayContaining(['pr', 'view', '99', '--repo', 'test-owner/test-repo']),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass --repo flag to gh pr view for checks', async () => {
+      const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
+      const mockResponse = JSON.stringify({ statusCheckRollup: [] });
+
+      vi.mocked(safeExecSync).mockReturnValue(mockResponse);
+
+      await crossRepoFetcher.fetchChecks(99);
+
+      expect(safeExecSync).toHaveBeenCalledWith(
+        'gh',
+        expect.arrayContaining(['pr', 'view', '99', '--repo', 'test-owner/test-repo']),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass --repo flag to gh run view for logs', async () => {
+      const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
+      const mockLogs = 'Test log output';
+
+      vi.mocked(safeExecSync).mockReturnValue(mockLogs);
+
+      await crossRepoFetcher.fetchRunLogs(12345);
+
+      expect(safeExecSync).toHaveBeenCalledWith(
+        'gh',
+        expect.arrayContaining(['run', 'view', '12345', '--repo', 'test-owner/test-repo']),
+        expect.any(Object)
+      );
+    });
+  });
 });

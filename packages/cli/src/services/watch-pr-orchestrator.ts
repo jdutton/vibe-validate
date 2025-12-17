@@ -46,7 +46,7 @@ export class WatchPROrchestrator {
     private readonly owner: string,
     private readonly repo: string,
   ) {
-    this.fetcher = new GitHubFetcher();
+    this.fetcher = new GitHubFetcher(owner, repo);
     this.historyBuilder = new HistorySummaryBuilder(owner, repo);
     this.extractionDetector = new ExtractionModeDetector();
 

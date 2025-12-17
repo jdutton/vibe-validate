@@ -64,6 +64,19 @@ export interface CheckResult {
  * GitHubFetcher - Fetch PR data from GitHub API via gh CLI
  */
 export class GitHubFetcher {
+  private readonly repoFlag: string[];
+
+  /**
+   * Create GitHubFetcher
+   *
+   * @param owner - Repository owner (optional, defaults to current repo)
+   * @param repo - Repository name (optional, defaults to current repo)
+   */
+  constructor(owner?: string, repo?: string) {
+    // Build --repo flag if owner/repo provided
+    this.repoFlag = owner && repo ? ['--repo', `${owner}/${repo}`] : [];
+  }
+
   /**
    * Fetch complete PR metadata
    *
@@ -85,9 +98,13 @@ export class GitHubFetcher {
       'closingIssuesReferences',
     ];
 
-    const response = safeExecSync('gh', ['pr', 'view', String(prNumber), '--json', fields.join(',')], {
-      encoding: 'utf8',
-    });
+    const response = safeExecSync(
+      'gh',
+      ['pr', 'view', String(prNumber), ...this.repoFlag, '--json', fields.join(',')],
+      {
+        encoding: 'utf8',
+      }
+    );
 
     const data = JSON.parse(response as string);
 
@@ -114,9 +131,13 @@ export class GitHubFetcher {
    * @returns Check results
    */
   async fetchChecks(prNumber: number): Promise<CheckResult[]> {
-    const response = safeExecSync('gh', ['pr', 'view', String(prNumber), '--json', 'statusCheckRollup'], {
-      encoding: 'utf8',
-    });
+    const response = safeExecSync(
+      'gh',
+      ['pr', 'view', String(prNumber), ...this.repoFlag, '--json', 'statusCheckRollup'],
+      {
+        encoding: 'utf8',
+      }
+    );
 
     const data = JSON.parse(response as string);
     const checks: CheckResult[] = [];
@@ -141,7 +162,7 @@ export class GitHubFetcher {
    * @returns Raw log output
    */
   async fetchRunLogs(runId: number): Promise<string> {
-    const logs = safeExecSync('gh', ['run', 'view', String(runId), '--log'], {
+    const logs = safeExecSync('gh', ['run', 'view', String(runId), ...this.repoFlag, '--log'], {
       encoding: 'utf8',
     });
 

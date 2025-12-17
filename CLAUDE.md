@@ -279,6 +279,25 @@ Use `@vibe-validate/utils` for generic, non-domain-specific utilities:
 - String utilities (if generic, not domain-specific)
 - **Rule:** NO dependencies on other vibe-validate packages
 
+#### Preferred Utilities (ALWAYS use these instead of built-ins)
+
+**Command Execution (Security):**
+- `safeExecSync(cmd, args, opts)` - Use instead of `execSync()`. Prevents command injection via shell-free execution.
+- `safeExecResult(cmd, args, opts)` - Like safeExecSync but returns result object instead of throwing on error.
+- `safeExecFromString(cmdString, opts)` - Parses simple command strings safely (no shell injection).
+- `isToolAvailable(tool)` - Check if command exists. Better than catching exec errors.
+- `getToolVersion(tool)` - Get version string safely.
+- `hasShellSyntax(cmd)` - Detect shell syntax (pipes, redirects). Prevents accidental unsafe execution.
+
+**Path Handling (Windows Compatibility):**
+- `normalizedTmpdir()` - Use instead of `os.tmpdir()`. Resolves Windows 8.3 short names (RUNNER~1 → runneradmin).
+- `mkdirSyncReal(path, opts)` - Use instead of `fs.mkdirSync()`. Creates directory and returns normalized path.
+- `normalizePath(path)` - Resolves path to real (long) name. Prevents Windows path mismatch bugs.
+
+**Why these matter:**
+- Command utils prevent security vulnerabilities (command injection, PATH attacks)
+- Path utils prevent "works on Mac, fails on Windows CI" bugs from 8.3 short name mismatches
+
 ### Domain-Specific Utilities
 Place utilities in the appropriate domain package:
 - Git utilities → `@vibe-validate/git`
