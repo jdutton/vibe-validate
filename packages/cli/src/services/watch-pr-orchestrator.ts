@@ -101,8 +101,7 @@ export class WatchPROrchestrator {
           !check.run_id ||
           !check.workflow ||
           !check.started_at ||
-          !check.duration ||
-          !check.log_command
+          !check.duration
         ) {
           continue; // Skip invalid checks
         }
@@ -115,7 +114,6 @@ export class WatchPROrchestrator {
           workflow: check.workflow,
           started_at: check.started_at,
           duration: check.duration,
-          log_command: check.log_command,
         };
 
         // Try to extract errors if check failed
@@ -213,13 +211,7 @@ export class WatchPROrchestrator {
       },
       changes,
       guidance,
-      cache: this.cacheManager
-        ? {
-            location: this.cacheManager['cacheDir'], // Access private field
-            timestamp: new Date().toISOString(),
-            ttl: 600000, // 10 minutes
-          }
-        : undefined,
+      cache: this.buildCacheInfo(),
     };
 
     // Save to cache
@@ -268,7 +260,6 @@ export class WatchPROrchestrator {
       workflow: runDetails.workflow,
       started_at: runDetails.started_at,
       duration: runDetails.duration,
-      log_command: `gh run view ${runDetails.run_id} --log`,
     };
 
     // Try to extract errors from logs
@@ -325,13 +316,7 @@ export class WatchPROrchestrator {
       },
       changes,
       guidance,
-      cache: this.cacheManager
-        ? {
-            location: this.cacheManager['cacheDir'], // Access private field
-            timestamp: new Date().toISOString(),
-            ttl: 600000, // 10 minutes
-          }
-        : undefined,
+      cache: this.buildCacheInfo(),
     };
 
     // Don't cache metadata for single-run mode (historical runs are immutable)
@@ -463,6 +448,23 @@ export class WatchPROrchestrator {
               reason: 'PR is not mergeable',
             },
           ],
+    };
+  }
+
+  /**
+   * Build cache info (if cacheManager exists)
+   *
+   * @returns Cache info or undefined
+   */
+  private buildCacheInfo() {
+    if (!this.cacheManager) {
+      return;
+    }
+
+    return {
+      location: this.cacheManager['cacheDir'], // Access private field
+      cached_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 300000).toISOString(), // 5 minutes from now
     };
   }
 

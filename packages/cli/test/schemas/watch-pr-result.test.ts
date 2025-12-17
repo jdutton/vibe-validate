@@ -537,8 +537,8 @@ describe('Watch PR Result Schemas', () => {
       const validCache = {
         // eslint-disable-next-line sonarjs/publicly-writable-directories -- test fixture path
         location: '/tmp/vibe-validate/vibe-validate/watch-pr/90',
-        timestamp: '2025-12-16T16:45:50Z',
-        ttl: 300000,
+        cached_at: '2025-12-16T16:45:50Z',
+        expires_at: '2025-12-16T16:50:50Z',
       };
 
       expect(() => CacheInfoSchema.parse(validCache)).not.toThrow();
@@ -548,8 +548,8 @@ describe('Watch PR Result Schemas', () => {
       const invalidCache = {
         // eslint-disable-next-line sonarjs/publicly-writable-directories -- test fixture path
         location: '/tmp/cache',
-        timestamp: 'not-a-datetime',
-        ttl: 300000,
+        cached_at: 'not-a-datetime',
+        expires_at: '2025-12-16T16:50:50Z',
       };
 
       expect(() => CacheInfoSchema.parse(invalidCache)).toThrow();
@@ -684,8 +684,8 @@ describe('Watch PR Result Schemas', () => {
         cache: {
           // eslint-disable-next-line sonarjs/publicly-writable-directories -- test fixture path
           location: '/tmp/vibe-validate/vibe-validate/watch-pr/90',
-          timestamp: '2025-12-16T16:45:50Z',
-          ttl: 300000,
+          cached_at: '2025-12-16T16:45:50Z',
+          expires_at: '2025-12-16T16:50:50Z',
         },
       };
 

@@ -157,9 +157,6 @@ export const GitHubActionCheckSchema = z.object({
   /** Human-readable duration (e.g., "2m15s") */
   duration: z.string(),
 
-  /** Command to view logs via gh CLI */
-  log_command: z.string(),
-
   /** Local path to cached log file (if cached) */
   log_file: z.string().optional(),
 
@@ -371,11 +368,11 @@ export const CacheInfoSchema = z.object({
   /** Cache directory location */
   location: z.string(),
 
-  /** When the cache was last updated (ISO 8601) */
-  timestamp: z.string().datetime(),
+  /** When the cache was created (ISO 8601) */
+  cached_at: z.string().datetime(),
 
-  /** Cache TTL in milliseconds */
-  ttl: z.number().int().positive(),
+  /** When the cache expires (ISO 8601) */
+  expires_at: z.string().datetime(),
 });
 
 // ============================================================================

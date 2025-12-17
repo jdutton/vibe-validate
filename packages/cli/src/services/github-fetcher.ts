@@ -50,9 +50,6 @@ export interface CheckResult {
   /** Duration (human-readable) */
   duration?: string;
 
-  /** Log command (for GitHub Actions) */
-  log_command?: string;
-
   /** URL (for external checks) */
   url?: string;
 
@@ -336,7 +333,6 @@ export class GitHubFetcher {
       workflow,
       started_at: check.startedAt,
       duration: this.calculateDuration(check.startedAt, check.completedAt),
-      log_command: runId ? `gh run view ${runId} --log` : undefined,
     };
   }
 
