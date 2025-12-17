@@ -19,6 +19,7 @@ import type {
   GitHubActionCheck,
   Guidance,
   NextStep,
+  PRStatus,
   WatchPRResult,
 } from '../schemas/watch-pr-result.schema.js';
 
@@ -182,7 +183,7 @@ export class WatchPROrchestrator {
     const changes = await this.fetcher.fetchFileChanges(prNumber);
 
     // Determine overall status
-    let status: 'passed' | 'failed' | 'pending' = 'passed';
+    let status: PRStatus = 'passed';
     if (failedChecks > 0) {
       status = 'failed';
     } else if (pendingChecks > 0) {
@@ -225,6 +226,116 @@ export class WatchPROrchestrator {
     if (this.cacheManager) {
       await this.cacheManager.saveMetadata(result);
     }
+
+    return result;
+  }
+
+  /**
+   * Build result for a specific run ID
+   *
+   * Useful for watching specific failed runs to test extraction.
+   * Does not use history summary (since it's a single run).
+   *
+   * @param prNumber - PR number
+   * @param runId - GitHub run ID
+   * @param options - Options (useCache)
+   * @returns WatchPRResult with single check
+   */
+  async buildResultForRun(
+    prNumber: number,
+    runId: number,
+    options: { useCache?: boolean } = {},
+  ): Promise<WatchPRResult> {
+    const { useCache = false } = options;
+
+    // Initialize cache manager if caching enabled
+    if (useCache && !this.cacheManager) {
+      this.cacheManager = new CacheManager(`${this.owner}/${this.repo}`, prNumber);
+    }
+
+    // Fetch PR metadata (still needed for context)
+    const prMetadata = await this.fetcher.fetchPRDetails(prNumber);
+
+    // Fetch specific run details
+    const runDetails = await this.fetcher.fetchRunDetails(runId);
+
+    // Build GitHub Action check from run details
+    const actionCheck: GitHubActionCheck = {
+      name: runDetails.name,
+      status: runDetails.status,
+      conclusion: runDetails.conclusion,
+      run_id: runDetails.run_id,
+      workflow: runDetails.workflow,
+      started_at: runDetails.started_at,
+      duration: runDetails.duration,
+      log_command: `gh run view ${runDetails.run_id} --log`,
+    };
+
+    // Try to extract errors from logs
+    try {
+      const logs = await this.fetcher.fetchRunLogs(runId);
+      const extraction = await this.extractionDetector.detectAndExtract(actionCheck, logs);
+      if (extraction) {
+        actionCheck.extraction = extraction;
+      }
+
+      // Save logs to cache (extraction can be re-run later)
+      if (this.cacheManager) {
+        await this.cacheManager.saveLog(runId, logs);
+        if (extraction) {
+          await this.cacheManager.saveExtraction(runId, extraction);
+        }
+      }
+    } catch (error) {
+      // Gracefully handle extraction errors
+      console.warn(`Failed to extract errors from run ${runId}:`, error);
+    }
+
+    // Fetch file changes (for context)
+    const changes = await this.fetcher.fetchFileChanges(prNumber);
+
+    // Determine status from the single check
+    let status: PRStatus = 'passed';
+    if (actionCheck.conclusion === 'failure') {
+      status = 'failed';
+    } else if (actionCheck.status === 'in_progress' || actionCheck.status === 'queued') {
+      status = 'pending';
+    }
+
+    // Calculate check counts (single check)
+    const totalChecks = 1;
+    const passedChecks = actionCheck.conclusion === 'success' ? 1 : 0;
+    const failedChecks = actionCheck.conclusion === 'failure' ? 1 : 0;
+    const pendingChecks = actionCheck.status === 'in_progress' || actionCheck.status === 'queued' ? 1 : 0;
+
+    // Generate guidance (simplified for single run)
+    const guidance = this.generateGuidance(status, [actionCheck], [], prMetadata.mergeable);
+
+    // Build result
+    const result: WatchPRResult = {
+      pr: prMetadata,
+      status,
+      checks: {
+        total: totalChecks,
+        passed: passedChecks,
+        failed: failedChecks,
+        pending: pendingChecks,
+        github_actions: [actionCheck],
+        external_checks: [],
+      },
+      changes,
+      guidance,
+      cache: this.cacheManager
+        ? {
+            location: this.cacheManager['cacheDir'], // Access private field
+            timestamp: new Date().toISOString(),
+            ttl: 600000, // 10 minutes
+          }
+        : undefined,
+    };
+
+    // Don't cache metadata for single-run mode (historical runs are immutable)
+    // But logs and extractions are already cached above
 
     return result;
   }

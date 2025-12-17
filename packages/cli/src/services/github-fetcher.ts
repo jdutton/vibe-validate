@@ -61,6 +61,35 @@ export interface CheckResult {
 }
 
 /**
+ * Run details (returned by fetchRunDetails)
+ */
+export interface RunDetails {
+  /** GitHub run ID */
+  run_id: number;
+
+  /** Check/job name */
+  name: string;
+
+  /** Workflow name */
+  workflow: string;
+
+  /** Run status */
+  status: CheckStatus;
+
+  /** Run conclusion (if completed) */
+  conclusion?: CheckConclusion;
+
+  /** Started at (ISO 8601) */
+  started_at: string;
+
+  /** Duration (human-readable) */
+  duration: string;
+
+  /** Run URL */
+  url: string;
+}
+
+/**
  * GitHubFetcher - Fetch PR data from GitHub API via gh CLI
  */
 export class GitHubFetcher {
@@ -168,6 +197,40 @@ export class GitHubFetcher {
 
     // safeExecSync returns Buffer or string depending on encoding option
     return typeof logs === 'string' ? logs : logs.toString('utf8');
+  }
+
+  /**
+   * Fetch details for a specific GitHub Actions run
+   *
+   * Useful for watching specific failed runs to test extraction.
+   *
+   * @param runId - GitHub run ID
+   * @returns Run details
+   */
+  async fetchRunDetails(runId: number): Promise<RunDetails> {
+    const fields = ['name', 'status', 'conclusion', 'workflowName', 'createdAt', 'updatedAt', 'url'];
+
+    const response = safeExecSync(
+      'gh',
+      ['run', 'view', String(runId), ...this.repoFlag, '--json', fields.join(',')],
+      {
+        encoding: 'utf8',
+      }
+    );
+
+    const data = JSON.parse(response as string);
+
+    // Map GitHub API response to RunDetails
+    return {
+      run_id: runId,
+      name: data.name,
+      workflow: data.workflowName,
+      status: this.normalizeStatus(data.status),
+      conclusion: data.conclusion ? this.normalizeConclusion(data.conclusion) : undefined,
+      started_at: data.createdAt,
+      duration: this.calculateDuration(data.createdAt, data.updatedAt),
+      url: data.url,
+    };
   }
 
   /**

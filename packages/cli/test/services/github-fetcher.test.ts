@@ -605,5 +605,183 @@ describe('GitHubFetcher', () => {
         expect.any(Object)
       );
     });
+
+    it('should pass --repo flag to gh run view for run details', async () => {
+      const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
+      const mockRunResponse = JSON.stringify({
+        name: 'CI / Build',
+        status: 'completed',
+        conclusion: 'failure',
+        workflowName: 'CI',
+        createdAt: '2025-12-17T10:00:00Z',
+        updatedAt: '2025-12-17T10:05:00Z',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(mockRunResponse);
+
+      await crossRepoFetcher.fetchRunDetails(12345);
+
+      expect(safeExecSync).toHaveBeenCalledWith(
+        'gh',
+        expect.arrayContaining(['run', 'view', '12345', '--repo', 'test-owner/test-repo', '--json']),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('fetchRunDetails', () => {
+    it('should fetch run metadata with all fields', async () => {
+      const mockRunResponse = JSON.stringify({
+        name: 'CI / Build',
+        status: 'completed',
+        conclusion: 'failure',
+        workflowName: 'CI',
+        createdAt: '2025-12-17T10:00:00Z',
+        updatedAt: '2025-12-17T10:05:00Z',
+        url: 'https://github.com/test/test/actions/runs/12345',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+
+      const result = await fetcher.fetchRunDetails(12345);
+
+      expect(result).toEqual({
+        run_id: 12345,
+        name: 'CI / Build',
+        workflow: 'CI',
+        status: 'completed',
+        conclusion: 'failure',
+        started_at: '2025-12-17T10:00:00Z',
+        duration: expect.any(String),
+        url: 'https://github.com/test/test/actions/runs/12345',
+      });
+
+      expect(safeExecSync).toHaveBeenCalledWith(
+        'gh',
+        ['run', 'view', '12345', '--json', 'name,status,conclusion,workflowName,createdAt,updatedAt,url'],
+        expect.any(Object)
+      );
+    });
+
+    it('should handle in-progress runs (no conclusion yet)', async () => {
+      const mockRunResponse = JSON.stringify({
+        name: 'Tests / Unit',
+        status: 'in_progress',
+        conclusion: null,
+        workflowName: 'Tests',
+        createdAt: '2025-12-17T11:00:00Z',
+        updatedAt: '2025-12-17T11:02:00Z',
+        url: 'https://github.com/test/test/actions/runs/67890',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+
+      const result = await fetcher.fetchRunDetails(67890);
+
+      expect(result.status).toBe('in_progress');
+      expect(result.conclusion).toBeUndefined();
+      expect(result.duration).toBeDefined(); // Should calculate from createdAt to now
+    });
+
+    it('should handle queued runs', async () => {
+      const mockRunResponse = JSON.stringify({
+        name: 'Deploy / Production',
+        status: 'queued',
+        conclusion: null,
+        workflowName: 'Deploy',
+        createdAt: '2025-12-17T12:00:00Z',
+        updatedAt: '2025-12-17T12:00:00Z',
+        url: 'https://github.com/test/test/actions/runs/11111',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+
+      const result = await fetcher.fetchRunDetails(11111);
+
+      expect(result.status).toBe('queued');
+      expect(result.conclusion).toBeUndefined();
+    });
+
+    it('should extract workflow name from run data', async () => {
+      const mockRunResponse = JSON.stringify({
+        name: 'Long Workflow Name / Job / Step',
+        status: 'completed',
+        conclusion: 'success',
+        workflowName: 'Long Workflow Name',
+        createdAt: '2025-12-17T13:00:00Z',
+        updatedAt: '2025-12-17T13:10:00Z',
+        url: 'https://github.com/test/test/actions/runs/22222',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+
+      const result = await fetcher.fetchRunDetails(22222);
+
+      expect(result.workflow).toBe('Long Workflow Name');
+    });
+
+    it('should handle successful runs', async () => {
+      const mockRunResponse = JSON.stringify({
+        name: 'CI / Test',
+        status: 'completed',
+        conclusion: 'success',
+        workflowName: 'CI',
+        createdAt: '2025-12-17T14:00:00Z',
+        updatedAt: '2025-12-17T14:03:00Z',
+        url: 'https://github.com/test/test/actions/runs/33333',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+
+      const result = await fetcher.fetchRunDetails(33333);
+
+      expect(result.conclusion).toBe('success');
+      expect(result.status).toBe('completed');
+    });
+
+    it('should handle cancelled runs', async () => {
+      const mockRunResponse = JSON.stringify({
+        name: 'CI / Build',
+        status: 'completed',
+        conclusion: 'cancelled',
+        workflowName: 'CI',
+        createdAt: '2025-12-17T15:00:00Z',
+        updatedAt: '2025-12-17T15:01:00Z',
+        url: 'https://github.com/test/test/actions/runs/44444',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+
+      const result = await fetcher.fetchRunDetails(44444);
+
+      expect(result.conclusion).toBe('cancelled');
+    });
+
+    it('should handle timed out runs', async () => {
+      const mockRunResponse = JSON.stringify({
+        name: 'CI / Long Test',
+        status: 'completed',
+        conclusion: 'timed_out',
+        workflowName: 'CI',
+        createdAt: '2025-12-17T16:00:00Z',
+        updatedAt: '2025-12-17T17:00:00Z',
+        url: 'https://github.com/test/test/actions/runs/55555',
+      });
+
+      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+
+      const result = await fetcher.fetchRunDetails(55555);
+
+      expect(result.conclusion).toBe('timed_out');
+    });
+
+    it('should throw error when gh CLI fails', async () => {
+      vi.mocked(safeExecSync).mockImplementation(() => {
+        throw new Error('gh: run not found');
+      });
+
+      await expect(fetcher.fetchRunDetails(99999)).rejects.toThrow('gh: run not found');
+    });
   });
 });

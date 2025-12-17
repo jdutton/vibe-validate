@@ -44,7 +44,7 @@ describe('CacheManager', () => {
 
   describe('constructor & directory structure', () => {
     it('should create cache directory with correct structure', async () => {
-      const cacheDir = path.join(tmpDir, 'vibe-validate', repoName, 'watch-pr', String(prNumber));
+      const cacheDir = path.join(tmpDir, 'vibe-validate', 'watch-pr-cache', repoName, String(prNumber));
 
       // Verify base directory exists
       const dirExists = await fs
@@ -76,8 +76,8 @@ describe('CacheManager', () => {
       const cacheDir = path.join(
         tmpDir,
         'vibe-validate',
+        'watch-pr-cache',
         specialRepoName.replaceAll('/', '_'),
-        'watch-pr',
         String(prNumber)
       );
 
@@ -446,7 +446,7 @@ describe('CacheManager', () => {
       expect(fetcher).toHaveBeenCalledTimes(1);
 
       // Verify cache file was not created
-      const cacheFile = path.join(restrictedDir, 'vibe-validate', repoName.replaceAll('/', '_'), 'watch-pr', String(prNumber), `${key}.json`);
+      const cacheFile = path.join(restrictedDir, 'vibe-validate', 'watch-pr-cache', repoName.replaceAll('/', '_'), String(prNumber), `${key}.json`);
       const exists = await fs.stat(cacheFile).then(() => true).catch(() => false);
       expect(exists).toBe(false);
 

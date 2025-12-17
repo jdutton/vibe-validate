@@ -427,6 +427,9 @@ export type CheckConclusion = z.infer<typeof CheckConclusionSchema>;
 export type MergeStateStatus = z.infer<typeof MergeStateStatusSchema>;
 export type Severity = z.infer<typeof SeveritySchema>;
 export type LinkedIssue = z.infer<typeof LinkedIssueSchema>;
+
+/** PR overall status type */
+export type PRStatus = 'passed' | 'failed' | 'pending';
 export type PRMetadata = z.infer<typeof PRMetadataSchema>;
 export type GitHubActionCheck = z.infer<typeof GitHubActionCheckSchema>;
 export type ExternalCheckDetails = z.infer<typeof ExternalCheckDetailsSchema>;

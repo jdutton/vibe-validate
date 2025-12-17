@@ -8,6 +8,7 @@ import { WatchPROrchestrator } from '../services/watch-pr-orchestrator.js';
 interface WatchPROptions {
   yaml?: boolean;
   repo?: string;
+  runId?: string;
 }
 
 /**
@@ -19,6 +20,7 @@ export function registerWatchPRCommand(program: Command): void {
     .description('Watch CI checks for a pull/merge request with LLM-friendly output')
     .option('--yaml', 'Force YAML output (auto-enabled on failure)')
     .option('--repo <owner/repo>', 'Repository (default: auto-detect from git remote)')
+    .option('--run-id <id>', 'Watch specific run ID instead of latest (useful for testing failed runs)')
     .action(async (prNumber: string | undefined, options: WatchPROptions) => {
       try {
         const exitCode = await watchPRCommand(prNumber, options);
@@ -67,8 +69,20 @@ async function watchPRCommand(
   // Create orchestrator
   const orchestrator = new WatchPROrchestrator(owner, repo);
 
-  // Build result
-  const result = await orchestrator.buildResult(prNum);
+  // Build result (use buildResultForRun if --run-id provided)
+  let result: Awaited<ReturnType<typeof orchestrator.buildResult>>;
+
+  if (options.runId) {
+    // Watch specific run ID mode (useful for testing extraction with failed runs)
+    const runId = Number.parseInt(options.runId, 10);
+    if (Number.isNaN(runId) || runId <= 0) {
+      throw new Error(`Invalid run ID: ${options.runId}. Must be a positive integer.`);
+    }
+    result = await orchestrator.buildResultForRun(prNum, runId, { useCache: true });
+  } else {
+    // Normal mode: watch all checks for PR
+    result = await orchestrator.buildResult(prNum);
+  }
 
   // Determine output format
   const shouldYAML = orchestrator.shouldOutputYAML(result.status, options.yaml ?? false);
@@ -239,6 +253,7 @@ The \`watch-pr\` command fetches complete PR check status from GitHub, including
 
 - \`--yaml\` - Force YAML output (auto-enabled on failure)
 - \`--repo <owner/repo>\` - Repository (default: auto-detect from git remote)
+- \`--run-id <id>\` - Watch specific run ID instead of latest (useful for testing failed runs)
 
 ## Exit Codes
 
@@ -256,6 +271,9 @@ vibe-validate watch-pr 90 --yaml
 
 # Watch PR in different repo
 vibe-validate watch-pr 42 --repo jdutton/vibe-validate
+
+# Watch specific failed run (useful for testing extraction with failures)
+vibe-validate watch-pr 104 --run-id 19754182675 --repo jdutton/mcp-typescript-simple --yaml
 \`\`\`
 
 ## Output Format
@@ -390,9 +408,9 @@ vibe-validate watch-pr 90 --yaml
 
 ## Caching
 
-Results are cached locally (10 minute TTL):
+Results are cached locally (5 minute TTL):
 \`\`\`
-/tmp/vibe-validate/<repo>/watch-pr/<pr-number>/
+/tmp/vibe-validate/watch-pr-cache/<repo>/<pr-number>/
   metadata.json       # Complete WatchPRResult
   logs/<run-id>.log   # Raw logs from GitHub Actions
   extractions/        # Extracted errors

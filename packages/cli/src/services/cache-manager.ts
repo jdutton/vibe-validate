@@ -8,7 +8,7 @@
  * - Cross-platform path handling
  *
  * Cache structure:
- * ${os.tmpdir()}/vibe-validate/<repo-name>/watch-pr/<pr-number>/
+ * ${os.tmpdir()}/vibe-validate/watch-pr-cache/<repo-name>/<pr-number>/
  *   ├── logs/             # Immutable log files
  *   │   ├── 123.log
  *   │   └── 456.log
@@ -60,10 +60,10 @@ export class CacheManager {
     // Sanitize repo name for filesystem (replace / with _)
     const sanitizedRepoName = repoName.replaceAll('/', '_');
 
-    // Cache directory: ${baseDir}/vibe-validate/<repo-name>/watch-pr/<pr-number>/
+    // Cache directory: ${baseDir}/vibe-validate/watch-pr-cache/<repo-name>/<pr-number>/
     // Use normalizedTmpdir() to resolve Windows short paths (RUNNER~1 -> runneradmin)
     const base = baseDir ?? normalizedTmpdir();
-    this.cacheDir = path.join(base, 'vibe-validate', sanitizedRepoName, 'watch-pr', String(prNumber));
+    this.cacheDir = path.join(base, 'vibe-validate', 'watch-pr-cache', sanitizedRepoName, String(prNumber));
 
     // Subdirectories
     this.logsDir = path.join(this.cacheDir, 'logs');

@@ -372,6 +372,269 @@ describe('WatchPROrchestrator', () => {
     });
   });
 
+  describe('buildResultForRun', () => {
+    const mockRunId = 12345;
+
+    it('should build result for a specific run with all required fields', async () => {
+      // Mock fetcher methods
+      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
+        number: mockPRNumber,
+        title: 'Test PR',
+        url: 'https://github.com/test-owner/test-repo/pull/123',
+        branch: 'feature/test',
+        base_branch: 'main',
+        author: 'test-author',
+        draft: false,
+        mergeable: true,
+        merge_state_status: 'CLEAN',
+        labels: [],
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'CI / Build',
+        workflow: 'CI',
+        status: 'completed',
+        conclusion: 'failure',
+        started_at: '2025-12-17T10:00:00Z',
+        duration: '5m30s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs for run');
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
+        files_changed: 5,
+        insertions: 100,
+        deletions: 50,
+        commits: 3,
+      });
+
+      const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      // Verify result structure
+      expect(result.pr).toBeDefined();
+      expect(result.pr.number).toBe(mockPRNumber);
+      expect(result.status).toBeDefined();
+      expect(result.checks).toBeDefined();
+      expect(result.checks.github_actions).toHaveLength(1);
+      expect(result.checks.github_actions[0].run_id).toBe(mockRunId);
+    });
+
+    it('should validate result against schema', async () => {
+      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
+        number: mockPRNumber,
+        title: 'Test PR',
+        url: 'https://github.com/test-owner/test-repo/pull/123',
+        branch: 'feature/test',
+        base_branch: 'main',
+        author: 'test-author',
+        draft: false,
+        mergeable: true,
+        merge_state_status: 'CLEAN',
+        labels: [],
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'Tests / Unit',
+        workflow: 'Tests',
+        status: 'completed',
+        conclusion: 'success',
+        started_at: '2025-12-17T11:00:00Z',
+        duration: '3m15s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs');
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
+        files_changed: 2,
+        insertions: 50,
+        deletions: 25,
+        commits: 1,
+      });
+
+      const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      // Should validate without throwing
+      const validated = WatchPRResultSchema.parse(result);
+      expect(validated).toBeDefined();
+    });
+
+    it('should handle failed runs correctly', async () => {
+      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
+        number: mockPRNumber,
+        title: 'Test PR',
+        url: 'https://github.com/test-owner/test-repo/pull/123',
+        branch: 'feature/test',
+        base_branch: 'main',
+        author: 'test-author',
+        draft: false,
+        mergeable: true,
+        merge_state_status: 'CLEAN',
+        labels: [],
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'Lint / ESLint',
+        workflow: 'Lint',
+        status: 'completed',
+        conclusion: 'failure',
+        started_at: '2025-12-17T12:00:00Z',
+        duration: '1m45s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('lint error logs');
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
+        files_changed: 3,
+        insertions: 75,
+        deletions: 30,
+        commits: 2,
+      });
+
+      const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      expect(result.status).toBe('failed');
+      expect(result.checks.failed).toBe(1);
+      expect(result.checks.passed).toBe(0);
+      expect(result.checks.github_actions[0].conclusion).toBe('failure');
+    });
+
+    it('should handle in-progress runs', async () => {
+      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
+        number: mockPRNumber,
+        title: 'Test PR',
+        url: 'https://github.com/test-owner/test-repo/pull/123',
+        branch: 'feature/test',
+        base_branch: 'main',
+        author: 'test-author',
+        draft: false,
+        mergeable: true,
+        merge_state_status: 'CLEAN',
+        labels: [],
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'Deploy / Production',
+        workflow: 'Deploy',
+        status: 'in_progress',
+        conclusion: undefined,
+        started_at: '2025-12-17T13:00:00Z',
+        duration: '2m30s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('deployment in progress...');
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
+        files_changed: 1,
+        insertions: 10,
+        deletions: 5,
+        commits: 1,
+      });
+
+      const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      expect(result.status).toBe('pending');
+      expect(result.checks.pending).toBe(1);
+      expect(result.checks.github_actions[0].status).toBe('in_progress');
+    });
+
+    it('should attempt extraction for failed runs', async () => {
+      // This test verifies that extraction is attempted for failed runs
+      // The actual extraction logic is tested in extraction-mode-detector.test.ts
+      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
+        number: mockPRNumber,
+        title: 'Test PR',
+        url: 'https://github.com/test-owner/test-repo/pull/123',
+        branch: 'feature/test',
+        base_branch: 'main',
+        author: 'test-author',
+        draft: false,
+        mergeable: true,
+        merge_state_status: 'CLEAN',
+        labels: [],
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'Tests / Integration',
+        workflow: 'Tests',
+        status: 'completed',
+        conclusion: 'failure',
+        started_at: '2025-12-17T14:00:00Z',
+        duration: '8m20s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      const fetchLogsSpy = vi
+        .spyOn(GitHubFetcher.prototype, 'fetchRunLogs')
+        .mockResolvedValue('mock test failure logs');
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
+        files_changed: 4,
+        insertions: 80,
+        deletions: 40,
+        commits: 2,
+      });
+
+      const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      // Verify logs were fetched (extraction was attempted)
+      expect(fetchLogsSpy).toHaveBeenCalledWith(mockRunId);
+
+      // Verify result structure is correct
+      expect(result.checks.github_actions).toHaveLength(1);
+      expect(result.checks.github_actions[0].conclusion).toBe('failure');
+    });
+
+    it('should still fetch PR details and file changes', async () => {
+      const fetchPRSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
+        number: mockPRNumber,
+        title: 'Test PR',
+        url: 'https://github.com/test-owner/test-repo/pull/123',
+        branch: 'feature/test',
+        base_branch: 'main',
+        author: 'test-author',
+        draft: false,
+        mergeable: true,
+        merge_state_status: 'CLEAN',
+        labels: [],
+      });
+
+      const fetchFileChangesSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
+        files_changed: 5,
+        insertions: 100,
+        deletions: 50,
+        commits: 3,
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'CI / Build',
+        workflow: 'CI',
+        status: 'completed',
+        conclusion: 'success',
+        started_at: '2025-12-17T15:00:00Z',
+        duration: '4m10s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('build logs');
+
+      await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      // Verify PR context is still fetched
+      expect(fetchPRSpy).toHaveBeenCalledWith(mockPRNumber);
+      expect(fetchFileChangesSpy).toHaveBeenCalledWith(mockPRNumber);
+    });
+  });
+
   describe('output format selection', () => {
     it('should output YAML on failure', () => {
       const shouldYAML = orchestrator.shouldOutputYAML('failed', false);
