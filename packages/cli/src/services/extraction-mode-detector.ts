@@ -55,19 +55,12 @@ export class ExtractionModeDetector {
    */
   private async extractFromMatrixMode(logs: string): Promise<ErrorExtractorResult | null> {
     try {
-      // Strip GitHub Actions timestamps from each line (format: 2025-12-16T10:01:01.000Z)
-      // Preserve indentation after timestamps
+      // Strip GitHub Actions log prefixes from each line
+      // Format: <job-name>\t<step-name>\t[BOM]<timestamp> <content>
+      // Where BOM is optional UTF-8 BOM (U+FEFF)
       const cleanedLogs = logs
         .split('\n')
-        .map((line) => {
-          // Match timestamp pattern and keep everything after it (using RegExp.exec for sonarjs compliance)
-          const timestampRegex = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s(.*)$/;
-          const timestampMatch = timestampRegex.exec(line);
-          if (timestampMatch) {
-            return timestampMatch[2]; // Return content after timestamp and single space
-          }
-          return line; // Return line as-is if no timestamp
-        })
+        .map((line) => this.stripLogPrefix(line))
         .join('\n');
 
       // Find YAML document between --- markers (using RegExp.exec for sonarjs compliance)
@@ -78,29 +71,16 @@ export class ExtractionModeDetector {
         return null;
       }
 
-      // Parse YAML
+      // Parse and extract from YAML
       const yamlContent = yamlMatch[1];
       const parsed = YAML.parse(yamlContent);
 
-      // Check if extraction field exists
-      if (!parsed || typeof parsed !== 'object' || !('extraction' in parsed)) {
+      if (!parsed || typeof parsed !== 'object') {
         return null;
       }
 
-      // Validate extraction structure
-      const extraction = parsed.extraction;
-      if (
-        !extraction ||
-        typeof extraction !== 'object' ||
-        !('summary' in extraction) ||
-        !('totalErrors' in extraction) ||
-        !('errors' in extraction)
-      ) {
-        return null;
-      }
-
-      // Return extraction faithfully (already in correct format)
-      return extraction as ErrorExtractorResult;
+      // Try extracting from root level first, then nested
+      return this.extractFromYAML(parsed);
     } catch {
       // YAML parsing failed - not matrix mode
       return null;
@@ -125,6 +105,114 @@ export class ExtractionModeDetector {
       // Extraction failed
       return null;
     }
+  }
+
+  /**
+   * Strip GitHub Actions log prefix from a single line
+   *
+   * @param line - Log line
+   * @returns Cleaned line
+   */
+  private stripLogPrefix(line: string): string {
+    // Match GitHub Actions log prefix (job name + step name + timestamp with optional BOM)
+    // Example: "Run job\tStep name\t2025-12-16T16:33:10.1212265Z content"
+    const githubActionsRegex = /^[^\t]+\t[^\t]+\t\uFEFF?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s(.*)$/;
+    const githubMatch = githubActionsRegex.exec(line);
+    if (githubMatch) {
+      return githubMatch[1]; // Return content after prefix
+    }
+
+    // Fall back to simple timestamp stripping (for non-GitHub Actions logs)
+    const timestampRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s(.*)$/;
+    const timestampMatch = timestampRegex.exec(line);
+    if (timestampMatch) {
+      return timestampMatch[1]; // Return content after timestamp and space
+    }
+
+    return line; // Return line as-is if no prefix matched
+  }
+
+  /**
+   * Extract ErrorExtractorResult from parsed YAML
+   *
+   * Tries root level first (vibe-validate run output), then nested (vibe-validate validate output)
+   *
+   * @param parsed - Parsed YAML object
+   * @returns ErrorExtractorResult or null
+   */
+  private extractFromYAML(parsed: Record<string, unknown>): ErrorExtractorResult | null {
+    // Check if extraction field exists at root (vibe-validate run output)
+    if ('extraction' in parsed) {
+      const extraction = this.validateExtraction(parsed.extraction);
+      if (extraction) {
+        return extraction;
+      }
+    }
+
+    // Check if extraction is nested in phases/steps (vibe-validate validate output)
+    if ('phases' in parsed && Array.isArray(parsed.phases)) {
+      return this.extractFromPhases(parsed.phases);
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract ErrorExtractorResult from phases array (validate output)
+   *
+   * @param phases - Phases array
+   * @returns ErrorExtractorResult or null
+   */
+  private extractFromPhases(phases: unknown[]): ErrorExtractorResult | null {
+    for (const phase of phases) {
+      const extraction = this.extractFromPhaseSteps(phase);
+      if (extraction) {
+        return extraction;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Extract ErrorExtractorResult from a single phase's steps
+   *
+   * @param phase - Phase object
+   * @returns ErrorExtractorResult or null
+   */
+  private extractFromPhaseSteps(phase: unknown): ErrorExtractorResult | null {
+    if (!phase || typeof phase !== 'object' || !('steps' in phase) || !Array.isArray(phase.steps)) {
+      return null;
+    }
+
+    for (const step of phase.steps) {
+      if (step && typeof step === 'object' && 'extraction' in step) {
+        const extraction = this.validateExtraction(step.extraction);
+        if (extraction) {
+          // Return first extraction found (usually the failed step)
+          return extraction;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Validate extraction structure
+   *
+   * @param extraction - Extraction object
+   * @returns ErrorExtractorResult or null
+   */
+  private validateExtraction(extraction: unknown): ErrorExtractorResult | null {
+    if (
+      extraction &&
+      typeof extraction === 'object' &&
+      'summary' in extraction &&
+      'totalErrors' in extraction &&
+      'errors' in extraction
+    ) {
+      return extraction as ErrorExtractorResult;
+    }
+    return null;
   }
 
 }

@@ -41,7 +41,6 @@ describe('ExtractionModeDetector', () => {
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12345 --log',
       };
 
       const logs = `
@@ -85,7 +84,6 @@ describe('ExtractionModeDetector', () => {
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '1m15s',
-        log_command: 'gh run view 12346 --log',
       };
 
       const logs = `
@@ -124,7 +122,6 @@ extraction:
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12347 --log',
       };
 
       const logs = `
@@ -155,7 +152,6 @@ Done.
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12348 --log',
       };
 
       const logs = `
@@ -180,6 +176,202 @@ extraction:
     });
   });
 
+  describe('GitHub Actions log format parsing', () => {
+    it('should extract YAML from GitHub Actions logs with job/step prefix', async () => {
+      const check: GitHubActionCheck = {
+        name: 'Validation Pipeline',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 20275187200,
+        workflow: 'Validation Pipeline',
+        started_at: '2025-12-16T16:27:37Z',
+        duration: '5m43s',
+      };
+
+      // Real GitHub Actions log format with job name, step name, and timestamp prefix
+      const logs = `Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1212265Z ---
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1212528Z command: pnpm test
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1212767Z exitCode: 1
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1212971Z extraction:
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1213343Z   errors:
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1213731Z     - file: packages/cli/test/commands/doctor-config-errors.test.ts
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1213994Z       line: 67
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1214393Z       message: "AssertionError: expected '' to contain 'Configuration valid'"
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1214931Z     - file: packages/cli/test/commands/doctor-config-errors.test.ts
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1215763Z       line: 47
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1216693Z       message: "Error: EBUSY: resource busy or locked"
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1222159Z   summary: 2 test failure(s)
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1222450Z   totalErrors: 2
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1222877Z   guidance: Fix the failing tests
+Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1223303Z ---`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expect(result).toBeDefined();
+      expect(result?.summary).toBe('2 test failure(s)');
+      expect(result?.totalErrors).toBe(2);
+      expect(result?.errors).toHaveLength(2);
+      expect(result?.errors[0].file).toBe('packages/cli/test/commands/doctor-config-errors.test.ts');
+      expect(result?.errors[0].line).toBe(67);
+      expect(result?.guidance).toBe('Fix the failing tests');
+    });
+
+    it('should extract YAML from GitHub Actions logs with UTF-8 BOM', async () => {
+      const check: GitHubActionCheck = {
+        name: 'CI / Test',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 12361,
+        workflow: 'CI',
+        started_at: '2025-12-16T10:00:00Z',
+        duration: '2m30s',
+      };
+
+      // Log with UTF-8 BOM (U+FEFF) after second tab
+      const logs = `Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:00.000Z ---
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z command: npm test
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z exitCode: 1
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z extraction:
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z   summary: 1 test failure(s)
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z   totalErrors: 1
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z   errors:
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z     - message: Test failed
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z   guidance: Fix test
+Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z ---`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expect(result).toBeDefined();
+      expect(result?.summary).toBe('1 test failure(s)');
+      expect(result?.totalErrors).toBe(1);
+    });
+
+    it('should handle GitHub Actions logs with varying timestamp precision', async () => {
+      const check: GitHubActionCheck = {
+        name: 'Test',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 12362,
+        workflow: 'CI',
+        started_at: '2025-12-16T10:00:00Z',
+        duration: '1m00s',
+      };
+
+      // Some logs have millisecond precision, others have microseconds
+      const logs = `Job Name\tStep Name\t2025-12-16T10:01:00.123Z ---
+Job Name\tStep Name\t2025-12-16T10:01:00.123456Z extraction:
+Job Name\tStep Name\t2025-12-16T10:01:00.1234567Z   summary: Error occurred
+Job Name\tStep Name\t2025-12-16T10:01:00.12345678Z   totalErrors: 1
+Job Name\tStep Name\t2025-12-16T10:01:00.123456789Z   errors:
+Job Name\tStep Name\t2025-12-16T10:01:00.1Z     - message: Failed
+Job Name\tStep Name\t2025-12-16T10:01:00.12Z   guidance: Fix it
+Job Name\tStep Name\t2025-12-16T10:01:00.123Z ---`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expect(result).toBeDefined();
+      expect(result?.totalErrors).toBe(1);
+    });
+
+    it('should handle mixed format logs (GitHub Actions + plain timestamps)', async () => {
+      const check: GitHubActionCheck = {
+        name: 'Test',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 12363,
+        workflow: 'CI',
+        started_at: '2025-12-16T10:00:00Z',
+        duration: '1m30s',
+      };
+
+      // Some lines have GitHub Actions prefix, others just timestamps
+      const logs = `Job\tStep\t2025-12-16T10:01:00.000Z ---
+2025-12-16T10:01:01.000Z extraction:
+Job\tStep\t2025-12-16T10:01:01.000Z   summary: Mixed format
+2025-12-16T10:01:01.000Z   totalErrors: 1
+Job\tStep\t2025-12-16T10:01:01.000Z   errors:
+2025-12-16T10:01:01.000Z     - message: Error
+Job\tStep\t2025-12-16T10:01:01.000Z   guidance: Fix
+2025-12-16T10:01:01.000Z ---`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expect(result).toBeDefined();
+      expect(result?.summary).toBe('Mixed format');
+    });
+
+    it('should extract from nested validate output (phases/steps)', async () => {
+      const check: GitHubActionCheck = {
+        name: 'Validation Pipeline',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 12365,
+        workflow: 'Validation Pipeline',
+        started_at: '2025-12-16T10:00:00Z',
+        duration: '5m00s',
+      };
+
+      // Validate output has extraction nested in phases/steps
+      const logs = `Job\tStep\t2025-12-16T10:01:00.000Z ---
+Job\tStep\t2025-12-16T10:01:00.000Z passed: false
+Job\tStep\t2025-12-16T10:01:00.000Z summary: Unit Tests with Coverage failed
+Job\tStep\t2025-12-16T10:01:00.000Z phases:
+Job\tStep\t2025-12-16T10:01:00.000Z   - name: Testing
+Job\tStep\t2025-12-16T10:01:00.000Z     passed: false
+Job\tStep\t2025-12-16T10:01:00.000Z     steps:
+Job\tStep\t2025-12-16T10:01:00.000Z       - name: Unit Tests with Coverage
+Job\tStep\t2025-12-16T10:01:00.000Z         passed: false
+Job\tStep\t2025-12-16T10:01:00.000Z         extraction:
+Job\tStep\t2025-12-16T10:01:00.000Z           summary: 4 test failure(s)
+Job\tStep\t2025-12-16T10:01:00.000Z           totalErrors: 4
+Job\tStep\t2025-12-16T10:01:00.000Z           errors:
+Job\tStep\t2025-12-16T10:01:00.000Z             - file: test/example.test.ts
+Job\tStep\t2025-12-16T10:01:00.000Z               line: 10
+Job\tStep\t2025-12-16T10:01:00.000Z               message: Test failed
+Job\tStep\t2025-12-16T10:01:00.000Z           guidance: Fix the tests
+Job\tStep\t2025-12-16T10:01:00.000Z ---`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expect(result).toBeDefined();
+      expect(result?.summary).toBe('4 test failure(s)');
+      expect(result?.totalErrors).toBe(4);
+      expect(result?.errors).toHaveLength(1); // Only one error in this fixture
+      expect(result?.errors[0].file).toBe('test/example.test.ts');
+      expect(result?.guidance).toBe('Fix the tests');
+    });
+
+    it('should preserve indentation when stripping prefixes', async () => {
+      const check: GitHubActionCheck = {
+        name: 'Test',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 12364,
+        workflow: 'CI',
+        started_at: '2025-12-16T10:00:00Z',
+        duration: '1m00s',
+      };
+
+      // YAML requires correct indentation
+      const logs = `Job\tStep\t2025-12-16T10:01:00.000Z ---
+Job\tStep\t2025-12-16T10:01:00.000Z extraction:
+Job\tStep\t2025-12-16T10:01:00.000Z   errors:
+Job\tStep\t2025-12-16T10:01:00.000Z     - file: test.ts
+Job\tStep\t2025-12-16T10:01:00.000Z       line: 10
+Job\tStep\t2025-12-16T10:01:00.000Z       nested:
+Job\tStep\t2025-12-16T10:01:00.000Z         deeply: value
+Job\tStep\t2025-12-16T10:01:00.000Z   summary: Test
+Job\tStep\t2025-12-16T10:01:00.000Z   totalErrors: 1
+Job\tStep\t2025-12-16T10:01:00.000Z ---`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expect(result).toBeDefined();
+      expect(result?.errors[0].file).toBe('test.ts');
+      expect(result?.errors[0].line).toBe(10);
+    });
+  });
+
   describe('non-matrix mode detection', () => {
     it('should detect vitest from check name', async () => {
       const check: GitHubActionCheck = {
@@ -190,7 +382,6 @@ extraction:
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12349 --log',
       };
 
       const logs = `
@@ -220,7 +411,6 @@ RUN  v1.0.0
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12350 --log',
       };
 
       const logs = `
@@ -250,7 +440,6 @@ RUN  v1.0.0
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '1m15s',
-        log_command: 'gh run view 12351 --log',
       };
 
       const logs = `
@@ -279,7 +468,6 @@ src/example.ts
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '30s',
-        log_command: 'gh run view 12352 --log',
       };
 
       const logs = `
@@ -307,7 +495,6 @@ src/example.ts:5:10 - error TS2322: Type 'number' is not assignable to type 'str
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12353 --log',
       };
 
       const logs = `
@@ -337,7 +524,6 @@ RUN  v1.0.0
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '1m00s',
-        log_command: 'gh run view 12354 --log',
       };
 
       const logs = `
@@ -368,7 +554,6 @@ Failed to execute command
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12355 --log',
       };
 
       const logs = `
@@ -407,7 +592,6 @@ Failed to execute command
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '5m00s',
-        log_command: 'gh run view 12356 --log',
       };
 
       const logs = `
@@ -451,7 +635,6 @@ extraction:
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '1s',
-        log_command: 'gh run view 12357 --log',
       };
 
       const result = await detector.detectAndExtract(check, '');
@@ -468,7 +651,6 @@ extraction:
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12358 --log',
       };
 
       const logs = `
@@ -490,7 +672,6 @@ All tests passed!
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12359 --log',
       };
 
       const logs = `Some logs`;
@@ -514,7 +695,6 @@ All tests passed!
         workflow: 'CI',
         started_at: '2025-12-16T10:00:00Z',
         duration: '2m30s',
-        log_command: 'gh run view 12360 --log',
       };
 
       const logs = `
