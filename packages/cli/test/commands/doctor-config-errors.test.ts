@@ -31,7 +31,7 @@ function execCLI(cliPath: string, args: string[], options?: { cwd?: string; time
   };
 }
 
-describe.skipIf(process.platform === 'win32')('doctor command config error reporting (regression tests)', () => {
+describe('doctor command config error reporting (regression tests)', () => {
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');
 

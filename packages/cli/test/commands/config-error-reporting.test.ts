@@ -16,7 +16,7 @@ import {
   writeTestConfig,
 } from '../helpers/test-fixtures.js';
 
-describe.skipIf(process.platform === 'win32')('config command error reporting (regression tests)', () => {
+describe('config command error reporting (regression tests)', () => {
   // Skipped on Windows: Node.js module loader errors when executing CLI with node command
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');

@@ -26,7 +26,7 @@ function execCLI(cliPath: string, args: string[], options?: { cwd?: string; enco
   }
 }
 
-describe.skipIf(process.platform === 'win32')('create-extractor command', () => {
+describe('create-extractor command', () => {
   let testDir: string;
   const cliPath = join(__dirname, '../../dist/bin.js');
 
