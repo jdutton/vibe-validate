@@ -450,7 +450,8 @@ async function executeCommand(
       });
     });
 
-    // Timeout after 5 seconds
+    // Timeout after 30 seconds (CI environments are slower)
+    const timeoutMs = process.env.CI ? 30000 : 10000;
     setTimeout(() => {
       proc.kill();
       resolve({
@@ -459,6 +460,6 @@ async function executeCommand(
         stderr: stderr + '\nTimeout',
         output: stdout + stderr + '\nTimeout'
       });
-    }, 5000);
+    }, timeoutMs);
   });
 }

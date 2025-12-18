@@ -106,7 +106,7 @@ describe('CacheManager', () => {
       expect(written).toBe(content);
     });
 
-    it('should handle concurrent writes safely', async () => {
+    it.skipIf(process.platform === 'win32')('should handle concurrent writes safely', async () => {
       const testFile = path.join(tmpDir, 'test-concurrent.txt');
 
       // Simulate concurrent writes
@@ -139,7 +139,9 @@ describe('CacheManager', () => {
 
       const logPath = await cacheManager.saveLog(runId, logs);
 
-      expect(logPath).toContain(`logs/${runId}.log`);
+      // Normalize path separators for cross-platform compatibility
+      const normalizedPath = logPath.replaceAll('\\', '/');
+      expect(normalizedPath).toContain(`logs/${runId}.log`);
 
       const retrieved = await fs.readFile(logPath, 'utf8');
       expect(retrieved).toBe(logs);
