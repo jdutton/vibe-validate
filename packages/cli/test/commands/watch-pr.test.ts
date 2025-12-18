@@ -103,6 +103,75 @@ describe('watch-pr command', () => {
       expect(result.output).not.toContain('PR number is required');
     });
 
+    it('should detect owner/repo from various git remote URL formats', async () => {
+      // Test various GitHub remote URL formats (HTTPS, SSH, SSH with custom aliases)
+      const testCases = [
+        {
+          remote: 'https://github.com/jdutton/vibe-validate.git',
+          expectedOwner: 'jdutton',
+          expectedRepo: 'vibe-validate',
+          description: 'HTTPS URL'
+        },
+        {
+          remote: 'git@github.com:jdutton/vibe-validate.git',
+          expectedOwner: 'jdutton',
+          expectedRepo: 'vibe-validate',
+          description: 'SSH URL'
+        },
+        {
+          remote: 'git@github.com-personal:jdutton/vibe-validate.git',
+          expectedOwner: 'jdutton',
+          expectedRepo: 'vibe-validate',
+          description: 'SSH URL with custom alias (github.com-personal)'
+        },
+        {
+          remote: 'git@github.com-work:company/project.git',
+          expectedOwner: 'company',
+          expectedRepo: 'project',
+          description: 'SSH URL with custom alias (github.com-work)'
+        },
+      ];
+
+      for (const testCase of testCases) {
+        // Mock git remote to return test URL
+        vi.mocked(safeExecSync).mockImplementation((cmd: string, args: string[]) => {
+          if (cmd === 'git' && args[0] === 'remote') {
+            return testCase.remote;
+          }
+          if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
+            // Mock PR detection failure to trigger error (which includes owner/repo in message)
+            throw new Error('no pull requests found');
+          }
+          throw new Error('Unexpected command');
+        });
+
+        // Mock listPullRequests to check if correct owner/repo was detected
+        const listPRsSpy = vi.mocked(listPullRequests).mockReturnValue([]);
+
+        // Import and call watchPRCommand directly
+        const { watchPRCommand } = await import('../../src/commands/watch-pr.js');
+
+        try {
+          await watchPRCommand(undefined, {});
+          // eslint-disable-next-line sonarjs/no-ignored-exceptions
+        } catch (_error) {
+          // Expected to fail (no PR found) - we're only testing owner/repo detection
+          // Test validates listPullRequests was called with correct owner/repo
+        }
+
+        // Verify listPullRequests was called with correct owner/repo
+        expect(listPRsSpy).toHaveBeenCalledWith(
+          testCase.expectedOwner,
+          testCase.expectedRepo,
+          expect.any(Number),
+          expect.any(Array)
+        );
+
+        // Clear mocks for next iteration
+        vi.clearAllMocks();
+      }
+    });
+
     it('should show helpful suggestions when auto-detection fails', async () => {
       // Mock git remote to return test repo
       vi.mocked(safeExecSync).mockImplementation((cmd: string, args: string[]) => {
@@ -419,13 +488,16 @@ describe('watch-pr command', () => {
 
 /**
  * Execute CLI command and capture output
+ *
+ * On Windows, spawn can't execute files without extensions, so we use node directly
  */
 async function executeCommand(
   command: string,
   args: string[]
 ): Promise<{ exitCode: number; stdout: string; stderr: string; output: string }> {
   return new Promise((resolve) => {
-    const proc = spawn(command, args, {
+    // Use node directly to execute the CLI (cross-platform compatible)
+    const proc = spawn('node', [command, ...args], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env }
     });

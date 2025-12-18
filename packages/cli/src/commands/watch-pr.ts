@@ -199,10 +199,12 @@ function detectOwnerRepo(): { owner: string; repo: string } {
       encoding: 'utf8',
     }) as string;
 
-    // Parse GitHub URL (supports both HTTPS and SSH)
+    // Parse GitHub URL (supports HTTPS, SSH, and SSH with custom host aliases)
     // HTTPS: https://github.com/owner/repo.git
     // SSH: git@github.com:owner/repo.git
-    const regex = /github\.com[/:]([\w-]+)\/([\w-]+)/;
+    // SSH with alias: git@github.com-personal:owner/repo.git
+    // SSH with alias: git@github.com-work:owner/repo.git
+    const regex = /github\.com[^/:]*[/:]([\w-]+)\/([\w-]+)/;
     const match = regex.exec(remote);
     if (!match) {
       throw new Error('Could not parse GitHub owner/repo from remote URL');
