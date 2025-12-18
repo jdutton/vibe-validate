@@ -231,6 +231,60 @@ export class GitHubFetcher {
   }
 
   /**
+   * Fetch all workflow runs for a PR
+   *
+   * @param prNumber - PR number
+   * @returns List of workflow runs
+   */
+  async fetchRunsForPR(prNumber: number): Promise<Array<{
+    run_id: number;
+    workflow_name: string;
+    status: string;
+    conclusion: string | null;
+    started_at: string;
+  }>> {
+    // First get the PR branch name
+    const prResponse = safeExecSync(
+      'gh',
+      ['pr', 'view', String(prNumber), ...this.repoFlag, '--json', 'headRefName'],
+      {
+        encoding: 'utf8',
+      }
+    );
+
+    const prData = JSON.parse(prResponse as string);
+    const branchName = prData.headRefName;
+
+    // Fetch workflow runs for the branch
+    const response = safeExecSync(
+      'gh',
+      ['run', 'list', '--branch', branchName, ...this.repoFlag, '--json', 'databaseId,workflowName,status,conclusion,createdAt,updatedAt', '--limit', '20'],
+      {
+        encoding: 'utf8',
+      }
+    );
+
+    const runs = JSON.parse(response as string) as Array<{
+      databaseId: number;
+      workflowName: string;
+      status: string;
+      conclusion: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+
+    // Transform to expected format
+    return runs.map((run) => ({
+      run_id: run.databaseId,
+      workflow_name: run.workflowName,
+      status: run.status,
+      conclusion: run.conclusion,
+      started_at: run.createdAt,
+      duration: this.calculateDuration(run.createdAt, run.updatedAt),
+    }));
+  }
+
+  /**
    * Fetch file changes for a PR
    *
    * Uses git diff --numstat to get file change statistics.

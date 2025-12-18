@@ -10,6 +10,7 @@ interface WatchPROptions {
   yaml?: boolean;
   repo?: string;
   runId?: string;
+  history?: boolean;
 }
 
 /**
@@ -21,6 +22,7 @@ export function registerWatchPRCommand(program: Command): void {
     .description('Watch CI checks for a pull/merge request with LLM-friendly output')
     .option('--yaml', 'Force YAML output (auto-enabled on failure)')
     .option('--repo <owner/repo>', 'Repository (default: auto-detect from git remote)')
+    .option('--history', 'Show historical runs for the PR with pass/fail summary')
     .option('--run-id <id>', 'Watch specific run ID instead of latest (useful for testing failed runs)')
     .action(async (prNumber: string | undefined, options: WatchPROptions) => {
       try {
@@ -83,6 +85,12 @@ async function watchPRCommand(
 
   // Create orchestrator
   const orchestrator = new WatchPROrchestrator(owner, repo);
+
+  // Handle --history flag (list historical runs)
+  if (options.history) {
+    await displayHistoricalRuns(orchestrator, prNum, options.yaml ?? false);
+    return 0; // Success exit code
+  }
 
   // Build result (use buildResultForRun if --run-id provided)
   let result: Awaited<ReturnType<typeof orchestrator.buildResult>>;
@@ -235,6 +243,59 @@ function parseRepoFlag(repoFlag: string): { owner: string; repo: string } {
   }
 
   return { owner: parts[0], repo: parts[1] };
+}
+
+/**
+ * Display historical runs for a PR
+ *
+ * @param orchestrator - WatchPROrchestrator instance
+ * @param prNumber - PR number
+ * @param yaml - Output in YAML format
+ */
+async function displayHistoricalRuns(
+  orchestrator: WatchPROrchestrator,
+  prNumber: number,
+  yaml: boolean
+): Promise<void> {
+  const runs = await orchestrator.fetchRunsForPR(prNumber);
+
+  if (runs.length === 0) {
+    console.log(`No workflow runs found for PR #${prNumber}`);
+    return;
+  }
+
+  if (yaml) {
+    // YAML output
+    process.stdout.write('---\n');
+    process.stdout.write(stringifyYaml({ runs }));
+  } else {
+    // Human-friendly table
+    console.log(`\n📋 Workflow Runs for PR #${prNumber}\n`);
+    console.log('   RUN ID       CONCLUSION  DURATION  WORKFLOW                      STARTED');
+    console.log('   ' + '─'.repeat(95));
+
+    for (const run of runs) {
+      const runId = run.run_id.toString().padEnd(12);
+      const conclusion = (run.conclusion ?? 'pending').padEnd(11);
+      const duration = (run.duration ?? '?').padEnd(9);
+      const workflow = run.workflow_name.slice(0, 29).padEnd(29);
+      const startedAt = new Date(run.started_at).toLocaleString();
+
+      // Color code by conclusion
+      let icon = '⏳'; // pending
+      if (run.conclusion === 'success') {
+        icon = '✅';
+      } else if (run.conclusion === 'failure') {
+        icon = '❌';
+      }
+
+      console.log(`${icon}  ${runId} ${conclusion} ${duration} ${workflow} ${startedAt}`);
+    }
+
+    console.log('\n💡 Tip: Use --run-id <id> to drill into a specific run for extraction testing');
+    const cmd = getCommandName();
+    console.log(`   Example: ${cmd} watch-pr ${prNumber} --run-id ${runs[0].run_id}`);
+  }
 }
 
 /**

@@ -469,6 +469,23 @@ export class WatchPROrchestrator {
   }
 
   /**
+   * Fetch all workflow runs for a PR (for --history flag)
+   *
+   * @param prNumber - PR number
+   * @returns List of workflow runs with basic metadata
+   */
+  async fetchRunsForPR(prNumber: number): Promise<Array<{
+    run_id: number;
+    workflow_name: string;
+    status: string;
+    conclusion: string | null;
+    started_at: string;
+    duration?: string;
+  }>> {
+    return await this.fetcher.fetchRunsForPR(prNumber);
+  }
+
+  /**
    * Determine if output should be YAML format
    *
    * Auto-YAML on failure (consistent with validate command)

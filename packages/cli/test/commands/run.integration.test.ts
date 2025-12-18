@@ -674,7 +674,8 @@ describe('run command integration', () => {
 
     it('should display first N lines with --head flag', () => {
       // Display output goes to stderr, YAML goes to stdout
-      const { stdout, stderr } = execCLIWithStderr(['run', '--head', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
+      // Use --force to bypass cache (ensures fresh execution in coverage mode)
+      const { stdout, stderr } = execCLIWithStderr(['run', '--force', '--head', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
       // Extract YAML front matter from stdout
       const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
@@ -690,7 +691,8 @@ describe('run command integration', () => {
 
     it('should display last N lines with --tail flag', () => {
       // Display output goes to stderr, YAML goes to stdout
-      const { stdout, stderr } = execCLIWithStderr(['run', '--tail', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
+      // Use --force to bypass cache (ensures fresh execution in coverage mode)
+      const { stdout, stderr } = execCLIWithStderr(['run', '--force', '--tail', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
       // Extract YAML front matter from stdout
       const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);

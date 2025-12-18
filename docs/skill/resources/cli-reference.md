@@ -409,6 +409,7 @@ Watch CI checks for a pull/merge request with LLM-friendly output
 
 - `--yaml` - Force YAML output (auto-enabled on failure)
 - `--repo <owner/repo>` - Repository (default: auto-detect from git remote)
+- `--history` - Show historical runs for the PR with pass/fail summary
 - `--run-id <id>` - Watch specific run ID instead of latest (useful for testing failed runs)
 
 **Error recovery:**
