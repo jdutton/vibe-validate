@@ -69,22 +69,15 @@ export class WatchPROrchestrator {
     prNumber: number,
     options: { useCache?: boolean; forceFetch?: boolean } = {},
   ): Promise<WatchPRResult> {
-    const { useCache = true, forceFetch = false } = options;
+    const { useCache = true } = options;
 
-    // Initialize cache manager if caching enabled
+    // Initialize cache manager if caching enabled (for logs only)
     if (useCache && !this.cacheManager) {
       this.cacheManager = new CacheManager(`${this.owner}/${this.repo}`, prNumber);
     }
 
-    // Check cache first (if enabled and not forcing fetch)
-    if (useCache && !forceFetch && this.cacheManager) {
-      const cached = await this.cacheManager.getMetadata();
-      if (cached) {
-        return cached;
-      }
-    }
-
-    // Fetch PR metadata
+    // Always fetch fresh PR metadata and checks from GitHub
+    // Cache is ONLY used for expensive log downloads, NOT for status
     const prMetadata = await this.fetcher.fetchPRDetails(prNumber);
 
     // Fetch checks
@@ -211,13 +204,11 @@ export class WatchPROrchestrator {
       },
       changes,
       guidance,
-      cache: this.buildCacheInfo(),
+      // Note: cache field removed - will be added back when actually needed
     };
 
-    // Save to cache
-    if (this.cacheManager) {
-      await this.cacheManager.saveMetadata(result);
-    }
+    // Note: We do NOT cache the result itself - only logs are cached
+    // This ensures PR status is always fresh from GitHub
 
     return result;
   }
@@ -316,7 +307,7 @@ export class WatchPROrchestrator {
       },
       changes,
       guidance,
-      cache: this.buildCacheInfo(),
+      // Note: cache field removed - will be added back when actually needed
     };
 
     // Don't cache metadata for single-run mode (historical runs are immutable)
@@ -451,22 +442,7 @@ export class WatchPROrchestrator {
     };
   }
 
-  /**
-   * Build cache info (if cacheManager exists)
-   *
-   * @returns Cache info or undefined
-   */
-  private buildCacheInfo() {
-    if (!this.cacheManager) {
-      return;
-    }
-
-    return {
-      location: this.cacheManager['cacheDir'], // Access private field
-      cached_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 300000).toISOString(), // 5 minutes from now
-    };
-  }
+  // buildCacheInfo() removed - cache field will be added back when actually needed
 
   /**
    * Fetch all workflow runs for a PR (for --history flag)

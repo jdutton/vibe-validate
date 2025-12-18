@@ -13,11 +13,12 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/*.system.test.ts', // System tests run separately with pnpm test:system
-      // Platform-specific exclusions (Windows has file locking issues in cleanup)
+      // Platform-specific exclusions (Windows has issues with process spawning and GitHub API calls)
       ...(process.platform === 'win32' ? [
         'packages/cli/test/commands/doctor-config-errors.test.ts',
         'packages/cli/test/commands/config-error-reporting.test.ts',
         'packages/cli/test/commands/create-extractor.test.ts',
+        'packages/cli/test/commands/watch-pr.test.ts', // Timeouts on Windows (spawns processes, calls gh CLI)
       ] : []),
     ],
     // Prevent Vitest worker timeouts by limiting concurrency
