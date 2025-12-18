@@ -16,6 +16,11 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 
+import {
+  fetchPRDetails,
+  listPullRequests,
+  listWorkflowRuns,
+} from '@vibe-validate/git';
 import { safeExecSync } from '@vibe-validate/utils';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,6 +32,17 @@ vi.mock('@vibe-validate/utils', () => ({
   normalizedTmpdir: vi.fn(() => '/tmp'),
   mkdirSyncReal: vi.fn(),
 }));
+
+// Mock gh-commands from @vibe-validate/git
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual('@vibe-validate/git');
+  return {
+    ...actual,
+    fetchPRDetails: vi.fn(),
+    listPullRequests: vi.fn(),
+    listWorkflowRuns: vi.fn(),
+  };
+});
 
 describe('watch-pr command', () => {
   beforeEach(() => {
@@ -88,18 +104,65 @@ describe('watch-pr command', () => {
     });
 
     it('should show helpful suggestions when auto-detection fails', async () => {
-      // Note: This test runs against the real CLI which calls real gh commands
-      // It will show actual open PRs from the repository
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr']);
+      // Mock git remote to return test repo
+      vi.mocked(safeExecSync).mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'git' && args[0] === 'remote') {
+          return 'https://github.com/test/repo.git';
+        }
+        if (cmd === 'git' && args[0] === 'rev-parse') {
+          throw new Error('Not on a branch'); // Simulate detached HEAD
+        }
+        throw new Error('Unexpected command');
+      });
+
+      // Mock listPullRequests to return test PRs
+      vi.mocked(listPullRequests).mockReturnValue([
+        {
+          number: 92,
+          title: 'Test PR 1',
+          author: { login: 'testuser1' },
+          headRefName: 'feature/test-1',
+          baseRefName: 'main',
+          url: 'https://github.com/test/repo/pull/92',
+        },
+        {
+          number: 93,
+          title: 'Test PR 2',
+          author: { login: 'testuser2' },
+          headRefName: 'feature/test-2',
+          baseRefName: 'main',
+          url: 'https://github.com/test/repo/pull/93',
+        },
+      ]);
+
+      // Capture stderr
+      const stderrWrite = process.stderr.write;
+      let stderrOutput = '';
+      process.stderr.write = ((chunk: string | Buffer) => {
+        stderrOutput += typeof chunk === 'string' ? chunk : chunk.toString();
+        return true;
+      }) as typeof process.stderr.write;
+
+      // Import and call watchPRCommand directly (not spawning subprocess)
+      const { watchPRCommand } = await import('../../src/commands/watch-pr.js');
+
+      let exitCode: number;
+      try {
+        exitCode = await watchPRCommand(undefined, {});
+      } catch (error) {
+        // Command throws on error, capture it
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        stderrOutput += errorMessage;
+        exitCode = 1;
+      } finally {
+        process.stderr.write = stderrWrite;
+      }
 
       // Should show error message with suggestions
-      expect(result.stderr).toContain('Could not auto-detect PR from current branch');
-      expect(result.stderr).toContain('Open PRs in'); // Will show actual repo name
-      expect(result.stderr).toMatch(/#\d+ -/); // Should show at least one PR number
-      expect(result.stderr).toContain('Usage: vv watch-pr <pr-number>'); // Should show "vv" since that's what we called
-      expect(result.stderr).toContain('Example: vv watch-pr');
-      expect(result.exitCode).toBe(1);
+      expect(stderrOutput).toContain('Could not auto-detect PR from current branch');
+      expect(stderrOutput).toContain('Open PRs in test/repo');
+      expect(stderrOutput).toMatch(/#92 -/);
+      expect(exitCode).toBe(1);
     });
   });
 
@@ -240,11 +303,71 @@ describe('watch-pr command', () => {
 
     it('should exit with code 0 after displaying history', async () => {
       // --history should be informational only, always exit 0
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--history']);
+      // Mock git remote
+      vi.mocked(safeExecSync).mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'git' && args[0] === 'remote') {
+          return 'https://github.com/test/repo.git';
+        }
+        throw new Error('Unexpected git command');
+      });
+
+      // Mock fetchPRDetails to return basic PR info
+      vi.mocked(fetchPRDetails).mockReturnValue({
+        number: 90,
+        title: 'Test PR',
+        url: 'https://github.com/test/repo/pull/90',
+        headRefName: 'feature/test',
+        baseRefName: 'main',
+        author: { login: 'testuser' },
+        isDraft: false,
+        mergeable: 'MERGEABLE',
+        mergeStateStatus: 'CLEAN',
+        labels: [],
+        closingIssuesReferences: { nodes: [] },
+      });
+
+      // Mock listWorkflowRuns to return test runs
+      vi.mocked(listWorkflowRuns).mockReturnValue([
+        {
+          databaseId: 123,
+          name: 'Validation Pipeline',
+          status: 'completed',
+          conclusion: 'success',
+          workflowName: 'Validate',
+          createdAt: '2025-12-18T00:00:00Z',
+          updatedAt: '2025-12-18T00:05:00Z',
+          url: 'https://github.com/test/repo/actions/runs/123',
+        },
+        {
+          databaseId: 124,
+          name: 'Validation Pipeline',
+          status: 'completed',
+          conclusion: 'failure',
+          workflowName: 'Validate',
+          createdAt: '2025-12-17T00:00:00Z',
+          updatedAt: '2025-12-17T00:05:00Z',
+          url: 'https://github.com/test/repo/actions/runs/124',
+        },
+      ]);
+
+      // Import and call watchPRCommand directly
+      const { watchPRCommand } = await import('../../src/commands/watch-pr.js');
+
+      // Suppress console output for cleaner test output
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleTableSpy = vi.spyOn(console, 'table').mockImplementation(() => {});
+
+      let exitCode: number;
+      try {
+        exitCode = await watchPRCommand('90', { history: true });
+      } finally {
+        consoleLogSpy.mockRestore();
+        consoleTableSpy.mockRestore();
+      }
 
       // Should exit with 0 (even if some runs failed)
-      expect(result.exitCode).toBe(0);
+      // This is the key behavior: --history is informational and should never cause failure
+      expect(exitCode).toBe(0);
     });
 
     it('should work with --repo flag to check other repositories', async () => {

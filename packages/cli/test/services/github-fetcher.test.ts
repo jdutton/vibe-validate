@@ -540,13 +540,15 @@ describe('GitHubFetcher', () => {
     it('should create fetcher without repo (defaults to current repo)', () => {
       const defaultFetcher = new GitHubFetcher();
       expect(defaultFetcher).toBeDefined();
-      expect(defaultFetcher['repoFlag']).toEqual([]);
+      expect(defaultFetcher['owner']).toBeUndefined();
+      expect(defaultFetcher['repo']).toBeUndefined();
     });
 
     it('should create fetcher with owner/repo', () => {
       const crossRepoFetcher = new GitHubFetcher('jdutton', 'other-repo');
       expect(crossRepoFetcher).toBeDefined();
-      expect(crossRepoFetcher['repoFlag']).toEqual(['--repo', 'jdutton/other-repo']);
+      expect(crossRepoFetcher['owner']).toBe('jdutton');
+      expect(crossRepoFetcher['repo']).toBe('other-repo');
     });
 
     it('should pass --repo flag to gh pr view for PR details', async () => {

@@ -1,3 +1,4 @@
+import { listPullRequests } from '@vibe-validate/git';
 import { safeExecSync } from '@vibe-validate/utils';
 import type { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
@@ -61,7 +62,7 @@ export function registerWatchPRCommand(program: Command): void {
  *
  * @returns Exit code (0 = success, 1 = failure)
  */
-async function watchPRCommand(
+export async function watchPRCommand(
   prNumber: string | undefined,
   options: WatchPROptions
 ): Promise<number> {
@@ -168,19 +169,14 @@ async function autoDetectPR(owner: string, repo: string): Promise<number> {
  */
 async function suggestOpenPRs(owner: string, repo: string): Promise<string> {
   try {
-    const prsDataRaw = safeExecSync(
-      'gh',
-      ['pr', 'list', '--repo', `${owner}/${repo}`, '--limit', '5', '--json', 'number,title,author,headRefName'],
-      { encoding: 'utf8' }
-    );
-    const prsData = JSON.parse(prsDataRaw as string);
+    const prsData = listPullRequests(owner, repo, 5, ['number', 'title', 'author', 'headRefName']);
 
-    if (!Array.isArray(prsData) || prsData.length === 0) {
+    if (prsData.length === 0) {
       return 'No open PRs found in this repository.';
     }
 
     const prList = prsData
-      .map((pr: { number: number; title: string; author: { login: string }; headRefName: string }) =>
+      .map((pr) =>
         `  #${pr.number} - ${pr.title}\n` +
         `         (${pr.headRefName} by ${pr.author.login})`
       )

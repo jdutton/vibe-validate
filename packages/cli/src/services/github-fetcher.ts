@@ -10,6 +10,13 @@
  * @packageDocumentation
  */
 
+import {
+  fetchPRDetails as ghFetchPRDetails,
+  fetchPRChecks,
+  fetchRunLogs as ghFetchRunLogs,
+  fetchRunDetails as ghFetchRunDetails,
+  listWorkflowRuns,
+} from '@vibe-validate/git';
 import { safeExecSync } from '@vibe-validate/utils';
 
 import type {
@@ -90,7 +97,8 @@ export interface RunDetails {
  * GitHubFetcher - Fetch PR data from GitHub API via gh CLI
  */
 export class GitHubFetcher {
-  private readonly repoFlag: string[];
+  private readonly owner?: string;
+  private readonly repo?: string;
 
   /**
    * Create GitHubFetcher
@@ -99,8 +107,8 @@ export class GitHubFetcher {
    * @param repo - Repository name (optional, defaults to current repo)
    */
   constructor(owner?: string, repo?: string) {
-    // Build --repo flag if owner/repo provided
-    this.repoFlag = owner && repo ? ['--repo', `${owner}/${repo}`] : [];
+    this.owner = owner;
+    this.repo = repo;
   }
 
   /**
@@ -124,15 +132,7 @@ export class GitHubFetcher {
       'closingIssuesReferences',
     ];
 
-    const response = safeExecSync(
-      'gh',
-      ['pr', 'view', String(prNumber), ...this.repoFlag, '--json', fields.join(',')],
-      {
-        encoding: 'utf8',
-      }
-    );
-
-    const data = JSON.parse(response as string);
+    const data = ghFetchPRDetails(prNumber, this.owner, this.repo, fields);
 
     // Map GitHub API response to PRMetadata schema
     return {
@@ -144,7 +144,7 @@ export class GitHubFetcher {
       author: data.author.login,
       draft: data.isDraft ?? false,
       mergeable: data.mergeable === 'MERGEABLE',
-      merge_state_status: this.normalizeMergeStateStatus(data.mergeStateStatus),
+      merge_state_status: this.normalizeMergeStateStatus(data.mergeStateStatus ?? 'UNKNOWN'),
       labels: data.labels?.map((label: { name: string }) => label.name) ?? [],
       linked_issues: this.extractLinkedIssues(data.closingIssuesReferences),
     };
@@ -157,15 +157,7 @@ export class GitHubFetcher {
    * @returns Check results
    */
   async fetchChecks(prNumber: number): Promise<CheckResult[]> {
-    const response = safeExecSync(
-      'gh',
-      ['pr', 'view', String(prNumber), ...this.repoFlag, '--json', 'statusCheckRollup'],
-      {
-        encoding: 'utf8',
-      }
-    );
-
-    const data = JSON.parse(response as string);
+    const data = fetchPRChecks(prNumber, this.owner, this.repo);
     const checks: CheckResult[] = [];
 
     for (const check of data.statusCheckRollup ?? []) {
@@ -188,12 +180,7 @@ export class GitHubFetcher {
    * @returns Raw log output
    */
   async fetchRunLogs(runId: number): Promise<string> {
-    const logs = safeExecSync('gh', ['run', 'view', String(runId), ...this.repoFlag, '--log'], {
-      encoding: 'utf8',
-    });
-
-    // safeExecSync returns Buffer or string depending on encoding option
-    return typeof logs === 'string' ? logs : logs.toString('utf8');
+    return ghFetchRunLogs(runId, this.owner, this.repo);
   }
 
   /**
@@ -207,15 +194,7 @@ export class GitHubFetcher {
   async fetchRunDetails(runId: number): Promise<RunDetails> {
     const fields = ['name', 'status', 'conclusion', 'workflowName', 'createdAt', 'updatedAt', 'url'];
 
-    const response = safeExecSync(
-      'gh',
-      ['run', 'view', String(runId), ...this.repoFlag, '--json', fields.join(',')],
-      {
-        encoding: 'utf8',
-      }
-    );
-
-    const data = JSON.parse(response as string);
+    const data = ghFetchRunDetails(runId, this.owner, this.repo, fields);
 
     // Map GitHub API response to RunDetails
     return {
@@ -244,34 +223,17 @@ export class GitHubFetcher {
     started_at: string;
   }>> {
     // First get the PR branch name
-    const prResponse = safeExecSync(
-      'gh',
-      ['pr', 'view', String(prNumber), ...this.repoFlag, '--json', 'headRefName'],
-      {
-        encoding: 'utf8',
-      }
-    );
-
-    const prData = JSON.parse(prResponse as string);
+    const prData = ghFetchPRDetails(prNumber, this.owner, this.repo, ['headRefName']);
     const branchName = prData.headRefName;
 
     // Fetch workflow runs for the branch
-    const response = safeExecSync(
-      'gh',
-      ['run', 'list', '--branch', branchName, ...this.repoFlag, '--json', 'databaseId,workflowName,status,conclusion,createdAt,updatedAt', '--limit', '20'],
-      {
-        encoding: 'utf8',
-      }
+    const runs = listWorkflowRuns(
+      branchName,
+      this.owner,
+      this.repo,
+      20,
+      ['databaseId', 'workflowName', 'status', 'conclusion', 'createdAt', 'updatedAt']
     );
-
-    const runs = JSON.parse(response as string) as Array<{
-      databaseId: number;
-      workflowName: string;
-      status: string;
-      conclusion: string | null;
-      createdAt: string;
-      updatedAt: string;
-    }>;
 
     // Transform to expected format
     return runs.map((run) => ({

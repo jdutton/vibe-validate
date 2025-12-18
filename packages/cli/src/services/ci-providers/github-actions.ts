@@ -1,4 +1,4 @@
-import { executeGitCommand } from '@vibe-validate/git';
+import { executeGitCommand, fetchPRDetails, fetchPRChecks } from '@vibe-validate/git';
 import { isToolAvailable, safeExecSync } from '@vibe-validate/utils';
 import { parse as parseYaml } from 'yaml';
 
@@ -39,12 +39,7 @@ export class GitHubActionsProvider implements CIProvider {
 
   async detectPullRequest(): Promise<PullRequest | null> {
     try {
-      const output = safeExecSync('gh', ['pr', 'view', '--json', 'number,title,url,headRefName'], {
-        encoding: 'utf8',
-        stdio: 'pipe',
-      });
-
-      const prData = JSON.parse(output.toString());
+      const prData = fetchPRDetails(0, undefined, undefined, ['number', 'title', 'url', 'headRefName']);
 
       return {
         id: prData.number,
@@ -58,23 +53,21 @@ export class GitHubActionsProvider implements CIProvider {
   }
 
   async fetchCheckStatus(prId: number | string): Promise<CheckStatus> {
-    const output = safeExecSync('gh', ['pr', 'view', String(prId), '--json', 'number,title,url,statusCheckRollup,headRefName'], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    const prNumber = typeof prId === 'string' ? Number.parseInt(prId, 10) : prId;
 
-    const data = JSON.parse(output.toString());
+    const prData = fetchPRDetails(prNumber, undefined, undefined, ['number', 'title', 'url', 'headRefName']);
+    const checksData = fetchPRChecks(prNumber);
 
-    const checks = (data.statusCheckRollup ?? []).map((check: unknown) =>
+    const checks = (checksData.statusCheckRollup ?? []).map((check: unknown) =>
       this.transformCheck(check)
     );
 
     return {
       pr: {
-        id: data.number,
-        title: data.title,
-        url: data.url,
-        branch: data.headRefName ?? '',
+        id: prData.number,
+        title: prData.title,
+        url: prData.url,
+        branch: prData.headRefName ?? '',
       },
       status: this.determineOverallStatus(checks),
       result: this.determineOverallResult(checks),
