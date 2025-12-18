@@ -705,6 +705,50 @@ Every time you run tests, validation, or encounter errors, ask yourself:
 
 **Why it matters**: Every `--no-verify` is a signal that vibe-validate is blocking legitimate work. If YOU can't use it properly while building it, customers won't either.
 
+### ALWAYS Use watch-pr for CI Monitoring
+
+**CRITICAL**: When monitoring CI checks for pull requests, ALWAYS use `vv watch-pr` commands. NEVER revert to raw `gh` commands.
+
+**Why this matters:**
+- `vv watch-pr` provides LLM-optimized output (concise, structured YAML)
+- It includes error extraction and actionable guidance
+- It demonstrates the tool's value while you develop it
+- Using raw `gh` commands defeats the purpose of watch-pr and misses opportunities to improve it
+
+**Correct usage:**
+```bash
+# ✅ Monitor PR status (auto-detect PR from branch)
+vv watch-pr
+
+# ✅ Monitor specific PR
+vv watch-pr 92
+
+# ✅ View PR history
+vv watch-pr 92 --history
+
+# ✅ Inspect specific run for extraction testing
+vv watch-pr 92 --run-id 20328421613
+
+# ✅ Get YAML output for parsing
+vv watch-pr 92 --yaml
+```
+
+**NEVER do this:**
+```bash
+# ❌ Don't bypass watch-pr with raw gh commands
+gh pr view 92
+gh run list --branch feature/my-branch
+gh run view 20328421613 --log
+```
+
+**If watch-pr is missing features you need:**
+1. Use watch-pr anyway to understand the gap
+2. Document what's missing
+3. Implement the missing feature in watch-pr
+4. Then use the improved watch-pr
+
+**Remember**: You're both the developer AND the user. Every time you reach for `gh` commands instead of `vv watch-pr`, you're missing a chance to validate and improve the tool.
+
 ### Example Scenarios
 
 **Good Experience:**
