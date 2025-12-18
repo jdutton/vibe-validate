@@ -99,9 +99,12 @@ function extract(output: string): ErrorExtractorResult {
   let currentFile = '';
 
   for (const line of lines) {
+    // Strip GitHub Actions annotation prefix if present (##[error] or ##[warning])
+    const cleanedLine = line.replace(/^##\[(error|warning)\]/, '');
+
     // Try modern format first: file:line:col: severity message [rule-name]
     // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses ESLint output (controlled linter output), not user input
-    const modernMatch = /^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s+(\S+)$/.exec(line);
+    const modernMatch = /^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s+(\S+)$/.exec(cleanedLine);
     if (modernMatch) {
       const ruleMessage = modernMatch[5].trim();
       const ruleName = modernMatch[6].replaceAll(/[[\]]/g, ''); // Remove brackets if present
@@ -117,8 +120,9 @@ function extract(output: string): ErrorExtractorResult {
     }
 
     // Stylish format: spaces + line:col + spaces + severity + spaces + message + spaces + rule
+    // Also handle with GitHub Actions annotation prefix
     // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses ESLint output (controlled linter output), not user input
-    const stylishMatch = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s+(\S+)\s*$/.exec(line);
+    const stylishMatch = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s+(\S+)\s*$/.exec(cleanedLine);
     if (stylishMatch && currentFile) {
       const ruleMessage = stylishMatch[4].trim();
       const ruleName = stylishMatch[5];

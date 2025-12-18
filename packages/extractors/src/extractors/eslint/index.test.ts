@@ -43,6 +43,15 @@ describe('ESLint Plugin', () => {
 
       expect(result.confidence).toBe(0);
     });
+
+    it('should detect GitHub Actions annotation format', () => {
+      const output = `##[error]src/index.ts:10:5: error Unexpected console statement no-console`;
+      const result = eslintPlugin.detect(output);
+
+      expect(result.confidence).toBe(85);
+      expect(result.patterns).toContain('file:line:col: error/warning rule-name');
+      expect(result.reason).toBe('ESLint error format detected');
+    });
   });
 
   describe('extract', () => {
@@ -140,6 +149,77 @@ src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-e
 
       expect(result.errorSummary).toContain('src/index.ts:10:5 - Unexpected console statement (no-console) [no-console]');
       expect(result.errorSummary).toContain('src/config.ts:25:12 - \'unusedVar\' is defined but never used (@typescript-eslint/no-unused-vars) [@typescript-eslint/no-unused-vars]');
+    });
+
+    it('should parse GitHub Actions annotation format (single error)', () => {
+      const output = `##[error]src/index.ts:42:15: error Prefer the nullish coalescing operator @typescript-eslint/prefer-nullish-coalescing`;
+
+      const result = eslintPlugin.extract(output);
+
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual({
+        file: 'src/index.ts',
+        line: 42,
+        column: 15,
+        severity: 'error',
+        message: 'Prefer the nullish coalescing operator (@typescript-eslint/prefer-nullish-coalescing)',
+        code: '@typescript-eslint/prefer-nullish-coalescing'
+      });
+      expect(result.summary).toBe('1 ESLint error(s), 0 warning(s)');
+      expect(result.totalErrors).toBe(1);
+    });
+
+    it('should parse GitHub Actions annotation format (multiple errors)', () => {
+      const output = `##[error]src/index.ts:42:15: error Prefer the nullish coalescing operator @typescript-eslint/prefer-nullish-coalescing
+##[error]src/index.ts:89:23: error Do not nest ternary expressions no-nested-ternary
+##[warning]src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-eslint/no-unused-vars`;
+
+      const result = eslintPlugin.extract(output);
+
+      expect(result.errors).toHaveLength(3);
+      expect(result.summary).toBe('2 ESLint error(s), 1 warning(s)');
+      expect(result.totalErrors).toBe(3);
+
+      // Verify first error
+      expect(result.errors[0].file).toBe('src/index.ts');
+      expect(result.errors[0].line).toBe(42);
+      expect(result.errors[0].severity).toBe('error');
+      expect(result.errors[0].code).toBe('@typescript-eslint/prefer-nullish-coalescing');
+
+      // Verify second error
+      expect(result.errors[1].line).toBe(89);
+      expect(result.errors[1].code).toBe('no-nested-ternary');
+
+      // Verify warning
+      expect(result.errors[2].severity).toBe('warning');
+      expect(result.errors[2].file).toBe('src/config.ts');
+    });
+
+    it('should parse GitHub Actions stylish format (with file path on separate line)', () => {
+      const output = `/home/runner/work/repo/packages/auth/src/login-page.ts
+##[error]  374:50  error  Prefer using nullish coalescing operator  @typescript-eslint/prefer-nullish-coalescing
+##[error]  403:40  error  Prefer using nullish coalescing operator  @typescript-eslint/prefer-nullish-coalescing
+/home/runner/work/repo/packages/auth/src/generic-provider.ts
+##[error]  83:83  error  Prefer using nullish coalescing operator  @typescript-eslint/prefer-nullish-coalescing`;
+
+      const result = eslintPlugin.extract(output);
+
+      expect(result.errors).toHaveLength(3);
+      expect(result.summary).toBe('3 ESLint error(s), 0 warning(s)');
+
+      // Verify first error (from login-page.ts)
+      expect(result.errors[0].file).toBe('/home/runner/work/repo/packages/auth/src/login-page.ts');
+      expect(result.errors[0].line).toBe(374);
+      expect(result.errors[0].column).toBe(50);
+      expect(result.errors[0].code).toBe('@typescript-eslint/prefer-nullish-coalescing');
+
+      // Verify second error (still from login-page.ts)
+      expect(result.errors[1].file).toBe('/home/runner/work/repo/packages/auth/src/login-page.ts');
+      expect(result.errors[1].line).toBe(403);
+
+      // Verify third error (from generic-provider.ts)
+      expect(result.errors[2].file).toBe('/home/runner/work/repo/packages/auth/src/generic-provider.ts');
+      expect(result.errors[2].line).toBe(83);
     });
 
     it('should handle empty output', () => {

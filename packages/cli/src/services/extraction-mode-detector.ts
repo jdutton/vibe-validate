@@ -98,9 +98,15 @@ export class ExtractionModeDetector {
    */
   private async extractFromNonMatrixMode(_checkName: string, logs: string): Promise<ErrorExtractorResult | null> {
     try {
+      // Strip GitHub Actions log prefixes (same cleaning as matrix mode)
+      const cleanedLogs = logs
+        .split('\n')
+        .map((line) => this.stripLogPrefix(line))
+        .join('\n');
+
       // Use autoDetectAndExtract from @vibe-validate/extractors
       // It handles extractor detection and extraction automatically
-      return autoDetectAndExtract(logs);
+      return autoDetectAndExtract(cleanedLogs);
     } catch {
       // Extraction failed
       return null;
