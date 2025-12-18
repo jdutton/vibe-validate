@@ -146,7 +146,8 @@ validation:
       // Should report config file not found
       expect(output).toContain('Configuration file');
       expect(output).toContain('❌');
-      expect(output).toContain('vibe-validate init');
+      // Command name could be "vv" or "vibe-validate" depending on execution context
+      expect(output).toMatch(/(vv|vibe-validate) init/);
     });
   });
 });

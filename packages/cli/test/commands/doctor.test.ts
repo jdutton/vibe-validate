@@ -360,7 +360,8 @@ describe('doctor command', () => {
       expect(result.allPassed).toBe(false);
       expect(result.suggestions.length).toBeGreaterThanOrEqual(2); // At least Node version + config file
       expect(result.suggestions.some(s => s.includes('nvm') || s.includes('upgrade') || s.includes('nodejs'))).toBe(true);
-      expect(result.suggestions.some(s => s.includes('npx vibe-validate init'))).toBe(true);
+      // Command name could be "vv" or "vibe-validate" depending on execution context
+      expect(result.suggestions.some(s => /(vv|vibe-validate) init/.test(s))).toBe(true);
     });
 
     it('should check package manager availability', async () => {
@@ -699,7 +700,9 @@ describe('doctor command', () => {
       assertCheck(result, 'vibe-validate version', {
         passed: true, // Warning only, not a failure
         messageContains: ['0.9.10', '0.9.11'],
-        suggestionContains: ['npm install', 'vibe-validate@latest', 'vibe-validate doctor']
+        // Command name could be "vv" or "vibe-validate" depending on execution context
+        // Check for the constant parts only (package name and command, not full invocation)
+        suggestionContains: ['npm install', 'vibe-validate@latest', 'doctor']
       });
     });
 

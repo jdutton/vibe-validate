@@ -109,7 +109,8 @@ describe('config command', () => {
       }
 
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No configuration file found'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('vibe-validate init'));
+      // Command name could be "vv" or "vibe-validate" depending on execution context
+      expect(console.error).toHaveBeenCalledWith(expect.stringMatching(/(vv|vibe-validate) init/));
     });
   });
 

@@ -367,6 +367,30 @@ Place utilities in the appropriate domain package:
 - Log errors with structured data
 - Provide recovery suggestions
 
+### CLI User Experience
+**CRITICAL**: All user-facing command names MUST use `getCommandName()` to reflect how the user invoked the CLI.
+
+```typescript
+import { getCommandName } from '../utils/command-name.js';
+
+// In error messages, usage strings, and guidance
+const cmd = getCommandName(); // Returns "vv" or "vibe-validate"
+console.error(`Usage: ${cmd} watch-pr <pr-number>`);
+console.log(`Run: ${cmd} validate`);
+```
+
+**When to use `getCommandName()`:**
+- ✅ **Immediate user feedback**: Error messages, usage strings when user makes a mistake
+- ✅ **Action suggestions**: "Run: ${cmd} validate", "Try: ${cmd} doctor"
+- ✅ **Help output**: Command-specific help messages (e.g., `vv run --help`)
+- ❌ **Verbose documentation**: Comprehensive `--help --verbose` output (use canonical "vibe-validate")
+- ❌ **Example repo names**: `--repo jdutton/vibe-validate` (not a command)
+- ❌ **Package.json scripts**: Keep as "vibe-validate" for clarity in scripts
+
+**Why this matters**: Users might invoke via `vv` or `vibe-validate`. Error messages should match what they typed, not confuse them with a different command name.
+
+**Implementation**: The smart wrapper (`bin/vibe-validate.ts`) sets `VV_COMMAND_NAME` environment variable. The utility checks this first, then falls back to `process.argv[1]` for direct invocations.
+
 ### Documentation
 - JSDoc comments for all exported functions
 - Include examples in comments

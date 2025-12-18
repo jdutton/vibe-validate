@@ -4,6 +4,7 @@ import { stringify as stringifyYaml } from 'yaml';
 
 import type { WatchPRResult } from '../schemas/watch-pr-result.schema.js';
 import { WatchPROrchestrator } from '../services/watch-pr-orchestrator.js';
+import { getCommandName } from '../utils/command-name.js';
 
 interface WatchPROptions {
   yaml?: boolean;
@@ -26,13 +27,28 @@ export function registerWatchPRCommand(program: Command): void {
         const exitCode = await watchPRCommand(prNumber, options);
         process.exit(exitCode);
       } catch (error) {
-        // Always output errors as YAML for parseability
-        process.stdout.write('---\n');
-        process.stdout.write(
-          stringifyYaml({
-            error: error instanceof Error ? error.message : String(error),
-          })
-        );
+        // Only output YAML for PR failures, not for usage/argument errors
+        // Check if this is a usage error (no PR detected, invalid args, etc.)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isUsageError =
+          errorMessage.includes('Could not auto-detect') ||
+          errorMessage.includes('Invalid PR number') ||
+          errorMessage.includes('Invalid run ID') ||
+          errorMessage.includes('Invalid --repo format') ||
+          errorMessage.includes('Could not detect repository');
+
+        if (isUsageError) {
+          // Output as plain text for better UX
+          process.stderr.write(`Error: ${errorMessage}\n`);
+        } else {
+          // Actual PR/API errors - output as YAML for parseability
+          process.stdout.write('---\n');
+          process.stdout.write(
+            stringifyYaml({
+              error: errorMessage,
+            })
+          );
+        }
         process.exit(1);
       }
     });
@@ -47,24 +63,23 @@ async function watchPRCommand(
   prNumber: string | undefined,
   options: WatchPROptions
 ): Promise<number> {
-  // Validate PR number
-  if (!prNumber) {
-    throw new Error(
-      'PR number is required.\n' +
-        'Usage: vibe-validate watch-pr <pr-number>\n' +
-        'Example: vibe-validate watch-pr 90'
-    );
-  }
-
-  const prNum = Number.parseInt(prNumber, 10);
-  if (Number.isNaN(prNum) || prNum <= 0) {
-    throw new Error(`Invalid PR number: ${prNumber}`);
-  }
-
-  // Detect owner/repo from git remote or --repo flag
+  // Detect owner/repo from git remote or --repo flag (do this early for auto-detection)
   const { owner, repo } = options.repo
     ? parseRepoFlag(options.repo)
     : detectOwnerRepo();
+
+  // Auto-detect PR number if not provided
+  let prNum: number;
+  if (prNumber) {
+    // Explicit PR number provided - parse and validate
+    prNum = Number.parseInt(prNumber, 10);
+    if (Number.isNaN(prNum) || prNum <= 0) {
+      throw new Error(`Invalid PR number: ${prNumber}`);
+    }
+  } else {
+    // No PR number - try to auto-detect from current branch
+    prNum = await autoDetectPR(owner, repo);
+  }
 
   // Create orchestrator
   const orchestrator = new WatchPROrchestrator(owner, repo);
@@ -98,6 +113,75 @@ async function watchPRCommand(
 
   // Return exit code
   return result.status === 'passed' ? 0 : 1;
+}
+
+/**
+ * Auto-detect PR number from current branch
+ *
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @returns PR number
+ */
+async function autoDetectPR(owner: string, repo: string): Promise<number> {
+  try {
+    // Try to get PR for current branch using gh CLI
+    const prDataRaw = safeExecSync(
+      'gh',
+      ['pr', 'view', '--repo', `${owner}/${repo}`, '--json', 'number'],
+      { encoding: 'utf8' }
+    );
+    const prData = JSON.parse(prDataRaw as string);
+
+    if (prData.number && typeof prData.number === 'number') {
+      return prData.number;
+    }
+
+    throw new Error('No PR number found');
+  } catch {
+    // Could not auto-detect PR - try to suggest open PRs
+    const suggestions = await suggestOpenPRs(owner, repo);
+    const cmd = getCommandName();
+
+    throw new Error(
+      `Could not auto-detect PR from current branch.\n\n` +
+      `${suggestions}\n\n` +
+      `Usage: ${cmd} watch-pr <pr-number>\n` +
+      `Example: ${cmd} watch-pr 90`
+    );
+  }
+}
+
+/**
+ * Suggest open PRs to help user choose
+ *
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @returns Formatted suggestion text
+ */
+async function suggestOpenPRs(owner: string, repo: string): Promise<string> {
+  try {
+    const prsDataRaw = safeExecSync(
+      'gh',
+      ['pr', 'list', '--repo', `${owner}/${repo}`, '--limit', '5', '--json', 'number,title,author,headRefName'],
+      { encoding: 'utf8' }
+    );
+    const prsData = JSON.parse(prsDataRaw as string);
+
+    if (!Array.isArray(prsData) || prsData.length === 0) {
+      return 'No open PRs found in this repository.';
+    }
+
+    const prList = prsData
+      .map((pr: { number: number; title: string; author: { login: string }; headRefName: string }) =>
+        `  #${pr.number} - ${pr.title}\n` +
+        `         (${pr.headRefName} by ${pr.author.login})`
+      )
+      .join('\n');
+
+    return `Open PRs in ${owner}/${repo}:\n${prList}`;
+  } catch {
+    return 'Could not fetch open PRs.';
+  }
 }
 
 /**

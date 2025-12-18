@@ -642,8 +642,8 @@ describe('run command integration', () => {
       // Basic case: vv run --help should show help for run command
       const output = execCLI(['run', '--help']);
 
-      // Should show basic help
-      expect(output).toContain('Usage: vibe-validate run');
+      // Should show basic help (command name could be "vv" or "vibe-validate" depending on execution context)
+      expect(output).toMatch(/Usage: (vv|vibe-validate) run/);
       expect(output).toContain('Run a command and extract LLM-friendly errors');
 
       // Should NOT be trying to execute --help as a command

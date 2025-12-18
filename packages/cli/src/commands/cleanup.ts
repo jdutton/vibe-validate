@@ -8,6 +8,7 @@ import { cleanupMergedBranches } from '@vibe-validate/git';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
+import { getCommandName } from '../utils/command-name.js';
 import { cleanupOldTempFiles, getTempStorageInfo, formatBytes } from '../utils/temp-files.js';
 import { outputYamlResult } from '../utils/yaml-output.js';
 
@@ -124,8 +125,9 @@ function displayFooter(dryRun: boolean, success: boolean, branchesDeleted: numbe
   console.log(chalk.gray('─'.repeat(50)));
 
   if (dryRun) {
+    const cmd = getCommandName();
     console.log(chalk.yellow('\n💡 This was a dry run. To actually clean up:'));
-    console.log(chalk.gray('   vibe-validate cleanup'));
+    console.log(chalk.gray(`   ${cmd} cleanup`));
   } else if (success && branchesDeleted > 0) {
     console.log(chalk.green('\n✅ Cleanup complete!'));
   }
@@ -227,8 +229,9 @@ function displayTempCleanup(result: {
   console.log(chalk.gray('─'.repeat(50)));
 
   if (result.dryRun) {
+    const cmd = getCommandName();
     console.log(chalk.yellow('\n💡 This was a dry run. To actually clean up:'));
-    console.log(chalk.gray('   vibe-validate cleanup temp'));
+    console.log(chalk.gray(`   ${cmd} cleanup temp`));
   } else if (result.success && result.deletedCount > 0) {
     console.log(chalk.green('\n✅ Cleanup complete!'));
   }
