@@ -20,7 +20,7 @@ interface WatchPROptions {
 export function registerWatchPRCommand(program: Command): void {
   program
     .command('watch-pr [pr-number]')
-    .description('Watch CI checks for a pull/merge request with LLM-friendly output')
+    .description('Monitor PR checks with auto-polling, error extraction, and flaky test detection (use after creating PR, run after each push)')
     .option('--yaml', 'Force YAML output (auto-enabled on failure)')
     .option('--repo <owner/repo>', 'Repository (default: auto-detect from git remote)')
     .option('--history', 'Show historical runs for the PR with pass/fail summary')
@@ -366,29 +366,45 @@ function getCheckIcon(conclusion?: string): string {
 export function showWatchPRVerboseHelp(): void {
   console.log(`# watch-pr Command Reference
 
-> Watch CI checks for a pull request with LLM-friendly YAML output
+> Monitor PR checks with auto-polling, error extraction, and flaky test detection
 
 ## Overview
 
-The \`watch-pr\` command fetches complete PR check status from GitHub, including:
-- GitHub Actions check results with error extraction
-- External checks (codecov, SonarCloud, etc.) with summaries
-- PR metadata (branch, labels, linked issues)
-- File change context
-- History summary (success rate, recent pattern)
-- Intelligent guidance with next steps
+The \`watch-pr\` command monitors pull request CI checks with **automatic polling** until completion. It provides:
+- **Auto-polling**: Waits for checks to complete (no manual refresh)
+- **Error extraction**: Extracts file:line:message from failed GitHub Actions logs
+- **Flaky test detection**: Tracks history to identify unstable tests (e.g., "Failed last 2 runs", 60% success rate)
+- **External check summaries**: codecov coverage %, SonarCloud quality gates
+- **PR metadata**: branch, labels, linked issues, mergeable state
+- **File change context**: What files changed, insertions/deletions
+- **Intelligent guidance**: Severity-based next steps
 
-**YAML output is auto-enabled on failure** (like validate command).
+**YAML output is auto-enabled on failure** (consistent with validate command).
+
+## When to Use
+
+Use \`watch-pr\` after creating a PR and after each push:
+
+\`\`\`bash
+# Workflow:
+git push                    # Push commits to PR branch
+vibe-validate watch-pr 90   # Monitor CI (auto-polls until complete)
+# → Returns structured result when checks finish
+# → YAML output if failed (with extracted errors)
+# → Text output if passed (human-friendly)
+\`\`\`
+
+**Note**: PR must exist on GitHub (watch-pr fetches data from GitHub API).
 
 ## How It Works
 
-1. Fetches PR metadata and check results from GitHub
-2. Classifies checks (GitHub Actions vs external)
-3. Extracts errors from failed GitHub Actions logs (matrix + non-matrix mode)
-4. Extracts details from external checks (codecov, SonarCloud)
-5. Builds history summary (last 10 runs)
-6. Generates intelligent guidance
-7. Outputs YAML on failure, text on success (unless --yaml forced)
+1. **Fetches PR metadata** and check results from GitHub
+2. **Auto-polls** until checks complete (no manual refresh needed)
+3. **Classifies checks** (GitHub Actions vs external)
+4. **Extracts errors** from failed GitHub Actions logs (matrix + non-matrix mode)
+5. **Extracts summaries** from external checks (codecov, SonarCloud)
+6. **Builds history** (last 10 runs, success rate, patterns like "flaky")
+7. **Outputs YAML on failure**, text on success (unless --yaml forced)
 
 ## Options
 

@@ -386,7 +386,7 @@ vibe-validate doctor --yaml # YAML output only
 
 ### `watch-pr`
 
-Watch CI checks for a pull/merge request with LLM-friendly output
+Monitor PR checks with auto-polling, error extraction, and flaky test detection (use after creating PR, run after each push)
 
 **What it does:**
 
