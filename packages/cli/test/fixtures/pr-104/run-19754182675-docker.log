@@ -1,0 +1,500 @@
+Docker Build	UNKNOWN STEP	﻿2025-11-28T04:32:46.8262640Z Current runner version: '2.329.0'
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8289725Z ##[group]Runner Image Provisioner
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8290566Z Hosted Compute Agent
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8291060Z Version: 20251016.436
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8291650Z Commit: 8ab8ac8bfd662a3739dab9fe09456aba92132568
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8292284Z Build Date: 2025-10-15T20:44:12Z
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8292852Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8293392Z ##[group]Operating System
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8294069Z Ubuntu
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8294519Z 24.04.3
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8294903Z LTS
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8295384Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8295858Z ##[group]Runner Image
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8296357Z Image: ubuntu-24.04
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8296874Z Version: 20251112.124.1
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8297802Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20251112.124/images/ubuntu/Ubuntu2404-Readme.md
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8299246Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20251112.124
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8300127Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8301154Z ##[group]GITHUB_TOKEN Permissions
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8303144Z Contents: read
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8303632Z Metadata: read
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8304338Z Packages: read
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8304795Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8307322Z Secret source: Actions
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8308021Z Prepare workflow directory
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8631190Z Prepare all required actions
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:46.8672724Z Getting action download info
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:47.2407725Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:47.8606317Z Download action repository 'docker/setup-buildx-action@v3' (SHA:e468171a9de216ec08956ac3ada2f0791b6bd435)
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8067525Z Complete job name: Docker Build
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8832769Z ##[group]Run actions/checkout@v4
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8834363Z with:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8835282Z   repository: jdutton/mcp-typescript-simple
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8836919Z   token: ***
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8837729Z   ssh-strict: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8838550Z   ssh-user: git
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8839428Z   persist-credentials: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8840306Z   clean: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8841113Z   sparse-checkout-cone-mode: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8842157Z   fetch-depth: 1
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8842922Z   fetch-tags: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8843940Z   show-progress: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8844785Z   lfs: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8845577Z   submodules: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8846436Z   set-safe-directory: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.8847698Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.9993387Z Syncing repository: jdutton/mcp-typescript-simple
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.9996679Z ##[group]Getting Git version info
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:48.9998486Z Working directory is '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple'
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0000858Z [command]/usr/bin/git version
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0038456Z git version 2.51.2
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0065109Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0084760Z Temporarily overriding HOME='/home/runner/work/_temp/49f47f30-a816-4498-9a73-381bb2b823f0' before making global git config changes
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0089171Z Adding repository directory to the temporary git global config as a safe directory
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0093329Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mcp-typescript-simple/mcp-typescript-simple
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0129015Z Deleting the contents of '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple'
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0274438Z ##[group]Initializing the repository
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0277430Z [command]/usr/bin/git init /home/runner/work/mcp-typescript-simple/mcp-typescript-simple
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0279495Z hint: Using 'master' as the name for the initial branch. This default branch name
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0281318Z hint: is subject to change. To configure the initial branch name to use in all
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0283359Z hint: of your new repositories, which will suppress this warning, call:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0286336Z hint:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0291860Z hint: 	git config --global init.defaultBranch <name>
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0294326Z hint:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0296031Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0298768Z hint: 'development'. The just-created branch can be renamed via this command:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0300818Z hint:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0302040Z hint: 	git branch -m <name>
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0303389Z hint:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0305473Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0308738Z Initialized empty Git repository in /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/.git/
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0312212Z [command]/usr/bin/git remote add origin https://github.com/jdutton/mcp-typescript-simple
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0315532Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0316763Z ##[group]Disabling automatic garbage collection
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0317948Z [command]/usr/bin/git config --local gc.auto 0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0320243Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0321621Z ##[group]Setting up auth
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0322892Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0350267Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0627693Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0656251Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0844403Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.0874168Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.1076165Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.1111116Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.1113536Z ##[group]Fetching the repository
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.1122912Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c79bb402e85457becd0a998eb990c441061c529e:refs/remotes/pull/104/merge
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7747181Z From https://github.com/jdutton/mcp-typescript-simple
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7748933Z  * [new ref]         c79bb402e85457becd0a998eb990c441061c529e -> pull/104/merge
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7778481Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7779294Z ##[group]Determining the checkout info
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7780793Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7787349Z [command]/usr/bin/git sparse-checkout disable
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7824367Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7848659Z ##[group]Checking out the ref
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.7852620Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/104/merge
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8204228Z Note: switching to 'refs/remotes/pull/104/merge'.
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8204817Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8205280Z You are in 'detached HEAD' state. You can look around, make experimental
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8205962Z changes and commit them, and you can discard any commits you make in this
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8206519Z state without impacting any branches by switching back to a branch.
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8206823Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8207105Z If you want to create a new branch to retain commits you create, you may
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8207593Z do so (now or later) by using -c with the switch command. Example:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8207959Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8208127Z   git switch -c <new-branch-name>
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8208375Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8208531Z Or undo this operation with:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8208723Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8209246Z   git switch -
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8209460Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8209787Z Turn off this advice by setting config variable advice.detachedHead to false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8210098Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8210634Z HEAD is now at c79bb40 Merge 2c2ca14409dd878caede9f377a90784cf92811c8 into 99c445483d90b1f17556417377cbed6806ee177d
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8212756Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8250132Z [command]/usr/bin/git log -1 --format=%H
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8271514Z c79bb402e85457becd0a998eb990c441061c529e
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8472887Z ##[group]Run docker/setup-buildx-action@v3
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8473256Z with:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8473561Z   driver: docker-container
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8473981Z   install: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8474256Z   use: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8474521Z   keep-state: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8474791Z   cache-binary: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8475112Z   cleanup: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:49.8475370Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.1326528Z ##[group]Docker info
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.1348905Z [command]/usr/bin/docker version
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2309019Z Client: Docker Engine - Community
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2309737Z  Version:           28.0.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2310215Z  API version:       1.48
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2310681Z  Go version:        go1.23.7
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2311187Z  Git commit:        b8034c0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2311744Z  Built:             Tue Mar 25 15:07:16 2025
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2312337Z  OS/Arch:           linux/amd64
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2312968Z  Context:           default
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2313230Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2313550Z Server: Docker Engine - Community
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2314166Z  Engine:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2314497Z   Version:          28.0.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2314821Z   API version:      1.48 (minimum version 1.24)
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2315282Z   Go version:       go1.23.7
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2315588Z   Git commit:       6430e49
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2315893Z   Built:            Tue Mar 25 15:07:16 2025
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2316228Z   OS/Arch:          linux/amd64
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2316553Z   Experimental:     false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2316840Z  containerd:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2317116Z   Version:          v2.1.5
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2317471Z   GitCommit:        fcd43222d6b07379a4be9786bda52438f0dd16a1
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2317833Z  runc:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2318092Z   Version:          1.3.3
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2318395Z   GitCommit:        v1.3.3-0-gd842d771
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2318718Z  docker-init:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2318983Z   Version:          0.19.0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2319296Z   GitCommit:        de40ad0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.2354383Z [command]/usr/bin/docker info
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4388763Z Client: Docker Engine - Community
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4389930Z  Version:    28.0.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4390257Z  Context:    default
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4390550Z  Debug Mode: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4390835Z  Plugins:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4391164Z   buildx: Docker Buildx (Docker Inc.)
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4391567Z     Version:  v0.29.1
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4392143Z     Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4392667Z   compose: Docker Compose (Docker Inc.)
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4393063Z     Version:  v2.38.2
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4393383Z     Path:     /usr/libexec/docker/cli-plugins/docker-compose
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4393595Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4393668Z Server:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4394095Z  Containers: 0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4394294Z   Running: 0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4394510Z   Paused: 0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4394695Z   Stopped: 0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4394895Z  Images: 0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4395083Z  Server Version: 28.0.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4395305Z  Storage Driver: overlay2
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4395533Z   Backing Filesystem: extfs
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4395763Z   Supports d_type: true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4395971Z   Using metacopy: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4396191Z   Native Overlay Diff: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4396401Z   userxattr: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4396604Z  Logging Driver: json-file
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4396820Z  Cgroup Driver: systemd
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4397570Z  Cgroup Version: 2
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4397770Z  Plugins:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4397992Z   Volume: local
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4398306Z   Network: bridge host ipvlan macvlan null overlay
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4398800Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4399122Z  Swarm: inactive
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4399410Z  Runtimes: io.containerd.runc.v2 runc
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4399670Z  Default Runtime: runc
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4400113Z  Init Binary: docker-init
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4400413Z  containerd version: fcd43222d6b07379a4be9786bda52438f0dd16a1
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4400734Z  runc version: v1.3.3-0-gd842d771
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4400962Z  init version: de40ad0
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4401171Z  Security Options:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4401356Z   apparmor
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4401536Z   seccomp
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4401718Z    Profile: builtin
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4401899Z   cgroupns
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4402091Z  Kernel Version: 6.11.0-1018-azure
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4402348Z  Operating System: Ubuntu 24.04.3 LTS
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4402588Z  OSType: linux
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4402781Z  Architecture: x86_64
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4402974Z  CPUs: 4
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4403159Z  Total Memory: 15.62GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4403356Z  Name: runnervmg1sw1
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4403574Z  ID: 25309008-d3b6-4795-9b53-5704e2dd5a06
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4404060Z  Docker Root Dir: /var/lib/docker
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4404287Z  Debug Mode: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4404506Z  Username: githubactions
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4404717Z  Experimental: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4404927Z  Insecure Registries:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4409745Z   ::1/128
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4409991Z   127.0.0.0/8
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4410215Z  Live Restore Enabled: false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4410372Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.4410917Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.5044165Z ##[group]Buildx version
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.5065753Z [command]/usr/bin/docker buildx version
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.5816577Z github.com/docker/buildx v0.29.1 a32761aeb3debd39be1eca514af3693af0db334b
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.5844491Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6110431Z ##[group]Inspecting default docker context
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6266523Z [
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6266790Z   {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6267011Z     "Name": "default",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6267304Z     "Metadata": {},
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6267521Z     "Endpoints": {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6267722Z       "docker": {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6267941Z         "Host": "unix:///var/run/docker.sock",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6268279Z         "SkipTLSVerify": false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6268525Z       }
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6268679Z     },
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6268863Z     "TLSMaterial": {},
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6269057Z     "Storage": {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6269264Z       "MetadataPath": "<IN MEMORY>",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6269510Z       "TLSPath": "<IN MEMORY>"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6269707Z     }
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6269872Z   }
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6270021Z ]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6270576Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.6271119Z ##[group]Creating a new builder instance
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.7645274Z [command]/usr/bin/docker buildx create --name builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e885 --driver docker-container --buildkitd-flags --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host --use
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.8209853Z builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e885
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.8235824Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.8236481Z ##[group]Booting builder
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.8270761Z [command]/usr/bin/docker buildx inspect --bootstrap --builder builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e885
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:50.8811599Z #1 [internal] booting buildkit
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:51.0315081Z #1 pulling image moby/buildkit:buildx-stable-1
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.2606394Z #1 pulling image moby/buildkit:buildx-stable-1 3.4s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.4117452Z #1 creating container buildx_buildkit_builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e8850
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.6787072Z #1 creating container buildx_buildkit_builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e8850 0.4s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.6801508Z #1 DONE 3.8s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7112103Z Name:          builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e885
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7112591Z Driver:        docker-container
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7112980Z Last Activity: 2025-11-28 04:32:50 +0000 UTC
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7113258Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7113371Z Nodes:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7113697Z Name:                  builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e8850
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7114901Z Endpoint:              unix:///var/run/docker.sock
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7115318Z Status:                running
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7115807Z BuildKit daemon flags: --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7116273Z BuildKit version:      v0.26.2
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7116611Z Platforms:             linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/amd64/v4, linux/386
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7122985Z Labels:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7123402Z  org.mobyproject.buildkit.worker.executor:         oci
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7124182Z  org.mobyproject.buildkit.worker.hostname:         415c24e1b90f
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7124807Z  org.mobyproject.buildkit.worker.network:          host
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7125415Z  org.mobyproject.buildkit.worker.oci.process-mode: sandbox
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7126029Z  org.mobyproject.buildkit.worker.selinux.enabled:  false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7126631Z  org.mobyproject.buildkit.worker.snapshotter:      overlayfs
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7127150Z GC Policy rule#0:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7127458Z  All:            false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7128007Z  Filters:        type==source.local,type==exec.cachemount,type==source.git.checkout
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7128480Z  Keep Duration:  48h0m0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7128769Z  Max Used Space: 488.3MiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7129062Z GC Policy rule#1:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7129407Z  All:            false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7129679Z  Keep Duration:  1440h0m0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7130006Z  Reserved Space: 7.451GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7130328Z  Max Used Space: 54.02GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7130618Z  Min Free Space: 13.97GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7130884Z GC Policy rule#2:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7131145Z  All:            false
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7131410Z  Reserved Space: 7.451GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7131705Z  Max Used Space: 54.02GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7131996Z  Min Free Space: 13.97GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7132286Z GC Policy rule#3:
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7132571Z  All:            true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7132862Z  Reserved Space: 7.451GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7133185Z  Max Used Space: 54.02GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7133487Z  Min Free Space: 13.97GiB
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.7158912Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8091826Z ##[group]Inspect builder
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8092546Z {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8092895Z   "nodes": [
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8093243Z     {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8094317Z       "name": "builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e8850",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8094855Z       "endpoint": "unix:///var/run/docker.sock",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8095317Z       "status": "running",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8096090Z       "buildkitd-flags": "--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8096813Z       "buildkit": "v0.26.2",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8097345Z       "platforms": "linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/amd64/v4,linux/386",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8097903Z       "features": {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8098340Z         "Automatically load images to the Docker Engine image store": true,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8098909Z         "Cache export": true,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8099270Z         "Direct push": true,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8099608Z         "Docker exporter": true,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8099969Z         "Multi-platform build": true,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8100360Z         "OCI exporter": true
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8100686Z       },
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8100929Z       "labels": {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8101268Z         "org.mobyproject.buildkit.worker.executor": "oci",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8101801Z         "org.mobyproject.buildkit.worker.hostname": "415c24e1b90f",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8102718Z         "org.mobyproject.buildkit.worker.network": "host",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8103278Z         "org.mobyproject.buildkit.worker.oci.process-mode": "sandbox",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8104067Z         "org.mobyproject.buildkit.worker.selinux.enabled": "false",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8104658Z         "org.mobyproject.buildkit.worker.snapshotter": "overlayfs"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8105259Z       },
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8105694Z       "gcPolicy": [
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8105948Z         {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8106180Z           "all": false,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8106455Z           "filter": [
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8106774Z             "type==source.local",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8107139Z             "type==exec.cachemount",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8107483Z             "type==source.git.checkout"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8107825Z           ],
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8108084Z           "keepDuration": "48h0m0s",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8108372Z           "maxUsedSpace": "488.3MiB"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8108701Z         },
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8108926Z         {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8109201Z           "all": false,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8109560Z           "keepDuration": "1440h0m0s",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8109948Z           "reservedSpace": "7.451GiB",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8110352Z           "maxUsedSpace": "54.02GiB",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8110755Z           "minFreeSpace": "13.97GiB"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8111117Z         },
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8111373Z         {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8111647Z           "all": false,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8111967Z           "reservedSpace": "7.451GiB",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8112368Z           "maxUsedSpace": "54.02GiB",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8112733Z           "minFreeSpace": "13.97GiB"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8113069Z         },
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8113306Z         {
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8113566Z           "all": true,
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8114021Z           "reservedSpace": "7.451GiB",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8114404Z           "maxUsedSpace": "54.02GiB",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8114780Z           "minFreeSpace": "13.97GiB"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8115126Z         }
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8115374Z       ]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8115635Z     }
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8115872Z   ],
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8116220Z   "name": "builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e885",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8116685Z   "driver": "docker-container",
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8117071Z   "lastActivity": "2025-11-28T04:32:50.000Z"
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8117449Z }
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8118377Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8118972Z ##[group]BuildKit version
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8119486Z builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e8850: v0.26.2
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8120226Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8229007Z ##[group]Run docker build -t mcp-typescript-simple .
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8229512Z [36;1mdocker build -t mcp-typescript-simple .[0m
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8258461Z shell: /usr/bin/bash -e {0}
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:54.8258729Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.1109635Z #0 building with "default" instance using docker driver
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.1110062Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.1110294Z #1 [internal] load build definition from Dockerfile
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.1110581Z #1 transferring dockerfile: 1.37kB done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.1110894Z #1 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.1111063Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.1111270Z #2 [auth] library/node:pull token for registry-1.docker.io
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.2615744Z #2 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.2615984Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.2616179Z #3 [internal] load metadata for docker.io/library/node:22-alpine
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.7412061Z #3 DONE 0.8s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8586688Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8587311Z #4 [internal] load .dockerignore
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8587794Z #4 transferring context: 232B done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8588025Z #4 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8588146Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8588235Z #5 [internal] load build context
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8588478Z #5 transferring context: 4.05MB 0.1s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8588702Z #5 DONE 0.1s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8588808Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8589145Z #6 [ 1/15] FROM docker.io/library/node:22-alpine@sha256:b2358485e3e33bc3a33114d2b1bdb18cdbe4df01bd2b257198eb51beb1f026c5
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8590204Z #6 resolve docker.io/library/node:22-alpine@sha256:b2358485e3e33bc3a33114d2b1bdb18cdbe4df01bd2b257198eb51beb1f026c5 done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8590833Z #6 sha256:b2358485e3e33bc3a33114d2b1bdb18cdbe4df01bd2b257198eb51beb1f026c5 6.41kB / 6.41kB done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8591397Z #6 sha256:ef30b897b4b924010aab656801cb44fe27589b5d0724ba080b191d75f1f81af0 1.72kB / 1.72kB done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8591956Z #6 sha256:d14f4a9e34c680024562fea6bc778ca0ce51df5e88cf12fe050870999573f5df 6.50kB / 6.50kB done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8592503Z #6 sha256:fc2cca81d0de31536e59c1e347c529041866e5f6e73effbcd570f0373d4fbaf7 0B / 51.57MB 0.1s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8593068Z #6 sha256:e1acb8d81a6ae3f5871ce734e5b9aabd5cdb01ccb4fe07ec71c33d75bb4eb04c 0B / 1.26MB 0.1s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.8593598Z #6 sha256:5ff8b913658cef54b13151d83455a1387472901b28d1f6a0adc49beb04b26ddc 0B / 445B 0.1s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:55.9596062Z #6 sha256:e1acb8d81a6ae3f5871ce734e5b9aabd5cdb01ccb4fe07ec71c33d75bb4eb04c 1.26MB / 1.26MB 0.2s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:56.1586760Z #6 sha256:fc2cca81d0de31536e59c1e347c529041866e5f6e73effbcd570f0373d4fbaf7 14.68MB / 51.57MB 0.4s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:56.1587799Z #6 sha256:5ff8b913658cef54b13151d83455a1387472901b28d1f6a0adc49beb04b26ddc 445B / 445B 0.2s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:56.2615196Z #6 sha256:fc2cca81d0de31536e59c1e347c529041866e5f6e73effbcd570f0373d4fbaf7 27.26MB / 51.57MB 0.5s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:56.4252218Z #6 sha256:fc2cca81d0de31536e59c1e347c529041866e5f6e73effbcd570f0373d4fbaf7 44.04MB / 51.57MB 0.6s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:56.4253623Z #6 extracting sha256:fc2cca81d0de31536e59c1e347c529041866e5f6e73effbcd570f0373d4fbaf7
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:56.5299357Z #6 sha256:fc2cca81d0de31536e59c1e347c529041866e5f6e73effbcd570f0373d4fbaf7 51.57MB / 51.57MB 0.6s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.5034161Z #6 extracting sha256:fc2cca81d0de31536e59c1e347c529041866e5f6e73effbcd570f0373d4fbaf7 1.1s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.7243166Z #6 extracting sha256:e1acb8d81a6ae3f5871ce734e5b9aabd5cdb01ccb4fe07ec71c33d75bb4eb04c
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8298747Z #6 extracting sha256:e1acb8d81a6ae3f5871ce734e5b9aabd5cdb01ccb4fe07ec71c33d75bb4eb04c 0.0s done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8299400Z #6 extracting sha256:5ff8b913658cef54b13151d83455a1387472901b28d1f6a0adc49beb04b26ddc done
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8300136Z #6 DONE 2.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8300316Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8300404Z #7 [ 2/15] WORKDIR /app
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8300615Z #7 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8300716Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8300867Z #8 [ 3/15] COPY package*.json .npmrc ./
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8301253Z #8 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8301362Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8301892Z #9 [ 4/15] COPY tsconfig.json ./
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:57.8302217Z #9 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0558878Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0559646Z #10 [ 5/15] COPY packages/ ./packages/
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0560161Z #10 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0560336Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0560479Z #11 [ 6/15] COPY tools/ ./tools/
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0560871Z #11 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0561035Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0561172Z #12 [ 7/15] COPY docs/ ./docs/
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0561476Z #12 DONE 0.0s
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0561618Z 
+Docker Build	UNKNOWN STEP	2025-11-28T04:32:58.0561693Z #13 [ 8/15] RUN npm ci
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:01.7005512Z #13 3.793 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:02.0199027Z #13 4.114 npm warn deprecated path-match@1.2.4: This package is archived and no longer maintained. For support, visit https://github.com/expressjs/express/discussions
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:02.2714383Z #13 4.366 npm warn deprecated npmlog@5.0.1: This package is no longer supported.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:02.4275852Z #13 4.522 npm warn deprecated lodash.get@4.4.2: This package is deprecated. Use the optional chaining (?.) operator instead.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:02.7612629Z #13 4.856 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:02.9580595Z #13 4.902 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:03.1259013Z #13 5.220 npm warn deprecated gauge@3.0.2: This package is no longer supported.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:03.8541422Z #13 5.948 npm warn deprecated are-we-there-yet@2.0.0: This package is no longer supported.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:06.6750478Z #13 8.769 npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:06.8716362Z #13 8.966 npm warn deprecated uuid@3.3.2: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:07.7457372Z #13 9.840 npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.7845106Z #13 21.88 
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.7845489Z #13 21.88 > mcp-typescript-simple@0.9.0 postinstall
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.7845862Z #13 21.88 > node tools/build-workspaces.js
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.7846098Z #13 21.88 
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.9767396Z #13 21.92 Building workspace packages in dependency order...
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.9768004Z #13 21.92 0/9: Cleaning stale build info...
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.9768463Z #13 21.92 1/9: Building observability package...
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.9802622Z #13 22.07 
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.9803180Z #13 22.07 > @mcp-typescript-simple/observability@0.9.0 build
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.9803912Z #13 22.07 > tsc --project tsconfig.json
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:19.9804303Z #13 22.07 
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.3242829Z #13 26.42 error TS5083: Cannot read file '/app/tsconfig.base.json'.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5200614Z #13 26.42 src/logger.ts(6,8): error TS1259: Module '"/app/node_modules/pino/pino"' can only be default-imported using the 'esModuleInterop' flag
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5201463Z #13 26.45 npm error Lifecycle script `build` failed with error:
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5201865Z #13 26.45 npm error code 2
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5202260Z #13 26.45 npm error path /app/packages/observability
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5202750Z #13 26.45 npm error workspace @mcp-typescript-simple/observability@0.9.0
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5203235Z #13 26.45 npm error location /app/packages/observability
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5203599Z #13 26.45 npm error command failed
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5204112Z #13 26.45 npm error command sh -c tsc --project tsconfig.json
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5204687Z #13 26.45 Error executing: npm run build -w @mcp-typescript-simple/observability --if-present
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5205805Z #13 26.45 Build failed: Command failed: npm run build -w @mcp-typescript-simple/observability --if-present
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5206337Z #13 26.46 npm error code 1
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5206615Z #13 26.46 npm error path /app
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5206920Z #13 26.46 npm error command failed
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5207448Z #13 26.46 npm error command sh -c node tools/build-workspaces.js
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5207837Z #13 26.46 npm notice
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5208199Z #13 26.46 npm notice New major version of npm available! 10.9.4 -> 11.6.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5208772Z #13 26.46 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5209280Z #13 26.46 npm notice To update run: npm install -g npm@11.6.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5209634Z #13 26.46 npm notice
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:24.5210122Z #13 26.46 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-28T04_32_58_093Z-debug-0.log
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4160387Z #13 ERROR: process "/bin/sh -c npm ci" did not complete successfully: exit code: 1
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4378113Z ------
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4378568Z  > [ 8/15] RUN npm ci:
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4378916Z 26.46 npm error code 1
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4379251Z 26.46 npm error path /app
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4379606Z 26.46 npm error command failed
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4380058Z 26.46 npm error command sh -c node tools/build-workspaces.js
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4380794Z 26.46 npm notice
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4381612Z 26.46 npm notice New major version of npm available! 10.9.4 -> 11.6.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4382288Z 26.46 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4382922Z 26.46 npm notice To update run: npm install -g npm@11.6.4
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4383378Z 26.46 npm notice
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4384065Z 26.46 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-28T04_32_58_093Z-debug-0.log
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4388844Z ------
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4389169Z Dockerfile:21
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4389452Z --------------------
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4389850Z   19 |     # Install all dependencies (needed for build)
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4390495Z   20 |     # Note: postinstall script automatically builds workspace packages
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4391043Z   21 | >>> RUN npm ci
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4391323Z   22 |     
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4391612Z   23 |     # Build the TypeScript project
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4392008Z --------------------
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4392667Z ERROR: failed to build: failed to solve: process "/bin/sh -c npm ci" did not complete successfully: exit code: 1
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4448166Z ##[error]Process completed with exit code 1.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.4549989Z Post job cleanup.
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.7592886Z ##[group]Removing builder
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:26.8906933Z [command]/usr/bin/docker buildx rm builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e885
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:27.0967797Z builder-a4bc0ed8-9966-4949-8fe4-63dce9e3e885 removed
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:27.1030093Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:27.1031580Z ##[group]Cleaning up certificates
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:27.1044113Z ##[endgroup]
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:27.1046246Z ##[group]Post cache
+Docker Build	UNKNOWN STEP	2025-11-28T04:33:27.1047633Z State not set

@@ -1,0 +1,500 @@
+Fast Checks & Build	UNKNOWN STEP	﻿2025-11-27T16:37:28.5424893Z Current runner version: '2.329.0'
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5447125Z ##[group]Runner Image Provisioner
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5447940Z Hosted Compute Agent
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5448532Z Version: 20251016.436
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5449317Z Commit: 8ab8ac8bfd662a3739dab9fe09456aba92132568
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5449985Z Build Date: 2025-10-15T20:44:12Z
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5450622Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5451159Z ##[group]Operating System
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5451729Z Ubuntu
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5452156Z 24.04.3
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5452683Z LTS
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5453097Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5453571Z ##[group]Runner Image
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5454215Z Image: ubuntu-24.04
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5454695Z Version: 20251112.124.1
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5455699Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20251112.124/images/ubuntu/Ubuntu2404-Readme.md
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5457297Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20251112.124
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5458329Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5459570Z ##[group]GITHUB_TOKEN Permissions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5461347Z Contents: read
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5461989Z Metadata: read
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5462461Z Packages: read
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5463071Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5465366Z Secret source: Actions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5466086Z Prepare workflow directory
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5783111Z Prepare all required actions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.5840686Z Getting action download info
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:28.9954072Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.6228281Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.7859376Z Complete job name: Fast Checks & Build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8569748Z ##[group]Run actions/checkout@v4
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8570605Z with:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8570984Z   fetch-depth: 0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8571438Z   repository: jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8572132Z   token: ***
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8572515Z   ssh-strict: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8572897Z   ssh-user: git
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8573294Z   persist-credentials: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8573733Z   clean: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8574134Z   sparse-checkout-cone-mode: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8574599Z   fetch-tags: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8574996Z   show-progress: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8575392Z   lfs: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8575752Z   submodules: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8576148Z   set-safe-directory: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.8576783Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9636478Z Syncing repository: jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9638264Z ##[group]Getting Git version info
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9639513Z Working directory is '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple'
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9640650Z [command]/usr/bin/git version
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9715882Z git version 2.51.2
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9742628Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9756350Z Temporarily overriding HOME='/home/runner/work/_temp/04fba4ce-f1e3-4cc0-b363-15ec512dc97a' before making global git config changes
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9757754Z Adding repository directory to the temporary git global config as a safe directory
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9762067Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mcp-typescript-simple/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9799738Z Deleting the contents of '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple'
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9803345Z ##[group]Initializing the repository
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9808169Z [command]/usr/bin/git init /home/runner/work/mcp-typescript-simple/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9911221Z hint: Using 'master' as the name for the initial branch. This default branch name
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9912572Z hint: is subject to change. To configure the initial branch name to use in all
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9913471Z hint: of your new repositories, which will suppress this warning, call:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9914390Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9914867Z hint: 	git config --global init.defaultBranch <name>
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9915419Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9916362Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9917528Z hint: 'development'. The just-created branch can be renamed via this command:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9918679Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9919555Z hint: 	git branch -m <name>
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9920352Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9921404Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9923499Z Initialized empty Git repository in /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/.git/
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9930349Z [command]/usr/bin/git remote add origin https://github.com/jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9963310Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9964028Z ##[group]Disabling automatic garbage collection
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9967240Z [command]/usr/bin/git config --local gc.auto 0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9995268Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:29.9995929Z ##[group]Setting up auth
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0001868Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0030886Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0338751Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0369885Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0584899Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0623618Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0842295Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0875476Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0876326Z ##[group]Fetching the repository
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:30.0884694Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +9ff5e1f0f5e65d4589e404d70f25c9ce6bf6002c:refs/remotes/pull/104/merge
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0811218Z From https://github.com/jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0812233Z  * [new branch]      feature/enhance-eslint-security-rules    -> origin/feature/enhance-eslint-security-rules
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0813028Z  * [new branch]      feature/eslint-strict-enforcement        -> origin/feature/eslint-strict-enforcement
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0813734Z  * [new branch]      fix/vercel-empty-public-directory        -> origin/fix/vercel-empty-public-directory
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0814346Z  * [new branch]      main                                     -> origin/main
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0814746Z  * [new tag]         v0.9.0                                   -> v0.9.0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0815124Z  * [new tag]         v0.9.0-rc.13                             -> v0.9.0-rc.13
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0815524Z  * [new tag]         v0.9.0-rc.3                              -> v0.9.0-rc.3
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0815960Z  * [new ref]         9ff5e1f0f5e65d4589e404d70f25c9ce6bf6002c -> pull/104/merge
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0855181Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0855701Z ##[group]Determining the checkout info
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0856578Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0861992Z [command]/usr/bin/git sparse-checkout disable
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0901988Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0927054Z ##[group]Checking out the ref
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.0931693Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/104/merge
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1339657Z Note: switching to 'refs/remotes/pull/104/merge'.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1340146Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1340525Z You are in 'detached HEAD' state. You can look around, make experimental
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1341384Z changes and commit them, and you can discard any commits you make in this
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1342234Z state without impacting any branches by switching back to a branch.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1342724Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1343042Z If you want to create a new branch to retain commits you create, you may
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1343811Z do so (now or later) by using -c with the switch command. Example:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1344291Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1344486Z   git switch -c <new-branch-name>
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1344790Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1345001Z Or undo this operation with:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1345284Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1345480Z   git switch -
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1345714Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1346089Z Turn off this advice by setting config variable advice.detachedHead to false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1346643Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1347251Z HEAD is now at 9ff5e1f Merge 6c45be787c367be9a661943c72ad2b85facb2981 into 99c445483d90b1f17556417377cbed6806ee177d
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1353448Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1391186Z [command]/usr/bin/git log -1 --format=%H
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1413333Z 9ff5e1f0f5e65d4589e404d70f25c9ce6bf6002c
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1624548Z ##[group]Run actions/setup-node@v4
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1624884Z with:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1625089Z   node-version: 22
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1625309Z   cache: npm
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1625511Z   always-auth: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1625745Z   check-latest: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1626121Z   token: ***
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.1626332Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.4205288Z Found in cache @ /opt/hostedtoolcache/node/22.21.1/x64
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:31.4212246Z ##[group]Environment details
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.0857750Z node: v22.21.1
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.0858345Z npm: 10.9.4
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.0858809Z yarn: 1.22.22
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.0860529Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.0884385Z [command]/opt/hostedtoolcache/node/22.21.1/x64/bin/npm config get cache
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.3956207Z /home/runner/.npm
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.7047203Z npm cache is not found
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.7177440Z ##[group]Run npm ci
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.7177737Z [36;1mnpm ci[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.7221867Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:34.7222128Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:39.3847052Z npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:39.6208914Z npm warn deprecated path-match@1.2.4: This package is archived and no longer maintained. For support, visit https://github.com/expressjs/express/discussions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:39.8704382Z npm warn deprecated npmlog@5.0.1: This package is no longer supported.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:40.0089325Z npm warn deprecated lodash.get@4.4.2: This package is deprecated. Use the optional chaining (?.) operator instead.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:40.3169394Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:40.9941887Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:41.1359309Z npm warn deprecated gauge@3.0.2: This package is no longer supported.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:41.4635987Z npm warn deprecated are-we-there-yet@2.0.0: This package is no longer supported.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:43.7700542Z npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:44.1658041Z npm warn deprecated uuid@3.3.2: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:44.5260350Z npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.1097329Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.1098005Z > mcp-typescript-simple@0.9.0 postinstall
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.1098582Z > node tools/build-workspaces.js
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.1098824Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.1442348Z Building workspace packages in dependency order...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.1444151Z 0/9: Cleaning stale build info...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.1451217Z 1/9: Building observability package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.2632875Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.2633656Z > @mcp-typescript-simple/observability@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.2634375Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:57.2634662Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:58.8193532Z 2/9: Building base packages (config, persistence, testing, tools, tools-llm)...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:58.9342353Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:58.9343064Z > @mcp-typescript-simple/config@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:58.9343557Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:37:58.9343752Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:00.7135915Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:00.7136624Z > @mcp-typescript-simple/persistence@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:00.7137258Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:00.7137492Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:02.8120053Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:02.8120748Z > @mcp-typescript-simple/testing@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:02.8121250Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:02.8121482Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:04.3366921Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:04.3367707Z > @mcp-typescript-simple/tools@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:04.3368215Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:04.3368390Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:06.0019799Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:06.0020526Z > @mcp-typescript-simple/tools-llm@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:06.0021183Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:06.0021457Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:07.5278933Z 3/9: Building auth package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:07.6399425Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:07.6400225Z > @mcp-typescript-simple/auth@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:07.6400884Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:07.6401178Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:09.4028439Z 4/9: Building server package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:09.5199200Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:09.5199759Z > @mcp-typescript-simple/server@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:09.5200232Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:09.5200420Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:11.4014803Z 5/9: Building example packages (example-tools-basic, example-tools-llm)...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:11.5194077Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:11.5195245Z > @mcp-typescript-simple/example-tools-basic@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:11.5195730Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:11.5195901Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:13.3729035Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:13.3730124Z > @mcp-typescript-simple/example-tools-llm@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:13.3730829Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:13.3731084Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:15.0645432Z 6/9: Building http-server package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:15.1800059Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:15.1800668Z > @mcp-typescript-simple/http-server@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:15.1801106Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:15.1801308Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:17.9495448Z 7/9: Building example-mcp package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:18.0680139Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:18.0681075Z > @mcp-typescript-simple/example-mcp@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:18.0681514Z > tsc
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:18.0681637Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:19.7133287Z 8/9: Building adapter-vercel package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:19.8281894Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:19.8282619Z > @mcp-typescript-simple/adapter-vercel@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:19.8283123Z > tsc
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:19.8283235Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9138908Z 9/9: Complete
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9139813Z ✓ All workspace packages built successfully
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9189779Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9190199Z > mcp-typescript-simple@0.9.0 prepare
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9190646Z > husky || true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9190828Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9810045Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9810746Z added 1420 packages, and audited 1436 packages in 47s
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9813330Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9814033Z 258 packages are looking for funding
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:21.9814553Z   run `npm fund` for details
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0180246Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0181381Z 20 vulnerabilities (3 low, 10 moderate, 7 high)
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0182002Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0183756Z To address issues that do not require attention, run:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0184238Z   npm audit fix
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0184415Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0184747Z To address all issues (including breaking changes), run:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0185246Z   npm audit fix --force
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0185451Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.0185670Z Run `npm audit` for details.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.1268280Z ##[group]Run npm run build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.1268552Z [36;1mnpm run build[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.1302473Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.1302710Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.2292129Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.2292659Z > mcp-typescript-simple@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.2293203Z > npm run docs:build:homepage && tsc
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.2293415Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.3258058Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.3259797Z > mcp-typescript-simple@0.9.0 docs:build:homepage
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.3260497Z > npx tsx tools/build-homepage.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.3260816Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.8495743Z Building homepage from docs/homepage.md...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.8507832Z ✓ Homepage built successfully: /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/public/index.html
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:22.8509404Z ✓ Preview: file:///home/runner/work/mcp-typescript-simple/mcp-typescript-simple/public/index.html
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.7708002Z ##[group]Run npm run typecheck
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.7708296Z [36;1mnpm run typecheck[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.7741968Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.7742195Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.8743317Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.8743872Z > mcp-typescript-simple@0.9.0 typecheck
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.8744324Z > tsc --noEmit
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:23.8744460Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.7821512Z ##[group]Run npm run lint
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.7821783Z [36;1mnpm run lint[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.7855705Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.7855944Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.8851304Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.8851895Z > mcp-typescript-simple@0.9.0 lint
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.8853203Z > eslint 'packages/**/src/**/*.ts' --ignore-pattern='**/vitest.config.ts' --ignore-pattern='**/dist/**' --ignore-pattern='**/templates/**' --no-warn-ignored --max-warnings=0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:24.8853912Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4188894Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4190069Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/factory.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4216919Z ##[error]  374:50  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4225404Z ##[error]  403:40  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4227340Z ##[error]  404:40  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4228210Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4228608Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/login-page.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4229721Z   111:11   warning  Unused eslint-disable directive (no problems were reported from 'sonarjs/no-nested-conditional')
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4231037Z ##[error]  113:34   error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4232652Z ##[error]  113:99   error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4234191Z ##[error]  113:122  error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4235484Z   123:11   warning  Unused eslint-disable directive (no problems were reported from 'sonarjs/no-nested-conditional')
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4236648Z ##[error]  125:34   error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4238528Z ##[error]  125:99   error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4240415Z ##[error]  125:122  error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4241717Z   132:11   warning  Unused eslint-disable directive (no problems were reported from 'sonarjs/no-nested-conditional')
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4242900Z ##[error]  134:37   error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4244459Z ##[error]  134:102  error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4245987Z ##[error]  134:125  error    Extract this nested ternary operation into an independent statement                               sonarjs/no-nested-conditional
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4246822Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4247281Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/providers/generic-provider.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4248665Z ##[error]  83:83  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4249814Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4250489Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/providers/github-provider.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4251820Z ##[error]  183:82  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4253560Z ##[error]  211:43  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4255268Z ##[error]  211:62  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4256995Z ##[error]  239:29  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4257870Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4258321Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/providers/google-provider.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4259920Z ##[error]   16:3   error  'OAuthSession' is defined but never used. Allowed unused vars must match /^_/u                                                                                      no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4261612Z ##[error]   16:3   error  Remove this unused import of 'OAuthSession'                                                                                                                         sonarjs/unused-import
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4263329Z ##[error]   16:3   error  'OAuthSession' is defined but never used. Allowed unused vars must match /^_/u                                                                                      @typescript-eslint/no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4265480Z ##[error]   22:35  error  '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple/node_modules/@mcp-typescript-simple/persistence/dist/index.js' imported multiple times               import/no-duplicates
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4267869Z ##[error]   23:33  error  '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple/node_modules/@mcp-typescript-simple/persistence/dist/index.js' imported multiple times               import/no-duplicates
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4270576Z ##[error]   24:27  error  '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple/node_modules/@mcp-typescript-simple/persistence/dist/index.js' imported multiple times               import/no-duplicates
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4273103Z ##[error]   86:7   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4275143Z ##[error]   94:59  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4277024Z ##[error]  152:34  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4278889Z ##[error]  157:11  error  Prefer using an optional chain expression instead, as it's more concise and easier to read                                                                          @typescript-eslint/prefer-optional-chain
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4280954Z ##[error]  165:28  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4282806Z ##[error]  186:44  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4284802Z ##[error]  187:34  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4286705Z ##[error]  188:39  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4288740Z ##[error]  197:7   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4290908Z ##[error]  202:45  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4292778Z ##[error]  268:49  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4294625Z ##[error]  269:44  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4296484Z ##[error]  302:11  error  Prefer using an optional chain expression instead, as it's more concise and easier to read                                                                          @typescript-eslint/prefer-optional-chain
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4298316Z ##[error]  319:9   error  Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed                                                                                 sonarjs/cognitive-complexity
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4300227Z ##[error]  453:80  error  Forbidden non-null assertion                                                                                                                                        @typescript-eslint/no-non-null-assertion
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4301681Z ##[error]  456:42  error  Forbidden non-null assertion                                                                                                                                        @typescript-eslint/no-non-null-assertion
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4303305Z ##[error]  466:15  error  Forbidden non-null assertion                                                                                                                                        @typescript-eslint/no-non-null-assertion
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4305005Z ##[error]  473:11  error  Prefer using an optional chain expression instead, as it's more concise and easier to read                                                                          @typescript-eslint/prefer-optional-chain
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4306866Z ##[error]  479:34  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4308721Z ##[error]  484:11  error  Prefer using an optional chain expression instead, as it's more concise and easier to read                                                                          @typescript-eslint/prefer-optional-chain
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4310886Z ##[error]  492:28  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4312919Z ##[error]  501:44  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4314812Z ##[error]  502:34  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4316651Z ##[error]  503:39  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4318225Z ##[error]  512:44  error  Forbidden non-null assertion                                                                                                                                        @typescript-eslint/no-non-null-assertion
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4320123Z ##[error]  520:45  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4322193Z ##[error]  526:29  error  Use `for…of` instead of `.forEach(…)`                                                                                                                               unicorn/no-array-for-each
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4323940Z ##[error]  578:27  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4324870Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4325339Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/providers/microsoft-provider.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4327098Z ##[error]   18:35  error  '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple/node_modules/@mcp-typescript-simple/persistence/dist/index.js' imported multiple times               import/no-duplicates
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4329643Z ##[error]   19:33  error  '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple/node_modules/@mcp-typescript-simple/persistence/dist/index.js' imported multiple times               import/no-duplicates
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4332050Z ##[error]   20:27  error  '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple/node_modules/@mcp-typescript-simple/persistence/dist/index.js' imported multiple times               import/no-duplicates
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4334293Z ##[error]   34:37  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4336361Z ##[error]   73:7   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4338373Z ##[error]  129:52  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4340930Z ##[error]  130:60  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4342901Z ##[error]  140:47  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4344485Z ##[error]  211:21  error  Forbidden non-null assertion                                                                                                                                        @typescript-eslint/no-non-null-assertion
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4346356Z ##[error]  211:36  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4348315Z ##[error]  217:36  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator                                                           @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4349446Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4349855Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/providers/types.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4350870Z ##[error]   86:18  error  Unexpected any. Specify a different type                                       @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4352196Z ##[error]  168:30  error  'req' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4353499Z ##[error]  168:44  error  'res' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4354769Z ##[error]  174:31  error  'req' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4356041Z ##[error]  174:45  error  'res' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4357335Z ##[error]  181:12  error  'accessToken' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4358599Z ##[error]  187:22  error  'req' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4360089Z ##[error]  187:36  error  'res' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4361376Z ##[error]  193:16  error  'req' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4362630Z ##[error]  193:30  error  'res' is defined but never used. Allowed unused args must match /^_/u          no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4363896Z ##[error]  199:21  error  'token' is defined but never used. Allowed unused args must match /^_/u        no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4365189Z ##[error]  204:15  error  'accessToken' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4366653Z ##[error]  209:16  error  'token' is defined but never used. Allowed unused args must match /^_/u        no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4367920Z ##[error]  224:15  error  'token' is defined but never used. Allowed unused args must match /^_/u        no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4369323Z ##[error]  244:18  error  'config' is defined but never used. Allowed unused args must match /^_/u       no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4370623Z ##[error]  263:12  error  'code' is defined but never used. Allowed unused args must match /^_/u         no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4371914Z ##[error]  264:12  error  'provider' is defined but never used. Allowed unused args must match /^_/u     no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4373322Z ##[error]  265:12  error  Argument 'details' should be typed with a non-any type                         @typescript-eslint/explicit-module-boundary-types
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4374702Z ##[error]  265:12  error  'details' is defined but never used. Allowed unused args must match /^_/u      no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4376067Z ##[error]  265:22  error  Unexpected any. Specify a different type                                       @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4377485Z ##[error]  280:51  error  Argument 'details' should be typed with a non-any type                         @typescript-eslint/explicit-module-boundary-types
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4378879Z ##[error]  280:61  error  Unexpected any. Specify a different type                                       @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4380657Z ##[error]  287:51  error  Argument 'details' should be typed with a non-any type                         @typescript-eslint/explicit-module-boundary-types
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4382080Z ##[error]  287:61  error  Unexpected any. Specify a different type                                       @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4382828Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4383259Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/shared/oauth-helpers.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4384352Z ##[error]  15:10  error  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4385678Z ##[error]  16:11  error  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4387028Z ##[error]  21:10  error  'code' is defined but never used. Allowed unused args must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4388269Z ##[error]  22:8   error  'data' is defined but never used. Allowed unused args must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4389700Z ##[error]  22:14  error  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4390962Z ##[error]  23:13  error  'name' is defined but never used. Allowed unused args must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4392190Z ##[error]  23:27  error  'value' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4393388Z ##[error]  24:13  error  'code' is defined but never used. Allowed unused args must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4394580Z ##[error]  24:27  error  'url' is defined but never used. Allowed unused args must match /^_/u    no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4395783Z ##[error]  25:9   error  'data' is defined but never used. Allowed unused args must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4397056Z ##[error]  25:15  error  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4398417Z ##[error]  55:32  error  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4399984Z ##[error]  96:3   error  Argument 'data' should be typed with a non-any type                      @typescript-eslint/explicit-module-boundary-types
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4401528Z ##[error]  96:9   error  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4402268Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4402696Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/shared/provider-router.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4403625Z ##[error]   38:54  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4404855Z ##[error]   38:66  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4406085Z ##[error]   63:55  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4407299Z ##[error]   63:67  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4408507Z ##[error]   88:40  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4409937Z ##[error]   88:52  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4411176Z ##[error]  131:25  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4412421Z ##[error]  140:63  error  Refactor this code to not use nested template literals  sonarjs/no-nested-template-literals
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4413671Z ##[error]  154:51  error  Refactor this code to not use nested template literals  sonarjs/no-nested-template-literals
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4414549Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4415038Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/shared/universal-revoke-handler.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4416299Z ##[error]  31:23  error    Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed                        sonarjs/cognitive-complexity
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4417891Z ##[error]  38:20  error    'token_type_hint' is assigned a value but never used. Allowed unused vars must match /^_/u                 no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4420965Z ##[warning]  38:20  warning  Remove the declaration of the unused 'token_type_hint' variable                                            sonarjs/no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4422755Z ##[error]  38:20  error    Remove this useless assignment to variable "token_type_hint"                                               sonarjs/no-dead-store
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4424375Z ##[error]  38:20  error    'token_type_hint' is assigned a value but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4426092Z ##[error]  38:49  error    Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4427625Z ##[error]  58:50  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4428399Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4428878Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/shared/universal-token-handler.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4430373Z ##[error]   37:58  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4432128Z ##[error]  102:39  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4433647Z ##[error]  116:42  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4435070Z ##[error]  157:31  error  'req' is defined but never used. Allowed unused args must match /^_/u                                      no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4436712Z ##[error]  157:36  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4438124Z ##[error]  157:41  error  'res' is defined but never used. Allowed unused args must match /^_/u                                      no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4439716Z ##[error]  157:46  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4441127Z ##[error]  159:54  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4442489Z ##[error]  159:66  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4444004Z ##[error]  189:16  error  Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed                        sonarjs/cognitive-complexity
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4445481Z ##[error]  202:42  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4447049Z ##[error]  207:11  error  Prefer using an optional chain expression instead, as it's more concise and easier to read                 @typescript-eslint/prefer-optional-chain
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4448882Z ##[error]  209:55  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4450626Z ##[error]  225:55  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4452016Z ##[error]  225:67  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4453384Z ##[error]  244:48  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4454731Z ##[error]  244:60  error  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4456110Z ##[error]  246:7   error  Handle this exception or don't catch it at all                                                             sonarjs/no-ignored-exceptions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4457573Z ##[error]  246:14  error  'error' is defined but never used. Allowed unused caught errors must match /^_/u                           no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4459268Z ##[error]  246:14  error  'error' is defined but never used. Allowed unused caught errors must match /^_/u                           @typescript-eslint/no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4460130Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4460523Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/auth/src/utils/logger.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4461823Z ##[error]  54:49  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4462718Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4463214Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/http-server/src/server/streamable-http-server.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4464344Z ##[error]  789:105  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4465070Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4465462Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/observability/src/config.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4466799Z ##[error]   74:48  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4468710Z ##[error]   86:59  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4500836Z ##[error]  111:82  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4502179Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4502649Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/observability/src/logger.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4503829Z ##[error]   15:3   error  'SEMRESATTRS_SERVICE_NAMESPACE' is deprecated                                                                   sonarjs/deprecation
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4505351Z ##[error]   16:3   error  'SEMRESATTRS_DEPLOYMENT_ENVIRONMENT' is deprecated                                                              sonarjs/deprecation
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4507023Z ##[error]   33:26  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4508817Z ##[error]  172:5   error  Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4511105Z ##[error]  218:35  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4512898Z ##[error]  224:34  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4514628Z ##[error]  230:34  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4516350Z ##[error]  246:37  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4518141Z ##[error]  282:3   error  Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4520418Z ##[error]  329:55  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4522494Z ##[error]  330:60  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4524235Z ##[error]  331:66  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator       @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4525787Z ##[error]  343:8   error  'SEMRESATTRS_SERVICE_NAMESPACE' is deprecated                                                                   sonarjs/deprecation
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4527224Z ##[error]  344:8   error  'SEMRESATTRS_DEPLOYMENT_ENVIRONMENT' is deprecated                                                              sonarjs/deprecation
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4528011Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4528421Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/observability/src/metrics.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4529881Z ##[error]  115:29  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4530811Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4531348Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/observability/src/ocsf/builders/base-event-builder.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4532743Z ##[error]  88:10  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4533512Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4534007Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/observability/src/ocsf/ocsf-otel-bridge.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4535333Z ##[error]  247:36  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4537068Z ##[error]  248:27  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4538772Z ##[error]  248:50  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4540759Z ##[error]  248:85  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4541648Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4542162Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/observability/src/ocsf/types/api-activity.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4543257Z ##[error]  22:3  error  'Unknown' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4544586Z ##[error]  23:3  error  'Create' is defined but never used. Allowed unused vars must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4545983Z ##[error]  24:3  error  'Read' is defined but never used. Allowed unused vars must match /^_/u     no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4547256Z ##[error]  25:3  error  'Update' is defined but never used. Allowed unused vars must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4548485Z ##[error]  26:3  error  'Delete' is defined but never used. Allowed unused vars must match /^_/u   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4549978Z ##[error]  27:3  error  'Other' is defined but never used. Allowed unused vars must match /^_/u    no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4550719Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4551213Z /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/packages/observability/src/ocsf/types/authentication.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4552288Z ##[error]  24:3  error  'Unknown' is defined but never used. Allowed unused vars must match /^_/u                  no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4553656Z ##[error]  25:3  error  'Logon' is defined but never used. Allowed unused vars must match /^_/u                    no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4555019Z ##[error]  26:3  error  'Logoff' is defined but never used. Allowed unused vars must match /^_/u                   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4556442Z ##[error]  27:3  error  'AuthenticationTicket' is defined but never used. Allowed unused vars must match /^_/u     no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4557857Z ##[error]  28:3  error  'ServiceTicketRequest' is defined but never used. Allowed unused vars must match /^_/u     no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4559511Z ##[error]  29:3  error  'ServiceTicketRenew' is defined but never used. Allowed unused vars must match /^_/u       no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4560937Z ##[error]  30:3  error  'Preauth' is defined but never used. Allowed unused vars must match /^_/u                  no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4562295Z ##[error]  31:3  error  'Other' is defined but never used. Allowed unused vars must match /^_/u                    no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4563651Z ##[error]  38:3  error  'Unknown' is defined but never used. Allowed unused vars must match /^_/u                  no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4565000Z ##[error]  39:3  error  'NTLM' is defined but never used. Allowed unused vars must match /^_/u                     no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4566351Z ##[error]  40:3  error  'Kerberos' is defined but never used. Allowed unused vars must match /^_/u                 no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4567886Z ##[error]  41:3  error  'Digest' is defined but never used. Allowed unused vars must match /^_/u                   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4569456Z ##[error]  42:3  error  'OpenID' is defined but never used. Allowed unused vars must match /^_/u                   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4570855Z ##[error]  43:3  error  'SAML' is defined but never used. Allowed unused vars must match /^_/u                     no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4572200Z ##[error]  44:3  error  'OAuth2' is defined but never used. Allowed unused vars must match /^_/u                   no-unused-vars
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T16:38:51.4573563Z ##[error]  45:3  error  'PAP' is defined but never used. Allowed unused vars must match /^_/u                      no-unused-vars
