@@ -354,6 +354,9 @@ export function generateWorkflow(
     jobSteps.push({
       name: 'Run validation',
       run: validateCommand,
+      env: {
+        GH_TOKEN: '${{ github.token }}',
+      },
     });
 
     jobs['validate'] = {
