@@ -52,7 +52,7 @@ Built-in tools for AI agents and developers: health diagnostics, PR monitoring, 
 
 **How it works:**
 - 🩺 `vv doctor` - diagnose setup issues before they block you
-- 👀 `vv watch-pr` - monitor CI without opening browser
+- 👀 `vv watch-pr` - monitor PR checks with error extraction (matrix + non-matrix modes), history analysis, and auto-YAML on failure
 - 🔄 Automatic branch sync enforcement during pre-commit
 - 🎯 `vv history` - view validation timeline and debug trends
 - 🛡️ Automatic git snapshots of your worktree with every validation
@@ -176,8 +176,10 @@ vv state
 # View validation history
 vv history list
 
-# Monitor PR CI status
-vv watch-pr
+# Monitor PR checks with error extraction
+vv watch-pr 90              # Check specific PR
+vv watch-pr --history       # List all runs with pass/fail
+vv watch-pr 90 --yaml       # Force YAML output (auto on failure)
 
 # Generate GitHub Actions workflow
 vv generate-workflow

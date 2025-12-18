@@ -50,6 +50,7 @@ export default [
     ignores: [
       '**/vitest.config.ts', // Vitest configs don't need linting
       '**/vitest.config.js',
+      '**/vitest.integration.config.ts', // Vitest integration test configs
     ],
   },
   eslint.configs.recommended,

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Features
+
+- **Major `watch-pr` command enhancements** (v0.18.0)
+  - **Error extraction from GitHub Actions logs** - Shows actual test failures, not just "check failed"
+    - **Matrix mode**: Parses validate YAML output and passes through extraction faithfully
+    - **Non-matrix mode**: Auto-detects test framework (vitest, jest, eslint) and extracts errors from raw logs
+    - Both modes use same `ErrorExtractorResult` schema for consistency
+  - **Separate GitHub Actions vs external checks** - Clear distinction between workflow runs and third-party services
+  - **History summary** - View last 10 runs with success rate and pattern detection ("Failed last 2 runs", "Flaky")
+  - **File change context** - See files changed, insertions/deletions, and top modified files
+  - **Intelligent guidance** - Severity-based next steps with URLs to failed checks
+  - **External check extraction** - Codecov and SonarCloud summaries (coverage %, quality gates)
+  - **Auto-YAML on failure** - Consistent with validate command (YAML for failures, text for success)
+  - **--history flag** - List all workflow runs for PR with pass/fail table
+  - **--run-id flag** - Watch specific run ID for debugging historical failures
+  - **Cross-repo support** - Monitor PRs in any repository via --repo flag
+  - **Local caching** - 24x speedup (2.6s → 0.1s) with 5-minute TTL
+  - **Fixed external check URLs** - No more "unknown" job IDs
+  - **Rich PR metadata** - Branch, mergeable state, labels, linked issues
+  - **Newspaper ordering** - Most important info first (failed checks, then pending, then passed)
+
+### Documentation
+
+- Added comprehensive `docs/commands/watch-pr.md` with extraction modes, workflows, and examples
+- Updated README.md with watch-pr improvements
+
 ## [0.17.6] - 2025-12-15
 
 ### Bug Fixes
