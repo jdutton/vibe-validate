@@ -12,6 +12,75 @@ import { GitHubFetcher } from '../../src/services/github-fetcher.js';
 import { HistorySummaryBuilder } from '../../src/services/history-summary-builder.js';
 import { WatchPROrchestrator } from '../../src/services/watch-pr-orchestrator.js';
 
+/**
+ * Helper: Setup standard PR mock data
+ */
+function mockPRDetails(prNumber = 123, overrides = {}) {
+  return {
+    number: prNumber,
+    title: 'Test PR',
+    url: `https://github.com/test-owner/test-repo/pull/${prNumber}`,
+    branch: 'feature/test',
+    base_branch: 'main',
+    author: 'test-author',
+    draft: false,
+    mergeable: true,
+    merge_state_status: 'CLEAN',
+    labels: [],
+    ...overrides,
+  };
+}
+
+/**
+ * Helper: Setup standard file changes mock data
+ */
+function mockFileChanges(overrides = {}) {
+  return {
+    files_changed: 5,
+    insertions: 100,
+    deletions: 50,
+    commits: 3,
+    ...overrides,
+  };
+}
+
+/**
+ * Helper: Setup standard history summary mock data
+ */
+function mockHistorySummary(overrides = {}) {
+  return {
+    total_runs: 0,
+    recent_pattern: 'No previous runs',
+    ...overrides,
+  };
+}
+
+/**
+ * Helper: Setup all standard mocks for WatchPROrchestrator tests
+ */
+function setupStandardMocks(prNumber = 123, options: {
+  prDetails?: Record<string, unknown>;
+  checks?: unknown[];
+  fileChanges?: Record<string, unknown>;
+  historySummary?: Record<string, unknown>;
+} = {}) {
+  vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue(
+    mockPRDetails(prNumber, options.prDetails) as never
+  );
+
+  vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue(
+    (options.checks ?? []) as never
+  );
+
+  vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue(
+    mockFileChanges(options.fileChanges) as never
+  );
+
+  vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue(
+    mockHistorySummary(options.historySummary) as never
+  );
+}
+
 describe('WatchPROrchestrator', () => {
   let orchestrator: WatchPROrchestrator;
   const mockOwner = 'test-owner';
@@ -28,33 +97,7 @@ describe('WatchPROrchestrator', () => {
 
   describe('buildResult', () => {
     it('should build a result with all required fields', async () => {
-      // Mock GitHubFetcher methods
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue([]);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
-      });
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue({
-        total_runs: 0,
-        recent_pattern: 'No previous runs',
-      });
+      setupStandardMocks(mockPRNumber);
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
 
@@ -65,32 +108,7 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should validate result against schema', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue([]);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
-      });
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue({
-        total_runs: 0,
-        recent_pattern: 'No previous runs',
-      });
+      setupStandardMocks(mockPRNumber);
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
 
@@ -100,43 +118,20 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should classify GitHub Actions checks correctly', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue([
-        {
-          type: 'github_action',
-          name: 'test',
-          status: 'completed',
-          conclusion: 'success',
-          run_id: 12345,
-          workflow: 'CI',
-          started_at: '2025-01-01T10:00:00Z',
-          duration: '2m15s',
-          log_command: 'gh run view 12345',
-        },
-      ]);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
-      });
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue({
-        total_runs: 0,
-        recent_pattern: 'No previous runs',
+      setupStandardMocks(mockPRNumber, {
+        checks: [
+          {
+            type: 'github_action',
+            name: 'test',
+            status: 'completed',
+            conclusion: 'success',
+            run_id: 12345,
+            workflow: 'CI',
+            started_at: '2025-01-01T10:00:00Z',
+            duration: '2m15s',
+            log_command: 'gh run view 12345',
+          },
+        ],
       });
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
@@ -147,40 +142,17 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should classify external checks correctly', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue([
-        {
-          type: 'external',
-          name: 'codecov/patch',
-          status: 'completed',
-          conclusion: 'success',
-          url: 'https://codecov.io/...',
-          provider: 'codecov',
-        },
-      ]);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
-      });
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue({
-        total_runs: 0,
-        recent_pattern: 'No previous runs',
+      setupStandardMocks(mockPRNumber, {
+        checks: [
+          {
+            type: 'external',
+            name: 'codecov/patch',
+            status: 'completed',
+            conclusion: 'success',
+            url: 'https://codecov.io/...',
+            provider: 'codecov',
+          },
+        ],
       });
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
@@ -191,57 +163,34 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should order checks with failures first', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue([
-        {
-          type: 'github_action',
-          name: 'test-1',
-          status: 'completed',
-          conclusion: 'success',
-          run_id: 12345,
-          workflow: 'CI',
-          started_at: '2025-01-01T10:00:00Z',
-          duration: '2m15s',
-          log_command: 'gh run view 12345',
-        },
-        {
-          type: 'github_action',
-          name: 'test-2',
-          status: 'completed',
-          conclusion: 'failure',
-          run_id: 12346,
-          workflow: 'CI',
-          started_at: '2025-01-01T10:05:00Z',
-          duration: '1m30s',
-          log_command: 'gh run view 12346',
-        },
-      ]);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
+      setupStandardMocks(mockPRNumber, {
+        checks: [
+          {
+            type: 'github_action',
+            name: 'test-1',
+            status: 'completed',
+            conclusion: 'success',
+            run_id: 12345,
+            workflow: 'CI',
+            started_at: '2025-01-01T10:00:00Z',
+            duration: '2m15s',
+            log_command: 'gh run view 12345',
+          },
+          {
+            type: 'github_action',
+            name: 'test-2',
+            status: 'completed',
+            conclusion: 'failure',
+            run_id: 12346,
+            workflow: 'CI',
+            started_at: '2025-01-01T10:05:00Z',
+            duration: '1m30s',
+            log_command: 'gh run view 12346',
+          },
+        ],
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs');
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue({
-        total_runs: 0,
-        recent_pattern: 'No previous runs',
-      });
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
 
@@ -251,46 +200,23 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should generate guidance for failed checks', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue([
-        {
-          type: 'github_action',
-          name: 'test',
-          status: 'completed',
-          conclusion: 'failure',
-          run_id: 12345,
-          workflow: 'CI',
-          started_at: '2025-01-01T10:00:00Z',
-          duration: '2m15s',
-          log_command: 'gh run view 12345',
-        },
-      ]);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
+      setupStandardMocks(mockPRNumber, {
+        checks: [
+          {
+            type: 'github_action',
+            name: 'test',
+            status: 'completed',
+            conclusion: 'failure',
+            run_id: 12345,
+            workflow: 'CI',
+            started_at: '2025-01-01T10:00:00Z',
+            duration: '2m15s',
+            log_command: 'gh run view 12345',
+          },
+        ],
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs');
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue({
-        total_runs: 0,
-        recent_pattern: 'No previous runs',
-      });
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
 
@@ -301,67 +227,44 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should calculate check counts correctly', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchChecks').mockResolvedValue([
-        {
-          type: 'github_action',
-          name: 'test-1',
-          status: 'completed',
-          conclusion: 'success',
-          run_id: 12345,
-          workflow: 'CI',
-          started_at: '2025-01-01T10:00:00Z',
-          duration: '2m15s',
-          log_command: 'gh run view 12345',
-        },
-        {
-          type: 'github_action',
-          name: 'test-2',
-          status: 'completed',
-          conclusion: 'failure',
-          run_id: 12346,
-          workflow: 'CI',
-          started_at: '2025-01-01T10:05:00Z',
-          duration: '1m30s',
-          log_command: 'gh run view 12346',
-        },
-        {
-          type: 'github_action',
-          name: 'test-3',
-          status: 'in_progress',
-          run_id: 12347,
-          workflow: 'CI',
-          started_at: '2025-01-01T10:10:00Z',
-          duration: '0s',
-          log_command: 'gh run view 12347',
-        },
-      ]);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
+      setupStandardMocks(mockPRNumber, {
+        checks: [
+          {
+            type: 'github_action',
+            name: 'test-1',
+            status: 'completed',
+            conclusion: 'success',
+            run_id: 12345,
+            workflow: 'CI',
+            started_at: '2025-01-01T10:00:00Z',
+            duration: '2m15s',
+            log_command: 'gh run view 12345',
+          },
+          {
+            type: 'github_action',
+            name: 'test-2',
+            status: 'completed',
+            conclusion: 'failure',
+            run_id: 12346,
+            workflow: 'CI',
+            started_at: '2025-01-01T10:05:00Z',
+            duration: '1m30s',
+            log_command: 'gh run view 12346',
+          },
+          {
+            type: 'github_action',
+            name: 'test-3',
+            status: 'in_progress',
+            run_id: 12347,
+            workflow: 'CI',
+            started_at: '2025-01-01T10:10:00Z',
+            duration: '0s',
+            log_command: 'gh run view 12347',
+          },
+        ],
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs');
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue({
-        total_runs: 0,
-        recent_pattern: 'No previous runs',
-      });
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
 
@@ -376,19 +279,7 @@ describe('WatchPROrchestrator', () => {
     const mockRunId = 12345;
 
     it('should build result for a specific run with all required fields', async () => {
-      // Mock fetcher methods
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
+      setupStandardMocks(mockPRNumber);
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
         run_id: mockRunId,
@@ -403,13 +294,6 @@ describe('WatchPROrchestrator', () => {
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs for run');
 
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
-      });
-
       const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
 
       // Verify result structure
@@ -422,17 +306,13 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should validate result against schema', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
+      setupStandardMocks(mockPRNumber, {
+        fileChanges: {
+          files_changed: 2,
+          insertions: 50,
+          deletions: 25,
+          commits: 1,
+        },
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
@@ -448,13 +328,6 @@ describe('WatchPROrchestrator', () => {
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs');
 
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 2,
-        insertions: 50,
-        deletions: 25,
-        commits: 1,
-      });
-
       const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
 
       // Should validate without throwing
@@ -463,17 +336,13 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should handle failed runs correctly', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
+      setupStandardMocks(mockPRNumber, {
+        fileChanges: {
+          files_changed: 3,
+          insertions: 75,
+          deletions: 30,
+          commits: 2,
+        },
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
@@ -489,13 +358,6 @@ describe('WatchPROrchestrator', () => {
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('lint error logs');
 
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 3,
-        insertions: 75,
-        deletions: 30,
-        commits: 2,
-      });
-
       const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
 
       expect(result.status).toBe('failed');
@@ -505,17 +367,13 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should handle in-progress runs', async () => {
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
+      setupStandardMocks(mockPRNumber, {
+        fileChanges: {
+          files_changed: 1,
+          insertions: 10,
+          deletions: 5,
+          commits: 1,
+        },
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
@@ -531,13 +389,6 @@ describe('WatchPROrchestrator', () => {
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('deployment in progress...');
 
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 1,
-        insertions: 10,
-        deletions: 5,
-        commits: 1,
-      });
-
       const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
 
       expect(result.status).toBe('pending');
@@ -548,17 +399,13 @@ describe('WatchPROrchestrator', () => {
     it('should attempt extraction for failed runs', async () => {
       // This test verifies that extraction is attempted for failed runs
       // The actual extraction logic is tested in extraction-mode-detector.test.ts
-      vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
+      setupStandardMocks(mockPRNumber, {
+        fileChanges: {
+          files_changed: 4,
+          insertions: 80,
+          deletions: 40,
+          commits: 2,
+        },
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
@@ -576,13 +423,6 @@ describe('WatchPROrchestrator', () => {
         .spyOn(GitHubFetcher.prototype, 'fetchRunLogs')
         .mockResolvedValue('mock test failure logs');
 
-      vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 4,
-        insertions: 80,
-        deletions: 40,
-        commits: 2,
-      });
-
       const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
 
       // Verify logs were fetched (extraction was attempted)
@@ -594,25 +434,17 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should still fetch PR details and file changes', async () => {
-      const fetchPRSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue({
-        number: mockPRNumber,
-        title: 'Test PR',
-        url: 'https://github.com/test-owner/test-repo/pull/123',
-        branch: 'feature/test',
-        base_branch: 'main',
-        author: 'test-author',
-        draft: false,
-        mergeable: true,
-        merge_state_status: 'CLEAN',
-        labels: [],
-      });
+      const fetchPRSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue(
+        mockPRDetails(mockPRNumber) as never
+      );
 
-      const fetchFileChangesSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue({
-        files_changed: 5,
-        insertions: 100,
-        deletions: 50,
-        commits: 3,
-      });
+      const fetchFileChangesSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue(
+        mockFileChanges() as never
+      );
+
+      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue(
+        mockHistorySummary() as never
+      );
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
         run_id: mockRunId,

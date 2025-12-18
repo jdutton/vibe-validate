@@ -8,6 +8,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { HistorySummaryBuilder } from '../../src/services/history-summary-builder.js';
 
+/**
+ * Helper: Create a workflow run object
+ */
+function createRun(conclusion: string, timeOffset = 0) {
+  const date = new Date('2025-01-01T10:00:00Z');
+  date.setHours(date.getHours() - timeOffset);
+  return {
+    conclusion,
+    created_at: date.toISOString(),
+  };
+}
+
+/**
+ * Helper: Mock workflow runs and build summary
+ */
+async function mockAndBuild(
+  builder: HistorySummaryBuilder,
+  runs: Array<{ conclusion: string; created_at: string }>,
+  branch = 'feature/test-branch'
+) {
+  vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue(runs);
+  return await builder.buildSummary(branch);
+}
+
 describe('HistorySummaryBuilder', () => {
   let builder: HistorySummaryBuilder;
 
@@ -17,10 +41,9 @@ describe('HistorySummaryBuilder', () => {
 
   describe('buildSummary', () => {
     it('should fetch workflow runs for PR branch', async () => {
-      // Mock gh CLI to return workflow runs
       const mockExec = vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T09:00:00Z' },
+        createRun('success', 0),
+        createRun('success', 1),
       ]);
 
       const summary = await builder.buildSummary('feature/test-branch');
@@ -30,57 +53,47 @@ describe('HistorySummaryBuilder', () => {
     });
 
     it('should calculate total runs', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T08:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('failure', 1),
+        createRun('success', 2),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.total_runs).toBe(3);
     });
 
     it('should identify recent pattern (passed)', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T09:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('success', 1),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.recent_pattern).toContain('Passed last 2 run');
     });
 
     it('should identify recent pattern (failed)', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'failure', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T08:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('failure', 0),
+        createRun('failure', 1),
+        createRun('failure', 2),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.recent_pattern).toContain('Failed last 3 run');
     });
 
     it('should calculate success rate', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T08:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T07:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('success', 1),
+        createRun('failure', 2),
+        createRun('success', 3),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.success_rate).toBe('75%');
     });
 
     it('should handle no history gracefully', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
+      const summary = await mockAndBuild(builder, []);
 
       expect(summary.total_runs).toBe(0);
       expect(summary.recent_pattern).toBe('No previous runs');
@@ -88,14 +101,12 @@ describe('HistorySummaryBuilder', () => {
     });
 
     it('should limit to last 10 runs', async () => {
-      const runs = Array.from({ length: 15 }, (_, i) => ({
-        conclusion: i % 2 === 0 ? 'success' : 'failure',
-        created_at: `2025-01-01T${10 + i}:00:00Z`,
-      }));
+      const runs = Array.from({ length: 15 }, (_, i) => createRun(
+        i % 2 === 0 ? 'success' : 'failure',
+        i
+      ));
 
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue(runs);
-
-      const summary = await builder.buildSummary('feature/test-branch');
+      const summary = await mockAndBuild(builder, runs);
 
       // Total should include all runs
       expect(summary.total_runs).toBe(15);
@@ -109,63 +120,53 @@ describe('HistorySummaryBuilder', () => {
 
   describe('pattern detection', () => {
     it('should detect "Passed last N runs"', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T08:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('success', 1),
+        createRun('success', 2),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.recent_pattern).toBe('Passed last 3 runs');
     });
 
     it('should detect "Failed last N runs"', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'failure', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T09:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('failure', 0),
+        createRun('failure', 1),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.recent_pattern).toBe('Failed last 2 runs');
     });
 
     it('should detect "Flaky (alternating)"', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T08:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T07:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('failure', 1),
+        createRun('success', 2),
+        createRun('failure', 3),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.recent_pattern).toBe('Flaky (alternating)');
     });
 
     it('should detect "Recently fixed (was failing)"', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T08:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T07:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T06:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('success', 1),
+        createRun('failure', 2),
+        createRun('failure', 3),
+        createRun('failure', 4),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.recent_pattern).toBe('Recently fixed (was failing)');
     });
 
     it('should handle mixed patterns', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'success', created_at: '2025-01-01T08:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('failure', 1),
+        createRun('success', 2),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       // Not alternating (not enough samples), not consistent
       // Should fall back to generic pattern
@@ -175,11 +176,7 @@ describe('HistorySummaryBuilder', () => {
 
   describe('edge cases', () => {
     it('should handle single run', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-      ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
+      const summary = await mockAndBuild(builder, [createRun('success', 0)]);
 
       expect(summary.total_runs).toBe(1);
       expect(summary.recent_pattern).toBe('Passed last 1 run');
@@ -187,13 +184,11 @@ describe('HistorySummaryBuilder', () => {
     });
 
     it('should handle cancelled runs', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'cancelled', created_at: '2025-01-01T09:00:00Z' },
-        { conclusion: 'failure', created_at: '2025-01-01T08:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('cancelled', 1),
+        createRun('failure', 2),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.total_runs).toBe(3);
       // Success rate: 1 success out of 3 = 33%
@@ -201,12 +196,10 @@ describe('HistorySummaryBuilder', () => {
     });
 
     it('should handle skipped runs', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'skipped', created_at: '2025-01-01T09:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('skipped', 1),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.total_runs).toBe(2);
       // Skipped should be treated as non-success
@@ -254,9 +247,7 @@ describe('HistorySummaryBuilder', () => {
     });
 
     it('should handle empty workflow runs', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
+      const summary = await mockAndBuild(builder, []);
 
       expect(summary.total_runs).toBe(0);
       expect(summary.recent_pattern).toBe('No previous runs');
@@ -264,36 +255,30 @@ describe('HistorySummaryBuilder', () => {
     });
 
     it('should handle all runs with null conclusion', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: null, created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: null, created_at: '2025-01-01T09:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        { conclusion: null as any, created_at: '2025-01-01T10:00:00Z' },
+        { conclusion: null as any, created_at: '2025-01-01T09:00:00Z' },
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.total_runs).toBe(2);
       expect(summary.success_rate).toBe('0%'); // null is not success
     });
 
     it('should handle "timed_out" conclusion', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'timed_out', created_at: '2025-01-01T09:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('success', 0),
+        createRun('timed_out', 1),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.total_runs).toBe(2);
       expect(summary.success_rate).toBe('50%'); // timed_out is not success
     });
 
     it('should detect pattern with action_required conclusion', async () => {
-      vi.spyOn(builder as any, 'fetchWorkflowRuns').mockResolvedValue([
-        { conclusion: 'action_required', created_at: '2025-01-01T10:00:00Z' },
-        { conclusion: 'action_required', created_at: '2025-01-01T09:00:00Z' },
+      const summary = await mockAndBuild(builder, [
+        createRun('action_required', 0),
+        createRun('action_required', 1),
       ]);
-
-      const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.total_runs).toBe(2);
       expect(summary.recent_pattern).toBeDefined();

@@ -20,6 +20,45 @@ import {
   SonarCloudExtractor,
 } from '../../src/services/external-check-extractor.js';
 
+/**
+ * Helper: Create an external check object
+ */
+function createExternalCheck(
+  name: string,
+  url: string,
+  overrides: Partial<ExternalCheck> = {}
+): ExternalCheck {
+  return {
+    name,
+    status: 'completed',
+    conclusion: 'success',
+    url,
+    ...overrides,
+  };
+}
+
+/**
+ * Helper: Create a Codecov check
+ */
+function codecovCheck(overrides: Partial<ExternalCheck> = {}): ExternalCheck {
+  return createExternalCheck(
+    'codecov/patch',
+    'https://codecov.io/gh/test/test/pull/123',
+    overrides
+  );
+}
+
+/**
+ * Helper: Create a SonarCloud check
+ */
+function sonarCloudCheck(overrides: Partial<ExternalCheck> = {}): ExternalCheck {
+  return createExternalCheck(
+    'SonarCloud Code Analysis',
+    'https://sonarcloud.io/project/issues?id=test',
+    overrides
+  );
+}
+
 describe('ExternalCheckExtractor', () => {
   describe('CodecovExtractor', () => {
     let extractor: CodecovExtractor;
@@ -29,36 +68,15 @@ describe('ExternalCheckExtractor', () => {
     });
 
     it('should match codecov checks', () => {
-      const check: ExternalCheck = {
-        name: 'codecov/patch',
-        status: 'completed',
-        conclusion: 'success',
-        url: 'https://codecov.io/gh/test/test/pull/123',
-      };
-
-      expect(extractor.canHandle(check)).toBe(true);
+      expect(extractor.canHandle(codecovCheck())).toBe(true);
     });
 
     it('should not match non-codecov checks', () => {
-      const check: ExternalCheck = {
-        name: 'SonarCloud',
-        status: 'completed',
-        conclusion: 'success',
-        url: 'https://sonarcloud.io',
-      };
-
-      expect(extractor.canHandle(check)).toBe(false);
+      expect(extractor.canHandle(sonarCloudCheck())).toBe(false);
     });
 
     it('should extract codecov details', async () => {
-      const check: ExternalCheck = {
-        name: 'codecov/patch',
-        status: 'completed',
-        conclusion: 'success',
-        url: 'https://codecov.io/gh/test/test/pull/123',
-      };
-
-      const result = await extractor.extract(check);
+      const result = await extractor.extract(codecovCheck());
 
       expect(result).toBeDefined();
       expect(result?.summary).toContain('coverage');
@@ -73,36 +91,15 @@ describe('ExternalCheckExtractor', () => {
     });
 
     it('should match SonarCloud checks', () => {
-      const check: ExternalCheck = {
-        name: 'SonarCloud Code Analysis',
-        status: 'completed',
-        conclusion: 'success',
-        url: 'https://sonarcloud.io/project/issues?id=test',
-      };
-
-      expect(extractor.canHandle(check)).toBe(true);
+      expect(extractor.canHandle(sonarCloudCheck())).toBe(true);
     });
 
     it('should not match non-SonarCloud checks', () => {
-      const check: ExternalCheck = {
-        name: 'codecov/patch',
-        status: 'completed',
-        conclusion: 'success',
-        url: 'https://codecov.io',
-      };
-
-      expect(extractor.canHandle(check)).toBe(false);
+      expect(extractor.canHandle(codecovCheck())).toBe(false);
     });
 
     it('should extract SonarCloud details', async () => {
-      const check: ExternalCheck = {
-        name: 'SonarCloud Code Analysis',
-        status: 'completed',
-        conclusion: 'success',
-        url: 'https://sonarcloud.io/project/issues?id=test',
-      };
-
-      const result = await extractor.extract(check);
+      const result = await extractor.extract(sonarCloudCheck());
 
       expect(result).toBeDefined();
       expect(result?.summary).toContain('quality');
@@ -119,19 +116,9 @@ describe('ExternalCheckExtractor', () => {
     });
 
     it('should extract from all checks', async () => {
-      const checks: ExternalCheck[] = [
-        {
-          name: 'codecov/patch',
-          status: 'completed',
-          conclusion: 'success',
-          url: 'https://codecov.io/gh/test/test/pull/123',
-        },
-        {
-          name: 'SonarCloud Code Analysis',
-          status: 'completed',
-          conclusion: 'failure',
-          url: 'https://sonarcloud.io/project/issues?id=test',
-        },
+      const checks = [
+        codecovCheck(),
+        sonarCloudCheck({ conclusion: 'failure' }),
       ];
 
       const results = await registry.extractAll(checks);
@@ -142,13 +129,8 @@ describe('ExternalCheckExtractor', () => {
     });
 
     it('should handle checks with no matching extractor', async () => {
-      const checks: ExternalCheck[] = [
-        {
-          name: 'Unknown Check',
-          status: 'completed',
-          conclusion: 'success',
-          url: 'https://example.com',
-        },
+      const checks = [
+        createExternalCheck('Unknown Check', 'https://example.com'),
       ];
 
       const results = await registry.extractAll(checks);
@@ -168,14 +150,7 @@ describe('ExternalCheckExtractor', () => {
 
       registry.register(failingExtractor);
 
-      const checks: ExternalCheck[] = [
-        {
-          name: 'Test',
-          status: 'completed',
-          conclusion: 'success',
-          url: 'https://example.com',
-        },
-      ];
+      const checks = [createExternalCheck('Test', 'https://example.com')];
 
       const results = await registry.extractAll(checks);
 
