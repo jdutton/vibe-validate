@@ -6,7 +6,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { safeExecResult } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -15,6 +15,7 @@ import { setupTestEnvironment, cleanupTempTestDir } from '../helpers/integration
 
 /**
  * Execute CLI command and return output (handles both success and error cases)
+ * Uses absolute CLI path for Windows compatibility
  */
 function execCLI(cliPath: string, args: string[], options?: { cwd?: string; timeout?: number }): { stdout: string; stderr: string; exitCode: number } {
   const result = safeExecResult('node', [cliPath, ...args], {
@@ -33,7 +34,8 @@ function execCLI(cliPath: string, args: string[], options?: { cwd?: string; time
 
 describe('doctor command config error reporting (regression tests)', () => {
   let testDir: string;
-  const cliPath = join(__dirname, '../../dist/bin.js');
+  // Use resolve() to get absolute path (required for Windows compatibility)
+  const cliPath = resolve(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
     // Create temp directory and initialize git repo

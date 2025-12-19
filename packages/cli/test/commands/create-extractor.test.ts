@@ -6,13 +6,14 @@
  */
 
 import { rmSync, existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { safeExecSync, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 /**
  * Execute CLI command and return output
+ * Uses absolute CLI path for Windows compatibility
  */
 function execCLI(cliPath: string, args: string[], options?: { cwd?: string; encoding?: BufferEncoding }): string {
   try {
@@ -28,12 +29,15 @@ function execCLI(cliPath: string, args: string[], options?: { cwd?: string; enco
 
 describe('create-extractor command', () => {
   let testDir: string;
-  const cliPath = join(__dirname, '../../dist/bin.js');
+  // Use resolve() to get absolute path (required for Windows compatibility)
+  const cliPath = resolve(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory for test (normalized to handle Windows short names)
-    testDir = join(normalizedTmpdir(), `vibe-validate-create-extractor-${Date.now()}`);
-    mkdirSyncReal(testDir, { recursive: true });
+    // Create temp directory and use normalized path returned by mkdirSyncReal
+    const tmpBase = normalizedTmpdir();
+    const targetDir = join(tmpBase, `vibe-validate-create-extractor-${Date.now()}`);
+    // mkdirSyncReal returns the normalized path - MUST use this return value on Windows
+    testDir = mkdirSyncReal(targetDir, { recursive: true });
   });
 
   afterEach(() => {

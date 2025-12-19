@@ -645,11 +645,15 @@ const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: test
 
 #### Historical Context
 
-In v0.18.0, all Windows test exclusions were removed after fixing the spawn pattern:
-- `doctor-config-errors.test.ts` - Fixed to use `safeExecResult('node', [cliPath, ...])`
-- `config-error-reporting.test.ts` - Fixed via `executeCommand()` helper
-- `create-extractor.test.ts` - Fixed to use `safeExecSync('node', [cliPath, ...])`
-- `watch-pr.test.ts` - Fixed to use `spawn('node', [command, ...])`
+**In v0.18.0 - All Windows tests fixed:**
+1. `watch-pr.test.ts` - ✅ Fixed in commit d596a04f to use `spawn('node', [command, ...])` pattern
+2. `config-error-reporting.test.ts` - ✅ Fixed to use `resolve()` for absolute CLI path
+3. `doctor-config-errors.test.ts` - ✅ Fixed to use `resolve()` for absolute CLI path
+4. `create-extractor.test.ts` - ✅ Fixed to use `mkdirSyncReal()` return value for normalized paths
+
+**Root causes and fixes:**
+1. **Module loader errors**: Tests used `join(__dirname, '../../dist/bin.js')` which created relative paths. On Windows with different `cwd`, Node couldn't resolve module imports. **Fixed by using `resolve()` instead of `join()`** to get absolute paths.
+2. **Path normalization**: Tests called `mkdirSyncReal()` but ignored its return value (the normalized path). **Fixed by using the return value**: `testDir = mkdirSyncReal(targetDir, { recursive: true })`
 
 **All tests now work cross-platform** (Windows, macOS, Linux).
 

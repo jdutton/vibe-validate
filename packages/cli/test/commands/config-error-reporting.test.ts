@@ -5,7 +5,7 @@
  * when given invalid configuration files.
  */
 
-import { join } from 'node:path';
+import { resolve } from 'node:path';
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -17,9 +17,9 @@ import {
 } from '../helpers/test-fixtures.js';
 
 describe('config command error reporting (regression tests)', () => {
-  // Skipped on Windows: Node.js module loader errors when executing CLI with node command
   let testDir: string;
-  const cliPath = join(__dirname, '../../dist/bin.js');
+  // Use resolve() to get absolute path (required for Windows compatibility)
+  const cliPath = resolve(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
     testDir = createTempTestDir('vibe-validate-config-errors');

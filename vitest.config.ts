@@ -13,9 +13,8 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/*.system.test.ts', // System tests run separately with pnpm test:system
-      // Windows exclusions removed - all tests now work cross-platform (fixed in v0.18.0)
-      // Previously excluded: doctor-config-errors, config-error-reporting, create-extractor, watch-pr
-      // Fix: Changed test helpers to use spawn('node', [command, ...args]) pattern
+      // Windows exclusions removed - all tests now work cross-platform (v0.18.0)
+      // Fixed by using resolve() for absolute paths and mkdirSyncReal() return value
     ],
     // Prevent Vitest worker timeouts by limiting concurrency
     // Reduced from 5 to 3 to prevent resource exhaustion with coverage (v0.15.0)
