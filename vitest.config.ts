@@ -13,13 +13,9 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/*.system.test.ts', // System tests run separately with pnpm test:system
-      // Platform-specific exclusions (Windows has issues with process spawning and GitHub API calls)
-      ...(process.platform === 'win32' ? [
-        'packages/cli/test/commands/doctor-config-errors.test.ts',
-        'packages/cli/test/commands/config-error-reporting.test.ts',
-        'packages/cli/test/commands/create-extractor.test.ts',
-        'packages/cli/test/commands/watch-pr.test.ts', // Timeouts on Windows (spawns processes, calls gh CLI)
-      ] : []),
+      // Windows exclusions removed - all tests now work cross-platform (fixed in v0.18.0)
+      // Previously excluded: doctor-config-errors, config-error-reporting, create-extractor, watch-pr
+      // Fix: Changed test helpers to use spawn('node', [command, ...args]) pattern
     ],
     // Prevent Vitest worker timeouts by limiting concurrency
     // Reduced from 5 to 3 to prevent resource exhaustion with coverage (v0.15.0)

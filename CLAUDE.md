@@ -606,6 +606,93 @@ Example CHANGELOG entry:
 - Test error formatting with real tools
 - Verify caching behavior
 
+### Cross-Platform Testing (Windows Compatibility)
+
+**CRITICAL**: All tests that spawn CLI processes MUST use the cross-platform pattern to work on Windows.
+
+#### The Problem
+Windows cannot execute files without extensions directly via `spawn()`. This causes ENOENT errors when trying to spawn CLI scripts.
+
+#### The Solution Pattern
+
+**For spawn() in tests:**
+```typescript
+// ❌ BROKEN on Windows
+const proc = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+// ✅ WORKS cross-platform
+const proc = spawn('node', [command, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+```
+
+**For safeExec utilities:**
+```typescript
+import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
+
+// ✅ For successful commands
+const output = safeExecSync('node', [cliPath, ...args], { encoding: 'utf-8' });
+
+// ✅ For commands that might fail
+const result = safeExecResult('node', [cliPath, ...args], { encoding: 'utf-8' });
+```
+
+**For shared test helpers:**
+```typescript
+import { executeCommand } from '../helpers/test-command-runner.js';
+
+// ✅ Automatically parses and uses 'node' + args pattern
+const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
+```
+
+#### Historical Context
+
+In v0.18.0, all Windows test exclusions were removed after fixing the spawn pattern:
+- `doctor-config-errors.test.ts` - Fixed to use `safeExecResult('node', [cliPath, ...])`
+- `config-error-reporting.test.ts` - Fixed via `executeCommand()` helper
+- `create-extractor.test.ts` - Fixed to use `safeExecSync('node', [cliPath, ...])`
+- `watch-pr.test.ts` - Fixed to use `spawn('node', [command, ...])`
+
+**All tests now work cross-platform** (Windows, macOS, Linux).
+
+#### Best Practices
+
+1. **Always use 'node' as the command** when spawning CLI processes in tests
+2. **Pass CLI path as first argument** in the args array
+3. **Use shared test helpers** (`executeCommand()`) to avoid duplication
+4. **Test on Windows CI** to catch regressions early
+5. **Never add platform-specific test exclusions** without investigating the root cause first
+
+#### Example Test Pattern
+
+```typescript
+import { spawn } from 'node:child_process';
+
+/**
+ * Execute CLI command and capture output
+ * Cross-platform compatible (uses node directly)
+ */
+async function executeCommand(
+  command: string,
+  args: string[]
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    // Use node directly to execute the CLI (cross-platform compatible)
+    const proc = spawn('node', [command, ...args], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => { stdout += data; });
+    proc.stderr.on('data', (data) => { stderr += data; });
+
+    proc.on('close', (code) => {
+      resolve({ exitCode: code ?? 1, stdout, stderr });
+    });
+  });
+}
+```
+
 ## Documentation Standards
 
 ### Code Comments
