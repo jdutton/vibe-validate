@@ -303,9 +303,10 @@ Place utilities in the appropriate domain package:
 - **Git/GitHub utilities** → `@vibe-validate/git`
   - **MANDATORY**: All `git` command execution MUST use functions from `@vibe-validate/git`
   - **MANDATORY**: All `gh` (GitHub CLI) command execution MUST use functions from `@vibe-validate/git`
-  - Examples: `getTreeHash()`, `addNote()`, `fetchPRDetails()`, `listPullRequests()`
+  - Examples: `getTreeHash()`, `addNote()`, `fetchPRDetails()`, `listPullRequests()`, `getCurrentBranch()`, `getDiffStats()`, `getNotesRefs()`
   - **Benefits**: Centralized command execution, easy mocking in tests, architectural consistency
   - **Never**: Call `safeExecSync('git', ...)` or `safeExecSync('gh', ...)` directly from other packages
+  - **Exception**: Test environment bootstrap (`.test.ts` files) may use direct `git init` and `git config` for test setup only
 - Config utilities → `@vibe-validate/config`
 - Extractor utilities → `@vibe-validate/extractors`
 - Validation utilities → `@vibe-validate/core`

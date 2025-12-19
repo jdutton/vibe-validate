@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { getNotesRefs } from '@vibe-validate/git';
 import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 import yaml from 'yaml';
@@ -185,7 +186,8 @@ describe('run command integration', () => {
       const treeHash = firstParsed.treeHash;
 
       // CRITICAL: Verify git notes ref was actually created
-      const notesRefs = safeExecSync('git', ['for-each-ref', `refs/notes/vibe-validate/run/${treeHash}`], { encoding: 'utf-8' }) as string;
+      // Use getNotesRefs from @vibe-validate/git (architectural compliance)
+      const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
       expect(notesRefs).not.toBe(''); // Cache was written!
       expect(notesRefs).toContain('refs/notes/vibe-validate/run/');
 
@@ -453,7 +455,8 @@ describe('run command integration', () => {
         const treeHash = nestedParsed.treeHash;
 
         // Verify cache was written
-        const notesRefs = safeExecSync('git', ['for-each-ref', `refs/notes/vibe-validate/run/${treeHash}`], { encoding: 'utf-8' }) as string;
+        // Use getNotesRefs from @vibe-validate/git (architectural compliance)
+        const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
         expect(notesRefs).not.toBe(''); // Cache exists (may include entries from other tests)
 
         // Second run: direct command (should hit cache)

@@ -43,6 +43,16 @@ export function getCurrentBranch(): string {
 }
 
 /**
+ * Get the URL of a git remote
+ * @param remote - The name of the remote (default: 'origin')
+ * @returns The URL of the specified remote
+ * @throws Error if remote doesn't exist
+ */
+export function getRemoteUrl(remote = 'origin'): string {
+  return execGitCommand(['remote', 'get-url', remote]);
+}
+
+/**
  * Get the commit SHA of HEAD
  * @returns The full SHA of the current commit
  * @throws Error if not in a git repository or HEAD is invalid
@@ -94,4 +104,33 @@ export function hasNotesRef(notesRef: string): boolean {
  */
 export function isMergeInProgress(): boolean {
   return tryGitCommand(['rev-parse', '--verify', '--quiet', 'MERGE_HEAD']);
+}
+
+/**
+ * Get diff statistics between two refs
+ * @param baseRef - Base reference (e.g., 'origin/main')
+ * @param headRef - Head reference (default: 'HEAD')
+ * @returns Diff output from git diff --numstat
+ */
+export function getDiffStats(baseRef: string, headRef = 'HEAD'): string {
+  return execGitCommand(['diff', '--numstat', `${baseRef}...${headRef}`]);
+}
+
+/**
+ * Get commit count between two refs
+ * @param baseRef - Base reference (e.g., 'origin/main')
+ * @param headRef - Head reference (default: 'HEAD')
+ * @returns Number of commits as string
+ */
+export function getCommitCount(baseRef: string, headRef = 'HEAD'): string {
+  return execGitCommand(['rev-list', '--count', `${baseRef}...${headRef}`]);
+}
+
+/**
+ * List notes references matching a pattern
+ * @param pattern - Pattern to match (e.g., 'refs/notes/vibe-validate/run/*')
+ * @returns Output from git for-each-ref
+ */
+export function getNotesRefs(pattern: string): string {
+  return execGitCommand(['for-each-ref', pattern]);
 }

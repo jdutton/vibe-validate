@@ -12,6 +12,7 @@
  * @packageDocumentation
  */
 
+import * as gitPackage from '@vibe-validate/git';
 import { safeExecSync } from '@vibe-validate/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +25,16 @@ vi.mock('@vibe-validate/utils', () => ({
   safeExecResult: vi.fn(),
   isToolAvailable: vi.fn(() => true),
 }));
+
+// Mock git functions (getDiffStats, getCommitCount)
+vi.mock('@vibe-validate/git', async () => {
+  const actual = await vi.importActual('@vibe-validate/git');
+  return {
+    ...actual,
+    getDiffStats: vi.fn(),
+    getCommitCount: vi.fn(),
+  };
+});
 
 describe('GitHubFetcher', () => {
   let fetcher: GitHubFetcher;
@@ -377,9 +388,9 @@ describe('GitHubFetcher', () => {
 
       const mockCommitCount = '3';
 
-      vi.mocked(safeExecSync)
-        .mockReturnValueOnce(Buffer.from(mockDiffOutput))
-        .mockReturnValueOnce(Buffer.from(mockCommitCount));
+      // Mock git package functions instead of safeExecSync
+      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
+      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
       const changes = await fetcher.fetchFileChanges(123);
 
@@ -401,9 +412,9 @@ describe('GitHubFetcher', () => {
       const mockDiffOutput = Array.from({ length: 20 }, (_, i) => `${i + 1}\t${i}\tfile${i}.ts`).join('\n');
       const mockCommitCount = '1';
 
-      vi.mocked(safeExecSync)
-        .mockReturnValueOnce(Buffer.from(mockDiffOutput))
-        .mockReturnValueOnce(Buffer.from(mockCommitCount));
+      // Mock git package functions instead of safeExecSync
+      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
+      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
       const changes = await fetcher.fetchFileChanges(123);
 
@@ -417,9 +428,9 @@ describe('GitHubFetcher', () => {
 
       const mockCommitCount = '1';
 
-      vi.mocked(safeExecSync)
-        .mockReturnValueOnce(Buffer.from(mockDiffOutput))
-        .mockReturnValueOnce(Buffer.from(mockCommitCount));
+      // Mock git package functions instead of safeExecSync
+      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
+      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
       const changes = await fetcher.fetchFileChanges(123);
 
@@ -430,9 +441,9 @@ describe('GitHubFetcher', () => {
       const mockDiffOutput = '';
       const mockCommitCount = '0';
 
-      vi.mocked(safeExecSync)
-        .mockReturnValueOnce(Buffer.from(mockDiffOutput))
-        .mockReturnValueOnce(Buffer.from(mockCommitCount));
+      // Mock git package functions instead of safeExecSync
+      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
+      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
       const changes = await fetcher.fetchFileChanges(123);
 
@@ -446,7 +457,8 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle git command failures gracefully', async () => {
-      vi.mocked(safeExecSync).mockImplementation(() => {
+      // Mock git package functions to throw errors
+      vi.spyOn(gitPackage, 'getDiffStats').mockImplementation(() => {
         throw new Error('git: not a git repository');
       });
 
@@ -533,6 +545,28 @@ describe('GitHubFetcher', () => {
       const duration = fetcher['calculateDuration'](start);
 
       expect(duration).toMatch(/^\d+[hms]/); // Should calculate from start to now
+    });
+
+    it('should handle null end time for in-progress checks', () => {
+      const start = '2025-12-16T10:00:00Z';
+      // GitHub API returns null for completedAt on in-progress checks
+      // TypeScript allows null since the signature is: calculateDuration(start?: string, end?: string)
+      // But at runtime, null gets passed from the API
+      const duration = fetcher['calculateDuration'](start, null as unknown as string);
+
+      // Should treat null as "now" and calculate elapsed time
+      expect(duration).toMatch(/^\d+[hms]/);
+      expect(duration).not.toContain('-'); // Should NOT be negative
+    });
+
+    it('should handle invalid/malformed timestamps gracefully', () => {
+      // Test invalid start time
+      const duration1 = fetcher['calculateDuration']('invalid-date', '2025-12-16T10:00:00Z');
+      expect(duration1).toBe('0s'); // Should return 0s for invalid start
+
+      // Test both invalid
+      const duration2 = fetcher['calculateDuration']('invalid', 'also-invalid');
+      expect(duration2).toBe('0s');
     });
   });
 

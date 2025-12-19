@@ -1,5 +1,4 @@
-import { listPullRequests } from '@vibe-validate/git';
-import { safeExecSync } from '@vibe-validate/utils';
+import { getCurrentBranch, getCurrentPR, getRemoteUrl, listPullRequests } from '@vibe-validate/git';
 import type { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
 
@@ -236,36 +235,59 @@ async function pollUntilComplete(
 /**
  * Auto-detect PR number from current branch
  *
+ * Tries two approaches:
+ * 1. Use `gh pr view` (fast, but can fail in some scenarios)
+ * 2. Fall back to branch name matching (more reliable)
+ *
  * @param owner - Repository owner
  * @param repo - Repository name
  * @returns PR number
  */
 async function autoDetectPR(owner: string, repo: string): Promise<number> {
   try {
-    // Try to get PR for current branch using gh CLI
-    const prDataRaw = safeExecSync(
-      'gh',
-      ['pr', 'view', '--repo', `${owner}/${repo}`, '--json', 'number'],
-      { encoding: 'utf8' }
-    );
-    const prData = JSON.parse(prDataRaw as string);
+    // Approach 1: Try gh pr view (fast path)
+    // Uses getCurrentPR from @vibe-validate/git (architectural compliance)
+    const prNumber = getCurrentPR(owner, repo);
 
-    if (prData.number && typeof prData.number === 'number') {
-      return prData.number;
+    if (prNumber !== null) {
+      return prNumber;
     }
 
     throw new Error('No PR number found');
   } catch {
-    // Could not auto-detect PR - try to suggest open PRs
-    const suggestions = await suggestOpenPRs(owner, repo);
-    const cmd = getCommandName();
+    // Approach 2: Fall back to branch name matching (Issue #5 fix)
+    // This handles cases where gh pr view fails (detached HEAD, etc.)
+    try {
+      // Get current branch name using getCurrentBranch from @vibe-validate/git
+      const currentBranch = getCurrentBranch();
 
-    throw new Error(
-      `Could not auto-detect PR from current branch.\n\n` +
-      `${suggestions}\n\n` +
-      `Usage: ${cmd} watch-pr <pr-number>\n` +
-      `Example: ${cmd} watch-pr 90`
-    );
+      if (!currentBranch || currentBranch === 'HEAD') {
+        throw new Error('Not on a branch (detached HEAD?)');
+      }
+
+      // Get all open PRs with branch names
+      const prsData = listPullRequests(owner, repo, 20, ['number', 'headRefName']);
+
+      // Find PR matching current branch
+      const matchingPR = prsData.find(pr => pr.headRefName === currentBranch);
+
+      if (matchingPR) {
+        return matchingPR.number;
+      }
+
+      throw new Error(`No PR found for branch: ${currentBranch}`);
+    } catch {
+      // Both approaches failed - show suggestions
+      const suggestions = await suggestOpenPRs(owner, repo);
+      const cmd = getCommandName();
+
+      throw new Error(
+        `Could not auto-detect PR from current branch.\n\n` +
+        `${suggestions}\n\n` +
+        `Usage: ${cmd} watch-pr <pr-number>\n` +
+        `Example: ${cmd} watch-pr 90`
+      );
+    }
   }
 }
 
@@ -304,9 +326,8 @@ async function suggestOpenPRs(owner: string, repo: string): Promise<string> {
  */
 function detectOwnerRepo(): { owner: string; repo: string } {
   try {
-    const remote = safeExecSync('git', ['remote', 'get-url', 'origin'], {
-      encoding: 'utf8',
-    }) as string;
+    // Use getRemoteUrl from @vibe-validate/git (architectural compliance)
+    const remote = getRemoteUrl('origin');
 
     // Parse GitHub URL (supports HTTPS, SSH, and SSH with custom host aliases)
     // HTTPS: https://github.com/owner/repo.git

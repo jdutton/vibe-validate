@@ -115,6 +115,41 @@ export function fetchPRChecks(prNumber: number, owner?: string, repo?: string): 
 }
 
 /**
+ * Get current PR for the current branch
+ *
+ * Uses `gh pr view` without specifying a PR number,
+ * which auto-detects based on current branch/HEAD.
+ *
+ * @param owner - Repository owner (optional)
+ * @param repo - Repository name (optional)
+ * @returns PR number, or null if no PR found
+ */
+export function getCurrentPR(owner?: string, repo?: string): number | null {
+  const repoFlag = owner && repo ? ['--repo', `${owner}/${repo}`] : [];
+
+  try {
+    const response = safeExecSync(
+      'gh',
+      ['pr', 'view', ...repoFlag, '--json', 'number'],
+      {
+        encoding: 'utf8',
+      }
+    );
+
+    const prData = JSON.parse(response as string);
+
+    if (prData.number && typeof prData.number === 'number') {
+      return prData.number;
+    }
+
+    return null;
+  } catch {
+    // No PR found for current branch
+    return null;
+  }
+}
+
+/**
  * List open pull requests
  *
  * @param owner - Repository owner

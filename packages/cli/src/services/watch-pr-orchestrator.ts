@@ -111,8 +111,9 @@ export class WatchPROrchestrator {
 
         // Try to extract errors if check failed
         if (check.conclusion === 'failure' && check.run_id) {
-          try {
-            const logs = await this.fetcher.fetchRunLogs(check.run_id);
+          // Use retry logic to handle GitHub API race condition (Issue #4)
+          const logs = await this.fetchLogsWithRetry(check.run_id);
+          if (logs) {
             const extraction = await this.extractionDetector.detectAndExtract(actionCheck, logs);
             if (extraction) {
               actionCheck.extraction = extraction;
@@ -125,10 +126,9 @@ export class WatchPROrchestrator {
                 await this.cacheManager.saveExtraction(check.run_id, extraction);
               }
             }
-          } catch (error) {
-            // Gracefully handle extraction errors (don't block result)
-            console.warn(`Failed to extract errors from run ${check.run_id}:`, error);
           }
+          // If logs are null, gracefully continue without extraction
+          // No noisy error output (Issue #4 fix)
         }
 
         githubActions.push(actionCheck);
@@ -253,9 +253,9 @@ export class WatchPROrchestrator {
       duration: runDetails.duration,
     };
 
-    // Try to extract errors from logs
-    try {
-      const logs = await this.fetcher.fetchRunLogs(runId);
+    // Try to extract errors from logs (with retry logic for Issue #4)
+    const logs = await this.fetchLogsWithRetry(runId);
+    if (logs) {
       const extraction = await this.extractionDetector.detectAndExtract(actionCheck, logs);
       if (extraction) {
         actionCheck.extraction = extraction;
@@ -268,10 +268,9 @@ export class WatchPROrchestrator {
           await this.cacheManager.saveExtraction(runId, extraction);
         }
       }
-    } catch (error) {
-      // Gracefully handle extraction errors
-      console.warn(`Failed to extract errors from run ${runId}:`, error);
     }
+    // If logs are null, gracefully continue without extraction
+    // No noisy error output (Issue #4 fix)
 
     // Fetch file changes (for context)
     const changes = await this.fetcher.fetchFileChanges(prNumber);
@@ -443,6 +442,40 @@ export class WatchPROrchestrator {
   }
 
   // buildCacheInfo() removed - cache field will be added back when actually needed
+
+  /**
+   * Fetch logs with retry logic for race conditions
+   *
+   * When GitHub marks a check as complete, logs may not be immediately available.
+   * This method retries with exponential backoff to handle the race condition.
+   *
+   * Retry schedule: 2s, 4s, 8s (total 3 attempts over ~14 seconds)
+   *
+   * @param runId - GitHub run ID
+   * @param maxRetries - Maximum number of retry attempts (default: 3)
+   * @returns Log content, or null if all retries failed
+   */
+  private async fetchLogsWithRetry(runId: number, maxRetries = 3): Promise<string | null> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.fetcher.fetchRunLogs(runId);
+      } catch {
+        // Intentionally suppress error (Issue #4 fix: no noisy output)
+        // If this was the last attempt, break without sleeping
+        if (attempt === maxRetries) {
+          break;
+        }
+
+        // Exponential backoff: 2s, 4s, 8s
+        const delayMs = Math.pow(2, attempt) * 1000;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    // All retries failed - return null (graceful degradation)
+    // Logs can be inspected with debug mode if needed
+    return null;
+  }
 
   /**
    * Fetch all workflow runs for a PR (for --history flag)

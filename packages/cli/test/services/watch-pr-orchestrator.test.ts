@@ -433,6 +433,106 @@ describe('WatchPROrchestrator', () => {
       expect(result.checks.github_actions[0].conclusion).toBe('failure');
     });
 
+    it('should retry log extraction on race condition errors', async () => {
+      // Test for Issue #4: Noisy error extraction race condition
+      // When GitHub marks check as complete but logs aren't ready yet,
+      // we should retry with exponential backoff instead of failing loudly
+
+      // Use fake timers to avoid actual delays
+      vi.useFakeTimers();
+
+      setupStandardMocks(mockPRNumber);
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'Tests / Integration',
+        workflow: 'Tests',
+        status: 'completed',
+        conclusion: 'failure',
+        started_at: '2025-12-17T14:00:00Z',
+        duration: '8m20s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      // Simulate race condition: first 2 calls fail, 3rd succeeds
+      let callCount = 0;
+      const fetchLogsSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockImplementation(() => {
+        callCount++;
+        if (callCount <= 2) {
+          const error = new Error(
+            'run 12345 is still in progress; logs will be available when it is complete'
+          ) as Error & { code: string };
+          error.code = 'GH_LOGS_NOT_READY';
+          throw error;
+        }
+        return Promise.resolve('mock test failure logs');
+      });
+
+      // Run the operation in the background
+      const resultPromise = orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      // Fast-forward through all timers (2s, 4s delays)
+      await vi.runAllTimersAsync();
+
+      const result = await resultPromise;
+
+      // Restore real timers
+      vi.useRealTimers();
+
+      // Should have retried 3 times total
+      expect(fetchLogsSpy).toHaveBeenCalledTimes(3);
+
+      // Result should still be valid (graceful handling)
+      expect(result.checks.github_actions).toHaveLength(1);
+      expect(result.checks.github_actions[0].conclusion).toBe('failure');
+    });
+
+    it('should gracefully handle extraction failures after retries', async () => {
+      // Test that we don't fail the entire operation if extraction never succeeds
+
+      // Use fake timers to avoid actual delays
+      vi.useFakeTimers();
+
+      setupStandardMocks(mockPRNumber);
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+        run_id: mockRunId,
+        name: 'Tests / Integration',
+        workflow: 'Tests',
+        status: 'completed',
+        conclusion: 'failure',
+        started_at: '2025-12-17T14:00:00Z',
+        duration: '8m20s',
+        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      });
+
+      // Always fail (simulate persistent GitHub API issue)
+      const fetchLogsSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockRejectedValue(
+        new Error('GitHub API error: Rate limit exceeded')
+      );
+
+      // Run the operation in the background
+      const resultPromise = orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
+
+      // Fast-forward through all timers (2s, 4s delays)
+      await vi.runAllTimersAsync();
+
+      // Should NOT throw - operation should succeed without extraction
+      const result = await resultPromise;
+
+      // Restore real timers
+      vi.useRealTimers();
+
+      // Should have attempted retries (default 3 attempts)
+      expect(fetchLogsSpy).toHaveBeenCalledTimes(3);
+
+      // Result should still be valid
+      expect(result.checks.github_actions).toHaveLength(1);
+      expect(result.checks.github_actions[0].conclusion).toBe('failure');
+      // Extraction field should be absent (not undefined, not error object)
+      expect(result.checks.github_actions[0].extraction).toBeUndefined();
+    });
+
     it('should still fetch PR details and file changes', async () => {
       const fetchPRSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue(
         mockPRDetails(mockPRNumber) as never

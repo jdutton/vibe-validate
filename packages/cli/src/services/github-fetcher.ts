@@ -15,9 +15,10 @@ import {
   fetchPRChecks,
   fetchRunLogs as ghFetchRunLogs,
   fetchRunDetails as ghFetchRunDetails,
+  getDiffStats,
+  getCommitCount,
   listWorkflowRuns,
 } from '@vibe-validate/git';
-import { safeExecSync } from '@vibe-validate/utils';
 
 import type {
   ChangesContext,
@@ -255,17 +256,11 @@ export class GitHubFetcher {
    * @returns File change context
    */
   async fetchFileChanges(_prNumber: number): Promise<ChangesContext> {
-    // Get diff stats using git diff --numstat
-    const diffOutputRaw = safeExecSync('git', ['diff', '--numstat', `origin/main...HEAD`], {
-      encoding: 'utf8',
-    });
-    const diffOutput = typeof diffOutputRaw === 'string' ? diffOutputRaw : diffOutputRaw.toString('utf8');
+    // Get diff stats using getDiffStats from @vibe-validate/git (architectural compliance)
+    const diffOutput = getDiffStats('origin/main', 'HEAD');
 
-    // Get commit count
-    const commitCountRaw = safeExecSync('git', ['rev-list', '--count', 'origin/main...HEAD'], {
-      encoding: 'utf8',
-    });
-    const commitCount = typeof commitCountRaw === 'string' ? commitCountRaw : commitCountRaw.toString('utf8');
+    // Get commit count using getCommitCount from @vibe-validate/git (architectural compliance)
+    const commitCount = getCommitCount('origin/main', 'HEAD');
 
     // Parse diff output
     const lines = diffOutput.trim().split('\n').filter((line) => line.length > 0);
@@ -405,8 +400,17 @@ export class GitHubFetcher {
     if (!start) return '0s';
 
     const startTime = new Date(start).getTime();
+    // Handle invalid start time
+    if (Number.isNaN(startTime)) return '0s';
+
     const endTime = end ? new Date(end).getTime() : Date.now();
-    const durationMs = endTime - startTime;
+    // Handle invalid end time (fall back to now)
+    const effectiveEndTime = Number.isNaN(endTime) ? Date.now() : endTime;
+
+    const durationMs = effectiveEndTime - startTime;
+
+    // Handle negative duration (clock skew or invalid data)
+    if (durationMs < 0 || Number.isNaN(durationMs)) return '0s';
 
     const seconds = Math.floor(durationMs / 1000);
     const minutes = Math.floor(seconds / 60);

@@ -50,12 +50,16 @@ export {
   getGitDir,
   getRepositoryRoot,
   getCurrentBranch,
+  getRemoteUrl,
   getHeadCommitSha,
   getHeadTreeSha,
   verifyRef,
   verifyRefOrThrow,
   hasNotesRef,
-  isMergeInProgress
+  isMergeInProgress,
+  getDiffStats,
+  getCommitCount,
+  getNotesRefs
 } from './git-commands.js';
 
 // Secure git command execution (low-level - use high-level APIs when possible)
@@ -96,6 +100,7 @@ export {
 export {
   fetchPRDetails,
   fetchPRChecks,
+  getCurrentPR,
   listPullRequests,
   fetchRunLogs,
   fetchRunDetails,
