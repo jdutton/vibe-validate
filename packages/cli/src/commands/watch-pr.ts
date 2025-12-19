@@ -12,6 +12,9 @@ interface WatchPROptions {
   repo?: string;
   runId?: string;
   history?: boolean;
+  timeout?: string;
+  pollInterval?: string;
+  failFast?: boolean;
 }
 
 /**
@@ -25,6 +28,9 @@ export function registerWatchPRCommand(program: Command): void {
     .option('--repo <owner/repo>', 'Repository (default: auto-detect from git remote)')
     .option('--history', 'Show historical runs for the PR with pass/fail summary')
     .option('--run-id <id>', 'Watch specific run ID instead of latest (useful for testing failed runs)')
+    .option('--timeout <seconds>', 'Maximum polling time in seconds (default: 1800 = 30 min)', '1800')
+    .option('--poll-interval <seconds>', 'Polling frequency in seconds (default: 10)', '10')
+    .option('--fail-fast', 'Exit immediately on first check failure (no polling)')
     .action(async (prNumber: string | undefined, options: WatchPROptions) => {
       try {
         const exitCode = await watchPRCommand(prNumber, options);
@@ -93,35 +99,138 @@ export async function watchPRCommand(
     return 0; // Success exit code
   }
 
-  // Build result (use buildResultForRun if --run-id provided)
-  let result: Awaited<ReturnType<typeof orchestrator.buildResult>>;
-
+  // Handle --run-id mode (single fetch, no polling)
   if (options.runId) {
-    // Watch specific run ID mode (useful for testing extraction with failed runs)
     const runId = Number.parseInt(options.runId, 10);
     if (Number.isNaN(runId) || runId <= 0) {
       throw new Error(`Invalid run ID: ${options.runId}. Must be a positive integer.`);
     }
-    result = await orchestrator.buildResultForRun(prNum, runId, { useCache: true });
-  } else {
-    // Normal mode: watch all checks for PR
-    result = await orchestrator.buildResult(prNum);
+    const result = await orchestrator.buildResultForRun(prNum, runId, { useCache: true });
+    return displayFinalResult(result, orchestrator, options.yaml ?? false);
   }
 
-  // Determine output format
-  const shouldYAML = orchestrator.shouldOutputYAML(result.status, options.yaml ?? false);
+  // Normal mode: poll until complete (or timeout/fail-fast)
+  return await pollUntilComplete(orchestrator, prNum, options);
+}
 
+/**
+ * Display final result and return exit code
+ *
+ * @param result - Result to display
+ * @param orchestrator - WatchPROrchestrator instance
+ * @param yaml - Force YAML output
+ * @returns Exit code (0 = passed, 1 = failed)
+ */
+function displayFinalResult(result: WatchPRResult, orchestrator: WatchPROrchestrator, yaml: boolean): number {
+  const shouldYAML = orchestrator.shouldOutputYAML(result.status, yaml);
   if (shouldYAML) {
-    // YAML output
     process.stdout.write('---\n');
     process.stdout.write(stringifyYaml(result));
   } else {
-    // Human-friendly text output
     displayHumanResult(result);
   }
-
-  // Return exit code
   return result.status === 'passed' ? 0 : 1;
+}
+
+/**
+ * Check if polling has timed out
+ *
+ * @param startTime - Polling start time
+ * @param timeoutMs - Timeout in milliseconds
+ * @param previousResult - Last result (for displaying on timeout)
+ * @returns Exit code (2) if timeout, null otherwise
+ */
+function checkTimeout(startTime: number, timeoutMs: number, previousResult: WatchPRResult | null): number | null {
+  const elapsed = Date.now() - startTime;
+  if (elapsed >= timeoutMs) {
+    if (previousResult) {
+      process.stdout.write('\n⏱️  Timeout reached. Checks still pending.\n\n');
+      process.stdout.write('---\n');
+      process.stdout.write(stringifyYaml(previousResult));
+    }
+    return 2;
+  }
+  return null;
+}
+
+/**
+ * Check exit conditions (fail-fast or completion)
+ *
+ * @param result - Current result
+ * @param orchestrator - WatchPROrchestrator instance
+ * @param options - Command options
+ * @returns Exit code if should exit, null to continue polling
+ */
+function checkExitConditions(
+  result: WatchPRResult,
+  orchestrator: WatchPROrchestrator,
+  options: WatchPROptions
+): number | null {
+  // Check if should fail fast
+  if (options.failFast && result.status === 'failed') {
+    process.stdout.write('\n⚡ Failing fast (--fail-fast enabled)\n\n');
+    process.stdout.write('---\n');
+    process.stdout.write(stringifyYaml(result));
+    return 1;
+  }
+
+  // Check if all checks are complete
+  if (result.status !== 'pending') {
+    process.stdout.write('\n');
+    return displayFinalResult(result, orchestrator, options.yaml ?? false);
+  }
+
+  return null; // Continue polling
+}
+
+/**
+ * Poll until PR checks complete (or timeout/fail-fast)
+ *
+ * @param orchestrator - WatchPROrchestrator instance
+ * @param prNumber - PR number
+ * @param options - Command options
+ * @returns Exit code
+ */
+async function pollUntilComplete(
+  orchestrator: WatchPROrchestrator,
+  prNumber: number,
+  options: WatchPROptions
+): Promise<number> {
+  const timeoutMs = Number.parseInt(options.timeout ?? '1800', 10) * 1000;
+  const pollIntervalMs = Number.parseInt(options.pollInterval ?? '10', 10) * 1000;
+  const startTime = Date.now();
+
+  let previousResult: WatchPRResult | null = null;
+  let iteration = 0;
+
+  while (true) {
+    // Check timeout
+    const timeoutCode = checkTimeout(startTime, timeoutMs, previousResult);
+    if (timeoutCode !== null) {
+      return timeoutCode;
+    }
+
+    // Fetch current status
+    const result = await orchestrator.buildResult(prNumber);
+
+    // Display changes (first iteration shows everything)
+    const changes = detectChanges(previousResult, result);
+    if (iteration === 0 || changes.length > 0) {
+      displayChanges(changes, result, iteration === 0);
+    }
+
+    previousResult = result;
+    iteration++;
+
+    // Check exit conditions (fail-fast or completion)
+    const exitCode = checkExitConditions(result, orchestrator, options);
+    if (exitCode !== null) {
+      return exitCode;
+    }
+
+    // Sleep before next poll
+    await sleep(pollIntervalMs);
+  }
 }
 
 /**
@@ -360,6 +469,110 @@ function getCheckIcon(conclusion?: string): string {
   if (conclusion === 'timed_out') return '⏱️';
   if (conclusion === 'action_required') return '⚠️';
   return '⏸️';
+}
+
+/**
+ * Sleep for specified milliseconds
+ *
+ * @param ms - Milliseconds to sleep
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+interface CheckChange {
+  name: string;
+  previousStatus: string | null;
+  newStatus: string;
+  conclusion?: string;
+}
+
+/**
+ * Detect changes between two results
+ *
+ * @param previous - Previous result (null on first iteration)
+ * @param current - Current result
+ * @returns Array of check changes
+ */
+function detectChanges(previous: WatchPRResult | null, current: WatchPRResult): CheckChange[] {
+  if (!previous) {
+    // First iteration - everything is a change
+    return [
+      ...current.checks.github_actions.map((c) => ({
+        name: c.name,
+        previousStatus: null,
+        newStatus: c.status,
+        conclusion: c.conclusion,
+      })),
+      ...current.checks.external_checks.map((c) => ({
+        name: c.name,
+        previousStatus: null,
+        newStatus: c.status,
+        conclusion: c.conclusion,
+      })),
+    ];
+  }
+
+  const changes: CheckChange[] = [];
+
+  // Build map of previous checks
+  const previousChecks = new Map<string, { status: string; conclusion?: string }>();
+  for (const check of [...previous.checks.github_actions, ...previous.checks.external_checks]) {
+    previousChecks.set(check.name, { status: check.status, conclusion: check.conclusion });
+  }
+
+  // Compare current checks to previous
+  for (const check of [...current.checks.github_actions, ...current.checks.external_checks]) {
+    const prev = previousChecks.get(check.name);
+    if (!prev || prev.status !== check.status || prev.conclusion !== check.conclusion) {
+      changes.push({
+        name: check.name,
+        previousStatus: prev?.status ?? null,
+        newStatus: check.status,
+        conclusion: check.conclusion,
+      });
+    }
+  }
+
+  return changes;
+}
+
+/**
+ * Display changes incrementally during polling
+ *
+ * @param changes - Array of check changes
+ * @param result - Current result
+ * @param isFirstIteration - Whether this is the first poll
+ */
+function displayChanges(changes: CheckChange[], result: WatchPRResult, isFirstIteration: boolean): void {
+  if (isFirstIteration) {
+    // First iteration - show PR info and all checks
+    process.stdout.write(`\n🔍 Monitoring PR #${result.pr.number}: ${result.pr.title}\n`);
+    process.stdout.write(`   ${result.pr.url}\n\n`);
+  }
+
+  // Display each change
+  for (const change of changes) {
+    const icon = getCheckIcon(change.conclusion);
+    const statusStr = change.conclusion ?? change.newStatus;
+
+    if (change.previousStatus === null) {
+      // New check started
+      process.stdout.write(`${icon} ${change.name} - ${statusStr}\n`);
+    } else if (change.newStatus === 'completed') {
+      // Check completed
+      process.stdout.write(`${icon} ${change.name} - ${statusStr}\n`);
+    } else {
+      // Status changed
+      process.stdout.write(`${icon} ${change.name} - ${change.previousStatus} → ${statusStr}\n`);
+    }
+  }
+
+  // Show progress summary
+  const { passed, failed, pending } = result.checks;
+  if (changes.length > 0) {
+    process.stdout.write(`\n⏸️  ${pending} running, ${passed} passed, ${failed} failed\n`);
+  }
 }
 
 /**
