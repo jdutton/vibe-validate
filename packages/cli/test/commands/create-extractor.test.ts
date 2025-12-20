@@ -5,7 +5,7 @@
  * --detection-pattern flag for non-interactive plugin generation.
  */
 
-import { rmSync, existsSync, readFileSync } from 'node:fs';
+import { rmSync, existsSync, readFileSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { safeExecSync, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
@@ -29,8 +29,8 @@ function execCLI(cliPath: string, args: string[], options?: { cwd?: string; enco
 
 describe('create-extractor command', () => {
   let testDir: string;
-  // Use resolve() to get absolute path (required for Windows compatibility)
-  const cliPath = resolve(__dirname, '../../dist/bin.js');
+  // Use resolve() to get absolute path, then normalize to avoid Windows 8.3 short names
+  const cliPath = realpathSync(resolve(__dirname, '../../dist/bin.js'));
 
   beforeEach(() => {
     // Create temp directory and use normalized path returned by mkdirSyncReal
