@@ -20,6 +20,7 @@
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { executeGitCommand } from '../packages/git/dist/git-executor.js';
 import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 
 import { PROJECT_ROOT, log } from './common.js';
@@ -83,7 +84,10 @@ console.log('');
 
 // Check 1: Git repository exists
 try {
-  safeExecSync('git', ['rev-parse', '--git-dir'], { stdio: 'pipe', cwd: PROJECT_ROOT });
+  const result = executeGitCommand(['rev-parse', '--git-dir']);
+  if (!result.success) {
+    throw new Error('Not a git repository');
+  }
   log('✓ Git repository detected', 'green');
 } catch (error) {
   // Expected failure: not a git repository (fatal, cannot proceed)
@@ -100,11 +104,13 @@ if (IS_CI) {
 } else {
   let currentBranch;
   try {
-    currentBranch = safeExecSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+    const result = executeGitCommand(['rev-parse', '--abbrev-ref', 'HEAD'], {
       encoding: 'utf8',
-      stdio: 'pipe',
-      cwd: PROJECT_ROOT,
-    }).trim();
+    });
+    if (!result.success) {
+      throw new Error('Failed to determine current branch');
+    }
+    currentBranch = result.stdout;
   } catch (error) {
     // Expected failure: detached HEAD or git error (fatal, cannot proceed)
     log('✗ Failed to determine current branch', 'red');
@@ -132,33 +138,33 @@ if (IS_CI) {
   log('⊘ Uncommitted changes check skipped (CI mode)', 'yellow');
 } else {
   let hasUncommittedChanges = false;
-  try {
-    safeExecSync('git', ['diff-index', '--quiet', 'HEAD', '--'], { stdio: 'pipe', cwd: PROJECT_ROOT });
-  } catch (error) {
+  const result = executeGitCommand(['diff-index', '--quiet', 'HEAD', '--'], {
+    ignoreErrors: true,
+  });
+
+  if (!result.success) {
     // Expected failure: uncommitted changes detected (non-zero exit from diff-index)
     // This is normal operation - the command exits non-zero when changes exist
     hasUncommittedChanges = true;
-    // Verify it's the expected failure (not a critical git error)
-    if (error instanceof Error && error.message.includes('ENOENT')) {
-      log('✗ Git executable error', 'red');
-      console.error(error.message);
-      process.exit(1);
-    }
   }
 
   if (hasUncommittedChanges) {
     log('✗ Uncommitted changes detected', 'red');
     console.log('');
 
-    try {
-      const status = safeExecSync('git', ['status', '--short'], { encoding: 'utf8', cwd: PROJECT_ROOT });
-      console.log(status);
-    } catch (error) {
+    const statusResult = executeGitCommand(['status', '--short'], {
+      encoding: 'utf8',
+      ignoreErrors: true,
+    });
+
+    if (statusResult.success) {
+      console.log(statusResult.stdout);
+    } else {
       // Non-critical: git status display failed, but we already know changes exist
       // Continue with generic error message below
       console.log('  (Unable to show git status details)');
-      if (error instanceof Error && error.message) {
-        console.error(`  Debug: ${error.message}`);
+      if (statusResult.stderr) {
+        console.error(`  Debug: ${statusResult.stderr}`);
       }
     }
 
@@ -173,18 +179,17 @@ if (IS_CI) {
   log('⊘ Untracked files check skipped (CI mode)', 'yellow');
 } else {
   let untracked = '';
-  try {
-    untracked = safeExecSync('git', ['ls-files', '--others', '--exclude-standard'], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-      cwd: PROJECT_ROOT,
-    }).trim();
-  } catch (error) {
+  const untrackedResult = executeGitCommand(['ls-files', '--others', '--exclude-standard'], {
+    encoding: 'utf8',
+    ignoreErrors: true,
+  });
+
+  if (untrackedResult.success) {
+    untracked = untrackedResult.stdout;
+  } else {
     // Non-critical: untracked files check is optional (best-effort)
     // Continue with empty untracked list if git command fails
-    if (error instanceof Error && error.message.includes('ENOENT')) {
-      log('⚠ Warning: Could not check untracked files (git not available)', 'yellow');
-    }
+    log('⚠ Warning: Could not check untracked files (git not available)', 'yellow');
     // Continue with empty untracked string (no files to check)
   }
 

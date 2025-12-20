@@ -9,8 +9,13 @@
  */
 
 import type { ExecSyncOptions } from 'node:child_process';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { safeExecFromString } from '@vibe-validate/utils';
+import { normalizePath, safeExecFromString } from '@vibe-validate/utils';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Result from executing a CLI command
@@ -136,4 +141,88 @@ export function executeCLIForOutput(
   }
 
   return result.stdout;
+}
+
+/**
+ * Get the normalized path to a CLI binary for testing
+ *
+ * Uses normalizePath() from @vibe-validate/utils to ensure Windows compatibility
+ * (resolves Windows 8.3 short names like RUNNER~1).
+ *
+ * @param binary - Which CLI binary to get path for
+ * @returns Absolute normalized path to the CLI binary
+ *
+ * @example
+ * ```typescript
+ * const vvPath = getCliPath('vv');
+ * const result = await executeCommandWithSeparateStreams(vvPath, ['--help']);
+ * ```
+ */
+export function getCliPath(binary: 'vv' | 'vibe-validate'): string {
+  return normalizePath(__dirname, `../../dist/bin/${binary}`);
+}
+
+/**
+ * Helper function to execute CLI commands with separate stdout/stderr streams
+ * Reduces code duplication between executeVvCommand and executeVibeValidateCommand
+ *
+ * @param binary - Which CLI binary to execute
+ * @param args - Arguments to pass to the CLI
+ * @param options - Execution options
+ * @returns Promise resolving to execution result
+ */
+async function executeCliCommand(
+  binary: 'vv' | 'vibe-validate',
+  args: string[],
+  options: { cwd?: string; timeout?: number; env?: Record<string, string> } = {},
+): Promise<CliExecutionResult & { output: string }> {
+  const { executeCommandWithSeparateStreams } = await import('./test-command-runner.js');
+  const cliPath = getCliPath(binary);
+  return executeCommandWithSeparateStreams(cliPath, args, options);
+}
+
+/**
+ * Execute the vv CLI with arguments (spawn-based for separate stdout/stderr)
+ *
+ * This is a convenience wrapper that automatically resolves the vv binary path
+ * and uses spawn for cross-platform execution.
+ *
+ * @param args - Arguments to pass to vv
+ * @param options - Execution options
+ * @returns Promise resolving to execution result
+ *
+ * @example
+ * ```typescript
+ * const result = await executeVvCommand(['watch-pr', '123'], { cwd: testDir });
+ * expect(result.exitCode).toBe(0);
+ * ```
+ */
+export async function executeVvCommand(
+  args: string[],
+  options: { cwd?: string; timeout?: number; env?: Record<string, string> } = {},
+): Promise<CliExecutionResult & { output: string }> {
+  return executeCliCommand('vv', args, options);
+}
+
+/**
+ * Execute the vibe-validate CLI with arguments (spawn-based for separate stdout/stderr)
+ *
+ * This is a convenience wrapper that automatically resolves the vibe-validate binary path
+ * and uses spawn for cross-platform execution.
+ *
+ * @param args - Arguments to pass to vibe-validate
+ * @param options - Execution options
+ * @returns Promise resolving to execution result
+ *
+ * @example
+ * ```typescript
+ * const result = await executeVibeValidateCommand(['doctor'], { cwd: testDir });
+ * expect(result.exitCode).toBe(0);
+ * ```
+ */
+export async function executeVibeValidateCommand(
+  args: string[],
+  options: { cwd?: string; timeout?: number; env?: Record<string, string> } = {},
+): Promise<CliExecutionResult & { output: string }> {
+  return executeCliCommand('vibe-validate', args, options);
 }

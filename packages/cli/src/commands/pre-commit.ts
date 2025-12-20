@@ -17,6 +17,7 @@ import { isToolAvailable } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
+import { getCommandName } from '../utils/command-name.js';
 import { loadConfig } from '../utils/config-loader.js';
 import { detectContext } from '../utils/context-detector.js';
 import {
@@ -61,8 +62,9 @@ export function preCommitCommand(program: Command): void {
         // Step 1: Load configuration (needed for git settings)
         const config = await loadConfig();
         if (!config) {
+          const cmd = getCommandName();
           console.error(chalk.red('❌ No configuration found'));
-          console.error(chalk.gray('   Run: vibe-validate init'));
+          console.error(chalk.gray(`   Run: ${cmd} init`));
           process.exit(1);
         }
 

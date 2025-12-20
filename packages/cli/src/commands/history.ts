@@ -19,6 +19,7 @@ import {
 import { type Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
 
+import { getCommandName } from '../utils/command-name.js';
 import { findConfigPath } from '../utils/config-loader.js';
 import { cleanRunCacheEntries } from '../utils/tree-hash-output.js';
 
@@ -213,8 +214,9 @@ function outputHistoryTable(
   console.log(`Tree hashes tracked: ${notesCount}`);
 
   if (filteredCount < allRunsCount && !branchFilter) {
+    const cmd = getCommandName();
     console.log(`\nShowing ${runs.length} of ${filteredCount} runs`);
-    console.log(`Use --limit to see more: vibe-validate history list --limit 50`);
+    console.log(`Use --limit to see more: ${cmd} history list --limit 50`);
   }
 }
 
@@ -273,8 +275,9 @@ function outputRunCacheTable(
   console.log(`Total run cache entries: ${totalCount}`);
 
   if (entries.length < totalCount) {
+    const cmd = getCommandName();
     console.log(`\nShowing ${entries.length} of ${totalCount} entries`);
-    console.log(`Use --limit to see more: vibe-validate history list --run --limit 50`);
+    console.log(`Use --limit to see more: ${cmd} history list --run --limit 50`);
   }
 }
 
@@ -289,8 +292,9 @@ async function listRunCacheHistory(
   const runCacheEntries = await getAllRunCacheEntries();
 
   if (runCacheEntries.length === 0) {
+    const cmd = getCommandName();
     console.log('No run cache entries found');
-    console.log('\nRun cache is created automatically when you use `vibe-validate run <command>`');
+    console.log(`\nRun cache is created automatically when you use \`${cmd} run <command>\``);
     return;
   }
 
@@ -302,8 +306,9 @@ async function listRunCacheHistory(
     );
 
     if (filteredEntries.length === 0) {
+      const cmd = getCommandName();
       console.log(`No run cache entries found matching command: ${commandFilter}`);
-      console.log(`\nTry a shorter pattern or check: vibe-validate history list --run`);
+      console.log(`\nTry a shorter pattern or check: ${cmd} history list --run`);
       return;
     }
   }
@@ -328,8 +333,9 @@ async function listValidationHistory(
   const allNotes = await getAllHistoryNotes();
 
   if (allNotes.length === 0) {
+    const cmd = getCommandName();
     console.log('No validation history found');
-    console.log('\nHistory is recorded automatically when you run `vibe-validate validate`');
+    console.log(`\nHistory is recorded automatically when you run \`${cmd} validate\``);
     return;
   }
 
@@ -421,8 +427,9 @@ async function showHistory(
     }
 
     if (!note && runCacheEntries.length === 0) {
+      const cmd = getCommandName();
       console.error(`No validation history or run cache found for tree hash: ${treeHash}`);
-      console.error(`\nRun 'vibe-validate history list' to see available tree hashes`);
+      console.error(`\nRun '${cmd} history list' to see available tree hashes`);
       process.exit(1);
     }
 
@@ -585,7 +592,8 @@ async function pruneHistory(options: {
       console.log(`${dryRun ? 'Would prune' : 'Pruned'} ${result.notesPruned} cached command(s)`);
 
       if (dryRun) {
-        console.log(`\nRun without --dry-run to execute: vibe-validate history prune --run --all`);
+        const cmd = getCommandName();
+        console.log(`\nRun without --dry-run to execute: ${cmd} history prune --run --all`);
       }
 
       return;
@@ -605,7 +613,8 @@ async function pruneHistory(options: {
       displayPruneResults(result, dryRun);
 
       if (dryRun) {
-        console.log(`\nRun without --dry-run to execute: vibe-validate history prune --all`);
+        const cmd = getCommandName();
+        console.log(`\nRun without --dry-run to execute: ${cmd} history prune --all`);
       }
 
       // Also clean up legacy notes from pre-0.15.0
@@ -632,7 +641,8 @@ async function pruneHistory(options: {
       displayPruneResults(result, dryRun, true);
 
       if (dryRun) {
-        console.log(`\nRun without --dry-run to execute: vibe-validate history prune --older-than ${days}`);
+        const cmd = getCommandName();
+        console.log(`\nRun without --dry-run to execute: ${cmd} history prune --older-than ${days}`);
       }
     }
   } catch (error) {

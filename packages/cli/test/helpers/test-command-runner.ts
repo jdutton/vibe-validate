@@ -236,3 +236,104 @@ export function executeVibeValidateCLI(
   const cliPath = 'node packages/cli/dist/bin.js';
   return executeCommand(`${cliPath} ${args}`, options);
 }
+
+/**
+ * Extended command result with separate stdout and stderr
+ */
+export interface CommandResultDetailed extends CommandResult {
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Options for spawning commands
+ */
+export interface SpawnOptions extends ExecOptions {
+  /**
+   * Custom environment variables to merge with process.env
+   * If not provided, inherits parent environment by default
+   */
+  env?: Record<string, string>;
+}
+
+/**
+ * Execute a command using spawn and capture stdout/stderr separately
+ *
+ * Uses spawn('node') for cross-platform compatibility (Windows can't execute
+ * files without extensions directly).
+ *
+ * @param command - Path to script to execute (will be run with node)
+ * @param args - Arguments to pass
+ * @param options - Execution options
+ * @returns Command result with separate stdout and stderr
+ *
+ * @example
+ * ```typescript
+ * const result = await executeCommandWithSeparateStreams(
+ *   '/path/to/cli.js',
+ *   ['watch-pr', '123'],
+ *   { cwd: '/tmp/test', timeout: 30000 }
+ * );
+ * expect(result.stderr).toContain('Error');
+ * ```
+ */
+export async function executeCommandWithSeparateStreams(
+  command: string,
+  args: string[],
+  options: SpawnOptions = {}
+): Promise<CommandResultDetailed> {
+  const { spawn } = await import('node:child_process');
+
+  return new Promise((resolve, reject) => {
+    const spawnOptions: any = {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: options.cwd,
+    };
+
+    // Only add env if custom vars provided, otherwise inherit parent env
+    if (options.env) {
+      spawnOptions.env = { ...process.env, ...options.env };
+    }
+
+    const proc = spawn('node', [command, ...args], spawnOptions);
+
+    let stdout = '';
+    let stderr = '';
+    const timeoutMs = options.timeout ?? 60000;
+    let timedOut = false;
+
+    // Timeout handler
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      proc.kill('SIGTERM');
+      reject(new Error(`Command timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    proc.stdout?.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr?.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      clearTimeout(timeout);
+      if (!timedOut) {
+        resolve({
+          exitCode: code ?? 1,
+          output: stdout + stderr,
+          stdout,
+          stderr,
+        });
+      }
+    });
+
+    proc.on('error', (err) => {
+      clearTimeout(timeout);
+      if (!timedOut) {
+        reject(err);
+      }
+    });
+  });
+}

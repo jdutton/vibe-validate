@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -43,7 +43,7 @@ describe('safeExecSync', () => {
   });
 
   it('should support custom working directory', () => {
-    const tempDir = mkdtempSync(join(tmpdir(), 'safe-exec-test-'));
+    const tempDir = mkdtempSync(join(normalizedTmpdir(), 'safe-exec-test-'));
     try {
       const result = safeExecSync('node', ['-e', 'console.log(process.cwd())'], {
         encoding: 'utf8',
@@ -220,7 +220,7 @@ describe('isToolAvailable', () => {
 
   it('should return false for tools that error on --version', () => {
     // Create a temporary "tool" that exits with error
-    const tempDir = mkdtempSync(join(tmpdir(), 'safe-exec-test-'));
+    const tempDir = mkdtempSync(join(normalizedTmpdir(), 'safe-exec-test-'));
     const scriptPath = join(tempDir, 'bad-tool.sh');
 
     try {
@@ -283,7 +283,7 @@ describe('getToolVersion', () => {
 
   it('should return null if version command fails', () => {
     // Create a temporary "tool" that exits with error
-    const tempDir = mkdtempSync(join(tmpdir(), 'safe-exec-test-'));
+    const tempDir = mkdtempSync(join(normalizedTmpdir(), 'safe-exec-test-'));
     const scriptPath = join(tempDir, 'bad-version-tool.sh');
 
     try {
@@ -324,7 +324,7 @@ describe('Security - Command Injection Prevention', () => {
   it('should prevent PATH manipulation attacks', () => {
     // Even if PATH is manipulated, we use which.sync which resolves at call time
     const originalPath = process.env.PATH;
-    const tempDir = mkdtempSync(join(tmpdir(), 'safe-exec-test-'));
+    const tempDir = mkdtempSync(join(normalizedTmpdir(), 'safe-exec-test-'));
 
     try {
       // Create malicious "node" script

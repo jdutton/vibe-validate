@@ -8,6 +8,7 @@ import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
+import { getCommandName } from '../utils/command-name.js';
 import { displayConfigErrors } from '../utils/config-error-reporter.js';
 import { loadConfigWithErrors, findConfigPath } from '../utils/config-loader.js';
 
@@ -22,8 +23,9 @@ export function configCommand(program: Command): void {
         // Find config file
         const configPath = findConfigPath();
         if (!configPath) {
+          const cmd = getCommandName();
           console.error(chalk.red('❌ No configuration file found'));
-          console.error(chalk.gray('   Run: vibe-validate init'));
+          console.error(chalk.gray(`   Run: ${cmd} init`));
           process.exit(1);
         }
 

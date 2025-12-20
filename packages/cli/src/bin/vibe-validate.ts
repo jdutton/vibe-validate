@@ -179,6 +179,10 @@ function main(): void {
     console.error(`[vv debug] Args: ${args.join(' ')}`);
   }
 
+  // Determine command name from how this wrapper was invoked
+  // Extract basename (e.g., "vv" from "/usr/local/bin/vv")
+  const commandName = __filename.includes('vv') ? 'vv' : 'vibe-validate';
+
   // Execute the binary with all arguments
   const result: SpawnSyncReturns<Buffer> = spawnSync(
     process.execPath,
@@ -188,6 +192,7 @@ function main(): void {
       env: {
         ...process.env,
         VV_CONTEXT: context, // Pass context for debugging
+        VV_COMMAND_NAME: commandName, // Pass original command name
       },
     }
   );

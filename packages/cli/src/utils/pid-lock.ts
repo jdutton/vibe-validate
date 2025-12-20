@@ -6,8 +6,10 @@
  */
 
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { normalizedTmpdir } from '@vibe-validate/utils';
+
 
 /**
  * Lock file information
@@ -87,12 +89,12 @@ function getLockFilePath(directory: string, options: LockOptions = {}): string {
       throw new Error('projectId is required when scope is "project"');
     }
     // Project-scoped: /tmp/vibe-validate-project-{projectId}.lock
-    return join(tmpdir(), `vibe-validate-project-${options.projectId}.lock`);
+    return join(normalizedTmpdir(), `vibe-validate-project-${options.projectId}.lock`);
   }
 
   // Directory-scoped (default): /tmp/vibe-validate-{encoded-dir}.lock
   const encoded = encodeDirectoryPath(directory);
-  return join(tmpdir(), `vibe-validate-${encoded}.lock`);
+  return join(normalizedTmpdir(), `vibe-validate-${encoded}.lock`);
 }
 
 /**

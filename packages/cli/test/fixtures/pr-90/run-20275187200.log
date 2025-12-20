@@ -1,0 +1,500 @@
+Run vibe-validate validation (windows-latest, 22)	Set up job	﻿2025-12-16T16:27:41.6215696Z Current runner version: '2.329.0'
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6268182Z ##[group]Runner Image Provisioner
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6269391Z Hosted Compute Agent
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6270134Z Version: 20251202.455
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6271060Z Commit: 6c10caca4910e198df60de23adf20ad317c474e3
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6272043Z Build Date: 2025-12-02T15:56:59Z
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6273045Z Worker ID: {801226b2-bca3-4ebe-ade2-899115bbac02}
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6274038Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6274696Z ##[group]Operating System
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6275622Z Microsoft Windows Server 2025
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6276419Z 10.0.26100
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6277066Z Datacenter
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6278074Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6278797Z ##[group]Runner Image
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6279967Z Image: windows-2025
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6280818Z Version: 20251208.136.1
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6282563Z Included Software: https://github.com/actions/runner-images/blob/win25/20251208.136/images/windows/Windows2025-Readme.md
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6285805Z Image Release: https://github.com/actions/runner-images/releases/tag/win25%2F20251208.136
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6287597Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6289458Z ##[group]GITHUB_TOKEN Permissions
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6292593Z Contents: read
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6293404Z Metadata: read
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6294129Z Packages: read
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6294900Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6297771Z Secret source: Actions
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6298844Z Prepare workflow directory
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6688775Z Prepare all required actions
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:41.6727285Z Getting action download info
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:42.0291954Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:42.1571333Z Download action repository 'pnpm/action-setup@v2' (SHA:eae0cfeb286e66ffb5155f1a79b90583a127a68b)
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:42.5462990Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+Run vibe-validate validation (windows-latest, 22)	Set up job	2025-12-16T16:27:42.8248772Z Complete job name: Run vibe-validate validation (windows-latest, 22)
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	﻿2025-12-16T16:27:42.9416914Z ##[group]Run actions/checkout@v4
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9418687Z with:
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9419126Z   fetch-depth: 0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9419574Z   repository: jdutton/vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9420454Z   token: ***
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9420835Z   ssh-strict: true
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9421239Z   ssh-user: git
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9421643Z   persist-credentials: true
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9422126Z   clean: true
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9422546Z   sparse-checkout-cone-mode: true
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9423070Z   fetch-tags: false
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9423501Z   show-progress: true
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9423915Z   lfs: false
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9424293Z   submodules: false
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9424717Z   set-safe-directory: true
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:42.9425444Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.1229460Z Syncing repository: jdutton/vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.1231611Z ##[group]Getting Git version info
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.1232482Z Working directory is 'D:\a\vibe-validate\vibe-validate'
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.2342444Z [command]"C:\Program Files\Git\bin\git.exe" version
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.5559452Z git version 2.52.0.windows.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.5624027Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.5647254Z Temporarily overriding HOME='D:\a\_temp\202a5773-5516-4518-9aa5-fcda21f52890' before making global git config changes
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.5649599Z Adding repository directory to the temporary git global config as a safe directory
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.5659409Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\vibe-validate\vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.6341109Z Deleting the contents of 'D:\a\vibe-validate\vibe-validate'
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.6350154Z ##[group]Initializing the repository
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.6361821Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\vibe-validate\vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.7155580Z Initialized empty Git repository in D:/a/vibe-validate/vibe-validate/.git/
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.7211993Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/jdutton/vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.7762465Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.7763985Z ##[group]Disabling automatic garbage collection
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.7773986Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.8099347Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.8100970Z ##[group]Setting up auth
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.8113984Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.8456736Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:45.2258545Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:45.2595713Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:45.8268782Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:45.8605221Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:46.4397515Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:46.4744678Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:46.4745631Z ##[group]Fetching the repository
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:46.4761054Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +01306ef316e5961d9bac34b4df240f9fc845f522:refs/remotes/pull/90/merge
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8852334Z From https://github.com/jdutton/vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8853379Z  * [new branch]      chore/cleanup-session-exhaust-files      -> origin/chore/cleanup-session-exhaust-files
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8854113Z  * [new branch]      debug/windows-diagnostics                -> origin/debug/windows-diagnostics
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8854795Z  * [new branch]      docs/work-protection-v0.17.1             -> origin/docs/work-protection-v0.17.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8855489Z  * [new branch]      fix/validate-config-error-reporting      -> origin/fix/validate-config-error-reporting
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8856250Z  * [new branch]      fix/windows-shell-independence           -> origin/fix/windows-shell-independence
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8856816Z  * [new branch]      main                                     -> origin/main
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8857239Z  * [new tag]         v0.10.0                                  -> v0.10.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8857653Z  * [new tag]         v0.10.1                                  -> v0.10.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8858043Z  * [new tag]         v0.10.2                                  -> v0.10.2
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8858390Z  * [new tag]         v0.10.3                                  -> v0.10.3
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8858735Z  * [new tag]         v0.11.0                                  -> v0.11.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8859091Z  * [new tag]         v0.12.0                                  -> v0.12.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8859435Z  * [new tag]         v0.12.1                                  -> v0.12.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8859767Z  * [new tag]         v0.12.2                                  -> v0.12.2
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8860105Z  * [new tag]         v0.13.0                                  -> v0.13.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8860501Z  * [new tag]         v0.14.0                                  -> v0.14.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8860842Z  * [new tag]         v0.14.1                                  -> v0.14.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8862121Z  * [new tag]         v0.14.2                                  -> v0.14.2
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8862506Z  * [new tag]         v0.14.3                                  -> v0.14.3
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8862848Z  * [new tag]         v0.15.0                                  -> v0.15.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8863239Z  * [new tag]         v0.15.0-rc.1                             -> v0.15.0-rc.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8863649Z  * [new tag]         v0.15.0-rc.3                             -> v0.15.0-rc.3
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8863969Z  * [new tag]         v0.15.0-rc.4                             -> v0.15.0-rc.4
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8864280Z  * [new tag]         v0.15.0-rc.5                             -> v0.15.0-rc.5
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8864609Z  * [new tag]         v0.15.0-rc.6                             -> v0.15.0-rc.6
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8864924Z  * [new tag]         v0.16.0                                  -> v0.16.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8865233Z  * [new tag]         v0.16.0-rc1                              -> v0.16.0-rc1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8865542Z  * [new tag]         v0.16.1                                  -> v0.16.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8865832Z  * [new tag]         v0.17.0                                  -> v0.17.0
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8866131Z  * [new tag]         v0.17.0-rc.10                            -> v0.17.0-rc.10
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8866434Z  * [new tag]         v0.17.0-rc.11                            -> v0.17.0-rc.11
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8866737Z  * [new tag]         v0.17.0-rc.12                            -> v0.17.0-rc.12
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8867055Z  * [new tag]         v0.17.0-rc.13                            -> v0.17.0-rc.13
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8867428Z  * [new tag]         v0.17.0-rc.5                             -> v0.17.0-rc.5
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8867729Z  * [new tag]         v0.17.0-rc.7                             -> v0.17.0-rc.7
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8868022Z  * [new tag]         v0.17.0-rc.8                             -> v0.17.0-rc.8
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8868333Z  * [new tag]         v0.17.0-rc.9                             -> v0.17.0-rc.9
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8869303Z  * [new tag]         v0.17.0-rc1                              -> v0.17.0-rc1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8869624Z  * [new tag]         v0.17.0-rc2                              -> v0.17.0-rc2
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8869928Z  * [new tag]         v0.17.0-rc3                              -> v0.17.0-rc3
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8870219Z  * [new tag]         v0.17.0-rc4                              -> v0.17.0-rc4
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8870906Z  * [new tag]         v0.17.1                                  -> v0.17.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8871213Z  * [new tag]         v0.17.2                                  -> v0.17.2
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8871501Z  * [new tag]         v0.17.3                                  -> v0.17.3
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8871798Z  * [new tag]         v0.17.4                                  -> v0.17.4
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8872091Z  * [new tag]         v0.17.5                                  -> v0.17.5
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8872410Z  * [new tag]         v0.17.5-rc.1                             -> v0.17.5-rc.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8872729Z  * [new tag]         v0.17.6                                  -> v0.17.6
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8873030Z  * [new tag]         v0.17.6-rc.1                             -> v0.17.6-rc.1
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8873334Z  * [new tag]         v0.17.6-rc.2                             -> v0.17.6-rc.2
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.8873633Z  * [new tag]         v0.9.10                                  -> v0.9.10
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9185105Z  * [new tag]         v0.9.11                                  -> v0.9.11
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9185664Z  * [new tag]         v0.9.5                                   -> v0.9.5
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9186479Z  * [new tag]         v0.9.6                                   -> v0.9.6
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9186875Z  * [new tag]         v0.9.7                                   -> v0.9.7
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9187242Z  * [new tag]         v0.9.8                                   -> v0.9.8
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9187977Z  * [new tag]         v0.9.8-pre-squash                        -> v0.9.8-pre-squash
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9188409Z  * [new tag]         v0.9.9                                   -> v0.9.9
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9188912Z  * [new ref]         01306ef316e5961d9bac34b4df240f9fc845f522 -> pull/90/merge
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9451870Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9452721Z ##[group]Determining the checkout info
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9454095Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9475635Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:47.9886784Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.0176054Z ##[group]Checking out the ref
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.0186321Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/remotes/pull/90/merge
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1990971Z Note: switching to 'refs/remotes/pull/90/merge'.
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1991446Z 
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1991676Z You are in 'detached HEAD' state. You can look around, make experimental
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1992249Z changes and commit them, and you can discard any commits you make in this
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1992973Z state without impacting any branches by switching back to a branch.
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1993778Z 
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1994054Z If you want to create a new branch to retain commits you create, you may
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1994508Z do so (now or later) by using -c with the switch command. Example:
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1994762Z 
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1994867Z   git switch -c <new-branch-name>
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1995037Z 
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1995132Z Or undo this operation with:
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1995284Z 
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1995358Z   git switch -
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1995468Z 
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1995669Z Turn off this advice by setting config variable advice.detachedHead to false
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1996000Z 
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.1996412Z HEAD is now at 01306ef Merge 880a76a04710fad3a1cca9c75069fe74301951b4 into 084ffecab89c7f1381bf1762cf759676159e4137
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.2045048Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.2485060Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+Run vibe-validate validation (windows-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:48.2848402Z 01306ef316e5961d9bac34b4df240f9fc845f522
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	﻿2025-12-16T16:27:48.3257811Z ##[group]Run pnpm/action-setup@v2
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.3258121Z with:
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.3258283Z   version: 9
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.3258448Z   dest: ~/setup-pnpm
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.3258641Z   run_install: null
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.3258827Z   package_json_file: package.json
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.3259031Z   standalone: false
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.3259197Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:48.4570152Z ##[group]Running self-installer...
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:49.1834819Z Progress: resolved 1, reused 0, downloaded 0, added 0
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:49.1948726Z Packages: +1
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:49.1949158Z +
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:50.5312634Z Progress: resolved 1, reused 0, downloaded 1, added 0
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:50.9786694Z Packages are hard linked from the content-addressable store to the virtual store.
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:50.9787883Z   Content-addressable store is at: C:\Users\runneradmin\AppData\Local\pnpm\store\v3
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:50.9788680Z   Virtual store is at:             node_modules/.pnpm
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.0389443Z 
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.0390069Z dependencies:
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.0390834Z + pnpm 9.15.9 (10.26.0 is available)
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.0391137Z 
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.0498585Z Done in 2.3s
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.5316639Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.5509856Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Setup pnpm	2025-12-16T16:27:51.5514804Z Installation Completed!
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	﻿2025-12-16T16:27:51.5971736Z ##[group]Run actions/setup-node@v4
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5972070Z with:
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5972232Z   node-version: 22
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5972409Z   cache: pnpm
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5972572Z   always-auth: false
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5972754Z   check-latest: false
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5973277Z   token: ***
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5973430Z env:
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5973666Z   PNPM_HOME: C:\Users\runneradmin\setup-pnpm\node_modules\.bin
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.5973954Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.9030760Z Found in cache @ C:\hostedtoolcache\windows\node\22.21.1\x64
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:51.9044653Z ##[group]Environment details
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:55.8461878Z node: v22.21.1
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:55.8462182Z npm: 10.9.4
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:55.8462367Z yarn: 1.22.22
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:55.8464196Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:55.9343567Z [command]C:\Windows\system32\cmd.exe /D /S /C "C:\Users\runneradmin\setup-pnpm\node_modules\.bin\pnpm.CMD store path --silent"
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:56.7263996Z D:\.pnpm-store\v3
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:56.9908887Z Cache hit for: node-cache-Windows-x64-pnpm-fbf9fce87f41110ea1bce0342bc794484748cded4a2957427a4ef4eb724f5756
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:57.3126388Z Received 38506538 of 38506538 (100.0%), 130.2 MBs/sec
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:57.3129390Z Cache Size: ~37 MB (38506538 B)
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:27:57.3162071Z [command]"C:\Program Files\Git\usr\bin\tar.exe" -xf D:/a/_temp/b52f881e-ae4a-481f-a73d-0176b06b939a/cache.tzst -P -C D:/a/vibe-validate/vibe-validate --force-local --use-compress-program "zstd -d"
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:28:02.0995919Z Cache restored successfully
+Run vibe-validate validation (windows-latest, 22)	Setup Node.js 22	2025-12-16T16:28:02.1036132Z Cache restored from key: node-cache-Windows-x64-pnpm-fbf9fce87f41110ea1bce0342bc794484748cded4a2957427a4ef4eb724f5756
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	﻿2025-12-16T16:28:02.1386594Z ##[group]Run pnpm install
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:02.1386936Z [36;1mpnpm install[0m
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:02.1842961Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:02.1843392Z env:
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:02.1843683Z   PNPM_HOME: C:\Users\runneradmin\setup-pnpm\node_modules\.bin
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:02.1844057Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:07.2972909Z Scope: all 9 workspace projects
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:07.3783510Z Lockfile is up to date, resolution step is skipped
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:07.4357839Z Progress: resolved 1, reused 0, downloaded 0, added 0
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:07.5710748Z Packages: +563
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:07.5711483Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:08.4380651Z Progress: resolved 563, reused 559, downloaded 0, added 4
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:09.4389531Z Progress: resolved 563, reused 559, downloaded 0, added 130
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:10.4421919Z Progress: resolved 563, reused 559, downloaded 0, added 447
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:11.3649609Z Progress: resolved 563, reused 559, downloaded 0, added 563, done
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:11.8352884Z .../node_modules/isolated-vm install$ prebuild-install || (node-gyp rebuild --release -j max && node-gyp clean)
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:11.8366047Z .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:11.8501737Z .../esbuild@0.27.1/node_modules/esbuild postinstall$ node install.js
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.0413775Z .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.0496456Z .../esbuild@0.27.1/node_modules/esbuild postinstall: Done
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.4050261Z .../node_modules/isolated-vm install: Done
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.5347646Z  WARN  Failed to create bin at D:\a\vibe-validate\vibe-validate\packages\vibe-validate\node_modules\.bin\vibe-validate. ENOENT: no such file or directory, stat 'D:\a\vibe-validate\vibe-validate\packages\cli\dist\bin\vibe-validate.EXE'
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.5354424Z  WARN  Failed to create bin at D:\a\vibe-validate\vibe-validate\packages\vibe-validate\node_modules\.bin\vv. ENOENT: no such file or directory, stat 'D:\a\vibe-validate\vibe-validate\packages\cli\dist\bin\vv.EXE'
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6917023Z 
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6917526Z devDependencies:
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6917934Z + @secretlint/secretlint-rule-preset-recommend 11.2.5
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6918267Z + @types/node 20.19.26
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6918586Z + @typescript-eslint/eslint-plugin 8.49.0
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6918950Z + @typescript-eslint/parser 8.49.0
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6919269Z + @vitest/coverage-v8 3.2.4
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6920722Z + eslint 9.39.1
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6920998Z + eslint-plugin-import 2.32.0
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6921300Z + eslint-plugin-n 17.23.1
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6922000Z + eslint-plugin-security 3.0.1
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6922459Z + eslint-plugin-sonarjs 3.0.5
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6922911Z + eslint-plugin-unicorn 62.0.0
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6923298Z + husky 9.1.7
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6924198Z + isolated-vm 6.0.2
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6924664Z + jscpd 4.0.5
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6924985Z + secretlint 11.2.5
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6925218Z + semver 7.7.3
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6925515Z + tsx 4.21.0
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6925822Z + typescript 5.9.3
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6926114Z + vitest 3.2.4
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6926371Z + which 5.0.0
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.6926483Z 
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.7349065Z . prepare$ husky
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.8529797Z . prepare: Done
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.8988468Z  WARN  Failed to create bin at D:\a\vibe-validate\vibe-validate\packages\vibe-validate\node_modules\.bin\vibe-validate. ENOENT: no such file or directory, stat 'D:\a\vibe-validate\vibe-validate\packages\vibe-validate\node_modules\@vibe-validate\cli\dist\bin\vibe-validate.EXE'
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.8992927Z  WARN  Failed to create bin at D:\a\vibe-validate\vibe-validate\packages\vibe-validate\node_modules\.bin\vv. ENOENT: no such file or directory, stat 'D:\a\vibe-validate\vibe-validate\packages\vibe-validate\node_modules\@vibe-validate\cli\dist\bin\vv.EXE'
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.9026753Z packages/vibe-validate postinstall$ node scripts/install-skill.js
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.9629434Z packages/vibe-validate postinstall: ⚠️  Skill source not found, skipping installation
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.9685572Z packages/vibe-validate postinstall: Done
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:12.9688694Z packages/vibe-validate prepare$ rm -rf skill && cp -R ../../docs/skill .
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:13.0587932Z packages/vibe-validate prepare: Done
+Run vibe-validate validation (windows-latest, 22)	Install dependencies	2025-12-16T16:28:13.0707708Z Done in 6.2s using pnpm v9.15.9
+Run vibe-validate validation (windows-latest, 22)	Build packages	﻿2025-12-16T16:28:13.7922226Z ##[group]Run pnpm -r build
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:13.7922603Z [36;1mpnpm -r build[0m
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:13.8005176Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:13.8005517Z env:
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:13.8005757Z   PNPM_HOME: C:\Users\runneradmin\setup-pnpm\node_modules\.bin
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:13.8006056Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:14.7549910Z Scope: 8 of 9 workspace projects
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:14.7687129Z packages/config build$ tsc && node --import tsx ./src/scripts/generate-schema.ts
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:14.7692182Z packages/utils build$ tsc
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:16.7990785Z packages/utils build: Done
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:17.6724311Z packages/config build: ✓ Generated config.schema.json
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:17.6827937Z packages/config build: Done
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:17.6838566Z packages/extractors build$ tsc && node dist/scripts/generate-result-schema.js
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:17.6842718Z packages/git build$ tsc
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:19.6706094Z packages/git build: Done
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:21.7070546Z packages/extractors build: ✓ Generated error-extractor-result.schema.json
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:21.7164414Z packages/extractors build: Done
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:21.7174892Z packages/core build$ tsc && node dist/scripts/generate-result-schema.js
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:24.1299432Z packages/core build: ✓ Generated validate-result.schema.json
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:24.1407291Z packages/core build: Done
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:24.1418925Z packages/history build$ tsc
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:26.2161185Z packages/history build: Done
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:26.2168918Z packages/cli build$ tsc && cp dist/bin/vibe-validate.js dist/bin/vibe-validate && cp dist/bin/vibe-validate dist/bin/vv && chmod +x dist/bin/vibe-validate dist/bin/vv && node dist/scripts/generate-watch-pr-schema.js && node dist/scripts/generate-run-result-schema.js
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:29.6988255Z packages/cli build: ✓ Generated watch-pr-result.schema.json
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:29.9184474Z packages/cli build: ✓ Generated run-result.schema.json
+Run vibe-validate validation (windows-latest, 22)	Build packages	2025-12-16T16:28:29.9291406Z packages/cli build: Done
+Run vibe-validate validation (windows-latest, 22)	Run validation	﻿2025-12-16T16:28:30.0564190Z ##[group]Run pnpm validate
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.0564792Z [36;1mpnpm validate[0m
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.0636846Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.0637181Z env:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.0637434Z   PNPM_HOME: C:\Users\runneradmin\setup-pnpm\node_modules\.bin
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.0637720Z ##[endgroup]
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.8824484Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.8825425Z > vibe-validate@ validate D:\a\vibe-validate\vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.8826240Z > node packages/cli/dist/bin/vv validate
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:30.8826496Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:31.7295005Z 🌳 Working tree: 3d5a4d5903d2...
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:31.7297439Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:31.9272763Z phase_start: Pre-Qualification
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:31.9273164Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:31.9273677Z 🔍 Running Pre-Qualification (4 steps sequentially)...
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:31.9274379Z    ⏳ TypeScript Type Check   →  pnpm -r typecheck
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:35.2678919Z       ✅ TypeScript Type Check  - PASSED (3.3s)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:28:35.2683789Z    ⏳ ESLint Code Quality     →  pnpm lint
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:15.6568888Z       ✅ ESLint Code Quality    - PASSED (40.4s)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:15.6583482Z    ⏳ Code Duplication Check  →  pnpm duplication-check
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:16.6172412Z       ✅ Code Duplication Check - PASSED (1s)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:16.6173791Z    ⏳ Build All Packages      →  pnpm -r build
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:28.9140668Z       ✅ Build All Packages     - PASSED (12.3s)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:28.9185012Z phase_complete: Pre-Qualification (passed)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:28.9185565Z phase_start: Testing
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:28.9186194Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:28.9186681Z 🔍 Running Testing (1 steps sequentially)...
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:29:28.9187206Z    ⏳ Unit Tests with Coverage  →  pnpm test:coverage
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:09.8731335Z       ❌ Unit Tests with Coverage - FAILED (221s)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:09.8836899Z phase_complete: Testing (failed)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0632387Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0633480Z ⚠️  Worktree changed during validation
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0635529Z    Before: 3d5a4d5903d2...
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0636106Z    After:  8b442db276e2...
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0636690Z    Results valid but history not recorded (unstable state)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0995775Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0996873Z 📋 View error details: vibe-validate state
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.0997770Z 🔄 To retry: pnpm test:coverage
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1111033Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1111456Z ---
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1188252Z passed: false
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1192433Z timestamp: 2025-12-16T16:33:09.883Z
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1193169Z treeHash: 3d5a4d5903d289dc50e3d7de7182f922dce0d33c
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1194198Z summary: Unit Tests with Coverage failed
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1196971Z failedStep: Unit Tests with Coverage
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1197785Z phases:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1198253Z   - name: Pre-Qualification
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1199007Z     passed: true
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1199431Z     durationSecs: 57
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1199825Z     steps:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1200253Z       - name: TypeScript Type Check
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1200832Z         command: pnpm -r typecheck
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1201236Z         passed: true
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1201512Z         durationSecs: 3.3
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1201790Z         exitCode: 0
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1202076Z       - name: ESLint Code Quality
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1202350Z         command: pnpm lint
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1202616Z         passed: true
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1202873Z         durationSecs: 40.4
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1203137Z         exitCode: 0
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1203351Z         outputFiles:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1203879Z           combined: C:\Users\RUNNER~1\AppData\Local\Temp\vibe-validate\runs\2025-12-16\3d5a4d-16-29-15\combined.jsonl
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1204436Z       - name: Code Duplication Check
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1204777Z         command: pnpm duplication-check
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1205109Z         passed: true
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1205363Z         durationSecs: 1
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1205588Z         exitCode: 0
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1208446Z       - name: Build All Packages
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1208993Z         command: pnpm -r build
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1209296Z         passed: true
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1209542Z         durationSecs: 12.3
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1209810Z         exitCode: 0
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1210058Z   - name: Testing
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1210307Z     passed: false
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1210522Z     durationSecs: 221
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1210768Z     steps:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1211038Z       - name: Unit Tests with Coverage
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1211365Z         command: pnpm test:coverage
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1211991Z         passed: false
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1212265Z         durationSecs: 221
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1212528Z         exitCode: 1
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1212767Z         extraction:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1212971Z           errors:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1213343Z             - file: packages/cli/test/commands/doctor-config-errors.test.ts
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1213731Z               line: 67
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1213994Z               column: 22
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1214393Z               message: "AssertionError: expected '' to contain 'Configuration valid'"
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1214931Z             - file: packages/cli/test/commands/doctor-config-errors.test.ts
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1215763Z               line: 47
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1216170Z               column: 5
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1216693Z               message: "Error: EBUSY: resource busy or locked, rmdir
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1217339Z                 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\vibe-validate-do\
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1217759Z                 ctor-errors-1765902735037'"
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1218186Z             - file: packages/cli/test/commands/doctor-config-errors.test.ts
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1218566Z               line: 104
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1218786Z               column: 40
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1219201Z               message: "AssertionError: expected false to be true // Object.is equality"
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1219732Z             - file: packages/cli/test/commands/doctor-config-errors.test.ts
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1220356Z               line: 47
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1220616Z               column: 5
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1220971Z               message: "Error: EBUSY: resource busy or locked, rmdir
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1221409Z                 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\vibe-validate-do\
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1221824Z                 ctor-errors-1765902750255'"
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1222159Z           summary: 4 test failure(s)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1222450Z           totalErrors: 4
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1222877Z           guidance: "4 test(s) failed. Fix each failing test individually. Run: npm test
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1223303Z             -- <test-file> to test each file."
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1223633Z           errorSummary: |-
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1273659Z             [Test 1/4] packages/cli/test/commands/doctor-config-errors.test.ts:67:22
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1276746Z             Test: doctor command config error reporting (regression tests) > config validation in doctor checks > should show detailed errors for invalid config in doctor output
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1278311Z             Error: AssertionError: expected '' to contain 'Configuration valid'
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1279049Z             69| 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1279321Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1279761Z             [Test 2/4] packages/cli/test/commands/doctor-config-errors.test.ts:47:5
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1281293Z             Test: doctor command config error reporting (regression tests) > config validation in doctor checks > should show detailed errors for invalid config in doctor output
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1283164Z             Error: Error: EBUSY: resource busy or locked, rmdir 'C:\Users\runneradmin\AppData\Local\Temp\vibe-validate-doctor-errors-1765902735037'
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1284238Z             56| force: true,
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1284487Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1284944Z             [Test 3/4] packages/cli/test/commands/doctor-config-errors.test.ts:104:40
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1287690Z             Test: doctor command config error reporting (regression tests) > config validation in doctor checks > should show same errors as config command for consistency
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1289523Z             Error: AssertionError: expected false to be true // Object.is equality
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1290268Z             106| 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1290501Z 
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1290997Z             [Test 4/4] packages/cli/test/commands/doctor-config-errors.test.ts:47:5
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1292533Z             Test: doctor command config error reporting (regression tests) > config validation in doctor checks > should show same errors as config command for consistency
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1295086Z             Error: Error: EBUSY: resource busy or locked, rmdir 'C:\Users\runneradmin\AppData\Local\Temp\vibe-validate-doctor-errors-1765902750255'
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1295798Z             56| force: true,
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1296105Z           metadata:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1296380Z             confidence: 100
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1296675Z             completeness: 100
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1296940Z             issues: []
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1297207Z             detection:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1297486Z               extractor: vitest
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1297772Z               confidence: 100
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1298000Z               patterns:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1298302Z                 - RUN v#### version header
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1298889Z                 - × symbol (U+00D7)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1300097Z                 - ❌ cross mark
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1302343Z                 - ❯ arrow marker
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1303088Z                 - Test Files summary
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1303631Z                 - .test.ts files
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1304255Z               reason: Vitest test output format detected (RUN v#### header)
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1304799Z         outputFiles:
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1305555Z           stdout: C:\Users\RUNNER~1\AppData\Local\Temp\vibe-validate\runs\2025-12-16\8b442d-16-33-09\stdout.log
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1306643Z           stderr: C:\Users\RUNNER~1\AppData\Local\Temp\vibe-validate\runs\2025-12-16\8b442d-16-33-09\stderr.log
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1307710Z           combined: C:\Users\RUNNER~1\AppData\Local\Temp\vibe-validate\runs\2025-12-16\8b442d-16-33-09\combined.jsonl
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1308509Z ---
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.1405516Z  ELIFECYCLE  Command failed with exit code 1.
+Run vibe-validate validation (windows-latest, 22)	Run validation	2025-12-16T16:33:10.2669272Z ##[error]Process completed with exit code 1.
+Run vibe-validate validation (windows-latest, 22)	Post Setup pnpm	﻿2025-12-16T16:33:10.2868339Z Post job cleanup.
+Run vibe-validate validation (windows-latest, 22)	Post Setup pnpm	2025-12-16T16:33:10.4163132Z Pruning is unnecessary.
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	﻿2025-12-16T16:33:10.4431735Z Post job cleanup.
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:10.6983003Z [command]"C:\Program Files\Git\bin\git.exe" version
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:10.7258483Z git version 2.52.0.windows.1
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:10.7335066Z Temporarily overriding HOME='D:\a\_temp\8ff53119-0988-45d4-8217-4fe05ad4b2f5' before making global git config changes
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:10.7336241Z Adding repository directory to the temporary git global config as a safe directory
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:10.7347058Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\vibe-validate\vibe-validate
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:10.7673299Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:10.8007970Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:11.3946235Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:11.4219991Z http.https://github.com/.extraheader
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:11.4268237Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:11.4598962Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:12.0118276Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+Run vibe-validate validation (windows-latest, 22)	Post Run actions/checkout@v4	2025-12-16T16:33:12.0454456Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+Run vibe-validate validation (windows-latest, 22)	Complete job	﻿2025-12-16T16:33:12.6008120Z Cleaning up orphan processes
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	﻿2025-12-16T16:27:41.7395752Z Current runner version: '2.329.0'
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7421723Z ##[group]Runner Image Provisioner
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7422640Z Hosted Compute Agent
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7423170Z Version: 20251202.455
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7423763Z Commit: 6c10caca4910e198df60de23adf20ad317c474e3
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7424528Z Build Date: 2025-12-02T15:56:59Z
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7425158Z Worker ID: {610abba5-ba19-4706-bca3-d9d1b59fc5bf}
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7425849Z ##[endgroup]
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7426410Z ##[group]Operating System
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7426979Z Ubuntu
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7427426Z 24.04.3
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7427953Z LTS
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7428391Z ##[endgroup]
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7429243Z ##[group]Runner Image
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7429868Z Image: ubuntu-24.04
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7430353Z Version: 20251208.163.1
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7431380Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20251208.163/images/ubuntu/Ubuntu2404-Readme.md
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7432803Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20251208.163
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7434006Z ##[endgroup]
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7435114Z ##[group]GITHUB_TOKEN Permissions
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7436848Z Contents: read
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7437512Z Metadata: read
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7438030Z Packages: read
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7438809Z ##[endgroup]
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7440772Z Secret source: Actions
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7441646Z Prepare workflow directory
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7843000Z Prepare all required actions
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:41.7897221Z Getting action download info
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:42.1767524Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:42.2911976Z Download action repository 'pnpm/action-setup@v2' (SHA:eae0cfeb286e66ffb5155f1a79b90583a127a68b)
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:42.7625764Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+Run vibe-validate validation (ubuntu-latest, 22)	Set up job	2025-12-16T16:27:42.9546575Z Complete job name: Run vibe-validate validation (ubuntu-latest, 22)
+Run vibe-validate validation (ubuntu-latest, 22)	Run actions/checkout@v4	﻿2025-12-16T16:27:43.0290389Z ##[group]Run actions/checkout@v4
+Run vibe-validate validation (ubuntu-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.0291710Z with:
+Run vibe-validate validation (ubuntu-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.0292444Z   fetch-depth: 0
+Run vibe-validate validation (ubuntu-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.0293273Z   repository: jdutton/vibe-validate
+Run vibe-validate validation (ubuntu-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.0294583Z   token: ***
+Run vibe-validate validation (ubuntu-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.0295329Z   ssh-strict: true
+Run vibe-validate validation (ubuntu-latest, 22)	Run actions/checkout@v4	2025-12-16T16:27:43.0296104Z   ssh-user: git

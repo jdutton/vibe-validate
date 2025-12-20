@@ -1,8 +1,8 @@
-import { readFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, unlinkSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { getGitTreeHash } from '@vibe-validate/git';
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -27,9 +27,9 @@ describe('runner', () => {
 
   beforeEach(() => {
     // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-test-${Date.now()}`);
+    testDir = join(normalizedTmpdir(), `vibe-validate-test-${Date.now()}`);
     if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true });
+      mkdirSyncReal(testDir, { recursive: true });
     }
 
     // Mock git tree hash to return consistent value

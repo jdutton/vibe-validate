@@ -5,11 +5,10 @@
  * template location changes.
  */
 
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
+import { safeExecSync, safeExecResult, mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 /**
@@ -46,9 +45,9 @@ describe('init command execution (regression tests)', () => {
   const cliPath = join(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory for test
-    testDir = join(tmpdir(), `vibe-validate-init-exec-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
+    // Create temp directory for test (Windows-safe: no 8.3 short names)
+    const targetDir = join(normalizedTmpdir(), `vibe-validate-init-exec-${Date.now()}`);
+    testDir = mkdirSyncReal(targetDir, { recursive: true });
   });
 
   afterEach(() => {

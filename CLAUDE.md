@@ -279,9 +279,34 @@ Use `@vibe-validate/utils` for generic, non-domain-specific utilities:
 - String utilities (if generic, not domain-specific)
 - **Rule:** NO dependencies on other vibe-validate packages
 
+#### Preferred Utilities (ALWAYS use these instead of built-ins)
+
+**Command Execution (Security):**
+- `safeExecSync(cmd, args, opts)` - Use instead of `execSync()`. Prevents command injection via shell-free execution.
+- `safeExecResult(cmd, args, opts)` - Like safeExecSync but returns result object instead of throwing on error.
+- `safeExecFromString(cmdString, opts)` - Parses simple command strings safely (no shell injection).
+- `isToolAvailable(tool)` - Check if command exists. Better than catching exec errors.
+- `getToolVersion(tool)` - Get version string safely.
+- `hasShellSyntax(cmd)` - Detect shell syntax (pipes, redirects). Prevents accidental unsafe execution.
+
+**Path Handling (Windows Compatibility):**
+- `normalizedTmpdir()` - Use instead of `os.tmpdir()`. Resolves Windows 8.3 short names (RUNNER~1 → runneradmin).
+- `mkdirSyncReal(path, opts)` - Use instead of `fs.mkdirSync()`. Creates directory and returns normalized path.
+- `normalizePath(path)` - Resolves path to real (long) name. Prevents Windows path mismatch bugs.
+
+**Why these matter:**
+- Command utils prevent security vulnerabilities (command injection, PATH attacks)
+- Path utils prevent "works on Mac, fails on Windows CI" bugs from 8.3 short name mismatches
+
 ### Domain-Specific Utilities
 Place utilities in the appropriate domain package:
-- Git utilities → `@vibe-validate/git`
+- **Git/GitHub utilities** → `@vibe-validate/git`
+  - **MANDATORY**: All `git` command execution MUST use functions from `@vibe-validate/git`
+  - **MANDATORY**: All `gh` (GitHub CLI) command execution MUST use functions from `@vibe-validate/git`
+  - Examples: `getTreeHash()`, `addNote()`, `fetchPRDetails()`, `listPullRequests()`, `getCurrentBranch()`, `getDiffStats()`, `getNotesRefs()`
+  - **Benefits**: Centralized command execution, easy mocking in tests, architectural consistency
+  - **Never**: Call `safeExecSync('git', ...)` or `safeExecSync('gh', ...)` directly from other packages
+  - **Exception**: Test environment bootstrap (`.test.ts` files) may use direct `git init` and `git config` for test setup only
 - Config utilities → `@vibe-validate/config`
 - Extractor utilities → `@vibe-validate/extractors`
 - Validation utilities → `@vibe-validate/core`
@@ -347,6 +372,30 @@ Place utilities in the appropriate domain package:
 - Never throw without explanation
 - Log errors with structured data
 - Provide recovery suggestions
+
+### CLI User Experience
+**CRITICAL**: All user-facing command names MUST use `getCommandName()` to reflect how the user invoked the CLI.
+
+```typescript
+import { getCommandName } from '../utils/command-name.js';
+
+// In error messages, usage strings, and guidance
+const cmd = getCommandName(); // Returns "vv" or "vibe-validate"
+console.error(`Usage: ${cmd} watch-pr <pr-number>`);
+console.log(`Run: ${cmd} validate`);
+```
+
+**When to use `getCommandName()`:**
+- ✅ **Immediate user feedback**: Error messages, usage strings when user makes a mistake
+- ✅ **Action suggestions**: "Run: ${cmd} validate", "Try: ${cmd} doctor"
+- ✅ **Help output**: Command-specific help messages (e.g., `vv run --help`)
+- ❌ **Verbose documentation**: Comprehensive `--help --verbose` output (use canonical "vibe-validate")
+- ❌ **Example repo names**: `--repo jdutton/vibe-validate` (not a command)
+- ❌ **Package.json scripts**: Keep as "vibe-validate" for clarity in scripts
+
+**Why this matters**: Users might invoke via `vv` or `vibe-validate`. Error messages should match what they typed, not confuse them with a different command name.
+
+**Implementation**: The smart wrapper (`bin/vibe-validate.ts`) sets `VV_COMMAND_NAME` environment variable. The utility checks this first, then falls back to `process.argv[1]` for direct invocations.
 
 ### Documentation
 - JSDoc comments for all exported functions
@@ -558,6 +607,118 @@ Example CHANGELOG entry:
 - Test error formatting with real tools
 - Verify caching behavior
 
+### Cross-Platform Testing (Windows Compatibility)
+
+**CRITICAL**: All tests that spawn CLI processes MUST use the cross-platform pattern to work on Windows.
+
+#### The Problem
+Windows cannot execute files without extensions directly via `spawn()`. This causes ENOENT errors when trying to spawn CLI scripts.
+
+#### The Solution Pattern
+
+**For spawn() in tests:**
+```typescript
+// ❌ BROKEN on Windows
+const proc = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+// ✅ WORKS cross-platform
+const proc = spawn('node', [command, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+```
+
+**For safeExec utilities:**
+```typescript
+import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
+
+// ✅ For successful commands
+const output = safeExecSync('node', [cliPath, ...args], { encoding: 'utf-8' });
+
+// ✅ For commands that might fail
+const result = safeExecResult('node', [cliPath, ...args], { encoding: 'utf-8' });
+```
+
+**For shared test helpers:**
+```typescript
+import { executeCommand } from '../helpers/test-command-runner.js';
+
+// ✅ Automatically parses and uses 'node' + args pattern
+const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: testDir });
+```
+
+#### Historical Context
+
+**In v0.18.0 - All Windows tests fixed:**
+1. `watch-pr.test.ts` - ✅ Fixed in commit d596a04f to use `spawn('node', [command, ...])` pattern
+2. `config-error-reporting.test.ts` - ✅ Fixed to use `resolve()` for absolute CLI path
+3. `doctor-config-errors.test.ts` - ✅ Fixed to use `resolve()` for absolute CLI path
+4. `create-extractor.test.ts` - ✅ Fixed to use `mkdirSyncReal()` return value for normalized paths
+
+**Root causes and fixes:**
+1. **Module loader errors**: Tests used `join(__dirname, '../../dist/bin.js')` which created relative paths. On Windows with different `cwd`, Node couldn't resolve module imports. **Fixed by using `resolve()` instead of `join()`** to get absolute paths.
+2. **Path normalization**: Tests called `mkdirSyncReal()` but ignored its return value (the normalized path). **Fixed by using the return value**: `testDir = mkdirSyncReal(targetDir, { recursive: true })`
+
+**All tests now work cross-platform** (Windows, macOS, Linux).
+
+#### Best Practices
+
+1. **Always use 'node' as the command** when spawning CLI processes in tests
+2. **Pass CLI path as first argument** in the args array
+3. **Use shared test helpers** (`executeCommand()`) to avoid duplication
+4. **Test on Windows CI** to catch regressions early
+5. **Never add platform-specific test exclusions** without investigating the root cause first
+
+#### ESLint Enforcement (Automated Prevention)
+
+**Custom rules** (`tools/eslint-local-rules/`) enforce Windows-safe utilities, security requirements, and architectural patterns:
+
+**Windows Compatibility (Auto-fix Available):**
+- `local/no-os-tmpdir` → Use `normalizedTmpdir()` instead of `os.tmpdir()`
+- `local/no-fs-mkdirSync` → Use `mkdirSyncReal()` instead of `fs.mkdirSync()`
+
+**Security and Architecture (Manual Fix Required):**
+- `local/no-child-process-execSync` → Use `safeExecSync()` from `@vibe-validate/utils` instead of `execSync()`
+  - Enforces shell-free command execution (prevents command injection)
+  - Exempts safe-exec.ts implementation file
+- `local/no-git-commands-direct` → Use functions from `@vibe-validate/git` instead of direct `git` commands
+  - Enforces centralized git command execution (easier mocking, consistent error handling)
+  - Exempts @vibe-validate/git package (where centralization happens)
+- `local/no-gh-commands-direct` → Use functions from `@vibe-validate/git` instead of direct `gh` commands
+  - Enforces centralized GitHub CLI execution
+  - Exempts @vibe-validate/git package
+
+Windows rules have auto-fix via `npx eslint --fix`. Security rules require manual refactoring.
+
+#### Example Test Pattern
+
+```typescript
+import { spawn } from 'node:child_process';
+
+/**
+ * Execute CLI command and capture output
+ * Cross-platform compatible (uses node directly)
+ */
+async function executeCommand(
+  command: string,
+  args: string[]
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    // Use node directly to execute the CLI (cross-platform compatible)
+    const proc = spawn('node', [command, ...args], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => { stdout += data; });
+    proc.stderr.on('data', (data) => { stderr += data; });
+
+    proc.on('close', (code) => {
+      resolve({ exitCode: code ?? 1, stdout, stderr });
+    });
+  });
+}
+```
+
 ## Documentation Standards
 
 ### Code Comments
@@ -656,6 +817,50 @@ Every time you run tests, validation, or encounter errors, ask yourself:
 - ❌ **Never**: Bypass validation "just this once"
 
 **Why it matters**: Every `--no-verify` is a signal that vibe-validate is blocking legitimate work. If YOU can't use it properly while building it, customers won't either.
+
+### ALWAYS Use watch-pr for CI Monitoring
+
+**CRITICAL**: When monitoring CI checks for pull requests, ALWAYS use `vv watch-pr` commands. NEVER revert to raw `gh` commands.
+
+**Why this matters:**
+- `vv watch-pr` provides LLM-optimized output (concise, structured YAML)
+- It includes error extraction and actionable guidance
+- It demonstrates the tool's value while you develop it
+- Using raw `gh` commands defeats the purpose of watch-pr and misses opportunities to improve it
+
+**Correct usage:**
+```bash
+# ✅ Monitor PR status (auto-detect PR from branch)
+vv watch-pr
+
+# ✅ Monitor specific PR
+vv watch-pr 92
+
+# ✅ View PR history
+vv watch-pr 92 --history
+
+# ✅ Inspect specific run for extraction testing
+vv watch-pr 92 --run-id 20328421613
+
+# ✅ Get YAML output for parsing
+vv watch-pr 92 --yaml
+```
+
+**NEVER do this:**
+```bash
+# ❌ Don't bypass watch-pr with raw gh commands
+gh pr view 92
+gh run list --branch feature/my-branch
+gh run view 20328421613 --log
+```
+
+**If watch-pr is missing features you need:**
+1. Use watch-pr anyway to understand the gap
+2. Document what's missing
+3. Implement the missing feature in watch-pr
+4. Then use the improved watch-pr
+
+**Remember**: You're both the developer AND the user. Every time you reach for `gh` commands instead of `vv watch-pr`, you're missing a chance to validate and improve the tool.
 
 ### Example Scenarios
 

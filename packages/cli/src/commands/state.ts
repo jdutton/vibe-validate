@@ -11,6 +11,7 @@ import chalk from 'chalk';
 import type { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
 
+import { getCommandName } from '../utils/command-name.js';
 import { findConfigPath } from '../utils/config-loader.js';
 import { formatTreeHashOutput, cleanRunCacheEntries } from '../utils/tree-hash-output.js';
 
@@ -131,9 +132,10 @@ function displayNoDataMessage(treeHash: string, verbose?: boolean): void {
   console.log(stringifyYaml({ exists: false, treeHash }));
 
   if (verbose) {
+    const cmd = getCommandName();
     console.log(chalk.gray('ℹ️  No validation or run cache found for current worktree'));
-    console.log(chalk.gray('   Run: vibe-validate validate'));
-    console.log(chalk.gray('   Or:  vv run <command>'));
+    console.log(chalk.gray(`   Run: ${cmd} validate`));
+    console.log(chalk.gray(`   Or:  ${cmd} run <command>`));
   }
 }
 
@@ -209,10 +211,11 @@ function displayVerboseSummary(state: ValidationResult): void {
   if (state.passed) {
     console.log(chalk.green('\n✅ Validation passed! Safe to commit.'));
   } else {
+    const cmd = getCommandName();
     console.log(chalk.yellow('\nNext Steps:'));
     console.log(chalk.gray('  1. Fix the failed step'));
-    console.log(chalk.gray('  2. Re-run: vibe-validate validate'));
-    console.log(chalk.gray('  3. Or force re-validation: vibe-validate validate --force'));
+    console.log(chalk.gray(`  2. Re-run: ${cmd} validate`));
+    console.log(chalk.gray(`  3. Or force re-validation: ${cmd} validate --force`));
 
     // Suggest reporting extractor issues
     console.log(chalk.gray('\n💡 Error output unclear or missing details?'));
@@ -223,7 +226,8 @@ function displayVerboseSummary(state: ValidationResult): void {
     );
   }
 
-  console.log(chalk.gray('\n💡 Tip: View full history with: vibe-validate history list'));
+  const cmd = getCommandName();
+  console.log(chalk.gray(`\n💡 Tip: View full history with: ${cmd} history list`));
 }
 
 /**
@@ -253,7 +257,8 @@ function displayRunCacheSummary(runCache: RunCacheNote[]): void {
   }
 
   console.log(chalk.gray('─'.repeat(50)));
-  console.log(chalk.gray('\n💡 Tip: View run history with: vv history show --all'));
+  const cmd = getCommandName();
+  console.log(chalk.gray(`\n💡 Tip: View run history with: ${cmd} history show --all`));
 }
 
 /**

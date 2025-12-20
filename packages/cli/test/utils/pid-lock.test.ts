@@ -4,10 +4,11 @@
  * Ensures cross-platform single-instance validation execution
  */
 
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import {  rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
 
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import {
@@ -18,6 +19,8 @@ import {
 } from '../../src/utils/pid-lock.js';
 
 // Mock os.tmpdir before importing pid-lock
+// Note: Must use os.tmpdir() here (not normalizedTmpdir) to avoid circular dependency with mock
+// eslint-disable-next-line local/no-os-tmpdir -- Required for mock setup
 const testDir = join(os.tmpdir(), 'vibe-validate-test');
 vi.mock('os', async () => {
   const actual = await vi.importActual<typeof os>('os');
@@ -36,7 +39,7 @@ describe('PID Lock Utilities', () => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    mkdirSync(testDir, { recursive: true });
+    mkdirSyncReal(testDir, { recursive: true });
   });
 
   afterEach(() => {

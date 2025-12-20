@@ -14,6 +14,8 @@ import chalk from 'chalk';
 import type { Command } from 'commander';
 import prompts from 'prompts';
 
+import { getCommandName } from '../utils/command-name.js';
+
 /**
  * Options for the create-extractor command
  */
@@ -74,6 +76,7 @@ export function createExtractorCommand(program: Command): void {
 
         console.log(chalk.green('✅ Extractor plugin created successfully!'));
         console.log(chalk.blue(`📁 Created: ${pluginDir}`));
+        const cmd = getCommandName();
         console.log();
         console.log(chalk.yellow('Next steps:'));
         console.log(chalk.gray('  1. cd ' + `vibe-validate-plugin-${context.pluginName}`));
@@ -81,7 +84,7 @@ export function createExtractorCommand(program: Command): void {
         console.log(chalk.gray('  3. Add your sample error output to samples/sample-error.txt'));
         console.log(chalk.gray('  4. Implement detect() and extract() functions in index.ts'));
         console.log(chalk.gray('  5. Run tests: npm test'));
-        console.log(chalk.gray('  6. Test the plugin: vibe-validate test-extractor .'));
+        console.log(chalk.gray(`  6. Test the plugin: ${cmd} test-extractor .`));
 
         process.exit(0);
       } catch (error) {

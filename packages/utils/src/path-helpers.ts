@@ -10,6 +10,8 @@
 import { mkdirSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
+
+
 /**
  * Get normalized temp directory path
  *
@@ -36,14 +38,20 @@ import { tmpdir } from 'node:os';
  * ```
  */
 export function normalizedTmpdir(): string {
+   
   const temp = tmpdir();
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: temp is from tmpdir() (OS-provided system temp directory), not user input
-    return realpathSync(temp);
+    // Use native OS realpath for better Windows compatibility
+    return realpathSync.native(temp);
   } catch {
-    // Fallback: if realpathSync fails, return original
-    // (shouldn't happen, but safety first)
-    return temp;
+    // Fallback to regular realpathSync
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: temp is from tmpdir()
+      return realpathSync(temp);
+    } catch {
+      // Last resort: return original
+      return temp;
+    }
   }
 }
 
@@ -82,16 +90,21 @@ export function mkdirSyncReal(
   path: string,
   options?: Parameters<typeof mkdirSync>[1]
 ): string {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter from test setup (tmpdir + test name), not user input
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- This IS the mkdirSyncReal() implementation
   mkdirSync(path, options);
 
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter from test setup (tmpdir + test name), not user input
-    return realpathSync(path);
+    // Use native OS realpath for better Windows compatibility
+    return realpathSync.native(path);
   } catch {
-    // Fallback: if realpathSync fails, return original
-    // (might happen if directory creation failed)
-    return path;
+    // Fallback to regular realpathSync
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter
+      return realpathSync(path);
+    } catch {
+      // Last resort: return original
+      return path;
+    }
   }
 }
 
@@ -99,23 +112,40 @@ export function mkdirSyncReal(
  * Normalize any path (resolve short names on Windows)
  *
  * Utility to normalize paths without creating directories.
- * Useful when you have an existing path that might contain short names.
+ * Accepts multiple path segments like path.resolve() for convenience.
  *
- * @param path - Path to normalize
- * @returns Real (normalized) path, or original if normalization fails
+ * @param paths - Path segments to join and normalize
+ * @returns Real (normalized) path, or resolved path if normalization fails
  *
  * @example
  * ```typescript
+ * // Single path
  * const shortPath = 'C:\\PROGRA~1\\nodejs';
  * const longPath = normalizePath(shortPath);
  * // Result: 'C:\\Program Files\\nodejs'
+ *
+ * // Multiple segments (like path.resolve)
+ * const cliPath = normalizePath(__dirname, '../../dist/bin.js');
+ * // Resolves to absolute path AND normalizes short names
  * ```
  */
-export function normalizePath(path: string): string {
+export function normalizePath(...paths: string[]): string {
+  // First resolve to absolute path (handles multiple segments)
+  const resolved = paths.length === 1
+    ? paths[0]
+    : require('node:path').resolve(...paths);
+
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter from test setup (tmpdir + test name), not user input
-    return realpathSync(path);
+    // Use native OS realpath for better Windows compatibility
+    return realpathSync.native(resolved);
   } catch {
-    return path;
+    // Fallback to regular realpathSync
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: resolved is from path.resolve
+      return realpathSync(resolved);
+    } catch {
+      // Last resort: return resolved path (better than original input)
+      return resolved;
+    }
   }
 }

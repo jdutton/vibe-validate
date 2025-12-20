@@ -11,6 +11,7 @@ import { existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { safeExecSync, normalizedTmpdir, mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
 // @ts-expect-error - which is available via @vibe-validate/git dependency
 import which from 'which';
 
@@ -591,12 +592,9 @@ section('14. execSync vs spawnSync Comparison');
 try {
   info('Testing if execSync works where spawnSync fails', '');
 
-  // Import execSync
-  const { execSync } = await import('node:child_process');
-
   // Test 1: execSync with TEST_COMMAND_NODE_VERSION (same as failing tests)
   try {
-    const execSyncResult = execSync(TEST_COMMAND_NODE_VERSION, { encoding: 'utf-8' });
+    const execSyncResult = safeExecSync(TEST_COMMAND_NODE_VERSION, { encoding: 'utf-8' });
     success('execSync("node --version") succeeded');
     info('  Output', execSyncResult.trim());
   } catch (err) {
@@ -814,12 +812,11 @@ section('15. tmpdir() and Path Normalization (Windows 8.3 Short Names)');
 try {
   info('Understanding Windows path behavior', '');
 
-  // Import tmpdir and realpathSync
-  const { tmpdir } = await import('node:os');
-  const { realpathSync, mkdirSync, rmSync } = await import('node:fs');
+  // Import file system utilities
+  const { rmSync } = await import('node:fs');
 
   // Get tmpdir path
-  const tempPath = tmpdir();
+  const tempPath = normalizedTmpdir();
   info('tmpdir() returns', tempPath);
   info('Contains ~ (8.3 short name)?', tempPath.includes('~'));
 
@@ -829,7 +826,7 @@ try {
 
     // Get real path (resolves short names to long names)
     try {
-      const realTemp = realpathSync(tempPath);
+      const realTemp = normalizePath(tempPath);
       info('realpathSync(tmpdir())', realTemp);
       info('Paths are identical?', tempPath === realTemp);
       info('Paths differ?', tempPath !== realTemp);
@@ -856,14 +853,14 @@ try {
   const testDirShort = join(tempPath, testDirName);
 
   try {
-    mkdirSync(testDirShort, { recursive: true });
+    mkdirSyncReal(testDirShort, { recursive: true });
     success(`Created directory: ${testDirName}`);
 
     // Check if directory exists at SHORT path
     info('existsSync(SHORT path)?', existsSync(testDirShort));
 
     // Get real (long) path
-    const testDirLong = realpathSync(testDirShort);
+    const testDirLong = normalizePath(testDirShort);
     info('realpathSync(SHORT path)', testDirLong);
     info('existsSync(LONG path)?', existsSync(testDirLong));
 
@@ -914,7 +911,7 @@ try {
   for (const testPath of testPaths) {
     if (existsSync(testPath)) {
       try {
-        const real = realpathSync(testPath);
+        const real = normalizePath(testPath);
         if (testPath === real) {
           success(`${testPath} → already normalized`);
         } else {

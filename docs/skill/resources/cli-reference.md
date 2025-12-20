@@ -386,7 +386,7 @@ vibe-validate doctor --yaml # YAML output only
 
 ### `watch-pr`
 
-Watch CI checks for a pull/merge request in real-time
+Monitor PR checks with auto-polling, error extraction, and flaky test detection (use after creating PR, run after each push)
 
 **What it does:**
 
@@ -407,11 +407,13 @@ Watch CI checks for a pull/merge request in real-time
 
 **Options:**
 
-- `--provider <name>` - Force specific CI provider (github-actions, gitlab-ci)
-- `--yaml` - Output YAML only (no interactive display)
-- `--timeout <seconds>` - Maximum time to wait in seconds (default: 3600)
+- `--yaml` - Force YAML output (auto-enabled on failure)
+- `--repo <owner/repo>` - Repository (default: auto-detect from git remote)
+- `--history` - Show historical runs for the PR with pass/fail summary
+- `--run-id <id>` - Watch specific run ID instead of latest (useful for testing failed runs)
+- `--timeout <seconds>` - Maximum polling time in seconds (default: 1800 = 30 min)
 - `--poll-interval <seconds>` - Polling frequency in seconds (default: 10)
-- `--fail-fast` - Exit immediately on first check failure
+- `--fail-fast` - Exit immediately on first check failure (no polling)
 
 **Error recovery:**
 

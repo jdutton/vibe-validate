@@ -2,7 +2,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
+import { getNotesRefs } from '@vibe-validate/git';
+import { normalizePath, safeExecSync, safeExecResult } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 import yaml from 'yaml';
 
@@ -19,7 +20,7 @@ import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-h
 
 // Get the workspace root by going up from this test file location
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
+const WORKSPACE_ROOT = normalizePath(__dirname, '../../../..');
 const CLI_BIN = path.join(WORKSPACE_ROOT, 'packages/cli/dist/bin.js');
 
 /**
@@ -185,7 +186,8 @@ describe('run command integration', () => {
       const treeHash = firstParsed.treeHash;
 
       // CRITICAL: Verify git notes ref was actually created
-      const notesRefs = safeExecSync('git', ['for-each-ref', `refs/notes/vibe-validate/run/${treeHash}`], { encoding: 'utf-8' }) as string;
+      // Use getNotesRefs from @vibe-validate/git (architectural compliance)
+      const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
       expect(notesRefs).not.toBe(''); // Cache was written!
       expect(notesRefs).toContain('refs/notes/vibe-validate/run/');
 
@@ -453,7 +455,8 @@ describe('run command integration', () => {
         const treeHash = nestedParsed.treeHash;
 
         // Verify cache was written
-        const notesRefs = safeExecSync('git', ['for-each-ref', `refs/notes/vibe-validate/run/${treeHash}`], { encoding: 'utf-8' }) as string;
+        // Use getNotesRefs from @vibe-validate/git (architectural compliance)
+        const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
         expect(notesRefs).not.toBe(''); // Cache exists (may include entries from other tests)
 
         // Second run: direct command (should hit cache)
@@ -642,8 +645,8 @@ describe('run command integration', () => {
       // Basic case: vv run --help should show help for run command
       const output = execCLI(['run', '--help']);
 
-      // Should show basic help
-      expect(output).toContain('Usage: vibe-validate run');
+      // Should show basic help (command name could be "vv" or "vibe-validate" depending on execution context)
+      expect(output).toMatch(/Usage: (vv|vibe-validate) run/);
       expect(output).toContain('Run a command and extract LLM-friendly errors');
 
       // Should NOT be trying to execute --help as a command
@@ -674,7 +677,8 @@ describe('run command integration', () => {
 
     it('should display first N lines with --head flag', () => {
       // Display output goes to stderr, YAML goes to stdout
-      const { stdout, stderr } = execCLIWithStderr(['run', '--head', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
+      // Use --force to bypass cache (ensures fresh execution in coverage mode)
+      const { stdout, stderr } = execCLIWithStderr(['run', '--force', '--head', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
       // Extract YAML front matter from stdout
       const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
@@ -690,7 +694,8 @@ describe('run command integration', () => {
 
     it('should display last N lines with --tail flag', () => {
       // Display output goes to stderr, YAML goes to stdout
-      const { stdout, stderr } = execCLIWithStderr(['run', '--tail', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
+      // Use --force to bypass cache (ensures fresh execution in coverage mode)
+      const { stdout, stderr } = execCLIWithStderr(['run', '--force', '--tail', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
       // Extract YAML front matter from stdout
       const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);

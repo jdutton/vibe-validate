@@ -13,12 +13,12 @@
 import { type ChildProcess } from 'node:child_process';
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { ValidationPhase, ValidationStep, VibeValidateConfig } from '@vibe-validate/config';
 import { autoDetectAndExtract, type ErrorExtractorResult } from '@vibe-validate/extractors';
 import { getGitTreeHash } from '@vibe-validate/git';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import stripAnsi from 'strip-ansi';
 
 import {
@@ -946,7 +946,7 @@ function createFailedValidationResult(
 export async function runValidation(config: ValidationConfig): Promise<ValidationResult> {
   const {
     phases,
-    logPath = join(tmpdir(), `validation-${new Date().toISOString().replaceAll(/[:.]/g, '-')}.log`),
+    logPath = join(normalizedTmpdir(), `validation-${new Date().toISOString().replaceAll(/[:.]/g, '-')}.log`),
     enableFailFast = false,
     env = {},
     onPhaseStart,

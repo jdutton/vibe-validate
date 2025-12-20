@@ -1,0 +1,22 @@
+[
+  {
+    "__typename": "CheckRun",
+    "completedAt": "2025-12-16T16:43:48Z",
+    "conclusion": "FAILURE",
+    "detailsUrl": "https://sonarcloud.io",
+    "name": "SonarCloud Code Analysis",
+    "startedAt": "2025-12-16T16:43:20Z",
+    "status": "COMPLETED",
+    "workflowName": ""
+  },
+  {
+    "__typename": "CheckRun",
+    "completedAt": "2025-12-16T16:45:49Z",
+    "conclusion": "FAILURE",
+    "detailsUrl": "https://app.codecov.io/gh/jdutton/vibe-validate/pull/90",
+    "name": "codecov/patch",
+    "startedAt": "2025-12-16T16:45:49Z",
+    "status": "COMPLETED",
+    "workflowName": ""
+  }
+]

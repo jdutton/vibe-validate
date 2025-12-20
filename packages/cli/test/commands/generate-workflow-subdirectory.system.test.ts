@@ -5,10 +5,11 @@
  * generate-workflow command works correctly from subdirectories.
  */
 
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import {  writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { generateWorkflow, checkSync, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
@@ -59,9 +60,9 @@ describe('generate-workflow subdirectory support (system tests)', () => {
 
   beforeEach(() => {
     // Create test directory structure with .git
-    mkdirSync(join(testRoot, '.git'), { recursive: true });
-    mkdirSync(testSubdir, { recursive: true });
-    mkdirSync(join(testRoot, '.github/workflows'), { recursive: true });
+    mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
+    mkdirSyncReal(testSubdir, { recursive: true });
+    mkdirSyncReal(join(testRoot, '.github/workflows'), { recursive: true });
 
     // Create package.json at git root with pnpm
     writeFileSync(

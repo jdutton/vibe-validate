@@ -3,9 +3,9 @@
  */
 
 import { mkdir, writeFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -20,7 +20,7 @@ describe('loader', () => {
   beforeEach(async () => {
     // Create unique temp directory for each test
     // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
-    testDir = join(tmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);
+    testDir = join(normalizedTmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);
     await mkdir(testDir, { recursive: true });
   });
 

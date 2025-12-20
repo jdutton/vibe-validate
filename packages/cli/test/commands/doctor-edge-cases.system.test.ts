@@ -13,10 +13,11 @@
  * Tests run in parallel for speed.
  */
 
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import {  writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecSync } from '@vibe-validate/utils';
+import { executeGitCommand } from '@vibe-validate/git';
+import { safeExecSync, mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 // Get path to the vv binary from the built CLI package
@@ -58,7 +59,7 @@ function runDoctorInDir(cwd: string): {
   allPassed: boolean;
 } {
   try {
-    const output = safeExecFromString(`node "${VV_BINARY}" doctor --verbose`, {
+    const output = safeExecSync('node', [VV_BINARY, 'doctor', '--verbose'], {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',
@@ -70,7 +71,7 @@ function runDoctorInDir(cwd: string): {
       allPassed: output.includes('All checks passed'),
     };
   } catch (error: any) {
-    const output = error.stdout || error.stderr || '';
+    const output = error.stdout || error.stderr || error.message || '';
     return {
       exitCode: error.status || 1,
       output,
@@ -92,13 +93,13 @@ function createTestEnv(envName: string, options: {
   if (existsSync(envPath)) {
     rmSync(envPath, { recursive: true, force: true });
   }
-  mkdirSync(envPath, { recursive: true });
+  mkdirSyncReal(envPath, { recursive: true });
 
   // Initialize git if requested
   if (options.hasGit) {
-    safeExecSync('git', ['init'], { cwd: envPath, stdio: 'ignore' });
-    safeExecSync('git', ['config', 'user.name', 'Test User'], { cwd: envPath, stdio: 'ignore' });
-    safeExecSync('git', ['config', 'user.email', 'test@example.com'], { cwd: envPath, stdio: 'ignore' });
+    executeGitCommand(['-C', envPath, 'init'], { suppressStderr: true });
+    executeGitCommand(['-C', envPath, 'config', 'user.name', 'Test User'], { suppressStderr: true });
+    executeGitCommand(['-C', envPath, 'config', 'user.email', 'test@example.com'], { suppressStderr: true });
   }
 
   // Create config if requested
@@ -117,7 +118,7 @@ describe('doctor command - edge case system tests', () => {
     if (existsSync(TEST_BASE_DIR)) {
       rmSync(TEST_BASE_DIR, { recursive: true, force: true });
     }
-    mkdirSync(TEST_BASE_DIR, { recursive: true });
+    mkdirSyncReal(TEST_BASE_DIR, { recursive: true });
   });
 
   afterAll(() => {

@@ -26,6 +26,7 @@ import { type Command } from 'commander';
 import * as semver from 'semver';
 import { stringify as stringifyYaml } from 'yaml';
 
+import { getCommandName } from '../utils/command-name.js';
 import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import { findGitRoot } from '../utils/git-detection.js';
@@ -290,11 +291,12 @@ function checkConfigFile(): DoctorCheckResult {
       message: `Found: ${configPath}`,
     };
   } else {
+    const cmd = getCommandName();
     return {
       name: 'Configuration file',
       passed: false,
       message: 'Configuration file not found',
-      suggestion: 'Run: npx vibe-validate init',
+      suggestion: `Run: ${cmd} init`,
     };
   }
 }
@@ -544,11 +546,12 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
 
   // ⚠️ ENABLED but not installed
   if (!existsSync(huskyPath)) {
+    const cmd = getCommandName();
     return {
       name: 'Pre-commit hook',
       passed: false,
       message: 'Pre-commit hook not installed',
-      suggestion: 'Manual: npx husky init && echo "npx vibe-validate pre-commit" > .husky/pre-commit\n   💡 Or run: vibe-validate init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config',
+      suggestion: `Manual: npx husky init && echo "${cmd} pre-commit" > .husky/pre-commit\n   💡 Or run: ${cmd} init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config`,
     };
   }
 
@@ -569,12 +572,13 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
       };
     } else {
       // ⚠️ ENABLED but custom hook (needs verification)
+      const cmd = getCommandName();
       const hookPreview = hookContent.split('\n').slice(0, 3).join('; ').trim();
       return {
         name: 'Pre-commit hook',
         passed: false,
         message: `Custom pre-commit hook detected: "${hookPreview}..."`,
-        suggestion: `Manual: Verify that .husky/pre-commit runs "${expectedCommand}"\n   💡 Or run: vibe-validate init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config`,
+        suggestion: `Manual: Verify that .husky/pre-commit runs "${expectedCommand}"\n   💡 Or run: ${cmd} init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config`,
       };
     }
   } catch (error) {
@@ -652,11 +656,12 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
         };
       } else if (isOutdated) {
         // Only show suggestion if current version is behind npm
+        const cmd = getCommandName();
         return {
           name: 'vibe-validate version',
           passed: true, // Warning only, not a failure
           message: `Current: ${currentVersion}${contextLabel}, Latest: ${latestVersion} available`,
-          suggestion: `Upgrade: ${getUpgradeCommand(context)}\n   💡 After upgrade: Run 'vibe-validate doctor' to verify setup`,
+          suggestion: `Upgrade: ${getUpgradeCommand(context)}\n   💡 After upgrade: Run '${cmd} doctor' to verify setup`,
         };
       } else {
         // Current version is ahead of npm (pre-release or unpublished)
@@ -845,11 +850,12 @@ async function checkHistoryHealth(): Promise<DoctorCheckResult> {
     }
 
     // Has warnings - advisory only, not a critical failure
+    const cmd = getCommandName();
     return {
       name: 'Validation history',
       passed: true, // Advisory: large history is a warning, not a failure
       message: `${health.totalNotes} tree hashes tracked (${health.oldNotesCount} older than 90 days)`,
-      suggestion: 'Prune old history: vibe-validate history prune --older-than "90 days"',
+      suggestion: `Prune old history: ${cmd} history prune --older-than "90 days"`,
     };
   } catch (error) {
     // Git notes not available or other error - not critical

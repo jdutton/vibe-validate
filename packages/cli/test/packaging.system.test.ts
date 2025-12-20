@@ -8,10 +8,9 @@
  */
 
 import { mkdtempSync, rmSync, readdirSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { safeExecFromString } from '@vibe-validate/utils';
+import { safeExecFromString, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 describe('npm package tarball (system test)', () => {
@@ -21,7 +20,7 @@ describe('npm package tarball (system test)', () => {
 
   beforeAll(() => {
     // Create temp directory
-    tempDir = mkdtempSync(join(tmpdir(), 'vibe-validate-pack-test-'));
+    tempDir = mkdtempSync(join(normalizedTmpdir(), 'vibe-validate-pack-test-'));
     extractDir = join(tempDir, 'extracted');
 
     // Run pnpm pack in packages/cli (resolves workspace:* dependencies)
@@ -169,7 +168,7 @@ describe('npm package tarball (system test)', () => {
 
     beforeAll(() => {
       // Create a fresh temp directory to simulate a user install
-      installDir = mkdtempSync(join(tmpdir(), 'vibe-validate-e2e-test-'));
+      installDir = mkdtempSync(join(normalizedTmpdir(), 'vibe-validate-e2e-test-'));
 
       // Initialize a package.json
       safeExecFromString('npm init -y', {

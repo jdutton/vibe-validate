@@ -4,19 +4,21 @@
  * Eliminates duplication of temp directory setup/teardown across test files.
  */
 
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 
 /**
  * Create a temporary test directory
  *
  * @param prefix - Directory name prefix
- * @returns Path to created directory
+ * @returns Path to created directory (normalized, no Windows 8.3 short names)
  */
 export function createTempTestDir(prefix: string): string {
-  const testDir = join(tmpdir(), `${prefix}-${Date.now()}`);
-  mkdirSync(testDir, { recursive: true });
+  const targetDir = join(normalizedTmpdir(), `${prefix}-${Date.now()}`);
+  // Use mkdirSyncReal to get normalized path (prevents Windows RUNNER~1 issues)
+  const testDir = mkdirSyncReal(targetDir, { recursive: true });
   return testDir;
 }
 

@@ -12,6 +12,7 @@ import chalk from 'chalk';
 import type { Command } from 'commander';
 import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
 
+import { getCommandName } from '../utils/command-name.js';
 import { configExists } from '../utils/config-loader.js';
 import { detectGitConfig, type DetectedGitConfig } from '../utils/git-detection.js';
 import { GitignoreSetupCheck } from '../utils/setup-checks/gitignore-check.js';
@@ -216,9 +217,10 @@ async function handleConfigInitialization(cwd: string, options: InitOptions, isD
   console.log(chalk.blue(`📋 Created: ${configPath}`));
   console.log(chalk.gray(`   Template: ${templateName}`));
   console.log();
+  const cmd = getCommandName();
   console.log(chalk.yellow('Next steps:'));
   console.log(chalk.gray('  1. Review and customize vibe-validate.config.yaml'));
-  console.log(chalk.gray('  2. Run: vibe-validate validate'));
+  console.log(chalk.gray(`  2. Run: ${cmd} validate`));
   console.log(chalk.gray('  3. Add to package.json scripts:'));
   console.log(chalk.gray('     "validate": "vibe-validate validate"'));
   console.log(chalk.gray('     "pre-commit": "vibe-validate pre-commit"'));

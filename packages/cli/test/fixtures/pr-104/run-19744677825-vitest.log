@@ -1,0 +1,500 @@
+Fast Checks & Build	UNKNOWN STEP	﻿2025-11-27T18:03:07.9027490Z Current runner version: '2.329.0'
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9062770Z ##[group]Runner Image Provisioner
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9064116Z Hosted Compute Agent
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9065020Z Version: 20251016.436
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9066088Z Commit: 8ab8ac8bfd662a3739dab9fe09456aba92132568
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9067280Z Build Date: 2025-10-15T20:44:12Z
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9068266Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9069097Z ##[group]Operating System
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9070092Z Ubuntu
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9071022Z 24.04.3
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9071820Z LTS
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9072551Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9073523Z ##[group]Runner Image
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9074466Z Image: ubuntu-24.04
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9075234Z Version: 20251112.124.1
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9077198Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20251112.124/images/ubuntu/Ubuntu2404-Readme.md
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9079949Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20251112.124
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9082027Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9083936Z ##[group]GITHUB_TOKEN Permissions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9086478Z Contents: read
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9087339Z Metadata: read
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9088113Z Packages: read
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9089082Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9092271Z Secret source: Actions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9093312Z Prepare workflow directory
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9543553Z Prepare all required actions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:07.9598033Z Getting action download info
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:08.2420815Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:08.9738491Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.1465923Z Complete job name: Fast Checks & Build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2229343Z ##[group]Run actions/checkout@v4
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2230290Z with:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2230972Z   fetch-depth: 0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2231482Z   repository: jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2232321Z   token: ***
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2232750Z   ssh-strict: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2233178Z   ssh-user: git
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2233618Z   persist-credentials: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2234100Z   clean: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2234542Z   sparse-checkout-cone-mode: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2235064Z   fetch-tags: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2235513Z   show-progress: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2235963Z   lfs: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2236373Z   submodules: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2236821Z   set-safe-directory: true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.2237575Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3316575Z Syncing repository: jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3318532Z ##[group]Getting Git version info
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3319541Z Working directory is '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple'
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3321021Z [command]/usr/bin/git version
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3394377Z git version 2.51.2
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3420032Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3434826Z Temporarily overriding HOME='/home/runner/work/_temp/3aed914e-2049-4db3-a283-83b94e97189b' before making global git config changes
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3436344Z Adding repository directory to the temporary git global config as a safe directory
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3439926Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/mcp-typescript-simple/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3477120Z Deleting the contents of '/home/runner/work/mcp-typescript-simple/mcp-typescript-simple'
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3480553Z ##[group]Initializing the repository
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3484922Z [command]/usr/bin/git init /home/runner/work/mcp-typescript-simple/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3604880Z hint: Using 'master' as the name for the initial branch. This default branch name
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3606859Z hint: is subject to change. To configure the initial branch name to use in all
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3608563Z hint: of your new repositories, which will suppress this warning, call:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3610100Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3611332Z hint: 	git config --global init.defaultBranch <name>
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3611970Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3612566Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3613521Z hint: 'development'. The just-created branch can be renamed via this command:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3614277Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3614692Z hint: 	git branch -m <name>
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3615420Z hint:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3616293Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3617544Z Initialized empty Git repository in /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/.git/
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3621440Z [command]/usr/bin/git remote add origin https://github.com/jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3656055Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3656815Z ##[group]Disabling automatic garbage collection
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3659847Z [command]/usr/bin/git config --local gc.auto 0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3687988Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3688928Z ##[group]Setting up auth
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3694598Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.3723825Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4079339Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4109377Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4328315Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4360822Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4590286Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4628875Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4630318Z ##[group]Fetching the repository
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:09.4639966Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +6b7fd9964604f5145e6abade13423b518b98523f:refs/remotes/pull/104/merge
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2534054Z From https://github.com/jdutton/mcp-typescript-simple
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2537209Z  * [new branch]      feature/enhance-eslint-security-rules    -> origin/feature/enhance-eslint-security-rules
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2539964Z  * [new branch]      feature/eslint-strict-enforcement        -> origin/feature/eslint-strict-enforcement
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2542784Z  * [new branch]      fix/vercel-empty-public-directory        -> origin/fix/vercel-empty-public-directory
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2544852Z  * [new branch]      main                                     -> origin/main
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2546204Z  * [new tag]         v0.9.0                                   -> v0.9.0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2547523Z  * [new tag]         v0.9.0-rc.13                             -> v0.9.0-rc.13
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2548913Z  * [new tag]         v0.9.0-rc.3                              -> v0.9.0-rc.3
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2550559Z  * [new ref]         6b7fd9964604f5145e6abade13423b518b98523f -> pull/104/merge
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2585696Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2587642Z ##[group]Determining the checkout info
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2589376Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2591949Z [command]/usr/bin/git sparse-checkout disable
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2633032Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2659808Z ##[group]Checking out the ref
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.2663027Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/104/merge
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3074897Z Note: switching to 'refs/remotes/pull/104/merge'.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3076420Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3077610Z You are in 'detached HEAD' state. You can look around, make experimental
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3081011Z changes and commit them, and you can discard any commits you make in this
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3084497Z state without impacting any branches by switching back to a branch.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3086530Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3087819Z If you want to create a new branch to retain commits you create, you may
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3091229Z do so (now or later) by using -c with the switch command. Example:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3093240Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3093989Z   git switch -c <new-branch-name>
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3095228Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3095984Z Or undo this operation with:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3097163Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3097778Z   git switch -
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3098658Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3099893Z Turn off this advice by setting config variable advice.detachedHead to false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3101740Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3103576Z HEAD is now at 6b7fd99 Merge bc89786ddd3f19b4b578604a20a0e0784003ee92 into 99c445483d90b1f17556417377cbed6806ee177d
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3110165Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3127961Z [command]/usr/bin/git log -1 --format=%H
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3150921Z 6b7fd9964604f5145e6abade13423b518b98523f
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3449031Z ##[group]Run actions/setup-node@v4
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3450210Z with:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3451377Z   node-version: 22
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3452296Z   cache: npm
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3453166Z   always-auth: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3454121Z   check-latest: false
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3455349Z   token: ***
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.3456191Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.5264207Z Found in cache @ /opt/hostedtoolcache/node/22.21.1/x64
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.5270532Z ##[group]Environment details
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.9429717Z node: v22.21.1
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.9430263Z npm: 10.9.4
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.9430525Z yarn: 1.22.22
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.9431753Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:10.9453700Z [command]/opt/hostedtoolcache/node/22.21.1/x64/bin/npm config get cache
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:11.0679731Z /home/runner/.npm
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:11.2397979Z npm cache is not found
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:11.2516041Z ##[group]Run npm ci
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:11.2516325Z [36;1mnpm ci[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:11.2563885Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:11.2564133Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:15.6634688Z npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:15.9851840Z npm warn deprecated path-match@1.2.4: This package is archived and no longer maintained. For support, visit https://github.com/expressjs/express/discussions
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:16.3222852Z npm warn deprecated npmlog@5.0.1: This package is no longer supported.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:16.4710829Z npm warn deprecated lodash.get@4.4.2: This package is deprecated. Use the optional chaining (?.) operator instead.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:16.7717294Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:16.9513420Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:17.2091896Z npm warn deprecated gauge@3.0.2: This package is no longer supported.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:17.8532077Z npm warn deprecated are-we-there-yet@2.0.0: This package is no longer supported.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:20.5690362Z npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:20.7578925Z npm warn deprecated uuid@3.3.2: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:21.5900501Z npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.0204456Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.0205117Z > mcp-typescript-simple@0.9.0 postinstall
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.0205737Z > node tools/build-workspaces.js
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.0205993Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.0534479Z Building workspace packages in dependency order...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.0536672Z 0/9: Cleaning stale build info...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.0543225Z 1/9: Building observability package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.1671919Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.1673327Z > @mcp-typescript-simple/observability@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.1674003Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:33.1674276Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:34.7219048Z 2/9: Building base packages (config, persistence, testing, tools, tools-llm)...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:34.8343899Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:34.8345292Z > @mcp-typescript-simple/config@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:34.8345989Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:34.8346274Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:36.6099511Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:36.6100555Z > @mcp-typescript-simple/persistence@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:36.6101413Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:36.6101671Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:38.6777522Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:38.6778258Z > @mcp-typescript-simple/testing@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:38.6778918Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:38.6779237Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:40.0991645Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:40.0992269Z > @mcp-typescript-simple/tools@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:40.0992871Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:40.0993090Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:41.7153827Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:41.7154509Z > @mcp-typescript-simple/tools-llm@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:41.7155174Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:41.7155619Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:43.2424855Z 3/9: Building auth package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:43.3548576Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:43.3549429Z > @mcp-typescript-simple/auth@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:43.3550080Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:43.3550369Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:45.1097752Z 4/9: Building server package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:45.2258461Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:45.2259056Z > @mcp-typescript-simple/server@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:45.2259812Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:45.2260034Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:47.0661436Z 5/9: Building example packages (example-tools-basic, example-tools-llm)...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:47.1822408Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:47.1823482Z > @mcp-typescript-simple/example-tools-basic@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:47.1823927Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:47.1824080Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:48.8512867Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:48.8513601Z > @mcp-typescript-simple/example-tools-llm@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:48.8514046Z > tsc -p tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:48.8514186Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:50.4838734Z 6/9: Building http-server package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:50.5975413Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:50.5976123Z > @mcp-typescript-simple/http-server@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:50.5976781Z > tsc --project tsconfig.json
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:50.5977067Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:53.2443546Z 7/9: Building example-mcp package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:53.3585564Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:53.3586282Z > @mcp-typescript-simple/example-mcp@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:53.3586785Z > tsc
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:53.3586888Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:54.9750026Z 8/9: Building adapter-vercel package...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:55.0863890Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:55.0864665Z > @mcp-typescript-simple/adapter-vercel@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:55.0865141Z > tsc
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:55.0865252Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.1519873Z 9/9: Complete
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.1520489Z ✓ All workspace packages built successfully
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.1571084Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.1571552Z > mcp-typescript-simple@0.9.0 prepare
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.1572031Z > husky || true
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.1572216Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2150498Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2151414Z added 1420 packages, and audited 1436 packages in 46s
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2151837Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2152087Z 258 packages are looking for funding
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2152554Z   run `npm fund` for details
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2499668Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2500556Z 20 vulnerabilities (3 low, 10 moderate, 7 high)
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2501203Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2501879Z To address issues that do not require attention, run:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2502246Z   npm audit fix
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2502388Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2502658Z To address all issues (including breaking changes), run:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2503057Z   npm audit fix --force
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2503225Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.2503410Z Run `npm audit` for details.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.3435825Z ##[group]Run npm run build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.3436092Z [36;1mnpm run build[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.3468446Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.3468671Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.4439268Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.4439589Z > mcp-typescript-simple@0.9.0 build
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.4440204Z > npm run docs:build:homepage && tsc
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.4440513Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.5367276Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.5367924Z > mcp-typescript-simple@0.9.0 docs:build:homepage
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.5368458Z > npx tsx tools/build-homepage.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:57.5368642Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:58.0554522Z Building homepage from docs/homepage.md...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:58.0566950Z ✓ Homepage built successfully: /home/runner/work/mcp-typescript-simple/mcp-typescript-simple/public/index.html
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:58.0568438Z ✓ Preview: file:///home/runner/work/mcp-typescript-simple/mcp-typescript-simple/public/index.html
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.0187054Z ##[group]Run npm run typecheck
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.0187355Z [36;1mnpm run typecheck[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.0219371Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.0219591Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.1176925Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.1177461Z > mcp-typescript-simple@0.9.0 typecheck
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.1177797Z > tsc --noEmit
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:03:59.1177914Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.0004465Z ##[group]Run npm run lint
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.0004899Z [36;1mnpm run lint[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.0052187Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.0052577Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.1051647Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.1052194Z > mcp-typescript-simple@0.9.0 lint
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.1053628Z > eslint 'packages/**/src/**/*.ts' --ignore-pattern='**/vitest.config.ts' --ignore-pattern='**/dist/**' --ignore-pattern='**/templates/**' --no-warn-ignored --max-warnings=0
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:00.1054561Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.5677428Z ##[group]Run npm run test:openapi
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.5677922Z [36;1mnpm run test:openapi[0m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.5724504Z shell: /usr/bin/bash -e {0}
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.5724890Z ##[endgroup]
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.6697199Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.6697487Z > mcp-typescript-simple@0.9.0 test:openapi
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.6698053Z > npm run docs:validate && npm run test:openapi:compliance && npm run test:openapi:coverage
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.6698358Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.7629677Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.7630033Z > mcp-typescript-simple@0.9.0 docs:validate
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.7630529Z > redocly lint openapi.yaml
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:26.7630936Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.6425101Z No configurations were provided -- using built in [34mrecommended[39m configuration by default.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.6425808Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.6426214Z [90mvalidating openapi.yaml...
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7625060Z [1] [43m[30mopenapi.yaml:2:1[39m[49m [90mat #/info[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7625553Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7625928Z Info object should contain `license` field.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7626265Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7626661Z [90m1 |[39m [90mopenapi: 3.1.0[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7627223Z [90m2 |[39m [31minfo[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7627854Z [90m3 |[39m   [90mtitle: MCP TypeScript Simple API[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7628473Z [90m4 |[39m   [90mversion: 1.0.0[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7628742Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7629163Z Warning was generated by the [34minfo-license[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7629518Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7629526Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7630045Z [2] [43m[30mopenapi.yaml:30:10[39m[49m [90mat #/servers/0/url[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7630439Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7630956Z Server `url` should not point to example.com or localhost.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7631328Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7631484Z [90m28 |[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7632498Z [90m29 |[39m [90mservers:[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7633222Z [90m30 |[39m   - url: [31mhttp://localhost:3000[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7634023Z [90m31 |[39m     [90mdescription: Local development server[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7634913Z [90m32 |[39m   [90m- url: https://mcp-typescript-simple.vercel.app[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7635331Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7635821Z Warning was generated by the [34mno-server-example.com[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7636228Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7636236Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7636833Z [3] [43m[30mopenapi.yaml:70:7[39m[49m [90mat #/paths/~1health/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7637282Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7637567Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7637887Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7638228Z [90m68 |[39m [90moperationId: getHealth[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7638859Z [90m69 |[39m [90msecurity: [][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7639417Z [90m70 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7639921Z [90m71 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7640543Z [90m72 |[39m     [90mdescription: Server is healthy[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7641096Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7641618Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7642035Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7642043Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7651186Z [4] [43m[30mopenapi.yaml:235:7[39m[49m [90mat #/paths/~1auth/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7651693Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7651993Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7652344Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7652724Z [90m233 |[39m [90moperationId: getAuthInfo[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7653351Z [90m234 |[39m [90msecurity: [][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7653903Z [90m235 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7654440Z [90m236 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7655182Z [90m237 |[39m     [90mdescription: OAuth provider information[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7655593Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7656111Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7656572Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7656582Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7657635Z [5] [43m[30mopenapi.yaml:267:7[39m[49m [90mat #/paths/~1auth~1login/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7658150Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7658454Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7658802Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7659125Z [90m265 |[39m       [90mformat: uri[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7660241Z [90m266 |[39m     [90mdescription: OAuth client redirect URI (preserved through provider selection)[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7661354Z [90m267 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7661912Z [90m268 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7662671Z [90m269 |[39m     [90mdescription: HTML provider selection page[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7663082Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7663600Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7664015Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7664024Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7664479Z [6] [43m[30mopenapi.yaml:330:7[39m[49m [90mat #/paths/~1auth~1authorize/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7664805Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7664980Z Operation must have at least one `2XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7665172Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7665359Z [90m328 |[39m       [90menum: [S256][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7665916Z [90m329 |[39m     [90mdescription: PKCE challenge method[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7666290Z [90m330 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7666576Z [90m331 |[39m   [90m'302':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7667078Z [90m332 |[39m     [90mdescription: Redirect to provider selection or single provider[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7667369Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7667651Z Warning was generated by the [34moperation-2xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7667957Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7667965Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7668468Z [7] [43m[30mopenapi.yaml:385:7[39m[49m [90mat #/paths/~1auth~1{provider}~1authorize/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7668797Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7669165Z Operation must have at least one `2XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7669355Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7669532Z [90m383 |[39m       [90menum: [S256][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7669960Z [90m384 |[39m     [90mdescription: PKCE code challenge method[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7670371Z [90m385 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7670950Z [90m386 |[39m   [90m'302':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7671442Z [90m387 |[39m     [90mdescription: Redirect to OAuth provider authorization page[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7671730Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7672012Z Warning was generated by the [34moperation-2xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7672254Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7672265Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7672718Z [8] [43m[30mopenapi.yaml:420:7[39m[49m [90mat #/paths/~1auth~1{provider}~1callback/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7673034Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7673193Z Operation must have at least one `2XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7673408Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7673733Z [90m418 |[39m       [90mtype: string[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7674535Z [90m419 |[39m     [90mdescription: State parameter for CSRF protection[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7675038Z [90m420 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7675329Z [90m421 |[39m   [90m'302':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7675759Z [90m422 |[39m     [90mdescription: Redirect to client or success page[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7676001Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7676282Z Warning was generated by the [34moperation-2xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7676588Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7676593Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7677089Z [9] [43m[30mopenapi.yaml:597:7[39m[49m [90mat #/paths/~1.well-known~1oauth-authorization-server/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7677477Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7677641Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7677828Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7678070Z [90m595 |[39m [90moperationId: getAuthServerMetadata[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7678442Z [90m596 |[39m [90msecurity: [][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7678744Z [90m597 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7679028Z [90m598 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7679630Z [90m599 |[39m     [90mdescription: Authorization server metadata[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7679873Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7680158Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7680401Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7680406Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7681088Z [10] [43m[30mopenapi.yaml:615:7[39m[49m [90mat #/paths/~1.well-known~1oauth-protected-resource/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7681448Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7681607Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7681793Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7682076Z [90m613 |[39m [90moperationId: getProtectedResourceMetadata[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7682459Z [90m614 |[39m [90msecurity: [][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7682761Z [90m615 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7683038Z [90m616 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7683451Z [90m617 |[39m     [90mdescription: Protected resource metadata[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7683787Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7684066Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7684316Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7684322Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7684822Z [11] [43m[30mopenapi.yaml:631:7[39m[49m [90mat #/paths/~1.well-known~1oauth-protected-resource~1mcp/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7685190Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7685354Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7685537Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7685779Z [90m629 |[39m [90moperationId: getMcpResourceMetadata[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7686147Z [90m630 |[39m [90msecurity: [][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7686444Z [90m631 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7686719Z [90m632 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7687091Z [90m633 |[39m     [90mdescription: MCP resource metadata[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7687299Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7687578Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7687970Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7687975Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7688456Z [12] [43m[30mopenapi.yaml:647:7[39m[49m [90mat #/paths/~1.well-known~1openid-configuration/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7688804Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7688963Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7689291Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7689652Z [90m645 |[39m [90moperationId: getOpenIdConfiguration[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7690035Z [90m646 |[39m [90msecurity: [][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7690336Z [90m647 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7690626Z [90m648 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7691221Z [90m649 |[39m     [90mdescription: OpenID Connect configuration[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7691456Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7691733Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7691972Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7691977Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7692376Z [13] [43m[30mopenapi.yaml:859:7[39m[49m [90mat #/paths/~1debug~1github-oauth/get/responses[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7692682Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7692838Z Operation must have at least one `4XX` response.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7693026Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7693245Z [90m857 |[39m [90moperationId: debugGitHubOAuth[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7693599Z [90m858 |[39m [90msecurity: [][39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7693897Z [90m859 |[39m [31mresponses[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7694183Z [90m860 |[39m   [90m'200':[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7694545Z [90m861 |[39m     [90mdescription: Debug information[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7694752Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7695025Z Warning was generated by the [34moperation-4xx-response[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7695269Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7695274Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7695617Z [14] [43m[30mopenapi.yaml:998:5[39m[49m [90mat #/components/schemas/ToolContent[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7695888Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7696030Z Component: "ToolContent" is never used.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7696191Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7696367Z [90m 996 |[39m       [90mtype: object[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7696623Z [90m 997 |[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7696880Z [90m 998 |[39m [31mToolContent[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7697329Z [90m 999 |[39m   [90mtype: object[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7697651Z [90m1000 |[39m   [90mrequired:[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7697799Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7698067Z Warning was generated by the [34mno-unused-components[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7698311Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7698316Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7698549Z [39m[90mopenapi.yaml: validated in 126ms
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7698722Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7698961Z [39m[32mWoohoo! Your API description is valid. 🎉
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7699497Z [15] [43m[30mopenapi.yaml:1417:5[39m[49m [90mat #/components/schemas/OAuthError[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7699813Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7700040Z Component: "OAuthError" is never used.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7700326Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7700798Z [90m1415 |[39m       [90mtype: object[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7701232Z [90m1416 |[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7701634Z [90m1417 |[39m [31mOAuthError[39m:
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7701956Z [90m1418 |[39m   [90mtype: object[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7702267Z [90m1419 |[39m   [90mrequired:[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7702417Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7702685Z Warning was generated by the [34mno-unused-components[39m rule.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7702921Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7702931Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7703090Z [39m[33mYou have 15 warnings.
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:27.7703305Z [39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:28.3301044Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:28.3301666Z > mcp-typescript-simple@0.9.0 test:openapi:compliance
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:28.3302329Z > vitest run packages/example-mcp/test/integration/openapi-compliance.test.ts
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:28.3302648Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:28.6418648Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:28.6421757Z [1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/runner/work/mcp-typescript-simple/mcp-typescript-simple[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:28.6422652Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:30.2810191Z  [32m✓[39m packages/example-mcp/test/integration/openapi-compliance.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 363[2mms[22m[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:30.2986282Z 
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:30.2990459Z [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:30.2991634Z [2m      Tests [22m [1m[32m22 passed[39m[22m[90m (22)[39m
+Fast Checks & Build	UNKNOWN STEP	2025-11-27T18:04:30.2992350Z [2m   Start at [22m 18:04:28

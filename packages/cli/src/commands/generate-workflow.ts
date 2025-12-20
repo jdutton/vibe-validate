@@ -15,10 +15,11 @@
  * @packageDocumentation
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import type { VibeValidateConfig, ValidationPhase } from '@vibe-validate/config';
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { type Command } from 'commander';
 import { stringify as yamlStringify } from 'yaml';
 
@@ -354,6 +355,9 @@ export function generateWorkflow(
     jobSteps.push({
       name: 'Run validation',
       run: validateCommand,
+      env: {
+        GH_TOKEN: '${{ github.token }}',
+      },
     });
 
     jobs['validate'] = {
@@ -714,7 +718,7 @@ export function generateWorkflowCommand(program: Command): void {
           // Ensure directory exists
           const workflowDir = dirname(workflowPath);
           if (!existsSync(workflowDir)) {
-            mkdirSync(workflowDir, { recursive: true });
+            mkdirSyncReal(workflowDir, { recursive: true });
           }
 
           writeFileSync(workflowPath, workflow);

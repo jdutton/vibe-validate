@@ -8,8 +8,10 @@
  */
 
 import { writeFile, mkdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { normalizedTmpdir } from '@vibe-validate/utils';
+
 
 /**
  * Ensure a directory exists (create if needed)
@@ -83,7 +85,7 @@ export function getTempDir(
     folderName += `-${safeSuffix}`;
   }
 
-  return join(tmpdir(), 'vibe-validate', baseDir, dateFolder, folderName);
+  return join(normalizedTmpdir(), 'vibe-validate', baseDir, dateFolder, folderName);
 }
 
 /**

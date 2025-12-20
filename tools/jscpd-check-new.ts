@@ -14,13 +14,30 @@ import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
 const JSCPD_OUTPUT_DIR = './jscpd-report';
 
+/**
+ * IMPORTANT: Test files are INTENTIONALLY included in duplication checks.
+ *
+ * Why we check test code duplication (shift-left principle):
+ *
+ * 1. **Consistency with SonarQube**: SonarQube checks both src and test code.
+ *    Pre-commit checks should catch the same issues to prevent CI surprises.
+ *
+ * 2. **Early Detection**: Catching duplication in local pre-commit is faster and
+ *    cheaper than discovering it in CI after push (shift-left testing).
+ *
+ * 3. **Test Quality**: Duplicated test code is just as problematic as duplicated
+ *    production code. It makes tests harder to maintain, update, and understand.
+ *
+ * 4. **Baseline Approach**: We baseline existing duplication (technical debt) but
+ *    prevent NEW duplication from being introduced going forward.
+ */
 const JSCPD_ARGS = [
   '.',
   '--min-lines', '5',
   '--min-tokens', '50',
   '--reporters', 'json',
   '--format', 'typescript,javascript',
-  '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
+  '--ignore', '**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
   '--output', JSCPD_OUTPUT_DIR
 ];
 

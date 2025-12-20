@@ -8,11 +8,12 @@
 import { rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecSync, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
+import { safeExecSync, normalizedTmpdir, mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 /**
  * Execute CLI command and return output
+ * Uses absolute CLI path for Windows compatibility
  */
 function execCLI(cliPath: string, args: string[], options?: { cwd?: string; encoding?: BufferEncoding }): string {
   try {
@@ -27,13 +28,18 @@ function execCLI(cliPath: string, args: string[], options?: { cwd?: string; enco
 }
 
 describe.skipIf(process.platform === 'win32')('create-extractor command', () => {
+  // Skipped on Windows: Node.js module loader errors when executing CLI with node command
+  // See main branch - this is a pre-existing issue that needs investigation
   let testDir: string;
-  const cliPath = join(__dirname, '../../dist/bin.js');
+  // normalizePath resolves to absolute and handles Windows 8.3 short names
+  const cliPath = normalizePath(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory for test (normalized to handle Windows short names)
-    testDir = join(normalizedTmpdir(), `vibe-validate-create-extractor-${Date.now()}`);
-    mkdirSyncReal(testDir, { recursive: true });
+    // Create temp directory and use normalized path returned by mkdirSyncReal
+    const tmpBase = normalizedTmpdir();
+    const targetDir = join(tmpBase, `vibe-validate-create-extractor-${Date.now()}`);
+    // mkdirSyncReal returns the normalized path - MUST use this return value on Windows
+    testDir = mkdirSyncReal(targetDir, { recursive: true });
   });
 
   afterEach(() => {

@@ -132,6 +132,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
       tsx:
         specifier: ^4.21.0
         version: 4.21.0

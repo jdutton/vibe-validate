@@ -18,6 +18,7 @@ import type { Command } from 'commander';
 import yaml from 'yaml';
 
 import { type RunResult } from '../schemas/run-result-schema.js';
+import { getCommandName } from '../utils/command-name.js';
 import { logDebug, logWarning } from '../utils/logger.js';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 
@@ -1040,8 +1041,9 @@ extraction:
  * Show help for the run command
  */
 function showRunHelp(): void {
+  const cmd = getCommandName();
   console.log(`
-Usage: vibe-validate run [options] <command...>
+Usage: ${cmd} run [options] <command...>
 
 Run a command and extract LLM-friendly errors (with smart caching)
 
@@ -1058,14 +1060,14 @@ Options:
   -h, --help          Display this help message
 
 Examples:
-  vv run pytest tests/ --cov=src          # Python
-  vv run cargo test --all-features         # Rust
-  vv run go test ./...                     # Go
-  vv run npm test                          # Node.js
-  vv run --cwd packages/cli npm test      # Run in subdirectory
-  vv run --verbose npm test                # With output display
+  ${cmd} run pytest tests/ --cov=src          # Python
+  ${cmd} run cargo test --all-features         # Rust
+  ${cmd} run go test ./...                     # Go
+  ${cmd} run npm test                          # Node.js
+  ${cmd} run --cwd packages/cli npm test      # Run in subdirectory
+  ${cmd} run --verbose npm test                # With output display
 
-For detailed documentation, use: vibe-validate run --help --verbose
+For detailed documentation, use: ${cmd} run --help --verbose
   `.trim());
 }
 

@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {  rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { executeGitCommand } from '@vibe-validate/git';
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { initializeGitRepo } from './helpers/integration-setup-helpers.js';
@@ -14,9 +15,9 @@ describe('bin.ts - CLI entry point', () => {
 
   beforeEach(() => {
     // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-bin-test-${Date.now()}`);
+    testDir = join(normalizedTmpdir(), `vibe-validate-bin-test-${Date.now()}`);
     if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true });
+      mkdirSyncReal(testDir, { recursive: true });
     }
 
     // Save original cwd
@@ -533,7 +534,7 @@ describe('bin.ts - CLI entry point', () => {
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# watch-pr Command Reference');
-        expect(result.stdout).toContain('> Watch CI checks for a pull/merge request in real-time');
+        expect(result.stdout).toContain('> Monitor PR checks with auto-polling, error extraction, and flaky test detection');
         expect(result.stdout).toContain('## Overview');
         expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
       });
@@ -645,10 +646,9 @@ git:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 
       // Initialize git (required for validation)
-      const { execSync } = await import('node:child_process');
       initializeGitRepo(testDir);
-      execSync('git add .', { cwd: testDir });
-      execSync('git commit -m "Initial commit"', { cwd: testDir });
+      executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
+      executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
 
       // 1. Verify config is valid
       const configResult = await executeCLI(['config', '--validate']);
@@ -683,10 +683,9 @@ git:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 
       // Initialize git
-      const { execSync } = await import('node:child_process');
       initializeGitRepo(testDir);
-      execSync('git add .', { cwd: testDir });
-      execSync('git commit -m "Initial commit"', { cwd: testDir });
+      executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
+      executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
 
       // Run validation (should fail)
       const validateResult = await executeCLI(['validate']);
@@ -722,10 +721,9 @@ git:
       writeFileSync(join(testDir, '.gitignore'), '.vibe-validate-state.yaml\n');
 
       // Initialize git
-      const { execSync } = await import('node:child_process');
       initializeGitRepo(testDir);
-      execSync('git add .', { cwd: testDir });
-      execSync('git commit -m "Initial commit"', { cwd: testDir });
+      executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
+      executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
 
       // 1. First run - should execute validation (minimal output: phase_start)
       const firstRun = await executeCLI(['validate']);
@@ -770,10 +768,9 @@ git:
       writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
 
       // Initialize git
-      const { execSync } = await import('node:child_process');
       initializeGitRepo(testDir);
-      execSync('git add .', { cwd: testDir });
-      execSync('git commit -m "Initial commit"', { cwd: testDir });
+      executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
+      executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
 
       // Run validate with --force
       const forcedRun = await executeCLI(['validate', '--force']);

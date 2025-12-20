@@ -7,10 +7,10 @@
  * logic directly through package.json fallbacks.
  */
 
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
-import os from 'node:os';
+import { writeFileSync,  rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import * as projectId from '../../src/utils/project-id.js';
@@ -22,14 +22,14 @@ const {
 } = projectId;
 
 describe('Project ID Detection', () => {
-  const testDir = join(os.tmpdir(), 'vibe-validate-project-id-test');
+  const testDir = join(normalizedTmpdir(), 'vibe-validate-project-id-test');
 
   beforeEach(() => {
     // Clean up and create fresh test directory
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    mkdirSync(testDir, { recursive: true });
+    mkdirSyncReal(testDir, { recursive: true });
   });
 
   afterEach(() => {
