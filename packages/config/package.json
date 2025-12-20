@@ -37,6 +37,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@vibe-validate/utils": "workspace:*",
     "tsx": "^4.21.0",
     "yaml": "^2.8.2",
     "zod": "^3.25.76",

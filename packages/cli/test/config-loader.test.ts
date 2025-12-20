@@ -1,7 +1,7 @@
-import { writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync, existsSync,  rmSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { loadConfig, configExists, findConfigPath, loadConfigWithErrors, findConfigUp } from '../src/utils/config-loader.js';
@@ -11,9 +11,9 @@ describe('config-loader', () => {
 
   beforeEach(() => {
     // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-cli-test-${Date.now()}`);
+    testDir = join(normalizedTmpdir(), `vibe-validate-cli-test-${Date.now()}`);
     if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true });
+      mkdirSyncReal(testDir, { recursive: true });
     }
 
     // Spy on console.error to reduce noise
@@ -162,7 +162,7 @@ describe('config-loader', () => {
 
       // Create subdirectory
       const subDir = join(testDir, 'packages');
-      mkdirSync(subDir, { recursive: true });
+      mkdirSyncReal(subDir, { recursive: true });
 
       // Search from subdirectory should find config in parent
       const foundDir = findConfigUp(subDir);
@@ -177,7 +177,7 @@ describe('config-loader', () => {
 
       // Create deeply nested directory
       const deepDir = join(testDir, 'packages', 'cli', 'src', 'commands');
-      mkdirSync(deepDir, { recursive: true });
+      mkdirSyncReal(deepDir, { recursive: true });
 
       // Search from deep directory should find config 4 levels up
       const foundDir = findConfigUp(deepDir);
@@ -187,7 +187,7 @@ describe('config-loader', () => {
 
     it('should return null if no config found', () => {
       const subDir = join(testDir, 'no-config-here');
-      mkdirSync(subDir, { recursive: true });
+      mkdirSyncReal(subDir, { recursive: true });
 
       const foundDir = findConfigUp(subDir);
 
@@ -201,7 +201,7 @@ describe('config-loader', () => {
 
       // Create subdirectory with its own config
       const subDir = join(testDir, 'packages');
-      mkdirSync(subDir, { recursive: true });
+      mkdirSyncReal(subDir, { recursive: true });
       const subConfigPath = join(subDir, 'vibe-validate.config.yaml');
       writeFileSync(subConfigPath, 'validation:\n  phases:\n    - name: sub\n');
 
@@ -218,7 +218,7 @@ describe('config-loader', () => {
       writeFileSync(configPath, 'validation:\n  phases: []\n');
 
       const subDir = join(testDir, 'packages', 'core');
-      mkdirSync(subDir, { recursive: true });
+      mkdirSyncReal(subDir, { recursive: true });
 
       const exists = configExists(subDir);
 
@@ -230,7 +230,7 @@ describe('config-loader', () => {
       writeFileSync(configPath, 'validation:\n  phases: []\n');
 
       const subDir = join(testDir, 'packages', 'core');
-      mkdirSync(subDir, { recursive: true });
+      mkdirSyncReal(subDir, { recursive: true });
 
       const foundPath = findConfigPath(subDir);
 
@@ -250,7 +250,7 @@ describe('config-loader', () => {
       writeFileSync(configPath, validConfig);
 
       const subDir = join(testDir, 'packages', 'core');
-      mkdirSync(subDir, { recursive: true });
+      mkdirSyncReal(subDir, { recursive: true });
 
       const config = await loadConfig(subDir);
 

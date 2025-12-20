@@ -4,14 +4,14 @@
  * Provides utilities for setting up test environments with temp directories,
  * git repositories, and cleanup.
  *
- * SECURITY: Uses safeExecFromString from @vibe-validate/utils instead of raw execSync.
+ * SECURITY: Uses executeGitCommand from @vibe-validate/git instead of raw execSync.
  */
 
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {  rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecSync } from '@vibe-validate/utils';
+import { executeGitCommand } from '@vibe-validate/git';
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 
 /**
  * Creates a temporary test directory with a unique name
@@ -26,8 +26,8 @@ import { safeExecSync } from '@vibe-validate/utils';
  * ```
  */
 export function createTempTestDir(prefix: string): string {
-  const dir = join(tmpdir(), `${prefix}-${Date.now()}`);
-  mkdirSync(dir, { recursive: true });
+  const dir = join(normalizedTmpdir(), `${prefix}-${Date.now()}`);
+  mkdirSyncReal(dir, { recursive: true });
   return dir;
 }
 
@@ -55,7 +55,7 @@ export function cleanupTempTestDir(dir: string): void {
  * Sets up a bare git repo with test user credentials. This is needed
  * for many vibe-validate commands that require a git context.
  *
- * SECURITY: Uses safeExecSync to prevent command injection vulnerabilities.
+ * SECURITY: Uses executeGitCommand from @vibe-validate/git to prevent command injection vulnerabilities.
  *
  * @param cwd - Directory to initialize as git repo
  *
@@ -67,9 +67,9 @@ export function cleanupTempTestDir(dir: string): void {
  * ```
  */
 export function initializeGitRepo(cwd: string): void {
-  safeExecSync('git', ['init'], { cwd, stdio: 'ignore' });
-  safeExecSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'ignore' });
-  safeExecSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'ignore' });
+  executeGitCommand(['-C', cwd, 'init'], { suppressStderr: true });
+  executeGitCommand(['-C', cwd, 'config', 'user.email', 'test@example.com'], { suppressStderr: true });
+  executeGitCommand(['-C', cwd, 'config', 'user.name', 'Test User'], { suppressStderr: true });
 }
 
 /**

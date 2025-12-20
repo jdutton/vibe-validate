@@ -8,17 +8,17 @@
  */
 
 import { readdir, rm, stat } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getTempDir, ensureDir as ensureDirCore } from '@vibe-validate/core';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 
 /**
  * Get the root temporary directory for vibe-validate
  * @returns Path to /tmp/vibe-validate (or OS equivalent)
  */
 export function getVibeValidateTempDir(): string {
-  return join(tmpdir(), 'vibe-validate');
+  return join(normalizedTmpdir(), 'vibe-validate');
 }
 
 /**

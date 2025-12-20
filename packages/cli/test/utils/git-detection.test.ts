@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync,  writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -314,8 +315,8 @@ describe('git-detection', () => {
 
     beforeEach(() => {
       // Create test directory structure with .git
-      mkdirSync(join(testRoot, '.git'), { recursive: true });
-      mkdirSync(testSubdir, { recursive: true });
+      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
+      mkdirSyncReal(testSubdir, { recursive: true });
     });
 
     afterEach(() => {
@@ -344,7 +345,7 @@ describe('git-detection', () => {
     it('should find git root from deeply nested subdirectory', () => {
       // Arrange
       const deepSubdir = join(testSubdir, 'src', 'commands', 'subdir');
-      mkdirSync(deepSubdir, { recursive: true });
+      mkdirSyncReal(deepSubdir, { recursive: true });
 
       // Act
       const result = findGitRoot(deepSubdir);
@@ -356,7 +357,7 @@ describe('git-detection', () => {
     it('should return null when not in git repository', () => {
       // Arrange: Use /tmp which is outside any git repo
       const nonGitDir = join('/tmp', 'test-temp-non-git-' + Date.now());
-      mkdirSync(nonGitDir, { recursive: true });
+      mkdirSyncReal(nonGitDir, { recursive: true });
 
       try {
         // Act
@@ -395,8 +396,8 @@ describe('git-detection', () => {
 
     beforeEach(() => {
       // Create test directory structure with .git
-      mkdirSync(join(testRoot, '.git'), { recursive: true });
-      mkdirSync(testSubdir, { recursive: true });
+      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
+      mkdirSyncReal(testSubdir, { recursive: true });
     });
 
     afterEach(() => {
@@ -425,7 +426,7 @@ describe('git-detection', () => {
     it('should return null when not in git repository', () => {
       // Arrange: Use /tmp which is outside any git repo
       const nonGitDir = join('/tmp', 'test-temp-non-git-resolve-' + Date.now());
-      mkdirSync(nonGitDir, { recursive: true });
+      mkdirSyncReal(nonGitDir, { recursive: true });
 
       try {
         // Act
@@ -464,11 +465,11 @@ describe('git-detection', () => {
 
     beforeEach(() => {
       // Create test directory structure with .git
-      mkdirSync(join(testRoot, '.git'), { recursive: true });
-      mkdirSync(testSubdir, { recursive: true });
+      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
+      mkdirSyncReal(testSubdir, { recursive: true });
 
       // Create a test file at git root
-      mkdirSync(join(testRoot, '.github', 'workflows'), { recursive: true });
+      mkdirSyncReal(join(testRoot, '.github', 'workflows'), { recursive: true });
       writeFileSync(join(testRoot, '.github/workflows/validate.yml'), 'test content');
     });
 
@@ -506,7 +507,7 @@ describe('git-detection', () => {
     it('should return false when not in git repository', () => {
       // Arrange: Use /tmp which is outside any git repo
       const nonGitDir = join('/tmp', 'test-temp-non-git-exists-' + Date.now());
-      mkdirSync(nonGitDir, { recursive: true });
+      mkdirSyncReal(nonGitDir, { recursive: true });
 
       try {
         // Act
@@ -536,11 +537,11 @@ describe('git-detection', () => {
 
     beforeEach(() => {
       // Create test directory structure with .git
-      mkdirSync(join(testRoot, '.git'), { recursive: true });
-      mkdirSync(testSubdir, { recursive: true });
+      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
+      mkdirSyncReal(testSubdir, { recursive: true });
 
       // Create a test file at git root
-      mkdirSync(join(testRoot, '.github', 'workflows'), { recursive: true });
+      mkdirSyncReal(join(testRoot, '.github', 'workflows'), { recursive: true });
       writeFileSync(join(testRoot, '.github/workflows/validate.yml'), testContent);
     });
 
@@ -578,7 +579,7 @@ describe('git-detection', () => {
     it('should return null when not in git repository', () => {
       // Arrange: Use /tmp which is outside any git repo
       const nonGitDir = join('/tmp', 'test-temp-non-git-read-' + Date.now());
-      mkdirSync(nonGitDir, { recursive: true });
+      mkdirSyncReal(nonGitDir, { recursive: true });
 
       try {
         // Act

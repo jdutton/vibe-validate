@@ -1,11 +1,11 @@
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {  rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { validateCommand } from '../../src/commands/validate.js';
@@ -81,9 +81,9 @@ describe('validate command', () => {
     vi.clearAllMocks();
 
     // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-validate-test-${Date.now()}`);
+    testDir = join(normalizedTmpdir(), `vibe-validate-validate-test-${Date.now()}`);
     if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true });
+      mkdirSyncReal(testDir, { recursive: true });
     }
 
     // Save original cwd and change to test directory
@@ -114,7 +114,7 @@ describe('validate command', () => {
     // Default lock mocks - lock acquired successfully
     vi.mocked(pidLock.acquireLock).mockResolvedValue({
       acquired: true,
-      lockFile: join(tmpdir(), 'test.lock'),
+      lockFile: join(normalizedTmpdir(), 'test.lock'),
     });
     vi.mocked(pidLock.releaseLock).mockResolvedValue();
     vi.mocked(pidLock.checkLock).mockResolvedValue(null);
@@ -384,7 +384,7 @@ describe('validate command', () => {
           }
         ],
         failedStep: 'Test Step',
-        fullLogFile: join(tmpdir(), 'validation.log'),
+        fullLogFile: join(normalizedTmpdir(), 'validation.log'),
       });
     });
 

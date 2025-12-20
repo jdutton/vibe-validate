@@ -5,10 +5,10 @@
  */
 
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import type { WatchPRResult } from '../../src/schemas/watch-pr-result.schema.js';
@@ -21,7 +21,7 @@ describe('CacheManager Integration Tests', () => {
 
 	beforeEach(() => {
 		// Create temp directory for each test
-		tempDir = mkdtempSync(join(tmpdir(), 'vv-cache-test-'));
+		tempDir = mkdtempSync(join(normalizedTmpdir(), 'vv-cache-test-'));
 		cacheManager = new CacheManager('test-repo', testPRNumber, tempDir);
 	});
 

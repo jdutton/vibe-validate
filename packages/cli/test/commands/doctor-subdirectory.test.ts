@@ -47,27 +47,9 @@ vi.mock('@vibe-validate/utils', async () => {
   const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
   return {
     ...actual,
-    isToolAvailable: vi.fn((toolName: string) => {
-      if (toolName === 'node') return true;
-      if (toolName === 'git') return true;
-      if (toolName === 'pnpm') return true;
-      if (toolName === 'npm') return true;
-      return false;
-    }),
-    getToolVersion: vi.fn((toolName: string) => {
-      if (toolName === 'node') return 'v22.0.0';
-      if (toolName === 'git') return 'git version 2.43.0';
-      if (toolName === 'pnpm') return '9.0.0';
-      if (toolName === 'npm') return '10.0.0';
-      return null;
-    }),
-    safeExecSync: vi.fn((cmd: string, args: string[]) => {
-      if (cmd === 'node' && args[0] === '--version') return 'v22.0.0';
-      if (cmd === 'git' && args[0] === '--version') return 'git version 2.43.0';
-      if (cmd === 'pnpm' && args[0] === '--version') return '9.0.0';
-      if (cmd === 'npm' && args[0] === '--version') return '10.0.0';
-      return '';
-    }),
+    isToolAvailable: vi.fn(),
+    getToolVersion: vi.fn(),
+    safeExecSync: vi.fn(),
   };
 });
 

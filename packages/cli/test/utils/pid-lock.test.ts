@@ -4,10 +4,11 @@
  * Ensures cross-platform single-instance validation execution
  */
 
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import {  rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
 
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import {
@@ -36,7 +37,7 @@ describe('PID Lock Utilities', () => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    mkdirSync(testDir, { recursive: true });
+    mkdirSyncReal(testDir, { recursive: true });
   });
 
   afterEach(() => {

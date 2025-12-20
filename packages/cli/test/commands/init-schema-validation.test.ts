@@ -7,10 +7,9 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, rm, readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import { safeExecFromString } from '@vibe-validate/utils';
+import { safeExecFromString, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
@@ -21,7 +20,7 @@ describe('init command - schema validation', () => {
   beforeEach(async () => {
     // Create unique temp directory for each test
     // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
-    testDir = join(tmpdir(), `vibe-validate-schema-test-${Date.now()}-${Math.random()}`);
+    testDir = join(normalizedTmpdir(), `vibe-validate-schema-test-${Date.now()}-${Math.random()}`);
     await mkdir(testDir, { recursive: true });
     cliPath = join(__dirname, '../../dist/bin.js');
   });

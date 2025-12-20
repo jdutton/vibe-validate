@@ -666,6 +666,27 @@ const result = executeCommand(`node "${cliPath}" config --validate`, { cwd: test
 4. **Test on Windows CI** to catch regressions early
 5. **Never add platform-specific test exclusions** without investigating the root cause first
 
+#### ESLint Enforcement (Automated Prevention)
+
+**Custom rules** (`tools/eslint-local-rules/`) enforce Windows-safe utilities, security requirements, and architectural patterns:
+
+**Windows Compatibility (Auto-fix Available):**
+- `local/no-os-tmpdir` → Use `normalizedTmpdir()` instead of `os.tmpdir()`
+- `local/no-fs-mkdirSync` → Use `mkdirSyncReal()` instead of `fs.mkdirSync()`
+
+**Security and Architecture (Manual Fix Required):**
+- `local/no-child-process-execSync` → Use `safeExecSync()` from `@vibe-validate/utils` instead of `execSync()`
+  - Enforces shell-free command execution (prevents command injection)
+  - Exempts safe-exec.ts implementation file
+- `local/no-git-commands-direct` → Use functions from `@vibe-validate/git` instead of direct `git` commands
+  - Enforces centralized git command execution (easier mocking, consistent error handling)
+  - Exempts @vibe-validate/git package (where centralization happens)
+- `local/no-gh-commands-direct` → Use functions from `@vibe-validate/git` instead of direct `gh` commands
+  - Enforces centralized GitHub CLI execution
+  - Exempts @vibe-validate/git package
+
+Windows rules have auto-fix via `npx eslint --fix`. Security rules require manual refactoring.
+
 #### Example Test Pattern
 
 ```typescript

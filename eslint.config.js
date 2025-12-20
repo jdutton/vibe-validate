@@ -6,6 +6,7 @@ import unicorn from 'eslint-plugin-unicorn';
 import security from 'eslint-plugin-security';
 import pluginNode from 'eslint-plugin-n';
 import importPlugin from 'eslint-plugin-import';
+import localRules from './tools/eslint-local-rules/index.js';
 
 // Shared Unicorn rules for modern JavaScript standards (applies to both test and production code)
 const unicornRules = {
@@ -44,6 +45,28 @@ const importRules = {
   'import/newline-after-import': 'error',
 };
 
+// Shared plugin configuration (applies to both test and production code)
+const sharedPlugins = {
+  '@typescript-eslint': tseslint,
+  unicorn,
+  security,
+  n: pluginNode,
+  import: importPlugin,
+  'local': localRules,
+};
+
+// Shared custom rules (Windows compatibility, security, and architecture)
+const customRules = {
+  // Windows compatibility rules (prevent 8.3 short path issues)
+  'local/no-os-tmpdir': 'error',
+  'local/no-fs-mkdirSync': 'error',
+
+  // Security and architecture rules
+  'local/no-child-process-execSync': 'error',
+  'local/no-git-commands-direct': 'error',
+  'local/no-gh-commands-direct': 'error',
+};
+
 export default [
   {
     // Global ignores - must be first in array
@@ -74,14 +97,10 @@ export default [
         Buffer: 'readonly',
       },
     },
-    plugins: {
-      '@typescript-eslint': tseslint,
-      unicorn,
-      security,
-      n: pluginNode,
-      import: importPlugin,
-    },
+    plugins: sharedPlugins,
     rules: {
+      ...customRules,
+
       // Disable type-aware rules for test files (require TypeScript project)
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/await-thenable': 'off',
@@ -148,14 +167,10 @@ export default [
         Buffer: 'readonly',
       },
     },
-    plugins: {
-      '@typescript-eslint': tseslint,
-      unicorn,
-      security,
-      n: pluginNode,
-      import: importPlugin,
-    },
+    plugins: sharedPlugins,
     rules: {
+      ...customRules,
+
       // TypeScript-specific rules
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
@@ -254,6 +269,8 @@ export default [
       'sonarjs/no-os-command-from-path': 'off', // Git commands require PATH access
       'security/detect-child-process': 'off', // Git package uses secure spawnSync patterns (validated in GH-57)
       'security/detect-non-literal-fs-filename': 'off', // Git notes use computed paths (validated for traversal)
+      'local/no-git-commands-direct': 'off', // Git package is where git commands are centralized
+      'local/no-gh-commands-direct': 'off', // Git package is where gh commands are centralized
     },
   },
   {
@@ -293,8 +310,18 @@ export default [
       import: importPlugin,
       security,
       n: pluginNode,
+      'local': localRules,
     },
     rules: {
+      // Windows compatibility rules (prevent 8.3 short path issues)
+      'local/no-os-tmpdir': 'error',
+      'local/no-fs-mkdirSync': 'error',
+
+      // Security and architecture rules
+      'local/no-child-process-execSync': 'error',
+      'local/no-git-commands-direct': 'error',
+      'local/no-gh-commands-direct': 'error',
+
       // TypeScript rules
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',

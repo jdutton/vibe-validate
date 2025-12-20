@@ -10,6 +10,8 @@
 import { mkdirSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
+
+
 /**
  * Get normalized temp directory path
  *
@@ -36,6 +38,7 @@ import { tmpdir } from 'node:os';
  * ```
  */
 export function normalizedTmpdir(): string {
+  // eslint-disable-next-line local/no-os-tmpdir -- This IS the normalizedTmpdir() implementation
   const temp = tmpdir();
   try {
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: temp is from tmpdir() (OS-provided system temp directory), not user input
@@ -82,7 +85,7 @@ export function mkdirSyncReal(
   path: string,
   options?: Parameters<typeof mkdirSync>[1]
 ): string {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter from test setup (tmpdir + test name), not user input
+  // eslint-disable-next-line security/detect-non-literal-fs-filename, local/no-fs-mkdirSync -- This IS the mkdirSyncReal() implementation
   mkdirSync(path, options);
 
   try {

@@ -1,5 +1,4 @@
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
@@ -7,6 +6,7 @@ import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
 import * as utils from '@vibe-validate/utils';
+import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { preCommitCommand } from '../../src/commands/pre-commit.js';
@@ -76,11 +76,9 @@ describe('pre-commit command', () => {
     // Clear all mock calls from previous tests (prevents test pollution across test files)
     vi.clearAllMocks();
 
-    // Create temp directory for test files
-    testDir = join(tmpdir(), `vibe-validate-pre-commit-test-${Date.now()}`);
-    if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true });
-    }
+    // Create temp directory for test files (Windows-safe: no 8.3 short names)
+    const targetDir = join(normalizedTmpdir(), `vibe-validate-pre-commit-test-${Date.now()}`);
+    testDir = mkdirSyncReal(targetDir, { recursive: true });
 
     // Save original cwd and change to test directory
     originalCwd = process.cwd();
