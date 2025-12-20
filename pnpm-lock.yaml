@@ -133,8 +133,8 @@ importers:
   packages/config:
     dependencies:
       '@vibe-validate/utils':
-        specifier: ^0.17.6
-        version: 0.17.6
+        specifier: workspace:*
+        version: link:../utils
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -1026,10 +1026,6 @@ packages:
   '@typescript-eslint/visitor-keys@8.49.0':
     resolution: {integrity: sha512-LlKaciDe3GmZFphXIc79THF/YYBugZ7FS1pO581E/edlVVNbZKDy93evqmrfQ9/Y4uN0vVhX4iuchq26mK/iiA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@vibe-validate/utils@0.17.6':
-    resolution: {integrity: sha512-7bPTUcH/0M7C7WajQlXsIkoOygcXN5bMHshrVEe1uo5v4uNtWXcycFPgNpavKqnBUEcYZ6hlSFb+Yjm6IqS8Zg==}
-    engines: {node: '>=20.0.0'}
 
   '@vitest/coverage-v8@3.2.4':
     resolution: {integrity: sha512-EyF9SXU6kS5Ku/U82E259WSnvg6c8KTjppUncuNdm5QHpe17mwREHnjDzozC8x9MZ0xfBUFSaLkRv4TMA75ALQ==}
@@ -3620,10 +3616,6 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.49.0
       eslint-visitor-keys: 4.2.1
-
-  '@vibe-validate/utils@0.17.6':
-    dependencies:
-      which: 5.0.0
 
   '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/node@20.19.26)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
