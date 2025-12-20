@@ -5515,17 +5515,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/create-extractor.test.ts",
-        "start": 40,
-        "end": 50,
+        "start": 42,
+        "end": 52,
         "startLoc": {
-          "line": 40,
+          "line": 42,
           "column": 5,
-          "position": 347
+          "position": 364
         },
         "endLoc": {
-          "line": 50,
+          "line": 52,
           "column": 21,
-          "position": 433
+          "position": 450
         }
       },
       "secondFile": {
@@ -6339,7 +6339,7 @@
     {
       "format": "typescript",
       "lines": 11,
-      "fragment": ", ...args], { encoding: 'utf-8', ...options }) as string;\n  } catch (err: any) {\n    // For successful non-zero exits, return output\n    if (err.stdout || err.stderr) {\n      return (err.stdout || '') + (err.stderr || '');\n    }\n    throw err;\n  }\n}\n\ndescribe('vibe-validate meta-package delegation'",
+      "fragment": ", ...args], { encoding: 'utf-8', ...options }) as string;\n  } catch (err: any) {\n    // For successful non-zero exits, return output\n    if (err.stdout || err.stderr) {\n      return (err.stdout || '') + (err.stderr || '');\n    }\n    throw err;\n  }\n}\n\ndescribe",
       "tokens": 0,
       "firstFile": {
         "name": "packages/vibe-validate/test/delegation.test.ts",
@@ -6352,8 +6352,8 @@
         },
         "endLoc": {
           "line": 36,
-          "column": 40,
-          "position": 284
+          "column": 9,
+          "position": 282
         }
       },
       "secondFile": {
@@ -6367,8 +6367,8 @@
         },
         "endLoc": {
           "line": 30,
-          "column": 27,
-          "position": 252
+          "column": 9,
+          "position": 250
         }
       }
     },
