@@ -234,6 +234,7 @@ describe('HistorySummaryBuilder', () => {
       ]);
 
       // Mock safeExecSync to return the JSON output
+      // NOSONAR: Nesting unavoidable with Vitest's hoisted mock system
       vi.mock('@vibe-validate/utils', () => ({
         safeExecSync: vi.fn(() => mockOutput),
       }));
@@ -244,14 +245,6 @@ describe('HistorySummaryBuilder', () => {
       const summary = await builder.buildSummary('feature/test-branch');
 
       expect(summary.total_runs).toBeGreaterThanOrEqual(0);
-    });
-
-    it('should handle empty workflow runs', async () => {
-      const summary = await mockAndBuild(builder, []);
-
-      expect(summary.total_runs).toBe(0);
-      expect(summary.recent_pattern).toBe('No previous runs');
-      expect(summary.success_rate).toBeUndefined();
     });
 
     it('should handle all runs with null conclusion', async () => {

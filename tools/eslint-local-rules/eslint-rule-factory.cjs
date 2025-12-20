@@ -26,6 +26,28 @@
  * });
  */
 
+/**
+ * Helper function to remove unsafe import specifiers
+ * Extracted to reduce nesting depth for code quality
+ */
+function removeUnsafeImportSpecifiers(fixer, sourceCode, unsafeImportNode, unsafeSpecs) {
+  const fixes = [];
+  unsafeSpecs.forEach((spec) => {
+    const comma = sourceCode.getTokenAfter(spec);
+    if (comma && comma.value === ',') {
+      fixes.push(fixer.removeRange([spec.range[0], comma.range[1]]));
+    } else {
+      const commaBefore = sourceCode.getTokenBefore(spec);
+      if (commaBefore && commaBefore.value === ',') {
+        fixes.push(fixer.removeRange([commaBefore.range[0], spec.range[1]]));
+      } else {
+        fixes.push(fixer.remove(spec));
+      }
+    }
+  });
+  return fixes;
+}
+
 module.exports = function createNoUnsafeRule(config) {
   const {
     unsafeFn,
@@ -157,19 +179,7 @@ module.exports = function createNoUnsafeRule(config) {
                   fixes.push(fixer.remove(unsafeImportNode));
                 } else if (unsafeSpecs.length > 0) {
                   // Remove just the unsafe specifier
-                  unsafeSpecs.forEach((spec) => {
-                    const comma = sourceCode.getTokenAfter(spec);
-                    if (comma && comma.value === ',') {
-                      fixes.push(fixer.removeRange([spec.range[0], comma.range[1]]));
-                    } else {
-                      const commaBefore = sourceCode.getTokenBefore(spec);
-                      if (commaBefore && commaBefore.value === ',') {
-                        fixes.push(fixer.removeRange([commaBefore.range[0], spec.range[1]]));
-                      } else {
-                        fixes.push(fixer.remove(spec));
-                      }
-                    }
-                  });
+                  fixes.push(...removeUnsafeImportSpecifiers(fixer, sourceCode, unsafeImportNode, unsafeSpecs));
                 }
               }
 

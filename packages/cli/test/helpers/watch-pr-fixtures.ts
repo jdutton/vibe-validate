@@ -79,9 +79,9 @@ export function createTestWatchPRResult(
 	return {
 		...base,
 		...overrides,
-		pr: { ...base.pr, ...(overrides.pr || {}) },
-		checks: { ...base.checks, ...(overrides.checks || {}) },
-		changes: { ...base.changes, ...(overrides.changes || {}) },
+		pr: overrides.pr ? { ...base.pr, ...overrides.pr } : base.pr,
+		checks: overrides.checks ? { ...base.checks, ...overrides.checks } : base.checks,
+		changes: overrides.changes ? { ...base.changes, ...overrides.changes } : base.changes,
 	};
 }
 
@@ -141,7 +141,11 @@ extraction:
   totalErrors: ${extraction.totalErrors || 1}
   errors:
 ${(extraction.errors || [{ message: 'Test error' }])
-	.map((e) => `    - ${e.file ? `file: ${e.file}\n      ` : ''}${e.line ? `line: ${e.line}\n      ` : ''}message: ${e.message}`)
+	.map((e) => {
+		const filePart = e.file ? `file: ${e.file}\n      ` : '';
+		const linePart = e.line ? `line: ${e.line}\n      ` : '';
+		return `    - ${filePart}${linePart}message: ${e.message}`;
+	})
 	.join('\n')}
   ${extraction.guidance ? `guidance: ${extraction.guidance}` : ''}
 ---
