@@ -53,7 +53,6 @@ module.exports = {
       return {};
     }
 
-    let hasPathImport = false;
     let pathImportNode = null;
     let hasNormalizePathImport = false;
     let normalizePathImportNode = null;
@@ -63,11 +62,6 @@ module.exports = {
         // Track path module imports
         if (node.source.value === 'node:path' || node.source.value === 'path') {
           pathImportNode = node;
-          node.specifiers.forEach((spec) => {
-            if (spec.type === 'ImportDefaultSpecifier') {
-              hasPathImport = true;
-            }
-          });
         }
 
         // Track normalizePath imports

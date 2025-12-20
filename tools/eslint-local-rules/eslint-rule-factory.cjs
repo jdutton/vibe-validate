@@ -27,6 +27,14 @@
  */
 
 /**
+ * Helper function to filter unsafe import specifiers
+ * Extracted to reduce nesting depth for code quality
+ */
+function filterUnsafeSpecifiers(importNode, unsafeFn) {
+  return importNode.specifiers.filter((s) => s.imported && s.imported.name === unsafeFn);
+}
+
+/**
  * Helper function to remove unsafe import specifiers
  * Extracted to reduce nesting depth for code quality
  */
@@ -171,9 +179,7 @@ module.exports = function createNoUnsafeRule(config) {
 
               // Remove unsafe import if it's the only specifier
               if (hasUnsafeImport && unsafeImportNode) {
-                const unsafeSpecs = unsafeImportNode.specifiers.filter(
-                  (s) => s.imported && s.imported.name === unsafeFn
-                );
+                const unsafeSpecs = filterUnsafeSpecifiers(unsafeImportNode, unsafeFn);
                 if (unsafeImportNode.specifiers.length === 1 && unsafeSpecs.length === 1) {
                   // Remove entire import
                   fixes.push(fixer.remove(unsafeImportNode));

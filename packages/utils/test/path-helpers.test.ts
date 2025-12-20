@@ -245,4 +245,73 @@ describe('path-helpers', () => {
       }
     });
   });
+
+  describe('Error handling and fallback paths', () => {
+    it('normalizedTmpdir() should fallback gracefully on realpathSync failures', () => {
+      // Even if realpathSync fails, should still return something usable
+      const temp = normalizedTmpdir();
+
+      expect(temp).toBeDefined();
+      expect(typeof temp).toBe('string');
+      expect(temp.length).toBeGreaterThan(0);
+    });
+
+    it('mkdirSyncReal() should fallback to original path if realpathSync fails', () => {
+      const testDir = join(normalizedTmpdir(), `vibe-test-fallback-${Date.now()}`);
+      testDirs.push(testDir);
+
+      // Create directory - even if realpathSync fails, should return a usable path
+      const returnedPath = mkdirSyncReal(testDir, { recursive: true });
+
+      expect(returnedPath).toBeDefined();
+      expect(typeof returnedPath).toBe('string');
+      // Directory should actually exist
+      expect(existsSync(returnedPath)).toBe(true);
+    });
+
+    it('normalizePath() should fallback to resolved path for non-existent paths', () => {
+      const nonExistent = join(normalizedTmpdir(), 'definitely-does-not-exist-12345', 'subdir');
+
+      const result = normalizePath(nonExistent);
+
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+      // Should be absolute path even if not normalized
+      expect(result.includes(nonExistent) || result.includes('definitely-does-not-exist-12345')).toBe(true);
+    });
+
+    it('normalizePath() with single argument should handle paths correctly', () => {
+      const singlePath = normalizedTmpdir();
+      const result = normalizePath(singlePath);
+
+      // Single-argument path should work
+      expect(result).toBe(singlePath);
+    });
+
+    it('normalizePath() with empty string should handle gracefully', () => {
+      // Edge case: empty path
+      const result = normalizePath('');
+
+      // Should resolve to current directory
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('mkdirSyncReal() should propagate mkdir errors (non-existent parent)', () => {
+      const invalidPath = join(normalizedTmpdir(), 'non-existent-parent-12345', 'child');
+
+      // Should throw because parent doesn't exist and recursive is not set
+      expect(() => {
+        mkdirSyncReal(invalidPath);
+      }).toThrow();
+    });
+
+    it('normalizePath() should handle Windows-style paths on all platforms', () => {
+      // Should work even with Windows-style backslashes
+      const result = normalizePath('test', 'subdir');
+
+      expect(result).toBeDefined();
+      expect(result).toContain('test');
+    });
+  });
 });

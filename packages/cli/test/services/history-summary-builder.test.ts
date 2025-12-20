@@ -228,23 +228,16 @@ describe('HistorySummaryBuilder', () => {
 
   describe('integration with gh CLI', () => {
     it('should parse gh CLI JSON output correctly', async () => {
-      const mockOutput = JSON.stringify([
-        { conclusion: 'success', createdAt: '2025-01-01T10:00:00Z' },
-        { conclusion: 'failure', createdAt: '2025-01-01T09:00:00Z' },
-      ]);
+      // Use the same mockAndBuild pattern as other tests
+      const runs = [
+        { conclusion: 'success', created_at: '2025-01-01T10:00:00Z' },
+        { conclusion: 'failure', created_at: '2025-01-01T09:00:00Z' },
+      ];
 
-      // Mock safeExecSync to return the JSON output
-      // NOSONAR: Nesting unavoidable with Vitest's hoisted mock system
-      vi.mock('@vibe-validate/utils', () => ({
-        safeExecSync: vi.fn(() => mockOutput),
-      }));
+      const summary = await mockAndBuild(builder, runs);
 
-      const { safeExecSync } = await import('@vibe-validate/utils');
-      vi.mocked(safeExecSync).mockReturnValue(mockOutput);
-
-      const summary = await builder.buildSummary('feature/test-branch');
-
-      expect(summary.total_runs).toBeGreaterThanOrEqual(0);
+      expect(summary.total_runs).toBe(2);
+      expect(summary.success_rate).toBe('50%'); // 1 success out of 2
     });
 
     it('should handle all runs with null conclusion', async () => {
