@@ -1,5 +1,7 @@
 import { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -208,7 +210,10 @@ describe('process-utils', () => {
       const gitRoot = getGitRoot();
       expect(gitRoot).toBeTruthy();
       if (gitRoot) {
-        expect(gitRoot).toMatch(/vibe-validate$/);
+        // Verify we're in the vibe-validate project (not just any directory)
+        const pkgPath = join(gitRoot, 'package.json');
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+        expect(pkg.name).toBe('vibe-validate');
       }
     });
 
