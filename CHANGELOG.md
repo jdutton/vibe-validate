@@ -27,6 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Fixed external check URLs** - No more "unknown" job IDs
   - **Rich PR metadata** - Branch, mergeable state, labels, linked issues
   - **Newspaper ordering** - Most important info first (failed checks, then pending, then passed)
+  - **Auto-polling** - Monitors PR checks until completion with `--timeout` (default: 30min), `--poll-interval` (default: 10s), and `--fail-fast` options
+
+### Improvements
+
+- **Cross-platform compatibility enhancements**
+  - New `@vibe-validate/utils` package with Windows-safe path utilities (`normalizedTmpdir()`, `normalizePath()`)
+  - Custom ESLint rules enforce platform-safe patterns and prevent regressions
+  - All tests now pass on Windows CI
 
 ### Documentation
 
