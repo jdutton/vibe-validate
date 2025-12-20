@@ -18,4 +18,5 @@ module.exports = factory({
   safeModule: '@vibe-validate/utils',
   message: 'Use normalizedTmpdir() from @vibe-validate/utils instead of os.tmpdir() for Windows compatibility (prevents 8.3 short name issues like RUNNER~1)',
   exemptFile: 'path-helpers.ts', // Implementation file
+  checkMemberExpression: true, // Catch os.tmpdir() pattern
 });

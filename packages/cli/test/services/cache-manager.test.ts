@@ -12,10 +12,10 @@
  */
 
 import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
 import * as path from 'node:path';
 
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WatchPRResult } from '../../src/schemas/watch-pr-result.schema.js';
@@ -29,7 +29,7 @@ describe('CacheManager', () => {
 
   beforeEach(async () => {
     // Create temp directory for tests
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cache-manager-test-'));
+    tmpDir = await fs.mkdtemp(path.join(normalizedTmpdir(), 'cache-manager-test-'));
     cacheManager = new CacheManager(repoName, prNumber, tmpDir);
   });
 
@@ -90,7 +90,7 @@ describe('CacheManager', () => {
 
     it('should use OS temp directory by default', () => {
       const defaultCacheManager = new CacheManager(repoName, prNumber);
-      const expectedBase = path.join(os.tmpdir(), 'vibe-validate');
+      const expectedBase = path.join(normalizedTmpdir(), 'vibe-validate');
       expect(defaultCacheManager['cacheDir']).toContain(expectedBase);
     });
   });

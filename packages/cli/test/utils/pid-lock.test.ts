@@ -19,6 +19,8 @@ import {
 } from '../../src/utils/pid-lock.js';
 
 // Mock os.tmpdir before importing pid-lock
+// Note: Must use os.tmpdir() here (not normalizedTmpdir) to avoid circular dependency with mock
+// eslint-disable-next-line local/no-os-tmpdir -- Required for mock setup
 const testDir = join(os.tmpdir(), 'vibe-validate-test');
 vi.mock('os', async () => {
   const actual = await vi.importActual<typeof os>('os');
