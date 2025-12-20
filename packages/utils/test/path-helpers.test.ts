@@ -143,6 +143,61 @@ describe('path-helpers', () => {
     });
   });
 
+  describe('normalizePath()', () => {
+    it('should normalize existing path (single argument)', () => {
+      const temp = normalizedTmpdir();
+      const normalized = normalizePath(temp);
+
+      expect(normalized).toBe(temp);
+      expect(normalized).not.toContain('~');
+    });
+
+    it('should accept multiple path segments like path.resolve()', () => {
+      const temp = normalizedTmpdir();
+      const testSubdir = 'test-subdir';
+
+      // Multiple arguments should work like path.resolve()
+      const result = normalizePath(temp, testSubdir);
+
+      expect(result).toContain(temp);
+      expect(result).toContain(testSubdir);
+      expect(result).not.toContain('~');
+    });
+
+    it('should resolve relative paths to absolute', () => {
+      // Relative path should be resolved to absolute
+      const result = normalizePath('.', 'test.txt');
+
+      expect(result).toContain('test.txt');
+      // Should be absolute path
+      expect(result.startsWith('/')).toBe(process.platform !== 'win32');
+      if (process.platform === 'win32') {
+        // Windows absolute paths start with drive letter
+        expect(/^[A-Z]:/i.test(result)).toBe(true);
+      }
+    });
+
+    it('should resolve __dirname-relative paths (common test pattern)', () => {
+      // Simulate the common test pattern: normalizePath(__dirname, '../../dist/bin.js')
+      const result = normalizePath(__dirname, '..', 'path-helpers.js');
+
+      expect(result).toContain('path-helpers.js');
+      expect(result).not.toContain('~');
+      // Should be absolute
+      expect(result.startsWith('/')).toBe(process.platform !== 'win32');
+    });
+
+    it('should handle non-existent paths gracefully (fallback to resolved)', () => {
+      // Non-existent path should still resolve (but not normalize via realpathSync)
+      const result = normalizePath(__dirname, 'non-existent', 'file.txt');
+
+      expect(result).toContain('non-existent');
+      expect(result).toContain('file.txt');
+      // Should still be absolute even if not normalized
+      expect(result.startsWith('/')).toBe(process.platform !== 'win32');
+    });
+  });
+
   describe('Windows 8.3 short name detection (critical for CI)', () => {
     it('should detect if normalizedTmpdir() is failing silently on Windows', () => {
       const temp = normalizedTmpdir();

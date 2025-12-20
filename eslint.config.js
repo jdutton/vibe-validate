@@ -61,6 +61,7 @@ const customRules = {
   'local/no-os-tmpdir': 'error',
   'local/no-fs-mkdirSync': 'error',
   'local/no-fs-realpathSync': 'error',
+  'local/no-path-resolve-dirname': 'error', // Test files only
 
   // Security and architecture rules
   'local/no-child-process-execSync': 'error',

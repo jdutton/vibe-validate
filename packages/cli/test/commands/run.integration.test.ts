@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { getNotesRefs } from '@vibe-validate/git';
-import { safeExecSync, safeExecResult } from '@vibe-validate/utils';
+import { normalizePath, safeExecSync, safeExecResult } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 import yaml from 'yaml';
 
@@ -20,7 +20,7 @@ import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-h
 
 // Get the workspace root by going up from this test file location
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
+const WORKSPACE_ROOT = normalizePath(__dirname, '../../../..');
 const CLI_BIN = path.join(WORKSPACE_ROOT, 'packages/cli/dist/bin.js');
 
 /**

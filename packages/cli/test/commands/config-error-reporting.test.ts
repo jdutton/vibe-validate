@@ -5,8 +5,6 @@
  * when given invalid configuration files.
  */
 
-import { resolve } from 'node:path';
-
 import { normalizePath } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -21,8 +19,8 @@ describe.skipIf(process.platform === 'win32')('config command error reporting (r
   // Skipped on Windows: Node.js module loader errors when executing CLI with node command
   // See main branch - this is a pre-existing issue that needs investigation
   let testDir: string;
-  // Use resolve() to get absolute path, then normalize to avoid Windows 8.3 short names
-  const cliPath = normalizePath(resolve(__dirname, '../../dist/bin.js'));
+  // normalizePath resolves to absolute and handles Windows 8.3 short names
+  const cliPath = normalizePath(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
     testDir = createTempTestDir('vibe-validate-config-errors');

@@ -13,8 +13,6 @@
  * @packageDocumentation
  */
 
-import path from 'node:path';
-
 import * as gitPackage from '@vibe-validate/git';
 import {
   fetchPRDetails,
@@ -23,7 +21,7 @@ import {
 } from '@vibe-validate/git';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
-import { executeCommandWithSeparateStreams } from '../helpers/test-command-runner.js';
+import { executeVvCommand, executeVibeValidateCommand } from '../helpers/cli-execution-helpers.js';
 
 // Mock gh-commands and git-commands from @vibe-validate/git
 vi.mock('@vibe-validate/git', async () => {
@@ -53,8 +51,7 @@ describe('watch-pr command', () => {
     // Skipping for now - command name detection is tested elsewhere
     it.skip('should show "vv" in error messages when invoked with vv and auto-detection fails', async () => {
       // This test will fail to auto-detect PR (no PR for current branch or detached HEAD)
-      const vvPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(vvPath, ['watch-pr']);
+      const result = await executeVv(['watch-pr']);
 
       // Should show "vv" in usage/example, not "vibe-validate"
       if (result.stderr.includes('Could not auto-detect PR')) {
@@ -66,8 +63,7 @@ describe('watch-pr command', () => {
 
     it.skip('should show "vibe-validate" in error messages when invoked with vibe-validate and auto-detection fails', async () => {
       // This test will fail to auto-detect PR (no PR for current branch or detached HEAD)
-      const validatePath = path.resolve(__dirname, '../../dist/bin/vibe-validate');
-      const result = await executeCommand(validatePath, ['watch-pr']);
+      const result = await executeVibeValidate(['watch-pr']);
 
       // Should show "vibe-validate" in usage/example
       if (result.stderr.includes('Could not auto-detect PR')) {
@@ -87,8 +83,7 @@ describe('watch-pr command', () => {
       vi.spyOn(gitPackage, 'getCurrentPR').mockReturnValue(123);
 
       // Execute command via spawn to test actual CLI behavior
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr']);
+      const result = await executeVv(['watch-pr']);
 
       // Should attempt to fetch PR 123 (will fail without full mocking, but that's ok)
       // We're testing that auto-detection was attempted
@@ -138,8 +133,7 @@ describe('watch-pr command', () => {
 
       // This should NOT fail with "Could not auto-detect PR"
       // It should successfully detect PR #92 by matching branch names
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr']);
+      const result = await executeVv(['watch-pr']);
 
       // Should NOT show auto-detection error
       expect(result.stderr).not.toContain('Could not auto-detect PR from current branch');
@@ -281,8 +275,7 @@ describe('watch-pr command', () => {
         throw new Error('not a git repository');
       });
 
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr']);
+      const result = await executeVv(['watch-pr']);
 
       // Should output plain text error, NOT YAML
       expect(result.stderr).toContain('Error:');
@@ -292,8 +285,7 @@ describe('watch-pr command', () => {
     });
 
     it('should output plain text for invalid PR number', async () => {
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', 'invalid']);
+      const result = await executeVv(['watch-pr', 'invalid']);
 
       // Should output plain text error, NOT YAML
       expect(result.stderr).toContain('Error:');
@@ -303,8 +295,7 @@ describe('watch-pr command', () => {
     });
 
     it('should output plain text for invalid run ID', async () => {
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--run-id', 'invalid']);
+      const result = await executeVv(['watch-pr', '90', '--run-id', 'invalid']);
 
       // Should output plain text error, NOT YAML
       expect(result.stderr).toContain('Error:');
@@ -316,8 +307,7 @@ describe('watch-pr command', () => {
 
   describe('--run-id flag', () => {
     it('should reject invalid run ID format with plain text error', async () => {
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--run-id', 'invalid']);
+      const result = await executeVv(['watch-pr', '90', '--run-id', 'invalid']);
 
       // Should show plain text error for invalid run ID
       expect(result.stderr).toContain('Error:');
@@ -328,8 +318,7 @@ describe('watch-pr command', () => {
     });
 
     it('should reject negative run ID', async () => {
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--run-id', '-123']);
+      const result = await executeVv(['watch-pr', '90', '--run-id', '-123']);
 
       // Should show error for negative run ID
       expect(result.stderr).toContain('Error:');
@@ -338,8 +327,7 @@ describe('watch-pr command', () => {
     });
 
     it('should reject zero as run ID', async () => {
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--run-id', '0']);
+      const result = await executeVv(['watch-pr', '90', '--run-id', '0']);
 
       // Should show error for zero run ID
       expect(result.stderr).toContain('Error:');
@@ -350,8 +338,7 @@ describe('watch-pr command', () => {
     it('should accept valid run ID and attempt to fetch run details', async () => {
       // This test verifies the CLI accepts valid run IDs and attempts to fetch
       // Actual fetching will fail without full API mocking, but that's expected
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--run-id', '19744677825']);
+      const result = await executeVv(['watch-pr', '90', '--run-id', '19744677825']);
 
       // Should NOT show "Invalid run ID" error
       expect(result.stderr).not.toContain('Invalid run ID');
@@ -364,8 +351,7 @@ describe('watch-pr command', () => {
     it('should display historical runs in human-friendly table format', async () => {
       // This test runs against real API (vibe-validate repo PR #90)
       // PR #90 is known to have multiple runs
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--history']);
+      const result = await executeVv(['watch-pr', '90', '--history']);
 
       if (result.exitCode === 0) {
         // Should show table header
@@ -390,8 +376,7 @@ describe('watch-pr command', () => {
     });
 
     it('should output YAML format when --history and --yaml flags combined', async () => {
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '90', '--history', '--yaml']);
+      const result = await executeVv(['watch-pr', '90', '--history', '--yaml']);
 
       if (result.exitCode === 0) {
         // Should output YAML format
@@ -472,8 +457,7 @@ describe('watch-pr command', () => {
 
     it('should work with --repo flag to check other repositories', async () => {
       // Test cross-repo support with --history
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, [
+      const result = await executeVv([
         'watch-pr',
         '104',
         '--repo',
@@ -492,8 +476,7 @@ describe('watch-pr command', () => {
 
     it('should handle PR with no runs gracefully', async () => {
       // Use a very high PR number that likely doesn't exist or has no runs
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, ['watch-pr', '999999', '--history']);
+      const result = await executeVv(['watch-pr', '999999', '--history']);
 
       // Should either show "No workflow runs found" or fail with API error
       // Either way, should not crash
@@ -533,10 +516,8 @@ describe('watch-pr command', () => {
 
     it('should respect custom timeout value', async () => {
       // Test with very short timeout (2 seconds) to ensure it times out quickly
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-
       // This will timeout because there's no mock to make it complete fast
-      const result = await executeCommand(cliPath, [
+      const result = await executeVv([
         'watch-pr',
         '999999', // Non-existent PR
         '--timeout',
@@ -563,10 +544,8 @@ describe('watch-pr command', () => {
 
     it('should respect custom poll interval', async () => {
       // Verify option is accepted (actual timing requires integration testing)
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-
       // Execute with custom poll interval (will likely error on non-existent PR)
-      const result = await executeCommand(cliPath, [
+      const result = await executeVv([
         'watch-pr',
         '999999',
         '--poll-interval',
@@ -671,8 +650,7 @@ describe('watch-pr command', () => {
 
     it('should work with --run-id (no polling)', async () => {
       // --run-id should fetch once and exit (no polling loop)
-      const cliPath = path.resolve(__dirname, '../../dist/bin/vv');
-      const result = await executeCommand(cliPath, [
+      const result = await executeVv([
         'watch-pr',
         '90',
         '--run-id',
@@ -698,14 +676,23 @@ describe('watch-pr command', () => {
 });
 
 /**
- * Execute CLI command and capture output
+ * Execute vv CLI command and capture output
  * Uses shared utility for consistency across tests
  */
-async function executeCommand(
-  command: string,
+async function executeVv(
   args: string[]
 ): Promise<{ exitCode: number; stdout: string; stderr: string; output: string }> {
   // Timeout after 30 seconds (CI environments are slower)
   const timeoutMs = process.env.CI ? 30000 : 10000;
-  return executeCommandWithSeparateStreams(command, args, { timeout: timeoutMs });
+  return executeVvCommand(args, { timeout: timeoutMs });
+}
+
+/**
+ * Execute vibe-validate CLI command and capture output
+ */
+async function executeVibeValidate(
+  args: string[]
+): Promise<{ exitCode: number; stdout: string; stderr: string; output: string }> {
+  const timeoutMs = process.env.CI ? 30000 : 10000;
+  return executeVibeValidateCommand(args, { timeout: timeoutMs });
 }

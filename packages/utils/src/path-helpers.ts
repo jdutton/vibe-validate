@@ -112,30 +112,40 @@ export function mkdirSyncReal(
  * Normalize any path (resolve short names on Windows)
  *
  * Utility to normalize paths without creating directories.
- * Useful when you have an existing path that might contain short names.
+ * Accepts multiple path segments like path.resolve() for convenience.
  *
- * @param path - Path to normalize
- * @returns Real (normalized) path, or original if normalization fails
+ * @param paths - Path segments to join and normalize
+ * @returns Real (normalized) path, or resolved path if normalization fails
  *
  * @example
  * ```typescript
+ * // Single path
  * const shortPath = 'C:\\PROGRA~1\\nodejs';
  * const longPath = normalizePath(shortPath);
  * // Result: 'C:\\Program Files\\nodejs'
+ *
+ * // Multiple segments (like path.resolve)
+ * const cliPath = normalizePath(__dirname, '../../dist/bin.js');
+ * // Resolves to absolute path AND normalizes short names
  * ```
  */
-export function normalizePath(path: string): string {
+export function normalizePath(...paths: string[]): string {
+  // First resolve to absolute path (handles multiple segments)
+  const resolved = paths.length === 1
+    ? paths[0]
+    : require('node:path').resolve(...paths);
+
   try {
     // Use native OS realpath for better Windows compatibility
-    return realpathSync.native(path);
+    return realpathSync.native(resolved);
   } catch {
     // Fallback to regular realpathSync
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter
-      return realpathSync(path);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: resolved is from path.resolve
+      return realpathSync(resolved);
     } catch {
-      // Last resort: return original
-      return path;
+      // Last resort: return resolved path (better than original input)
+      return resolved;
     }
   }
 }
