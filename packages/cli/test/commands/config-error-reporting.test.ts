@@ -5,9 +5,9 @@
  * when given invalid configuration files.
  */
 
-import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { normalizePath } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { executeCommand } from '../helpers/test-command-runner.js';
@@ -20,7 +20,7 @@ import {
 describe('config command error reporting (regression tests)', () => {
   let testDir: string;
   // Use resolve() to get absolute path, then normalize to avoid Windows 8.3 short names
-  const cliPath = realpathSync(resolve(__dirname, '../../dist/bin.js'));
+  const cliPath = normalizePath(resolve(__dirname, '../../dist/bin.js'));
 
   beforeEach(() => {
     testDir = createTempTestDir('vibe-validate-config-errors');

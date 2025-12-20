@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 
 import { ExtractionModeDetector } from '../../src/services/extraction-mode-detector.js';
+import { createMockCheck } from '../helpers/watch-pr-fixtures.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.join(__dirname, '../fixtures');
@@ -29,7 +30,7 @@ describe('Extraction Pipeline Integration', () => {
 
 			// Detect and extract
 			const extraction = await detector.detectAndExtract(
-				{ name: 'Validation Pipeline', __typename: 'CheckRun' } as any,
+				createMockCheck('Validation Pipeline'),
 				logs,
 			);
 
@@ -64,7 +65,7 @@ describe('Extraction Pipeline Integration', () => {
 
 			// Detect and extract
 			const extraction = await detector.detectAndExtract(
-				{ name: 'Docker Build', __typename: 'CheckRun' } as any,
+				createMockCheck('Docker Build'),
 				logs,
 			);
 
@@ -96,7 +97,7 @@ describe('Extraction Pipeline Integration', () => {
 
 			// Detect and extract
 			const extraction = await detector.detectAndExtract(
-				{ name: 'Validation Pipeline', __typename: 'CheckRun' } as any,
+				createMockCheck('Validation Pipeline'),
 				logs,
 			);
 
@@ -131,7 +132,7 @@ describe('Extraction Pipeline Integration', () => {
 
 			// Detect and extract
 			const extraction = await detector.detectAndExtract(
-				{ name: 'Validation Pipeline', __typename: 'CheckRun' } as any,
+				createMockCheck('Validation Pipeline'),
 				logs,
 			);
 
@@ -166,7 +167,7 @@ FAIL test/example.test.ts:10:5
 			`;
 
 			const extraction = await detector.detectAndExtract(
-				{ name: 'Tests', __typename: 'CheckRun' } as any,
+				createMockCheck('Tests'),
 				plainLogs,
 			);
 
@@ -183,7 +184,7 @@ FAIL test/example.test.ts:10:5
 			const emptyLogs = 'Some logs with no errors or test failures';
 
 			const extraction = await detector.detectAndExtract(
-				{ name: 'Unknown', __typename: 'CheckRun' } as any,
+				createMockCheck('Unknown'),
 				emptyLogs,
 			);
 

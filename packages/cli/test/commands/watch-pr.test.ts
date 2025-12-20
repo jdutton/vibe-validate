@@ -13,7 +13,6 @@
  * @packageDocumentation
  */
 
-import { spawn } from 'node:child_process';
 import path from 'node:path';
 
 import * as gitPackage from '@vibe-validate/git';
@@ -23,6 +22,8 @@ import {
   listWorkflowRuns,
 } from '@vibe-validate/git';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+
+import { executeCommandWithSeparateStreams } from '../helpers/test-command-runner.js';
 
 // Mock gh-commands and git-commands from @vibe-validate/git
 vi.mock('@vibe-validate/git', async () => {
@@ -698,50 +699,13 @@ describe('watch-pr command', () => {
 
 /**
  * Execute CLI command and capture output
- *
- * On Windows, spawn can't execute files without extensions, so we use node directly
+ * Uses shared utility for consistency across tests
  */
 async function executeCommand(
   command: string,
   args: string[]
 ): Promise<{ exitCode: number; stdout: string; stderr: string; output: string }> {
-  return new Promise((resolve) => {
-    // Use node directly to execute the CLI (cross-platform compatible)
-    const proc = spawn('node', [command, ...args], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env }
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout?.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr?.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      resolve({
-        exitCode: code ?? 1,
-        stdout,
-        stderr,
-        output: stdout + stderr
-      });
-    });
-
-    // Timeout after 30 seconds (CI environments are slower)
-    const timeoutMs = process.env.CI ? 30000 : 10000;
-    setTimeout(() => {
-      proc.kill();
-      resolve({
-        exitCode: 1,
-        stdout,
-        stderr: stderr + '\nTimeout',
-        output: stdout + stderr + '\nTimeout'
-      });
-    }, timeoutMs);
-  });
+  // Timeout after 30 seconds (CI environments are slower)
+  const timeoutMs = process.env.CI ? 30000 : 10000;
+  return executeCommandWithSeparateStreams(command, args, { timeout: timeoutMs });
 }

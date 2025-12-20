@@ -15,8 +15,8 @@
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { GitHubActionCheck } from '../../src/schemas/watch-pr-result.schema.js';
 import { ExtractionModeDetector } from '../../src/services/extraction-mode-detector.js';
+import { createTestCheck } from '../helpers/watch-pr-fixtures.js';
 
 // Mock autoDetectAndExtract
 vi.mock('@vibe-validate/extractors', () => ({
@@ -33,15 +33,7 @@ describe('ExtractionModeDetector', () => {
 
   describe('matrix mode detection', () => {
     it('should detect matrix mode with validate YAML output', async () => {
-      const check: GitHubActionCheck = {
-        name: 'CI / Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12345,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck();
 
       const logs = `
 2025-12-16T10:01:00.000Z ##[group]Run validation
@@ -76,15 +68,7 @@ describe('ExtractionModeDetector', () => {
     });
 
     it('should handle matrix mode with nested YAML', async () => {
-      const check: GitHubActionCheck = {
-        name: 'CI / Lint',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12346,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '1m15s',
-      };
+      const check = createTestCheck({ name: 'CI / Lint', run_id: 12346, duration: '1m15s' });
 
       const logs = `
 ---
@@ -114,15 +98,7 @@ extraction:
     });
 
     it('should return null if no YAML markers found', async () => {
-      const check: GitHubActionCheck = {
-        name: 'CI / Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12347,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ run_id: 12347 });
 
       const logs = `
 Running tests...
@@ -144,15 +120,7 @@ Done.
     });
 
     it('should handle malformed YAML gracefully', async () => {
-      const check: GitHubActionCheck = {
-        name: 'CI / Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12348,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ run_id: 12348 });
 
       const logs = `
 ---
@@ -178,15 +146,13 @@ extraction:
 
   describe('GitHub Actions log format parsing', () => {
     it('should extract YAML from GitHub Actions logs with job/step prefix', async () => {
-      const check: GitHubActionCheck = {
+      const check = createTestCheck({
         name: 'Validation Pipeline',
-        status: 'completed',
-        conclusion: 'failure',
         run_id: 20275187200,
         workflow: 'Validation Pipeline',
         started_at: '2025-12-16T16:27:37Z',
         duration: '5m43s',
-      };
+      });
 
       // Real GitHub Actions log format with job name, step name, and timestamp prefix
       const logs = `Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1212265Z ---
@@ -217,15 +183,7 @@ Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16
     });
 
     it('should extract YAML from GitHub Actions logs with UTF-8 BOM', async () => {
-      const check: GitHubActionCheck = {
-        name: 'CI / Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12361,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ run_id: 12361 });
 
       // Log with UTF-8 BOM (U+FEFF) after second tab
       const logs = `Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:00.000Z ---
@@ -247,15 +205,7 @@ Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z ---`;
     });
 
     it('should handle GitHub Actions logs with varying timestamp precision', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12362,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '1m00s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12362, duration: '1m00s' });
 
       // Some logs have millisecond precision, others have microseconds
       const logs = `Job Name\tStep Name\t2025-12-16T10:01:00.123Z ---
@@ -274,15 +224,7 @@ Job Name\tStep Name\t2025-12-16T10:01:00.123Z ---`;
     });
 
     it('should handle mixed format logs (GitHub Actions + plain timestamps)', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12363,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '1m30s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12363, duration: '1m30s' });
 
       // Some lines have GitHub Actions prefix, others just timestamps
       const logs = `Job\tStep\t2025-12-16T10:01:00.000Z ---
@@ -301,15 +243,12 @@ Job\tStep\t2025-12-16T10:01:01.000Z   guidance: Fix
     });
 
     it('should extract from nested validate output (phases/steps)', async () => {
-      const check: GitHubActionCheck = {
+      const check = createTestCheck({
         name: 'Validation Pipeline',
-        status: 'completed',
-        conclusion: 'failure',
         run_id: 12365,
         workflow: 'Validation Pipeline',
-        started_at: '2025-12-16T10:00:00Z',
         duration: '5m00s',
-      };
+      });
 
       // Validate output has extraction nested in phases/steps
       const logs = `Job\tStep\t2025-12-16T10:01:00.000Z ---
@@ -342,15 +281,7 @@ Job\tStep\t2025-12-16T10:01:00.000Z ---`;
     });
 
     it('should preserve indentation when stripping prefixes', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12364,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '1m00s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12364, duration: '1m00s' });
 
       // YAML requires correct indentation
       const logs = `Job\tStep\t2025-12-16T10:01:00.000Z ---
@@ -374,15 +305,7 @@ Job\tStep\t2025-12-16T10:01:00.000Z ---`;
 
   describe('non-matrix mode detection', () => {
     it('should detect vitest from check name', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test (vitest)',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12349,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ name: 'Test (vitest)', run_id: 12349 });
 
       const logs = `
 RUN  v1.0.0
@@ -403,15 +326,7 @@ RUN  v1.0.0
     });
 
     it('should detect jest from check name', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test (jest)',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12350,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ name: 'Test (jest)', run_id: 12350 });
 
       const logs = `
  FAIL  test/example.test.ts
@@ -432,15 +347,7 @@ RUN  v1.0.0
     });
 
     it('should detect eslint from check name', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Lint (ESLint)',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12351,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '1m15s',
-      };
+      const check = createTestCheck({ name: 'Lint (ESLint)', run_id: 12351, duration: '1m15s' });
 
       const logs = `
 src/example.ts
@@ -460,15 +367,7 @@ src/example.ts
     });
 
     it('should detect typescript from check name', async () => {
-      const check: GitHubActionCheck = {
-        name: 'TypeCheck',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12352,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '30s',
-      };
+      const check = createTestCheck({ name: 'TypeCheck', run_id: 12352, duration: '30s' });
 
       const logs = `
 src/example.ts:5:10 - error TS2322: Type 'number' is not assignable to type 'string'.
@@ -487,15 +386,7 @@ src/example.ts:5:10 - error TS2322: Type 'number' is not assignable to type 'str
     });
 
     it('should detect extractor from VIBE_VALIDATE_COMMAND marker in logs', async () => {
-      const check: GitHubActionCheck = {
-        name: 'CI / Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12353,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ run_id: 12353 });
 
       const logs = `
 VIBE_VALIDATE_COMMAND=vitest run
@@ -516,15 +407,7 @@ RUN  v1.0.0
     });
 
     it('should use generic extractor if no specific extractor detected', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Unknown Check',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12354,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '1m00s',
-      };
+      const check = createTestCheck({ name: 'Unknown Check', run_id: 12354, duration: '1m00s' });
 
       const logs = `
 Error: Something went wrong
@@ -546,15 +429,7 @@ Failed to execute command
 
   describe('integration tests with real output', () => {
     it('should extract from real vitest output', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12355,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12355 });
 
       const logs = `
  RUN  v1.0.0 /path/to/project
@@ -584,15 +459,7 @@ Failed to execute command
     });
 
     it('should extract from real validate YAML output', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Validate',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12356,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '5m00s',
-      };
+      const check = createTestCheck({ name: 'Validate', run_id: 12356, duration: '5m00s' });
 
       const logs = `
 Running validation...
@@ -627,15 +494,7 @@ extraction:
 
   describe('edge cases', () => {
     it('should handle empty logs', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12357,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '1s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12357, duration: '1s' });
 
       const result = await detector.detectAndExtract(check, '');
 
@@ -643,15 +502,7 @@ extraction:
     });
 
     it('should handle successful checks (no extraction needed)', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'success',
-        run_id: 12358,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12358, conclusion: 'success' });
 
       const logs = `
 All tests passed!
@@ -664,15 +515,7 @@ All tests passed!
     });
 
     it('should handle extractor errors gracefully', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12359,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12359 });
 
       const logs = `Some logs`;
 
@@ -687,15 +530,7 @@ All tests passed!
     });
 
     it('should handle missing extraction field in YAML', async () => {
-      const check: GitHubActionCheck = {
-        name: 'Test',
-        status: 'completed',
-        conclusion: 'failure',
-        run_id: 12360,
-        workflow: 'CI',
-        started_at: '2025-12-16T10:00:00Z',
-        duration: '2m30s',
-      };
+      const check = createTestCheck({ name: 'Test', run_id: 12360 });
 
       const logs = `
 ---

@@ -7,12 +7,14 @@
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import type { WatchPRResult } from '../../src/schemas/watch-pr-result.schema.js';
 import { CacheManager } from '../../src/services/cache-manager.js';
+import {
+	createTestWatchPRResult,
+	createTestExtraction,
+} from '../helpers/watch-pr-fixtures.js';
 
 describe('CacheManager Integration Tests', () => {
 	let tempDir: string;
@@ -32,37 +34,9 @@ describe('CacheManager Integration Tests', () => {
 
 	describe('Metadata Operations', () => {
 		it('should save and retrieve metadata', async () => {
-			const testData: WatchPRResult = {
-				pr: {
-					number: testPRNumber,
-					title: 'Test PR',
-					url: 'https://github.com/test/repo/pull/90',
-					branch: 'test-branch',
-					base_branch: 'main',
-					author: 'testuser',
-					draft: false,
-					mergeable: true,
-					merge_state_status: 'CLEAN',
-					labels: [],
-					linked_issues: [],
-				},
-				status: 'passed',
-				checks: {
-					total: 1,
-					passed: 1,
-					failed: 0,
-					pending: 0,
-					github_actions: [],
-					external_checks: [],
-				},
-				changes: {
-					files_changed: 0,
-					insertions: 0,
-					deletions: 0,
-					commits: 0,
-					top_files: [],
-				},
-			};
+			const testData = createTestWatchPRResult({
+				checks: { total: 1, passed: 1, failed: 0, pending: 0 },
+			});
 
 			// Save
 			await cacheManager.saveMetadata(testData);
@@ -88,37 +62,7 @@ describe('CacheManager Integration Tests', () => {
 		});
 
 		it('should save data without modifying it', async () => {
-			const testData: WatchPRResult = {
-				pr: {
-					number: testPRNumber,
-					title: 'Test PR',
-					url: 'https://github.com/test/repo/pull/90',
-					branch: 'test-branch',
-					base_branch: 'main',
-					author: 'testuser',
-					draft: false,
-					mergeable: true,
-					merge_state_status: 'CLEAN',
-					labels: [],
-					linked_issues: [],
-				},
-				status: 'passed',
-				checks: {
-					total: 0,
-					passed: 0,
-					failed: 0,
-					pending: 0,
-					github_actions: [],
-					external_checks: [],
-				},
-				changes: {
-					files_changed: 0,
-					insertions: 0,
-					deletions: 0,
-					commits: 0,
-					top_files: [],
-				},
-			};
+			const testData = createTestWatchPRResult();
 
 			// Save
 			await cacheManager.saveMetadata(testData);
@@ -170,29 +114,7 @@ describe('CacheManager Integration Tests', () => {
 	describe('Extraction Operations', () => {
 		it('should save and retrieve extractions', async () => {
 			const runId = 123456;
-			const testExtraction: ErrorExtractorResult = {
-				errors: [
-					{
-						file: 'test.ts',
-						line: 42,
-						message: 'Test error',
-					},
-				],
-				summary: 'Test summary',
-				totalErrors: 1,
-				guidance: 'Fix the test',
-				metadata: {
-					confidence: 100,
-					completeness: 100,
-					issues: [],
-					detection: {
-						extractor: 'vitest',
-						confidence: 100,
-						patterns: [],
-						reason: 'Test',
-					},
-				},
-			};
+			const testExtraction = createTestExtraction();
 
 			// Save
 			await cacheManager.saveExtraction(runId, testExtraction);
@@ -219,16 +141,11 @@ describe('CacheManager Integration Tests', () => {
 
 		it('should create extractions directory structure', async () => {
 			const runId = 123456;
-			const testExtraction: ErrorExtractorResult = {
+			const testExtraction = createTestExtraction({
 				errors: [],
 				summary: 'No errors',
 				totalErrors: 0,
-				metadata: {
-					confidence: 100,
-					completeness: 100,
-					issues: [],
-				},
-			};
+			});
 
 			// Save
 			await cacheManager.saveExtraction(runId, testExtraction);
@@ -248,37 +165,9 @@ describe('CacheManager Integration Tests', () => {
 
 	describe('Cache Directory Structure', () => {
 		it('should create correct directory hierarchy', async () => {
-			const testData: WatchPRResult = {
-				pr: {
-					number: testPRNumber,
-					title: 'Test',
-					url: 'https://test',
-					branch: 'test',
-					base_branch: 'main',
-					author: 'test',
-					draft: false,
-					mergeable: true,
-					merge_state_status: 'CLEAN',
-					labels: [],
-					linked_issues: [],
-				},
-				status: 'passed',
-				checks: {
-					total: 0,
-					passed: 0,
-					failed: 0,
-					pending: 0,
-					github_actions: [],
-					external_checks: [],
-				},
-				changes: {
-					files_changed: 0,
-					insertions: 0,
-					deletions: 0,
-					commits: 0,
-					top_files: [],
-				},
-			};
+			const testData = createTestWatchPRResult({
+				pr: { title: 'Test', url: 'https://test', branch: 'test', author: 'test' },
+			});
 
 			// Trigger cache creation by saving metadata
 			await cacheManager.saveMetadata(testData);

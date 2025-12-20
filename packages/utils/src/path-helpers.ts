@@ -38,15 +38,20 @@ import { tmpdir } from 'node:os';
  * ```
  */
 export function normalizedTmpdir(): string {
-  // eslint-disable-next-line local/no-os-tmpdir -- This IS the normalizedTmpdir() implementation
+   
   const temp = tmpdir();
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: temp is from tmpdir() (OS-provided system temp directory), not user input
-    return realpathSync(temp);
+    // Use native OS realpath for better Windows compatibility
+    return realpathSync.native(temp);
   } catch {
-    // Fallback: if realpathSync fails, return original
-    // (shouldn't happen, but safety first)
-    return temp;
+    // Fallback to regular realpathSync
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: temp is from tmpdir()
+      return realpathSync(temp);
+    } catch {
+      // Last resort: return original
+      return temp;
+    }
   }
 }
 
@@ -85,16 +90,21 @@ export function mkdirSyncReal(
   path: string,
   options?: Parameters<typeof mkdirSync>[1]
 ): string {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename, local/no-fs-mkdirSync -- This IS the mkdirSyncReal() implementation
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- This IS the mkdirSyncReal() implementation
   mkdirSync(path, options);
 
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter from test setup (tmpdir + test name), not user input
-    return realpathSync(path);
+    // Use native OS realpath for better Windows compatibility
+    return realpathSync.native(path);
   } catch {
-    // Fallback: if realpathSync fails, return original
-    // (might happen if directory creation failed)
-    return path;
+    // Fallback to regular realpathSync
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter
+      return realpathSync(path);
+    } catch {
+      // Last resort: return original
+      return path;
+    }
   }
 }
 
@@ -116,9 +126,16 @@ export function mkdirSyncReal(
  */
 export function normalizePath(path: string): string {
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter from test setup (tmpdir + test name), not user input
-    return realpathSync(path);
+    // Use native OS realpath for better Windows compatibility
+    return realpathSync.native(path);
   } catch {
-    return path;
+    // Fallback to regular realpathSync
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter
+      return realpathSync(path);
+    } catch {
+      // Last resort: return original
+      return path;
+    }
   }
 }

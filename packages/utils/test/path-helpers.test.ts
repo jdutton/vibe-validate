@@ -5,10 +5,11 @@
  * properly resolve Windows 8.3 short names (RUNNER~1 → runneradmin).
  */
 
-import { existsSync, rmSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync,  writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { normalizePath } from '@vibe-validate/utils';
 import { describe, it, expect, afterEach } from 'vitest';
 
 import { normalizedTmpdir, mkdirSyncReal } from '../src/path-helpers.js';
@@ -53,7 +54,7 @@ describe('path-helpers', () => {
 
       // normalizedTmpdir() should return the same as realpathSync(tmpdir())
       // This is critical for Windows where tmpdir() may return 8.3 short names
-      const expected = realpathSync(osTmp);
+      const expected = normalizePath(osTmp);
 
       expect(temp).toBe(expected);
     });
@@ -77,7 +78,7 @@ describe('path-helpers', () => {
       expect(existsSync(returnedPath)).toBe(true);
 
       // Returned path should be normalized (match realpathSync)
-      expect(returnedPath).toBe(realpathSync(testDir));
+      expect(returnedPath).toBe(normalizePath(testDir));
     });
 
     it('should return path without Windows 8.3 short names', () => {
@@ -119,7 +120,7 @@ describe('path-helpers', () => {
       expect(existsSync(testFile)).toBe(true);
 
       // File should be accessible via realpathSync as well
-      const realFilePath = realpathSync(testFile);
+      const realFilePath = normalizePath(testFile);
       expect(existsSync(realFilePath)).toBe(true);
     });
 
@@ -162,7 +163,7 @@ describe('path-helpers', () => {
       }
 
       // On all platforms, normalizedTmpdir() should equal realpathSync(tmpdir())
-      const expected = realpathSync(osTmp);
+      const expected = normalizePath(osTmp);
       expect(temp).toBe(expected);
     });
 
@@ -174,7 +175,7 @@ describe('path-helpers', () => {
       const temp = normalizedTmpdir();
       // eslint-disable-next-line local/no-os-tmpdir -- Testing normalizedTmpdir() by comparing with tmpdir()
       const osTmp = tmpdir();
-      const realTemp = realpathSync(osTmp);
+      const realTemp = normalizePath(osTmp);
 
       // Diagnostic logging for CI failures
       if (temp !== realTemp || temp.includes('~')) {

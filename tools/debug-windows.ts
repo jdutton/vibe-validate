@@ -11,7 +11,7 @@ import { existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecSync, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
+import { safeExecSync, normalizedTmpdir, mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
 // @ts-expect-error - which is available via @vibe-validate/git dependency
 import which from 'which';
 
@@ -812,8 +812,8 @@ section('15. tmpdir() and Path Normalization (Windows 8.3 Short Names)');
 try {
   info('Understanding Windows path behavior', '');
 
-  // Import realpathSync
-  const { realpathSync, rmSync } = await import('node:fs');
+  // Import file system utilities
+  const { rmSync } = await import('node:fs');
 
   // Get tmpdir path
   const tempPath = normalizedTmpdir();
@@ -826,7 +826,7 @@ try {
 
     // Get real path (resolves short names to long names)
     try {
-      const realTemp = realpathSync(tempPath);
+      const realTemp = normalizePath(tempPath);
       info('realpathSync(tmpdir())', realTemp);
       info('Paths are identical?', tempPath === realTemp);
       info('Paths differ?', tempPath !== realTemp);
@@ -860,7 +860,7 @@ try {
     info('existsSync(SHORT path)?', existsSync(testDirShort));
 
     // Get real (long) path
-    const testDirLong = realpathSync(testDirShort);
+    const testDirLong = normalizePath(testDirShort);
     info('realpathSync(SHORT path)', testDirLong);
     info('existsSync(LONG path)?', existsSync(testDirLong));
 
@@ -911,7 +911,7 @@ try {
   for (const testPath of testPaths) {
     if (existsSync(testPath)) {
       try {
-        const real = realpathSync(testPath);
+        const real = normalizePath(testPath);
         if (testPath === real) {
           success(`${testPath} → already normalized`);
         } else {

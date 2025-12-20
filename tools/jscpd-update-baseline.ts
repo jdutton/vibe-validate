@@ -12,13 +12,18 @@ import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
 
 const BASELINE_FILE = '.github/.jscpd-baseline.json';
 
+/**
+ * IMPORTANT: Test files are INTENTIONALLY included in duplication checks.
+ * This matches the configuration in jscpd-check-new.ts.
+ * See that file for detailed explanation of why we check test code duplication.
+ */
 const JSCPD_ARGS = [
   '.',
   '--min-lines', '5',
   '--min-tokens', '50',
   '--reporters', 'json',
   '--format', 'typescript,javascript',
-  '--ignore', '**/*.test.ts,**/*.test.js,**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
+  '--ignore', '**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
   '--output', './jscpd-report'
 ];
 

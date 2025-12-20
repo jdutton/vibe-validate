@@ -60,6 +60,7 @@ const customRules = {
   // Windows compatibility rules (prevent 8.3 short path issues)
   'local/no-os-tmpdir': 'error',
   'local/no-fs-mkdirSync': 'error',
+  'local/no-fs-realpathSync': 'error',
 
   // Security and architecture rules
   'local/no-child-process-execSync': 'error',
@@ -316,6 +317,7 @@ export default [
       // Windows compatibility rules (prevent 8.3 short path issues)
       'local/no-os-tmpdir': 'error',
       'local/no-fs-mkdirSync': 'error',
+      'local/no-fs-realpathSync': 'error',
 
       // Security and architecture rules
       'local/no-child-process-execSync': 'error',

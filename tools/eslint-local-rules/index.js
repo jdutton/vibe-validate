@@ -4,6 +4,7 @@
  * Windows Compatibility Rules:
  * - no-os-tmpdir: Enforce normalizedTmpdir() instead of os.tmpdir()
  * - no-fs-mkdirSync: Enforce mkdirSyncReal() instead of fs.mkdirSync()
+ * - no-fs-realpathSync: Enforce normalizePath() instead of fs.realpathSync()
  *
  * Security and Architecture Rules:
  * - no-child-process-execSync: Enforce safeExecSync() instead of execSync() (security + cross-platform)
@@ -19,6 +20,7 @@ export default {
     // Windows compatibility rules
     'no-os-tmpdir': require('./no-os-tmpdir.cjs'),
     'no-fs-mkdirSync': require('./no-fs-mkdirSync.cjs'),
+    'no-fs-realpathSync': require('./no-fs-realpathSync.cjs'),
 
     // Security and architecture rules
     'no-child-process-execSync': require('./no-child-process-execSync.cjs'),
