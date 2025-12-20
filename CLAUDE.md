@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with the vibe-validate codebase.
 
+## **CRITICAL: DO NOT MODIFY vibe-validate.config.yaml WITHOUT EXPLICIT PERMISSION**
+
+**NEVER, EVER modify `vibe-validate.config.yaml` without asking the user first.**
+
+- ❌ **DO NOT** remove validation steps
+- ❌ **DO NOT** change commands
+- ❌ **DO NOT** "fix" the config because validation is failing
+- ❌ **DO NOT** assume you know better than the existing configuration
+
+**If validation fails:**
+1. **ASK the user** what to do about the failure
+2. Investigate the root cause (wrong directory? missing dependency? actual test failure?)
+3. **DO NOT modify the config** to make validation "pass"
+
+**The config defines what success means for this project. You do NOT get to redefine success without permission.**
+
 ## Project Overview
 
 **vibe-validate** is a git-aware validation orchestration tool designed for LLM-assisted development (vibe coding). It caches validation state using git tree hashes, runs steps in parallel, and formats errors for LLM consumption.
@@ -192,10 +208,9 @@ The script automatically updates:
 
 **Normal Release Workflow:**
 
-1. **Update CHANGELOG.md** (MANDATORY before release)
-   - Add changes to appropriate version section
-   - Format: `## [X.Y.Z] - YYYY-MM-DD`
-   - Follow [Keep a Changelog](https://keepachangelog.com/) format
+1. **Update CHANGELOG.md** (stable releases only)
+   - **RC releases**: Leave changes in "Unreleased" section
+   - **Stable releases**: Move "Unreleased" → `## [X.Y.Z] - YYYY-MM-DD`
 
 2. **Bump version**:
    ```bash

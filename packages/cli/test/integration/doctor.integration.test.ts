@@ -5,7 +5,9 @@ import { describe, it, expect } from 'vitest';
 
 // Doctor integration tests - verifies CLI works end-to-end with real npm registry
 // IMPORTANT: Only ONE test to avoid network calls (7-8s each). Other tests moved to unit tests.
-describe.skipIf(process.platform === 'win32')('Doctor Command Integration', () => {
+describe('Doctor Command Integration', () => {
+  // Note: Previously skipped on Windows due to command parser bug (Issue #86)
+  // Fixed: Command parser now preserves Windows paths correctly
   const cliPath = join(__dirname, '../../dist/bin.js');
   const projectRoot = join(__dirname, '../../../..');
 
