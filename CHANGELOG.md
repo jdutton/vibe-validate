@@ -9,37 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- **Major `watch-pr` command enhancements** (v0.18.0)
-  - **Error extraction from GitHub Actions logs** - Shows actual test failures, not just "check failed"
-    - **Matrix mode**: Parses validate YAML output and passes through extraction faithfully
-    - **Non-matrix mode**: Auto-detects test framework (vitest, jest, eslint) and extracts errors from raw logs
-    - Both modes use same `ErrorExtractorResult` schema for consistency
-  - **Separate GitHub Actions vs external checks** - Clear distinction between workflow runs and third-party services
-  - **History summary** - View last 10 runs with success rate and pattern detection ("Failed last 2 runs", "Flaky")
-  - **File change context** - See files changed, insertions/deletions, and top modified files
-  - **Intelligent guidance** - Severity-based next steps with URLs to failed checks
-  - **External check extraction** - Codecov and SonarCloud summaries (coverage %, quality gates)
-  - **Auto-YAML on failure** - Consistent with validate command (YAML for failures, text for success)
-  - **--history flag** - List all workflow runs for PR with pass/fail table
-  - **--run-id flag** - Watch specific run ID for debugging historical failures
-  - **Cross-repo support** - Monitor PRs in any repository via --repo flag
-  - **Local caching** - 24x speedup (2.6s → 0.1s) with 5-minute TTL
-  - **Fixed external check URLs** - No more "unknown" job IDs
-  - **Rich PR metadata** - Branch, mergeable state, labels, linked issues
-  - **Newspaper ordering** - Most important info first (failed checks, then pending, then passed)
-  - **Auto-polling** - Monitors PR checks until completion with `--timeout` (default: 30min), `--poll-interval` (default: 10s), and `--fail-fast` options
+- **CRITICAL: `cleanup` command now detects squash-merged branches** - **BREAKING CHANGES**
+  - **Problem**: After squash-merging PRs on GitHub, `cleanup` couldn't detect merged branches, requiring manual verification
+  - **Solution**: Now uses GitHub CLI to detect squash/rebase merges and auto-switches from current branch if needed
+  - **Breaking changes**:
+    - GitHub CLI (`gh`) now required
+    - Removed `--main-branch`, `--dry-run`, and `--yaml` options
+    - Output is now always YAML with new structure
+  - **Impact**: No more manual branch cleanup after squash merges
 
-### Improvements
-
-- **Cross-platform compatibility enhancements**
-  - New `@vibe-validate/utils` package with Windows-safe path utilities (`normalizedTmpdir()`, `normalizePath()`)
-  - Custom ESLint rules enforce platform-safe patterns and prevent regressions
-  - All tests now pass on Windows CI
+- **`watch-pr` now extracts actual test failures from CI logs**
+  - **Problem**: When CI failed, users only saw "check failed" with no error details
+  - **Solution**: Extracts actual test failures from GitHub Actions logs (supports vitest, jest, eslint)
+  - **New capabilities**: History summary, file changes, cross-repo monitoring, local caching (24x faster)
+  - **Impact**: No more clicking through GitHub UI to find what actually failed
 
 ### Documentation
 
-- Added comprehensive `docs/commands/watch-pr.md` with extraction modes, workflows, and examples
-- Updated README.md with watch-pr improvements
+- Added comprehensive `watch-pr` command documentation with examples
+- Updated README with latest features
 
 ## [0.17.6] - 2025-12-15
 

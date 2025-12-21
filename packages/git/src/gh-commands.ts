@@ -33,6 +33,15 @@ export interface GitHubPullRequest {
     title: string;
     url: string;
   }>;
+  // Merge-related fields
+  state?: 'OPEN' | 'CLOSED' | 'MERGED';
+  mergedAt?: string;
+  mergedBy?: { login: string };
+  mergeCommit?: {
+    oid: string;
+    parents?: Array<{ totalCount?: number }>;
+  };
+  commits?: { totalCount?: number };
 }
 
 /**
@@ -150,25 +159,27 @@ export function getCurrentPR(owner?: string, repo?: string): number | null {
 }
 
 /**
- * List open pull requests
+ * List pull requests
  *
  * @param owner - Repository owner
  * @param repo - Repository name
  * @param limit - Max number of PRs to return (default: 5)
  * @param fields - Fields to fetch (optional)
+ * @param state - PR state filter: 'open', 'closed', 'merged', or 'all' (default: 'open')
  * @returns List of PRs
  */
 export function listPullRequests(
   owner: string,
   repo: string,
   limit = 5,
-  fields?: string[]
+  fields?: string[],
+  state: 'open' | 'closed' | 'merged' | 'all' = 'open'
 ): GitHubPullRequest[] {
   const fieldList = fields ?? ['number', 'title', 'author', 'headRefName'];
 
   const response = safeExecSync(
     'gh',
-    ['pr', 'list', '--repo', `${owner}/${repo}`, '--limit', String(limit), '--json', fieldList.join(',')],
+    ['pr', 'list', '--repo', `${owner}/${repo}`, '--limit', String(limit), '--state', state, '--json', fieldList.join(',')],
     {
       encoding: 'utf8',
     }

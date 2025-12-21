@@ -2522,42 +2522,6 @@
     },
     {
       "format": "typescript",
-      "lines": 9,
-      "fragment": ", async () => {\n      const summary = await mockAndBuild(builder, []);\n\n      expect(summary.total_runs).toBe(0);\n      expect(summary.recent_pattern).toBe('No previous runs');\n      expect(summary.success_rate).toBeUndefined();\n    });\n\n    it('should handle all runs with null conclusion'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/history-summary-builder.test.ts",
-        "start": 249,
-        "end": 257,
-        "startLoc": {
-          "line": 249,
-          "column": 36,
-          "position": 2109
-        },
-        "endLoc": {
-          "line": 257,
-          "column": 46,
-          "position": 2190
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/history-summary-builder.test.ts",
-        "start": 95,
-        "end": 103,
-        "startLoc": {
-          "line": 95,
-          "column": 38,
-          "position": 742
-        },
-        "endLoc": {
-          "line": 103,
-          "column": 31,
-          "position": 823
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 12,
       "fragment": ",\n          },\n        ],\n      });\n\n      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));\n\n      const results = await fetcher.fetchChecks(123);\n\n      expect(results).toHaveLength(2);\n      expect(results[0]).toMatchObject({\n        type: 'external'",
       "tokens": 0,
@@ -4224,12 +4188,12 @@
         "startLoc": {
           "line": 487,
           "column": 9,
-          "position": 4204
+          "position": 4205
         },
         "endLoc": {
           "line": 492,
           "column": 13,
-          "position": 4281
+          "position": 4282
         }
       },
       "secondFile": {
@@ -4239,12 +4203,12 @@
         "startLoc": {
           "line": 448,
           "column": 9,
-          "position": 3811
+          "position": 3812
         },
         "endLoc": {
           "line": 453,
           "column": 38,
-          "position": 3888
+          "position": 3889
         }
       }
     },
@@ -4260,12 +4224,12 @@
         "startLoc": {
           "line": 698,
           "column": 9,
-          "position": 6031
+          "position": 6032
         },
         "endLoc": {
           "line": 707,
           "column": 68,
-          "position": 6119
+          "position": 6120
         }
       },
       "secondFile": {
@@ -4275,12 +4239,12 @@
         "startLoc": {
           "line": 681,
           "column": 9,
-          "position": 5868
+          "position": 5869
         },
         "endLoc": {
           "line": 690,
           "column": 69,
-          "position": 5956
+          "position": 5957
         }
       }
     },
@@ -5520,12 +5484,12 @@
         "startLoc": {
           "line": 42,
           "column": 5,
-          "position": 364
+          "position": 358
         },
         "endLoc": {
           "line": 52,
           "column": 21,
-          "position": 450
+          "position": 444
         }
       },
       "secondFile": {
@@ -5762,433 +5726,37 @@
     },
     {
       "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockResult = {\n        success: true,\n        branchesDeleted: ['feature/test-1', 'feature/test-2'],\n        currentBranch: 'main',\n        mainSynced: true,\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup',",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 149,
-        "end": 162,
-        "startLoc": {
-          "line": 149,
-          "column": 51,
-          "position": 1311
-        },
-        "endLoc": {
-          "line": 162,
-          "column": 2,
-          "position": 1412
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 72,
-        "end": 85,
-        "startLoc": {
-          "line": 72,
-          "column": 57,
-          "position": 730
-        },
-        "endLoc": {
-          "line": 85,
-          "column": 2,
-          "position": 831
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 12,
-      "fragment": ", '--yaml'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify YAML separator was written\n      const writeCalls = vi.mocked(process.stdout.write).mock.calls;\n      const separatorCall = writeCalls.find(call => call[0] === '---\\n');\n      expect(separatorCall).toBeDefined();\n\n      // Verify YAML content was written (check for YAML structure)",
+      "fragment": ",\n        },\n        recoveryInfo: 'Deleted branches are recoverable for 30 days via git reflog',\n      };\n\n      vi.mocked(git.cleanupBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 162,
-        "end": 173,
+        "start": 102,
+        "end": 113,
         "startLoc": {
-          "line": 162,
-          "column": 10,
-          "position": 1412
-        },
-        "endLoc": {
-          "line": 173,
-          "column": 62,
-          "position": 1525
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 264,
-        "end": 275,
-        "startLoc": {
-          "line": 264,
-          "column": 13,
-          "position": 2213
-        },
-        "endLoc": {
-          "line": 275,
-          "column": 35,
-          "position": 2326
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": "],\n        currentBranch: 'main',\n        mainSynced: true,\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify YAML separator was written\n      const writeCalls = vi.mocked(process.stdout.write).mock.calls;\n      const separatorCall = writeCalls.find(call => call[0] === '---\\n');\n      expect(separatorCall).toBeDefined();\n\n      // Verify YAML content includes empty branchesDeleted array",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 183,
-        "end": 204,
-        "startLoc": {
-          "line": 183,
+          "line": 102,
           "column": 2,
-          "position": 1626
+          "position": 861
         },
         "endLoc": {
-          "line": 204,
-          "column": 60,
-          "position": 1804
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 152,
-        "end": 275,
-        "startLoc": {
-          "line": 152,
-          "column": 17,
-          "position": 1347
-        },
-        "endLoc": {
-          "line": 275,
-          "column": 35,
-          "position": 2326
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ",\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify YAML separator was written\n      const writeCalls = vi.mocked(process.stdout.write).mock.calls;\n      const separatorCall = writeCalls.find(call => call[0] === '---\\n');\n      expect(separatorCall).toBeDefined();\n\n      // Verify error is included in YAML",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 218,
-        "end": 237,
-        "startLoc": {
-          "line": 218,
-          "column": 6,
-          "position": 1933
-        },
-        "endLoc": {
-          "line": 237,
-          "column": 36,
-          "position": 2096
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 154,
-        "end": 275,
-        "startLoc": {
-          "line": 154,
-          "column": 5,
-          "position": 1362
-        },
-        "endLoc": {
-          "line": 275,
-          "column": 35,
-          "position": 2326
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockResult = {\n        success: true,\n        branchesDeleted: ['feature/test'],\n        currentBranch: 'main',\n        mainSynced: true,\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup', '--yaml'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 246,
-        "end": 259,
-        "startLoc": {
-          "line": 246,
-          "column": 51,
-          "position": 2183
-        },
-        "endLoc": {
-          "line": 259,
-          "column": 9,
-          "position": 2283
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 122,
-        "end": 135,
-        "startLoc": {
-          "line": 122,
-          "column": 57,
-          "position": 1106
-        },
-        "endLoc": {
-          "line": 135,
-          "column": 12,
-          "position": 1206
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ", async () => {\n      const mockResult = {\n        success: true,\n        branchesDeleted: ['feature/test-1', 'feature/test-2'],\n        currentBranch: 'main',\n        mainSynced: true,\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called for human output",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 279,
-        "end": 298,
-        "startLoc": {
-          "line": 279,
-          "column": 59,
-          "position": 2458
-        },
-        "endLoc": {
-          "line": 298,
-          "column": 50,
-          "position": 2605
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 72,
-        "end": 91,
-        "startLoc": {
-          "line": 72,
-          "column": 57,
-          "position": 730
-        },
-        "endLoc": {
-          "line": 91,
-          "column": 7,
-          "position": 877
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": "], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called for human output\n      expect(console.log).toHaveBeenCalled();\n\n      // Verify YAML separator was NOT written to stdout\n      const writeCalls = vi.mocked(process.stdout.write).mock.calls;\n      const separatorCall = writeCalls.find(call => call[0] === '---\\n');\n      expect(separatorCall).toBeUndefined();\n    });\n\n    it('should display dry-run message in human output'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 292,
-        "end": 307,
-        "startLoc": {
-          "line": 292,
-          "column": 10,
-          "position": 2559
-        },
-        "endLoc": {
-          "line": 307,
+          "line": 113,
           "column": 49,
-          "position": 2693
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 437,
-        "end": 452,
-        "startLoc": {
-          "line": 437,
-          "column": 13,
-          "position": 3646
-        },
-        "endLoc": {
-          "line": 452,
-          "column": 48,
-          "position": 3780
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ", async () => {\n      const mockResult = {\n        success: true,\n        branchesDeleted: ['feature/test'],\n        currentBranch: 'main',\n        mainSynced: true,\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 307,
-        "end": 326,
-        "startLoc": {
-          "line": 307,
-          "column": 49,
-          "position": 2694
-        },
-        "endLoc": {
-          "line": 326,
-          "column": 33,
-          "position": 2841
+          "position": 947
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 122,
-        "end": 141,
+        "start": 69,
+        "end": 80,
         "startLoc": {
-          "line": 122,
-          "column": 57,
-          "position": 1106
-        },
-        "endLoc": {
-          "line": 141,
-          "column": 7,
-          "position": 1253
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockResult = {\n        success: true,\n        branchesDeleted: [],\n        currentBranch: 'main',\n        mainSynced: true,\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup']",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 330,
-        "end": 343,
-        "startLoc": {
-          "line": 330,
-          "column": 52,
-          "position": 2866
-        },
-        "endLoc": {
-          "line": 343,
+          "line": 69,
           "column": 2,
-          "position": 2963
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 180,
-        "end": 193,
-        "startLoc": {
-          "line": 180,
-          "column": 65,
-          "position": 1594
+          "position": 606
         },
         "endLoc": {
-          "line": 193,
-          "column": 2,
-          "position": 1691
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": "],\n        currentBranch: 'main',\n        mainSynced: true,\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 333,
-        "end": 349,
-        "startLoc": {
-          "line": 333,
-          "column": 2,
-          "position": 2898
-        },
-        "endLoc": {
-          "line": 349,
-          "column": 33,
-          "position": 3009
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 75,
-        "end": 91,
-        "startLoc": {
-          "line": 75,
-          "column": 17,
-          "position": 766
-        },
-        "endLoc": {
-          "line": 91,
-          "column": 7,
-          "position": 877
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": "], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called\n      expect(console.log).toHaveBeenCalled();\n    });\n  });\n\n  describe('error handling', () => {\n    it('should handle cleanup errors gracefully'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 343,
-        "end": 355,
-        "startLoc": {
-          "line": 343,
-          "column": 10,
-          "position": 2963
-        },
-        "endLoc": {
-          "line": 355,
-          "column": 42,
-          "position": 3051
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 488,
-        "end": 500,
-        "startLoc": {
-          "line": 488,
-          "column": 13,
-          "position": 4044
-        },
-        "endLoc": {
-          "line": 500,
-          "column": 45,
-          "position": 4132
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ",\n      };\n\n      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);\n\n      // Mock process.exit to track exit code\n      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {\n        throw new Error(`process.exit(${code})`);\n      }) as any;\n\n      cleanupCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['cleanup'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(exitSpy).toHaveBeenCalledWith(0",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 409,
-        "end": 428,
-        "startLoc": {
-          "line": 409,
-          "column": 5,
-          "position": 3502
-        },
-        "endLoc": {
-          "line": 428,
-          "column": 2,
-          "position": 3676
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/cleanup.test.ts",
-        "start": 380,
-        "end": 399,
-        "startLoc": {
-          "line": 380,
-          "column": 6,
-          "position": 3257
-        },
-        "endLoc": {
-          "line": 399,
-          "column": 2,
-          "position": 3431
+          "line": 80,
+          "column": 76,
+          "position": 692
         }
       }
     },
@@ -6363,12 +5931,12 @@
         "startLoc": {
           "line": 20,
           "column": 8,
-          "position": 149
+          "position": 146
         },
         "endLoc": {
           "line": 30,
           "column": 9,
-          "position": 250
+          "position": 247
         }
       }
     },
@@ -8457,6 +8025,42 @@
           "line": 224,
           "column": 12,
           "position": 2343
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": ", async () => {\n      vi.mocked(utils.isToolAvailable).mockReturnValue(true);\n\n      const mockPRs = [createMockPR({ headRefName: 'feature/test' })];\n\n      vi.mocked(ghCommands.listPullRequests).mockReturnValue(mockPRs);\n      vi.mocked(ghCommands.fetchPRDetails).mockReturnValue",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/git/test/branch-cleanup.test.ts",
+        "start": 442,
+        "end": 448,
+        "startLoc": {
+          "line": 442,
+          "column": 45,
+          "position": 3559
+        },
+        "endLoc": {
+          "line": 448,
+          "column": 16,
+          "position": 3636
+        }
+      },
+      "secondFile": {
+        "name": "packages/git/test/branch-cleanup.test.ts",
+        "start": 423,
+        "end": 429,
+        "startLoc": {
+          "line": 423,
+          "column": 45,
+          "position": 3370
+        },
+        "endLoc": {
+          "line": 429,
+          "column": 19,
+          "position": 3447
         }
       }
     },

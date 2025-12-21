@@ -1,10 +1,13 @@
 /**
  * Cleanup Command
  *
- * Post-merge branch cleanup and temp file management.
+ * Branch cleanup and temp file management.
+ *
+ * v0.18.0: Complete redesign with comprehensive fact-gathering,
+ * GitHub API integration, and LLM-optimized YAML-only output.
  */
 
-import { cleanupMergedBranches } from '@vibe-validate/git';
+import { cleanupBranches } from '@vibe-validate/git';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
@@ -14,36 +17,31 @@ import { outputYamlResult } from '../utils/yaml-output.js';
 
 
 export function cleanupCommand(program: Command): void {
-  const cleanup = program
+  // Branch cleanup - YAML-only output (no options)
+  program
     .command('cleanup')
-    .description('Cleanup operations (branches, temp files)');
-
-  // Branch cleanup (backwards compatible - no subcommand needed)
-  cleanup
-    .description('Post-merge cleanup (switch to main, delete merged branches)')
-    .option('--main-branch <branch>', 'Main branch name', 'main')
-    .option('--dry-run', 'Show what would be deleted without actually deleting')
-    .option('--yaml', 'Output YAML only (no human-friendly display)')
-    .action(async (options) => {
+    .description('Comprehensive branch cleanup with GitHub integration')
+    .action(async () => {
       try {
-        // Run post-merge cleanup
-        const result = await cleanupMergedBranches({
-          mainBranch: options.mainBranch,
-          dryRun: options.dryRun,
-        });
+        // Run comprehensive branch cleanup
+        const result = await cleanupBranches();
 
-        // Output based on yaml flag
-        if (options.yaml) {
-          await outputYamlResult(result);
-        } else {
-          // Human-friendly format
-          displayHumanCleanup(result, options.dryRun);
-        }
+        // Always output YAML (LLM-optimized)
+        await outputYamlResult(result);
 
-        // Exit with error code if there was an error
-        process.exit(result.success ? 0 : 1);
+        // Success if no errors
+        process.exit(0);
       } catch (error) {
-        console.error(chalk.red('❌ Cleanup failed with error:'), error);
+        // Format error for YAML output
+        const errorResult = {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          guidance: error instanceof Error && error.message.includes('GitHub CLI')
+            ? 'Install GitHub CLI: https://cli.github.com/'
+            : 'Check git repository status and permissions',
+        };
+
+        await outputYamlResult(errorResult);
         process.exit(1);
       }
     });
@@ -99,84 +97,6 @@ export function cleanupCommand(program: Command): void {
         process.exit(1);
       }
     });
-}
-
-/**
- * Get icon based on dry-run mode
- */
-function getIcon(dryRun: boolean): string {
-  // eslint-disable-next-line sonarjs/no-selector-parameter -- dryRun is idiomatic for preview mode in CLI tools
-  return dryRun ? '→' : '✅';
-}
-
-/**
- * Display header for cleanup results
- */
-function displayHeader(dryRun: boolean): void {
-  const title = dryRun ? '🔍 Cleanup Preview (Dry Run)' : '🧹 Post-Merge Cleanup';
-  console.log(chalk.blue(title));
-  console.log(chalk.gray('─'.repeat(50)));
-}
-
-/**
- * Display footer message based on cleanup results
- */
-function displayFooter(dryRun: boolean, success: boolean, branchesDeleted: number): void {
-  console.log(chalk.gray('─'.repeat(50)));
-
-  if (dryRun) {
-    const cmd = getCommandName();
-    console.log(chalk.yellow('\n💡 This was a dry run. To actually clean up:'));
-    console.log(chalk.gray(`   ${cmd} cleanup`));
-  } else if (success && branchesDeleted > 0) {
-    console.log(chalk.green('\n✅ Cleanup complete!'));
-  }
-}
-
-/**
- * Display cleanup results in human-friendly format
- */
-function displayHumanCleanup(
-  result: {
-    success: boolean;
-    error?: string;
-    branchesDeleted: string[];
-    currentBranch: string;
-    mainSynced: boolean;
-  },
-  dryRun: boolean
-): void {
-  displayHeader(dryRun);
-
-  const icon = getIcon(dryRun);
-
-  // Current branch
-  if (result.currentBranch) {
-    console.log(chalk.green(`${icon} Current branch: ${result.currentBranch}`));
-  }
-
-  // Synced with remote
-  if (result.mainSynced) {
-    console.log(chalk.green(`${icon} Synced with remote`));
-  }
-
-  // Deleted branches
-  if (result.branchesDeleted.length > 0) {
-    console.log(chalk.green(`\n${icon} Deleted branches:`));
-    for (const branch of result.branchesDeleted) {
-      console.log(chalk.gray(`   • ${branch}`));
-    }
-  } else {
-    console.log(chalk.gray('\nℹ️  No merged branches to delete'));
-  }
-
-  // Error
-  if ('error' in result && result.error) {
-    console.log(chalk.red('\n❌ Error encountered:'));
-    console.log(chalk.red(`   ${result.error}`));
-  }
-
-  displayFooter(dryRun, result.success, result.branchesDeleted.length);
 }
 
 /**
@@ -243,74 +163,180 @@ function displayTempCleanup(result: {
 export function showCleanupVerboseHelp(): void {
   console.log(`# cleanup Command Reference
 
-> Post-merge cleanup (switch to main, delete merged branches)
+> Comprehensive branch cleanup with GitHub integration (v0.18.0)
 
 ## Overview
 
-The \`cleanup\` command automates post-merge branch cleanup. After a PR is merged, this command switches to the main branch, pulls the latest changes, identifies merged branches, and deletes them locally.
+The \`cleanup\` command provides LLM-optimized branch cleanup with comprehensive fact-gathering. It analyzes all local branches, detects squash merges via GitHub API, and provides complete context for safe decision-making.
+
+## Key Features (v0.18.0)
+
+- **GitHub Integration**: Detects squash/rebase merges via PR data (requires \`gh\` CLI)
+- **Smart Categorization**: Auto-deletes 100% safe branches, shows complete context for others
+- **Current Branch Handling**: Automatically switches away if current branch needs cleanup
+- **YAML-Only Output**: LLM-optimized structured data (no human-readable mode)
+- **No Options**: Simple, opinionated design - just run \`cleanup\`
 
 ## How It Works
 
-1. Switches to main branch
-2. Pulls latest from origin/main
-3. Identifies merged branches (via git log)
-4. Deletes confirmed-merged branches
-5. Reports cleanup summary
+1. Detects default branch (main/master/develop)
+2. Switches away from current branch if needed (safety)
+3. Gathers git facts for all local branches:
+   - Merge status (git branch --merged)
+   - Remote tracking status (exists/deleted/never_pushed)
+   - Unpushed commit count
+   - Last commit date and author
+4. Enriches with GitHub PR data:
+   - Associated PR number and state
+   - Merge method (merge/squash/rebase)
+   - Merged by whom and when
+5. Categorizes branches:
+   - **auto_deleted**: Merged + no unpushed work (100% safe)
+   - **needs_review**: Squash merged, old abandoned, etc.
+6. Auto-deletes safe branches
+7. Returns structured YAML with complete verification context
 
-## Options
+## Requirements
 
-- \`--main-branch <branch>\` - Main branch name (default: main)
-- \`--dry-run\` - Show what would be deleted without actually deleting
-- \`--yaml\` - Output YAML only (no human-friendly display)
+- **GitHub CLI (\`gh\`)**: Required for squash merge detection
+  - Install: https://cli.github.com/
+  - Authenticate: \`gh auth login\`
+- Git repository with remote configured
+- Not on a protected branch (main/master/develop)
+
+## Output Format
+
+\`\`\`yaml
+context:
+  repository: owner/repo
+  remote: origin
+  default_branch: main
+  current_branch: main
+  switched_branch: false
+
+auto_deleted:
+  - name: feature/old-work
+    reason: merged_to_main
+    recovery_command: "git reflog | grep 'feature/old-work'"
+
+needs_review:
+  - name: feature/squash-merged
+    verification:
+      merged_to_main: false
+      remote_status: deleted
+      unpushed_commit_count: 0
+      pr_number: 92
+      pr_state: merged
+      merge_method: squash
+    assessment: |
+      Remote deleted by GitHub
+      PR #92 merged 2 days ago by jdutton
+      squash merge explains why git branch --merged returned false
+      No unpushed commits (safe to delete)
+    delete_command: "git branch -D feature/squash-merged"
+    recovery_command: "git reflog | grep 'feature/squash-merged'"
+
+summary:
+  auto_deleted_count: 1
+  needs_review_count: 1
+  total_branches_analyzed: 15
+
+recovery_info: |
+  Deleted branches are recoverable for 30 days via git reflog:
+    git reflog
+    git checkout -b <branch-name> <SHA>
+\`\`\`
 
 ## Exit Codes
 
-- \`0\` - Cleanup successful
-- \`1\` - Failed (not on deletable branch, git errors)
+- \`0\` - Cleanup successful (even if no branches deleted)
+- \`1\` - Error (gh CLI missing, git errors, etc.)
 
 ## Examples
 
 \`\`\`bash
-# Preview what would be cleaned up
-vibe-validate cleanup --dry-run
-
-# Execute cleanup
+# Run cleanup (always YAML output)
 vibe-validate cleanup
 
-# Cleanup with custom main branch
-vibe-validate cleanup --main-branch develop
+# Parse YAML output
+vibe-validate cleanup | yq '.needs_review[].name'
+
+# Check if any branches need review
+vibe-validate cleanup | yq '.summary.needs_review_count'
 \`\`\`
 
 ## Common Workflows
 
-### After PR merge
+### After merging a squash-merged PR
 
 \`\`\`bash
-# Merge PR on GitHub
-
-# Switch to main and cleanup
+# PR #92 was squash-merged on GitHub
 vibe-validate cleanup
 
-# Start new feature
-git checkout -b feature/new-work
+# Output shows:
+# needs_review:
+#   - name: feature/my-pr
+#     pr_number: 92
+#     pr_state: merged
+#     merge_method: squash
+
+# Verify and delete
+git branch -D feature/my-pr
 \`\`\`
 
-### Preview before cleanup
+### Review old branches
 
 \`\`\`bash
-# See what would be deleted
-vibe-validate cleanup --dry-run
+# See all branches flagged for review
+vibe-validate cleanup | yq '.needs_review'
 
-# If looks good, execute
-vibe-validate cleanup
+# Delete specific branch
+git branch -D feature/old-branch
+
+# Recover if needed (within 30 days)
+git reflog | grep 'feature/old-branch'
+git checkout -b feature/old-branch <SHA>
 \`\`\`
+
+## Safety Principles
+
+1. **NEVER deletes branches with unpushed work** (non-negotiable)
+2. **Auto-deletes only 100% safe branches** (merged + no unpushed commits)
+3. **All deletions recoverable** via git reflog for 30 days
+4. **Complete context upfront** (no follow-up questions needed)
+5. **Switches away from current branch** if it needs cleanup
+
+## Breaking Changes from v0.17.x
+
+- **Removed options**: No --main-branch, --dry-run, --yaml (always YAML now)
+- **GitHub CLI required**: No graceful degradation (error if missing)
+- **Output format changed**: New structured YAML format
+- **No human-readable mode**: YAML-only for LLM consumption
 
 ## Error Recovery
 
-**If cleanup fails:**
-1. Ensure you're not on the main branch
-2. Verify remote connection: \`git fetch origin\`
-3. Check for uncommitted changes: \`git status\`
-4. Manually delete branches if needed: \`git branch -d <branch-name>\`
+**If \`gh\` CLI not found:**
+\`\`\`bash
+# Install GitHub CLI
+brew install gh  # macOS
+# or: https://cli.github.com/
+
+# Authenticate
+gh auth login
+\`\`\`
+
+**If branch has unpushed work:**
+- Push work first: \`git push\`
+- Or commit locally: \`git commit -am "WIP"\`
+- Branch will not appear in cleanup output (safety)
+
+**If accidentally deleted:**
+\`\`\`bash
+# Find in reflog
+git reflog | grep 'branch-name'
+
+# Recover
+git checkout -b branch-name <SHA>
+\`\`\`
 `);
 }
