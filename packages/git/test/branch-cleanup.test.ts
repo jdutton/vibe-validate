@@ -417,11 +417,11 @@ describe('Branch Cleanup - GitHub Enrichment', () => {
       expect(result.get('feature/other')).toBeDefined();
       expect(result.get('feature/other')?.number).toBe(43);
 
-      // Should call listPullRequests with merged state
+      // Should call listPullRequests with merged state (limit: 20 for performance)
       expect(ghCommands.listPullRequests).toHaveBeenCalledWith(
         'owner',
         'repo',
-        100,
+        20,
         expect.any(Array),
         'merged'
       );

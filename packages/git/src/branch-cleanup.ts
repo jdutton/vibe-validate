@@ -445,29 +445,47 @@ export async function fetchPRDataForBranches(
     const mergedPRs = listPullRequests(
       owner,
       repo,
-      100, // Last 100 merged PRs should cover most cleanup scenarios
+      20, // Last 20 merged PRs covers most cleanup scenarios (most repos have <20 local branches)
       ['number', 'title', 'headRefName', 'baseRefName', 'state', 'mergedAt', 'mergedBy'],
       'merged'
     );
 
-    // For each merged PR, fetch detailed merge commit info
-    for (const pr of mergedPRs) {
-      try {
-        // Fetch full PR details including merge commit
-        const fullPR = fetchPRDetails(pr.number, owner, repo, [
-          'number',
-          'headRefName',
-          'state',
-          'mergedAt',
-          'mergedBy',
-          'mergeCommit',
-          'commits',
-        ]);
+    // Process PRs in parallel batches with early termination
+    // Stop once we've found PRs for all local branches
+    const localBranchSet = new Set(_branches);
+    const BATCH_SIZE = 5; // Parallel requests per batch
 
-        prMap.set(fullPR.headRefName, fullPR);
-      } catch {
-        // If individual PR fetch fails, use basic data
-        prMap.set(pr.headRefName, pr);
+    for (let i = 0; i < mergedPRs.length; i += BATCH_SIZE) {
+      // Early termination: stop if we've found all local branches
+      if (prMap.size >= localBranchSet.size) {
+        break;
+      }
+
+      // Process batch in parallel
+      const batch = mergedPRs.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async pr =>
+          fetchPRDetails(pr.number, owner, repo, [
+            'number',
+            'headRefName',
+            'state',
+            'mergedAt',
+            'mergedBy',
+            'mergeCommit',
+            'commits',
+          ])
+        )
+      );
+
+      // Add results to map
+      for (const [index, result] of results.entries()) {
+        const pr = batch[index];
+        if (result.status === 'fulfilled') {
+          prMap.set(result.value.headRefName, result.value);
+        } else {
+          // If individual PR fetch fails, use basic data
+          prMap.set(pr.headRefName, pr);
+        }
       }
     }
 
