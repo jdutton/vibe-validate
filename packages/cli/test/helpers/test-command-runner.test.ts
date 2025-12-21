@@ -67,7 +67,9 @@ describe('parseCommand (via executeCommand)', () => {
     });
 
     it('should capture error output', () => {
-      const result = executeCommand('node -e "console.error(123); process.exit(1)"');
+      // Use newline-separated statements to avoid Windows command-line semicolon issues
+      // Node.js -e flag interprets \n as actual newlines in the code
+      const result = executeCommand('node -e "process.stderr.write(\'123\\n\')\nprocess.exit(1)"');
       expect(result.exitCode).toBe(1);
       expect(result.output).toContain('123');
     });
