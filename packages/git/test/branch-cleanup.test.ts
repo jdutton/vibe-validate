@@ -95,6 +95,28 @@ function createMockPR(overrides: Partial<any> = {}): any {
   };
 }
 
+// Helper to setup common GitHub mocks
+function mockGitHubAvailable(mockPRs: any[]) {
+  vi.mocked(utils.isToolAvailable).mockReturnValue(true);
+  vi.mocked(ghCommands.listPullRequests).mockReturnValue(mockPRs);
+}
+
+// Helper to mock git commands for setup tests
+function mockGitForSetup(remoteUrl: string) {
+  vi.mocked(gitExecutor.execGitCommand).mockImplementation((args: string[]) => {
+    if (args[0] === 'branch' && args[1] === '--show-current') {
+      return 'main';
+    }
+    if (args[0] === 'remote' && args[1] === 'get-url') {
+      return remoteUrl;
+    }
+    if (args[0] === 'symbolic-ref' && args[1] === 'refs/remotes/origin/HEAD') {
+      return 'refs/remotes/origin/main';
+    }
+    return '';
+  });
+}
+
 describe('Branch Cleanup - Default Branch Detection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -365,12 +387,6 @@ describe('Branch Cleanup - GitHub Enrichment', () => {
     });
   });
 
-  // Helper to setup common GitHub mocks
-  function mockGitHubAvailable(mockPRs: any[]) {
-    vi.mocked(utils.isToolAvailable).mockReturnValue(true);
-    vi.mocked(ghCommands.listPullRequests).mockReturnValue(mockPRs);
-  }
-
   describe('fetchPRDataForBranches', () => {
     it('should throw error if gh CLI not available', async () => {
       vi.mocked(utils.isToolAvailable).mockReturnValue(false);
@@ -546,22 +562,6 @@ describe('Branch Cleanup - Setup Context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
-
-  // Helper to mock git commands for setup tests
-  function mockGitForSetup(remoteUrl: string) {
-    vi.mocked(gitExecutor.execGitCommand).mockImplementation((args: string[]) => {
-      if (args[0] === 'branch' && args[1] === '--show-current') {
-        return 'main';
-      }
-      if (args[0] === 'remote' && args[1] === 'get-url') {
-        return remoteUrl;
-      }
-      if (args[0] === 'symbolic-ref' && args[1] === 'refs/remotes/origin/HEAD') {
-        return 'refs/remotes/origin/main';
-      }
-      return '';
-    });
-  }
 
   describe('Repository name extraction', () => {
     it('should strip .git suffix from remote URL', async () => {
