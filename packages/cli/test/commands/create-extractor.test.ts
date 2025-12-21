@@ -5,7 +5,7 @@
  * --detection-pattern flag for non-interactive plugin generation.
  */
 
-import { rmSync, existsSync, readFileSync } from 'node:fs';
+import { rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { safeExecSync, normalizedTmpdir, mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
@@ -51,7 +51,7 @@ describe('create-extractor command', () => {
 
   describe('plugin scaffolding', () => {
     it('should create extractor plugin directory structure', () => {
-      execCLI(cliPath, [
+      const output = execCLI(cliPath, [
         'create-extractor',
         'test-extractor',
         '--description',
@@ -64,6 +64,12 @@ describe('create-extractor command', () => {
       ], { cwd: testDir });
 
       const pluginDir = join(testDir, 'vibe-validate-plugin-test-extractor');
+      // Debug: Print output and check if directory exists
+      if (!existsSync(pluginDir)) {
+        console.error('Command output:', output);
+        console.error('Expected pluginDir:', pluginDir);
+        console.error('testDir contents:', readdirSync(testDir));
+      }
       expect(existsSync(pluginDir)).toBe(true);
 
       // Check for package.json
