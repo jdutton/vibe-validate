@@ -50,6 +50,20 @@ export interface GitHubRun {
 }
 
 /**
+ * GitHub Workflow Job
+ */
+export interface GitHubJob {
+  id: number;
+  run_id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  started_at: string;
+  completed_at: string | null;
+  html_url: string;
+}
+
+/**
  * Fetch PR details from GitHub
  *
  * @param prNumber - PR number
@@ -222,6 +236,37 @@ export function fetchRunDetails(
   );
 
   return JSON.parse(response as string);
+}
+
+/**
+ * Fetch jobs for a workflow run
+ *
+ * @param runId - Run ID
+ * @param owner - Repository owner (optional)
+ * @param repo - Repository name (optional)
+ * @returns List of jobs for the run
+ */
+export function fetchRunJobs(
+  runId: number,
+  owner?: string,
+  repo?: string
+): GitHubJob[] {
+  // If owner/repo provided, use them in the API path
+  // Otherwise rely on gh CLI to infer from current repo
+  const apiPath = owner && repo
+    ? `repos/${owner}/${repo}/actions/runs/${runId}/jobs`
+    : `repos/:owner/:repo/actions/runs/${runId}/jobs`;
+
+  const response = safeExecSync(
+    'gh',
+    ['api', apiPath],
+    {
+      encoding: 'utf8',
+    }
+  );
+
+  const data = JSON.parse(response as string);
+  return data.jobs ?? [];
 }
 
 /**
