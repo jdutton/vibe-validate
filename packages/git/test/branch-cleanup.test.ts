@@ -23,6 +23,10 @@ import {
   getUnpushedCommitCount,
   gatherBranchGitFacts,
   shouldShowBranch,
+  generateAssessment,
+  generateDeletedRemoteAssessment,
+  tryDeleteBranch,
+  categorizeBranches,
   type BranchGitFacts,
   type BranchGitHubFacts,
   type BranchAnalysis,
@@ -797,5 +801,232 @@ describe('Branch Cleanup - Setup Context', () => {
       expect(context.repository).toBe('owner/repo');
       expect(context.repository).not.toContain('.git');
     });
+  });
+});
+
+describe('Branch Cleanup - Assessment Generation', () => {
+  it('should generate assessment for deleted remote with PR info', () => {
+    const gitFacts = createBranchFacts({
+      remoteStatus: 'deleted',
+      daysSinceActivity: 2,
+    });
+
+    const githubFacts = createGitHubFacts({
+      prNumber: 42,
+      prState: 'merged',
+      mergeMethod: 'squash',
+      mergedBy: 'test-user',
+    });
+
+    const assessment = generateDeletedRemoteAssessment(gitFacts, githubFacts);
+
+    expect(assessment).toContain('Remote deleted by GitHub');
+    expect(assessment).toContain('PR #42');
+    expect(assessment).toContain('merged');
+    expect(assessment).toContain('by test-user');
+    expect(assessment).toContain('squash merge explains why git branch --merged returned false');
+    expect(assessment).toContain('No unpushed commits (safe to delete)');
+  });
+
+  it('should generate assessment for deleted remote without PR info', () => {
+    const gitFacts = createBranchFacts({
+      remoteStatus: 'deleted',
+      daysSinceActivity: 5,
+    });
+
+    const assessment = generateDeletedRemoteAssessment(gitFacts);
+
+    expect(assessment).toContain('Remote deleted by GitHub');
+    expect(assessment).toContain('No unpushed commits (safe to delete)');
+    expect(assessment).not.toContain('PR #');
+  });
+
+  it('should generate assessment for old never-pushed branch', () => {
+    const gitFacts = createBranchFacts({
+      remoteStatus: 'never_pushed',
+      daysSinceActivity: 95,
+    });
+
+    const assessment = generateAssessment(gitFacts);
+
+    expect(assessment).toContain('Old abandoned branch');
+    expect(assessment).toContain('95 days');
+    expect(assessment).toContain('Never pushed to remote');
+    expect(assessment).toContain('No unpushed commits (safe to delete)');
+  });
+
+  it('should delegate to generateDeletedRemoteAssessment for deleted remote', () => {
+    const gitFacts = createBranchFacts({
+      remoteStatus: 'deleted',
+    });
+
+    const assessment = generateAssessment(gitFacts);
+
+    expect(assessment).toContain('Remote deleted by GitHub');
+  });
+});
+
+describe('Branch Cleanup - tryDeleteBranch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should successfully delete a branch', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockReturnValue('');
+
+    const gitFacts = createBranchFacts({ name: 'feature/test' });
+    const result = tryDeleteBranch(gitFacts);
+
+    expect(result.deleted).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(gitExecutor.execGitCommand).toHaveBeenCalledWith(['branch', '-d', 'feature/test']);
+  });
+
+  it('should handle deletion failure', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockImplementation(() => {
+      throw new Error('error: branch not fully merged');
+    });
+
+    const gitFacts = createBranchFacts({ name: 'feature/test' });
+    const result = tryDeleteBranch(gitFacts);
+
+    expect(result.deleted).toBe(false);
+    expect(result.error).toContain('branch not fully merged');
+  });
+});
+
+describe('Branch Cleanup - categorizeBranches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should auto-delete safe branches successfully', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockReturnValue('');
+
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/merged',
+          mergedToMain: true,
+          unpushedCommitCount: 0,
+        }),
+        assessment: {
+          summary: 'Auto-delete safe',
+          deleteCommand: 'git branch -D feature/merged',
+          recoveryCommand: 'git reflog | grep feature/merged',
+        },
+      },
+    ];
+
+    const { autoDeleted, needsReview } = categorizeBranches(analyses);
+
+    expect(autoDeleted).toHaveLength(1);
+    expect(autoDeleted[0].name).toBe('feature/merged');
+    expect(autoDeleted[0].reason).toBe('merged_to_main');
+    expect(needsReview).toHaveLength(0);
+  });
+
+  it('should add failed deletions to needs-review', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockImplementation(() => {
+      throw new Error('Cannot delete checked out branch');
+    });
+
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/current',
+          mergedToMain: true,
+          unpushedCommitCount: 0,
+        }),
+        assessment: {
+          summary: 'Auto-delete safe',
+          deleteCommand: 'git branch -D feature/current',
+          recoveryCommand: 'git reflog | grep feature/current',
+        },
+      },
+    ];
+
+    const { autoDeleted, needsReview } = categorizeBranches(analyses);
+
+    expect(autoDeleted).toHaveLength(0);
+    expect(needsReview).toHaveLength(1);
+    expect(needsReview[0].name).toBe('feature/current');
+    expect(needsReview[0].assessment).toContain('Failed to delete');
+    expect(needsReview[0].assessment).toContain('Cannot delete checked out branch');
+  });
+
+  it('should categorize branches needing review', () => {
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/squashed',
+          mergedToMain: false,
+          remoteStatus: 'deleted',
+          unpushedCommitCount: 0,
+          daysSinceActivity: 45,
+        }),
+        githubFacts: createGitHubFacts({
+          prState: 'merged',
+          mergeMethod: 'squash',
+        }),
+        assessment: {
+          summary: 'Needs review',
+          deleteCommand: 'git branch -D feature/squashed',
+          recoveryCommand: 'git reflog | grep feature/squashed',
+        },
+      },
+    ];
+
+    const { autoDeleted, needsReview } = categorizeBranches(analyses);
+
+    expect(autoDeleted).toHaveLength(0);
+    expect(needsReview).toHaveLength(1);
+    expect(needsReview[0].name).toBe('feature/squashed');
+    expect(needsReview[0].verification).toMatchObject({
+      mergedToMain: false,
+      remoteStatus: 'deleted',
+      prState: 'merged',
+      mergeMethod: 'squash',
+    });
+  });
+
+  it('should handle mixed categories', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockReturnValue('');
+
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/safe',
+          mergedToMain: true,
+          unpushedCommitCount: 0,
+        }),
+        assessment: {
+          summary: 'Auto-delete safe',
+          deleteCommand: 'git branch -D feature/safe',
+          recoveryCommand: 'git reflog | grep feature/safe',
+        },
+      },
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/review',
+          mergedToMain: false,
+          remoteStatus: 'deleted',
+          unpushedCommitCount: 0,
+          daysSinceActivity: 45,
+        }),
+        assessment: {
+          summary: 'Needs review',
+          deleteCommand: 'git branch -D feature/review',
+          recoveryCommand: 'git reflog | grep feature/review',
+        },
+      },
+    ];
+
+    const { autoDeleted, needsReview } = categorizeBranches(analyses);
+
+    expect(autoDeleted).toHaveLength(1);
+    expect(autoDeleted[0].name).toBe('feature/safe');
+    expect(needsReview).toHaveLength(1);
+    expect(needsReview[0].name).toBe('feature/review');
   });
 });

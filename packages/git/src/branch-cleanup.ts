@@ -647,7 +647,7 @@ export async function setupCleanupContext(): Promise<CleanupContext> {
 /**
  * Generate assessment text for a branch needing review
  */
-function generateAssessment(gitFacts: BranchGitFacts, githubFacts?: BranchGitHubFacts): string {
+export function generateAssessment(gitFacts: BranchGitFacts, githubFacts?: BranchGitHubFacts): string {
   if (gitFacts.remoteStatus === 'deleted') {
     return generateDeletedRemoteAssessment(gitFacts, githubFacts);
   }
@@ -662,7 +662,7 @@ function generateAssessment(gitFacts: BranchGitFacts, githubFacts?: BranchGitHub
 /**
  * Generate assessment for branch with deleted remote
  */
-function generateDeletedRemoteAssessment(
+export function generateDeletedRemoteAssessment(
   gitFacts: BranchGitFacts,
   githubFacts?: BranchGitHubFacts
 ): string {
@@ -687,7 +687,7 @@ function generateDeletedRemoteAssessment(
 /**
  * Try to delete a safe branch and return result
  */
-function tryDeleteBranch(gitFacts: BranchGitFacts): { deleted: boolean; error?: string } {
+export function tryDeleteBranch(gitFacts: BranchGitFacts): { deleted: boolean; error?: string } {
   try {
     execGitCommand(['branch', '-d', gitFacts.name]);
     return { deleted: true };
@@ -702,7 +702,7 @@ function tryDeleteBranch(gitFacts: BranchGitFacts): { deleted: boolean; error?: 
 /**
  * Categorize branches into auto-delete and needs-review
  */
-function categorizeBranches(
+export function categorizeBranches(
   analyses: BranchAnalysis[]
 ): {
   autoDeleted: CleanupResult['autoDeleted'];
