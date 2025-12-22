@@ -8,8 +8,9 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+import { showCreateExtractorVerboseHelp } from '../../src/commands/create-extractor.js';
 import {
   executeVibeValidateCombined as execCLI,
   setupTestDir,
@@ -165,6 +166,250 @@ describe('create-extractor command', () => {
       expect(readmeContent).toContain('Test Extractor');
       expect(readmeContent).toContain('Test extractor');
       expect(readmeContent).toContain('extractors:');
+    });
+
+    it('should generate index.test.ts with proper test structure', async () => {
+      await execCLI([
+        'create-extractor',
+        'test-tool',
+        '--description',
+        'Test tool extractor',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'FAIL:',
+        '--force'
+      ], { cwd: testDir });
+
+      const testFilePath = join(testDir, 'vibe-validate-plugin-test-tool', 'index.test.ts');
+      expect(existsSync(testFilePath)).toBe(true);
+
+      const testContent = readFileSync(testFilePath, 'utf-8');
+
+      // Verify test structure
+      expect(testContent).toContain("import { describe, it, expect } from 'vitest'");
+      expect(testContent).toContain("describe('test-tool extractor'");
+      expect(testContent).toContain("it('should have correct metadata'");
+      expect(testContent).toContain("it('should detect Test Tool output'");
+      expect(testContent).toContain("it('should not detect non-Test Tool output'");
+      expect(testContent).toContain("it('should extract errors from Test Tool output'");
+      expect(testContent).toContain("it('should process sample file'");
+
+      // Verify detection pattern is used
+      expect(testContent).toContain('FAIL:');
+
+      // Verify proper test expectations
+      expect(testContent).toContain('expect(result.confidence).toBeGreaterThan(40)');
+      expect(testContent).toContain('expect(result.confidence).toBeLessThan(40)');
+    });
+
+    it('should generate CLAUDE.md with comprehensive guidance', async () => {
+      await execCLI([
+        'create-extractor',
+        'my-tool',
+        '--description',
+        'My custom tool',
+        '--author',
+        'Dev <dev@example.com>',
+        '--detection-pattern',
+        'MY-ERROR:',
+        '--priority',
+        '85',
+        '--force'
+      ], { cwd: testDir });
+
+      const claudeMdPath = join(testDir, 'vibe-validate-plugin-my-tool', 'CLAUDE.md');
+      expect(existsSync(claudeMdPath)).toBe(true);
+
+      const claudeContent = readFileSync(claudeMdPath, 'utf-8');
+
+      // Verify title and description
+      expect(claudeContent).toContain('My Tool Extractor - Claude Code Guidance');
+      expect(claudeContent).toContain('My custom tool');
+
+      // Verify architecture section
+      expect(claudeContent).toContain('## Plugin Architecture');
+      expect(claudeContent).toContain('ExtractorPlugin');
+      expect(claudeContent).toContain('detect(output: string): DetectionResult');
+      expect(claudeContent).toContain('extract(output: string, command?: string): ErrorExtractorResult');
+
+      // Verify detection pattern is documented
+      expect(claudeContent).toContain('MY-ERROR:');
+      expect(claudeContent).toContain("required: ['MY-ERROR:']");
+
+      // Verify security section
+      expect(claudeContent).toContain('## Security Considerations');
+      expect(claudeContent).toContain('No file I/O');
+      expect(claudeContent).toContain('No process execution');
+      expect(claudeContent).toContain('Deterministic');
+
+      // Verify key sections exist
+      expect(claudeContent).toContain('## Detection Logic');
+      expect(claudeContent).toContain('## Testing Requirements');
+      expect(claudeContent).toContain('## Common Modifications');
+    });
+
+    it('should generate samples/sample-error.txt with detection pattern', async () => {
+      await execCLI([
+        'create-extractor',
+        'sample-tool',
+        '--description',
+        'Sample tool extractor',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'SAMPLE-ERR:',
+        '--force'
+      ], { cwd: testDir });
+
+      const samplePath = join(testDir, 'vibe-validate-plugin-sample-tool', 'samples', 'sample-error.txt');
+      expect(existsSync(samplePath)).toBe(true);
+
+      const sampleContent = readFileSync(samplePath, 'utf-8');
+
+      // Verify sample contains detection pattern
+      expect(sampleContent).toContain('SAMPLE-ERR:');
+
+      // Verify sample has placeholder messages
+      expect(sampleContent).toContain('Example error message');
+      expect(sampleContent).toContain('Replace this file with real error output');
+    });
+
+    it('should use correct priority value in generated plugin', async () => {
+      await execCLI([
+        'create-extractor',
+        'priority-test',
+        '--description',
+        'Priority test',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'ERR:',
+        '--priority',
+        '95',
+        '--force'
+      ], { cwd: testDir });
+
+      const pluginFilePath = join(testDir, 'vibe-validate-plugin-priority-test', 'index.ts');
+      const pluginContent = readFileSync(pluginFilePath, 'utf-8');
+
+      // Verify priority is set correctly
+      expect(pluginContent).toContain('priority: 95');
+    });
+
+    it('should properly substitute all template variables', async () => {
+      await execCLI([
+        'create-extractor',
+        'kebab-case-name',
+        '--description',
+        'Testing variable substitution',
+        '--author',
+        'Author Name <author@test.com>',
+        '--detection-pattern',
+        'VAR-TEST:',
+        '--force'
+      ], { cwd: testDir });
+
+      const pluginFilePath = join(testDir, 'vibe-validate-plugin-kebab-case-name', 'index.ts');
+      const pluginContent = readFileSync(pluginFilePath, 'utf-8');
+
+      // Verify kebab-case name is used
+      expect(pluginContent).toContain('kebab-case-name');
+
+      // Verify PascalCase conversion (KebabCaseName)
+      expect(pluginContent).toContain('detectKebabCaseName');
+      expect(pluginContent).toContain('extractKebabCaseName');
+
+      // Verify Title Case conversion (Kebab Case Name)
+      expect(pluginContent).toContain('Kebab Case Name');
+
+      // Verify description
+      expect(pluginContent).toContain('Testing variable substitution');
+
+      // Verify author
+      expect(pluginContent).toContain('Author Name <author@test.com>');
+
+      // Verify detection pattern
+      expect(pluginContent).toContain('VAR-TEST:');
+    });
+
+    it('should generate package.json with correct version dependencies', async () => {
+      await execCLI([
+        'create-extractor',
+        'version-test',
+        '--description',
+        'Version test',
+        '--author',
+        'Test <test@example.com>',
+        '--detection-pattern',
+        'ERR:',
+        '--force'
+      ], { cwd: testDir });
+
+      const packageJsonPath = join(testDir, 'vibe-validate-plugin-version-test', 'package.json');
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+
+      // Verify peerDependencies and devDependencies have @vibe-validate/extractors
+      expect(packageJson.peerDependencies).toHaveProperty('@vibe-validate/extractors');
+      expect(packageJson.devDependencies).toHaveProperty('@vibe-validate/extractors');
+
+      // Verify versions are valid semver (either ^x.y.z or x.y.z-rc.n)
+      const peerVersion = packageJson.peerDependencies['@vibe-validate/extractors'];
+      const devVersion = packageJson.devDependencies['@vibe-validate/extractors'];
+
+      // Should be valid version format
+      // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, no exponential backtracking
+      expect(peerVersion).toMatch(/^(\^)?\d+\.\d+\.\d+(-rc\.\d+)?$/);
+      // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, no exponential backtracking
+      expect(devVersion).toMatch(/^(\^)?\d+\.\d+\.\d+(-rc\.\d+)?$/);
+
+      // Should match each other
+      expect(peerVersion).toBe(devVersion);
+
+      // Verify other expected fields
+      expect(packageJson.scripts).toHaveProperty('build');
+      expect(packageJson.scripts).toHaveProperty('test');
+      expect(packageJson.keywords).toContain('vibe-validate');
+      expect(packageJson.keywords).toContain('version-test');
+    });
+  });
+
+  describe('verbose help', () => {
+    it('should display comprehensive help documentation', () => {
+      // Spy on console.log to capture output
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      showCreateExtractorVerboseHelp();
+
+      // Get all console.log calls and join them
+      const output = consoleSpy.mock.calls.map(call => call[0]).join('\n');
+
+      // Verify key sections are present
+      expect(output).toContain('# create-extractor Command Reference');
+      expect(output).toContain('## Overview');
+      expect(output).toContain('## How It Works');
+      expect(output).toContain('## Options');
+      expect(output).toContain('## Exit Codes');
+      expect(output).toContain('## Files Created');
+      expect(output).toContain('## Examples');
+      expect(output).toContain('## Development Workflow');
+      expect(output).toContain('## Plugin Structure');
+      expect(output).toContain('## Next Steps After Creation');
+      expect(output).toContain('## Related Commands');
+
+      // Verify critical content
+      expect(output).toContain('--detection-pattern');
+      expect(output).toContain('--priority');
+      expect(output).toContain('--force');
+      expect(output).toContain('index.ts');
+      expect(output).toContain('index.test.ts');
+      expect(output).toContain('README.md');
+      expect(output).toContain('CLAUDE.md');
+      expect(output).toContain('ExtractorPlugin interface');
+      expect(output).toContain('vibe-validate create-extractor');
+
+      // Restore console.log
+      consoleSpy.mockRestore();
     });
   });
 
