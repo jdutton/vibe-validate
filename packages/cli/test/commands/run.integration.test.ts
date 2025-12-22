@@ -7,7 +7,7 @@ import { normalizePath, safeExecSync } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 import yaml from 'yaml';
 
-import { executeVibeValidateCommand } from '../helpers/cli-execution-helpers.js';
+import { executeVibeValidateCommand, getCliPath } from '../helpers/cli-execution-helpers.js';
 import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-helpers.js';
 
 
@@ -75,8 +75,9 @@ async function execCLIWithCwd(cliArgs: string[], options: { cwd: string; env?: R
  * Reduces duplication in nested command cache tests
  */
 async function executeNestedCommand(testCommand: string): Promise<{ parsed: any; output: string }> {
-  // Execute nested: vv run "vv run 'command'"
-  const nestedRun = await execCLI(['run', 'vv', 'run', testCommand]);
+  // Execute nested: vibe-validate run "node /path/to/cli run 'command'"
+  const cliPath = getCliPath('vibe-validate');
+  const nestedRun = await execCLI(['run', `node ${cliPath} run ${testCommand}`]);
   const nestedParsed = parseRunYamlOutput(nestedRun);
   expect(nestedParsed.exitCode).toBe(0);
   expect(nestedParsed.command).toBe(testCommand);
@@ -101,9 +102,10 @@ describe('run command integration', () => {
     it('should handle real nested vibe-validate run commands (2 levels)', async () => {
       // Execute: vibe-validate run "echo test"
       // This produces real YAML output
-      const innerCommand = String.raw`vv run "node -e \"console.log('Hello from inner command')\""`;
+      const cliPath = getCliPath('vibe-validate');
+      const innerCommand = String.raw`node ${cliPath} run "node -e \"console.log('Hello from inner command')\""`;
 
-      // Wrap it: vibe-validate run "vibe-validate run 'node -e ...'"
+      // Wrap it: vibe-validate run "node /path/to/cli run 'node -e ...'"
       const output = await execCLI(['run', innerCommand]);
 
       // Parse YAML output
@@ -387,7 +389,8 @@ describe('run command integration', () => {
         expect(firstParsed.exitCode).toBe(0);
 
         // Second run - nested command should hit cache
-        const nestedCommand = `vv run '${testCommand}'`;
+        const cliPath = getCliPath('vibe-validate');
+        const nestedCommand = `node ${cliPath} run '${testCommand}'`;
         const nestedCachedRun = await execCLI(['run', nestedCommand]);
 
         const nestedCachedParsed = parseRunYamlOutput(nestedCachedRun);
@@ -486,7 +489,8 @@ describe('run command integration', () => {
         expect(firstParsed.isCachedResult).toBeUndefined(); // First run, no cache
 
         // Second run: nested command should show cache hit
-        const nestedCommand = `vv run '${testCommand}'`;
+        const cliPath = getCliPath('vibe-validate');
+        const nestedCommand = `node ${cliPath} run '${testCommand}'`;
         const nestedRun = await execCLI(['run', nestedCommand]);
 
         const nestedParsed = parseRunYamlOutput(nestedRun);
@@ -499,7 +503,8 @@ describe('run command integration', () => {
         // Test that requestedCommand field is added for transparency
         const testMessage = `test-requested-${Date.now()}`;
         const testCommand = `echo ${testMessage}`;
-        const wrappedCommand = `vv run '${testCommand}'`;
+        const cliPath = getCliPath('vibe-validate');
+        const wrappedCommand = `node ${cliPath} run '${testCommand}'`;
 
         const nestedRun = await execCLI(['run', wrappedCommand]);
 
@@ -532,7 +537,8 @@ describe('run command integration', () => {
     it('should handle nested execution without significant overhead', async () => {
       const start = Date.now();
 
-      const command = `vv run 'echo fast'`;
+      const cliPath = getCliPath('vibe-validate');
+      const command = `node ${cliPath} run 'echo fast'`;
       await execCLI(['run', command]);
 
       const duration = Date.now() - start;
