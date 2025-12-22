@@ -67,9 +67,9 @@ describe('parseCommand (via executeCommand)', () => {
     });
 
     it('should capture error output', () => {
-      // Use newline-separated statements to avoid Windows command-line semicolon issues
-      // Node.js -e flag interprets \n as actual newlines in the code
-      const result = executeCommand('node -e "process.stderr.write(\'123\\n\')\nprocess.exit(1)"');
+      // Use semicolon instead of literal newline in command argument (cross-platform)
+      // Literal newlines in arguments work on Unix but may be truncated on Windows
+      const result = executeCommand(String.raw`node -e "process.stderr.write('123\n'); process.exit(1)"`);
       expect(result.exitCode).toBe(1);
       expect(result.output).toContain('123');
     });

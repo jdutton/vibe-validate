@@ -64,12 +64,25 @@ describe('create-extractor command', () => {
       ], { cwd: testDir });
 
       const pluginDir = join(testDir, 'vibe-validate-plugin-test-extractor');
-      // Debug: Print output and check if directory exists
+
+      // Debug: If directory doesn't exist, throw detailed error instead of assertion
+      // This ensures debug info appears in CI logs
       if (!existsSync(pluginDir)) {
-        console.error('Command output:', output);
-        console.error('Expected pluginDir:', pluginDir);
-        console.error('testDir contents:', readdirSync(testDir));
+        const debugInfo = [
+          '=== CREATE-EXTRACTOR DEBUG (Windows CI) ===',
+          `testDir: ${testDir}`,
+          `testDir exists: ${existsSync(testDir)}`,
+          `testDir contents: [${readdirSync(testDir).join(', ') || 'empty'}]`,
+          `pluginDir: ${pluginDir}`,
+          `pluginDir exists: ${existsSync(pluginDir)}`,
+          `cliPath: ${cliPath}`,
+          `Command output (${output.length} chars):`,
+          output || '(empty)',
+          '=== END DEBUG ===',
+        ].join('\n');
+        throw new Error(`Plugin directory not created!\n${debugInfo}`);
       }
+
       expect(existsSync(pluginDir)).toBe(true);
 
       // Check for package.json
