@@ -67,6 +67,7 @@ const customRules = {
   'local/no-child-process-execSync': 'error',
   'local/no-git-commands-direct': 'error',
   'local/no-gh-commands-direct': 'error',
+  'local/no-direct-cli-bin-execution': 'error', // Test files only - enforce shared CLI helpers
 };
 
 export default [
