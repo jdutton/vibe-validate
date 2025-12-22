@@ -77,7 +77,8 @@ async function execCLIWithCwd(cliArgs: string[], options: { cwd: string; env?: R
 async function executeNestedCommand(testCommand: string): Promise<{ parsed: any; output: string }> {
   // Execute nested: vibe-validate run "node /path/to/cli run 'command'"
   const cliPath = getCliPath('vibe-validate');
-  const nestedRun = await execCLI(['run', `node ${cliPath} run ${testCommand}`]);
+  // Quote the CLI path for Windows compatibility (paths may contain spaces)
+  const nestedRun = await execCLI(['run', `node "${cliPath}" run ${testCommand}`]);
   const nestedParsed = parseRunYamlOutput(nestedRun);
   expect(nestedParsed.exitCode).toBe(0);
   expect(nestedParsed.command).toBe(testCommand);

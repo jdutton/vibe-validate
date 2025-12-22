@@ -22,6 +22,68 @@
  * NO AUTO-FIX: Manual refactoring required to use shared helpers.
  */
 
+/**
+ * Check if an AST node looks like a CLI binary path reference
+ * @param {Object} element - AST node to check
+ * @returns {boolean} - True if looks like a CLI binary path
+ */
+function looksLikeCliBinaryPath(element) {
+  if (!element) {
+    return false;
+  }
+
+  // Check for CLI_BIN identifier or clipath variable
+  if (
+    element.type === 'Identifier' &&
+    (element.name === 'CLI_BIN' || element.name.toLowerCase().includes('clipath'))
+  ) {
+    return true;
+  }
+
+  // Check for member expressions (e.g., path.join(..., 'bin.js'))
+  if (element.type === 'MemberExpression') {
+    return true;
+  }
+
+  // Check for function calls that resolve paths (resolve, join, normalizePath, getCliPath)
+  if (
+    element.type === 'CallExpression' &&
+    element.callee.name &&
+    ['resolve', 'join', 'normalizePath', 'getCliPath'].includes(element.callee.name)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a call expression matches the pattern: functionName('node', [cliPath, ...])
+ * @param {Object} node - AST node to check
+ * @param {string[]} functionNames - Function names to match
+ * @returns {boolean} - True if pattern matches
+ */
+function matchesNodeCliPattern(node, functionNames) {
+  if (!functionNames.includes(node.callee.name) || node.arguments.length < 2) {
+    return false;
+  }
+
+  const firstArg = node.arguments[0];
+  const secondArg = node.arguments[1];
+
+  // Check if first argument is string literal 'node'
+  if (firstArg.type !== 'Literal' || firstArg.value !== 'node') {
+    return false;
+  }
+
+  // Check if second argument is an array containing a CLI binary path
+  if (secondArg.type !== 'ArrayExpression' || secondArg.elements.length === 0) {
+    return false;
+  }
+
+  return looksLikeCliBinaryPath(secondArg.elements[0]);
+}
+
 module.exports = {
   meta: {
     type: 'problem',
@@ -51,68 +113,6 @@ module.exports = {
       filename.includes('test-command-runner.ts')
     ) {
       return {};
-    }
-
-    /**
-     * Check if an AST node looks like a CLI binary path reference
-     * @param {Object} element - AST node to check
-     * @returns {boolean} - True if looks like a CLI binary path
-     */
-    function looksLikeCliBinaryPath(element) {
-      if (!element) {
-        return false;
-      }
-
-      // Check for CLI_BIN identifier or clipath variable
-      if (
-        element.type === 'Identifier' &&
-        (element.name === 'CLI_BIN' || element.name.toLowerCase().includes('clipath'))
-      ) {
-        return true;
-      }
-
-      // Check for member expressions (e.g., path.join(..., 'bin.js'))
-      if (element.type === 'MemberExpression') {
-        return true;
-      }
-
-      // Check for function calls that resolve paths (resolve, join, normalizePath, getCliPath)
-      if (
-        element.type === 'CallExpression' &&
-        element.callee.name &&
-        ['resolve', 'join', 'normalizePath', 'getCliPath'].includes(element.callee.name)
-      ) {
-        return true;
-      }
-
-      return false;
-    }
-
-    /**
-     * Check if a call expression matches the pattern: functionName('node', [cliPath, ...])
-     * @param {Object} node - AST node to check
-     * @param {string[]} functionNames - Function names to match
-     * @returns {boolean} - True if pattern matches
-     */
-    function matchesNodeCliPattern(node, functionNames) {
-      if (!functionNames.includes(node.callee.name) || node.arguments.length < 2) {
-        return false;
-      }
-
-      const firstArg = node.arguments[0];
-      const secondArg = node.arguments[1];
-
-      // Check if first argument is string literal 'node'
-      if (firstArg.type !== 'Literal' || firstArg.value !== 'node') {
-        return false;
-      }
-
-      // Check if second argument is an array containing a CLI binary path
-      if (secondArg.type !== 'ArrayExpression' || secondArg.elements.length === 0) {
-        return false;
-      }
-
-      return looksLikeCliBinaryPath(secondArg.elements[0]);
     }
 
     return {
