@@ -143,5 +143,33 @@ describe('cleanup command', () => {
       const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
       expect(command).toBeDefined();
     });
+
+    it('should have correct description', () => {
+      cleanupCommand(env.program);
+
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
+      expect(command?.description()).toBe('Clean up old temporary output files');
+    });
+
+    it('should have older-than, all, dry-run, and yaml options', () => {
+      cleanupCommand(env.program);
+
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
+      expect(command?.options).toBeDefined();
+
+      const optionNames = command?.options.map(opt => opt.long) || [];
+      expect(optionNames).toContain('--older-than');
+      expect(optionNames).toContain('--all');
+      expect(optionNames).toContain('--dry-run');
+      expect(optionNames).toContain('--yaml');
+    });
+
+    it('should have default value for older-than option', () => {
+      cleanupCommand(env.program);
+
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
+      const olderThanOption = command?.options.find(opt => opt.long === '--older-than');
+      expect(olderThanOption?.defaultValue).toBe('7');
+    });
   });
 });

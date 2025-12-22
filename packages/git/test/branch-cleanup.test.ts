@@ -19,6 +19,10 @@ import {
   fetchPRDataForBranches,
   enrichWithGitHubData,
   setupCleanupContext,
+  parseRemoteTracking,
+  getUnpushedCommitCount,
+  gatherBranchGitFacts,
+  shouldShowBranch,
   type BranchGitFacts,
   type BranchGitHubFacts,
   type BranchAnalysis,
@@ -112,6 +116,19 @@ function mockGitForSetup(remoteUrl: string) {
     }
     if (args[0] === 'symbolic-ref' && args[1] === 'refs/remotes/origin/HEAD') {
       return 'refs/remotes/origin/main';
+    }
+    return '';
+  });
+}
+
+// Helper to mock git for branches with no remote tracking
+function mockGitForNeverPushedBranch(commitDate: string, author: string) {
+  vi.mocked(gitExecutor.execGitCommand).mockImplementation((args: string[]) => {
+    if (args[0] === 'config') {
+      throw new Error('Not found');
+    }
+    if (args[0] === 'log') {
+      return `${commitDate}\n${author}`;
     }
     return '';
   });
@@ -295,6 +312,197 @@ describe('Branch Cleanup - Protected Branches', () => {
 
   it('should not protect feature branches', () => {
     expect(isProtectedBranch('feature/test', 'main')).toBe(false);
+  });
+});
+
+describe('Branch Cleanup - Remote Tracking Parsing', () => {
+  it('should parse existing remote tracking ref', () => {
+    const branchVerbose = '  feature/test  abc1234 [origin/feature/test] Commit message';
+    const { remoteStatus, remoteRef } = parseRemoteTracking(branchVerbose);
+
+    expect(remoteStatus).toBe('exists');
+    expect(remoteRef).toBe('origin/feature/test');
+  });
+
+  it('should parse remote with ahead/behind info', () => {
+    const branchVerbose = '* feature/test  abc1234 [origin/feature/test: ahead 2, behind 1] Message';
+    const { remoteStatus, remoteRef } = parseRemoteTracking(branchVerbose);
+
+    expect(remoteStatus).toBe('exists');
+    expect(remoteRef).toBe('origin/feature/test');
+  });
+
+  it('should detect never pushed branches (no tracking info)', () => {
+    const branchVerbose = '  feature/local  abc1234 Commit message';
+    const { remoteStatus, remoteRef } = parseRemoteTracking(branchVerbose);
+
+    expect(remoteStatus).toBe('never_pushed');
+    expect(remoteRef).toBeNull();
+  });
+});
+
+describe('Branch Cleanup - Unpushed Commit Counting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return 0 if no remote ref', () => {
+    const count = getUnpushedCommitCount('feature/test', null);
+    expect(count).toBe(0);
+  });
+
+  it('should count unpushed commits', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockReturnValue('3');
+
+    const count = getUnpushedCommitCount('feature/test', 'origin/feature/test');
+
+    expect(count).toBe(3);
+    expect(gitExecutor.execGitCommand).toHaveBeenCalledWith([
+      'rev-list',
+      '--count',
+      'origin/feature/test..feature/test',
+    ]);
+  });
+
+  it('should return 0 if git command fails', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockImplementation(() => {
+      throw new Error('fatal: ambiguous argument');
+    });
+
+    const count = getUnpushedCommitCount('feature/test', 'origin/feature/test');
+    expect(count).toBe(0);
+  });
+});
+
+describe('Branch Cleanup - shouldShowBranch', () => {
+  it('should hide branches with unpushed work', () => {
+    const analysis: BranchAnalysis = {
+      gitFacts: createBranchFacts({ unpushedCommitCount: 2 }),
+      assessment: {
+        summary: '',
+        deleteCommand: '',
+        recoveryCommand: '',
+      },
+    };
+
+    expect(shouldShowBranch(analysis)).toBe(false);
+  });
+
+  it('should show auto-delete safe branches', () => {
+    const analysis: BranchAnalysis = {
+      gitFacts: createBranchFacts({ mergedToMain: true, unpushedCommitCount: 0 }),
+      assessment: {
+        summary: '',
+        deleteCommand: '',
+        recoveryCommand: '',
+      },
+    };
+
+    expect(shouldShowBranch(analysis)).toBe(true);
+  });
+
+  it('should show branches needing review', () => {
+    const analysis: BranchAnalysis = {
+      gitFacts: createBranchFacts({
+        remoteStatus: 'deleted',
+        unpushedCommitCount: 0,
+        daysSinceActivity: 45,
+      }),
+      assessment: {
+        summary: '',
+        deleteCommand: '',
+        recoveryCommand: '',
+      },
+    };
+
+    expect(shouldShowBranch(analysis)).toBe(true);
+  });
+});
+
+describe('Branch Cleanup - gatherBranchGitFacts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should gather complete facts for a branch with remote tracking', async () => {
+    const mergedBranches = new Set(['feature/test']);
+
+    // Mock git commands
+    vi.mocked(gitExecutor.execGitCommand).mockImplementation((args: string[]) => {
+      if (args[0] === 'config' && args[2] === 'branch.feature/test.merge') {
+        return 'refs/heads/feature/test';
+      }
+      if (args[0] === 'config' && args[2] === 'branch.feature/test.remote') {
+        return 'origin';
+      }
+      if (args[0] === 'rev-parse') {
+        return 'abc123'; // Remote exists
+      }
+      if (args[0] === 'rev-list') {
+        return '2'; // 2 unpushed commits
+      }
+      if (args[0] === 'log') {
+        return '2023-12-15T10:00:00Z\nJohn Doe';
+      }
+      return '';
+    });
+
+    const facts = await gatherBranchGitFacts('feature/test', 'main', mergedBranches);
+
+    expect(facts.name).toBe('feature/test');
+    expect(facts.mergedToMain).toBe(true);
+    expect(facts.remoteStatus).toBe('exists');
+    expect(facts.unpushedCommitCount).toBe(2);
+    expect(facts.lastCommitDate).toBe('2023-12-15T10:00:00Z');
+    expect(facts.lastCommitAuthor).toBe('John Doe');
+    expect(facts.daysSinceActivity).toBeGreaterThan(0);
+  });
+
+  it('should handle branch with deleted remote', async () => {
+    const mergedBranches = new Set<string>();
+
+    vi.mocked(gitExecutor.execGitCommand).mockImplementation((args: string[]) => {
+      if (args[0] === 'config' && args[2] === 'branch.feature/old.merge') {
+        return 'refs/heads/feature/old';
+      }
+      if (args[0] === 'config' && args[2] === 'branch.feature/old.remote') {
+        return 'origin';
+      }
+      if (args[0] === 'rev-parse') {
+        throw new Error('fatal: ref does not exist');
+      }
+      if (args[0] === 'log') {
+        return '2023-01-01T00:00:00Z\nTest User';
+      }
+      return '';
+    });
+
+    const facts = await gatherBranchGitFacts('feature/old', 'main', mergedBranches);
+
+    expect(facts.remoteStatus).toBe('deleted');
+    expect(facts.unpushedCommitCount).toBe(0);
+  });
+
+  it('should handle branch never pushed', async () => {
+    const mergedBranches = new Set<string>();
+    mockGitForNeverPushedBranch('2023-12-20T00:00:00Z', 'Local Dev');
+
+    const facts = await gatherBranchGitFacts('feature/local', 'main', mergedBranches);
+
+    expect(facts.remoteStatus).toBe('never_pushed');
+    expect(facts.unpushedCommitCount).toBe(0);
+  });
+
+  it('should calculate days since activity correctly', async () => {
+    const mergedBranches = new Set<string>();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    mockGitForNeverPushedBranch(yesterday.toISOString(), 'Recent Dev');
+
+    const facts = await gatherBranchGitFacts('feature/recent', 'main', mergedBranches);
+
+    expect(facts.daysSinceActivity).toBe(1);
   });
 });
 
