@@ -238,7 +238,7 @@ vibe-validate sync-check --yaml  # YAML output only
 
 ### `cleanup`
 
-Post-merge cleanup (switch to main, delete merged branches)
+Comprehensive branch cleanup with GitHub integration
 
 **What it does:**
 
@@ -254,12 +254,6 @@ Post-merge cleanup (switch to main, delete merged branches)
 - `1` - Failed (not on deletable branch, git errors)
 
 **When to use:** After PR merge to clean up local branches
-
-**Options:**
-
-- `--main-branch <branch>` - Main branch name
-- `--dry-run` - Show what would be deleted without actually deleting
-- `--yaml` - Output YAML only (no human-friendly display)
 
 **Examples:**
 

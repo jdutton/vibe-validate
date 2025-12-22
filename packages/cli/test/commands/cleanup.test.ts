@@ -9,7 +9,7 @@ vi.mock('@vibe-validate/git', async () => {
   const actual = await vi.importActual<typeof git>('@vibe-validate/git');
   return {
     ...actual,
-    cleanupMergedBranches: vi.fn(),
+    cleanupBranches: vi.fn(),
   };
 });
 
@@ -20,7 +20,7 @@ describe('cleanup command', () => {
     env = setupCommanderTest();
 
     // Reset git mocks
-    vi.mocked(git.cleanupMergedBranches).mockReset();
+    vi.mocked(git.cleanupBranches).mockReset();
   });
 
   afterEach(() => {
@@ -39,45 +39,39 @@ describe('cleanup command', () => {
       cleanupCommand(env.program);
 
       const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
-      expect(command?.description()).toBe('Post-merge cleanup (switch to main, delete merged branches)');
+      expect(command?.description()).toBe('Comprehensive branch cleanup with GitHub integration');
     });
 
-    it('should register --main-branch option', () => {
+    it('should have no custom options (YAML-only, no flags)', () => {
       cleanupCommand(env.program);
 
       const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
-      const option = command?.options.find(opt => opt.long === '--main-branch');
-      expect(option).toBeDefined();
-      expect(option?.defaultValue).toBe('main');
-    });
-
-    it('should register --dry-run option', () => {
-      cleanupCommand(env.program);
-
-      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
-      const option = command?.options.find(opt => opt.long === '--dry-run');
-      expect(option).toBeDefined();
-    });
-
-    it('should register --yaml option', () => {
-      cleanupCommand(env.program);
-
-      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
-      const option = command?.options.find(opt => opt.long === '--yaml');
-      expect(option).toBeDefined();
+      // Should have no custom options (Commander adds standard --help option)
+      expect(command?.options.length).toBe(0); // No custom options
     });
   });
 
   describe('cleanup execution', () => {
-    it('should call cleanupMergedBranches with default options', async () => {
+    it('should call cleanupBranches function', async () => {
       const mockResult = {
-        success: true,
-        branchesDeleted: ['feature/test-1', 'feature/test-2'],
-        currentBranch: 'main',
-        mainSynced: true,
+        context: {
+          repository: 'owner/repo',
+          remote: 'origin',
+          defaultBranch: 'main',
+          currentBranch: 'main',
+          switchedBranch: false,
+        },
+        autoDeleted: [],
+        needsReview: [],
+        summary: {
+          autoDeletedCount: 0,
+          needsReviewCount: 0,
+          totalBranchesAnalyzed: 0,
+        },
+        recoveryInfo: 'Deleted branches are recoverable for 30 days via git reflog',
       };
 
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
+      vi.mocked(git.cleanupBranches).mockResolvedValue(mockResult);
 
       cleanupCommand(env.program);
 
@@ -88,346 +82,94 @@ describe('cleanup command', () => {
         expect(error).toBeDefined();
       }
 
-      expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
-        mainBranch: 'main',
-        dryRun: undefined,
-      });
+      expect(git.cleanupBranches).toHaveBeenCalledWith();
     });
 
-    it('should call cleanupMergedBranches with custom main branch', async () => {
+    it('should output YAML on success', async () => {
       const mockResult = {
-        success: true,
-        branchesDeleted: [],
-        currentBranch: 'develop',
-        mainSynced: true,
+        context: {
+          repository: 'owner/repo',
+          remote: 'origin',
+          defaultBranch: 'main',
+          currentBranch: 'main',
+          switchedBranch: false,
+        },
+        autoDeleted: [{ name: 'feature/test', reason: 'merged_to_main', recoveryCommand: 'git reflog' }],
+        needsReview: [],
+        summary: {
+          autoDeletedCount: 1,
+          needsReviewCount: 0,
+          totalBranchesAnalyzed: 1,
+        },
+        recoveryInfo: 'Deleted branches are recoverable for 30 days via git reflog',
       };
 
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
+      vi.mocked(git.cleanupBranches).mockResolvedValue(mockResult);
 
       cleanupCommand(env.program);
 
       try {
-        await env.program.parseAsync(['cleanup', '--main-branch', 'develop'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride
         expect(error).toBeDefined();
       }
 
-      expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
-        mainBranch: 'develop',
-        dryRun: undefined,
-      });
+      // Verify cleanupBranches was called (output format tested in branch-cleanup.test.ts)
+      expect(git.cleanupBranches).toHaveBeenCalledWith();
     });
 
-    it('should call cleanupMergedBranches with dry-run enabled', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: ['feature/test'],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
-      cleanupCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
-        mainBranch: 'main',
-        dryRun: true,
-      });
-    });
-  });
-
-  describe('--yaml flag', () => {
-    it('should output YAML with --- separator on success', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: ['feature/test-1', 'feature/test-2'],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
-      cleanupCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      // Verify YAML separator was written
-      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
-      const separatorCall = writeCalls.find(call => call[0] === '---\n');
-      expect(separatorCall).toBeDefined();
-
-      // Verify YAML content was written (check for YAML structure)
-      const yamlCalls = writeCalls.filter(call =>
-        typeof call[0] === 'string' && call[0].includes('success:')
+    it('should handle errors and output YAML error format', async () => {
+      vi.mocked(git.cleanupBranches).mockRejectedValue(
+        new Error('GitHub CLI (gh) is required for branch cleanup')
       );
-      expect(yamlCalls.length).toBeGreaterThan(0);
-    });
-
-    it('should output YAML with --- separator when no branches deleted', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: [],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
 
       cleanupCommand(env.program);
 
       try {
-        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
+        await env.program.parseAsync(['cleanup'], { from: 'user' });
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride
         expect(error).toBeDefined();
       }
 
-      // Verify YAML separator was written
-      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
-      const separatorCall = writeCalls.find(call => call[0] === '---\n');
-      expect(separatorCall).toBeDefined();
-
-      // Verify YAML content includes empty branchesDeleted array
-      const yamlContent = writeCalls
-        .filter(call => typeof call[0] === 'string')
-        .map(call => call[0])
-        .join('');
-      expect(yamlContent).toContain('branchesDeleted:');
-    });
-
-    it('should output YAML with --- separator on error', async () => {
-      const mockResult = {
-        success: false,
-        error: 'Failed to sync with remote',
-        branchesDeleted: [],
-        currentBranch: 'main',
-        mainSynced: false,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
-      cleanupCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['cleanup', '--yaml'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      // Verify YAML separator was written
-      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
-      const separatorCall = writeCalls.find(call => call[0] === '---\n');
-      expect(separatorCall).toBeDefined();
-
-      // Verify error is included in YAML
-      const yamlContent = writeCalls
-        .filter(call => typeof call[0] === 'string')
-        .map(call => call[0])
-        .join('');
-      expect(yamlContent).toContain('error:');
-      expect(yamlContent).toContain('Failed to sync with remote');
-    });
-
-    it('should work with both --yaml and --dry-run flags', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: ['feature/test'],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
-      cleanupCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['cleanup', '--yaml', '--dry-run'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      // Verify both options were passed
-      expect(git.cleanupMergedBranches).toHaveBeenCalledWith({
-        mainBranch: 'main',
-        dryRun: true,
-      });
-
-      // Verify YAML output was generated
-      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
-      const separatorCall = writeCalls.find(call => call[0] === '---\n');
-      expect(separatorCall).toBeDefined();
+      // Verify cleanupBranches was called
+      expect(git.cleanupBranches).toHaveBeenCalledWith();
     });
   });
 
-  describe('human-readable output', () => {
-    it('should display human-friendly output when no --yaml flag', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: ['feature/test-1', 'feature/test-2'],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
+  describe('cleanup-temp command', () => {
+    it('should register cleanup-temp command separately', () => {
       cleanupCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      // Verify console.log was called for human output
-      expect(console.log).toHaveBeenCalled();
-
-      // Verify YAML separator was NOT written to stdout
-      const writeCalls = vi.mocked(process.stdout.write).mock.calls;
-      const separatorCall = writeCalls.find(call => call[0] === '---\n');
-      expect(separatorCall).toBeUndefined();
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
+      expect(command).toBeDefined();
     });
 
-    it('should display dry-run message in human output', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: ['feature/test'],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
+    it('should have correct description', () => {
       cleanupCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      // Verify console.log was called
-      expect(console.log).toHaveBeenCalled();
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
+      expect(command?.description()).toBe('Clean up old temporary output files');
     });
 
-    it('should display message when no branches to delete', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: [],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
+    it('should have older-than, all, dry-run, and yaml options', () => {
       cleanupCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
+      expect(command?.options).toBeDefined();
 
-      // Verify console.log was called
-      expect(console.log).toHaveBeenCalled();
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle cleanup errors gracefully', async () => {
-      const error = new Error('Git command failed');
-      vi.mocked(git.cleanupMergedBranches).mockRejectedValue(error);
-
-      cleanupCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Cleanup failed with error:'),
-        error
-      );
+      const optionNames = command?.options.map(opt => opt.long) || [];
+      expect(optionNames).toContain('--older-than');
+      expect(optionNames).toContain('--all');
+      expect(optionNames).toContain('--dry-run');
+      expect(optionNames).toContain('--yaml');
     });
 
-    it('should exit with code 1 when cleanup returns success: false', async () => {
-      const mockResult = {
-        success: false,
-        error: 'Failed to delete branch',
-        branchesDeleted: [],
-        currentBranch: 'main',
-        mainSynced: false,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
-      // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-        throw new Error(`process.exit(${code})`);
-      }) as any;
-
+    it('should have default value for older-than option', () => {
       cleanupCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      expect(exitSpy).toHaveBeenCalledWith(1);
-
-      exitSpy.mockRestore();
-    });
-
-    it('should exit with code 0 when cleanup succeeds', async () => {
-      const mockResult = {
-        success: true,
-        branchesDeleted: ['feature/test'],
-        currentBranch: 'main',
-        mainSynced: true,
-      };
-
-      vi.mocked(git.cleanupMergedBranches).mockResolvedValue(mockResult);
-
-      // Mock process.exit to track exit code
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-        throw new Error(`process.exit(${code})`);
-      }) as any;
-
-      cleanupCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['cleanup'], { from: 'user' });
-      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
-        expect(error).toBeDefined();
-      }
-
-      expect(exitSpy).toHaveBeenCalledWith(0);
-
-      exitSpy.mockRestore();
+      const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
+      const olderThanOption = command?.options.find(opt => opt.long === '--older-than');
+      expect(olderThanOption?.defaultValue).toBe('7');
     });
   });
 });

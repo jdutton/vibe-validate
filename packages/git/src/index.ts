@@ -110,3 +110,29 @@ export {
   type GitHubRun,
   type GitHubJob
 } from './gh-commands.js';
+
+// Branch cleanup analysis (identify safe-to-delete branches)
+export {
+  detectDefaultBranch,
+  isProtectedBranch,
+  isAutoDeleteSafe,
+  needsReview,
+  shouldShowBranch,
+  gatherBranchGitFacts,
+  setupCleanupContext,
+  parseRemoteTracking,
+  getUnpushedCommitCount,
+  detectMergeMethod,
+  fetchPRDataForBranches,
+  enrichWithGitHubData,
+  cleanupBranches,
+  type RemoteStatus,
+  type BranchGitFacts,
+  type BranchGitHubFacts,
+  type BranchAssessment,
+  type BranchAnalysis,
+  type CleanupContext
+} from './branch-cleanup.js';
+
+// Re-export CleanupResult from new branch-cleanup as BranchCleanupResult to avoid conflict
+export type { CleanupResult as BranchCleanupResult } from './branch-cleanup.js';

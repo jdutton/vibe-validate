@@ -506,7 +506,7 @@ describe('bin.ts - CLI entry point', () => {
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# cleanup Command Reference');
-        expect(result.stdout).toContain('> Post-merge cleanup (switch to main, delete merged branches)');
+        expect(result.stdout).toContain('> Comprehensive branch cleanup with GitHub integration (v0.18.0)');
         expect(result.stdout).not.toContain('# vibe-validate CLI Reference');
       });
 

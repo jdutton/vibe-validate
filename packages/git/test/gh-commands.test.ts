@@ -260,7 +260,7 @@ describe('gh-commands', () => {
 
       expect(utils.safeExecSync).toHaveBeenCalledWith(
         'gh',
-        ['pr', 'list', '--repo', 'owner/repo', '--limit', '5', '--json', 'number,title,author,headRefName'],
+        ['pr', 'list', '--repo', 'owner/repo', '--limit', '5', '--state', 'open', '--json', 'number,title,author,headRefName'],
         { encoding: 'utf8' }
       );
       expect(result).toHaveLength(2);
@@ -276,6 +276,33 @@ describe('gh-commands', () => {
         ['owner', 'repo', 5, ['number', 'title', 'url']],
         '--json',
         'number,title,url'
+      );
+    });
+
+    it('should filter by state (merged)', () => {
+      testGhCommandWithParam(
+        listPullRequests,
+        ['owner', 'repo', 5, undefined, 'merged'],
+        '--state',
+        'merged'
+      );
+    });
+
+    it('should filter by state (closed)', () => {
+      testGhCommandWithParam(
+        listPullRequests,
+        ['owner', 'repo', 5, undefined, 'closed'],
+        '--state',
+        'closed'
+      );
+    });
+
+    it('should filter by state (all)', () => {
+      testGhCommandWithParam(
+        listPullRequests,
+        ['owner', 'repo', 5, undefined, 'all'],
+        '--state',
+        'all'
       );
     });
   });
