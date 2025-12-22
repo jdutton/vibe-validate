@@ -9,10 +9,11 @@
  */
 
 import type { ExecSyncOptions } from 'node:child_process';
-import { dirname } from 'node:path';
+import { rmSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { normalizePath, safeExecFromString } from '@vibe-validate/utils';
+import { normalizePath, safeExecFromString, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -225,4 +226,104 @@ export async function executeVibeValidateCommand(
   options: { cwd?: string; timeout?: number; env?: Record<string, string> } = {},
 ): Promise<CliExecutionResult & { output: string }> {
   return executeCliCommand('vibe-validate', args, options);
+}
+
+/**
+ * Execute CLI command and return combined stdout+stderr output
+ *
+ * Convenience wrapper for tests that just need the combined output string.
+ * Uses proper CLI execution helpers for cross-platform compatibility.
+ *
+ * @param args - CLI arguments
+ * @param options - Execution options
+ * @returns Combined stdout and stderr output
+ *
+ * @example
+ * ```typescript
+ * const output = await executeVibeValidateCombined(['init', '--dry-run'], { cwd: testDir });
+ * expect(output).toContain('Configuration preview');
+ * ```
+ */
+export async function executeVibeValidateCombined(
+  args: string[],
+  options?: { cwd?: string; timeout?: number; env?: Record<string, string> }
+): Promise<string> {
+  const result = await executeVibeValidateCommand(args, options);
+  return result.stdout + result.stderr;
+}
+
+/**
+ * Execute CLI command and return separated stdout/stderr with exit code
+ *
+ * Use this for tests that need to check specific streams or exit codes.
+ * Uses proper CLI execution helpers for cross-platform compatibility.
+ *
+ * @param args - CLI arguments
+ * @param options - Execution options
+ * @returns Object with stdout, stderr, and exitCode
+ *
+ * @example
+ * ```typescript
+ * const result = await executeVibeValidateWithError(['init'], { cwd: testDir });
+ * expect(result.exitCode).toBe(1);
+ * expect(result.stderr).toContain('already exists');
+ * ```
+ */
+export async function executeVibeValidateWithError(
+  args: string[],
+  options?: { cwd?: string; timeout?: number; env?: Record<string, string> }
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const result = await executeVibeValidateCommand(args, options);
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    exitCode: result.exitCode
+  };
+}
+
+/**
+ * Create a temporary test directory with Windows-safe path handling
+ *
+ * Creates a unique temporary directory for test isolation.
+ * Returns the normalized path (resolves Windows 8.3 short names).
+ *
+ * @param prefix - Directory name prefix (e.g., 'vibe-validate-test')
+ * @returns Normalized path to the created directory
+ *
+ * @example
+ * ```typescript
+ * let testDir: string;
+ * beforeEach(() => {
+ *   testDir = setupTestDir('my-test');
+ * });
+ * afterEach(() => {
+ *   cleanupTestDir(testDir);
+ * });
+ * ```
+ */
+export function setupTestDir(prefix: string): string {
+  const tmpBase = normalizedTmpdir();
+  const targetDir = join(tmpBase, `${prefix}-${Date.now()}`);
+  return mkdirSyncReal(targetDir, { recursive: true });
+}
+
+/**
+ * Clean up a temporary test directory
+ *
+ * Safely removes a test directory and all its contents.
+ * Safe to call even if directory doesn't exist.
+ *
+ * @param testDir - Directory to remove
+ *
+ * @example
+ * ```typescript
+ * afterEach(() => {
+ *   cleanupTestDir(testDir);
+ * });
+ * ```
+ */
+export function cleanupTestDir(testDir: string): void {
+  if (existsSync(testDir)) {
+    rmSync(testDir, { recursive: true, force: true });
+  }
 }

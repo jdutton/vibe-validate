@@ -2028,12 +2028,12 @@
         "startLoc": {
           "line": 536,
           "column": 32,
-          "position": 5138
+          "position": 5127
         },
         "endLoc": {
           "line": 545,
           "column": 12,
-          "position": 5236
+          "position": 5225
         }
       },
       "secondFile": {
@@ -2043,12 +2043,12 @@
         "startLoc": {
           "line": 464,
           "column": 2,
-          "position": 4555
+          "position": 4544
         },
         "endLoc": {
           "line": 473,
           "column": 15,
-          "position": 4653
+          "position": 4642
         }
       }
     },
@@ -2409,114 +2409,6 @@
           "line": 562,
           "column": 7,
           "position": 4372
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 26,
-      "fragment": ", async () => {\n      setupStandardMocks(mockPRNumber, {\n        checks: [\n          {\n            type: 'github_action',\n            name: 'test-1',\n            status: 'completed',\n            conclusion: 'success',\n            run_id: 12345,\n            workflow: 'CI',\n            started_at: '2025-01-01T10:00:00Z',\n            duration: '2m15s',\n            log_command: 'gh run view 12345',\n          },\n          {\n            type: 'github_action',\n            name: 'test-2',\n            status: 'completed',\n            conclusion: 'failure',\n            run_id: 12346,\n            workflow: 'CI',\n            started_at: '2025-01-01T10:05:00Z',\n            duration: '1m30s',\n            log_command: 'gh run view 12346',\n          },\n          {",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/watch-pr-orchestrator.test.ts",
-        "start": 229,
-        "end": 254,
-        "startLoc": {
-          "line": 229,
-          "column": 42,
-          "position": 1725
-        },
-        "endLoc": {
-          "line": 254,
-          "column": 2,
-          "position": 1891
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/watch-pr-orchestrator.test.ts",
-        "start": 165,
-        "end": 190,
-        "startLoc": {
-          "line": 165,
-          "column": 42,
-          "position": 1221
-        },
-        "endLoc": {
-          "line": 190,
-          "column": 2,
-          "position": 1387
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ");\n\n      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({\n        run_id: mockRunId,\n        name: 'Tests / Integration',\n        workflow: 'Tests',\n        status: 'completed',\n        conclusion: 'failure',\n        started_at: '2025-12-17T14:00:00Z',\n        duration: '8m20s',\n        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',\n      });\n\n      // Simulate race condition: first 2 calls fail, 3rd succeeds",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/watch-pr-orchestrator.test.ts",
-        "start": 444,
-        "end": 457,
-        "startLoc": {
-          "line": 444,
-          "column": 13,
-          "position": 3436
-        },
-        "endLoc": {
-          "line": 457,
-          "column": 61,
-          "position": 3520
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/watch-pr-orchestrator.test.ts",
-        "start": 409,
-        "end": 422,
-        "startLoc": {
-          "line": 409,
-          "column": 2,
-          "position": 3189
-        },
-        "endLoc": {
-          "line": 422,
-          "column": 6,
-          "position": 3273
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": "// Use fake timers to avoid actual delays\n      vi.useFakeTimers();\n\n      setupStandardMocks(mockPRNumber);\n\n      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({\n        run_id: mockRunId,\n        name: 'Tests / Integration',\n        workflow: 'Tests',\n        status: 'completed',\n        conclusion: 'failure',\n        started_at: '2025-12-17T14:00:00Z',\n        duration: '8m20s',\n        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',\n      });\n\n      // Always fail (simulate persistent GitHub API issue)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/watch-pr-orchestrator.test.ts",
-        "start": 493,
-        "end": 509,
-        "startLoc": {
-          "line": 493,
-          "column": 7,
-          "position": 3801
-        },
-        "endLoc": {
-          "line": 509,
-          "column": 54,
-          "position": 3900
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/watch-pr-orchestrator.test.ts",
-        "start": 441,
-        "end": 422,
-        "startLoc": {
-          "line": 441,
-          "column": 7,
-          "position": 3421
-        },
-        "endLoc": {
-          "line": 422,
-          "column": 6,
-          "position": 3273
         }
       }
     },
@@ -4178,78 +4070,6 @@
     },
     {
       "format": "typescript",
-      "lines": 6,
-      "fragment": "const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;\n        const nestedRun = execCLI(['run', nestedCommand]);\n\n        const nestedParsed = parseRunYamlOutput(nestedRun);\n        expect(nestedParsed.exitCode).toBe(0);\n        expect(nestedParsed.command).toBe(testCommand); // Unwrapped",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/run.integration.test.ts",
-        "start": 487,
-        "end": 492,
-        "startLoc": {
-          "line": 487,
-          "column": 9,
-          "position": 4205
-        },
-        "endLoc": {
-          "line": 492,
-          "column": 13,
-          "position": 4282
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/run.integration.test.ts",
-        "start": 448,
-        "end": 453,
-        "startLoc": {
-          "line": 448,
-          "column": 9,
-          "position": 3812
-        },
-        "endLoc": {
-          "line": 453,
-          "column": 38,
-          "position": 3889
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": ", '2', String.raw`node -e \"process.stdout.write('line1\\nline2\\nline3\\n')\"`]);\n\n      // Extract YAML front matter from stdout\n      const yamlMatch = stdout.match(/^---\\n([\\s\\S]*?)\\n---/);\n      expect(yamlMatch).toBeTruthy();\n      const yamlContent = yamlMatch![1];\n      const parsed = yaml.parse(yamlContent);\n      expect(parsed.exitCode).toBe(0);\n\n      // Should have output display on stderr (--tail shows last 2 lines)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/run.integration.test.ts",
-        "start": 698,
-        "end": 707,
-        "startLoc": {
-          "line": 698,
-          "column": 9,
-          "position": 6032
-        },
-        "endLoc": {
-          "line": 707,
-          "column": 68,
-          "position": 6120
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/run.integration.test.ts",
-        "start": 681,
-        "end": 690,
-        "startLoc": {
-          "line": 681,
-          "column": 9,
-          "position": 5869
-        },
-        "endLoc": {
-          "line": 690,
-          "column": 69,
-          "position": 5957
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 14,
       "fragment": ": vi.fn(),\n  };\n});\n\n// Mock the config loader\nvi.mock('../../src/utils/config-loader.js', async () => {\n  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');\n  return {\n    ...actual,\n    loadConfig: vi.fn(),\n  };\n});\n\ndescribe",
       "tokens": 0,
@@ -5078,78 +4898,6 @@
     },
     {
       "format": "typescript",
-      "lines": 16,
-      "fragment": "], {\n        cwd: testDir,\n      });\n\n      const configPath = join(testDir, 'vibe-validate.config.yaml');\n      expect(existsSync(configPath)).toBe(true);\n\n      // Validate the created config\n      const validateOutput = execCLI(cliPath, ['config', '--validate'], {\n        cwd: testDir,\n      });\n\n      expect(validateOutput).toContain('Configuration is valid');\n    });\n\n    it('should create valid config from typescript-react template'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/init-execution.test.ts",
-        "start": 152,
-        "end": 167,
-        "startLoc": {
-          "line": 152,
-          "column": 20,
-          "position": 1438
-        },
-        "endLoc": {
-          "line": 167,
-          "column": 60,
-          "position": 1547
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/init-execution.test.ts",
-        "start": 136,
-        "end": 151,
-        "startLoc": {
-          "line": 136,
-          "column": 21,
-          "position": 1305
-        },
-        "endLoc": {
-          "line": 151,
-          "column": 61,
-          "position": 1414
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": "], {\n        cwd: testDir,\n      });\n\n      const configPath = join(testDir, 'vibe-validate.config.yaml');\n      expect(existsSync(configPath)).toBe(true);\n\n      // Validate the created config\n      const validateOutput = execCLI(cliPath, ['config', '--validate'], {\n        cwd: testDir,\n      });\n\n      expect(validateOutput).toContain('Configuration is valid');\n    });\n\n    it('should not overwrite existing config without --force'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/init-execution.test.ts",
-        "start": 168,
-        "end": 183,
-        "startLoc": {
-          "line": 168,
-          "column": 19,
-          "position": 1571
-        },
-        "endLoc": {
-          "line": 183,
-          "column": 55,
-          "position": 1680
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/init-execution.test.ts",
-        "start": 136,
-        "end": 151,
-        "startLoc": {
-          "line": 136,
-          "column": 21,
-          "position": 1305
-        },
-        "endLoc": {
-          "line": 151,
-          "column": 61,
-          "position": 1414
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 6,
       "fragment": "});\n      const workflow = parseWorkflowYaml(workflowYaml);\n\n      expect(workflow.jobs).toHaveProperty('all-validation-passed');\n      expect(workflow.jobs['all-validation-passed'].if).toBe('always()');\n      expect(workflow.jobs['all-validation-passed'].needs).toEqual(['validate'",
       "tokens": 0,
@@ -5469,42 +5217,6 @@
           "line": 186,
           "column": 41,
           "position": 1494
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "testDir = mkdirSyncReal(targetDir, { recursive: true });\n  });\n\n  afterEach(() => {\n    // Clean up test files\n    if (existsSync(testDir)) {\n      rmSync(testDir, { recursive: true, force: true });\n    }\n  });\n\n  describe('plugin scaffolding'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/create-extractor.test.ts",
-        "start": 42,
-        "end": 52,
-        "startLoc": {
-          "line": 42,
-          "column": 5,
-          "position": 358
-        },
-        "endLoc": {
-          "line": 52,
-          "column": 21,
-          "position": 444
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/init-execution.test.ts",
-        "start": 50,
-        "end": 60,
-        "startLoc": {
-          "line": 50,
-          "column": 5,
-          "position": 482
-        },
-        "endLoc": {
-          "line": 60,
-          "column": 15,
-          "position": 568
         }
       }
     },
@@ -5901,42 +5613,6 @@
           "line": 112,
           "column": 9,
           "position": 975
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ", ...args], { encoding: 'utf-8', ...options }) as string;\n  } catch (err: any) {\n    // For successful non-zero exits, return output\n    if (err.stdout || err.stderr) {\n      return (err.stdout || '') + (err.stderr || '');\n    }\n    throw err;\n  }\n}\n\ndescribe",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/vibe-validate/test/delegation.test.ts",
-        "start": 26,
-        "end": 36,
-        "startLoc": {
-          "line": 26,
-          "column": 8,
-          "position": 181
-        },
-        "endLoc": {
-          "line": 36,
-          "column": 9,
-          "position": 282
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/create-extractor.test.ts",
-        "start": 20,
-        "end": 30,
-        "startLoc": {
-          "line": 20,
-          "column": 8,
-          "position": 146
-        },
-        "endLoc": {
-          "line": 30,
-          "column": 9,
-          "position": 247
         }
       }
     },
@@ -8025,42 +7701,6 @@
           "line": 224,
           "column": 12,
           "position": 2343
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": ", async () => {\n      vi.mocked(utils.isToolAvailable).mockReturnValue(true);\n\n      const mockPRs = [createMockPR({ headRefName: 'feature/test' })];\n\n      vi.mocked(ghCommands.listPullRequests).mockReturnValue(mockPRs);\n      vi.mocked(ghCommands.fetchPRDetails).mockReturnValue",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-cleanup.test.ts",
-        "start": 442,
-        "end": 448,
-        "startLoc": {
-          "line": 442,
-          "column": 45,
-          "position": 3559
-        },
-        "endLoc": {
-          "line": 448,
-          "column": 16,
-          "position": 3636
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-cleanup.test.ts",
-        "start": 423,
-        "end": 429,
-        "startLoc": {
-          "line": 423,
-          "column": 45,
-          "position": 3370
-        },
-        "endLoc": {
-          "line": 429,
-          "column": 19,
-          "position": 3447
         }
       }
     },

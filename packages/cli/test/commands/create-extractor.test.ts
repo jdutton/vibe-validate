@@ -5,53 +5,34 @@
  * --detection-pattern flag for non-interactive plugin generation.
  */
 
-import { rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecSync, normalizedTmpdir, mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-/**
- * Execute CLI command and return output
- * Uses absolute CLI path for Windows compatibility
- */
-function execCLI(cliPath: string, args: string[], options?: { cwd?: string; encoding?: BufferEncoding }): string {
-  try {
-    return safeExecSync('node', [cliPath, ...args], { encoding: 'utf-8', ...options }) as string;
-  } catch (err: any) {
-    // For successful non-zero exits, return output
-    if (err.stdout || err.stderr) {
-      return (err.stdout || '') + (err.stderr || '');
-    }
-    throw err;
-  }
-}
+import {
+  executeVibeValidateCombined as execCLI,
+  setupTestDir,
+  cleanupTestDir
+} from '../helpers/cli-execution-helpers.js';
 
 describe('create-extractor command', () => {
   // Note: Previously skipped on Windows due to command parser bug (Issue #86)
   // Fixed: Command parser now preserves Windows paths correctly
+  // Now uses proper CLI execution helpers for Windows compatibility
   let testDir: string;
-  // normalizePath resolves to absolute and handles Windows 8.3 short names
-  const cliPath = normalizePath(__dirname, '../../dist/bin.js');
 
   beforeEach(() => {
-    // Create temp directory and use normalized path returned by mkdirSyncReal
-    const tmpBase = normalizedTmpdir();
-    const targetDir = join(tmpBase, `vibe-validate-create-extractor-${Date.now()}`);
-    // mkdirSyncReal returns the normalized path - MUST use this return value on Windows
-    testDir = mkdirSyncReal(targetDir, { recursive: true });
+    testDir = setupTestDir('vibe-validate-create-extractor');
   });
 
   afterEach(() => {
-    // Clean up test files
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    cleanupTestDir(testDir);
   });
 
   describe('plugin scaffolding', () => {
-    it('should create extractor plugin directory structure', () => {
-      const output = execCLI(cliPath, [
+    it('should create extractor plugin directory structure', async () => {
+      const output = await execCLI([
         'create-extractor',
         'test-extractor',
         '--description',
@@ -75,7 +56,6 @@ describe('create-extractor command', () => {
           `testDir contents: [${readdirSync(testDir).join(', ') || 'empty'}]`,
           `pluginDir: ${pluginDir}`,
           `pluginDir exists: ${existsSync(pluginDir)}`,
-          `cliPath: ${cliPath}`,
           `Command output (${output.length} chars):`,
           output || '(empty)',
           '=== END DEBUG ===',
@@ -98,8 +78,8 @@ describe('create-extractor command', () => {
       expect(existsSync(pluginFilePath)).toBe(true);
     });
 
-    it('should generate plugin with default pattern in hints when no detection-pattern flag', () => {
-      execCLI(cliPath, [
+    it('should generate plugin with default pattern in hints when no detection-pattern flag', async () => {
+      await execCLI([
         'create-extractor',
         'test-extractor',
         '--description',
@@ -120,8 +100,8 @@ describe('create-extractor command', () => {
       expect(pluginContent).toContain('ERROR:');
     });
 
-    it('should generate plugin with custom detection pattern when flag provided', () => {
-      execCLI(cliPath, [
+    it('should generate plugin with custom detection pattern when flag provided', async () => {
+      await execCLI([
         'create-extractor',
         'custom-tool',
         '--description',
@@ -142,8 +122,8 @@ describe('create-extractor command', () => {
       expect(pluginContent).toContain('CUSTOM-ERROR:');
     });
 
-    it('should include TypeScript configuration files', () => {
-      execCLI(cliPath, [
+    it('should include TypeScript configuration files', async () => {
+      await execCLI([
         'create-extractor',
         'test-extractor',
         '--description',
@@ -165,8 +145,8 @@ describe('create-extractor command', () => {
       expect(tsconfig.compilerOptions.module).toBe('ES2022');
     });
 
-    it('should generate README with usage instructions', () => {
-      execCLI(cliPath, [
+    it('should generate README with usage instructions', async () => {
+      await execCLI([
         'create-extractor',
         'test-extractor',
         '--description',

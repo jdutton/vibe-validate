@@ -21,7 +21,8 @@ import { parseRunYamlOutput, expectValidRunYaml } from '../helpers/run-command-h
 // Get the workspace root by going up from this test file location
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = normalizePath(__dirname, '../../../..');
-const CLI_BIN = path.join(WORKSPACE_ROOT, 'packages/cli/dist/bin.js');
+// Use resolve() to ensure absolute path for Windows compatibility
+const CLI_BIN = path.resolve(WORKSPACE_ROOT, 'packages/cli/dist/bin.js');
 
 /**
  * Execute vibe-validate CLI command with proper argument handling
@@ -34,6 +35,32 @@ const CLI_BIN = path.join(WORKSPACE_ROOT, 'packages/cli/dist/bin.js');
 function execCLI(cliArgs: string[], options?: { encoding?: BufferEncoding; stdio?: any; cwd?: string; env?: Record<string, string> }): string {
   const result = execCLIWithStderr(cliArgs, options);
   return result.stdout + result.stderr; // For backward compatibility, combine them
+}
+
+/**
+ * Helper to execute nested vv run command and validate basic properties
+ * Reduces duplication in nested command cache tests
+ */
+function executeNestedCommand(testCommand: string): { parsed: any; output: string } {
+  const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;
+  const nestedRun = execCLI(['run', nestedCommand]);
+  const nestedParsed = parseRunYamlOutput(nestedRun);
+  expect(nestedParsed.exitCode).toBe(0);
+  expect(nestedParsed.command).toBe(testCommand);
+  return { parsed: nestedParsed, output: nestedRun };
+}
+
+/**
+ * Helper to parse YAML front matter from stdout
+ * Reduces duplication in display flag tests
+ */
+function parseYamlFrontMatter(stdout: string): any {
+  const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
+  expect(yamlMatch).toBeTruthy();
+  const yamlContent = yamlMatch![1];
+  const parsed = yaml.parse(yamlContent);
+  expect(parsed.exitCode).toBe(0);
+  return parsed;
 }
 
 /**
@@ -101,7 +128,7 @@ function execCLIAbsolute(absolutePath: string, cliArgs: string[], options?: { en
 
 describe('run command integration', () => {
   describe('real nested execution', () => {
-    it.skipIf(process.platform === 'win32')('should handle real nested vibe-validate run commands (2 levels)', () => {
+    it('should handle real nested vibe-validate run commands (2 levels)', () => {
       // Execute: vibe-validate run "echo test"
       // This produces real YAML output
       const innerCommand = String.raw`node ${CLI_BIN} run "node -e \"console.log('Hello from inner command')\""`;
@@ -155,7 +182,7 @@ describe('run command integration', () => {
   // Real extractor integration tests moved to run.system.test.ts
 
   describe('real stdout/stderr handling', () => {
-    it.skipIf(process.platform === 'win32')('should handle commands that write to both stdout and stderr', () => {
+    it('should handle commands that write to both stdout and stderr', () => {
       const output = execCLI(['run', String.raw`node -e "console.log(\"stdout\"); console.error(\"stderr\");"`]);
 
       // Parse YAML output
@@ -175,7 +202,7 @@ describe('run command integration', () => {
   // Real YAML output preservation tests moved to run.system.test.ts
 
   describe('caching behavior', () => {
-    it.skipIf(process.platform === 'win32')('should write git notes refs when caching successful commands', () => {
+    it('should write git notes refs when caching successful commands', () => {
       const command = `node -e "console.log('Cache write test ${Date.now()}')"`;
 
       // First run - should execute and cache
@@ -216,7 +243,7 @@ describe('run command integration', () => {
       expect(treeHash).toBeDefined(); // Verify we got a tree hash
     });
 
-    it.skipIf(process.platform === 'win32')('should invalidate cache when tree hash changes', () => {
+    it('should invalidate cache when tree hash changes', () => {
       const tmpFile = `tmp-cache-test-${Date.now()}.txt`;
 
       try {
@@ -258,13 +285,13 @@ describe('run command integration', () => {
       }
     });
 
-    it.skipIf(process.platform === 'win32')('should create separate cache entries for different working directories', () => {
-      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+    it('should create separate cache entries for different working directories', () => {
+      const absoluteCliPath = CLI_BIN;
 
-      // Run command in root
+      // Run command in workspace root
       const rootRun = execCLIAbsolute(absoluteCliPath, ['run', "echo 'root'"], {
         encoding: 'utf-8',
-        cwd: process.cwd(),
+        cwd: WORKSPACE_ROOT,
       });
       // Parse YAML output - opening delimiter only (no display flags)
       expect(rootRun).toMatch(/^---\n/);
@@ -273,7 +300,7 @@ describe('run command integration', () => {
       // Run same command text in subdirectory
       const subdirRun = execCLIAbsolute(absoluteCliPath, ['run', "echo 'root'"], {
         encoding: 'utf-8',
-        cwd: `${process.cwd()}/packages/cli`,
+        cwd: path.join(WORKSPACE_ROOT, 'packages/cli'),
       });
       expect(subdirRun).toMatch(/^---\n/);
       const subdirParsed = parseRunYamlOutput(subdirRun);
@@ -297,9 +324,9 @@ describe('run command integration', () => {
       expect(subdirParsed.outputFiles).toBeDefined();
     });
 
-    it.skipIf(process.platform === 'win32')('should disable caching in non-git repositories with inline YAML comment', () => {
+    it('should disable caching in non-git repositories with inline YAML comment', () => {
       // Test in /tmp which is guaranteed to not be a git repository
-      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+      const absoluteCliPath = CLI_BIN;
 
       // Capture stdout only (YAML with embedded comment)
       const output = execCLIAbsolute(absoluteCliPath, ['run', "echo 'test'"], {
@@ -359,7 +386,7 @@ describe('run command integration', () => {
       expect(secondParsed.outputFiles.combined).toBeDefined();
     });
 
-    describe.skipIf(process.platform === 'win32')('force flag propagation', () => {
+    describe('force flag propagation', () => {
       it('should bypass cache when --force flag is used', () => {
         const testMessage = `test-force-${Date.now()}`;
         const testCommand = `echo ${testMessage}`;
@@ -438,19 +465,14 @@ describe('run command integration', () => {
     });
 
     // Issue #73 (expanded): Nested command caching regression fix
-    describe.skipIf(process.platform === 'win32')('nested command caching (Issue #73 expanded)', () => {
+    describe('nested command caching (Issue #73 expanded)', () => {
       it('should share cache between nested and direct command invocations', () => {
         // Clear any existing cache for this test
         const testMessage = `test-nested-cache-${Date.now()}`;
         const testCommand = `echo ${testMessage}`; // Unquoted for simplicity
 
         // First run: nested vv run
-        const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;
-        const nestedRun = execCLI(['run', nestedCommand]);
-
-        const nestedParsed = parseRunYamlOutput(nestedRun);
-        expect(nestedParsed.exitCode).toBe(0);
-        expect(nestedParsed.command).toBe(testCommand); // Should unwrap to innermost command
+        const { parsed: nestedParsed } = executeNestedCommand(testCommand);
         expect(nestedParsed.requestedCommand).toContain('run'); // Should show what was requested
         const treeHash = nestedParsed.treeHash;
 
@@ -484,12 +506,7 @@ describe('run command integration', () => {
         const treeHash = directParsed.treeHash;
 
         // Second run: nested command (should hit cache from inner)
-        const nestedCommand = `node ${CLI_BIN} run '${testCommand}'`;
-        const nestedRun = execCLI(['run', nestedCommand]);
-
-        const nestedParsed = parseRunYamlOutput(nestedRun);
-        expect(nestedParsed.exitCode).toBe(0);
-        expect(nestedParsed.command).toBe(testCommand); // Unwrapped
+        const { parsed: nestedParsed } = executeNestedCommand(testCommand);
         expect(nestedParsed.isCachedResult).toBe(true); // Inner hit cache!
         expect(nestedParsed.requestedCommand).toContain('run'); // Shows nesting
         expect(nestedParsed.treeHash).toBe(treeHash);
@@ -680,12 +697,8 @@ describe('run command integration', () => {
       // Use --force to bypass cache (ensures fresh execution in coverage mode)
       const { stdout, stderr } = execCLIWithStderr(['run', '--force', '--head', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
-      // Extract YAML front matter from stdout
-      const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
-      expect(yamlMatch).toBeTruthy();
-      const yamlContent = yamlMatch![1];
-      const parsed = yaml.parse(yamlContent);
-      expect(parsed.exitCode).toBe(0);
+      // Parse YAML front matter
+      parseYamlFrontMatter(stdout);
 
       // Should have output display on stderr (--head shows first 2 lines)
       expect(stderr).toContain('[stdout]');
@@ -697,12 +710,8 @@ describe('run command integration', () => {
       // Use --force to bypass cache (ensures fresh execution in coverage mode)
       const { stdout, stderr } = execCLIWithStderr(['run', '--force', '--tail', '2', String.raw`node -e "process.stdout.write('line1\nline2\nline3\n')"`]);
 
-      // Extract YAML front matter from stdout
-      const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
-      expect(yamlMatch).toBeTruthy();
-      const yamlContent = yamlMatch![1];
-      const parsed = yaml.parse(yamlContent);
-      expect(parsed.exitCode).toBe(0);
+      // Parse YAML front matter
+      parseYamlFrontMatter(stdout);
 
       // Should have output display on stderr (--tail shows last 2 lines)
       expect(stderr).toContain('[stdout]');
@@ -772,11 +781,11 @@ describe('run command integration', () => {
     });
   });
 
-  describe.skipIf(process.platform === 'win32')('--cwd flag', () => {
+  describe('--cwd flag', () => {
     it('should use explicit --cwd in cache key', () => {
       const testMessage = `test-cwd-${Date.now()}`;
       const testCommand = `echo ${testMessage}`;
-      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+      const absoluteCliPath = CLI_BIN;
 
       // Run from root with --cwd pointing to subdirectory
       const output1 = execCLIAbsolute(absoluteCliPath, ['run', '--cwd', 'packages/cli', testCommand], {
@@ -802,12 +811,12 @@ describe('run command integration', () => {
       const testMessage = `test-cwd-equivalence-${Date.now()}`;
       const testCommand = `echo ${testMessage}`;
       const subdir = 'packages/cli';
-      const absoluteCliPath = `${process.cwd()}/packages/cli/dist/bin.js`;
+      const absoluteCliPath = CLI_BIN;
 
-      // Scenario 1: vv run --cwd subdir "cmd" (from root)
+      // Scenario 1: vv run --cwd subdir "cmd" (from workspace root)
       const output1 = execCLIAbsolute(absoluteCliPath, ['run', '--cwd', subdir, testCommand], {
         encoding: 'utf-8',
-        cwd: process.cwd(),
+        cwd: WORKSPACE_ROOT,
       });
 
       const parsed1 = parseRunYamlOutput(output1);
@@ -817,7 +826,7 @@ describe('run command integration', () => {
       // Scenario 2: cd subdir && vv run "cmd"
       const output2 = execCLIAbsolute(absoluteCliPath, ['run', testCommand], {
         encoding: 'utf-8',
-        cwd: path.join(process.cwd(), subdir), // Run from subdirectory
+        cwd: path.join(WORKSPACE_ROOT, subdir), // Run from subdirectory
       });
 
       const parsed2 = parseRunYamlOutput(output2);
