@@ -171,7 +171,10 @@ export function executeCommand(
     const [cmd, args] = parseCommand(command);
     output = safeExecSync(cmd, args, execOptions);
   } catch (err: any) {
-    output = err.stdout || err.stderr || '';
+    // Combine stdout and stderr for output
+    const stdout = typeof err.stdout === 'string' ? err.stdout : err.stdout?.toString() || '';
+    const stderr = typeof err.stderr === 'string' ? err.stderr : err.stderr?.toString() || '';
+    output = stdout + stderr;
     exitCode = err.status || 1;
   }
 

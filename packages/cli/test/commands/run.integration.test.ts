@@ -1,9 +1,9 @@
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { getNotesRefs } from '@vibe-validate/git';
-import { normalizePath, safeExecSync } from '@vibe-validate/utils';
+import { normalizePath } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 import yaml from 'yaml';
 
@@ -235,7 +235,7 @@ describe('run command integration', () => {
         expect(cachedParsed.exitCode).toBe(0);
 
         // Create a new file to change tree hash
-        safeExecSync('node', ['-e', String.raw`require('fs').writeFileSync('${tmpFile}', 'test\n')`], { encoding: 'utf-8' });
+        writeFileSync(tmpFile, 'test\n', 'utf-8');
 
         // Run same command again - cache should be invalidated due to tree hash change
         // Should execute again (not from cache)
@@ -246,11 +246,11 @@ describe('run command integration', () => {
         expect(thirdParsed.command).toBe('node -e "console.log(\'Cache test\')"');
 
         // Cleanup
-        safeExecSync('rm', [tmpFile], { encoding: 'utf-8' });
+        unlinkSync(tmpFile);
       } catch (error: any) { // NOSONAR - Need to access stdout from error for test verification
         // Cleanup on error
         try {
-          safeExecSync('rm', [tmpFile], { encoding: 'utf-8' });
+          unlinkSync(tmpFile);
         } catch {
           // Ignore cleanup errors
         }
@@ -391,7 +391,8 @@ describe('run command integration', () => {
 
         // Second run - nested command should hit cache
         const cliPath = getCliPath('vibe-validate');
-        const nestedCommand = `node ${cliPath} run '${testCommand}'`;
+        // Use double quotes for Windows compatibility (single quotes not recognized by cmd.exe)
+        const nestedCommand = `node "${cliPath}" run "${testCommand}"`;
         const nestedCachedRun = await execCLI(['run', nestedCommand]);
 
         const nestedCachedParsed = parseRunYamlOutput(nestedCachedRun);
@@ -478,9 +479,10 @@ describe('run command integration', () => {
         expect(nestedParsed.treeHash).toBe(treeHash);
       });
 
-      it('should propagate isCachedResult from inner to outer nested command', async () => { 
+      it('should propagate isCachedResult from inner to outer nested command', async () => {
         // Test that cache hit status propagates correctly through nesting
-        const testCommand = `echo "test-propagate-${Date.now()}"`;
+        // Use a command without quotes to avoid quoting mismatch between direct and nested runs
+        const testCommand = `echo test-propagate-${Date.now()}`;
 
         // First run: cache miss
         const firstRun = await execCLI(['run', testCommand]);
@@ -491,7 +493,8 @@ describe('run command integration', () => {
 
         // Second run: nested command should show cache hit
         const cliPath = getCliPath('vibe-validate');
-        const nestedCommand = `node ${cliPath} run '${testCommand}'`;
+        // Use double quotes for Windows compatibility (single quotes not recognized by cmd.exe)
+        const nestedCommand = `node "${cliPath}" run ${testCommand}`;
         const nestedRun = await execCLI(['run', nestedCommand]);
 
         const nestedParsed = parseRunYamlOutput(nestedRun);
@@ -505,7 +508,7 @@ describe('run command integration', () => {
         const testMessage = `test-requested-${Date.now()}`;
         const testCommand = `echo ${testMessage}`;
         const cliPath = getCliPath('vibe-validate');
-        const wrappedCommand = `node ${cliPath} run '${testCommand}'`;
+        const wrappedCommand = `node "${cliPath}" run "${testCommand}"`;
 
         const nestedRun = await execCLI(['run', wrappedCommand]);
 
@@ -730,16 +733,17 @@ describe('run command integration', () => {
       expect(result.status).toBe(1);
     });
 
-    it('should not execute command when checking cache', async () => { 
-      const testFile = `/tmp/vv-test-check-${Date.now()}.txt`;
-      const testCommand = `touch ${testFile}`;
+    it('should not execute command when checking cache', async () => {
+      const testFile = path.join(WORKSPACE_ROOT, `vv-test-check-${Date.now()}.txt`);
+      // Use node with a simple file write (cross-platform)
+      const testCommand = `node -e "require('fs').writeFileSync('${testFile.replaceAll('\\', '\\\\')}', 'test')"`;
 
       // First run - populate cache
       await execCLI(['run', testCommand]);
 
       // Remove the file
       if (existsSync(testFile)) {
-        safeExecSync('rm', [testFile]);
+        unlinkSync(testFile);
       }
 
       // Run --check - should NOT recreate the file

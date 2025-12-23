@@ -455,7 +455,8 @@ describe('git-detection', () => {
       // Assert: should find vibe-validate git root
       expect(result).not.toBeNull();
       expect(result).toContain('vibe-validate');
-      expect(result).toContain('.github/workflows/validate.yml');
+      // Normalize paths for cross-platform comparison (Windows uses backslashes)
+      expect(result?.replaceAll('\\', '/')).toContain('.github/workflows/validate.yml');
     });
   });
 

@@ -62,64 +62,52 @@ export class CommandExecutionError extends Error {
  * ## Security Context
  *
  * This package's primary security model is `shell: false` to prevent command injection.
- * However, Windows requires `shell: true` for specific cases where executable resolution
- * fails without a shell interpreter.
+ * Windows requires `shell: true` only for shell scripts (.cmd/.bat/.ps1) which require
+ * a shell interpreter by design (not executable binaries).
  *
- * ## Why shell:true is Required on Windows
+ * ## Node.js on Windows - NO SHELL REQUIRED
  *
- * ### 1. Node.js Executable (CONFIRMED NECESSARY via commit a9902116)
+ * **Previous behavior (REMOVED):** Used shell:true for 'node' command
+ * **Problem discovered:** Node.js DEP0190 deprecation warning - passing args array with
+ * shell:true leads to incorrect command execution. Exit codes are ignored (always returns 0).
  *
- * **Problem:** Windows CI fails with `spawnSync node.EXE ENOENT` even when using the
- * absolute path returned by `which.sync()`.
+ * **Testing shows:**
+ * - ✅ `shell: false` + absolute path from `which.sync('node')` → Works correctly
+ * - ❌ `shell: true` + args array → Exit codes ignored, security warning
  *
- * **What was tried:**
- * - ❌ Using `which.sync('node')` with `shell: false` → ENOENT error
- * - ❌ Using `process.execPath` directly with `shell: false` → Same error
- * - ✅ Using `shell: true` with command name → Works correctly
+ * **Root Cause of Previous ENOENT Issues:** Likely resolved in newer Node.js versions.
+ * Current testing (Node 20+) shows shell:false works correctly with absolute path.
  *
- * **Root Cause:** Windows executable resolution differs from Unix. The cmd.exe shell
- * is needed to properly resolve and spawn node.exe, even with an absolute path.
+ * ## Why This Is Secure
  *
- * ### 2. Windows Shell Scripts (.cmd/.bat/.ps1)
- *
- * These require a shell interpreter by design (not executable binaries).
- *
- * ## Why This Is Still Secure
- *
- * Despite using `shell: true`, command injection is prevented through multiple layers:
- *
- * 1. **Command Name Validation:** Only 'node' and known shell script extensions trigger shell mode
- * 2. **Path Validation:** Command paths are resolved and validated via `which.sync()` before execution
- * 3. **Array-Based Arguments:** Arguments are passed as an array (not a string), preventing injection
- * 4. **Controlled Environment:** All commands come from trusted configuration, not user input
- * 5. **No String Interpolation:** We never concatenate user input into command strings
- *
- * ## Compensating Controls
- *
- * - Arguments are validated to not contain null bytes (injection vector)
- * - Command names come from trusted sources (vibe-validate config files)
- * - Shell is NEVER used for arbitrary commands on Windows
- * - Comprehensive security tests in `test/safe-exec.test.ts` (29 test cases)
+ * 1. **Minimal Shell Usage:** Shell only used for .cmd/.bat/.ps1 files (required)
+ * 2. **Path Validation:** Command paths resolved via `which.sync()` before execution
+ * 3. **Array-Based Arguments:** Arguments passed as array, preventing injection
+ * 4. **Controlled Environment:** Commands from trusted configuration, not user input
+ * 5. **No String Interpolation:** Never concatenate user input into command strings
  *
  * ## References
  *
- * - Investigation: commits d5fb75c4, 3ea731f6, afb360ba, a9902116
- * - Security tests: `packages/utils/test/safe-exec.test.ts` (lines 89-102, 376-389)
- * - Related issue: PR #83 (Windows CI fixes)
+ * - Node.js deprecation: https://nodejs.org/api/deprecations.html#DEP0190
+ * - Security tests: `packages/utils/test/safe-exec.test.ts`
+ * - Windows fix: PR #94 (fix/windows-shell-independence-v2)
  *
- * @param command - Command name (e.g., 'node', 'pnpm')
  * @param commandPath - Resolved absolute path to command
  * @returns true if shell should be used, false otherwise
  */
-function shouldUseShell(command: string, commandPath: string): boolean {
+function shouldUseShell(commandPath: string): boolean {
   if (process.platform !== 'win32') {
     return false;
   }
 
-  // Node command requires shell on Windows (see comprehensive security explanation above)
-  if (command === 'node') {
-    return true;
-  }
+  // Node.js deprecation warning (DEP0190): Passing args with shell:true leads to incorrect
+  // command execution and security vulnerabilities. Testing shows shell:false works correctly
+  // with absolute path from which.sync('node') on Windows.
+  // Previous ENOENT issues may have been resolved in newer Node.js versions.
+  //
+  // REMOVED: if (command === 'node') return true;
+  // Reason: shell:true causes exit codes to be ignored (always returns 0)
+  // Fix: Use shell:false with absolute path - works correctly
 
   // Windows shell scripts require shell by design (case-insensitive check)
   const lowerPath = commandPath.toLowerCase();
@@ -164,7 +152,7 @@ export function safeExecSync(
   const commandPath = which.sync(command);
 
   // Determine if shell is needed (Windows-specific logic)
-  const useShell = shouldUseShell(command, commandPath);
+  const useShell = shouldUseShell(commandPath);
 
   const spawnOptions: SpawnSyncOptions = {
     shell: useShell, // shell:true on Windows for node and shell scripts, shell:false otherwise for security
@@ -227,7 +215,7 @@ export function safeExecResult(
     const commandPath = which.sync(command);
 
     // Determine if shell is needed (Windows-specific logic)
-    const useShell = shouldUseShell(command, commandPath);
+    const useShell = shouldUseShell(commandPath);
 
     const spawnOptions: SpawnSyncOptions = {
       shell: useShell,

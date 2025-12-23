@@ -23,7 +23,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && cp dist/bin/vibe-validate.js dist/bin/vibe-validate && cp dist/bin/vibe-validate dist/bin/vv && chmod +x dist/bin/vibe-validate dist/bin/vv && node dist/scripts/generate-watch-pr-schema.js && node dist/scripts/generate-run-result-schema.js",
+    "build": "tsc && node scripts/prepare-bin.js && node dist/scripts/generate-watch-pr-schema.js && node dist/scripts/generate-run-result-schema.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

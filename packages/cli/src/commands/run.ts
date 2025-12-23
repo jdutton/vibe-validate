@@ -13,6 +13,7 @@ import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validat
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
+import { normalizePath } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 import yaml from 'yaml';
@@ -242,7 +243,10 @@ function getWorkingDirectory(explicitCwd?: string): string {
       const resolved = resolve(gitRoot, explicitCwd);
 
       // Security: Prevent directory traversal outside git root
-      if (!resolved.startsWith(gitRoot)) {
+      // Normalize both paths for cross-platform comparison (Windows uses backslashes, git root may use forward slashes)
+      const normalizedResolved = normalizePath(resolved);
+      const normalizedGitRoot = normalizePath(gitRoot);
+      if (!normalizedResolved.startsWith(normalizedGitRoot)) {
         throw new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`);
       }
 
@@ -447,7 +451,10 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
         resolvedCwd = resolve(gitRoot, explicitCwd);
 
         // Security: Validate path is within git root
-        if (!resolvedCwd.startsWith(gitRoot)) {
+        // Normalize both paths for cross-platform comparison (Windows uses backslashes, git root may use forward slashes)
+        const normalizedResolvedCwd = normalizePath(resolvedCwd);
+        const normalizedGitRoot = normalizePath(gitRoot);
+        if (!normalizedResolvedCwd.startsWith(normalizedGitRoot)) {
           rejectPromise(new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`));
           return;
         }

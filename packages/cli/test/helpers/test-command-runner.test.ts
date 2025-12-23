@@ -67,9 +67,9 @@ describe('parseCommand (via executeCommand)', () => {
     });
 
     it('should capture error output', () => {
-      // Use semicolon instead of literal newline in command argument (cross-platform)
-      // Literal newlines in arguments work on Unix but may be truncated on Windows
-      const result = executeCommand(String.raw`node -e "process.stderr.write('123\n'); process.exit(1)"`);
+      // Use console.error instead of process.stderr.write to avoid quoting issues on Windows
+      // Double quotes work consistently across platforms when properly escaped
+      const result = executeCommand('node -e "console.error(123); process.exit(1)"');
       expect(result.exitCode).toBe(1);
       expect(result.output).toContain('123');
     });
