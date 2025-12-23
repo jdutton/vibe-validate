@@ -2882,618 +2882,6 @@
     },
     {
       "format": "typescript",
-      "lines": 20,
-      "fragment": ",\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      // Mock process.exit to track exit code\n      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {\n        throw new Error(`process.exit(${code})`);\n      }) as any;\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(exitSpy).toHaveBeenCalledWith(1",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 152,
-        "end": 171,
-        "startLoc": {
-          "line": 152,
-          "column": 2,
-          "position": 1351
-        },
-        "endLoc": {
-          "line": 171,
-          "column": 2,
-          "position": 1513
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 99,
-        "end": 118,
-        "startLoc": {
-          "line": 99,
-          "column": 2,
-          "position": 938
-        },
-        "endLoc": {
-          "line": 118,
-          "column": 2,
-          "position": 1100
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 19,
-      "fragment": ",\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(console.log).toHaveBeenCalled();\n    });\n  });\n\n  describe('sync check with no remote'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 181,
-        "end": 199,
-        "startLoc": {
-          "line": 181,
-          "column": 2,
-          "position": 1582
-        },
-        "endLoc": {
-          "line": 199,
-          "column": 28,
-          "position": 1704
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 128,
-        "end": 146,
-        "startLoc": {
-          "line": 128,
-          "column": 2,
-          "position": 1169
-        },
-        "endLoc": {
-          "line": 146,
-          "column": 25,
-          "position": 1291
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 25,
-      "fragment": ",\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      // Mock process.exit to track exit code\n      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {\n        throw new Error(`process.exit(${code})`);\n      }) as any;\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(exitSpy).toHaveBeenCalledWith(0);\n\n      exitSpy.mockRestore();\n    });\n\n    it('should display message when no remote'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 204,
-        "end": 228,
-        "startLoc": {
-          "line": 204,
-          "column": 14,
-          "position": 1757
-        },
-        "endLoc": {
-          "line": 228,
-          "column": 40,
-          "position": 1941
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 99,
-        "end": 123,
-        "startLoc": {
-          "line": 99,
-          "column": 2,
-          "position": 938
-        },
-        "endLoc": {
-          "line": 123,
-          "column": 49,
-          "position": 1122
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 19,
-      "fragment": ",\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(console.log).toHaveBeenCalled();\n    });\n  });\n\n  describe('--yaml flag'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 232,
-        "end": 250,
-        "startLoc": {
-          "line": 232,
-          "column": 14,
-          "position": 1981
-        },
-        "endLoc": {
-          "line": 250,
-          "column": 14,
-          "position": 2103
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 128,
-        "end": 146,
-        "startLoc": {
-          "line": 128,
-          "column": 2,
-          "position": 1169
-        },
-        "endLoc": {
-          "line": 146,
-          "column": 25,
-          "position": 1291
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ",\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check', '--yaml'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify YAML separator was written\n      const writeCalls = vi.mocked(process.stdout.write).mock.calls;\n      const separatorCall = writeCalls.find(call => call[0] === '---\\n');\n      expect(separatorCall).toBeDefined();\n\n      // Verify YAML includes behind count",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 287,
-        "end": 306,
-        "startLoc": {
-          "line": 287,
-          "column": 2,
-          "position": 2441
-        },
-        "endLoc": {
-          "line": 306,
-          "column": 37,
-          "position": 2604
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 256,
-        "end": 275,
-        "startLoc": {
-          "line": 256,
-          "column": 2,
-          "position": 2163
-        },
-        "endLoc": {
-          "line": 275,
-          "column": 35,
-          "position": 2326
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", async () => {\n      const mockResult = {\n        hasRemote: false,\n        isUpToDate: true,\n        currentBranch: 'feature/new',\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check',",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 314,
-        "end": 326,
-        "startLoc": {
-          "line": 314,
-          "column": 55,
-          "position": 2679
-        },
-        "endLoc": {
-          "line": 326,
-          "column": 2,
-          "position": 2768
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 228,
-        "end": 240,
-        "startLoc": {
-          "line": 228,
-          "column": 40,
-          "position": 1942
-        },
-        "endLoc": {
-          "line": 240,
-          "column": 2,
-          "position": 2031
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ",\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check', '--yaml'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify YAML separator was written\n      const writeCalls = vi.mocked(process.stdout.write).mock.calls;\n      const separatorCall = writeCalls.find(call => call[0] === '---\\n');\n      expect(separatorCall).toBeDefined();\n\n      // Verify YAML shows no remote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 318,
-        "end": 337,
-        "startLoc": {
-          "line": 318,
-          "column": 14,
-          "position": 2718
-        },
-        "endLoc": {
-          "line": 337,
-          "column": 31,
-          "position": 2881
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 256,
-        "end": 275,
-        "startLoc": {
-          "line": 256,
-          "column": 2,
-          "position": 2163
-        },
-        "endLoc": {
-          "line": 275,
-          "column": 35,
-          "position": 2326
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockResult = {\n        hasRemote: true,\n        isUpToDate: true,\n        currentBranch: 'feature/test',\n        behindBy: 0,\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check',",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 347,
-        "end": 360,
-        "startLoc": {
-          "line": 347,
-          "column": 56,
-          "position": 2974
-        },
-        "endLoc": {
-          "line": 360,
-          "column": 2,
-          "position": 3070
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 123,
-        "end": 136,
-        "startLoc": {
-          "line": 123,
-          "column": 49,
-          "position": 1123
-        },
-        "endLoc": {
-          "line": 136,
-          "column": 2,
-          "position": 1219
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockResult = {\n        hasRemote: true,\n        isUpToDate: true,\n        currentBranch: 'feature/test',\n        behindBy: 0,\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check', '--remote-origin'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 372,
-        "end": 385,
-        "startLoc": {
-          "line": 372,
-          "column": 60,
-          "position": 3158
-        },
-        "endLoc": {
-          "line": 385,
-          "column": 18,
-          "position": 3256
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 123,
-        "end": 360,
-        "startLoc": {
-          "line": 123,
-          "column": 49,
-          "position": 1123
-        },
-        "endLoc": {
-          "line": 360,
-          "column": 16,
-          "position": 3072
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockResult = {\n        hasRemote: true,\n        isUpToDate: true,\n        currentBranch: 'feature/test',\n        behindBy: 0,\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check', '--main-branch', 'develop',",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 397,
-        "end": 410,
-        "startLoc": {
-          "line": 397,
-          "column": 53,
-          "position": 3342
-        },
-        "endLoc": {
-          "line": 410,
-          "column": 2,
-          "position": 3444
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 123,
-        "end": 360,
-        "startLoc": {
-          "line": 123,
-          "column": 49,
-          "position": 1123
-        },
-        "endLoc": {
-          "line": 360,
-          "column": 2,
-          "position": 3076
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockResult = {\n        hasRemote: true,\n        isUpToDate: true,\n        currentBranch: 'main',\n        behindBy: 0,\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check']",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 424,
-        "end": 437,
-        "startLoc": {
-          "line": 424,
-          "column": 59,
-          "position": 3550
-        },
-        "endLoc": {
-          "line": 437,
-          "column": 2,
-          "position": 3646
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 251,
-        "end": 264,
-        "startLoc": {
-          "line": 251,
-          "column": 56,
-          "position": 2117
-        },
-        "endLoc": {
-          "line": 264,
-          "column": 2,
-          "position": 2213
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ",\n        behindBy: 0,\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called for human output",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 428,
-        "end": 443,
-        "startLoc": {
-          "line": 428,
-          "column": 7,
-          "position": 3589
-        },
-        "endLoc": {
-          "line": 443,
-          "column": 50,
-          "position": 3692
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 127,
-        "end": 142,
-        "startLoc": {
-          "line": 127,
-          "column": 15,
-          "position": 1162
-        },
-        "endLoc": {
-          "line": 142,
-          "column": 7,
-          "position": 1265
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ", async () => {\n      const mockResult = {\n        hasRemote: true,\n        isUpToDate: true,\n        currentBranch: 'feature/test',\n        behindBy: 0,\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 452,
-        "end": 471,
-        "startLoc": {
-          "line": 452,
-          "column": 48,
-          "position": 3781
-        },
-        "endLoc": {
-          "line": 471,
-          "column": 33,
-          "position": 3923
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 123,
-        "end": 142,
-        "startLoc": {
-          "line": 123,
-          "column": 49,
-          "position": 1123
-        },
-        "endLoc": {
-          "line": 142,
-          "column": 7,
-          "position": 1265
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 18,
-      "fragment": ",\n      };\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue(mockResult);\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      // Verify console.log was called\n      expect(console.log).toHaveBeenCalled();\n    });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 480,
-        "end": 497,
-        "startLoc": {
-          "line": 480,
-          "column": 2,
-          "position": 3994
-        },
-        "endLoc": {
-          "line": 497,
-          "column": 2,
-          "position": 4111
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 128,
-        "end": 475,
-        "startLoc": {
-          "line": 128,
-          "column": 2,
-          "position": 1169
-        },
-        "endLoc": {
-          "line": 475,
-          "column": 3,
-          "position": 3945
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ");\n\n      // Mock process.exit to track exit code\n      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {\n        throw new Error(`process.exit(${code})`);\n      }) as any;\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(console",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 502,
-        "end": 518,
-        "startLoc": {
-          "line": 502,
-          "column": 6,
-          "position": 4172
-        },
-        "endLoc": {
-          "line": 518,
-          "column": 8,
-          "position": 4309
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 102,
-        "end": 118,
-        "startLoc": {
-          "line": 102,
-          "column": 11,
-          "position": 958
-        },
-        "endLoc": {
-          "line": 118,
-          "column": 8,
-          "position": 1095
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ";\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(console.error",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 507,
-        "end": 518,
-        "startLoc": {
-          "line": 507,
-          "column": 4,
-          "position": 4232
-        },
-        "endLoc": {
-          "line": 518,
-          "column": 6,
-          "position": 4311
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 131,
-        "end": 142,
-        "startLoc": {
-          "line": 131,
-          "column": 2,
-          "position": 1190
-        },
-        "endLoc": {
-          "line": 142,
-          "column": 4,
-          "position": 1269
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ").mockRejectedValue(error);\n\n      // Mock process.exit to track exit code\n      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {\n        throw new Error(`process.exit(${code})`);\n      }) as any;\n\n      syncCheckCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['sync-check'], { from: 'user' });\n      } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes\n        // Expected exception from Commander.js exitOverride\n        expect(error).toBeDefined();\n      }\n\n      expect(console.error).toHaveBeenCalled",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 529,
-        "end": 545,
-        "startLoc": {
-          "line": 529,
-          "column": 11,
-          "position": 4398
-        },
-        "endLoc": {
-          "line": 545,
-          "column": 17,
-          "position": 4545
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/sync-check.test.ts",
-        "start": 502,
-        "end": 518,
-        "startLoc": {
-          "line": 502,
-          "column": 16,
-          "position": 4167
-        },
-        "endLoc": {
-          "line": 518,
-          "column": 21,
-          "position": 4314
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 11,
       "fragment": "stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Minimal YAML output",
       "tokens": 0,
@@ -4106,109 +3494,109 @@
     },
     {
       "format": "typescript",
-      "lines": 28,
-      "fragment": "};\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        // Commander throws on exitOverride, expected\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0); // Should succeed\n        }\n      }\n\n      // Should default to origin/main",
+      "lines": 19,
+      "fragment": "};\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      await runPreCommit(0);\n\n      // Should default to origin/main",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 183,
-        "end": 210,
+        "start": 191,
+        "end": 209,
         "startLoc": {
-          "line": 183,
+          "line": 191,
           "column": 7,
-          "position": 1607
+          "position": 1643
         },
         "endLoc": {
-          "line": 210,
+          "line": 209,
           "column": 33,
-          "position": 1830
+          "position": 1769
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 143,
-        "end": 170,
+        "start": 160,
+        "end": 178,
         "startLoc": {
-          "line": 143,
+          "line": 160,
           "column": 7,
-          "position": 1296
+          "position": 1429
         },
         "endLoc": {
-          "line": 170,
+          "line": 178,
           "column": 76,
-          "position": 1519
+          "position": 1555
         }
       }
     },
     {
       "format": "typescript",
-      "lines": 31,
-      "fragment": "autoSync: false,\n          warnIfBehind: true,\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        // Commander throws on exitOverride, expected\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0); // Should succeed\n        }\n      }\n\n      // Should use origin/master (custom branch with default origin)",
+      "lines": 22,
+      "fragment": "autoSync: false,\n          warnIfBehind: true,\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      await runPreCommit(0);\n\n      // Should use origin/master (custom branch with default origin)",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 225,
-        "end": 255,
+        "start": 224,
+        "end": 245,
         "startLoc": {
-          "line": 225,
+          "line": 224,
           "column": 11,
-          "position": 1933
+          "position": 1872
         },
         "endLoc": {
-          "line": 255,
+          "line": 245,
           "column": 64,
-          "position": 2174
+          "position": 2016
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 140,
-        "end": 170,
+        "start": 157,
+        "end": 178,
         "startLoc": {
-          "line": 140,
+          "line": 157,
           "column": 11,
-          "position": 1278
+          "position": 1411
         },
         "endLoc": {
-          "line": 170,
+          "line": 178,
           "column": 76,
-          "position": 1519
+          "position": 1555
         }
       }
     },
     {
       "format": "typescript",
-      "lines": 24,
-      "fragment": ",\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if",
+      "lines": 19,
+      "fragment": ",\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 276,
-        "end": 299,
+        "start": 266,
+        "end": 284,
         "startLoc": {
-          "line": 276,
+          "line": 266,
           "column": 2,
-          "position": 2323
+          "position": 2165
         },
         "endLoc": {
-          "line": 299,
-          "column": 3,
-          "position": 2500
+          "line": 284,
+          "column": 17,
+          "position": 2288
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 141,
-        "end": 164,
+        "start": 158,
+        "end": 176,
         "startLoc": {
-          "line": 141,
+          "line": 158,
           "column": 5,
-          "position": 1289
+          "position": 1422
         },
         "endLoc": {
-          "line": 164,
-          "column": 46,
-          "position": 1466
+          "line": 176,
+          "column": 6,
+          "position": 1545
         }
       }
     },
@@ -4219,32 +3607,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 320,
-        "end": 333,
+        "start": 310,
+        "end": 323,
         "startLoc": {
-          "line": 320,
+          "line": 310,
           "column": 13,
-          "position": 2665
+          "position": 2507
         },
         "endLoc": {
-          "line": 333,
+          "line": 323,
           "column": 59,
-          "position": 2746
+          "position": 2588
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 275,
-        "end": 152,
+        "start": 265,
+        "end": 169,
         "startLoc": {
-          "line": 275,
+          "line": 265,
           "column": 13,
-          "position": 2318
+          "position": 2160
         },
         "endLoc": {
-          "line": 152,
+          "line": 169,
           "column": 3,
-          "position": 1364
+          "position": 1497
         }
       }
     },
@@ -4255,32 +3643,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 368,
-        "end": 397,
+        "start": 349,
+        "end": 378,
         "startLoc": {
-          "line": 368,
+          "line": 349,
           "column": 13,
-          "position": 3050
+          "position": 2787
         },
         "endLoc": {
-          "line": 397,
+          "line": 378,
           "column": 52,
-          "position": 3282
+          "position": 3019
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 275,
-        "end": 304,
+        "start": 265,
+        "end": 294,
         "startLoc": {
-          "line": 275,
+          "line": 265,
           "column": 13,
-          "position": 2318
+          "position": 2160
         },
         "endLoc": {
-          "line": 304,
+          "line": 294,
           "column": 60,
-          "position": 2550
+          "position": 2392
         }
       }
     },
@@ -4291,32 +3679,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 411,
-        "end": 439,
+        "start": 392,
+        "end": 420,
         "startLoc": {
-          "line": 411,
+          "line": 392,
           "column": 11,
-          "position": 3378
+          "position": 3115
         },
         "endLoc": {
-          "line": 439,
+          "line": 420,
           "column": 54,
-          "position": 3606
+          "position": 3343
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 276,
-        "end": 304,
+        "start": 266,
+        "end": 294,
         "startLoc": {
-          "line": 276,
+          "line": 266,
           "column": 11,
-          "position": 2322
+          "position": 2164
         },
         "endLoc": {
-          "line": 304,
+          "line": 294,
           "column": 60,
-          "position": 2550
+          "position": 2392
         }
       }
     },
@@ -4327,68 +3715,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 455,
-        "end": 468,
+        "start": 436,
+        "end": 449,
         "startLoc": {
-          "line": 455,
+          "line": 436,
           "column": 13,
-          "position": 3721
+          "position": 3458
         },
         "endLoc": {
-          "line": 468,
+          "line": 449,
           "column": 59,
-          "position": 3802
+          "position": 3539
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 275,
-        "end": 152,
+        "start": 265,
+        "end": 169,
         "startLoc": {
-          "line": 275,
+          "line": 265,
           "column": 13,
-          "position": 2318
+          "position": 2160
         },
         "endLoc": {
-          "line": 152,
+          "line": 169,
           "column": 3,
-          "position": 1364
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ";\n      vi.mocked(utils.safeExecFromString).mockImplementation(() => {\n        throw error;\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n        throw new Error('Should have exited with error');\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(1); // Should fail\n        }\n      }\n\n      // Should show error about missing tool",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 471,
-        "end": 487,
-        "startLoc": {
-          "line": 471,
-          "column": 38,
-          "position": 3840
-        },
-        "endLoc": {
-          "line": 487,
-          "column": 40,
-          "position": 3989
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 336,
-        "end": 352,
-        "startLoc": {
-          "line": 336,
-          "column": 19,
-          "position": 2784
-        },
-        "endLoc": {
-          "line": 352,
-          "column": 56,
-          "position": 2933
+          "position": 1497
         }
       }
     },
@@ -4399,32 +3751,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 505,
-        "end": 534,
+        "start": 477,
+        "end": 506,
         "startLoc": {
-          "line": 505,
+          "line": 477,
           "column": 13,
-          "position": 4120
+          "position": 3752
         },
         "endLoc": {
-          "line": 534,
+          "line": 506,
           "column": 47,
-          "position": 4352
+          "position": 3984
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 275,
-        "end": 304,
+        "start": 265,
+        "end": 294,
         "startLoc": {
-          "line": 275,
+          "line": 265,
           "column": 13,
-          "position": 2318
+          "position": 2160
         },
         "endLoc": {
-          "line": 304,
+          "line": 294,
           "column": 60,
-          "position": 2550
+          "position": 2392
         }
       }
     },
@@ -4435,68 +3787,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 549,
-        "end": 565,
+        "start": 521,
+        "end": 537,
         "startLoc": {
-          "line": 549,
+          "line": 521,
           "column": 48,
-          "position": 4462
+          "position": 4094
         },
         "endLoc": {
-          "line": 565,
+          "line": 537,
           "column": 31,
-          "position": 4573
+          "position": 4205
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 504,
-        "end": 335,
+        "start": 476,
+        "end": 325,
         "startLoc": {
-          "line": 504,
+          "line": 476,
           "column": 38,
-          "position": 4117
+          "position": 3749
         },
         "endLoc": {
-          "line": 335,
+          "line": 325,
           "column": 3,
-          "position": 2773
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ";\n      vi.mocked(utils.safeExecFromString).mockImplementation(() => {\n        throw error;\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n        throw new Error('Should have exited with error');\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(1);\n        }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 566,
-        "end": 579,
-        "startLoc": {
-          "line": 566,
-          "column": 34,
-          "position": 4584
-        },
-        "endLoc": {
-          "line": 579,
-          "column": 2,
-          "position": 4724
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 336,
-        "end": 348,
-        "startLoc": {
-          "line": 336,
-          "column": 19,
-          "position": 2784
-        },
-        "endLoc": {
-          "line": 348,
-          "column": 15,
-          "position": 2923
+          "position": 2615
         }
       }
     },
@@ -4507,32 +3823,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 662,
-        "end": 683,
+        "start": 626,
+        "end": 647,
         "startLoc": {
-          "line": 662,
+          "line": 626,
           "column": 42,
-          "position": 5328
+          "position": 4895
         },
         "endLoc": {
-          "line": 683,
+          "line": 647,
           "column": 28,
-          "position": 5480
+          "position": 5047
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 591,
-        "end": 612,
+        "start": 563,
+        "end": 584,
         "startLoc": {
-          "line": 591,
+          "line": 563,
           "column": 52,
-          "position": 4836
+          "position": 4468
         },
         "endLoc": {
-          "line": 612,
+          "line": 584,
           "column": 27,
-          "position": 4988
+          "position": 4620
         }
       }
     },
@@ -4543,32 +3859,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 756,
-        "end": 767,
+        "start": 712,
+        "end": 723,
         "startLoc": {
-          "line": 756,
+          "line": 712,
           "column": 5,
-          "position": 5998
+          "position": 5500
         },
         "endLoc": {
-          "line": 767,
+          "line": 723,
           "column": 7,
-          "position": 6106
+          "position": 5608
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 292,
-        "end": 304,
+        "start": 282,
+        "end": 294,
         "startLoc": {
-          "line": 292,
+          "line": 282,
           "column": 2,
-          "position": 2441
+          "position": 2283
         },
         "endLoc": {
-          "line": 304,
+          "line": 294,
           "column": 60,
-          "position": 2550
+          "position": 2392
         }
       }
     },
@@ -4579,32 +3895,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 772,
-        "end": 779,
+        "start": 728,
+        "end": 735,
         "startLoc": {
-          "line": 772,
+          "line": 728,
           "column": 6,
-          "position": 6158
+          "position": 5660
         },
         "endLoc": {
-          "line": 779,
+          "line": 735,
           "column": 2,
-          "position": 6252
+          "position": 5754
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 292,
-        "end": 300,
+        "start": 282,
+        "end": 290,
         "startLoc": {
-          "line": 292,
+          "line": 282,
           "column": 2,
-          "position": 2441
+          "position": 2283
         },
         "endLoc": {
-          "line": 300,
+          "line": 290,
           "column": 2,
-          "position": 2536
+          "position": 2378
         }
       }
     },
@@ -4615,32 +3931,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 800,
-        "end": 821,
+        "start": 756,
+        "end": 777,
         "startLoc": {
-          "line": 800,
+          "line": 756,
           "column": 2,
-          "position": 6436
+          "position": 5938
         },
         "endLoc": {
-          "line": 821,
+          "line": 777,
           "column": 2,
-          "position": 6630
+          "position": 6132
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 145,
-        "end": 300,
+        "start": 162,
+        "end": 290,
         "startLoc": {
-          "line": 145,
+          "line": 162,
           "column": 11,
-          "position": 1313
+          "position": 1446
         },
         "endLoc": {
-          "line": 300,
+          "line": 290,
           "column": 18,
-          "position": 2540
+          "position": 2382
         }
       }
     },
@@ -4651,32 +3967,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 833,
-        "end": 843,
-        "startLoc": {
-          "line": 833,
-          "column": 86,
-          "position": 6726
-        },
-        "endLoc": {
-          "line": 843,
-          "column": 24,
-          "position": 6818
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
         "start": 789,
         "end": 799,
         "startLoc": {
           "line": 789,
-          "column": 62,
-          "position": 6319
+          "column": 86,
+          "position": 6228
         },
         "endLoc": {
           "line": 799,
+          "column": 24,
+          "position": 6320
+        }
+      },
+      "secondFile": {
+        "name": "packages/cli/test/commands/pre-commit.test.ts",
+        "start": 745,
+        "end": 755,
+        "startLoc": {
+          "line": 745,
+          "column": 62,
+          "position": 5821
+        },
+        "endLoc": {
+          "line": 755,
           "column": 30,
-          "position": 6411
+          "position": 5913
         }
       }
     },
@@ -4687,32 +4003,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 852,
-        "end": 861,
+        "start": 808,
+        "end": 817,
         "startLoc": {
-          "line": 852,
+          "line": 808,
           "column": 5,
-          "position": 6889
+          "position": 6391
         },
         "endLoc": {
-          "line": 861,
+          "line": 817,
           "column": 27,
-          "position": 6992
+          "position": 6494
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 291,
-        "end": 779,
+        "start": 281,
+        "end": 735,
         "startLoc": {
-          "line": 291,
+          "line": 281,
           "column": 4,
-          "position": 2437
+          "position": 2279
         },
         "endLoc": {
-          "line": 779,
+          "line": 735,
           "column": 15,
-          "position": 6256
+          "position": 5758
         }
       }
     },
@@ -4723,32 +4039,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 869,
-        "end": 881,
+        "start": 825,
+        "end": 837,
         "startLoc": {
-          "line": 869,
+          "line": 825,
           "column": 89,
-          "position": 7027
+          "position": 6529
         },
         "endLoc": {
-          "line": 881,
+          "line": 837,
           "column": 33,
-          "position": 7131
+          "position": 6633
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 789,
-        "end": 845,
+        "start": 745,
+        "end": 801,
         "startLoc": {
-          "line": 789,
+          "line": 745,
           "column": 62,
-          "position": 6319
+          "position": 5821
         },
         "endLoc": {
-          "line": 845,
+          "line": 801,
           "column": 68,
-          "position": 6830
+          "position": 6332
         }
       }
     },
@@ -4759,32 +4075,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 887,
-        "end": 905,
+        "start": 843,
+        "end": 861,
         "startLoc": {
-          "line": 887,
+          "line": 843,
           "column": 2,
-          "position": 7179
+          "position": 6681
         },
         "endLoc": {
-          "line": 905,
+          "line": 861,
           "column": 53,
-          "position": 7323
+          "position": 6825
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 850,
-        "end": 867,
+        "start": 806,
+        "end": 823,
         "startLoc": {
-          "line": 850,
+          "line": 806,
           "column": 2,
-          "position": 6875
+          "position": 6377
         },
         "endLoc": {
-          "line": 867,
+          "line": 823,
           "column": 2,
-          "position": 7018
+          "position": 6520
         }
       }
     },
@@ -4795,32 +4111,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 906,
-        "end": 911,
+        "start": 862,
+        "end": 867,
         "startLoc": {
-          "line": 906,
+          "line": 862,
           "column": 7,
-          "position": 7326
+          "position": 6828
         },
         "endLoc": {
-          "line": 911,
+          "line": 867,
           "column": 53,
-          "position": 7394
+          "position": 6896
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 828,
-        "end": 833,
+        "start": 784,
+        "end": 789,
         "startLoc": {
-          "line": 828,
+          "line": 784,
           "column": 7,
-          "position": 6657
+          "position": 6159
         },
         "endLoc": {
-          "line": 833,
+          "line": 789,
           "column": 86,
-          "position": 6725
+          "position": 6227
         }
       }
     },
@@ -4831,32 +4147,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 924,
-        "end": 945,
+        "start": 880,
+        "end": 901,
         "startLoc": {
-          "line": 924,
+          "line": 880,
           "column": 2,
-          "position": 7521
+          "position": 7023
         },
         "endLoc": {
-          "line": 945,
+          "line": 901,
           "column": 47,
-          "position": 7702
+          "position": 7204
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 145,
-        "end": 300,
+        "start": 162,
+        "end": 290,
         "startLoc": {
-          "line": 145,
+          "line": 162,
           "column": 11,
-          "position": 1313
+          "position": 1446
         },
         "endLoc": {
-          "line": 300,
+          "line": 290,
           "column": 7,
-          "position": 2527
+          "position": 2369
         }
       }
     },
@@ -5259,7 +4575,7 @@
     {
       "format": "typescript",
       "lines": 21,
-      "fragment": "});\n\n  afterEach(() => {\n    env.cleanup();\n\n    // Restore cwd\n    process.chdir(originalCwd);\n\n    // Clean up test files\n    if (existsSync(testDir)) {\n      try {\n        rmSync(testDir, { recursive: true, force: true });\n      } catch {\n        // Ignore cleanup errors\n      }\n    }\n\n    vi.restoreAllMocks();\n  });\n\n  describe('command registration'",
+      "fragment": "});\n\n  afterEach(() => {\n    env.cleanup();\n\n    // Restore cwd\n    process.chdir(originalCwd);\n\n    // Clean up test files\n    if (existsSync(testDir)) {\n      try {\n        rmSync(testDir, { recursive: true, force: true });\n      } catch {\n        // Ignore cleanup errors\n      }\n    }\n\n    vi.restoreAllMocks();\n  });\n\n  describe",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/config.test.ts",
@@ -5272,23 +4588,23 @@
         },
         "endLoc": {
           "line": 64,
-          "column": 23,
-          "position": 530
+          "column": 9,
+          "position": 528
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
         "start": 110,
-        "end": 130,
+        "end": 133,
         "startLoc": {
           "line": 110,
           "column": 3,
           "position": 1077
         },
         "endLoc": {
-          "line": 130,
-          "column": 43,
-          "position": 1191
+          "line": 133,
+          "column": 6,
+          "position": 1189
         }
       }
     },
@@ -5618,361 +4934,73 @@
     },
     {
       "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);\n        vi.mocked(git.removeNote).mockResolvedValue();\n\n        const result = await pruneHistoryByAge(90);\n\n        expect(result.notesPruned).toBe(2",
+      "lines": 9,
+      "fragment": ", async () => {\n        const oldTimestamp = createOldDate(100).toISOString();\n        const oldNote = createHistoryNote({\n          treeHash: 'old-abc123',\n          runs: [createRun({ treeHash: 'old-abc123', timestamp: oldTimestamp })],\n        });\n        setupPrunerTest([oldNote]);\n\n        await",
       "tokens": 0,
       "firstFile": {
         "name": "packages/history/test/pruner.test.ts",
-        "start": 156,
-        "end": 169,
+        "start": 230,
+        "end": 238,
         "startLoc": {
-          "line": 156,
-          "column": 8,
-          "position": 1232
-        },
-        "endLoc": {
-          "line": 169,
-          "column": 2,
-          "position": 1321
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 93,
-        "end": 106,
-        "startLoc": {
-          "line": 93,
-          "column": 13,
-          "position": 777
-        },
-        "endLoc": {
-          "line": 106,
-          "column": 2,
-          "position": 866
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-abc123'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 182,
-        "end": 195,
-        "startLoc": {
-          "line": 182,
-          "column": 13,
-          "position": 1461
-        },
-        "endLoc": {
-          "line": 195,
-          "column": 13,
-          "position": 1553
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 123,
-        "end": 136,
-        "startLoc": {
-          "line": 123,
-          "column": 8,
-          "position": 1012
-        },
-        "endLoc": {
-          "line": 136,
-          "column": 8,
-          "position": 1104
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "{\n                id: 'run-2',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit2',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-abc123'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 199,
-        "end": 210,
-        "startLoc": {
-          "line": 199,
-          "column": 15,
-          "position": 1573
-        },
-        "endLoc": {
-          "line": 210,
-          "column": 13,
-          "position": 1656
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 145,
-        "end": 156,
-        "startLoc": {
-          "line": 145,
-          "column": 15,
-          "position": 1148
-        },
-        "endLoc": {
-          "line": 156,
-          "column": 8,
-          "position": 1231
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-abc123',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNoteWithMultipleRuns",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 220,
-        "end": 233,
-        "startLoc": {
-          "line": 220,
-          "column": 10,
-          "position": 1722
-        },
-        "endLoc": {
-          "line": 233,
-          "column": 24,
-          "position": 1803
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 88,
-        "end": 101,
-        "startLoc": {
-          "line": 88,
-          "column": 12,
-          "position": 739
-        },
-        "endLoc": {
-          "line": 101,
-          "column": 9,
-          "position": 820
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ": HistoryNote[] = [\n          {\n            treeHash: 'old-abc123',\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-abc123',\n                  phases: [],\n                },\n              },\n            ]",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 248,
-        "end": 267,
-        "startLoc": {
-          "line": 248,
-          "column": 11,
-          "position": 1944
-        },
-        "endLoc": {
-          "line": 267,
-          "column": 2,
-          "position": 2074
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 180,
-        "end": 199,
-        "startLoc": {
-          "line": 180,
-          "column": 24,
-          "position": 1443
-        },
-        "endLoc": {
-          "line": 199,
-          "column": 2,
-          "position": 1573
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ");\n        vi.mocked(git.removeNote).mockResolvedValue();\n\n        const result = await pruneHistoryByAge(90);\n\n        expect(result.notesPruned).toBe(1);\n        expect(result.runsPruned).toBe(1);\n        expect(result.notesRemaining).toBe(1",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 291,
-        "end": 298,
-        "startLoc": {
-          "line": 291,
-          "column": 11,
-          "position": 2236
-        },
-        "endLoc": {
-          "line": 298,
-          "column": 2,
-          "position": 2309
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 101,
-        "end": 108,
-        "startLoc": {
-          "line": 101,
-          "column": 9,
-          "position": 821
-        },
-        "endLoc": {
-          "line": 108,
-          "column": 2,
-          "position": 894
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 26,
-      "fragment": "const oldNotes: HistoryNote[] = [\n          {\n            treeHash: 'old-abc123',\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit123',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-abc123',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);\n\n        const",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 315,
-        "end": 340,
-        "startLoc": {
-          "line": 315,
-          "column": 9,
-          "position": 2441
-        },
-        "endLoc": {
-          "line": 340,
-          "column": 6,
-          "position": 2604
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 78,
-        "end": 102,
-        "startLoc": {
-          "line": 78,
-          "column": 9,
-          "position": 663
-        },
-        "endLoc": {
-          "line": 102,
-          "column": 3,
-          "position": 825
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 31,
-      "fragment": ", async () => {\n        const oldDate = new Date();\n        oldDate.setDate(oldDate.getDate() - 100);\n\n        const oldNotes: HistoryNote[] = [\n          {\n            treeHash: 'old-abc123',\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit123',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-abc123',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);\n        vi.mocked(git.removeNote).mockResolvedValue();\n\n        await",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 353,
-        "end": 383,
-        "startLoc": {
-          "line": 353,
+          "line": 230,
           "column": 30,
-          "position": 2720
+          "position": 2100
         },
         "endLoc": {
-          "line": 383,
+          "line": 238,
           "column": 6,
-          "position": 2942
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 311,
-        "end": 104,
-        "startLoc": {
-          "line": 311,
-          "column": 53,
-          "position": 2397
-        },
-        "endLoc": {
-          "line": 104,
-          "column": 6,
-          "position": 841
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 50,
-      "fragment": ", async () => {\n        const oldDate = new Date();\n        oldDate.setDate(oldDate.getDate() - 100);\n\n        const oldNotes: HistoryNote[] = [\n          {\n            treeHash: 'old-1',\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-1',\n                  phases: [],\n                },\n              },\n            ],\n          },\n          {\n            treeHash: 'old-2',\n            runs: [\n              {\n                id: 'run-2',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit2',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-2',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);\n\n        // First delete fails, second succeeds",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 398,
-        "end": 447,
-        "startLoc": {
-          "line": 398,
-          "column": 48,
-          "position": 3038
-        },
-        "endLoc": {
-          "line": 447,
-          "column": 39,
-          "position": 3372
+          "position": 2187
         }
       },
       "secondFile": {
         "name": "packages/history/test/pruner.test.ts",
         "start": 117,
-        "end": 165,
+        "end": 125,
         "startLoc": {
           "line": 117,
-          "column": 34,
-          "position": 947
+          "column": 25,
+          "position": 900
         },
         "endLoc": {
-          "line": 165,
-          "column": 3,
-          "position": 1280
+          "line": 125,
+          "column": 6,
+          "position": 987
         }
       }
     },
     {
       "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: oldDate.toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: oldDate.toISOString(),\n                  treeHash: 'old-note'",
+      "lines": 13,
+      "fragment": ", async () => {\n        const oldTimestamp = createOldDate(100).toISOString();\n        const oldNotes = [\n          createHistoryNote({\n            treeHash: 'old-1',\n            runs: [createRun({ id: 'run-1', treeHash: 'old-1', timestamp: oldTimestamp, headCommit: 'commit1' })],\n          }),\n          createHistoryNote({\n            treeHash: 'old-2',\n            runs: [createRun({ id: 'run-2', treeHash: 'old-2', timestamp: oldTimestamp, headCommit: 'commit2' })],\n          }),\n        ];\n        vi",
       "tokens": 0,
       "firstFile": {
         "name": "packages/history/test/pruner.test.ts",
-        "start": 470,
-        "end": 483,
+        "start": 253,
+        "end": 265,
         "startLoc": {
-          "line": 470,
-          "column": 11,
-          "position": 3567
+          "line": 253,
+          "column": 48,
+          "position": 2283
         },
         "endLoc": {
-          "line": 483,
-          "column": 11,
-          "position": 3659
+          "line": 265,
+          "column": 3,
+          "position": 2433
         }
       },
       "secondFile": {
         "name": "packages/history/test/pruner.test.ts",
-        "start": 123,
-        "end": 136,
+        "start": 137,
+        "end": 149,
         "startLoc": {
-          "line": 123,
-          "column": 8,
-          "position": 1012
+          "line": 137,
+          "column": 34,
+          "position": 1092
         },
         "endLoc": {
-          "line": 136,
-          "column": 8,
-          "position": 1104
+          "line": 149,
+          "column": 16,
+          "position": 1242
         }
       }
     },
@@ -5983,392 +5011,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/history/test/pruner.test.ts",
-        "start": 509,
-        "end": 519,
+        "start": 309,
+        "end": 319,
         "startLoc": {
-          "line": 509,
+          "line": 309,
           "column": 2,
-          "position": 3872
+          "position": 2826
         },
         "endLoc": {
-          "line": 519,
+          "line": 319,
           "column": 19,
-          "position": 3962
+          "position": 2916
         }
       },
       "secondFile": {
         "name": "packages/history/test/pruner.test.ts",
-        "start": 26,
-        "end": 36,
+        "start": 93,
+        "end": 103,
         "startLoc": {
-          "line": 26,
+          "line": 93,
           "column": 3,
-          "position": 213
+          "position": 658
         },
         "endLoc": {
-          "line": 36,
+          "line": 103,
           "column": 43,
-          "position": 303
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 21,
-      "fragment": ", async () => {\n        const notes: HistoryNote[] = [\n          {\n            treeHash: 'abc123',\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: new Date().toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'abc123',\n                  phases: [],\n                },\n              },\n              {",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 584,
-        "end": 604,
-        "startLoc": {
-          "line": 584,
-          "column": 40,
-          "position": 4439
-        },
-        "endLoc": {
-          "line": 604,
-          "column": 2,
-          "position": 4592
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 520,
-        "end": 540,
-        "startLoc": {
-          "line": 520,
-          "column": 25,
-          "position": 3976
-        },
-        "endLoc": {
-          "line": 540,
-          "column": 2,
-          "position": 4129
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "{\n                id: 'run-2',\n                timestamp: new Date().toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit2',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'abc123'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 604,
-        "end": 615,
-        "startLoc": {
-          "line": 604,
-          "column": 15,
-          "position": 4592
-        },
-        "endLoc": {
-          "line": 615,
-          "column": 9,
-          "position": 4683
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 545,
-        "end": 556,
-        "startLoc": {
-          "line": 545,
-          "column": 15,
-          "position": 4153
-        },
-        "endLoc": {
-          "line": 556,
-          "column": 9,
-          "position": 4244
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'abc123',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 625,
-        "end": 638,
-        "startLoc": {
-          "line": 625,
-          "column": 10,
-          "position": 4753
-        },
-        "endLoc": {
-          "line": 638,
-          "column": 6,
-          "position": 4838
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 48,
-        "end": 61,
-        "startLoc": {
-          "line": 48,
-          "column": 12,
-          "position": 411
-        },
-        "endLoc": {
-          "line": 61,
-          "column": 12,
-          "position": 496
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);\n        vi.mocked(git.removeNote).mockResolvedValue();\n\n        const result = await pruneAllHistory();\n\n        expect(result.notesPruned).toBe(1",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 630,
-        "end": 643,
-        "startLoc": {
-          "line": 630,
-          "column": 9,
-          "position": 4795
-        },
-        "endLoc": {
-          "line": 643,
-          "column": 2,
-          "position": 4883
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 556,
-        "end": 569,
-        "startLoc": {
-          "line": 556,
-          "column": 9,
-          "position": 4245
-        },
-        "endLoc": {
-          "line": 569,
-          "column": 2,
-          "position": 4333
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": "},\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);\n        vi.mocked(git.removeNote).mockResolvedValue();\n\n        const result = await pruneAllHistory();\n\n        expect(result.notesPruned).toBe(1);\n        expect(result.runsPruned).toBe(0",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 652,
-        "end": 661,
-        "startLoc": {
-          "line": 652,
-          "column": 11,
-          "position": 4960
-        },
-        "endLoc": {
-          "line": 661,
-          "column": 2,
-          "position": 5039
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 635,
-        "end": 644,
-        "startLoc": {
-          "line": 635,
-          "column": 11,
-          "position": 4818
-        },
-        "endLoc": {
-          "line": 644,
-          "column": 2,
-          "position": 4897
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 23,
-      "fragment": ", async () => {\n        const notes: HistoryNote[] = [\n          {\n            treeHash: 'abc123',\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: new Date().toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'abc123',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ]",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 666,
-        "end": 688,
-        "startLoc": {
-          "line": 666,
-          "column": 53,
-          "position": 5073
-        },
-        "endLoc": {
-          "line": 688,
-          "column": 2,
-          "position": 5234
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 520,
-        "end": 542,
-        "startLoc": {
-          "line": 520,
-          "column": 25,
-          "position": 3976
-        },
-        "endLoc": {
-          "line": 542,
-          "column": 2,
-          "position": 4137
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ",\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'abc123',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);\n\n        const",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 677,
-        "end": 692,
-        "startLoc": {
-          "line": 677,
-          "column": 10,
-          "position": 5165
-        },
-        "endLoc": {
-          "line": 692,
-          "column": 6,
-          "position": 5256
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 48,
-        "end": 639,
-        "startLoc": {
-          "line": 48,
-          "column": 12,
-          "position": 411
-        },
-        "endLoc": {
-          "line": 639,
-          "column": 3,
-          "position": 4843
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 28,
-      "fragment": ", async () => {\n        const notes: HistoryNote[] = [\n          {\n            treeHash: 'abc123',\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: new Date().toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'abc123',\n                  phases: [],\n                },\n              },\n            ],\n          },\n        ];\n\n        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);\n        vi.mocked(git.removeNote).mockResolvedValue();\n\n        await",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 705,
-        "end": 732,
-        "startLoc": {
-          "line": 705,
-          "column": 30,
-          "position": 5369
-        },
-        "endLoc": {
-          "line": 732,
-          "column": 6,
-          "position": 5567
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 520,
-        "end": 641,
-        "startLoc": {
-          "line": 520,
-          "column": 25,
-          "position": 3976
-        },
-        "endLoc": {
-          "line": 641,
-          "column": 6,
-          "position": 4859
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n            runs: [\n              {\n                id: 'run-1',\n                timestamp: new Date().toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit1',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'note-1'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 750,
-        "end": 763,
-        "startLoc": {
-          "line": 750,
-          "column": 9,
-          "position": 5693
-        },
-        "endLoc": {
-          "line": 763,
-          "column": 9,
-          "position": 5793
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 523,
-        "end": 536,
-        "startLoc": {
-          "line": 523,
-          "column": 9,
-          "position": 4009
-        },
-        "endLoc": {
-          "line": 536,
-          "column": 9,
-          "position": 4109
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n            runs: [\n              {\n                id: 'run-2',\n                timestamp: new Date().toISOString(),\n                duration: 5000,\n                passed: true,\n                branch: 'main',\n                headCommit: 'commit2',\n                uncommittedChanges: false,\n                result: {\n                  passed: true,\n                  timestamp: new Date().toISOString(),\n                  treeHash: 'note-2'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 770,
-        "end": 783,
-        "startLoc": {
-          "line": 770,
-          "column": 9,
-          "position": 5828
-        },
-        "endLoc": {
-          "line": 783,
-          "column": 9,
-          "position": 5928
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 543,
-        "end": 556,
-        "startLoc": {
-          "line": 543,
-          "column": 9,
-          "position": 4144
-        },
-        "endLoc": {
-          "line": 556,
-          "column": 9,
-          "position": 4244
+          "position": 748
         }
       }
     },
@@ -6405,78 +5073,6 @@
           "line": 30,
           "column": 2,
           "position": 274
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 27,
-      "fragment": ", async () => {\n      const recentNotes: HistoryNote[] = [\n        {\n          treeHash: 'abc123',\n          runs: [\n            {\n              id: 'run-1',\n              timestamp: new Date().toISOString(), // Recent\n              duration: 5000,\n              passed: true,\n              branch: 'main',\n              headCommit: 'commit123',\n              uncommittedChanges: false,\n              result: {\n                passed: true,\n                timestamp: new Date().toISOString(),\n                treeHash: 'abc123',\n                phases: [],\n              },\n            },\n          ],\n        },\n      ];\n\n      vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(recentNotes);\n\n      const result = await checkHistoryHealth",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/health-check.test.ts",
-        "start": 33,
-        "end": 59,
-        "startLoc": {
-          "line": 33,
-          "column": 58,
-          "position": 262
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 19,
-          "position": 455
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 37,
-        "end": 63,
-        "startLoc": {
-          "line": 37,
-          "column": 29,
-          "position": 317
-        },
-        "endLoc": {
-          "line": 63,
-          "column": 18,
-          "position": 510
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n          runs: [\n            {\n              id: 'run-1',\n              timestamp: oldDate.toISOString(),\n              duration: 5000,\n              passed: true,\n              branch: 'main',\n              headCommit: 'commit123',\n              uncommittedChanges: false,\n              result: {\n                passed: true,\n                timestamp: oldDate.toISOString(),\n                treeHash: 'abc123'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/health-check.test.ts",
-        "start": 112,
-        "end": 125,
-        "startLoc": {
-          "line": 112,
-          "column": 9,
-          "position": 959
-        },
-        "endLoc": {
-          "line": 125,
-          "column": 9,
-          "position": 1051
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 80,
-        "end": 93,
-        "startLoc": {
-          "line": 80,
-          "column": 13,
-          "position": 684
-        },
-        "endLoc": {
-          "line": 93,
-          "column": 13,
-          "position": 776
         }
       }
     },
@@ -6573,18 +5169,18 @@
         }
       },
       "secondFile": {
-        "name": "packages/history/test/pruner.test.ts",
-        "start": 48,
-        "end": 61,
+        "name": "packages/history/test/health-check.test.ts",
+        "start": 44,
+        "end": 57,
         "startLoc": {
-          "line": 48,
+          "line": 44,
           "column": 12,
-          "position": 411
+          "position": 356
         },
         "endLoc": {
-          "line": 61,
+          "line": 57,
           "column": 12,
-          "position": 496
+          "position": 441
         }
       }
     },

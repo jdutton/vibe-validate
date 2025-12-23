@@ -31,6 +31,38 @@ describe('create-extractor command', () => {
     cleanupTestDir(testDir);
   });
 
+  /**
+   * Helper: Create an extractor plugin with standard options
+   */
+  async function createPlugin(name: string, options: {
+    description: string;
+    author?: string;
+    detectionPattern: string;
+    priority?: string;
+  }) {
+    await execCLI([
+      'create-extractor',
+      name,
+      '--description',
+      options.description,
+      '--author',
+      options.author ?? 'Test <test@example.com>',
+      '--detection-pattern',
+      options.detectionPattern,
+      ...(options.priority ? ['--priority', options.priority] : []),
+      '--force'
+    ], { cwd: testDir });
+  }
+
+  /**
+   * Helper: Read a generated file and verify it exists
+   */
+  function readPluginFile(pluginName: string, filename: string): string {
+    const filePath = join(testDir, `vibe-validate-plugin-${pluginName}`, filename);
+    expect(existsSync(filePath)).toBe(true);
+    return readFileSync(filePath, 'utf-8');
+  }
+
   describe('plugin scaffolding', () => {
     it('should create extractor plugin directory structure', async () => {
       const output = await execCLI([
@@ -169,22 +201,12 @@ describe('create-extractor command', () => {
     });
 
     it('should generate index.test.ts with proper test structure', async () => {
-      await execCLI([
-        'create-extractor',
-        'test-tool',
-        '--description',
-        'Test tool extractor',
-        '--author',
-        'Test <test@example.com>',
-        '--detection-pattern',
-        'FAIL:',
-        '--force'
-      ], { cwd: testDir });
+      await createPlugin('test-tool', {
+        description: 'Test tool extractor',
+        detectionPattern: 'FAIL:'
+      });
 
-      const testFilePath = join(testDir, 'vibe-validate-plugin-test-tool', 'index.test.ts');
-      expect(existsSync(testFilePath)).toBe(true);
-
-      const testContent = readFileSync(testFilePath, 'utf-8');
+      const testContent = readPluginFile('test-tool', 'index.test.ts');
 
       // Verify test structure
       expect(testContent).toContain("import { describe, it, expect } from 'vitest'");
@@ -204,24 +226,14 @@ describe('create-extractor command', () => {
     });
 
     it('should generate CLAUDE.md with comprehensive guidance', async () => {
-      await execCLI([
-        'create-extractor',
-        'my-tool',
-        '--description',
-        'My custom tool',
-        '--author',
-        'Dev <dev@example.com>',
-        '--detection-pattern',
-        'MY-ERROR:',
-        '--priority',
-        '85',
-        '--force'
-      ], { cwd: testDir });
+      await createPlugin('my-tool', {
+        description: 'My custom tool',
+        author: 'Dev <dev@example.com>',
+        detectionPattern: 'MY-ERROR:',
+        priority: '85'
+      });
 
-      const claudeMdPath = join(testDir, 'vibe-validate-plugin-my-tool', 'CLAUDE.md');
-      expect(existsSync(claudeMdPath)).toBe(true);
-
-      const claudeContent = readFileSync(claudeMdPath, 'utf-8');
+      const claudeContent = readPluginFile('my-tool', 'CLAUDE.md');
 
       // Verify title and description
       expect(claudeContent).toContain('My Tool Extractor - Claude Code Guidance');
@@ -250,22 +262,12 @@ describe('create-extractor command', () => {
     });
 
     it('should generate samples/sample-error.txt with detection pattern', async () => {
-      await execCLI([
-        'create-extractor',
-        'sample-tool',
-        '--description',
-        'Sample tool extractor',
-        '--author',
-        'Test <test@example.com>',
-        '--detection-pattern',
-        'SAMPLE-ERR:',
-        '--force'
-      ], { cwd: testDir });
+      await createPlugin('sample-tool', {
+        description: 'Sample tool extractor',
+        detectionPattern: 'SAMPLE-ERR:'
+      });
 
-      const samplePath = join(testDir, 'vibe-validate-plugin-sample-tool', 'samples', 'sample-error.txt');
-      expect(existsSync(samplePath)).toBe(true);
-
-      const sampleContent = readFileSync(samplePath, 'utf-8');
+      const sampleContent = readPluginFile('sample-tool', 'samples/sample-error.txt');
 
       // Verify sample contains detection pattern
       expect(sampleContent).toContain('SAMPLE-ERR:');
@@ -276,42 +278,26 @@ describe('create-extractor command', () => {
     });
 
     it('should use correct priority value in generated plugin', async () => {
-      await execCLI([
-        'create-extractor',
-        'priority-test',
-        '--description',
-        'Priority test',
-        '--author',
-        'Test <test@example.com>',
-        '--detection-pattern',
-        'ERR:',
-        '--priority',
-        '95',
-        '--force'
-      ], { cwd: testDir });
+      await createPlugin('priority-test', {
+        description: 'Priority test',
+        detectionPattern: 'ERR:',
+        priority: '95'
+      });
 
-      const pluginFilePath = join(testDir, 'vibe-validate-plugin-priority-test', 'index.ts');
-      const pluginContent = readFileSync(pluginFilePath, 'utf-8');
+      const pluginContent = readPluginFile('priority-test', 'index.ts');
 
       // Verify priority is set correctly
       expect(pluginContent).toContain('priority: 95');
     });
 
     it('should properly substitute all template variables', async () => {
-      await execCLI([
-        'create-extractor',
-        'kebab-case-name',
-        '--description',
-        'Testing variable substitution',
-        '--author',
-        'Author Name <author@test.com>',
-        '--detection-pattern',
-        'VAR-TEST:',
-        '--force'
-      ], { cwd: testDir });
+      await createPlugin('kebab-case-name', {
+        description: 'Testing variable substitution',
+        author: 'Author Name <author@test.com>',
+        detectionPattern: 'VAR-TEST:'
+      });
 
-      const pluginFilePath = join(testDir, 'vibe-validate-plugin-kebab-case-name', 'index.ts');
-      const pluginContent = readFileSync(pluginFilePath, 'utf-8');
+      const pluginContent = readPluginFile('kebab-case-name', 'index.ts');
 
       // Verify kebab-case name is used
       expect(pluginContent).toContain('kebab-case-name');
@@ -334,20 +320,12 @@ describe('create-extractor command', () => {
     });
 
     it('should generate package.json with correct version dependencies', async () => {
-      await execCLI([
-        'create-extractor',
-        'version-test',
-        '--description',
-        'Version test',
-        '--author',
-        'Test <test@example.com>',
-        '--detection-pattern',
-        'ERR:',
-        '--force'
-      ], { cwd: testDir });
+      await createPlugin('version-test', {
+        description: 'Version test',
+        detectionPattern: 'ERR:'
+      });
 
-      const packageJsonPath = join(testDir, 'vibe-validate-plugin-version-test', 'package.json');
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+      const packageJson = JSON.parse(readPluginFile('version-test', 'package.json'));
 
       // Verify peerDependencies and devDependencies have @vibe-validate/extractors
       expect(packageJson.peerDependencies).toHaveProperty('@vibe-validate/extractors');

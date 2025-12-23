@@ -127,6 +127,23 @@ describe('pre-commit command', () => {
     vi.restoreAllMocks();
   });
 
+  /**
+   * Helper: Execute pre-commit command and verify exit code
+   * Replicates the repeated try/catch pattern from the original tests
+   */
+  async function runPreCommit(expectedExitCode = 0): Promise<void> {
+    preCommitCommand(env.program);
+
+    try {
+      await env.program.parseAsync(['pre-commit'], { from: 'user' });
+    } catch (err: unknown) {
+      // Commander throws on exitOverride, expected
+      if (err && typeof err === 'object' && 'exitCode' in err) {
+        expect(err.exitCode).toBe(expectedExitCode);
+      }
+    }
+  }
+
   describe('branch sync check with custom git config', () => {
     it('should respect config.git.mainBranch when checking sync', async () => {
       const mockConfig: VibeValidateConfig = {
@@ -156,16 +173,7 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        // Commander throws on exitOverride, expected
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       // Should call checkBranchSync with upstream/develop instead of origin/main
       expect(git.checkBranchSync).toHaveBeenCalledWith({
@@ -196,16 +204,7 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        // Commander throws on exitOverride, expected
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       // Should default to origin/main
       expect(git.checkBranchSync).toHaveBeenCalledWith({
@@ -241,16 +240,7 @@ describe('pre-commit command', () => {
         duration: 100,
       });
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        // Commander throws on exitOverride, expected
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       // Should use origin/master (custom branch with default origin)
       expect(git.checkBranchSync).toHaveBeenCalledWith({
@@ -338,16 +328,7 @@ describe('pre-commit command', () => {
         throw error;
       });
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-        throw new Error('Should have exited with error');
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1); // Should fail
-        }
-      }
+      await runPreCommit(1);
 
       // Validation should NOT run when secret scanning fails
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -473,16 +454,7 @@ describe('pre-commit command', () => {
         throw error;
       });
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-        throw new Error('Should have exited with error');
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1); // Should fail
-        }
-      }
+      await runPreCommit(1);
 
       // Should show error about missing tool
       expect(console.error).toHaveBeenCalled();
@@ -640,15 +612,7 @@ describe('pre-commit command', () => {
       };
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
+      await runPreCommit(0);
 
       // CRITICAL: Verify runValidation was NOT called (cache hit)
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -702,15 +666,7 @@ describe('pre-commit command', () => {
         recorded: true,
       });
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
+      await runPreCommit(0);
 
       // Verify runValidation WAS called on cache miss
       expect(core.runValidation).toHaveBeenCalledOnce();
