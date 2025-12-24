@@ -11,107 +11,107 @@ import type { HistoryNote } from '../src/types.js';
 // Mock reader module
 vi.mock('../src/reader.js');
 
-describe('checkHistoryHealth', () => {
-  /**
-   * Create a history note with a single run
-   * @param overrides - Optional overrides for the run
-   * @returns Complete HistoryNote with default values
-   */
-  function createHistoryNote(overrides: {
-    treeHash?: string;
-    timestamp?: string;
-    id?: string;
-    headCommit?: string;
-  } = {}): HistoryNote {
-    const timestamp = overrides.timestamp ?? new Date().toISOString();
-    const treeHash = overrides.treeHash ?? 'abc123';
-    const id = overrides.id ?? 'run-1';
-    const headCommit = overrides.headCommit ?? 'commit123';
+/**
+ * Create a history note with a single run
+ * @param overrides - Optional overrides for the run
+ * @returns Complete HistoryNote with default values
+ */
+function createHistoryNote(overrides: {
+  treeHash?: string;
+  timestamp?: string;
+  id?: string;
+  headCommit?: string;
+} = {}): HistoryNote {
+  const timestamp = overrides.timestamp ?? new Date().toISOString();
+  const treeHash = overrides.treeHash ?? 'abc123';
+  const id = overrides.id ?? 'run-1';
+  const headCommit = overrides.headCommit ?? 'commit123';
 
-    return {
-      treeHash,
-      runs: [
-        {
-          id,
-          timestamp,
-          duration: 5000,
+  return {
+    treeHash,
+    runs: [
+      {
+        id,
+        timestamp,
+        duration: 5000,
+        passed: true,
+        branch: 'main',
+        headCommit,
+        uncommittedChanges: false,
+        result: {
           passed: true,
-          branch: 'main',
-          headCommit,
-          uncommittedChanges: false,
-          result: {
-            passed: true,
-            timestamp,
-            treeHash,
-            phases: [],
-          },
+          timestamp,
+          treeHash,
+          phases: [],
         },
-      ],
-    };
+      },
+    ],
+  };
+}
+
+/**
+ * Create an array of history notes (for batch creation)
+ * @param count - Number of notes to create
+ * @param overridesFn - Function to generate overrides for each note based on index
+ * @returns Array of HistoryNote objects
+ */
+function createHistoryNotes(
+  count: number,
+  overridesFn?: (_i: number) => Parameters<typeof createHistoryNote>[0]
+): HistoryNote[] {
+  return Array.from({ length: count }, (_, i) =>
+    createHistoryNote(overridesFn ? overridesFn(i) : {})
+  );
+}
+
+/**
+ * Create a date N days in the past
+ * @param daysAgo - Number of days to subtract from current date
+ * @returns ISO string of the past date
+ */
+function createPastDate(daysAgo: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date.toISOString();
+}
+
+/**
+ * Assert health check result matches expected values
+ * @param result - Health check result to verify
+ * @param expected - Expected values
+ */
+function expectHealthCheckResult(
+  result: Awaited<ReturnType<typeof checkHistoryHealth>>,
+  expected: {
+    totalNotes: number;
+    oldNotesCount: number;
+    shouldWarn: boolean;
+    warningContains?: string[];
+    warningNotContains?: string[];
   }
+): void {
+  expect(result.totalNotes).toBe(expected.totalNotes);
+  expect(result.oldNotesCount).toBe(expected.oldNotesCount);
+  expect(result.shouldWarn).toBe(expected.shouldWarn);
 
-  /**
-   * Create an array of history notes (for batch creation)
-   * @param count - Number of notes to create
-   * @param overridesFn - Function to generate overrides for each note based on index
-   * @returns Array of HistoryNote objects
-   */
-  function createHistoryNotes(
-    count: number,
-    overridesFn?: (_i: number) => Parameters<typeof createHistoryNote>[0]
-  ): HistoryNote[] {
-    return Array.from({ length: count }, (_, i) =>
-      createHistoryNote(overridesFn ? overridesFn(i) : {})
-    );
-  }
-
-  /**
-   * Create a date N days in the past
-   * @param daysAgo - Number of days to subtract from current date
-   * @returns ISO string of the past date
-   */
-  function createPastDate(daysAgo: number): string {
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    return date.toISOString();
-  }
-
-  /**
-   * Assert health check result matches expected values
-   * @param result - Health check result to verify
-   * @param expected - Expected values
-   */
-  function expectHealthCheckResult(
-    result: Awaited<ReturnType<typeof checkHistoryHealth>>,
-    expected: {
-      totalNotes: number;
-      oldNotesCount: number;
-      shouldWarn: boolean;
-      warningContains?: string[];
-      warningNotContains?: string[];
-    }
-  ): void {
-    expect(result.totalNotes).toBe(expected.totalNotes);
-    expect(result.oldNotesCount).toBe(expected.oldNotesCount);
-    expect(result.shouldWarn).toBe(expected.shouldWarn);
-
-    if (expected.warningContains) {
-      for (const text of expected.warningContains) {
-        expect(result.warningMessage).toContain(text);
-      }
-    }
-
-    if (expected.warningNotContains) {
-      for (const text of expected.warningNotContains) {
-        expect(result.warningMessage).not.toContain(text);
-      }
-    }
-
-    if (!expected.shouldWarn) {
-      expect(result.warningMessage).toBeUndefined();
+  if (expected.warningContains) {
+    for (const text of expected.warningContains) {
+      expect(result.warningMessage).toContain(text);
     }
   }
 
+  if (expected.warningNotContains) {
+    for (const text of expected.warningNotContains) {
+      expect(result.warningMessage).not.toContain(text);
+    }
+  }
+
+  if (!expected.shouldWarn) {
+    expect(result.warningMessage).toBeUndefined();
+  }
+}
+
+describe('checkHistoryHealth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

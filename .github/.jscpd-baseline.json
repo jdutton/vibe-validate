@@ -1983,7 +1983,7 @@
     {
       "format": "typescript",
       "lines": 14,
-      "fragment": ": vi.fn(),\n  };\n});\n\n// Mock the config loader\nvi.mock('../../src/utils/config-loader.js', async () => {\n  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');\n  return {\n    ...actual,\n    loadConfig: vi.fn(),\n  };\n});\n\ndescribe",
+      "fragment": ": vi.fn(),\n  };\n});\n\n// Mock the config loader\nvi.mock('../../src/utils/config-loader.js', async () => {\n  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');\n  return {\n    ...actual,\n    loadConfig: vi.fn(),\n  };\n});\n\n// ========================================================================",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
@@ -1996,7 +1996,7 @@
         },
         "endLoc": {
           "line": 70,
-          "column": 9,
+          "column": 76,
           "position": 642
         }
       },
@@ -2074,17 +2074,17 @@
       },
       "secondFile": {
         "name": "packages/cli/test/commands/generate-workflow.test.ts",
-        "start": 32,
-        "end": 60,
+        "start": 80,
+        "end": 108,
         "startLoc": {
-          "line": 32,
+          "line": 80,
           "column": 3,
-          "position": 280
+          "position": 711
         },
         "endLoc": {
-          "line": 60,
+          "line": 108,
           "column": 7,
-          "position": 442
+          "position": 873
         }
       }
     },
@@ -2146,24 +2146,24 @@
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 80,
-        "end": 91,
+        "start": 403,
+        "end": 414,
         "startLoc": {
-          "line": 80,
+          "line": 403,
           "column": 32,
-          "position": 722
+          "position": 2723
         },
         "endLoc": {
-          "line": 91,
+          "line": 414,
           "column": 5,
-          "position": 802
+          "position": 2803
         }
       }
     },
     {
       "format": "typescript",
       "lines": 21,
-      "fragment": "});\n\n  afterEach(() => {\n    env.cleanup();\n\n    // Restore cwd\n    process.chdir(originalCwd);\n\n    // Clean up test files\n    if (existsSync(testDir)) {\n      try {\n        rmSync(testDir, { recursive: true, force: true });\n      } catch {\n        // Ignore cleanup errors\n      }\n    }\n\n    vi.restoreAllMocks();\n  });\n\n  describe",
+      "fragment": "});\n\n  afterEach(() => {\n    env.cleanup();\n\n    // Restore cwd\n    process.chdir(originalCwd);\n\n    // Clean up test files\n    if (existsSync(testDir)) {\n      try {\n        rmSync(testDir, { recursive: true, force: true });\n      } catch {\n        // Ignore cleanup errors\n      }\n    }\n\n    vi.restoreAllMocks();\n  });\n\n  describe('command registration'",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/config.test.ts",
@@ -2176,23 +2176,23 @@
         },
         "endLoc": {
           "line": 172,
-          "column": 9,
-          "position": 1166
+          "column": 23,
+          "position": 1168
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 110,
-        "end": 130,
+        "start": 433,
+        "end": 453,
         "startLoc": {
-          "line": 110,
+          "line": 433,
           "column": 3,
-          "position": 1077
+          "position": 3078
         },
         "endLoc": {
-          "line": 130,
-          "column": 76,
-          "position": 1189
+          "line": 453,
+          "column": 43,
+          "position": 3192
         }
       }
     },

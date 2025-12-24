@@ -28,6 +28,54 @@ function parseWorkflowYaml(workflowYaml: string): any {
   return parseYaml(yamlContent);
 }
 
+/**
+ * Setup mock for package.json with specified packageManager
+ */
+function mockPackageJson(packageManager?: string, engines?: { node: string }) {
+  vi.mocked(readFileSync).mockImplementation((path: any) => {
+    if (path.toString().endsWith('package.json')) {
+      const pkg: any = { name: 'test-project' };
+      if (packageManager) pkg.packageManager = packageManager;
+      if (engines) pkg.engines = engines;
+      return JSON.stringify(pkg);
+    }
+    return '';
+  });
+}
+
+/**
+ * Setup mock for lockfile detection
+ */
+function mockLockfiles(options: {
+  hasPackageLock?: boolean;
+  hasPnpmLock?: boolean;
+  packageJsonExists?: boolean;
+}) {
+  vi.mocked(existsSync).mockImplementation((path: any) => {
+    const pathStr = path.toString();
+    if (pathStr.endsWith('package-lock.json')) return options.hasPackageLock ?? false;
+    if (pathStr.endsWith('pnpm-lock.yaml')) return options.hasPnpmLock ?? false;
+    if (pathStr.endsWith('package.json')) return options.packageJsonExists ?? true;
+    return false;
+  });
+}
+
+/**
+ * Find step in job by predicate
+ */
+function findStep(job: any, predicate: (_step: any) => boolean) {
+  return job.steps.find(predicate);
+}
+
+/**
+ * Expect all-validation-passed gate job with correct dependencies
+ */
+function expectGateJob(workflow: any, expectedNeeds: string[]) {
+  expect(workflow.jobs).toHaveProperty('all-validation-passed');
+  expect(workflow.jobs['all-validation-passed'].if).toBe('always()');
+  expect(workflow.jobs['all-validation-passed'].needs).toEqual(expectedNeeds);
+}
+
 describe('generate-workflow command', () => {
   const mockConfig: VibeValidateConfig = {
     validation: {
@@ -89,45 +137,6 @@ describe('generate-workflow command', () => {
   }
 
   /**
-   * Setup mock for package.json with specified packageManager
-   */
-  function mockPackageJson(packageManager?: string, engines?: { node: string }) {
-    vi.mocked(readFileSync).mockImplementation((path: any) => {
-      if (path.toString().endsWith('package.json')) {
-        const pkg: any = { name: 'test-project' };
-        if (packageManager) pkg.packageManager = packageManager;
-        if (engines) pkg.engines = engines;
-        return JSON.stringify(pkg);
-      }
-      return '';
-    });
-  }
-
-  /**
-   * Setup mock for lockfile detection
-   */
-  function mockLockfiles(options: {
-    hasPackageLock?: boolean;
-    hasPnpmLock?: boolean;
-    packageJsonExists?: boolean;
-  }) {
-    vi.mocked(existsSync).mockImplementation((path: any) => {
-      const pathStr = path.toString();
-      if (pathStr.endsWith('package-lock.json')) return options.hasPackageLock ?? false;
-      if (pathStr.endsWith('pnpm-lock.yaml')) return options.hasPnpmLock ?? false;
-      if (pathStr.endsWith('package.json')) return options.packageJsonExists ?? true;
-      return false;
-    });
-  }
-
-  /**
-   * Find step in job by predicate
-   */
-  function findStep(job: any, predicate: (_step: any) => boolean) {
-    return job.steps.find(predicate);
-  }
-
-  /**
    * Expect step to exist with uses action
    */
   function expectStepWithUses(job: any, uses: string) {
@@ -151,15 +160,6 @@ describe('generate-workflow command', () => {
   function expectNoStepWithUses(job: any, uses: string) {
     const step = findStep(job, (s: any) => s.uses?.includes(uses));
     expect(step).toBeUndefined();
-  }
-
-  /**
-   * Expect all-validation-passed gate job with correct dependencies
-   */
-  function expectGateJob(workflow: any, expectedNeeds: string[]) {
-    expect(workflow.jobs).toHaveProperty('all-validation-passed');
-    expect(workflow.jobs['all-validation-passed'].if).toBe('always()');
-    expect(workflow.jobs['all-validation-passed'].needs).toEqual(expectedNeeds);
   }
 
   describe('toJobId', () => {

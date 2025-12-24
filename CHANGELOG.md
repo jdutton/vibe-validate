@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- **CRITICAL: Complete Windows compatibility for development and usage** (Issue #86)
+- **CRITICAL: Complete Windows compatibility for development and usage** (Issue #86, PR #94)
   - **Problem**: Tests failed on Windows CI due to path handling issues and incompatible shell commands
   - **What was fixed**:
     - Path normalization: Use `normalizedTmpdir()` to resolve Windows 8.3 short names (RUNNER~1 → runneradmin)

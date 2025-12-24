@@ -13,66 +13,66 @@ import { describe, it, expect } from 'vitest';
  * We test the wrapper by executing it and verifying the output and behavior.
  */
 
+// Test constants
+const EXPECTED_VERSION = '0.18.0-rc.1'; // BUMP_VERSION_UPDATE
+const REPO_ROOT = join(__dirname, '../../../..');
+const PACKAGES_CORE = join(__dirname, '../../../core');
+
+/**
+ * Execute wrapper command and return result
+ * Cross-platform compatible (uses node directly)
+ * @param wrapperPath - Path to wrapper script
+ * @param args - Command arguments
+ * @param options - Execution options (cwd, env)
+ * @returns Spawn result with status, stdout, stderr
+ */
+function executeWrapper(
+  wrapperPath: string,
+  args: string[] = [],
+  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
+) {
+  return spawnSync('node', [wrapperPath, ...args], {
+    cwd: options.cwd ?? REPO_ROOT,
+    env: options.env ?? { ...process.env },
+  });
+}
+
+/**
+ * Assert command succeeded (exit code 0)
+ * @param result - Spawn result to check
+ */
+function expectSuccess(result: ReturnType<typeof spawnSync>) {
+  expect(result.status).toBe(0);
+}
+
+/**
+ * Assert command failed (non-zero exit code)
+ * @param result - Spawn result to check
+ */
+function expectFailure(result: ReturnType<typeof spawnSync>) {
+  expect(result.status).not.toBe(0);
+}
+
+/**
+ * Assert stdout contains expected version string
+ * @param result - Spawn result to check
+ */
+function expectVersion(result: ReturnType<typeof spawnSync>) {
+  expect(result.stdout.toString()).toContain(EXPECTED_VERSION);
+}
+
+/**
+ * Assert stdout contains expected text
+ * @param result - Spawn result to check
+ * @param expectedText - Text to find in stdout
+ */
+function expectOutput(result: ReturnType<typeof spawnSync>, expectedText: string) {
+  expect(result.stdout.toString()).toContain(expectedText);
+}
+
 describe('Smart Wrapper (vibe-validate/vv)', () => {
   const wrapperPath = join(__dirname, '../../dist/bin/vibe-validate');
   const vvPath = join(__dirname, '../../dist/bin/vv');
-
-  // Test constants
-  const EXPECTED_VERSION = '0.18.0-rc.1'; // BUMP_VERSION_UPDATE
-  const REPO_ROOT = join(__dirname, '../../../..');
-  const PACKAGES_CORE = join(__dirname, '../../../core');
-
-  /**
-   * Execute wrapper command and return result
-   * Cross-platform compatible (uses node directly)
-   * @param wrapperPath - Path to wrapper script
-   * @param args - Command arguments
-   * @param options - Execution options (cwd, env)
-   * @returns Spawn result with status, stdout, stderr
-   */
-  function executeWrapper(
-    wrapperPath: string,
-    args: string[] = [],
-    options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
-  ) {
-    return spawnSync('node', [wrapperPath, ...args], {
-      cwd: options.cwd ?? REPO_ROOT,
-      env: options.env ?? { ...process.env },
-    });
-  }
-
-  /**
-   * Assert command succeeded (exit code 0)
-   * @param result - Spawn result to check
-   */
-  function expectSuccess(result: ReturnType<typeof spawnSync>) {
-    expect(result.status).toBe(0);
-  }
-
-  /**
-   * Assert command failed (non-zero exit code)
-   * @param result - Spawn result to check
-   */
-  function expectFailure(result: ReturnType<typeof spawnSync>) {
-    expect(result.status).not.toBe(0);
-  }
-
-  /**
-   * Assert stdout contains expected version string
-   * @param result - Spawn result to check
-   */
-  function expectVersion(result: ReturnType<typeof spawnSync>) {
-    expect(result.stdout.toString()).toContain(EXPECTED_VERSION);
-  }
-
-  /**
-   * Assert stdout contains expected text
-   * @param result - Spawn result to check
-   * @param expectedText - Text to find in stdout
-   */
-  function expectOutput(result: ReturnType<typeof spawnSync>, expectedText: string) {
-    expect(result.stdout.toString()).toContain(expectedText);
-  }
 
   describe('Wrapper Files', () => {
     it('should have vibe-validate wrapper file', () => {

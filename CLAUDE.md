@@ -637,10 +637,12 @@ Example CHANGELOG entry:
 - `expect*()` - Common assertion patterns
 - `run*()`/`execute*()` - Standardized command execution
 
-**Helper location:**
-- **Inline** at top of `describe` block (most common)
+**Helper location (CRITICAL - SonarQube/ESLint enforced):**
+- **Module scope** (outside describe blocks) - REQUIRED for maintainability and performance
+- **Rationale**: Nested functions inside describe blocks create new function instances on every test run, increase cognitive complexity, and trigger SonarQube code smells
 - **Shared file** `test/helpers/*.ts` when used across multiple test files
 - **Never** cross-package test helpers
+- ⚠️ **NEVER define helper functions inside describe blocks** - ESLint `no-inner-declarations` will flag this
 
 **Requirements:**
 - All helpers MUST have JSDoc comments

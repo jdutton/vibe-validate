@@ -2,6 +2,98 @@ import { describe, it, expect } from 'vitest';
 
 import { safeValidateResult } from '../src/result-schema.js';
 
+// ==================== Test Helper Functions ====================
+
+/**
+ * Creates a minimal valid result object with default values
+ * @param overrides - Properties to override in the base result
+ * @returns A result object suitable for validation testing
+ */
+function createBaseResult(overrides: Record<string, unknown> = {}) {
+  return {
+    passed: true,
+    timestamp: '2025-11-04T16:00:00.000Z',
+    treeHash: 'abc123def456',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a valid step object with default values
+ * @param overrides - Properties to override in the base step
+ * @returns A step object for use in phase definitions
+ */
+function createStep(overrides: Record<string, unknown> = {}) {
+  return {
+    name: 'Unit Tests',
+    command: 'npm test',
+    exitCode: 0,
+    durationSecs: 10.5,
+    passed: true,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a valid phase object with default values
+ * @param overrides - Properties to override in the base phase
+ * @returns A phase object for use in result definitions
+ */
+function createPhase(overrides: Record<string, unknown> = {}) {
+  return {
+    name: 'Testing',
+    passed: true,
+    durationSecs: 10.5,
+    steps: [createStep()],
+    ...overrides,
+  };
+}
+
+/**
+ * Validates a result and expects it to fail with specific error content
+ * @param resultData - The result object to validate
+ * @param expectedErrorContent - String(s) expected in error messages
+ */
+function expectValidationFailure(
+  resultData: Record<string, unknown>,
+  expectedErrorContent: string | string[]
+) {
+  const result = safeValidateResult(resultData);
+  expect(result.success).toBe(false);
+
+  if (!result.success) {
+    const errorStrings = Array.isArray(expectedErrorContent)
+      ? expectedErrorContent
+      : [expectedErrorContent];
+
+    const hasExpectedError = errorStrings.some(errorStr =>
+      result.errors.some(e =>
+        e.includes('Unrecognized key') || e.includes(errorStr)
+      )
+    );
+    expect(hasExpectedError).toBe(true);
+  }
+}
+
+/**
+ * Validates a result and expects it to succeed
+ * @param resultData - The result object to validate
+ * @param assertions - Optional callback to perform additional assertions on validated data
+ */
+function expectValidationSuccess(
+  resultData: Record<string, unknown>,
+  assertions?: (_data: unknown) => void
+) {
+  const result = safeValidateResult(resultData);
+  expect(result.success).toBe(true);
+
+  if (result.success && assertions) {
+    assertions(result.data);
+  }
+}
+
+// ==================== End Test Helper Functions ====================
+
 /**
  * Strict Schema Validation Tests
  *
@@ -12,97 +104,6 @@ import { safeValidateResult } from '../src/result-schema.js';
  * in YAML output due to missing .strict() on schema.
  */
 describe('ValidationResultSchema - Strict Validation', () => {
-  // ==================== Test Helper Functions ====================
-
-  /**
-   * Creates a minimal valid result object with default values
-   * @param overrides - Properties to override in the base result
-   * @returns A result object suitable for validation testing
-   */
-  function createBaseResult(overrides: Record<string, unknown> = {}) {
-    return {
-      passed: true,
-      timestamp: '2025-11-04T16:00:00.000Z',
-      treeHash: 'abc123def456',
-      ...overrides,
-    };
-  }
-
-  /**
-   * Creates a valid step object with default values
-   * @param overrides - Properties to override in the base step
-   * @returns A step object for use in phase definitions
-   */
-  function createStep(overrides: Record<string, unknown> = {}) {
-    return {
-      name: 'Unit Tests',
-      command: 'npm test',
-      exitCode: 0,
-      durationSecs: 10.5,
-      passed: true,
-      ...overrides,
-    };
-  }
-
-  /**
-   * Creates a valid phase object with default values
-   * @param overrides - Properties to override in the base phase
-   * @returns A phase object for use in result definitions
-   */
-  function createPhase(overrides: Record<string, unknown> = {}) {
-    return {
-      name: 'Testing',
-      passed: true,
-      durationSecs: 10.5,
-      steps: [createStep()],
-      ...overrides,
-    };
-  }
-
-  /**
-   * Validates a result and expects it to fail with specific error content
-   * @param resultData - The result object to validate
-   * @param expectedErrorContent - String(s) expected in error messages
-   */
-  function expectValidationFailure(
-    resultData: Record<string, unknown>,
-    expectedErrorContent: string | string[]
-  ) {
-    const result = safeValidateResult(resultData);
-    expect(result.success).toBe(false);
-
-    if (!result.success) {
-      const errorStrings = Array.isArray(expectedErrorContent)
-        ? expectedErrorContent
-        : [expectedErrorContent];
-
-      const hasExpectedError = errorStrings.some(errorStr =>
-        result.errors.some(e =>
-          e.includes('Unrecognized key') || e.includes(errorStr)
-        )
-      );
-      expect(hasExpectedError).toBe(true);
-    }
-  }
-
-  /**
-   * Validates a result and expects it to succeed
-   * @param resultData - The result object to validate
-   * @param assertions - Optional callback to perform additional assertions on validated data
-   */
-  function expectValidationSuccess(
-    resultData: Record<string, unknown>,
-    assertions?: (_data: unknown) => void
-  ) {
-    const result = safeValidateResult(resultData);
-    expect(result.success).toBe(true);
-
-    if (result.success && assertions) {
-      assertions(result.data);
-    }
-  }
-
-  // ==================== End Test Helper Functions ====================
 
   describe('should reject unknown properties', () => {
     it('should reject unknown property at root level', () => {

@@ -165,6 +165,9 @@ export default [
       'sonarjs/slow-regex': 'off', // No DoS risk in test code
       'sonarjs/cognitive-complexity': ['warn', 20], // Higher threshold for tests (20 vs 15)
 
+      // Enforce function declarations at module scope (prevent SonarQube code smells)
+      'no-inner-declarations': ['error', 'functions'], // Functions must be at module/outer function scope
+
       // Keep strict on real code quality issues
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',

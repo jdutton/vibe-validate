@@ -72,30 +72,83 @@ vi.mock('@vibe-validate/git', async () => {
 vi.mock('../../src/utils/config-loader.js');
 vi.mock('../../src/commands/generate-workflow.js');
 
+// Test fixtures and configuration
+const mockConfig: VibeValidateConfig = {
+  validation: {
+    phases: [
+      {
+        name: 'Test',
+        parallel: false,
+        steps: [{ name: 'TypeCheck', command: 'pnpm typecheck' }],
+        timeout: 300000,
+        failFast: true,
+      },
+    ],
+  },
+  git: {
+    mainBranch: 'main',
+    autoSync: false,
+    warnIfBehind: true,
+  },
+};
+
+// Simulated project structure
+const projectRoot = '/Users/test/my-project';
+const configPath = join(projectRoot, 'vibe-validate.config.yaml');
+
+/**
+ * Sets up successful config discovery mocks
+ * @param includeFileSystem - Whether to mock file system (default: true)
+ */
+async function setupConfigFoundMocks(includeFileSystem = true): Promise<void> {
+  if (includeFileSystem) {
+    await mockDoctorFileSystem();
+  }
+  mockDoctorEnvironment();
+
+  vi.mocked(findConfigPath).mockReturnValue(configPath);
+  vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+  vi.mocked(loadConfigWithErrors).mockResolvedValue({
+    config: mockConfig,
+    errors: null,
+    filePath: configPath,
+  });
+  vi.mocked(checkSync).mockReturnValue({ inSync: true });
+}
+
+/**
+ * Sets up config not found mocks (for negative test cases)
+ */
+function setupConfigNotFoundMocks(): void {
+  mockDoctorEnvironment();
+
+  vi.mocked(findConfigPath).mockReturnValue(null);
+  vi.mocked(loadConfig).mockResolvedValue(null);
+  vi.mocked(loadConfigWithErrors).mockResolvedValue({
+    config: null,
+    errors: null,
+    filePath: null,
+  });
+}
+
+/**
+ * Executes doctor command and returns result
+ */
+async function runDoctorVerbose() {
+  return await runDoctor({ verbose: true });
+}
+
+/**
+ * Asserts that config file check passed with expected message
+ */
+function expectConfigCheckPassed(result: Awaited<ReturnType<typeof runDoctor>>): void {
+  assertCheck(result, 'Configuration file', {
+    passed: true,
+    messageContains: 'vibe-validate.config.yaml',
+  });
+}
+
 describe('doctor command from subdirectories', () => {
-  const mockConfig: VibeValidateConfig = {
-    validation: {
-      phases: [
-        {
-          name: 'Test',
-          parallel: false,
-          steps: [{ name: 'TypeCheck', command: 'pnpm typecheck' }],
-          timeout: 300000,
-          failFast: true,
-        },
-      ],
-    },
-    git: {
-      mainBranch: 'main',
-      autoSync: false,
-      warnIfBehind: true,
-    },
-  };
-
-  // Simulated project structure
-  const projectRoot = '/Users/test/my-project';
-  const configPath = join(projectRoot, 'vibe-validate.config.yaml');
-
   let originalCwd: string;
 
   beforeEach(() => {
@@ -110,58 +163,6 @@ describe('doctor command from subdirectories', () => {
     }
     vi.restoreAllMocks();
   });
-
-  /**
-   * Sets up successful config discovery mocks
-   * @param includeFileSystem - Whether to mock file system (default: true)
-   */
-  async function setupConfigFoundMocks(includeFileSystem = true): Promise<void> {
-    if (includeFileSystem) {
-      await mockDoctorFileSystem();
-    }
-    mockDoctorEnvironment();
-
-    vi.mocked(findConfigPath).mockReturnValue(configPath);
-    vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-    vi.mocked(loadConfigWithErrors).mockResolvedValue({
-      config: mockConfig,
-      errors: null,
-      filePath: configPath,
-    });
-    vi.mocked(checkSync).mockReturnValue({ inSync: true });
-  }
-
-  /**
-   * Sets up config not found mocks (for negative test cases)
-   */
-  function setupConfigNotFoundMocks(): void {
-    mockDoctorEnvironment();
-
-    vi.mocked(findConfigPath).mockReturnValue(null);
-    vi.mocked(loadConfig).mockResolvedValue(null);
-    vi.mocked(loadConfigWithErrors).mockResolvedValue({
-      config: null,
-      errors: null,
-      filePath: null,
-    });
-  }
-
-  /**
-   * Executes doctor command and returns result
-   */
-  async function runDoctorVerbose() {
-    return await runDoctor({ verbose: true });
-  }
-
-  /**
-   * Asserts that config file check passed with expected message
-   */
-  function expectConfigCheckPassed(result: Awaited<ReturnType<typeof runDoctor>>): void {
-    assertCheck(result, 'Configuration file', {
-      passed: true,
-      messageContains: 'vibe-validate.config.yaml',
-    });
-  }
 
   describe('checkConfigFile from different working directories', () => {
     it('should find config when run from project root', async () => {
