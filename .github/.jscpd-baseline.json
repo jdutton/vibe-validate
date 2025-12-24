@@ -2074,17 +2074,17 @@
       },
       "secondFile": {
         "name": "packages/cli/test/commands/generate-workflow.test.ts",
-        "start": 80,
-        "end": 108,
+        "start": 106,
+        "end": 134,
         "startLoc": {
-          "line": 80,
+          "line": 106,
           "column": 3,
-          "position": 711
+          "position": 932
         },
         "endLoc": {
-          "line": 108,
+          "line": 134,
           "column": 7,
-          "position": 873
+          "position": 1094
         }
       }
     },

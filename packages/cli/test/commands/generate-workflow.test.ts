@@ -76,6 +76,32 @@ function expectGateJob(workflow: any, expectedNeeds: string[]) {
   expect(workflow.jobs['all-validation-passed'].needs).toEqual(expectedNeeds);
 }
 
+/**
+ * Expect step to exist with uses action
+ */
+function expectStepWithUses(job: any, uses: string) {
+  const step = findStep(job, (s: any) => s.uses === uses || s.uses?.includes(uses));
+  expect(step).toBeDefined();
+  return step;
+}
+
+/**
+ * Expect step to exist with run command
+ */
+function expectStepWithRun(job: any, run: string) {
+  const step = findStep(job, (s: any) => s.run === run);
+  expect(step).toBeDefined();
+  return step;
+}
+
+/**
+ * Expect step NOT to exist
+ */
+function expectNoStepWithUses(job: any, uses: string) {
+  const step = findStep(job, (s: any) => s.uses?.includes(uses));
+  expect(step).toBeUndefined();
+}
+
 describe('generate-workflow command', () => {
   const mockConfig: VibeValidateConfig = {
     validation: {
@@ -134,32 +160,6 @@ describe('generate-workflow command', () => {
   ) {
     const workflowYaml = generateWorkflow(config, options);
     return parseWorkflowYaml(workflowYaml);
-  }
-
-  /**
-   * Expect step to exist with uses action
-   */
-  function expectStepWithUses(job: any, uses: string) {
-    const step = findStep(job, (s: any) => s.uses === uses || s.uses?.includes(uses));
-    expect(step).toBeDefined();
-    return step;
-  }
-
-  /**
-   * Expect step to exist with run command
-   */
-  function expectStepWithRun(job: any, run: string) {
-    const step = findStep(job, (s: any) => s.run === run);
-    expect(step).toBeDefined();
-    return step;
-  }
-
-  /**
-   * Expect step NOT to exist
-   */
-  function expectNoStepWithUses(job: any, uses: string) {
-    const step = findStep(job, (s: any) => s.uses?.includes(uses));
-    expect(step).toBeUndefined();
   }
 
   describe('toJobId', () => {
