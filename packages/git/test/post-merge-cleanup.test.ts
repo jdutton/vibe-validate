@@ -38,6 +38,196 @@ const createSpawnError = (message: string) => ({
   error: new Error(message),
 });
 
+/**
+ * Configuration for setting up merge scenario mocks
+ */
+interface MergeScenarioConfig {
+  /** Current branch name (default: 'feature/test') */
+  currentBranch?: string;
+  /** List of branches to return (default: []) */
+  branches?: string[];
+  /** Map of branch name to list of merged branches (default: all merged) */
+  mergedStatus?: Record<string, string[]>;
+  /** Whether checkout should fail */
+  checkoutFails?: boolean;
+  /** Whether fetch should fail */
+  fetchFails?: boolean;
+  /** Whether merge should fail */
+  mergeFails?: boolean;
+  /** Whether branch deletion should fail on first attempt */
+  deleteFails?: boolean;
+  /** Whether force deletion should fail */
+  forceDeleteFails?: boolean;
+  /** Whether prune should fail */
+  pruneFails?: boolean;
+  /** Whether merge status check should fail */
+  mergeCheckFails?: boolean;
+  /** Whether getting current branch should fail */
+  getCurrentBranchFails?: boolean;
+}
+
+/**
+ * Sets up mock spawnSync calls for a merge scenario
+ *
+ * Simulates the standard workflow:
+ * 1. Get current branch
+ * 2. Switch to main (checkout)
+ * 3. Fetch and merge main
+ * 4. Fetch remote info
+ * 5. List branches and check merge status for each
+ * 6. Delete merged branches
+ * 7. Prune remote
+ *
+ * @param config - Configuration for the scenario
+ */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Test helper with acceptable complexity
+const createMergeScenario = (config: MergeScenarioConfig = {}) => {
+  const {
+    currentBranch = 'feature/test',
+    branches = [],
+    mergedStatus = {},
+    checkoutFails = false,
+    fetchFails = false,
+    mergeFails = false,
+    deleteFails = false,
+    forceDeleteFails = false,
+    pruneFails = false,
+    mergeCheckFails = false,
+    getCurrentBranchFails = false,
+  } = config;
+
+  const mocks = [];
+
+  // Step 1: Get current branch
+  if (getCurrentBranchFails) {
+    mocks.push(createSpawnError('not a git repo'));
+    return mocks;
+  }
+  mocks.push(createSpawnResult(`${currentBranch}\n`));
+
+  // Step 2: Switch to main
+  if (checkoutFails) {
+    mocks.push(createSpawnError('checkout failed'));
+    return mocks;
+  }
+  mocks.push(createSpawnResult(''));
+
+  // Step 3: Fetch main
+  if (fetchFails) {
+    mocks.push(createSpawnError('fetch failed'));
+    return mocks;
+  }
+  mocks.push(createSpawnResult(''));
+
+  // Step 3: Merge main
+  if (mergeFails) {
+    mocks.push(createSpawnError('merge failed'));
+    return mocks;
+  }
+  mocks.push(createSpawnResult(''));
+
+  // Step 4: Fetch remote info
+  mocks.push(createSpawnResult(''));
+
+  // Step 5: List branches
+  mocks.push(createSpawnResult(branches.join('\n') + (branches.length > 0 ? '\n' : '')));
+
+  // Step 5: For each branch, check if merged and delete
+  for (const branch of branches) {
+    // Check merge status
+    if (mergeCheckFails) {
+      mocks.push(createSpawnError('merge check failed'));
+      continue;
+    }
+
+    const merged = mergedStatus[branch] || [branch, 'main'];
+    mocks.push(createSpawnResult(merged.join('\n') + '\n'));
+
+    // If branch is merged (appears in its own merge check), delete it
+    if (merged.includes(branch)) {
+      if (deleteFails) {
+        mocks.push(createSpawnError('branch not fully merged'));
+        // Force delete attempt
+        if (forceDeleteFails) {
+          mocks.push(createSpawnError('force delete failed'));
+        } else {
+          mocks.push(createSpawnResult(''));
+        }
+      } else {
+        mocks.push(createSpawnResult(''));
+      }
+    }
+  }
+
+  // Step 6: Prune remote
+  if (pruneFails) {
+    mocks.push(createSpawnError('prune failed'));
+  } else {
+    mocks.push(createSpawnResult(''));
+  }
+
+  return mocks;
+};
+
+/**
+ * Sets up a standard post-merge test environment
+ *
+ * @param config - Optional configuration for the merge scenario
+ * @returns Tuple of [cleanup instance, mock sequence]
+ */
+const setupPostMergeTest = (config: MergeScenarioConfig = {}) => {
+  const mocks = createMergeScenario(config);
+  for (const mock of mocks) {
+    mockSpawnSync.mockReturnValueOnce(mock);
+  }
+  const cleanup = new PostPRMergeCleanup();
+  return { cleanup, mockCount: mocks.length };
+};
+
+/**
+ * Assert expected cleanup behavior
+ *
+ * @param result - The cleanup result to assert against
+ * @param expectations - Expected values
+ */
+const expectCleanupBehavior = (
+  result: Awaited<ReturnType<PostPRMergeCleanup['runCleanup']>>,
+  expectations: {
+    success: boolean;
+    currentBranch?: string;
+    mainSynced?: boolean;
+    branchesDeleted?: string[];
+    branchesNotDeleted?: string[];
+    errorContains?: string;
+  }
+) => {
+  expect(result.success).toBe(expectations.success);
+
+  if (expectations.currentBranch !== undefined) {
+    expect(result.currentBranch).toBe(expectations.currentBranch);
+  }
+
+  if (expectations.mainSynced !== undefined) {
+    expect(result.mainSynced).toBe(expectations.mainSynced);
+  }
+
+  if (expectations.branchesDeleted) {
+    for (const branch of expectations.branchesDeleted) {
+      expect(result.branchesDeleted).toContain(branch);
+    }
+  }
+
+  if (expectations.branchesNotDeleted) {
+    for (const branch of expectations.branchesNotDeleted) {
+      expect(result.branchesDeleted).not.toContain(branch);
+    }
+  }
+
+  if (expectations.errorContains !== undefined) {
+    expect(result.error).toContain(expectations.errorContains);
+  }
+};
+
 describe('PostPRMergeCleanup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -49,59 +239,36 @@ describe('PostPRMergeCleanup', () => {
 
   describe('runCleanup', () => {
     it('should complete full cleanup workflow successfully', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        // Step 1: Get current branch
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        // Step 2: Switch to main
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Step 3: Fetch main
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Step 3: Merge main
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Step 4: Fetch remote info
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Step 5: List branches
-        .mockReturnValueOnce(createSpawnResult('feature/test\nfeature/old\n'))
-        // Step 5: Check merged branches (1st check)
-        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
-        // Step 5: Delete branch
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Step 5: Check merged branches (2nd check)
-        .mockReturnValueOnce(createSpawnResult('feature/old\nmain\n'))
-        // Step 5: Delete branch
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Step 6: Prune remote
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        currentBranch: 'feature/test',
+        branches: ['feature/test', 'feature/old'],
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      expect(result.currentBranch).toBe('feature/test');
-      expect(result.mainSynced).toBe(true);
-      expect(result.branchesDeleted).toContain('feature/test');
-      expect(result.branchesDeleted).toContain('feature/old');
+      expectCleanupBehavior(result, {
+        success: true,
+        currentBranch: 'feature/test',
+        mainSynced: true,
+        branchesDeleted: ['feature/test', 'feature/old'],
+      });
       expect(result.error).toBeUndefined();
     });
 
     it('should handle custom main branch name', async () => {
       const cleanup = new PostPRMergeCleanup({ mainBranch: 'develop' });
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))  // checkout develop
-        .mockReturnValueOnce(createSpawnResult(''))  // fetch develop
-        .mockReturnValueOnce(createSpawnResult(''))  // merge develop
-        .mockReturnValueOnce(createSpawnResult(''))  // fetch remote
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult('feature/test\ndevelop\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const mocks = createMergeScenario({
+        branches: ['feature/test'],
+      });
+      for (const mock of mocks) {
+        mockSpawnSync.mockReturnValueOnce(mock);
+      }
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
+      expectCleanupBehavior(result, {
+        success: true,
+      });
       // Verify checkout develop was called with array args
       expect(mockSpawnSync).toHaveBeenCalledWith(
         'git',
@@ -112,19 +279,14 @@ describe('PostPRMergeCleanup', () => {
 
     it('should handle custom remote name', async () => {
       const cleanup = new PostPRMergeCleanup({ remoteName: 'upstream' });
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))  // fetch upstream main
-        .mockReturnValueOnce(createSpawnResult(''))  // merge upstream/main
-        .mockReturnValueOnce(createSpawnResult(''))  // fetch upstream
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const mocks = createMergeScenario({ branches: [] });
+      for (const mock of mocks) mockSpawnSync.mockReturnValueOnce(mock);
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
+      expectCleanupBehavior(result, {
+        success: true,
+      });
       // Verify fetch upstream was called with array args
       expect(mockSpawnSync).toHaveBeenCalledWith(
         'git',
@@ -135,21 +297,17 @@ describe('PostPRMergeCleanup', () => {
 
     it('should handle dry-run mode without deleting branches', async () => {
       const cleanup = new PostPRMergeCleanup({ dryRun: true });
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const mocks = createMergeScenario({
+        branches: ['feature/test'],
+      });
+      for (const mock of mocks) mockSpawnSync.mockReturnValueOnce(mock);
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      expect(result.branchesDeleted).toContain('feature/test');
+      expectCleanupBehavior(result, {
+        success: true,
+        branchesDeleted: ['feature/test'],
+      });
       // Verify no delete commands were issued - check for branch -d in args
       const deleteCommands = mockSpawnSync.mock.calls.filter(
         ([_cmd, args]) => Array.isArray(args) && args.includes('-d')
@@ -158,88 +316,79 @@ describe('PostPRMergeCleanup', () => {
     });
 
     it('should skip unmerged branches', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult('feature/merged\nfeature/unmerged\n'))
-        // feature/merged is merged
-        .mockReturnValueOnce(createSpawnResult('feature/merged\nmain\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        // feature/unmerged is NOT merged
-        .mockReturnValueOnce(createSpawnResult('main\n'))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        branches: ['feature/merged', 'feature/unmerged'],
+        mergedStatus: {
+          'feature/merged': ['feature/merged', 'main'],
+          'feature/unmerged': ['main'], // Not merged
+        },
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      expect(result.branchesDeleted).toContain('feature/merged');
-      expect(result.branchesDeleted).not.toContain('feature/unmerged');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: true,
+        branchesDeleted: ['feature/merged'],
+        branchesNotDeleted: ['feature/unmerged'],
+      });
     });
 
     it('should handle errors during branch switching', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnError('checkout failed'));
+      const { cleanup } = setupPostMergeTest({
+        checkoutFails: true,
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to switch to main branch');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: false,
+        errorContains: 'Failed to switch to main branch',
+      });
     });
 
     it('should handle errors during sync', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnError('fetch failed'));
+      const { cleanup } = setupPostMergeTest({
+        fetchFails: true,
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to sync main branch');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: false,
+        errorContains: 'Failed to sync main branch',
+      });
     });
 
     it('should handle errors when getting current branch', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync.mockReturnValueOnce(createSpawnError('not a git repo'));
+      const { cleanup } = setupPostMergeTest({
+        getCurrentBranchFails: true,
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to get current branch');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: false,
+        errorContains: 'Failed to get current branch',
+      });
     });
 
     it('should force delete branches if regular delete fails', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
-        // Regular delete fails
-        .mockReturnValueOnce(createSpawnError('branch not fully merged'))
-        // Force delete succeeds
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        branches: ['feature/test'],
+        deleteFails: true,
+        forceDeleteFails: false,
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      expect(result.branchesDeleted).toContain('feature/test');
+      expectCleanupBehavior(result, {
+        success: true,
+        branchesDeleted: ['feature/test'],
+      });
       // Verify force delete was called with array args
       expect(mockSpawnSync).toHaveBeenCalledWith(
         'git',
@@ -249,105 +398,75 @@ describe('PostPRMergeCleanup', () => {
     });
 
     it('should skip branch if both delete attempts fail', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
-        // Regular delete fails
-        .mockReturnValueOnce(createSpawnError('delete failed'))
-        // Force delete also fails
-        .mockReturnValueOnce(createSpawnError('force delete failed'))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        branches: ['feature/test'],
+        deleteFails: true,
+        forceDeleteFails: true,
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      expect(result.branchesDeleted).not.toContain('feature/test');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: true,
+        branchesNotDeleted: ['feature/test'],
+      });
     });
 
     it('should handle empty branch list', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('main\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))  // Empty branch list
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        currentBranch: 'main',
+        branches: [],
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
+      expectCleanupBehavior(result, {
+        success: true,
+      });
       expect(result.branchesDeleted).toHaveLength(0);
     });
 
     it('should filter out main branch from deletion list', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Return main in the branch list (should be filtered)
-        .mockReturnValueOnce(createSpawnResult('main\nfeature/test\n'))
-        .mockReturnValueOnce(createSpawnResult('feature/test\nmain\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        branches: ['main', 'feature/test'],
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      // Main should not be in deleted branches
-      expect(result.branchesDeleted).not.toContain('main');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: true,
+        branchesNotDeleted: ['main'],
+      });
     });
 
     it('should handle prune errors gracefully', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        // Prune fails - should not affect overall success
-        .mockReturnValueOnce(createSpawnError('prune failed'));
+      const { cleanup } = setupPostMergeTest({
+        branches: [],
+        pruneFails: true,
+      });
 
       const result = await cleanup.runCleanup();
 
       // Should still succeed even if prune fails
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: true,
+      });
     });
 
     it('should handle branch name with special characters', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult('feature/test-123\n'))
-        .mockReturnValueOnce(createSpawnResult('feature/test-123\nmain\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        branches: ['feature/test-123'],
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      expect(result.branchesDeleted).toContain('feature/test-123');
+      expectCleanupBehavior(result, {
+        success: true,
+        branchesDeleted: ['feature/test-123'],
+      });
       // Verify branch name was passed as array arg (no quoting needed)
       expect(mockSpawnSync).toHaveBeenCalledWith(
         'git',
@@ -357,6 +476,7 @@ describe('PostPRMergeCleanup', () => {
     });
 
     it('should trim branch names properly', async () => {
+      // Mock directly for this edge case test
       const cleanup = new PostPRMergeCleanup();
 
       mockSpawnSync
@@ -374,53 +494,38 @@ describe('PostPRMergeCleanup', () => {
     });
 
     it('should handle merge status check errors', async () => {
-      const cleanup = new PostPRMergeCleanup();
-
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        // Merge status check fails - should skip branch
-        .mockReturnValueOnce(createSpawnError('merge check failed'))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const { cleanup } = setupPostMergeTest({
+        branches: ['feature/test'],
+        mergeCheckFails: true,
+      });
 
       const result = await cleanup.runCleanup();
 
-      expect(result.success).toBe(true);
-      // Branch should not be deleted if merge status is unclear
-      expect(result.branchesDeleted).not.toContain('feature/test');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: true,
+        branchesNotDeleted: ['feature/test'],
+      });
     });
   });
 
   describe('cleanupMergedBranches', () => {
     it('should provide convenience function for cleanup', async () => {
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const mocks = createMergeScenario({ branches: [] });
+      for (const mock of mocks) mockSpawnSync.mockReturnValueOnce(mock);
 
       const result = await cleanupMergedBranches();
 
-      expect(result.success).toBe(true);
-      expect(result.currentBranch).toBe('feature/test');
+      expect(result).toBeDefined();
+      expectCleanupBehavior(result, {
+        success: true,
+        currentBranch: 'feature/test',
+      });
     });
 
     it('should support custom options', async () => {
-      mockSpawnSync
-        .mockReturnValueOnce(createSpawnResult('feature/test\n'))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''))
-        .mockReturnValueOnce(createSpawnResult(''));
+      const mocks = createMergeScenario({ branches: [] });
+      for (const mock of mocks) mockSpawnSync.mockReturnValueOnce(mock);
 
       const result = await cleanupMergedBranches({
         mainBranch: 'develop',
@@ -428,7 +533,9 @@ describe('PostPRMergeCleanup', () => {
         dryRun: true,
       });
 
-      expect(result.success).toBe(true);
+      expectCleanupBehavior(result, {
+        success: true,
+      });
       // Verify custom main branch was used with array args
       expect(mockSpawnSync).toHaveBeenCalledWith(
         'git',

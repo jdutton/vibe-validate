@@ -11,6 +11,59 @@ import {
   ValidationPhaseSchema,
 } from '../src/schema.js';
 
+/**
+ * Create a base valid config object for testing
+ * @param overrides - Properties to override in the config
+ * @returns A valid config object
+ */
+function createBaseConfig(overrides: Record<string, unknown> = {}) {
+  return {
+    validation: {
+      phases: [
+        {
+          name: 'Test',
+          steps: [{ name: 'Test', command: 'npm test' }],
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Test that a config validates successfully
+ * @param config - The config to validate
+ * @returns The validation result for additional assertions
+ */
+function expectValidConfig(config: Record<string, unknown>) {
+  const result = safeValidateConfig(config);
+  expect(result.success).toBe(true);
+  return result;
+}
+
+/**
+ * Test that a config fails validation with expected error
+ * @param config - The config to validate
+ * @param errorCheck - String or regex to match in error messages
+ * @returns The validation result for additional assertions
+ */
+function expectInvalidConfig(
+  config: Record<string, unknown>,
+  errorCheck: string | RegExp
+) {
+  const result = safeValidateConfig(config);
+  expect(result.success).toBe(false);
+  expect(result.errors).toBeDefined();
+
+  const errorCheckFn =
+    typeof errorCheck === 'string'
+      ? (e: string) => e.includes(errorCheck)
+      : (e: string) => errorCheck.test(e);
+
+  expect(result.errors!.some(errorCheckFn)).toBe(true);
+  return result;
+}
+
 describe('ValidationStepSchema', () => {
   it('should validate valid step', () => {
     const step = {
@@ -188,13 +241,7 @@ describe('safeValidateConfig', () => {
 
 describe('HooksConfigSchema', () => {
   it('should validate config with secret scanning enabled', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       hooks: {
         preCommit: {
           enabled: true,
@@ -205,22 +252,15 @@ describe('HooksConfigSchema', () => {
           }
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);
     expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBe('gitleaks protect --staged --verbose');
   });
 
   it('should validate config with secret scanning disabled', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       hooks: {
         preCommit: {
           enabled: true,
@@ -229,42 +269,28 @@ describe('HooksConfigSchema', () => {
           }
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(false);
   });
 
   it('should apply defaults when secretScanning not specified', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       hooks: {
         preCommit: {
           enabled: true
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     // secretScanning should not be present by default (optional field)
     expect(result.data?.hooks?.preCommit?.secretScanning).toBeUndefined();
   });
 
   it('should allow secretScanning enabled without scanCommand (autodetect)', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       hooks: {
         preCommit: {
           enabled: true,
@@ -274,22 +300,15 @@ describe('HooksConfigSchema', () => {
           }
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);
     expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBeUndefined();
   });
 
   it('should allow custom scan commands', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       hooks: {
         preCommit: {
           secretScanning: {
@@ -298,21 +317,14 @@ describe('HooksConfigSchema', () => {
           }
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBe('detect-secrets scan --staged');
   });
 
   it('should reject scanCommand when enabled is false', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       hooks: {
         preCommit: {
           secretScanning: {
@@ -321,22 +333,15 @@ describe('HooksConfigSchema', () => {
           }
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
+    expectValidConfig(config);
     // This should succeed but scanCommand is ignored when enabled=false
     // Or we could make it fail - let's check the implementation
-    expect(result.success).toBe(true);
   });
 
   it('should reject empty scanCommand', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       hooks: {
         preCommit: {
           secretScanning: {
@@ -345,209 +350,127 @@ describe('HooksConfigSchema', () => {
           }
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('scanCommand') && e.includes('empty'))).toBe(true);
+    expectInvalidConfig(config, /scanCommand.*empty/i);
   });
 });
 
 describe('LockingConfigSchema', () => {
   it('should validate config with locking enabled (default)', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       locking: {
         enabled: true,
         concurrencyScope: 'directory'
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.locking?.enabled).toBe(true);
     expect(result.data?.locking?.concurrencyScope).toBe('directory');
   });
 
   it('should validate config with locking disabled', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       locking: {
         enabled: false
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.locking?.enabled).toBe(false);
   });
 
   it('should validate config with project scope', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       locking: {
         enabled: true,
         concurrencyScope: 'project',
         projectId: 'my-app'
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.locking?.concurrencyScope).toBe('project');
     expect(result.data?.locking?.projectId).toBe('my-app');
   });
 
   it('should validate config with directory scope (default)', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       locking: {
         enabled: true,
         concurrencyScope: 'directory'
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.locking?.concurrencyScope).toBe('directory');
   });
 
   it('should apply defaults when locking not specified', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      }
-    };
+    const config = createBaseConfig();
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.locking?.enabled).toBe(true);
     expect(result.data?.locking?.concurrencyScope).toBe('directory');
   });
 
   it('should reject invalid concurrencyScope values', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       locking: {
         enabled: true,
         concurrencyScope: 'invalid-scope'
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('concurrencyScope') || e.includes('Invalid enum'))).toBe(true);
+    expectInvalidConfig(config, /concurrencyScope|Invalid enum/);
   });
 
   it('should allow project scope without explicit projectId (auto-detect)', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       locking: {
         enabled: true,
         concurrencyScope: 'project'
         // projectId will be auto-detected
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.locking?.concurrencyScope).toBe('project');
     expect(result.data?.locking?.projectId).toBeUndefined();
   });
 
   it('should reject unknown properties in locking config', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       locking: {
         enabled: true,
         unknownProperty: 'should fail'
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+    expectInvalidConfig(config, 'Unrecognized key');
   });
 });
 
 describe('Strict Schema Validation', () => {
   it('should reject unknown properties in config root', () => {
-    const config = {
+    const config = createBaseConfig({
       git: { mainBranch: 'main' },
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
       unknownProperty: 'should be rejected'
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+    expectInvalidConfig(config, 'Unrecognized key');
   });
 
   it('should reject unknown properties in nested objects (output)', () => {
-    const config = {
+    const config = createBaseConfig({
       git: { mainBranch: 'main' },
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
       output: {
         format: 'auto'  // This property doesn't exist in schema
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('output') && e.includes('Unrecognized key'))).toBe(true);
+    expectInvalidConfig(config, /Unrecognized.*output/);
   });
 
   it('should reject unknown properties in validation steps', () => {
@@ -565,30 +488,18 @@ describe('Strict Schema Validation', () => {
       }
     };
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+    expectInvalidConfig(config, 'Unrecognized key');
   });
 
   it('should reject unknown properties in git config', () => {
-    const config = {
+    const config = createBaseConfig({
       git: {
         mainBranch: 'main',
         unknownGitProp: 'should fail'
-      },
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('git') && e.includes('Unrecognized key'))).toBe(true);
+    expectInvalidConfig(config, /Unrecognized.*git/i);
   });
 
   it('should accept valid config with no unknown properties', () => {
@@ -608,24 +519,15 @@ describe('Strict Schema Validation', () => {
       }
     };
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    expectValidConfig(config);
   });
 });
 
 describe('ExtractorsConfigSchema', () => {
   it('should apply default values when extractors not specified', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      }
-    };
+    const config = createBaseConfig();
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.builtins?.trust).toBe('full');
     expect(result.data?.extractors?.builtins?.disable).toEqual([]);
     expect(result.data?.extractors?.localPlugins?.trust).toBe('sandbox');
@@ -634,95 +536,61 @@ describe('ExtractorsConfigSchema', () => {
   });
 
   it('should validate config with custom builtin trust level', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         builtins: {
           trust: 'sandbox'
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.builtins?.trust).toBe('sandbox');
   });
 
   it('should validate config with disabled built-in extractors', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         builtins: {
           trust: 'full',
           disable: ['maven-compiler', 'eslint']
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.builtins?.disable).toEqual(['maven-compiler', 'eslint']);
   });
 
   it('should validate config with custom local plugin trust level', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         localPlugins: {
           trust: 'full'
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.localPlugins?.trust).toBe('full');
   });
 
   it('should validate config with disabled local plugins', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         localPlugins: {
           trust: 'sandbox',
           disable: ['old-plugin', 'deprecated-extractor']
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.localPlugins?.disable).toEqual(['old-plugin', 'deprecated-extractor']);
   });
 
   it('should validate config with external npm package extractor (default trust)', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         external: [
           {
@@ -730,23 +598,16 @@ describe('ExtractorsConfigSchema', () => {
           }
         ]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.external).toHaveLength(1);
     expect(result.data?.extractors?.external![0].package).toBe('@myorg/vibe-validate-plugin-gradle');
     expect(result.data?.extractors?.external![0].trust).toBe('sandbox');
   });
 
   it('should validate config with external npm package extractor (explicit trust)', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         external: [
           {
@@ -755,21 +616,14 @@ describe('ExtractorsConfigSchema', () => {
           }
         ]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.external![0].trust).toBe('full');
   });
 
   it('should validate config with multiple external extractors', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         external: [
           {
@@ -786,21 +640,14 @@ describe('ExtractorsConfigSchema', () => {
           }
         ]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.external).toHaveLength(3);
   });
 
   it('should validate complete extractors config', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         builtins: {
           trust: 'full',
@@ -817,10 +664,9 @@ describe('ExtractorsConfigSchema', () => {
           }
         ]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(true);
+    const result = expectValidConfig(config);
     expect(result.data?.extractors?.builtins?.trust).toBe('full');
     expect(result.data?.extractors?.builtins?.disable).toEqual(['maven-compiler']);
     expect(result.data?.extractors?.localPlugins?.trust).toBe('sandbox');
@@ -829,55 +675,31 @@ describe('ExtractorsConfigSchema', () => {
   });
 
   it('should reject invalid trust level for builtins', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         builtins: {
           trust: 'invalid'
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);
+    expectInvalidConfig(config, /Invalid enum|trust/);
   });
 
   it('should reject invalid trust level for localPlugins', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         localPlugins: {
           trust: 'untrusted'
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);
+    expectInvalidConfig(config, /Invalid enum|trust/);
   });
 
   it('should reject invalid trust level for external extractor', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         external: [
           {
@@ -886,22 +708,13 @@ describe('ExtractorsConfigSchema', () => {
           }
         ]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);
+    expectInvalidConfig(config, /Invalid enum|trust/);
   });
 
   it('should reject empty package name for external extractor', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         external: [
           {
@@ -910,44 +723,26 @@ describe('ExtractorsConfigSchema', () => {
           }
         ]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Package name') && e.includes('empty'))).toBe(true);
+    expectInvalidConfig(config, /Package name.*empty/);
   });
 
   it('should reject unknown properties in extractors config', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         builtins: {
           trust: 'full',
           unknownProperty: 'should fail'
         }
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+    expectInvalidConfig(config, 'Unrecognized key');
   });
 
   it('should reject unknown properties in external extractor', () => {
-    const config = {
-      validation: {
-        phases: [{
-          name: 'Test',
-          steps: [{ name: 'Test', command: 'npm test' }]
-        }]
-      },
+    const config = createBaseConfig({
       extractors: {
         external: [
           {
@@ -957,11 +752,8 @@ describe('ExtractorsConfigSchema', () => {
           }
         ]
       }
-    };
+    });
 
-    const result = safeValidateConfig(config);
-    expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);
+    expectInvalidConfig(config, 'Unrecognized key');
   });
 });

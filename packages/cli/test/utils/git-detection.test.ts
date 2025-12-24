@@ -101,6 +101,33 @@ function failureResponse(stderr: string) {
   return { success: false, stdout: '', stderr, exitCode: 1 };
 }
 
+/**
+ * Helper: Create and cleanup temporary non-git directory for testing
+ * @param callback Test function that receives the non-git directory path
+ */
+function withNonGitDirectory<T>(callback: (_dir: string) => T): T {
+  const nonGitDir = join('/tmp', `test-temp-non-git-${Date.now()}`);
+  mkdirSyncReal(nonGitDir, { recursive: true });
+
+  try {
+    return callback(nonGitDir);
+  } finally {
+    rmSync(nonGitDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Helper: Assert git config result matches defaults
+ * @param result The result from detectGitConfig()
+ */
+function expectDefaultGitConfig(result: ReturnType<typeof detectGitConfig>) {
+  expect(result).toEqual({
+    mainBranch: 'main',
+    remoteOrigin: 'origin',
+    detected: false,
+  });
+}
+
 describe('git-detection', () => {
   beforeEach(async () => {
     // Reset mocks to default implementation
@@ -121,11 +148,7 @@ describe('git-detection', () => {
       const result = detectGitConfig();
 
       // Assert
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
 
     it('should detect main branch from remote HEAD', async () => {
@@ -243,11 +266,7 @@ describe('git-detection', () => {
 
       const result = detectGitConfig();
 
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
 
     it('should return defaults when ls-remote fails', async () => {
@@ -259,11 +278,7 @@ describe('git-detection', () => {
 
       const result = detectGitConfig();
 
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
 
     it('should return defaults when git remote command fails', async () => {
@@ -275,11 +290,7 @@ describe('git-detection', () => {
       const result = detectGitConfig();
 
       // Assert
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
   });
 
@@ -313,20 +324,13 @@ describe('git-detection', () => {
     });
 
     it('should return null when not in git repository', () => {
-      // Arrange: Use /tmp which is outside any git repo
-      const nonGitDir = join('/tmp', 'test-temp-non-git-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
+      withNonGitDirectory((nonGitDir) => {
         // Act
         const result = findGitRoot(nonGitDir);
 
         // Assert
         expect(result).toBeNull();
-      } finally {
-        // Cleanup
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should use process.cwd() when startDir not provided', () => {
@@ -370,15 +374,10 @@ describe('git-detection', () => {
     });
 
     it('should return null when not in git repository', () => {
-      const nonGitDir = join('/tmp', 'test-temp-non-git-resolve-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
+      withNonGitDirectory((nonGitDir) => {
         const result = resolveProjectPath('.github/workflows/validate.yml', nonGitDir);
         expect(result).toBeNull();
-      } finally {
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should handle nested relative paths', () => {
@@ -434,20 +433,13 @@ describe('git-detection', () => {
     });
 
     it('should return false when not in git repository', () => {
-      // Arrange: Use /tmp which is outside any git repo
-      const nonGitDir = join('/tmp', 'test-temp-non-git-exists-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
+      withNonGitDirectory((nonGitDir) => {
         // Act
         const result = projectFileExists('.github/workflows/validate.yml', nonGitDir);
 
         // Assert
         expect(result).toBe(false);
-      } finally {
-        // Cleanup
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should use process.cwd() when startDir not provided', () => {
@@ -496,20 +488,13 @@ describe('git-detection', () => {
     });
 
     it('should return null when not in git repository', () => {
-      // Arrange: Use /tmp which is outside any git repo
-      const nonGitDir = join('/tmp', 'test-temp-non-git-read-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
+      withNonGitDirectory((nonGitDir) => {
         // Act
         const result = readProjectFile('.github/workflows/validate.yml', 'utf8', nonGitDir);
 
         // Assert
         expect(result).toBeNull();
-      } finally {
-        // Cleanup
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should use default encoding (utf8) when not specified', () => {

@@ -12,6 +12,40 @@ import { getCommandName } from '../utils/command-name.js';
 import { displayConfigErrors } from '../utils/config-error-reporter.js';
 import { loadConfigWithErrors, findConfigPath } from '../utils/config-loader.js';
 
+/**
+ * Load and validate configuration, exiting on error
+ * @returns Config file path and loaded configuration
+ */
+async function loadAndValidateConfig(): Promise<{ configPath: string; config: VibeValidateConfig }> {
+  // Find config file
+  const configPath = findConfigPath();
+  if (!configPath) {
+    const cmd = getCommandName();
+    console.error(chalk.red('❌ No configuration file found'));
+    console.error(chalk.gray(`   Run: ${cmd} init`));
+    process.exit(1);
+  }
+
+  // Load and validate config with detailed error reporting
+  const result = await loadConfigWithErrors();
+
+  // Show detailed validation errors if config is invalid
+  if (!result.config && result.errors) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
+    const fileName = result.filePath?.split('/').pop() || 'vibe-validate.config.yaml';
+    displayConfigErrors({ fileName, errors: result.errors });
+    process.exit(1);
+  }
+
+  const config = result.config;
+  if (!config) {
+    console.error(chalk.red('❌ Configuration is invalid'));
+    process.exit(1);
+  }
+
+  return { configPath, config };
+}
+
 export function configCommand(program: Command): void {
   program
     .command('config')
@@ -20,31 +54,7 @@ export function configCommand(program: Command): void {
     .option('-v, --verbose', 'Show detailed configuration with explanations')
     .action(async (options) => {
       try {
-        // Find config file
-        const configPath = findConfigPath();
-        if (!configPath) {
-          const cmd = getCommandName();
-          console.error(chalk.red('❌ No configuration file found'));
-          console.error(chalk.gray(`   Run: ${cmd} init`));
-          process.exit(1);
-        }
-
-        // Load and validate config with detailed error reporting
-        const result = await loadConfigWithErrors();
-
-        // Show detailed validation errors if config is invalid
-        if (!result.config && result.errors) {
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-          const fileName = result.filePath?.split('/').pop() || 'vibe-validate.config.yaml';
-          displayConfigErrors({ fileName, errors: result.errors });
-          process.exit(1);
-        }
-
-        const config = result.config;
-        if (!config) {
-          console.error(chalk.red('❌ Configuration is invalid'));
-          process.exit(1);
-        }
+        const { configPath, config } = await loadAndValidateConfig();
 
         // If validate-only mode, exit here
         if (options.validate) {
@@ -63,6 +73,10 @@ export function configCommand(program: Command): void {
 
         process.exit(0);
       } catch (error) {
+        // In tests, process.exit() throws an error - rethrow it so Commander can handle it
+        if (error instanceof Error && error.message.startsWith('process.exit(')) {
+          throw error;
+        }
         console.error(chalk.red('❌ Failed to load configuration:'), error instanceof Error ? error.message : error);
         if (error instanceof Error && error.stack) {
           console.error(chalk.gray('Stack trace:'));

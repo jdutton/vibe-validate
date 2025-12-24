@@ -22,6 +22,63 @@ vi.mock('../src/git-executor.js', () => ({
   validateTreeHash: vi.fn(),
 }));
 
+/**
+ * Valid test tree hash (40 character hexadecimal)
+ */
+const VALID_HASH = 'abc123def456789012345678901234567890abcd' as TreeHash;
+
+/**
+ * Test notes ref for standard tests
+ */
+const TEST_REF = 'vibe-validate/test' as NotesRef;
+
+/**
+ * Setup mock to validate tree hashes and reject symbolic refs
+ */
+function mockTreeHashValidation(): void {
+  vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {
+    if (!/^[0-9a-f]{4,40}$/.test(hash)) {
+      throw new Error('Invalid tree hash: must be hexadecimal');
+    }
+  });
+}
+
+/**
+ * Setup mocks for successful git operations (no validation errors)
+ */
+function mockSuccessfulValidation(): void {
+  vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
+  vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
+}
+
+/**
+ * Mock executeGitCommand to return successful result
+ * @param stdout - Command output
+ * @returns Mocked function
+ */
+function mockSuccessfulCommand(stdout = ''): void {
+  vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+    success: true,
+    stdout,
+    stderr: '',
+    exitCode: 0,
+  });
+}
+
+/**
+ * Mock executeGitCommand to return failed result
+ * @param stderr - Error output
+ * @param exitCode - Exit code (default: 1)
+ */
+function mockFailedCommand(stderr = '', exitCode = 1): void {
+  vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+    success: false,
+    stdout: '',
+    stderr,
+    exitCode,
+  });
+}
+
 describe('git-notes - error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -29,74 +86,52 @@ describe('git-notes - error handling', () => {
 
   describe('addNote', () => {
     it('should reject symbolic refs like HEAD', () => {
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {
-        if (!/^[0-9a-f]{4,40}$/.test(hash)) {
-          throw new Error('Invalid tree hash: must be hexadecimal');
-        }
-      });
+      mockTreeHashValidation();
 
-      expect(() => addNote('vibe-validate/test' as NotesRef, 'HEAD' as TreeHash, 'content', false))
+      expect(() => addNote(TEST_REF, 'HEAD' as TreeHash, 'content', false))
         .toThrow('must be hexadecimal');
     });
 
     it('should reject branch names', () => {
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {
-        if (!/^[0-9a-f]{4,40}$/.test(hash)) {
-          throw new Error('Invalid tree hash: must be hexadecimal');
-        }
-      });
+      mockTreeHashValidation();
 
-      expect(() => addNote('vibe-validate/test' as NotesRef, 'main' as TreeHash, 'content', false))
+      expect(() => addNote(TEST_REF, 'main' as TreeHash, 'content', false))
         .toThrow('must be hexadecimal');
-      expect(() => addNote('vibe-validate/test' as NotesRef, 'feature/foo' as TreeHash, 'content', false))
+      expect(() => addNote(TEST_REF, 'feature/foo' as TreeHash, 'content', false))
         .toThrow('must be hexadecimal');
     });
 
     it('should accept valid tree hashes', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
+      mockSuccessfulValidation();
+      mockSuccessfulCommand();
 
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      const result = addNote('vibe-validate/test' as NotesRef, validHash, 'content', true);
+      const result = addNote(TEST_REF, VALID_HASH, 'content', true);
       expect(result).toBe(true);
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
-        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', validHash],
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
         expect.objectContaining({ stdin: 'content' })
       );
     });
 
     it('should handle force flag correctly', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
-
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
+      mockSuccessfulValidation();
+      mockSuccessfulCommand();
 
       // Without force
-      addNote('vibe-validate/test' as NotesRef, validHash, 'content', false);
+      addNote(TEST_REF, VALID_HASH, 'content', false);
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
-        ['notes', '--ref=vibe-validate/test', 'add', '-F', '-', validHash],
+        ['notes', '--ref=vibe-validate/test', 'add', '-F', '-', VALID_HASH],
         expect.objectContaining({ stdin: 'content' })
       );
 
       vi.clearAllMocks();
 
       // With force
-      addNote('vibe-validate/test' as NotesRef, validHash, 'content', true);
+      mockSuccessfulValidation();
+      mockSuccessfulCommand();
+      addNote(TEST_REF, VALID_HASH, 'content', true);
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
-        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', validHash],
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
         expect.objectContaining({ stdin: 'content' })
       );
     });
@@ -104,123 +139,83 @@ describe('git-notes - error handling', () => {
 
   describe('readNote', () => {
     it('should reject symbolic refs like HEAD', () => {
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {
-        if (!/^[0-9a-f]{4,40}$/.test(hash)) {
-          throw new Error('Invalid tree hash: must be hexadecimal');
-        }
-      });
+      mockTreeHashValidation();
 
-      expect(() => readNote('vibe-validate/test' as NotesRef, 'HEAD' as TreeHash))
+      expect(() => readNote(TEST_REF, 'HEAD' as TreeHash))
         .toThrow('must be hexadecimal');
     });
 
     it('should return note content for valid hash', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
+      mockSuccessfulValidation();
+      mockSuccessfulCommand('note content');
 
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: 'note content',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      const result = readNote('vibe-validate/test' as NotesRef, validHash);
+      const result = readNote(TEST_REF, VALID_HASH);
       expect(result).toBe('note content');
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
-        ['notes', '--ref=vibe-validate/test', 'show', validHash],
+        ['notes', '--ref=vibe-validate/test', 'show', VALID_HASH],
         expect.objectContaining({ ignoreErrors: true, suppressStderr: true })
       );
     });
 
     it('should return null when note does not exist', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
+      mockSuccessfulValidation();
+      mockFailedCommand('error: no note found');
 
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: false,
-        stdout: '',
-        stderr: 'error: no note found',
-        exitCode: 1,
-      });
-
-      const result = readNote('vibe-validate/test' as NotesRef, validHash);
+      const result = readNote(TEST_REF, VALID_HASH);
       expect(result).toBeNull();
     });
   });
 
   describe('removeNote', () => {
     it('should reject symbolic refs like HEAD', () => {
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {
-        if (!/^[0-9a-f]{4,40}$/.test(hash)) {
-          throw new Error('Invalid tree hash: must be hexadecimal');
-        }
-      });
+      mockTreeHashValidation();
 
-      expect(() => removeNote('vibe-validate/test' as NotesRef, 'HEAD' as TreeHash))
+      expect(() => removeNote(TEST_REF, 'HEAD' as TreeHash))
         .toThrow('must be hexadecimal');
     });
 
     it('should return true when note is removed', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
-
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
+      mockSuccessfulValidation();
       vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(true);
 
-      const result = removeNote('vibe-validate/test' as NotesRef, validHash);
+      const result = removeNote(TEST_REF, VALID_HASH);
       expect(result).toBe(true);
       expect(gitExecutor.tryGitCommand).toHaveBeenCalledWith(
-        ['notes', '--ref=vibe-validate/test', 'remove', validHash],
+        ['notes', '--ref=vibe-validate/test', 'remove', VALID_HASH],
         expect.objectContaining({ suppressStderr: true })
       );
     });
 
     it('should return false when note does not exist', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
-
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
+      mockSuccessfulValidation();
       vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(false);
 
-      const result = removeNote('vibe-validate/test' as NotesRef, validHash);
+      const result = removeNote(TEST_REF, VALID_HASH);
       expect(result).toBe(false);
     });
   });
 
   describe('hasNote', () => {
     it('should reject symbolic refs like HEAD', () => {
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {
-        if (!/^[0-9a-f]{4,40}$/.test(hash)) {
-          throw new Error('Invalid tree hash: must be hexadecimal');
-        }
-      });
+      mockTreeHashValidation();
 
-      expect(() => hasNote('vibe-validate/test' as NotesRef, 'HEAD' as TreeHash))
+      expect(() => hasNote(TEST_REF, 'HEAD' as TreeHash))
         .toThrow('must be hexadecimal');
     });
 
     it('should return true when note exists', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
-
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
+      mockSuccessfulValidation();
       vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(true);
 
-      const result = hasNote('vibe-validate/test' as NotesRef, validHash);
+      const result = hasNote(TEST_REF, VALID_HASH);
       expect(result).toBe(true);
     });
 
     it('should return false when note does not exist', () => {
-      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;
-
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
+      mockSuccessfulValidation();
       vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(false);
 
-      const result = hasNote('vibe-validate/test' as NotesRef, validHash);
+      const result = hasNote(TEST_REF, VALID_HASH);
       expect(result).toBe(false);
     });
   });
@@ -228,20 +223,14 @@ describe('git-notes - error handling', () => {
   describe('listNotes', () => {
     it('should return empty array when no notes exist', () => {
       vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: false,
-        stdout: '',
-        stderr: '',
-        exitCode: 1,
-      });
+      mockFailedCommand();
 
-      const result = listNotes('vibe-validate/test' as NotesRef);
+      const result = listNotes(TEST_REF);
       expect(result).toEqual([]);
     });
 
     it('should parse note list correctly', () => {
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});
+      mockSuccessfulValidation();
       vi.mocked(gitExecutor.executeGitCommand)
         .mockReturnValueOnce({
           success: true,
@@ -262,7 +251,7 @@ describe('git-notes - error handling', () => {
           exitCode: 0,
         });
 
-      const result = listNotes('vibe-validate/test' as NotesRef);
+      const result = listNotes(TEST_REF);
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual(['abc123', 'content1']);
       expect(result[1]).toEqual(['def456', 'content2']);
@@ -271,24 +260,14 @@ describe('git-notes - error handling', () => {
 
   describe('listNotesRefs', () => {
     it('should return empty array when no refs exist', () => {
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: false,
-        stdout: '',
-        stderr: '',
-        exitCode: 1,
-      });
+      mockFailedCommand();
 
       const result = listNotesRefs('refs/notes/vibe-validate/run');
       expect(result).toEqual([]);
     });
 
     it('should return list of refs', () => {
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: 'refs/notes/vibe-validate/run/abc123\nrefs/notes/vibe-validate/run/def456',
-        stderr: '',
-        exitCode: 0,
-      });
+      mockSuccessfulCommand('refs/notes/vibe-validate/run/abc123\nrefs/notes/vibe-validate/run/def456');
 
       const result = listNotesRefs('refs/notes/vibe-validate/run');
       expect(result).toEqual([
@@ -298,12 +277,7 @@ describe('git-notes - error handling', () => {
     });
 
     it('should normalize path without refs/ prefix', () => {
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: 'refs/notes/vibe-validate/run/abc123',
-        stderr: '',
-        exitCode: 0,
-      });
+      mockSuccessfulCommand('refs/notes/vibe-validate/run/abc123');
 
       listNotesRefs('vibe-validate/run');
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
@@ -320,12 +294,7 @@ describe('git-notes - error handling', () => {
     });
 
     it('should delete all refs under path', () => {
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: 'refs/notes/vibe-validate/run/abc123\nrefs/notes/vibe-validate/run/def456',
-        stderr: '',
-        exitCode: 0,
-      });
+      mockSuccessfulCommand('refs/notes/vibe-validate/run/abc123\nrefs/notes/vibe-validate/run/def456');
       vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(true);
 
       const result = removeNotesRefs('refs/notes/vibe-validate/run/abc123');
@@ -334,12 +303,7 @@ describe('git-notes - error handling', () => {
     });
 
     it('should skip refs outside vibe-validate namespace', () => {
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: 'refs/notes/vibe-validate/run/abc123\nrefs/notes/other/def456',
-        stderr: '',
-        exitCode: 0,
-      });
+      mockSuccessfulCommand('refs/notes/vibe-validate/run/abc123\nrefs/notes/other/def456');
       vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(true);
 
       const result = removeNotesRefs('refs/notes/vibe-validate/run');
@@ -379,12 +343,7 @@ describe('git-notes - error handling', () => {
   describe('getNotesRefSha', () => {
     it('should return SHA when ref exists', () => {
       vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: true,
-        stdout: 'abc123def456',
-        stderr: '',
-        exitCode: 0,
-      });
+      mockSuccessfulCommand('abc123def456');
 
       const result = getNotesRefSha('vibe-validate/test');
       expect(result).toBe('abc123def456');
@@ -392,12 +351,7 @@ describe('git-notes - error handling', () => {
 
     it('should return null when ref does not exist', () => {
       vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: false,
-        stdout: '',
-        stderr: 'fatal: Needed a single revision',
-        exitCode: 128,
-      });
+      mockFailedCommand('fatal: Needed a single revision', 128);
 
       const result = getNotesRefSha('vibe-validate/test');
       expect(result).toBeNull();

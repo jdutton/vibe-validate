@@ -36,6 +36,199 @@ vi.mock('@vibe-validate/git', async () => {
   };
 });
 
+// ============================================================================
+// Test Helper Functions
+// ============================================================================
+
+/**
+ * Creates mock PR data for GitHub API responses
+ *
+ * @param overrides - Partial PR data to override defaults
+ * @returns Complete PR response object
+ */
+function createPRData(overrides: Partial<{
+  number: number;
+  title: string;
+  url: string;
+  headRefName: string;
+  baseRefName: string;
+  author: string;
+  isDraft: boolean;
+  mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+  mergeStateStatus: string;
+  labels: string[];
+  linkedIssues: Array<{ number: number; title: string; url: string }>;
+}> = {}) {
+  const defaults = {
+    number: 123,
+    title: 'Add new feature',
+    url: 'https://github.com/test/test/pull/123',
+    headRefName: 'feature/test',
+    baseRefName: 'main',
+    author: 'testuser',
+    isDraft: false,
+    mergeable: 'MERGEABLE' as const,
+    mergeStateStatus: 'CLEAN',
+    labels: [],
+    linkedIssues: [],
+  };
+
+  const data = { ...defaults, ...overrides };
+
+  return {
+    number: data.number,
+    title: data.title,
+    url: data.url,
+    headRefName: data.headRefName,
+    baseRefName: data.baseRefName,
+    author: { login: data.author },
+    isDraft: data.isDraft,
+    mergeable: data.mergeable,
+    mergeStateStatus: data.mergeStateStatus,
+    labels: data.labels.map((name) => ({ name })),
+    closingIssuesReferences: {
+      nodes: data.linkedIssues,
+    },
+  };
+}
+
+/**
+ * Creates mock CheckRun data for GitHub Actions
+ *
+ * @param overrides - Partial check run data to override defaults
+ * @returns CheckRun object for statusCheckRollup
+ */
+function createCheckRun(overrides: Partial<{
+  name: string;
+  status: string;
+  conclusion: string;
+  detailsUrl: string;
+  startedAt: string;
+  completedAt: string;
+}> = {}) {
+  const defaults = {
+    name: 'CI / Build',
+    status: 'COMPLETED',
+    conclusion: 'SUCCESS',
+    detailsUrl: 'https://github.com/test/test/actions/runs/12345',
+    startedAt: '2025-12-16T10:00:00Z',
+    completedAt: '2025-12-16T10:05:00Z',
+  };
+
+  const data = { ...defaults, ...overrides };
+
+  return {
+    __typename: 'CheckRun',
+    name: data.name,
+    status: data.status,
+    ...(data.conclusion && { conclusion: data.conclusion }),
+    detailsUrl: data.detailsUrl,
+    ...(data.startedAt && { startedAt: data.startedAt }),
+    ...(data.completedAt && { completedAt: data.completedAt }),
+  };
+}
+
+/**
+ * Creates mock StatusContext data for external checks
+ *
+ * @param overrides - Partial status context data to override defaults
+ * @returns StatusContext object for statusCheckRollup
+ */
+function createStatusContext(overrides: Partial<{
+  context: string;
+  state: string;
+  targetUrl: string;
+}> = {}) {
+  const defaults = {
+    context: 'codecov/patch',
+    state: 'SUCCESS',
+    targetUrl: 'https://codecov.io/gh/test/test/pull/123',
+  };
+
+  const data = { ...defaults, ...overrides };
+
+  return {
+    __typename: 'StatusContext',
+    context: data.context,
+    state: data.state,
+    targetUrl: data.targetUrl,
+  };
+}
+
+/**
+ * Creates mock run details response
+ *
+ * @param overrides - Partial run details to override defaults
+ * @returns Run details object for gh run view --json
+ */
+function createRunDetails(overrides: Partial<{
+  runId: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  workflowName: string;
+  createdAt: string;
+  updatedAt: string;
+}> = {}) {
+  const defaults = {
+    runId: 12345,
+    name: 'CI / Build',
+    status: 'completed',
+    conclusion: 'success',
+    workflowName: 'CI',
+    createdAt: '2025-12-17T10:00:00Z',
+    updatedAt: '2025-12-17T10:05:00Z',
+  };
+
+  const data = { ...defaults, ...overrides };
+
+  return {
+    name: data.name,
+    status: data.status,
+    conclusion: data.conclusion,
+    workflowName: data.workflowName,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    url: `https://github.com/test/test/actions/runs/${data.runId}`,
+  };
+}
+
+/**
+ * Mocks GitHub API response for any command
+ *
+ * @param responseData - Data to return (will be JSON stringified)
+ */
+function mockGitHubAPI(responseData: unknown) {
+  const jsonString = typeof responseData === 'string'
+    ? responseData
+    : JSON.stringify(responseData);
+  vi.mocked(safeExecSync).mockReturnValue(Buffer.from(jsonString));
+}
+
+/**
+ * Asserts that a GitHub CLI command was called with expected arguments
+ *
+ * @param command - Expected command ('pr' or 'run')
+ * @param args - Expected arguments (view, PR number, etc.)
+ * @param repo - Optional repo string (owner/repo)
+ */
+function expectAPICall(
+  command: 'pr' | 'run',
+  args: (string | number)[],
+  repo?: string
+) {
+  const expectedArgs = [command, ...args.map(String)];
+  if (repo) {
+    expectedArgs.push('--repo', repo);
+  }
+
+  expect(safeExecSync).toHaveBeenCalledWith(
+    'gh',
+    expect.arrayContaining(expectedArgs),
+    expect.any(Object)
+  );
+}
+
 describe('GitHubFetcher', () => {
   let fetcher: GitHubFetcher;
 
@@ -46,26 +239,13 @@ describe('GitHubFetcher', () => {
 
   describe('fetchPRDetails', () => {
     it('should fetch complete PR metadata', async () => {
-      const mockPRResponse = JSON.stringify({
-        number: 123,
-        title: 'Add new feature',
-        url: 'https://github.com/test/test/pull/123',
-        headRefName: 'feature/test',
-        baseRefName: 'main',
-        author: { login: 'testuser' },
-        isDraft: false,
-        mergeable: 'MERGEABLE',
-        mergeStateStatus: 'CLEAN',
-        labels: [{ name: 'enhancement' }, { name: 'bug' }],
-        closingIssuesReferences: {
-          nodes: [
-            { number: 100, title: 'Issue 1', url: 'https://github.com/test/test/issues/100' },
-            { number: 101, title: 'Issue 2', url: 'https://github.com/test/test/issues/101' },
-          ],
-        },
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockPRResponse));
+      mockGitHubAPI(createPRData({
+        labels: ['enhancement', 'bug'],
+        linkedIssues: [
+          { number: 100, title: 'Issue 1', url: 'https://github.com/test/test/issues/100' },
+          { number: 101, title: 'Issue 2', url: 'https://github.com/test/test/issues/101' },
+        ],
+      }));
 
       const result = await fetcher.fetchPRDetails(123);
 
@@ -86,28 +266,20 @@ describe('GitHubFetcher', () => {
         ],
       } as PRMetadata);
 
-      expect(safeExecSync).toHaveBeenCalledWith(
-        'gh',
-        expect.arrayContaining(['pr', 'view', '123', '--json']),
-        expect.any(Object)
-      );
+      expectAPICall('pr', ['view', 123, '--json']);
     });
 
     it('should handle draft PRs', async () => {
-      const mockPRResponse = JSON.stringify({
+      mockGitHubAPI(createPRData({
         number: 456,
         title: 'Draft PR',
         url: 'https://github.com/test/test/pull/456',
         headRefName: 'draft/test',
-        baseRefName: 'main',
-        author: { login: 'draftuser' },
+        author: 'draftuser',
         isDraft: true,
         mergeable: 'UNKNOWN',
         mergeStateStatus: 'DRAFT',
-        labels: [],
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockPRResponse));
+      }));
 
       const result = await fetcher.fetchPRDetails(456);
 
@@ -116,20 +288,15 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle unmergeable PRs', async () => {
-      const mockPRResponse = JSON.stringify({
+      mockGitHubAPI(createPRData({
         number: 789,
         title: 'Conflicting PR',
         url: 'https://github.com/test/test/pull/789',
         headRefName: 'conflict/test',
-        baseRefName: 'main',
-        author: { login: 'conflictuser' },
-        isDraft: false,
+        author: 'conflictuser',
         mergeable: 'CONFLICTING',
         mergeStateStatus: 'DIRTY',
-        labels: [],
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockPRResponse));
+      }));
 
       const result = await fetcher.fetchPRDetails(789);
 
@@ -138,21 +305,12 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle PRs without linked issues', async () => {
-      const mockPRResponse = JSON.stringify({
+      mockGitHubAPI(createPRData({
         number: 999,
         title: 'PR without issues',
         url: 'https://github.com/test/test/pull/999',
         headRefName: 'feature/no-issues',
-        baseRefName: 'main',
-        author: { login: 'testuser' },
-        isDraft: false,
-        mergeable: 'MERGEABLE',
-        mergeStateStatus: 'CLEAN',
-        labels: [],
-        closingIssuesReferences: { nodes: [] },
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockPRResponse));
+      }));
 
       const result = await fetcher.fetchPRDetails(999);
 
@@ -170,30 +328,17 @@ describe('GitHubFetcher', () => {
 
   describe('fetchChecks', () => {
     it('should fetch and classify GitHub Actions checks', async () => {
-      const mockChecksResponse = JSON.stringify({
+      mockGitHubAPI({
         statusCheckRollup: [
-          {
-            __typename: 'CheckRun',
-            name: 'CI / Build',
-            status: 'COMPLETED',
-            conclusion: 'SUCCESS',
-            detailsUrl: 'https://github.com/test/test/actions/runs/12345',
-            startedAt: '2025-12-16T10:00:00Z',
-            completedAt: '2025-12-16T10:05:00Z',
-          },
-          {
-            __typename: 'CheckRun',
+          createCheckRun(),
+          createCheckRun({
             name: 'CI / Test',
-            status: 'COMPLETED',
             conclusion: 'FAILURE',
             detailsUrl: 'https://github.com/test/test/actions/runs/12346',
-            startedAt: '2025-12-16T10:00:00Z',
             completedAt: '2025-12-16T10:10:00Z',
-          },
+          }),
         ],
       });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));
 
       const results = await fetcher.fetchChecks(123);
 
@@ -215,24 +360,16 @@ describe('GitHubFetcher', () => {
     });
 
     it('should fetch and classify external status checks', async () => {
-      const mockChecksResponse = JSON.stringify({
+      mockGitHubAPI({
         statusCheckRollup: [
-          {
-            __typename: 'StatusContext',
-            context: 'codecov/patch',
-            state: 'SUCCESS',
-            targetUrl: 'https://codecov.io/gh/test/test/pull/123',
-          },
-          {
-            __typename: 'StatusContext',
+          createStatusContext(),
+          createStatusContext({
             context: 'SonarCloud Code Analysis',
             state: 'FAILURE',
             targetUrl: 'https://sonarcloud.io/project/issues?id=test',
-          },
+          }),
         ],
       });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));
 
       const results = await fetcher.fetchChecks(123);
 
@@ -254,27 +391,12 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle mixed check types', async () => {
-      const mockChecksResponse = JSON.stringify({
+      mockGitHubAPI({
         statusCheckRollup: [
-          {
-            __typename: 'CheckRun',
-            name: 'CI / Build',
-            status: 'COMPLETED',
-            conclusion: 'SUCCESS',
-            detailsUrl: 'https://github.com/test/test/actions/runs/12345',
-            startedAt: '2025-12-16T10:00:00Z',
-            completedAt: '2025-12-16T10:05:00Z',
-          },
-          {
-            __typename: 'StatusContext',
-            context: 'codecov/patch',
-            state: 'SUCCESS',
-            targetUrl: 'https://codecov.io/gh/test/test/pull/123',
-          },
+          createCheckRun(),
+          createStatusContext(),
         ],
       });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));
 
       const results = await fetcher.fetchChecks(123);
 
@@ -284,19 +406,15 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle in-progress checks', async () => {
-      const mockChecksResponse = JSON.stringify({
+      mockGitHubAPI({
         statusCheckRollup: [
-          {
-            __typename: 'CheckRun',
-            name: 'CI / Build',
+          createCheckRun({
             status: 'IN_PROGRESS',
-            detailsUrl: 'https://github.com/test/test/actions/runs/12345',
-            startedAt: '2025-12-16T10:00:00Z',
-          },
+            conclusion: '',
+            completedAt: '',
+          }),
         ],
       });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));
 
       const results = await fetcher.fetchChecks(123);
 
@@ -307,18 +425,16 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle queued checks', async () => {
-      const mockChecksResponse = JSON.stringify({
+      mockGitHubAPI({
         statusCheckRollup: [
-          {
-            __typename: 'CheckRun',
-            name: 'CI / Build',
+          createCheckRun({
             status: 'QUEUED',
-            detailsUrl: 'https://github.com/test/test/actions/runs/12345',
-          },
+            conclusion: '',
+            startedAt: '',
+            completedAt: '',
+          }),
         ],
       });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));
 
       const results = await fetcher.fetchChecks(123);
 
@@ -328,21 +444,13 @@ describe('GitHubFetcher', () => {
     });
 
     it('should extract run IDs from GitHub Actions URLs', async () => {
-      const mockChecksResponse = JSON.stringify({
+      mockGitHubAPI({
         statusCheckRollup: [
-          {
-            __typename: 'CheckRun',
-            name: 'CI / Build',
-            status: 'COMPLETED',
-            conclusion: 'SUCCESS',
+          createCheckRun({
             detailsUrl: 'https://github.com/test/test/actions/runs/987654321',
-            startedAt: '2025-12-16T10:00:00Z',
-            completedAt: '2025-12-16T10:05:00Z',
-          },
+          }),
         ],
       });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));
 
       const results = await fetcher.fetchChecks(123);
 
@@ -361,13 +469,12 @@ describe('GitHubFetcher', () => {
   describe('fetchRunLogs', () => {
     it('should fetch logs for a given run ID', async () => {
       const mockLogs = 'Running tests...\nTest 1: PASS\nTest 2: FAIL\nDone.';
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockLogs));
+      mockGitHubAPI(mockLogs);
 
       const logs = await fetcher.fetchRunLogs(12345);
 
       expect(logs).toBe(mockLogs);
-      expect(safeExecSync).toHaveBeenCalledWith('gh', ['run', 'view', '12345', '--log'], expect.any(Object));
+      expectAPICall('run', ['view', 12345, '--log']);
     });
 
     it('should throw error when run not found', async () => {
@@ -587,98 +694,54 @@ describe('GitHubFetcher', () => {
 
     it('should pass --repo flag to gh pr view for PR details', async () => {
       const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
-      const mockResponse = JSON.stringify({
+      mockGitHubAPI(createPRData({
         number: 99,
         title: 'Test PR',
         url: 'https://github.com/test-owner/test-repo/pull/99',
         headRefName: 'feature',
-        baseRefName: 'main',
-        author: { login: 'testuser' },
-        isDraft: false,
-        mergeable: 'MERGEABLE',
-        mergeStateStatus: 'CLEAN',
-        labels: [],
-        closingIssuesReferences: { nodes: [] },
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(mockResponse);
+      }));
 
       await crossRepoFetcher.fetchPRDetails(99);
 
-      expect(safeExecSync).toHaveBeenCalledWith(
-        'gh',
-        expect.arrayContaining(['pr', 'view', '99', '--repo', 'test-owner/test-repo']),
-        expect.any(Object)
-      );
+      expectAPICall('pr', ['view', 99, '--json'], 'test-owner/test-repo');
     });
 
     it('should pass --repo flag to gh pr view for checks', async () => {
       const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
-      const mockResponse = JSON.stringify({ statusCheckRollup: [] });
-
-      vi.mocked(safeExecSync).mockReturnValue(mockResponse);
+      mockGitHubAPI({ statusCheckRollup: [] });
 
       await crossRepoFetcher.fetchChecks(99);
 
-      expect(safeExecSync).toHaveBeenCalledWith(
-        'gh',
-        expect.arrayContaining(['pr', 'view', '99', '--repo', 'test-owner/test-repo']),
-        expect.any(Object)
-      );
+      expectAPICall('pr', ['view', 99], 'test-owner/test-repo');
     });
 
     it('should pass --repo flag to gh run view for logs', async () => {
       const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
-      const mockLogs = 'Test log output';
-
-      vi.mocked(safeExecSync).mockReturnValue(mockLogs);
+      mockGitHubAPI('Test log output');
 
       await crossRepoFetcher.fetchRunLogs(12345);
 
-      expect(safeExecSync).toHaveBeenCalledWith(
-        'gh',
-        expect.arrayContaining(['run', 'view', '12345', '--repo', 'test-owner/test-repo']),
-        expect.any(Object)
-      );
+      expectAPICall('run', ['view', 12345, '--repo', 'test-owner/test-repo']);
     });
 
     it('should pass --repo flag to gh run view for run details', async () => {
       const crossRepoFetcher = new GitHubFetcher('test-owner', 'test-repo');
-      const mockRunResponse = JSON.stringify({
-        name: 'CI / Build',
-        status: 'completed',
+      mockGitHubAPI(createRunDetails({
         conclusion: 'failure',
-        workflowName: 'CI',
-        createdAt: '2025-12-17T10:00:00Z',
-        updatedAt: '2025-12-17T10:05:00Z',
         url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(mockRunResponse);
+      }));
 
       await crossRepoFetcher.fetchRunDetails(12345);
 
-      expect(safeExecSync).toHaveBeenCalledWith(
-        'gh',
-        expect.arrayContaining(['run', 'view', '12345', '--repo', 'test-owner/test-repo', '--json']),
-        expect.any(Object)
-      );
+      expectAPICall('run', ['view', 12345, '--repo', 'test-owner/test-repo', '--json']);
     });
   });
 
   describe('fetchRunDetails', () => {
     it('should fetch run metadata with all fields', async () => {
-      const mockRunResponse = JSON.stringify({
-        name: 'CI / Build',
-        status: 'completed',
+      mockGitHubAPI(createRunDetails({
         conclusion: 'failure',
-        workflowName: 'CI',
-        createdAt: '2025-12-17T10:00:00Z',
-        updatedAt: '2025-12-17T10:05:00Z',
-        url: 'https://github.com/test/test/actions/runs/12345',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+      }));
 
       const result = await fetcher.fetchRunDetails(12345);
 
@@ -693,25 +756,19 @@ describe('GitHubFetcher', () => {
         url: 'https://github.com/test/test/actions/runs/12345',
       });
 
-      expect(safeExecSync).toHaveBeenCalledWith(
-        'gh',
-        ['run', 'view', '12345', '--json', 'name,status,conclusion,workflowName,createdAt,updatedAt,url'],
-        expect.any(Object)
-      );
+      expectAPICall('run', ['view', 12345, '--json', 'name,status,conclusion,workflowName,createdAt,updatedAt,url']);
     });
 
     it('should handle in-progress runs (no conclusion yet)', async () => {
-      const mockRunResponse = JSON.stringify({
+      mockGitHubAPI(createRunDetails({
+        runId: 67890,
         name: 'Tests / Unit',
         status: 'in_progress',
         conclusion: null,
         workflowName: 'Tests',
         createdAt: '2025-12-17T11:00:00Z',
         updatedAt: '2025-12-17T11:02:00Z',
-        url: 'https://github.com/test/test/actions/runs/67890',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+      }));
 
       const result = await fetcher.fetchRunDetails(67890);
 
@@ -721,17 +778,15 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle queued runs', async () => {
-      const mockRunResponse = JSON.stringify({
+      mockGitHubAPI(createRunDetails({
+        runId: 11111,
         name: 'Deploy / Production',
         status: 'queued',
         conclusion: null,
         workflowName: 'Deploy',
         createdAt: '2025-12-17T12:00:00Z',
         updatedAt: '2025-12-17T12:00:00Z',
-        url: 'https://github.com/test/test/actions/runs/11111',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+      }));
 
       const result = await fetcher.fetchRunDetails(11111);
 
@@ -740,17 +795,13 @@ describe('GitHubFetcher', () => {
     });
 
     it('should extract workflow name from run data', async () => {
-      const mockRunResponse = JSON.stringify({
+      mockGitHubAPI(createRunDetails({
+        runId: 22222,
         name: 'Long Workflow Name / Job / Step',
-        status: 'completed',
-        conclusion: 'success',
         workflowName: 'Long Workflow Name',
         createdAt: '2025-12-17T13:00:00Z',
         updatedAt: '2025-12-17T13:10:00Z',
-        url: 'https://github.com/test/test/actions/runs/22222',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+      }));
 
       const result = await fetcher.fetchRunDetails(22222);
 
@@ -758,17 +809,12 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle successful runs', async () => {
-      const mockRunResponse = JSON.stringify({
+      mockGitHubAPI(createRunDetails({
+        runId: 33333,
         name: 'CI / Test',
-        status: 'completed',
-        conclusion: 'success',
-        workflowName: 'CI',
         createdAt: '2025-12-17T14:00:00Z',
         updatedAt: '2025-12-17T14:03:00Z',
-        url: 'https://github.com/test/test/actions/runs/33333',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+      }));
 
       const result = await fetcher.fetchRunDetails(33333);
 
@@ -777,17 +823,12 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle cancelled runs', async () => {
-      const mockRunResponse = JSON.stringify({
-        name: 'CI / Build',
-        status: 'completed',
+      mockGitHubAPI(createRunDetails({
+        runId: 44444,
         conclusion: 'cancelled',
-        workflowName: 'CI',
         createdAt: '2025-12-17T15:00:00Z',
         updatedAt: '2025-12-17T15:01:00Z',
-        url: 'https://github.com/test/test/actions/runs/44444',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+      }));
 
       const result = await fetcher.fetchRunDetails(44444);
 
@@ -795,17 +836,13 @@ describe('GitHubFetcher', () => {
     });
 
     it('should handle timed out runs', async () => {
-      const mockRunResponse = JSON.stringify({
+      mockGitHubAPI(createRunDetails({
+        runId: 55555,
         name: 'CI / Long Test',
-        status: 'completed',
         conclusion: 'timed_out',
-        workflowName: 'CI',
         createdAt: '2025-12-17T16:00:00Z',
         updatedAt: '2025-12-17T17:00:00Z',
-        url: 'https://github.com/test/test/actions/runs/55555',
-      });
-
-      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockRunResponse));
+      }));
 
       const result = await fetcher.fetchRunDetails(55555);
 

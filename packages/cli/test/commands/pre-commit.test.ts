@@ -127,8 +127,237 @@ describe('pre-commit command', () => {
     vi.restoreAllMocks();
   });
 
+  // ========================================================================
+  // FACTORY FUNCTIONS: Create test objects
+  // ========================================================================
+
   /**
-   * Helper: Execute pre-commit command and verify exit code
+   * Factory: Create minimal config with optional overrides
+   * Eliminates duplication of basic config structure
+   */
+  function createConfig(overrides: Partial<VibeValidateConfig> = {}): VibeValidateConfig {
+    return {
+      version: '1.0',
+      validation: {
+        phases: [],
+      },
+      ...overrides,
+    };
+  }
+
+  /**
+   * Factory: Create config with custom git settings
+   */
+  function createConfigWithGit(
+    mainBranch?: string,
+    remoteOrigin?: string
+  ): VibeValidateConfig {
+    return createConfig({
+      git: {
+        mainBranch: mainBranch ?? 'main',
+        remoteOrigin: remoteOrigin ?? 'origin',
+        autoSync: false,
+        warnIfBehind: true,
+      },
+    });
+  }
+
+  /**
+   * Factory: Create config with secret scanning settings
+   */
+  function createConfigWithSecretScanning(
+    enabled: boolean,
+    scanCommand?: string
+  ): VibeValidateConfig {
+    return createConfig({
+      hooks: {
+        preCommit: {
+          enabled: true,
+          secretScanning: {
+            enabled,
+            ...(scanCommand !== undefined && { scanCommand }),
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Factory: Create config with validation phases
+   */
+  function createConfigWithPhases(): VibeValidateConfig {
+    return createConfig({
+      validation: {
+        phases: [
+          {
+            name: 'Test',
+            steps: [{ name: 'Test Step', command: 'echo test' }],
+          },
+        ],
+      },
+    });
+  }
+
+  /**
+   * Factory: Create successful branch sync result
+   */
+  function createBranchSyncResult(overrides: Partial<{
+    isUpToDate: boolean;
+    behindBy: number;
+    currentBranch: string;
+    hasRemote: boolean;
+    aheadBy?: number;
+  }> = {}) {
+    return {
+      isUpToDate: true,
+      behindBy: 0,
+      currentBranch: 'feature/test',
+      hasRemote: true,
+      aheadBy: 0,
+      ...overrides,
+    };
+  }
+
+  /**
+   * Factory: Create successful validation result
+   */
+  function createValidationResult(overrides: Partial<{
+    passed: boolean;
+    phasesRun: number;
+    stepsRun: number;
+    duration: number;
+  }> = {}) {
+    return {
+      passed: true,
+      phasesRun: 0,
+      stepsRun: 0,
+      duration: 100,
+      ...overrides,
+    };
+  }
+
+  /**
+   * Factory: Create history note with cache data
+   */
+  function createHistoryNote(treeHash: string, passed: boolean = true) {
+    return {
+      treeHash,
+      runs: [
+        {
+          timestamp: '2025-10-23T20:00:00Z',
+          duration: 30000,
+          passed,
+          branch: 'feature/test',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed,
+            timestamp: '2025-10-23T20:00:00Z',
+            treeHash,
+            duration: 30000,
+            phases: [
+              {
+                name: 'Test',
+                passed,
+                steps: [{ name: 'Test Step', passed, duration: 1000 }],
+              },
+            ],
+          },
+        },
+      ],
+    };
+  }
+
+  /**
+   * Factory: Create error object for command failures
+   */
+  function createCommandError(stdout = '', stderr = ''): Error & { stdout: string; stderr: string } {
+    const error = new Error('Command failed') as Error & { stdout: string; stderr: string };
+    error.stdout = stdout;
+    error.stderr = stderr;
+    return error;
+  }
+
+  // ========================================================================
+  // SETUP FUNCTIONS: Configure mocks for test scenarios
+  // ========================================================================
+
+  /**
+   * Setup: Configure mocks for successful pre-commit
+   */
+  function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
+    vi.mocked(configLoader.loadConfig).mockResolvedValue(config);
+    vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+    vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
+  }
+
+  /**
+   * Setup: Configure mocks for branch behind scenario
+   */
+  function setupBranchBehind(behindBy: number, hasTracking = true) {
+    vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+    vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
+    vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(hasTracking ? behindBy : null);
+    vi.mocked(git.checkBranchSync).mockResolvedValue(
+      createBranchSyncResult({ isUpToDate: false, behindBy })
+    );
+  }
+
+  /**
+   * Setup: Configure mocks for cache hit scenario
+   */
+  function setupCacheHit(treeHash: string) {
+    vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHash);
+    vi.mocked(history.readHistoryNote).mockResolvedValue(createHistoryNote(treeHash, true));
+  }
+
+  /**
+   * Setup: Configure mocks for cache miss scenario
+   */
+  function setupCacheMiss(treeHash: string) {
+    vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHash);
+    vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+    vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+      stable: true,
+      treeHashBefore: treeHash,
+      treeHashAfter: treeHash,
+    });
+    vi.mocked(history.recordValidationHistory).mockResolvedValue({
+      recorded: true,
+    });
+  }
+
+  /**
+   * Setup: Configure mocks for merge scenario
+   */
+  function setupMergeTest(isMerging: boolean) {
+    vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+    vi.mocked(git.isMergeInProgress).mockReturnValue(isMerging);
+    vi.mocked(git.checkBranchSync).mockResolvedValue(
+      createBranchSyncResult({ isUpToDate: false, behindBy: 3 })
+    );
+
+    // Only mock validation for merge case (normal case exits before validation)
+    if (isMerging) {
+      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
+    }
+  }
+
+  /**
+   * Setup: Configure mocks for secret scanning failure
+   */
+  function setupSecretScanningFailure(stdout = '', stderr = 'Secrets detected') {
+    vi.mocked(utils.safeExecFromString).mockImplementation(() => {
+      throw createCommandError(stdout, stderr);
+    });
+  }
+
+  // ========================================================================
+  // EXECUTION FUNCTIONS: Run commands and handle results
+  // ========================================================================
+
+  /**
+   * Execute pre-commit command and verify exit code
    * Replicates the repeated try/catch pattern from the original tests
    */
   async function runPreCommit(expectedExitCode = 0): Promise<void> {
@@ -144,527 +373,226 @@ describe('pre-commit command', () => {
     }
   }
 
+  /**
+   * Execute pre-commit and expect it to throw with specific exit code
+   * Used for tests that expect failure
+   */
+  async function runPreCommitExpectError(expectedExitCode = 1): Promise<void> {
+    preCommitCommand(env.program);
+
+    try {
+      await env.program.parseAsync(['pre-commit'], { from: 'user' });
+      throw new Error('Should have exited with error');
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'exitCode' in err) {
+        expect(err.exitCode).toBe(expectedExitCode);
+      }
+    }
+  }
+
+  // ========================================================================
+  // ASSERTION HELPERS: Verify common expectations
+  // ========================================================================
+
+  /**
+   * Assert that checkBranchSync was called with expected remote branch
+   */
+  function expectBranchSyncCalledWith(remoteBranch: string) {
+    expect(git.checkBranchSync).toHaveBeenCalledWith({ remoteBranch });
+  }
+
+  /**
+   * Assert that console.error was called (for error messages)
+   */
+  function expectErrorLogged() {
+    expect(console.error).toHaveBeenCalled();
+  }
+
+  /**
+   * Assert that console.error output contains specific text
+   */
+  function expectErrorContains(text: string) {
+    expectErrorLogged();
+    const errorCalls = vi.mocked(console.error).mock.calls;
+    const errorOutput = errorCalls.map(call => call.join(' ')).join('\n');
+    expect(errorOutput).toContain(text);
+  }
+
+  /**
+   * Assert that validation was run
+   */
+  function expectValidationRan() {
+    expect(core.runValidation).toHaveBeenCalled();
+  }
+
+  /**
+   * Assert that validation was NOT run
+   */
+  function expectValidationNotRan() {
+    expect(core.runValidation).not.toHaveBeenCalled();
+  }
+
+  /**
+   * Assert that cache hit message was displayed
+   */
+  function expectCacheHitMessage() {
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Validation already passed for current working tree')
+    );
+  }
+
+  /**
+   * Assert that getGitTreeHash was called before checkBranchSync
+   */
+  function expectSnapshotBeforeSync() {
+    const getTreeHashOrder = vi.mocked(git.getGitTreeHash).mock.invocationCallOrder[0];
+    const checkSyncOrder = vi.mocked(git.checkBranchSync).mock.invocationCallOrder[0];
+    expect(getTreeHashOrder).toBeLessThan(checkSyncOrder);
+  }
+
   describe('branch sync check with custom git config', () => {
     it('should respect config.git.mainBranch when checking sync', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        git: {
-          mainBranch: 'develop', // Custom main branch
-          remoteOrigin: 'upstream', // Custom remote
-          autoSync: false,
-          warnIfBehind: true,
-        },
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
+      setupSuccessfulPreCommit(createConfigWithGit('develop', 'upstream'));
 
       await runPreCommit(0);
 
       // Should call checkBranchSync with upstream/develop instead of origin/main
-      expect(git.checkBranchSync).toHaveBeenCalledWith({
-        remoteBranch: 'upstream/develop',
-      });
+      expectBranchSyncCalledWith('upstream/develop');
     });
 
     it('should default to origin/main when git config is not provided', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        // No git config provided
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
+      setupSuccessfulPreCommit(createConfig());
 
       await runPreCommit(0);
 
       // Should default to origin/main
-      expect(git.checkBranchSync).toHaveBeenCalledWith({
-        remoteBranch: 'origin/main',
-      });
+      expectBranchSyncCalledWith('origin/main');
     });
 
     it('should respect mainBranch but use default origin when remoteOrigin not provided', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        git: {
-          mainBranch: 'master', // Custom main branch
-          // No remoteOrigin provided
-          autoSync: false,
-          warnIfBehind: true,
-        },
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
+      setupSuccessfulPreCommit(createConfigWithGit('master'));
 
       await runPreCommit(0);
 
       // Should use origin/master (custom branch with default origin)
-      expect(git.checkBranchSync).toHaveBeenCalledWith({
-        remoteBranch: 'origin/master',
-      });
+      expectBranchSyncCalledWith('origin/master');
     });
   });
 
   describe('secret scanning integration', () => {
     it('should run secret scanning before validation when enabled', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        hooks: {
-          preCommit: {
-            enabled: true,
-            secretScanning: {
-              enabled: true,
-              scanCommand: 'echo "No secrets found"', // Mock command that exits 0
-            },
-          },
-        },
-      };
+      setupSuccessfulPreCommit(
+        createConfigWithSecretScanning(true, 'echo "No secrets found"')
+      );
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       // Validation should still run after successful secret scan
-      expect(core.runValidation).toHaveBeenCalled();
+      expectValidationRan();
     });
 
     it('should block commit when secret scanning finds secrets', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        hooks: {
-          preCommit: {
-            enabled: true,
-            secretScanning: {
-              enabled: true,
-              scanCommand: 'exit 1', // Mock command that exits 1 (secrets found)
-            },
-          },
-        },
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-
-      // Mock secret scanning to fail (simulating secrets found)
-      const error: any = new Error('Command failed');
-      error.stdout = '';
-      error.stderr = 'Secrets detected';
-      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
-        throw error;
-      });
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        createConfigWithSecretScanning(true, 'exit 1')
+      );
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      setupSecretScanningFailure('', 'Secrets detected');
 
       await runPreCommit(1);
 
       // Validation should NOT run when secret scanning fails
-      expect(core.runValidation).not.toHaveBeenCalled();
+      expectValidationNotRan();
     });
 
     it('should skip secret scanning when disabled', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        hooks: {
-          preCommit: {
-            enabled: true,
-            secretScanning: {
-              enabled: false,
-              scanCommand: 'exit 1', // Would fail if run
-            },
-          },
-        },
-      };
+      setupSuccessfulPreCommit(
+        createConfigWithSecretScanning(false, 'exit 1') // Would fail if run
+      );
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       // Validation should run since scanning was skipped
-      expect(core.runValidation).toHaveBeenCalled();
+      expectValidationRan();
     });
 
     it('should skip secret scanning when secretScanning config not provided', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        hooks: {
-          preCommit: {
-            enabled: true,
-            // No secretScanning config
+      setupSuccessfulPreCommit(
+        createConfig({
+          hooks: {
+            preCommit: {
+              enabled: true,
+              // No secretScanning config
+            },
           },
-        },
-      };
+        })
+      );
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       // Validation should run since no scanning configured
-      expect(core.runValidation).toHaveBeenCalled();
+      expectValidationRan();
     });
 
     it('should handle missing scan tool gracefully', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        hooks: {
-          preCommit: {
-            enabled: true,
-            secretScanning: {
-              enabled: true,
-              scanCommand: 'nonexistent-tool --scan', // Command that doesn't exist
-            },
-          },
-        },
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-
-      // Mock tool execution to fail (simulating tool not found)
-      const error: any = new Error('Command not found');
-      error.stdout = '';
-      error.stderr = 'nonexistent-tool: command not found';
-      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
-        throw error;
-      });
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        createConfigWithSecretScanning(true, 'nonexistent-tool --scan')
+      );
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      setupSecretScanningFailure('', 'nonexistent-tool: command not found');
 
       await runPreCommit(1);
 
       // Should show error about missing tool
-      expect(console.error).toHaveBeenCalled();
+      expectErrorLogged();
       // Validation should NOT run when tool is missing
-      expect(core.runValidation).not.toHaveBeenCalled();
+      expectValidationNotRan();
     });
 
     it('should allow custom scan commands (detect-secrets)', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        hooks: {
-          preCommit: {
-            enabled: true,
-            secretScanning: {
-              enabled: true,
-              scanCommand: 'echo "detect-secrets scan complete"',
-            },
-          },
-        },
-      };
+      setupSuccessfulPreCommit(
+        createConfigWithSecretScanning(true, 'echo "detect-secrets scan complete"')
+      );
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       // Validation should run after successful scan
-      expect(core.runValidation).toHaveBeenCalled();
+      expectValidationRan();
     });
 
     it('should provide helpful error message when secrets detected', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-        hooks: {
-          preCommit: {
-            enabled: true,
-            secretScanning: {
-              enabled: true,
-              scanCommand: 'echo "Found: AWS_SECRET_KEY=abc123" && exit 1',
-            },
-          },
-        },
-      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        createConfigWithSecretScanning(true, 'echo "Found: AWS_SECRET_KEY=abc123" && exit 1')
+      );
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      setupSecretScanningFailure('Found: AWS_SECRET_KEY=abc123', 'Secret detected in staged files');
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-
-      // Mock secret scanning to fail (simulating secrets found)
-      const error: any = new Error('Command failed');
-      error.stdout = 'Found: AWS_SECRET_KEY=abc123';
-      error.stderr = 'Secret detected in staged files';
-      vi.mocked(utils.safeExecFromString).mockImplementation(() => {
-        throw error;
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-        throw new Error('Should have exited with error');
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      await runPreCommitExpectError(1);
 
       // Should show error message about secrets
-      expect(console.error).toHaveBeenCalled();
-      const errorCalls = vi.mocked(console.error).mock.calls;
-      const errorOutput = errorCalls.map(call => call.join(' ')).join('\n');
-      expect(errorOutput).toContain('secret');
+      expectErrorContains('secret');
     });
   });
 
   describe('validation caching integration', () => {
     it('should use shared workflow which provides caching', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [
-            {
-              name: 'Test',
-              steps: [{ name: 'Test Step', command: 'echo test' }]
-            }
-          ]
-        }
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        hasRemote: true,
-        behindBy: 0,
-        aheadBy: 0,
-      });
-
-      // Mock cache HIT scenario
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
-
-      const mockHistoryNote = {
-        treeHash: 'abc123def456',
-        runs: [
-          {
-            timestamp: '2025-10-23T20:00:00Z',
-            duration: 30000,
-            passed: true,
-            branch: 'feature/test',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: true,
-              timestamp: '2025-10-23T20:00:00Z',
-              treeHash: 'abc123def456',
-              duration: 30000,
-              phases: [
-                {
-                  name: 'Test',
-                  passed: true,
-                  steps: [{ name: 'Test Step', passed: true, duration: 1000 }]
-                }
-              ],
-            },
-          },
-        ],
-      };
-      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfigWithPhases());
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      setupCacheHit('abc123def456');
 
       await runPreCommit(0);
 
       // CRITICAL: Verify runValidation was NOT called (cache hit)
-      expect(core.runValidation).not.toHaveBeenCalled();
+      expectValidationNotRan();
 
       // Verify cache hit message was displayed
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validation already passed for current working tree')
-      );
+      expectCacheHitMessage();
     });
 
     it('should run validation when cache misses', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [
-            {
-              name: 'Test',
-              steps: [{ name: 'Test Step', command: 'echo test' }]
-            }
-          ]
-        }
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        hasRemote: true,
-        behindBy: 0,
-        aheadBy: 0,
-      });
-
-      // Mock cache MISS scenario
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
-      vi.mocked(history.readHistoryNote).mockResolvedValue(null); // No cache
-
-      // Mock successful validation
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
-
-      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
-        stable: true,
-        treeHashBefore: 'abc123def456',
-        treeHashAfter: 'abc123def456',
-      });
-
-      vi.mocked(history.recordValidationHistory).mockResolvedValue({
-        recorded: true,
-      });
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfigWithPhases());
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      setupCacheMiss('abc123def456');
+      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 
       await runPreCommit(0);
 
@@ -682,43 +610,10 @@ describe('pre-commit command', () => {
   // - Explicit command mode vs autodetect mode
 
   describe('merge detection', () => {
-    const mockConfig: VibeValidateConfig = {
-      version: '1.0',
-      validation: { phases: [] },
-    };
-
-    const setupMergeTest = (isMerging: boolean) => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.isMergeInProgress).mockReturnValue(isMerging);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: false, // Branch is behind
-        behindBy: 3,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-
-      // Only mock validation for merge case (normal case exits before validation)
-      if (isMerging) {
-        vi.mocked(core.runValidation).mockResolvedValue({
-          passed: true,
-          phasesRun: 0,
-          stepsRun: 0,
-          duration: 100,
-        });
-      }
-    };
-
     it('should skip branch sync check when merge is in progress', async () => {
       setupMergeTest(true);
-      preCommitCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0); // Should succeed
-        }
-      }
+      await runPreCommit(0);
 
       expect(git.isMergeInProgress).toHaveBeenCalled();
       expect(git.checkBranchSync).not.toHaveBeenCalled();
@@ -726,15 +621,8 @@ describe('pre-commit command', () => {
 
     it('should enforce branch sync check when NOT in merge', async () => {
       setupMergeTest(false);
-      preCommitCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1); // Should fail
-        }
-      }
+      await runPreCommit(1);
 
       expect(git.isMergeInProgress).toHaveBeenCalled();
       expect(git.checkBranchSync).toHaveBeenCalled();
@@ -743,171 +631,58 @@ describe('pre-commit command', () => {
 
   describe('work protection (Issue #69)', () => {
     it('should create worktree snapshot BEFORE checking branch sync', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-      };
+      setupSuccessfulPreCommit();
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
-      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date
-      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
+      await runPreCommit(0);
 
       // Verify getGitTreeHash was called
       expect(git.getGitTreeHash).toHaveBeenCalled();
 
       // Verify getGitTreeHash was called BEFORE checkBranchSync (using invocationCallOrder)
-      const getTreeHashOrder = vi.mocked(git.getGitTreeHash).mock.invocationCallOrder[0];
-      const checkSyncOrder = vi.mocked(git.checkBranchSync).mock.invocationCallOrder[0];
-      expect(getTreeHashOrder).toBeLessThan(checkSyncOrder);
+      expectSnapshotBeforeSync();
     });
 
     it('should show recovery instructions with snapshot hash when branch is behind tracking', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+      setupBranchBehind(3, true);
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
-      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
-
-      // Mock isCurrentBranchBehindTracking to return behind by 3 commits
-      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(3);
-
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: false,
-        behindBy: 3,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1); // Should fail when behind
-        }
-      }
+      await runPreCommit(1);
 
       // Snapshot should have been created before the error
       expect(git.getGitTreeHash).toHaveBeenCalled();
     });
 
     it('should show recovery instructions with snapshot hash when branch is behind origin/main', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-      };
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+      setupBranchBehind(2, false); // No tracking branch
 
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
-      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
-
-      // Mock no tracking branch issue
-      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(null);
-
-      // But behind origin/main
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: false,
-        behindBy: 2,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1); // Should fail when behind
-        }
-      }
+      await runPreCommit(1);
 
       // Snapshot should have been created before the error
       expect(git.getGitTreeHash).toHaveBeenCalled();
 
       // And before sync check (using invocationCallOrder)
-      const getTreeHashOrder = vi.mocked(git.getGitTreeHash).mock.invocationCallOrder[0];
-      const checkSyncOrder = vi.mocked(git.checkBranchSync).mock.invocationCallOrder[0];
-      expect(getTreeHashOrder).toBeLessThan(checkSyncOrder);
+      expectSnapshotBeforeSync();
     });
 
     it('should handle snapshot creation failure gracefully', async () => {
-      const mockConfig: VibeValidateConfig = {
-        version: '1.0',
-        validation: {
-          phases: [],
-        },
-      };
-
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
       vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
       vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date
 
       // Mock snapshot failure
       vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('Git tree hash failed'));
 
-      vi.mocked(git.checkBranchSync).mockResolvedValue({
-        isUpToDate: true,
-        behindBy: 0,
-        currentBranch: 'feature/test',
-        hasRemote: true,
-      });
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        phasesRun: 0,
-        stepsRun: 0,
-        duration: 100,
-      });
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 
-      preCommitCommand(env.program);
-
-      try {
-        await env.program.parseAsync(['pre-commit'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          // Should still succeed (fail-safe philosophy)
-          expect(err.exitCode).toBe(0);
-        }
-      }
+      await runPreCommit(0);
 
       // Should have attempted snapshot
       expect(git.getGitTreeHash).toHaveBeenCalled();
 
       // But validation should still run (fail-safe)
-      expect(core.runValidation).toHaveBeenCalled();
+      expectValidationRan();
     });
   });
 });

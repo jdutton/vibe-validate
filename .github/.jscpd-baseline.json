@@ -1154,6 +1154,42 @@
     },
     {
       "format": "typescript",
+      "lines": 24,
+      "fragment": "}],\n    totalErrors: 1,\n    summary: '1 error',\n    guidance: 'Fix it',\n    metadata: {\n      detection: {\n        extractor: 'test-extractor',\n        confidence: 100,\n        patterns: ['test'],\n        reason: 'Test',\n      },\n      confidence: 100,\n      completeness: 100,\n      issues: [],\n    },\n  }));\n}\n\n/**\n * Creates a mock plugin that returns multiple errors\n * Self-contained - works in sandbox.\n *\n * @returns Mock plugin\n */",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/extractors/test/helpers/sandboxed-extractor-helpers.ts",
+        "start": 137,
+        "end": 160,
+        "startLoc": {
+          "line": 137,
+          "column": 2,
+          "position": 749
+        },
+        "endLoc": {
+          "line": 160,
+          "column": 4,
+          "position": 855
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors/test/helpers/sandboxed-extractor-helpers.ts",
+        "start": 111,
+        "end": 134,
+        "startLoc": {
+          "line": 111,
+          "column": 2,
+          "position": 579
+        },
+        "endLoc": {
+          "line": 134,
+          "column": 4,
+          "position": 685
+        }
+      }
+    },
+    {
+      "format": "typescript",
       "lines": 15,
       "fragment": ", () => {\n      const entries: RunCacheNote[] = [\n        {\n          treeHash: 'abc123',\n          command: 'echo test',\n          workdir: '',\n          timestamp: '2025-11-09T22:00:00.000Z',\n          exitCode: 0,\n          durationSecs: 0.1,\n        },\n      ];\n\n      const cleaned = cleanRunCacheEntries(entries);\n\n      expect(cleaned[0]).not.toHaveProperty('workdir'",
       "tokens": 0,
@@ -1334,469 +1370,73 @@
     },
     {
       "format": "typescript",
-      "lines": 14,
-      "fragment": ",\n            uncommittedChanges: false,\n            result: {\n              passed: false,\n              timestamp: '2025-10-21T10:00:00Z',\n              treeHash: 'abc123def456',\n              phases: [],\n            }\n          }\n        ]\n      };\n\n      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');\n      vi.mocked(history.readHistoryNote).mockResolvedValue(multiRunNote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 171,
-        "end": 184,
-        "startLoc": {
-          "line": 171,
-          "column": 12,
-          "position": 1337
-        },
-        "endLoc": {
-          "line": 184,
-          "column": 13,
-          "position": 1423
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 114,
-        "end": 127,
-        "startLoc": {
-          "line": 114,
-          "column": 12,
-          "position": 947
-        },
-        "endLoc": {
-          "line": 127,
-          "column": 11,
-          "position": 1033
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ": HistoryNote = {\n        treeHash: 'abc123def456',\n        runs: [\n          {\n            id: 'run-1',\n            timestamp: '2025-10-21T10:00:00Z',\n            duration: 5000,\n            passed: false,\n            branch: 'main',\n            headCommit: 'commit123',\n            uncommittedChanges: false,\n            result: {\n              passed: false,\n              timestamp: '2025-10-21T10:00:00Z',\n              treeHash: 'abc123def456',\n              phases: [\n                {",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 198,
-        "end": 214,
-        "startLoc": {
-          "line": 198,
-          "column": 22,
-          "position": 1518
-        },
-        "endLoc": {
-          "line": 214,
-          "column": 2,
-          "position": 1625
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 105,
-        "end": 120,
-        "startLoc": {
-          "line": 105,
-          "column": 11,
-          "position": 883
-        },
-        "endLoc": {
-          "line": 120,
-          "column": 2,
-          "position": 988
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 25,
-      "fragment": "const failedNote: HistoryNote = {\n        treeHash: 'abc123def456',\n        runs: [\n          {\n            id: 'run-1',\n            timestamp: '2025-10-21T10:00:00Z',\n            duration: 5000,\n            passed: false,\n            branch: 'main',\n            headCommit: 'commit123',\n            uncommittedChanges: false,\n            result: {\n              passed: false,\n              timestamp: '2025-10-21T10:00:00Z',\n              treeHash: 'abc123def456',\n              phases: [],\n            }\n          }\n        ]\n      };\n\n      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');\n      vi.mocked(history.readHistoryNote).mockResolvedValue(failedNote);\n\n      await expect(checkValidationStatus(mockConfig,",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 259,
-        "end": 283,
-        "startLoc": {
-          "line": 259,
-          "column": 7,
-          "position": 2042
-        },
-        "endLoc": {
-          "line": 283,
-          "column": 2,
-          "position": 2208
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 105,
-        "end": 129,
-        "startLoc": {
-          "line": 105,
-          "column": 7,
-          "position": 880
-        },
-        "endLoc": {
-          "line": 129,
-          "column": 2,
-          "position": 1046
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": ": HistoryNote = {\n        treeHash: 'abc123def456',\n        runs: [\n          {\n            id: 'run-1',\n            timestamp: '2025-10-21T09:00:00Z',\n            duration: 5000,\n            passed: false,\n            branch: 'main',\n            headCommit: 'commit123',\n            uncommittedChanges: false,\n            result: {\n              passed: false,\n              timestamp: '2025-10-21T09:00:00Z',\n              treeHash: 'abc123def456',\n              phases: [],\n            }\n          },\n          {\n            id: 'run-2',\n            timestamp: '2025-10-21T10:00:00Z',\n            duration: 3000",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 344,
-        "end": 365,
-        "startLoc": {
-          "line": 344,
-          "column": 10,
-          "position": 2679
-        },
-        "endLoc": {
-          "line": 365,
-          "column": 5,
-          "position": 2815
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 147,
-        "end": 168,
-        "startLoc": {
-          "line": 147,
-          "column": 13,
-          "position": 1179
-        },
-        "endLoc": {
-          "line": 168,
-          "column": 5,
-          "position": 1315
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ": HistoryNote = {\n        treeHash: 'abc123def456',\n        runs: [\n          {\n            id: 'run-1',\n            timestamp: '2025-10-21T10:00:00Z',\n            duration: 5000,\n            passed: true,\n            branch: 'main',\n            headCommit: 'commit123',\n            uncommittedChanges: false,\n            result: {\n              passed: true,\n              timestamp: '2025-10-21T10:00:00Z',\n              treeHash: 'abc123def456',\n              phases: [\n                {",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 410,
-        "end": 426,
-        "startLoc": {
-          "line": 410,
-          "column": 21,
-          "position": 3112
-        },
-        "endLoc": {
-          "line": 426,
-          "column": 2,
-          "position": 3219
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 299,
-        "end": 314,
-        "startLoc": {
-          "line": 299,
-          "column": 11,
-          "position": 2362
-        },
-        "endLoc": {
-          "line": 314,
-          "column": 2,
-          "position": 2467
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ",\n              timestamp: '2025-10-21T10:00:00Z',\n              treeHash: 'abc123def456',\n              phases: [\n                {\n                  name: 'Pre-Qualification',\n                  durationSecs: 2.5,\n                  passed: true,\n                  steps: [\n                    { name: 'TypeScript', passed: true, durationSecs: 1.2 },\n                    { name: 'ESLint', passed: true, durationSecs: 1.3 }\n                  ]\n                },\n                {\n                  name: 'Testing',\n                  durationSecs: 2.5,\n                  passed: true",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 422,
-        "end": 438,
-        "startLoc": {
-          "line": 422,
-          "column": 5,
-          "position": 3196
-        },
-        "endLoc": {
-          "line": 438,
-          "column": 5,
-          "position": 3321
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 210,
-        "end": 226,
-        "startLoc": {
-          "line": 210,
-          "column": 6,
-          "position": 1602
-        },
-        "endLoc": {
-          "line": 226,
-          "column": 6,
-          "position": 1727
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ": HistoryNote = {\n        treeHash: 'abc123def456',\n        runs: [\n          {\n            id: 'run-1',\n            timestamp: '2025-10-21T10:00:00Z',\n            duration: 5000,\n            passed: true,\n            branch: 'main',\n            headCommit: 'commit123',\n            uncommittedChanges: false,\n            result: {\n              passed: true,\n              timestamp: '2025-10-21T10:00:00Z',\n              treeHash: 'abc123def456',\n              phases: undefined",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 460,
-        "end": 475,
-        "startLoc": {
-          "line": 460,
-          "column": 19,
-          "position": 3475
-        },
-        "endLoc": {
-          "line": 475,
-          "column": 10,
-          "position": 3579
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 299,
-        "end": 314,
-        "startLoc": {
-          "line": 299,
-          "column": 11,
-          "position": 2362
-        },
-        "endLoc": {
-          "line": 314,
-          "column": 2,
-          "position": 2466
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 8,
-      "fragment": ");\n\n      // Should output YAML to stdout (not console.log)\n      expect(stdoutWriteSpy).toHaveBeenCalled();\n      // First call is separator, second call is YAML content\n      expect(stdoutWriteSpy.mock.calls[0][0]).toBe('---\\n');\n      const yamlOutput = stdoutWriteSpy.mock.calls[1][0] as string;\n      expect(yamlOutput).toContain('exists: false'",
+      "fragment": "const failedNote = createHistoryNote([\n        createValidationRun({ passed: false })\n      ]);\n\n      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');\n      vi.mocked(history.readHistoryNote).mockResolvedValue(failedNote);\n\n      await expect(checkValidationStatus(mockConfig,",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 535,
-        "end": 542,
+        "start": 195,
+        "end": 202,
         "startLoc": {
-          "line": 535,
-          "column": 18,
-          "position": 4088
+          "line": 195,
+          "column": 7,
+          "position": 1610
         },
         "endLoc": {
-          "line": 542,
-          "column": 16,
-          "position": 4163
+          "line": 202,
+          "column": 2,
+          "position": 1680
         }
       },
       "secondFile": {
         "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 283,
-        "end": 290,
+        "start": 104,
+        "end": 111,
         "startLoc": {
-          "line": 283,
-          "column": 18,
-          "position": 2219
-        },
-        "endLoc": {
-          "line": 290,
-          "column": 16,
-          "position": 2294
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": "expect(stdoutWriteSpy).toHaveBeenCalled();\n      // First call is separator, second call is YAML content\n      expect(stdoutWriteSpy.mock.calls[0][0]).toBe('---\\n');\n      const yamlOutput = stdoutWriteSpy.mock.calls[1][0] as string;\n      expect(yamlOutput).toContain('exists: false');\n      expect(yamlOutput).toContain('treeHash: abc123def456'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 556,
-        "end": 561,
-        "startLoc": {
-          "line": 556,
+          "line": 104,
           "column": 7,
-          "position": 4288
+          "position": 858
         },
         "endLoc": {
-          "line": 561,
-          "column": 25,
-          "position": 4367
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 286,
-        "end": 543,
-        "startLoc": {
-          "line": 286,
-          "column": 7,
-          "position": 2227
-        },
-        "endLoc": {
-          "line": 543,
-          "column": 9,
-          "position": 4175
+          "line": 111,
+          "column": 2,
+          "position": 928
         }
       }
     },
     {
       "format": "typescript",
       "lines": 13,
-      "fragment": ");\n\n      await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow('process.exit(2)');\n\n      // Should output YAML to stdout\n      expect(stdoutWriteSpy).toHaveBeenCalled();\n      // First call is separator, second call is YAML content\n      expect(stdoutWriteSpy.mock.calls[0][0]).toBe('---\\n');\n      const yamlOutput = stdoutWriteSpy.mock.calls[1][0] as string;\n      expect(yamlOutput).toContain('exists: false');\n      expect(yamlOutput).toContain('treeHash: abc123def456');\n\n      // Should NOT use console.log for human-readable messages",
+      "fragment": ",\n          phases: [\n            createPhaseResult({\n              name: 'Pre-Qualification',\n              passed: true,\n              steps: [\n                { name: 'TypeScript', passed: true, durationSecs: 1.2 },\n                { name: 'ESLint', passed: true, durationSecs: 1.3 }\n              ]\n            }),\n            createPhaseResult({\n              name: 'Testing',\n              passed: true",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 570,
-        "end": 582,
-        "startLoc": {
-          "line": 570,
-          "column": 5,
-          "position": 4456
-        },
-        "endLoc": {
-          "line": 582,
-          "column": 58,
-          "position": 4572
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 551,
-        "end": 562,
-        "startLoc": {
-          "line": 551,
-          "column": 2,
-          "position": 4257
-        },
-        "endLoc": {
-          "line": 562,
-          "column": 7,
-          "position": 4372
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ",\n          },\n        ],\n      });\n\n      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));\n\n      const results = await fetcher.fetchChecks(123);\n\n      expect(results).toHaveLength(2);\n      expect(results[0]).toMatchObject({\n        type: 'external'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 230,
-        "end": 241,
-        "startLoc": {
-          "line": 230,
-          "column": 47,
-          "position": 1795
-        },
-        "endLoc": {
-          "line": 241,
-          "column": 11,
-          "position": 1878
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 191,
-        "end": 202,
-        "startLoc": {
-          "line": 191,
-          "column": 23,
-          "position": 1519
-        },
-        "endLoc": {
-          "line": 202,
-          "column": 16,
-          "position": 1602
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ", async () => {\n      const mockChecksResponse = JSON.stringify({\n        statusCheckRollup: [\n          {\n            __typename: 'CheckRun',\n            name: 'CI / Build',\n            status: 'COMPLETED',\n            conclusion: 'SUCCESS',\n            detailsUrl: 'https://github.com/test/test/actions/runs/12345',\n            startedAt: '2025-12-16T10:00:00Z',\n            completedAt: '2025-12-16T10:05:00Z',\n          },\n          {\n            __typename: 'StatusContext'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 256,
-        "end": 269,
-        "startLoc": {
-          "line": 256,
-          "column": 34,
-          "position": 1977
-        },
-        "endLoc": {
-          "line": 269,
-          "column": 16,
-          "position": 2070
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 172,
-        "end": 185,
-        "startLoc": {
-          "line": 172,
-          "column": 50,
-          "position": 1383
-        },
-        "endLoc": {
-          "line": 185,
-          "column": 11,
-          "position": 1476
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ",\n          },\n        ],\n      });\n\n      vi.mocked(safeExecSync).mockReturnValue(Buffer.from(mockChecksResponse));\n\n      const results = await fetcher.fetchChecks(123);\n\n      expect(results).toHaveLength(2);\n      expect(results[0].",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
         "start": 272,
-        "end": 282,
+        "end": 284,
         "startLoc": {
           "line": 272,
-          "column": 43,
-          "position": 2092
+          "column": 5,
+          "position": 2168
         },
         "endLoc": {
-          "line": 282,
-          "column": 2,
-          "position": 2165
+          "line": 284,
+          "column": 5,
+          "position": 2270
         }
       },
       "secondFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 191,
-        "end": 201,
+        "name": "packages/cli/test/utils/check-validation.test.ts",
+        "start": 153,
+        "end": 165,
         "startLoc": {
-          "line": 191,
-          "column": 23,
-          "position": 1519
+          "line": 153,
+          "column": 6,
+          "position": 1215
         },
         "endLoc": {
-          "line": 201,
-          "column": 2,
-          "position": 1592
+          "line": 165,
+          "column": 6,
+          "position": 1317
         }
       }
     },
@@ -1807,32 +1447,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 427,
-        "end": 437,
+        "start": 534,
+        "end": 544,
         "startLoc": {
-          "line": 427,
+          "line": 534,
           "column": 9,
-          "position": 3436
+          "position": 3910
         },
         "endLoc": {
-          "line": 437,
+          "line": 544,
           "column": 2,
-          "position": 3512
+          "position": 3986
         }
       },
       "secondFile": {
         "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 412,
-        "end": 421,
+        "start": 519,
+        "end": 528,
         "startLoc": {
-          "line": 412,
+          "line": 519,
           "column": 2,
-          "position": 3310
+          "position": 3784
         },
         "endLoc": {
-          "line": 421,
+          "line": 528,
           "column": 2,
-          "position": 3385
+          "position": 3859
         }
       }
     },
@@ -1843,68 +1483,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 442,
-        "end": 451,
+        "start": 549,
+        "end": 558,
         "startLoc": {
-          "line": 442,
+          "line": 549,
           "column": 4,
-          "position": 3566
+          "position": 4040
         },
         "endLoc": {
-          "line": 451,
+          "line": 558,
           "column": 2,
-          "position": 3639
+          "position": 4113
         }
       },
       "secondFile": {
         "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 389,
-        "end": 398,
+        "start": 496,
+        "end": 505,
         "startLoc": {
-          "line": 389,
+          "line": 496,
           "column": 4,
-          "position": 3005
+          "position": 3479
         },
         "endLoc": {
-          "line": 398,
+          "line": 505,
           "column": 2,
-          "position": 3078
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ",\n        baseRefName: 'main',\n        author: { login: 'testuser' },\n        isDraft: false,\n        mergeable: 'MERGEABLE',\n        mergeStateStatus: 'CLEAN',\n        labels: [],\n        closingIssuesReferences: { nodes: [] },\n      });\n\n      vi.mocked(safeExecSync).mockReturnValue(mockResponse",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 594,
-        "end": 604,
-        "startLoc": {
-          "line": 594,
-          "column": 10,
-          "position": 4856
-        },
-        "endLoc": {
-          "line": 604,
-          "column": 13,
-          "position": 4939
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/github-fetcher.test.ts",
-        "start": 145,
-        "end": 155,
-        "startLoc": {
-          "line": 145,
-          "column": 20,
-          "position": 1154
-        },
-        "endLoc": {
-          "line": 155,
-          "column": 7,
-          "position": 1237
+          "position": 3552
         }
       }
     },
@@ -2162,433 +1766,73 @@
     },
     {
       "format": "typescript",
-      "lines": 11,
-      "fragment": "stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Minimal YAML output",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 151,
-        "end": 161,
-        "startLoc": {
-          "line": 151,
-          "column": 7,
-          "position": 1508
-        },
-        "endLoc": {
-          "line": 161,
-          "column": 23,
-          "position": 1610
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 109,
-        "end": 119,
-        "startLoc": {
-          "line": 109,
-          "column": 7,
-          "position": 1121
-        },
-        "endLoc": {
-          "line": 119,
-          "column": 46,
-          "position": 1223
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Verbose output includes status indicator and explanatory text",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 166,
-        "end": 176,
-        "startLoc": {
-          "line": 166,
-          "column": 7,
-          "position": 1653
-        },
-        "endLoc": {
-          "line": 176,
-          "column": 65,
-          "position": 1758
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 85,
-        "end": 95,
-        "startLoc": {
-          "line": 85,
-          "column": 7,
-          "position": 835
-        },
-        "endLoc": {
-          "line": 95,
-          "column": 58,
-          "position": 940
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ",\n        phases: [],\n      };\n\n      const mockHistoryNote: HistoryNote = {\n        treeHash: mockTreeHash,\n        runs: [\n          {\n            branch: 'main',\n            timestamp: '2025-10-16T12:00:00.000Z',\n            result: mockResult,\n          },\n        ],\n      };\n\n      vi.mocked(hasHistoryForTree).mockResolvedValue(true);\n      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);\n    });\n\n    it('should display failed state (minimal output)'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 188,
-        "end": 207,
-        "startLoc": {
-          "line": 188,
-          "column": 24,
-          "position": 1870
-        },
-        "endLoc": {
-          "line": 207,
-          "column": 47,
-          "position": 1984
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 131,
-        "end": 150,
-        "startLoc": {
-          "line": 131,
-          "column": 13,
-          "position": 1381
-        },
-        "endLoc": {
-          "line": 150,
-          "column": 47,
-          "position": 1495
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", async () => {\n      stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Minimal YAML output\n      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: false'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 207,
-        "end": 219,
-        "startLoc": {
-          "line": 207,
-          "column": 47,
-          "position": 1985
-        },
-        "endLoc": {
-          "line": 219,
-          "column": 16,
-          "position": 2115
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 150,
-        "end": 162,
-        "startLoc": {
-          "line": 150,
-          "column": 47,
-          "position": 1496
-        },
-        "endLoc": {
-          "line": 162,
-          "column": 15,
-          "position": 1626
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", async () => {\n      stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Verbose output includes status indicator and explanatory text\n      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('FAILED'",
+      "lines": 14,
+      "fragment": ");\n      const mockHistoryNote = createMockHistoryNote(mockTreeHash, [\n        {\n          branch: 'main',\n          timestamp: '2025-10-16T12:00:00.000Z',\n          result: mockResult,\n        },\n      ]);\n\n      vi.mocked(hasHistoryForTree).mockResolvedValue(true);\n      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);\n    });\n\n    it('should display failed state (minimal output)'",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/state.test.ts",
         "start": 223,
-        "end": 235,
+        "end": 236,
         "startLoc": {
           "line": 223,
+          "column": 24,
+          "position": 1838
+        },
+        "endLoc": {
+          "line": 236,
           "column": 47,
-          "position": 2149
-        },
-        "endLoc": {
-          "line": 235,
-          "column": 9,
-          "position": 2282
+          "position": 1926
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/state.test.ts",
-        "start": 165,
-        "end": 177,
+        "start": 192,
+        "end": 205,
         "startLoc": {
-          "line": 165,
+          "line": 192,
+          "column": 13,
+          "position": 1556
+        },
+        "endLoc": {
+          "line": 205,
           "column": 47,
-          "position": 1641
-        },
-        "endLoc": {
-          "line": 177,
-          "column": 9,
-          "position": 1774
+          "position": 1644
         }
       }
     },
     {
       "format": "typescript",
       "lines": 13,
-      "fragment": ");\n\n      stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Verbose mode shows full output (no truncation)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 260,
-        "end": 272,
-        "startLoc": {
-          "line": 260,
-          "column": 16,
-          "position": 2472
-        },
-        "endLoc": {
-          "line": 272,
-          "column": 50,
-          "position": 2582
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 83,
-        "end": 95,
-        "startLoc": {
-          "line": 83,
-          "column": 6,
-          "position": 830
-        },
-        "endLoc": {
-          "line": 95,
-          "column": 58,
-          "position": 940
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ");\n\n      stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Should include structured error message",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 280,
-        "end": 292,
-        "startLoc": {
-          "line": 280,
-          "column": 2,
-          "position": 2677
-        },
-        "endLoc": {
-          "line": 292,
-          "column": 43,
-          "position": 2784
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 107,
-        "end": 119,
-        "startLoc": {
-          "line": 107,
-          "column": 2,
-          "position": 1116
-        },
-        "endLoc": {
-          "line": 119,
-          "column": 46,
-          "position": 1223
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ");\n\n      stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state', '--verbose'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Should include structured error + explanatory text",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 299,
-        "end": 311,
-        "startLoc": {
-          "line": 299,
-          "column": 2,
-          "position": 2910
-        },
-        "endLoc": {
-          "line": 311,
-          "column": 54,
-          "position": 3020
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 83,
-        "end": 95,
-        "startLoc": {
-          "line": 83,
-          "column": 6,
-          "position": 830
-        },
-        "endLoc": {
-          "line": 95,
-          "column": 58,
-          "position": 940
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "));\n\n      stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(1",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 319,
-        "end": 327,
-        "startLoc": {
-          "line": 319,
-          "column": 17,
-          "position": 3164
-        },
-        "endLoc": {
-          "line": 327,
-          "column": 2,
-          "position": 3260
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 280,
-        "end": 115,
-        "startLoc": {
-          "line": 280,
-          "column": 23,
-          "position": 2676
-        },
-        "endLoc": {
-          "line": 115,
-          "column": 2,
-          "position": 1211
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ");\n\n      stateCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['state'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof error === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }\n      }\n\n      // Should show the newer result (passed: true)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 372,
-        "end": 384,
-        "startLoc": {
-          "line": 372,
-          "column": 16,
-          "position": 3555
-        },
-        "endLoc": {
-          "line": 384,
-          "column": 47,
-          "position": 3662
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 107,
-        "end": 119,
-        "startLoc": {
-          "line": 107,
-          "column": 2,
-          "position": 1116
-        },
-        "endLoc": {
-          "line": 119,
-          "column": 46,
-          "position": 1223
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 15,
-      "fragment": ";\nimport { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';\n\n\n// Mock dependencies\nvi.mock('@vibe-validate/git', () => ({\n  getGitTreeHash: vi.fn(),\n}));\n\nvi.mock('@vibe-validate/history', () => ({\n  hasHistoryForTree: vi.fn(),\n  readHistoryNote: vi.fn(),\n}));\n\n// Helper to get all console.log output as strings",
+      "fragment": ";\nimport { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';\n\n\n// Mock dependencies\nvi.mock('@vibe-validate/git', () => ({\n  getGitTreeHash: vi.fn(),\n}));\n\nvi.mock('@vibe-validate/history', () => ({\n  hasHistoryForTree: vi.fn(),\n  readHistoryNote: vi.fn(),\n}",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/snapshot.test.ts",
         "start": 6,
-        "end": 20,
+        "end": 18,
         "startLoc": {
           "line": 6,
           "column": 33,
           "position": 84
         },
         "endLoc": {
+          "line": 18,
+          "column": 2,
+          "position": 177
+        }
+      },
+      "secondFile": {
+        "name": "packages/cli/test/commands/state.test.ts",
+        "start": 8,
+        "end": 20,
+        "startLoc": {
+          "line": 8,
+          "column": 35,
+          "position": 115
+        },
+        "endLoc": {
           "line": 20,
-          "column": 51,
-          "position": 183
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 7,
-        "end": 21,
-        "startLoc": {
-          "line": 7,
-          "column": 30,
-          "position": 99
-        },
-        "endLoc": {
-          "line": 21,
-          "column": 9,
-          "position": 198
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": "beforeEach(() => {\n    env = setupCommanderTest();\n\n    // Default mock implementations\n    vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHash);\n    vi.mocked(hasHistoryForTree).mockResolvedValue(false);\n    vi.mocked(readHistoryNote).mockResolvedValue(null);\n  });\n\n  afterEach(() => {\n    env.cleanup();\n    vi.restoreAllMocks();\n  });\n\n  describe('command registration', () => {\n    it('should register snapshot command with correct name'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 64,
-        "end": 79,
-        "startLoc": {
-          "line": 64,
-          "column": 3,
-          "position": 578
-        },
-        "endLoc": {
-          "line": 79,
-          "column": 53,
-          "position": 697
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 25,
-        "end": 40,
-        "startLoc": {
-          "line": 25,
-          "column": 3,
-          "position": 231
-        },
-        "endLoc": {
-          "line": 40,
-          "column": 50,
-          "position": 350
+          "column": 22,
+          "position": 209
         }
       }
     },
@@ -2769,690 +2013,6 @@
           "line": 26,
           "column": 46,
           "position": 227
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 19,
-      "fragment": "};\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      await runPreCommit(0);\n\n      // Should default to origin/main",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 191,
-        "end": 209,
-        "startLoc": {
-          "line": 191,
-          "column": 7,
-          "position": 1643
-        },
-        "endLoc": {
-          "line": 209,
-          "column": 33,
-          "position": 1769
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 160,
-        "end": 178,
-        "startLoc": {
-          "line": 160,
-          "column": 7,
-          "position": 1429
-        },
-        "endLoc": {
-          "line": 178,
-          "column": 76,
-          "position": 1555
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": "autoSync: false,\n          warnIfBehind: true,\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      await runPreCommit(0);\n\n      // Should use origin/master (custom branch with default origin)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 224,
-        "end": 245,
-        "startLoc": {
-          "line": 224,
-          "column": 11,
-          "position": 1872
-        },
-        "endLoc": {
-          "line": 245,
-          "column": 64,
-          "position": 2016
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 157,
-        "end": 178,
-        "startLoc": {
-          "line": 157,
-          "column": 11,
-          "position": 1411
-        },
-        "endLoc": {
-          "line": 178,
-          "column": 76,
-          "position": 1555
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 19,
-      "fragment": ",\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 266,
-        "end": 284,
-        "startLoc": {
-          "line": 266,
-          "column": 2,
-          "position": 2165
-        },
-        "endLoc": {
-          "line": 284,
-          "column": 17,
-          "position": 2288
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 158,
-        "end": 176,
-        "startLoc": {
-          "line": 158,
-          "column": 5,
-          "position": 1422
-        },
-        "endLoc": {
-          "line": 176,
-          "column": 6,
-          "position": 1545
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": "},\n          },\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n\n      // Mock secret scanning to fail (simulating secrets found)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 310,
-        "end": 323,
-        "startLoc": {
-          "line": 310,
-          "column": 13,
-          "position": 2507
-        },
-        "endLoc": {
-          "line": 323,
-          "column": 59,
-          "position": 2588
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 265,
-        "end": 169,
-        "startLoc": {
-          "line": 265,
-          "column": 13,
-          "position": 2160
-        },
-        "endLoc": {
-          "line": 169,
-          "column": 3,
-          "position": 1497
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 30,
-      "fragment": "},\n          },\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0); // Should succeed\n        }\n      }\n\n      // Validation should run since scanning was skipped",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 349,
-        "end": 378,
-        "startLoc": {
-          "line": 349,
-          "column": 13,
-          "position": 2787
-        },
-        "endLoc": {
-          "line": 378,
-          "column": 52,
-          "position": 3019
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 265,
-        "end": 294,
-        "startLoc": {
-          "line": 265,
-          "column": 13,
-          "position": 2160
-        },
-        "endLoc": {
-          "line": 294,
-          "column": 60,
-          "position": 2392
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 29,
-      "fragment": "},\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0); // Should succeed\n        }\n      }\n\n      // Validation should run since no scanning configured",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 392,
-        "end": 420,
-        "startLoc": {
-          "line": 392,
-          "column": 11,
-          "position": 3115
-        },
-        "endLoc": {
-          "line": 420,
-          "column": 54,
-          "position": 3343
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 266,
-        "end": 294,
-        "startLoc": {
-          "line": 266,
-          "column": 11,
-          "position": 2164
-        },
-        "endLoc": {
-          "line": 294,
-          "column": 60,
-          "position": 2392
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": "},\n          },\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n\n      // Mock tool execution to fail (simulating tool not found)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 436,
-        "end": 449,
-        "startLoc": {
-          "line": 436,
-          "column": 13,
-          "position": 3458
-        },
-        "endLoc": {
-          "line": 449,
-          "column": 59,
-          "position": 3539
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 265,
-        "end": 169,
-        "startLoc": {
-          "line": 265,
-          "column": 13,
-          "position": 2160
-        },
-        "endLoc": {
-          "line": 169,
-          "column": 3,
-          "position": 1497
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 30,
-      "fragment": "},\n          },\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0); // Should succeed\n        }\n      }\n\n      // Validation should run after successful scan",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 477,
-        "end": 506,
-        "startLoc": {
-          "line": 477,
-          "column": 13,
-          "position": 3752
-        },
-        "endLoc": {
-          "line": 506,
-          "column": 47,
-          "position": 3984
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 265,
-        "end": 294,
-        "startLoc": {
-          "line": 265,
-          "column": 13,
-          "position": 2160
-        },
-        "endLoc": {
-          "line": 294,
-          "column": 60,
-          "position": 2392
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ",\n            },\n          },\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n\n      // Mock secret scanning to fail (simulating secrets found)\n      const error: any = new Error('Command failed');\n      error.stdout = 'Found: AWS_SECRET_KEY=abc123'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 521,
-        "end": 537,
-        "startLoc": {
-          "line": 521,
-          "column": 48,
-          "position": 4094
-        },
-        "endLoc": {
-          "line": 537,
-          "column": 31,
-          "position": 4205
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 476,
-        "end": 325,
-        "startLoc": {
-          "line": 476,
-          "column": 38,
-          "position": 3749
-        },
-        "endLoc": {
-          "line": 325,
-          "column": 3,
-          "position": 2615
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": ", async () => {\n      const mockConfig: VibeValidateConfig = {\n        version: '1.0',\n        validation: {\n          phases: [\n            {\n              name: 'Test',\n              steps: [{ name: 'Test Step', command: 'echo test' }]\n            }\n          ]\n        }\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        hasRemote: true,\n        behindBy: 0,\n        aheadBy: 0,\n      });\n\n      // Mock cache MISS scenario",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 626,
-        "end": 647,
-        "startLoc": {
-          "line": 626,
-          "column": 42,
-          "position": 4895
-        },
-        "endLoc": {
-          "line": 647,
-          "column": 28,
-          "position": 5047
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 563,
-        "end": 584,
-        "startLoc": {
-          "line": 563,
-          "column": 52,
-          "position": 4468
-        },
-        "endLoc": {
-          "line": 584,
-          "column": 27,
-          "position": 4620
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ");\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0); // Should succeed\n        }\n      }\n\n      expect",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 712,
-        "end": 723,
-        "startLoc": {
-          "line": 712,
-          "column": 5,
-          "position": 5500
-        },
-        "endLoc": {
-          "line": 723,
-          "column": 7,
-          "position": 5608
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 282,
-        "end": 294,
-        "startLoc": {
-          "line": 282,
-          "column": 2,
-          "position": 2283
-        },
-        "endLoc": {
-          "line": 294,
-          "column": 60,
-          "position": 2392
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ");\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(1",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 728,
-        "end": 735,
-        "startLoc": {
-          "line": 728,
-          "column": 6,
-          "position": 5660
-        },
-        "endLoc": {
-          "line": 735,
-          "column": 2,
-          "position": 5754
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 282,
-        "end": 290,
-        "startLoc": {
-          "line": 282,
-          "column": 2,
-          "position": 2283
-        },
-        "endLoc": {
-          "line": 290,
-          "column": 2,
-          "position": 2378
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": ");\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(0);\n        }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 756,
-        "end": 777,
-        "startLoc": {
-          "line": 756,
-          "column": 2,
-          "position": 5938
-        },
-        "endLoc": {
-          "line": 777,
-          "column": 2,
-          "position": 6132
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 162,
-        "end": 290,
-        "startLoc": {
-          "line": 162,
-          "column": 11,
-          "position": 1446
-        },
-        "endLoc": {
-          "line": 290,
-          "column": 18,
-          "position": 2382
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ", async () => {\n      const mockConfig: VibeValidateConfig = {\n        version: '1.0',\n        validation: {\n          phases: [],\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');\n      vi.mocked(git.getPartiallyStagedFiles",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 789,
-        "end": 799,
-        "startLoc": {
-          "line": 789,
-          "column": 86,
-          "position": 6228
-        },
-        "endLoc": {
-          "line": 799,
-          "column": 24,
-          "position": 6320
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 745,
-        "end": 755,
-        "startLoc": {
-          "line": 745,
-          "column": 62,
-          "position": 5821
-        },
-        "endLoc": {
-          "line": 755,
-          "column": 30,
-          "position": 5913
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": ",\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(1); // Should fail when behind",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 808,
-        "end": 817,
-        "startLoc": {
-          "line": 808,
-          "column": 5,
-          "position": 6391
-        },
-        "endLoc": {
-          "line": 817,
-          "column": 27,
-          "position": 6494
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 281,
-        "end": 735,
-        "startLoc": {
-          "line": 281,
-          "column": 4,
-          "position": 2279
-        },
-        "endLoc": {
-          "line": 735,
-          "column": 15,
-          "position": 5758
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", async () => {\n      const mockConfig: VibeValidateConfig = {\n        version: '1.0',\n        validation: {\n          phases: [],\n        },\n      };\n\n      vi.mocked(configLoader.loadConfig).mockResolvedValue(mockConfig);\n      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');\n      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);\n\n      // Mock no tracking branch issue",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 825,
-        "end": 837,
-        "startLoc": {
-          "line": 825,
-          "column": 89,
-          "position": 6529
-        },
-        "endLoc": {
-          "line": 837,
-          "column": 33,
-          "position": 6633
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 745,
-        "end": 801,
-        "startLoc": {
-          "line": 745,
-          "column": 62,
-          "position": 5821
-        },
-        "endLoc": {
-          "line": 801,
-          "column": 68,
-          "position": 6332
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 19,
-      "fragment": ",\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          expect(err.exitCode).toBe(1); // Should fail when behind\n        }\n      }\n\n      // Snapshot should have been created before the error\n      expect(git.getGitTreeHash).toHaveBeenCalled();\n\n      // And before sync check (using invocationCallOrder)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 843,
-        "end": 861,
-        "startLoc": {
-          "line": 843,
-          "column": 2,
-          "position": 6681
-        },
-        "endLoc": {
-          "line": 861,
-          "column": 53,
-          "position": 6825
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 806,
-        "end": 823,
-        "startLoc": {
-          "line": 806,
-          "column": 2,
-          "position": 6377
-        },
-        "endLoc": {
-          "line": 823,
-          "column": 2,
-          "position": 6520
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": "const getTreeHashOrder = vi.mocked(git.getGitTreeHash).mock.invocationCallOrder[0];\n      const checkSyncOrder = vi.mocked(git.checkBranchSync).mock.invocationCallOrder[0];\n      expect(getTreeHashOrder).toBeLessThan(checkSyncOrder);\n    });\n\n    it('should handle snapshot creation failure gracefully'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 862,
-        "end": 867,
-        "startLoc": {
-          "line": 862,
-          "column": 7,
-          "position": 6828
-        },
-        "endLoc": {
-          "line": 867,
-          "column": 53,
-          "position": 6896
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 784,
-        "end": 789,
-        "startLoc": {
-          "line": 784,
-          "column": 7,
-          "position": 6159
-        },
-        "endLoc": {
-          "line": 789,
-          "column": 86,
-          "position": 6227
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": ");\n\n      vi.mocked(git.checkBranchSync).mockResolvedValue({\n        isUpToDate: true,\n        behindBy: 0,\n        currentBranch: 'feature/test',\n        hasRemote: true,\n      });\n      vi.mocked(core.runValidation).mockResolvedValue({\n        passed: true,\n        phasesRun: 0,\n        stepsRun: 0,\n        duration: 100,\n      });\n\n      preCommitCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['pre-commit'], { from: 'user' });\n      } catch (err: unknown) {\n        if (err && typeof err === 'object' && 'exitCode' in err) {\n          // Should still succeed (fail-safe philosophy)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 880,
-        "end": 901,
-        "startLoc": {
-          "line": 880,
-          "column": 2,
-          "position": 7023
-        },
-        "endLoc": {
-          "line": 901,
-          "column": 47,
-          "position": 7204
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 162,
-        "end": 290,
-        "startLoc": {
-          "line": 162,
-          "column": 11,
-          "position": 1446
-        },
-        "endLoc": {
-          "line": 290,
-          "column": 7,
-          "position": 2369
         }
       }
     },
@@ -3818,22 +2378,58 @@
     },
     {
       "format": "typescript",
+      "lines": 10,
+      "fragment": "program.parseAsync(args, { from: 'user' });\n    return 0;\n  } catch (err: unknown) {\n    // Commander exitOverride throws CommanderError with exitCode\n    if (err && typeof err === 'object' && 'exitCode' in err) {\n      return (err as { exitCode: number }).exitCode;\n    }\n    // process.exit throws Error with message \"process.exit(code)\"\n    if (err instanceof Error && err.message.startsWith('process.exit(')) {\n      const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/cli/test/commands/config.test.ts",
+        "start": 94,
+        "end": 103,
+        "startLoc": {
+          "line": 94,
+          "column": 2,
+          "position": 595
+        },
+        "endLoc": {
+          "line": 103,
+          "column": 6,
+          "position": 715
+        }
+      },
+      "secondFile": {
+        "name": "packages/cli/test/commands/state.test.ts",
+        "start": 74,
+        "end": 83,
+        "startLoc": {
+          "line": 74,
+          "column": 2,
+          "position": 455
+        },
+        "endLoc": {
+          "line": 83,
+          "column": 27,
+          "position": 575
+        }
+      }
+    },
+    {
+      "format": "typescript",
       "lines": 12,
       "fragment": "${Date.now()}`);\n    testDir = mkdirSyncReal(targetDir, { recursive: true });\n\n    // Save original cwd and change to test directory\n    originalCwd = process.cwd();\n    process.chdir(testDir);\n\n    // Setup Commander test environment\n    env = setupCommanderTest();\n\n    // Reset mocks\n    vi.mocked(configLoader",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/config.test.ts",
-        "start": 30,
-        "end": 41,
+        "start": 138,
+        "end": 149,
         "startLoc": {
-          "line": 30,
+          "line": 138,
           "column": 28,
-          "position": 295
+          "position": 933
         },
         "endLoc": {
-          "line": 41,
+          "line": 149,
           "column": 13,
-          "position": 375
+          "position": 1013
         }
       },
       "secondFile": {
@@ -3859,31 +2455,31 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/config.test.ts",
-        "start": 44,
-        "end": 64,
+        "start": 152,
+        "end": 172,
         "startLoc": {
-          "line": 44,
+          "line": 152,
           "column": 3,
-          "position": 416
+          "position": 1054
         },
         "endLoc": {
-          "line": 64,
+          "line": 172,
           "column": 9,
-          "position": 528
+          "position": 1166
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
         "start": 110,
-        "end": 133,
+        "end": 130,
         "startLoc": {
           "line": 110,
           "column": 3,
           "position": 1077
         },
         "endLoc": {
-          "line": 133,
-          "column": 6,
+          "line": 130,
+          "column": 76,
           "position": 1189
         }
       }
@@ -3895,140 +2491,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/config.test.ts",
-        "start": 84,
-        "end": 90,
+        "start": 192,
+        "end": 198,
         "startLoc": {
-          "line": 84,
+          "line": 192,
           "column": 35,
-          "position": 745
+          "position": 1383
         },
         "endLoc": {
-          "line": 90,
+          "line": 198,
           "column": 16,
-          "position": 827
+          "position": 1465
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/config.test.ts",
-        "start": 75,
-        "end": 81,
+        "start": 183,
+        "end": 189,
         "startLoc": {
-          "line": 75,
+          "line": 183,
           "column": 36,
-          "position": 643
+          "position": 1281
         },
         "endLoc": {
-          "line": 81,
+          "line": 189,
           "column": 13,
-          "position": 725
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "configCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['config'], { from: 'user' });\n      } catch (error: unknown) {\n        if (error && typeof error === 'object' && 'exitCode' in error) {\n          expect(error.exitCode).toBe(1);\n        }\n      }\n\n      expect(console.error).toHaveBeenCalledWith(\n        expect.stringContaining('Configuration is invalid'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 167,
-        "end": 178,
-        "startLoc": {
-          "line": 167,
-          "column": 7,
-          "position": 1520
-        },
-        "endLoc": {
-          "line": 178,
-          "column": 27,
-          "position": 1637
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 99,
-        "end": 109,
-        "startLoc": {
-          "line": 99,
-          "column": 7,
-          "position": 897
-        },
-        "endLoc": {
-          "line": 109,
-          "column": 30,
-          "position": 1012
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ", async () => {\n      configCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['config'], { from: 'user' });\n      } catch (error: unknown) {\n        if (error && typeof error === 'object' && 'exitCode' in error) {\n          expect(error.exitCode).toBe(0",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 203,
-        "end": 210,
-        "startLoc": {
-          "line": 203,
-          "column": 58,
-          "position": 1840
-        },
-        "endLoc": {
-          "line": 210,
-          "column": 2,
-          "position": 1942
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 166,
-        "end": 105,
-        "startLoc": {
-          "line": 166,
-          "column": 44,
-          "position": 1508
-        },
-        "endLoc": {
-          "line": 105,
-          "column": 2,
-          "position": 987
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ");\n\n      configCommand(env.program);\n\n      try {\n        await env.program.parseAsync(['config'], { from: 'user' });\n      } catch (error: unknown) {\n        if (error && typeof error === 'object' && 'exitCode' in error) {\n          expect(error.exitCode).toBe(1);\n        }\n      }\n\n      expect(console.error).toHaveBeenCalledWith(\n        expect.stringContaining('Failed to load configuration'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 238,
-        "end": 251,
-        "startLoc": {
-          "line": 238,
-          "column": 2,
-          "position": 2221
-        },
-        "endLoc": {
-          "line": 251,
-          "column": 31,
-          "position": 2343
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 97,
-        "end": 109,
-        "startLoc": {
-          "line": 97,
-          "column": 5,
-          "position": 892
-        },
-        "endLoc": {
-          "line": 109,
-          "column": 30,
-          "position": 1012
+          "position": 1363
         }
       }
     },
@@ -4610,1230 +3098,6 @@
     },
     {
       "format": "typescript",
-      "lines": 10,
-      "fragment": ", async () => {\n      const cleanup = new PostPRMergeCleanup();\n\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 222,
-        "end": 231,
-        "startLoc": {
-          "line": 222,
-          "column": 55,
-          "position": 1763
-        },
-        "endLoc": {
-          "line": 231,
-          "column": 17,
-          "position": 1848
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 160,
-        "end": 169,
-        "startLoc": {
-          "line": 160,
-          "column": 32,
-          "position": 1239
-        },
-        "endLoc": {
-          "line": 169,
-          "column": 37,
-          "position": 1324
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ");\n\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult('feature/test\\nmain\\n'))\n        // Regular delete fails",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 223,
-        "end": 233,
-        "startLoc": {
-          "line": 223,
-          "column": 2,
-          "position": 1785
-        },
-        "endLoc": {
-          "line": 233,
-          "column": 24,
-          "position": 1863
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 137,
-        "end": 147,
-        "startLoc": {
-          "line": 137,
-          "column": 2,
-          "position": 1032
-        },
-        "endLoc": {
-          "line": 147,
-          "column": 2,
-          "position": 1110
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", async () => {\n      const cleanup = new PostPRMergeCleanup();\n\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult('feature/test\\nmain\\n'))\n        // Regular delete fails\n        .mockReturnValueOnce(createSpawnError('delete failed'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 251,
-        "end": 263,
-        "startLoc": {
-          "line": 251,
-          "column": 50,
-          "position": 1995
-        },
-        "endLoc": {
-          "line": 263,
-          "column": 16,
-          "position": 2103
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 160,
-        "end": 234,
-        "startLoc": {
-          "line": 160,
-          "column": 32,
-          "position": 1239
-        },
-        "endLoc": {
-          "line": 234,
-          "column": 26,
-          "position": 1871
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": ", async () => {\n      const cleanup = new PostPRMergeCleanup();\n\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        // Return main in the branch list (should be filtered)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 292,
-        "end": 301,
-        "startLoc": {
-          "line": 292,
-          "column": 51,
-          "position": 2347
-        },
-        "endLoc": {
-          "line": 301,
-          "column": 55,
-          "position": 2427
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 160,
-        "end": 169,
-        "startLoc": {
-          "line": 160,
-          "column": 32,
-          "position": 1239
-        },
-        "endLoc": {
-          "line": 169,
-          "column": 2,
-          "position": 1319
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": ", async () => {\n      const cleanup = new PostPRMergeCleanup();\n\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 314,
-        "end": 323,
-        "startLoc": {
-          "line": 314,
-          "column": 40,
-          "position": 2531
-        },
-        "endLoc": {
-          "line": 323,
-          "column": 3,
-          "position": 2616
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 160,
-        "end": 169,
-        "startLoc": {
-          "line": 160,
-          "column": 32,
-          "position": 1239
-        },
-        "endLoc": {
-          "line": 169,
-          "column": 37,
-          "position": 1324
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": ", async () => {\n      const cleanup = new PostPRMergeCleanup();\n\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult('feature/test-123\\n'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 333,
-        "end": 342,
-        "startLoc": {
-          "line": 333,
-          "column": 52,
-          "position": 2679
-        },
-        "endLoc": {
-          "line": 342,
-          "column": 21,
-          "position": 2764
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 160,
-        "end": 169,
-        "startLoc": {
-          "line": 160,
-          "column": 32,
-          "position": 1239
-        },
-        "endLoc": {
-          "line": 169,
-          "column": 37,
-          "position": 1324
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ", async () => {\n      const cleanup = new PostPRMergeCleanup();\n\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        // Merge status check fails - should skip branch",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 376,
-        "end": 386,
-        "startLoc": {
-          "line": 376,
-          "column": 42,
-          "position": 3037
-        },
-        "endLoc": {
-          "line": 386,
-          "column": 49,
-          "position": 3127
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 160,
-        "end": 146,
-        "startLoc": {
-          "line": 160,
-          "column": 32,
-          "position": 1239
-        },
-        "endLoc": {
-          "line": 146,
-          "column": 2,
-          "position": 1100
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''));\n\n      const result = await cleanupMergedBranches",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 401,
-        "end": 409,
-        "startLoc": {
-          "line": 401,
-          "column": 17,
-          "position": 3250
-        },
-        "endLoc": {
-          "line": 409,
-          "column": 22,
-          "position": 3324
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 363,
-        "end": 371,
-        "startLoc": {
-          "line": 363,
-          "column": 23,
-          "position": 2931
-        },
-        "endLoc": {
-          "line": 371,
-          "column": 8,
-          "position": 3005
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ", async () => {\n      mockSpawnSync\n        .mockReturnValueOnce(createSpawnResult('feature/test\\n'))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''))\n        .mockReturnValueOnce(createSpawnResult(''));\n\n      const result = await cleanupMergedBranches({",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 415,
-        "end": 425,
-        "startLoc": {
-          "line": 415,
-          "column": 32,
-          "position": 3368
-        },
-        "endLoc": {
-          "line": 425,
-          "column": 2,
-          "position": 3465
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/post-merge-cleanup.test.ts",
-        "start": 399,
-        "end": 409,
-        "startLoc": {
-          "line": 399,
-          "column": 50,
-          "position": 3229
-        },
-        "endLoc": {
-          "line": 409,
-          "column": 2,
-          "position": 3326
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ", () => {\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {\n        if (!/^[0-9a-f]{4,40}$/.test(hash)) {\n          throw new Error('Invalid tree hash: must be hexadecimal');\n        }\n      });\n\n      expect(() => addNote('vibe-validate/test' as NotesRef, 'main'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 42,
-        "end": 49,
-        "startLoc": {
-          "line": 42,
-          "column": 29,
-          "position": 338
-        },
-        "endLoc": {
-          "line": 49,
-          "column": 7,
-          "position": 419
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 31,
-        "end": 38,
-        "startLoc": {
-          "line": 31,
-          "column": 40,
-          "position": 225
-        },
-        "endLoc": {
-          "line": 38,
-          "column": 7,
-          "position": 306
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", () => {\n      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;\n\n      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});\n      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({\n        success: true,\n        stdout: '',\n        stderr: '',\n        exitCode: 0,\n      });\n\n      // Without force",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 75,
-        "end": 87,
-        "startLoc": {
-          "line": 75,
-          "column": 37,
-          "position": 708
-        },
-        "endLoc": {
-          "line": 87,
-          "column": 17,
-          "position": 825
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 55,
-        "end": 67,
-        "startLoc": {
-          "line": 55,
-          "column": 34,
-          "position": 490
-        },
-        "endLoc": {
-          "line": 67,
-          "column": 6,
-          "position": 607
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": ", () => {\n    it('should reject symbolic refs like HEAD', () => {\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {\n        if (!/^[0-9a-f]{4,40}$/.test(hash)) {\n          throw new Error('Invalid tree hash: must be hexadecimal');\n        }\n      });\n\n      expect(() => readNote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 105,
-        "end": 113,
-        "startLoc": {
-          "line": 105,
-          "column": 11,
-          "position": 1000
-        },
-        "endLoc": {
-          "line": 113,
-          "column": 9,
-          "position": 1085
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 30,
-        "end": 38,
-        "startLoc": {
-          "line": 30,
-          "column": 10,
-          "position": 212
-        },
-        "endLoc": {
-          "line": 38,
-          "column": 8,
-          "position": 297
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ", () => {\n      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;\n\n      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});\n      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({\n        success: true,\n        stdout: 'note content'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 117,
-        "end": 124,
-        "startLoc": {
-          "line": 117,
-          "column": 44,
-          "position": 1120
-        },
-        "endLoc": {
-          "line": 124,
-          "column": 15,
-          "position": 1213
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 55,
-        "end": 62,
-        "startLoc": {
-          "line": 55,
-          "column": 34,
-          "position": 490
-        },
-        "endLoc": {
-          "line": 62,
-          "column": 3,
-          "position": 583
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": ", () => {\n      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;\n\n      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});\n      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({\n        success: false",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 137,
-        "end": 143,
-        "startLoc": {
-          "line": 137,
-          "column": 46,
-          "position": 1329
-        },
-        "endLoc": {
-          "line": 143,
-          "column": 6,
-          "position": 1415
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 55,
-        "end": 61,
-        "startLoc": {
-          "line": 55,
-          "column": 34,
-          "position": 490
-        },
-        "endLoc": {
-          "line": 61,
-          "column": 5,
-          "position": 576
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": ", () => {\n    it('should reject symbolic refs like HEAD', () => {\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {\n        if (!/^[0-9a-f]{4,40}$/.test(hash)) {\n          throw new Error('Invalid tree hash: must be hexadecimal');\n        }\n      });\n\n      expect(() => removeNote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 154,
-        "end": 162,
-        "startLoc": {
-          "line": 154,
-          "column": 13,
-          "position": 1491
-        },
-        "endLoc": {
-          "line": 162,
-          "column": 11,
-          "position": 1576
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 30,
-        "end": 38,
-        "startLoc": {
-          "line": 30,
-          "column": 10,
-          "position": 212
-        },
-        "endLoc": {
-          "line": 38,
-          "column": 8,
-          "position": 297
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ", () => {\n      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;\n\n      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});\n      vi.mocked(gitExecutor.tryGitCommand",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 166,
-        "end": 171,
-        "startLoc": {
-          "line": 166,
-          "column": 42,
-          "position": 1611
-        },
-        "endLoc": {
-          "line": 171,
-          "column": 14,
-          "position": 1686
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 55,
-        "end": 60,
-        "startLoc": {
-          "line": 55,
-          "column": 34,
-          "position": 490
-        },
-        "endLoc": {
-          "line": 60,
-          "column": 18,
-          "position": 565
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ", () => {\n      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;\n\n      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});\n      vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(false",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 181,
-        "end": 186,
-        "startLoc": {
-          "line": 181,
-          "column": 47,
-          "position": 1783
-        },
-        "endLoc": {
-          "line": 186,
-          "column": 6,
-          "position": 1863
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 55,
-        "end": 171,
-        "startLoc": {
-          "line": 55,
-          "column": 34,
-          "position": 490
-        },
-        "endLoc": {
-          "line": 171,
-          "column": 5,
-          "position": 1691
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": ", () => {\n    it('should reject symbolic refs like HEAD', () => {\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation((hash) => {\n        if (!/^[0-9a-f]{4,40}$/.test(hash)) {\n          throw new Error('Invalid tree hash: must be hexadecimal');\n        }\n      });\n\n      expect(() => hasNote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 193,
-        "end": 201,
-        "startLoc": {
-          "line": 193,
-          "column": 10,
-          "position": 1915
-        },
-        "endLoc": {
-          "line": 201,
-          "column": 8,
-          "position": 2000
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 30,
-        "end": 38,
-        "startLoc": {
-          "line": 30,
-          "column": 10,
-          "position": 212
-        },
-        "endLoc": {
-          "line": 38,
-          "column": 8,
-          "position": 297
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ", () => {\n      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;\n\n      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});\n      vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(true);\n\n      const result = hasNote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 205,
-        "end": 212,
-        "startLoc": {
-          "line": 205,
-          "column": 38,
-          "position": 2035
-        },
-        "endLoc": {
-          "line": 212,
-          "column": 8,
-          "position": 2127
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 55,
-        "end": 173,
-        "startLoc": {
-          "line": 55,
-          "column": 34,
-          "position": 490
-        },
-        "endLoc": {
-          "line": 173,
-          "column": 11,
-          "position": 1703
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ");\n    });\n\n    it('should return false when note does not exist', () => {\n      const validHash = 'abc123def456789012345678901234567890abcd' as TreeHash;\n\n      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});\n      vi.mocked(gitExecutor.validateTreeHash).mockImplementation(() => {});\n      vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(false);\n\n      const result = hasNote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 213,
-        "end": 223,
-        "startLoc": {
-          "line": 213,
-          "column": 5,
-          "position": 2149
-        },
-        "endLoc": {
-          "line": 223,
-          "column": 8,
-          "position": 2254
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/git-notes.test.ts",
-        "start": 178,
-        "end": 188,
-        "startLoc": {
-          "line": 178,
-          "column": 7,
-          "position": 1770
-        },
-        "endLoc": {
-          "line": 188,
-          "column": 11,
-          "position": 1875
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": "const checker = new BranchSyncChecker({ gitExecutor: mockGitExecutor as GitExecutor });\n      const result = await checker.checkSync();\n\n      expect(result.isUpToDate).toBe(true);\n      expect(result.behindBy).toBe(0);\n      expect(result.hasRemote",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 59,
-        "end": 64,
-        "startLoc": {
-          "line": 59,
-          "column": 7,
-          "position": 617
-        },
-        "endLoc": {
-          "line": 64,
-          "column": 10,
-          "position": 692
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 28,
-        "end": 33,
-        "startLoc": {
-          "line": 28,
-          "column": 7,
-          "position": 238
-        },
-        "endLoc": {
-          "line": 33,
-          "column": 14,
-          "position": 313
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ", async () => {\n      mockGitExecutor\n        .mockResolvedValueOnce({ stdout: 'feature/test\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: 'abc123\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '0\\n'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 81,
-        "end": 86,
-        "startLoc": {
-          "line": 81,
-          "column": 38,
-          "position": 874
-        },
-        "endLoc": {
-          "line": 86,
-          "column": 6,
-          "position": 957
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 38,
-        "end": 43,
-        "startLoc": {
-          "line": 38,
-          "column": 54,
-          "position": 359
-        },
-        "endLoc": {
-          "line": 43,
-          "column": 6,
-          "position": 442
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ", stderr: '' })\n        .mockResolvedValueOnce({ stdout: 'abc123\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '0\\n', stderr: '' });\n\n      const checker = new BranchSyncChecker({ gitExecutor",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 101,
-        "end": 106,
-        "startLoc": {
-          "line": 101,
-          "column": 23,
-          "position": 1093
-        },
-        "endLoc": {
-          "line": 106,
-          "column": 12,
-          "position": 1178
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 83,
-        "end": 89,
-        "startLoc": {
-          "line": 83,
-          "column": 17,
-          "position": 898
-        },
-        "endLoc": {
-          "line": 89,
-          "column": 13,
-          "position": 984
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ", async () => {\n      mockGitExecutor\n        .mockResolvedValueOnce({ stdout: 'feature/test\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: 'abc123\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '', stderr: '' })\n        .mockResolvedValueOnce({ stdout: 'invalid\\n'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 112,
-        "end": 117,
-        "startLoc": {
-          "line": 112,
-          "column": 42,
-          "position": 1232
-        },
-        "endLoc": {
-          "line": 117,
-          "column": 12,
-          "position": 1315
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 38,
-        "end": 43,
-        "startLoc": {
-          "line": 38,
-          "column": 54,
-          "position": 359
-        },
-        "endLoc": {
-          "line": 43,
-          "column": 6,
-          "position": 442
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": "mockGitExecutor\n        .mockResolvedValueOnce({ stdout: 'feature/test\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: 'abc123\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '0\\n', stderr: '' });\n\n      const checker = new BranchSyncChecker({\n        remoteBranch: maliciousBranch",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 141,
-        "end": 148,
-        "startLoc": {
-          "line": 141,
-          "column": 7,
-          "position": 1560
-        },
-        "endLoc": {
-          "line": 148,
-          "column": 16,
-          "position": 1661
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 82,
-        "end": 89,
-        "startLoc": {
-          "line": 82,
-          "column": 7,
-          "position": 886
-        },
-        "endLoc": {
-          "line": 89,
-          "column": 17,
-          "position": 987
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ", async () => {\n      mockGitExecutor\n        .mockResolvedValueOnce({ stdout: 'feature/test\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: 'abc123\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '0\\n', stderr: '' });\n\n      const result",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 230,
-        "end": 237,
-        "startLoc": {
-          "line": 230,
-          "column": 32,
-          "position": 2395
-        },
-        "endLoc": {
-          "line": 237,
-          "column": 7,
-          "position": 2494
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 38,
-        "end": 88,
-        "startLoc": {
-          "line": 38,
-          "column": 54,
-          "position": 359
-        },
-        "endLoc": {
-          "line": 88,
-          "column": 8,
-          "position": 973
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": ", stderr: '' })\n        .mockResolvedValueOnce({ stdout: 'abc123\\n', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '', stderr: '' })\n        .mockResolvedValueOnce({ stdout: '0\\n', stderr: '' });\n\n      const result = await checkBranchSync({\n        remoteBranch",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 232,
-        "end": 238,
-        "startLoc": {
-          "line": 232,
-          "column": 17,
-          "position": 2419
-        },
-        "endLoc": {
-          "line": 238,
-          "column": 13,
-          "position": 2505
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/branch-sync.test.ts",
-        "start": 219,
-        "end": 224,
-        "startLoc": {
-          "line": 219,
-          "column": 9,
-          "position": 2258
-        },
-        "endLoc": {
-          "line": 224,
-          "column": 12,
-          "position": 2343
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 19,
-      "fragment": "}],\n        totalErrors: 1,\n        summary: '1 error',\n        guidance: 'Fix it',\n        metadata: {\n          detection: {\n            extractor: 'test-extractor',\n            confidence: 100,\n            patterns: ['test'],\n            reason: 'Test',\n          },\n          confidence: 100,\n          completeness: 100,\n          issues: [],\n        },\n      }));\n\n      const wrappedExtract = createSandboxedExtractor(plugin, { trust: 'full' });\n      const result = await wrappedExtract('error'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 101,
-        "end": 119,
-        "startLoc": {
-          "line": 101,
-          "column": 2,
-          "position": 890
-        },
-        "endLoc": {
-          "line": 119,
-          "column": 8,
-          "position": 1028
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 74,
-        "end": 92,
-        "startLoc": {
-          "line": 74,
-          "column": 2,
-          "position": 626
-        },
-        "endLoc": {
-          "line": 92,
-          "column": 21,
-          "position": 764
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ",\n        metadata: {\n          detection: {\n            extractor: 'test-extractor',\n            confidence: 100,\n            patterns: ['test'],\n            reason: 'Test',\n          },\n          confidence: 100,\n          completeness: 100,\n          issues: [],\n        },\n      }));\n\n      const wrappedExtract = createSandboxedExtractor(plugin, { trust: 'full' });\n      const result = await wrappedExtract('clean output'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 129,
-        "end": 144,
-        "startLoc": {
-          "line": 129,
-          "column": 11,
-          "position": 1120
-        },
-        "endLoc": {
-          "line": 144,
-          "column": 15,
-          "position": 1235
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 77,
-        "end": 92,
-        "startLoc": {
-          "line": 77,
-          "column": 9,
-          "position": 649
-        },
-        "endLoc": {
-          "line": 92,
-          "column": 21,
-          "position": 764
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ", async () => {\n      const plugin = createMockPlugin((output) => ({\n        errors: [{ file: 'test.ts', line: 1, message: output }],\n        totalErrors: 1,\n        summary: '1 error',\n        guidance: 'Fix it',\n        metadata: {\n          detection: {\n            extractor: 'test-extractor',\n            confidence: 100,\n            patterns: ['test'],\n            reason: 'Test',\n          },\n          confidence: 100,\n          completeness: 100,\n          issues: [],\n        },\n      }));\n\n      const wrappedExtract = createSandboxedExtractor(plugin, { trust: 'sandbox'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 152,
-        "end": 171,
-        "startLoc": {
-          "line": 152,
-          "column": 38,
-          "position": 1296
-        },
-        "endLoc": {
-          "line": 171,
-          "column": 10,
-          "position": 1470
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 72,
-        "end": 91,
-        "startLoc": {
-          "line": 72,
-          "column": 55,
-          "position": 573
-        },
-        "endLoc": {
-          "line": 91,
-          "column": 7,
-          "position": 747
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 20,
-      "fragment": ", async () => {\n      const plugin = createMockPlugin((output) => ({\n        errors: [{ file: 'test.ts', line: 1, message: output }],\n        totalErrors: 1,\n        summary: '1 error',\n        guidance: 'Fix it',\n        metadata: {\n          detection: {\n            extractor: 'test-extractor',\n            confidence: 100,\n            patterns: ['test'],\n            reason: 'Test',\n          },\n          confidence: 100,\n          completeness: 100,\n          issues: [],\n        },\n      }));\n\n      // No trust specified - should default to sandbox",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 178,
-        "end": 197,
-        "startLoc": {
-          "line": 178,
-          "column": 62,
-          "position": 1535
-        },
-        "endLoc": {
-          "line": 197,
-          "column": 50,
-          "position": 1693
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 72,
-        "end": 91,
-        "startLoc": {
-          "line": 72,
-          "column": 55,
-          "position": 573
-        },
-        "endLoc": {
-          "line": 91,
-          "column": 6,
-          "position": 731
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ",\n        metadata: {\n          detection: {\n            extractor: 'test-extractor',\n            confidence: 100,\n            patterns: ['test'],\n            reason: 'Test',\n          },\n          confidence: 100,\n          completeness: 100,\n          issues: [],\n        },\n      }));\n\n      const wrappedExtract = createSandboxedExtractor(plugin, { trust: 'sandbox' });\n      const result = await wrappedExtract('multiple errors'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 213,
-        "end": 228,
-        "startLoc": {
-          "line": 213,
-          "column": 11,
-          "position": 1874
-        },
-        "endLoc": {
-          "line": 228,
-          "column": 18,
-          "position": 1989
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 77,
-        "end": 172,
-        "startLoc": {
-          "line": 77,
-          "column": 9,
-          "position": 649
-        },
-        "endLoc": {
-          "line": 172,
-          "column": 21,
-          "position": 1487
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 24,
-      "fragment": ");\n    });\n\n    it('should handle extractors that return no errors', async () => {\n      const plugin = createMockPlugin(() => ({\n        errors: [],\n        totalErrors: 0,\n        summary: 'No errors',\n        guidance: 'All good',\n        metadata: {\n          detection: {\n            extractor: 'test-extractor',\n            confidence: 100,\n            patterns: ['test'],\n            reason: 'Test',\n          },\n          confidence: 100,\n          completeness: 100,\n          issues: [],\n        },\n      }));\n\n      const wrappedExtract = createSandboxedExtractor(plugin, { trust: 'sandbox' });\n      const result = await wrappedExtract('clean output'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 282,
-        "end": 305,
-        "startLoc": {
-          "line": 282,
-          "column": 3,
-          "position": 2478
-        },
-        "endLoc": {
-          "line": 305,
-          "column": 15,
-          "position": 2661
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 121,
-        "end": 172,
-        "startLoc": {
-          "line": 121,
-          "column": 18,
-          "position": 1052
-        },
-        "endLoc": {
-          "line": 172,
-          "column": 21,
-          "position": 1487
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": ", async () => {\n      const plugin = createMockPlugin(() => ({\n        errors: [],\n        totalErrors: 0,\n        summary: 'No errors',\n        guidance: '',\n        metadata: {\n          detection: {\n            extractor: 'test-extractor',\n            confidence: 100,\n            patterns: [],\n            reason: 'Test',\n          },\n          confidence: 100,\n          completeness: 100,\n          issues: [],\n        },\n      }));\n\n      const wrappedExtract = createSandboxedExtractor(plugin, {\n        trust: 'sandbox',\n        timeoutMs",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 386,
-        "end": 407,
-        "startLoc": {
-          "line": 386,
-          "column": 32,
-          "position": 3376
-        },
-        "endLoc": {
-          "line": 407,
-          "column": 10,
-          "position": 3533
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/test/sandboxed-extractor.test.ts",
-        "start": 358,
-        "end": 379,
-        "startLoc": {
-          "line": 358,
-          "column": 37,
-          "position": 3171
-        },
-        "endLoc": {
-          "line": 379,
-          "column": 14,
-          "position": 3328
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 16,
       "fragment": ",\n          metadata: {\n            confidence: 100,\n            completeness: 100,\n            issues: [],\n            detection: {\n              extractor: 'vitest',\n              confidence: 100,\n              patterns: [],\n              reason: 'test',\n            },\n          },\n        },\n      };\n\n      const result = StepResultSchema.parse",
       "tokens": 0,
@@ -6086,685 +3350,73 @@
     },
     {
       "format": "typescript",
-      "lines": 13,
-      "fragment": ", () => {\n    const config = {\n      validation: {\n        phases: [{\n          name: 'Test',\n          steps: [{ name: 'Test', command: 'npm test' }]\n        }]\n      },\n      hooks: {\n        preCommit: {\n          enabled: true,\n          secretScanning: {\n            enabled: true",
+      "lines": 8,
+      "fragment": "}\n        }\n      }\n    });\n\n    const result = expectValidConfig(config);\n    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);\n    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBeUndefined",
       "tokens": 0,
       "firstFile": {
         "name": "packages/config/test/schema.test.ts",
-        "start": 260,
-        "end": 272,
+        "start": 300,
+        "end": 307,
         "startLoc": {
-          "line": 260,
-          "column": 71,
-          "position": 1988
-        },
-        "endLoc": {
-          "line": 272,
-          "column": 5,
-          "position": 2084
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 216,
-        "end": 228,
-        "startLoc": {
-          "line": 216,
-          "column": 55,
-          "position": 1655
-        },
-        "endLoc": {
-          "line": 228,
-          "column": 6,
-          "position": 1751
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "}\n        }\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(true);\n    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);\n    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBeUndefined",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 274,
-        "end": 282,
-        "startLoc": {
-          "line": 274,
+          "line": 300,
           "column": 11,
-          "position": 2090
+          "position": 2177
         },
         "endLoc": {
-          "line": 282,
+          "line": 307,
           "column": 14,
-          "position": 2176
+          "position": 2250
         }
       },
       "secondFile": {
         "name": "packages/config/test/schema.test.ts",
-        "start": 205,
-        "end": 213,
+        "start": 252,
+        "end": 259,
         "startLoc": {
-          "line": 205,
+          "line": 252,
           "column": 11,
-          "position": 1553
+          "position": 1820
         },
         "endLoc": {
-          "line": 213,
+          "line": 259,
           "column": 5,
-          "position": 1639
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", () => {\n    const config = {\n      validation: {\n        phases: [{\n          name: 'Test',\n          steps: [{ name: 'Test', command: 'npm test' }]\n        }]\n      },\n      hooks: {\n        preCommit: {\n          secretScanning: {\n            enabled: true,\n            scanCommand: ''",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 332,
-        "end": 344,
-        "startLoc": {
-          "line": 332,
-          "column": 34,
-          "position": 2523
-        },
-        "endLoc": {
-          "line": 344,
-          "column": 3,
-          "position": 2619
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 285,
-        "end": 297,
-        "startLoc": {
-          "line": 285,
-          "column": 36,
-          "position": 2191
-        },
-        "endLoc": {
-          "line": 297,
-          "column": 31,
-          "position": 2287
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ", () => {\n    const config = {\n      validation: {\n        phases: [{\n          name: 'Test',\n          steps: [{ name: 'Test', command: 'npm test' }]\n        }]\n      },\n      locking: {\n        enabled: true,\n        concurrencyScope: 'directory'\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(true);\n    expect(result.data?.locking?.concurrencyScope",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 417,
-        "end": 433,
-        "startLoc": {
-          "line": 417,
-          "column": 56,
-          "position": 3232
-        },
-        "endLoc": {
-          "line": 433,
-          "column": 17,
-          "position": 3364
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 358,
-        "end": 374,
-        "startLoc": {
-          "line": 358,
-          "column": 56,
-          "position": 2739
-        },
-        "endLoc": {
-          "line": 374,
-          "column": 8,
-          "position": 2871
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": "}\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(true);\n    expect(result.data?.locking?.enabled).toBe(true);\n    expect(result.data?.locking?.concurrencyScope).toBe('directory');\n  });\n\n  it('should reject invalid concurrencyScope values'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 443,
-        "end": 452,
-        "startLoc": {
-          "line": 443,
-          "column": 7,
-          "position": 3447
-        },
-        "endLoc": {
-          "line": 452,
-          "column": 48,
-          "position": 3530
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 369,
-        "end": 378,
-        "startLoc": {
-          "line": 369,
-          "column": 7,
-          "position": 2826
-        },
-        "endLoc": {
-          "line": 378,
-          "column": 47,
-          "position": 2909
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": "}\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(true);\n    expect(result.data?.locking?.concurrencyScope).toBe('project');\n    expect(result.data?.locking?.projectId).toBeUndefined",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 484,
-        "end": 490,
-        "startLoc": {
-          "line": 484,
-          "column": 7,
-          "position": 3803
-        },
-        "endLoc": {
-          "line": 490,
-          "column": 14,
-          "position": 3871
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 408,
-        "end": 414,
-        "startLoc": {
-          "line": 408,
-          "column": 7,
-          "position": 3148
-        },
-        "endLoc": {
-          "line": 414,
-          "column": 5,
-          "position": 3216
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "};\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);\n  });\n\n  it",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 525,
-        "end": 533,
-        "startLoc": {
-          "line": 525,
-          "column": 5,
-          "position": 4163
-        },
-        "endLoc": {
-          "line": 533,
-          "column": 3,
-          "position": 4243
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 505,
-        "end": 512,
-        "startLoc": {
-          "line": 505,
-          "column": 5,
-          "position": 3976
-        },
-        "endLoc": {
-          "line": 512,
-          "column": 2,
-          "position": 4054
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": "}\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);\n  });\n\n  it('should reject unknown properties in git config'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 565,
-        "end": 574,
-        "startLoc": {
-          "line": 565,
-          "column": 7,
-          "position": 4525
-        },
-        "endLoc": {
-          "line": 574,
-          "column": 49,
-          "position": 4610
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 504,
-        "end": 533,
-        "startLoc": {
-          "line": 504,
-          "column": 7,
-          "position": 3973
-        },
-        "endLoc": {
-          "line": 533,
-          "column": 62,
-          "position": 4245
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "}]\n        }]\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('git'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 583,
-        "end": 591,
-        "startLoc": {
-          "line": 583,
-          "column": 2,
-          "position": 4690
-        },
-        "endLoc": {
-          "line": 591,
-          "column": 6,
-          "position": 4763
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 563,
-        "end": 571,
-        "startLoc": {
-          "line": 563,
-          "column": 11,
-          "position": 4517
-        },
-        "endLoc": {
-          "line": 571,
-          "column": 19,
-          "position": 4590
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", () => {\n    const config = {\n      validation: {\n        phases: [{\n          name: 'Test',\n          steps: [{ name: 'Test', command: 'npm test' }]\n        }]\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(true);\n    expect(result.data?.extractors",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 617,
-        "end": 629,
-        "startLoc": {
-          "line": 617,
-          "column": 60,
-          "position": 4955
-        },
-        "endLoc": {
-          "line": 629,
-          "column": 11,
-          "position": 5061
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 436,
-        "end": 448,
-        "startLoc": {
-          "line": 436,
-          "column": 51,
-          "position": 3383
-        },
-        "endLoc": {
-          "line": 448,
-          "column": 8,
-          "position": 3489
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ", () => {\n    const config = {\n      validation: {\n        phases: [{\n          name: 'Test',\n          steps: [{ name: 'Test', command: 'npm test' }]\n        }]\n      },\n      extractors: {\n        builtins: {\n          trust: 'full',\n          disable: ['maven-compiler']",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 796,
-        "end": 807,
-        "startLoc": {
-          "line": 796,
-          "column": 45,
-          "position": 6425
-        },
-        "endLoc": {
-          "line": 807,
-          "column": 2,
-          "position": 6517
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 656,
-        "end": 667,
-        "startLoc": {
-          "line": 656,
-          "column": 59,
-          "position": 5334
-        },
-        "endLoc": {
-          "line": 667,
-          "column": 2,
-          "position": 5426
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "}\n        ]\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(true);\n    expect(result.data?.extractors?.builtins?.trust).toBe('full');\n    expect(result.data?.extractors?.builtins?.disable).toEqual(['maven-compiler'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 817,
-        "end": 825,
-        "startLoc": {
-          "line": 817,
-          "column": 11,
-          "position": 6571
-        },
-        "endLoc": {
-          "line": 825,
-          "column": 17,
-          "position": 6654
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 623,
-        "end": 630,
-        "startLoc": {
-          "line": 623,
-          "column": 9,
-          "position": 5015
-        },
-        "endLoc": {
-          "line": 630,
-          "column": 2,
-          "position": 5096
+          "position": 1893
         }
       }
     },
     {
       "format": "typescript",
       "lines": 8,
-      "fragment": "}\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Invalid enum'",
+      "fragment": ");\n\n    const result = expectValidConfig(config);\n    expect(result.data?.locking?.enabled).toBe(true);\n    expect(result.data?.locking?.concurrencyScope).toBe('directory');\n  });\n\n  it('should reject invalid concurrencyScope values'",
       "tokens": 0,
       "firstFile": {
         "name": "packages/config/test/schema.test.ts",
-        "start": 842,
-        "end": 849,
+        "start": 411,
+        "end": 418,
         "startLoc": {
-          "line": 842,
-          "column": 9,
-          "position": 6823
-        },
-        "endLoc": {
-          "line": 849,
-          "column": 15,
-          "position": 6891
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 346,
-        "end": 353,
-        "startLoc": {
-          "line": 346,
-          "column": 9,
-          "position": 2625
-        },
-        "endLoc": {
-          "line": 353,
-          "column": 14,
-          "position": 2693
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "}\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);\n  });\n\n  it('should reject invalid trust level for external extractor'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 863,
-        "end": 873,
-        "startLoc": {
-          "line": 863,
-          "column": 9,
-          "position": 7007
-        },
-        "endLoc": {
-          "line": 873,
-          "column": 59,
-          "position": 7104
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 346,
-        "end": 852,
-        "startLoc": {
-          "line": 346,
-          "column": 9,
-          "position": 2625
-        },
-        "endLoc": {
-          "line": 852,
-          "column": 53,
-          "position": 6920
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "}\n        ]\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Invalid enum') || e.includes('trust'))).toBe(true);\n  });\n\n  it('should reject empty package name for external extractor'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 886,
-        "end": 897,
-        "startLoc": {
-          "line": 886,
-          "column": 11,
-          "position": 7201
-        },
-        "endLoc": {
-          "line": 897,
-          "column": 58,
-          "position": 7301
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 564,
-        "end": 852,
-        "startLoc": {
-          "line": 564,
-          "column": 9,
-          "position": 4521
-        },
-        "endLoc": {
-          "line": 852,
-          "column": 53,
-          "position": 6920
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "}\n        ]\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Package name'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 910,
-        "end": 918,
-        "startLoc": {
-          "line": 910,
-          "column": 11,
-          "position": 7398
-        },
-        "endLoc": {
-          "line": 918,
-          "column": 15,
-          "position": 7469
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 564,
-        "end": 571,
-        "startLoc": {
-          "line": 564,
-          "column": 9,
-          "position": 4521
-        },
-        "endLoc": {
-          "line": 571,
-          "column": 19,
-          "position": 4590
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "}\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);\n  });\n\n  it('should reject unknown properties in external extractor'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 933,
-        "end": 943,
-        "startLoc": {
-          "line": 933,
-          "column": 9,
-          "position": 7592
-        },
-        "endLoc": {
-          "line": 943,
-          "column": 57,
-          "position": 7680
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 346,
-        "end": 533,
-        "startLoc": {
-          "line": 346,
-          "column": 9,
-          "position": 2625
-        },
-        "endLoc": {
-          "line": 533,
-          "column": 62,
-          "position": 4245
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", () => {\n    const config = {\n      validation: {\n        phases: [{\n          name: 'Test',\n          steps: [{ name: 'Test', command: 'npm test' }]\n        }]\n      },\n      extractors: {\n        external: [\n          {\n            package: '@myorg/plugin',\n            trust: 'sandbox'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 943,
-        "end": 955,
-        "startLoc": {
-          "line": 943,
-          "column": 57,
-          "position": 7681
-        },
-        "endLoc": {
-          "line": 955,
-          "column": 10,
-          "position": 7774
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 873,
-        "end": 885,
-        "startLoc": {
-          "line": 873,
-          "column": 59,
-          "position": 7105
-        },
-        "endLoc": {
-          "line": 885,
-          "column": 10,
-          "position": 7198
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "}\n        ]\n      }\n    };\n\n    const result = safeValidateConfig(config);\n    expect(result.success).toBe(false);\n    expect(result.errors).toBeDefined();\n    expect(result.errors!.some(e => e.includes('Unrecognized key'))).toBe(true);\n  });\n});",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 957,
-        "end": 967,
-        "startLoc": {
-          "line": 957,
-          "column": 11,
-          "position": 7784
-        },
-        "endLoc": {
-          "line": 967,
+          "line": 411,
           "column": 2,
-          "position": 7873
+          "position": 2995
+        },
+        "endLoc": {
+          "line": 418,
+          "column": 48,
+          "position": 3061
         }
       },
       "secondFile": {
         "name": "packages/config/test/schema.test.ts",
-        "start": 564,
-        "end": 512,
+        "start": 366,
+        "end": 373,
         "startLoc": {
-          "line": 564,
-          "column": 9,
-          "position": 4521
+          "line": 366,
+          "column": 2,
+          "position": 2617
         },
         "endLoc": {
-          "line": 512,
-          "column": 2,
-          "position": 4056
+          "line": 373,
+          "column": 47,
+          "position": 2683
         }
       }
     },
@@ -6806,217 +3458,73 @@
     },
     {
       "format": "typescript",
-      "lines": 18,
-      "fragment": "const config: VibeValidateConfig = {\n        validation: {\n          phases: []\n        }\n      };\n\n      const context: AgentContext = {\n        isAgent: false,\n        isCI: false,\n        isInteractive: true\n      };\n\n      const runnerConfig = createRunnerConfig(config, {\n        verbose: true,\n        context\n      });\n\n      expect(runnerConfig.env?",
+      "lines": 9,
+      "fragment": ");\n\n      expect(runnerConfig.onPhaseStart).toBeDefined();\n      expect(runnerConfig.onPhaseComplete).toBeDefined();\n      expect(runnerConfig.onStepStart).toBeDefined();\n      expect(runnerConfig.onStepComplete).toBeDefined();\n    });\n\n    it('should include minimal callbacks for CI context (verbose=false)'",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 90,
-        "end": 107,
+        "start": 153,
+        "end": 161,
         "startLoc": {
-          "line": 90,
+          "line": 153,
           "column": 7,
-          "position": 632
+          "position": 1134
         },
         "endLoc": {
-          "line": 107,
-          "column": 2,
-          "position": 737
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 63,
-        "end": 80,
-        "startLoc": {
-          "line": 63,
-          "column": 7,
-          "position": 463
-        },
-        "endLoc": {
-          "line": 80,
-          "column": 2,
-          "position": 568
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 19,
-      "fragment": ", () => {\n      const config: VibeValidateConfig = {\n        validation: {\n          phases: []\n        }\n      };\n\n      const context: AgentContext = {\n        isAgent: false,\n        isCI: false,\n        isInteractive: true\n      };\n\n      const runnerConfig = createRunnerConfig(config, {\n        verbose: true,\n        context\n      });\n\n      expect(runnerConfig.onPhaseStart",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 131,
-        "end": 149,
-        "startLoc": {
-          "line": 131,
-          "column": 53,
-          "position": 920
-        },
-        "endLoc": {
-          "line": 149,
-          "column": 13,
-          "position": 1034
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 62,
-        "end": 80,
-        "startLoc": {
-          "line": 62,
-          "column": 56,
-          "position": 453
-        },
-        "endLoc": {
-          "line": 80,
-          "column": 4,
-          "position": 567
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ",\n        context\n      });\n\n      expect(runnerConfig.onPhaseStart).toBeDefined();\n      expect(runnerConfig.onPhaseComplete).toBeDefined();\n      expect(runnerConfig.onStepStart).toBeDefined();\n      expect(runnerConfig.onStepComplete).toBeDefined();\n    });\n\n    it('should include minimal callbacks for CI context (verbose=false)'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 170,
-        "end": 180,
-        "startLoc": {
-          "line": 170,
-          "column": 6,
-          "position": 1196
-        },
-        "endLoc": {
-          "line": 180,
+          "line": 161,
           "column": 66,
-          "position": 1268
+          "position": 1199
         }
       },
       "secondFile": {
         "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 145,
-        "end": 155,
+        "start": 140,
+        "end": 148,
         "startLoc": {
-          "line": 145,
-          "column": 5,
-          "position": 1018
-        },
-        "endLoc": {
-          "line": 155,
-          "column": 54,
-          "position": 1090
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 15,
-      "fragment": ",\n        isInteractive: false\n      };\n\n      const runnerConfig = createRunnerConfig(config, {\n        verbose: false,\n        context\n      });\n\n      expect(runnerConfig.onPhaseStart).toBeDefined();\n      expect(runnerConfig.onPhaseComplete).toBeDefined();\n      expect(runnerConfig.onStepStart).toBeDefined();\n      expect(runnerConfig.onStepComplete).toBeDefined();\n    });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 189,
-        "end": 203,
-        "startLoc": {
-          "line": 189,
-          "column": 5,
-          "position": 1335
-        },
-        "endLoc": {
-          "line": 203,
+          "line": 140,
           "column": 2,
-          "position": 1436
+          "position": 1013
+        },
+        "endLoc": {
+          "line": 148,
+          "column": 54,
+          "position": 1078
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 10,
+      "fragment": ", isInteractive: false },\n        false\n      );\n\n      expect(runnerConfig.onPhaseStart).toBeDefined();\n      expect(runnerConfig.onPhaseComplete).toBeDefined();\n      expect(runnerConfig.onStepStart).toBeDefined();\n      expect(runnerConfig.onStepComplete).toBeDefined();\n    });\n  }",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/cli/test/runner-adapter.test.ts",
+        "start": 164,
+        "end": 173,
+        "startLoc": {
+          "line": 164,
+          "column": 5,
+          "position": 1235
+        },
+        "endLoc": {
+          "line": 173,
+          "column": 2,
+          "position": 1311
         }
       },
       "secondFile": {
         "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 165,
-        "end": 155,
+        "start": 151,
+        "end": 161,
         "startLoc": {
-          "line": 165,
-          "column": 6,
-          "position": 1164
+          "line": 151,
+          "column": 14,
+          "position": 1120
         },
         "endLoc": {
-          "line": 155,
+          "line": 161,
           "column": 3,
-          "position": 1088
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 25,
-      "fragment": ", () => {\n      const config: VibeValidateConfig = {\n        validation: {\n          phases: [\n            {\n              name: 'Test Phase',\n              parallel: true,\n              steps: []\n            }\n          ]\n        }\n      };\n\n      const context: AgentContext = {\n        isAgent: false,\n        isCI: false,\n        isInteractive: true\n      };\n\n      const runnerConfig = createRunnerConfig(config, {\n        verbose: true,\n        context\n      });\n\n      // Call the callback with success result",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 238,
-        "end": 262,
-        "startLoc": {
-          "line": 238,
-          "column": 40,
-          "position": 1651
-        },
-        "endLoc": {
-          "line": 262,
-          "column": 41,
-          "position": 1790
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 206,
-        "end": 230,
-        "startLoc": {
-          "line": 206,
-          "column": 45,
-          "position": 1458
-        },
-        "endLoc": {
-          "line": 230,
-          "column": 21,
-          "position": 1597
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 25,
-      "fragment": ", () => {\n      const config: VibeValidateConfig = {\n        validation: {\n          phases: [\n            {\n              name: 'Test Phase',\n              parallel: true,\n              steps: []\n            }\n          ]\n        }\n      };\n\n      const context: AgentContext = {\n        isAgent: false,\n        isCI: false,\n        isInteractive: true\n      };\n\n      const runnerConfig = createRunnerConfig(config, {\n        verbose: true,\n        context\n      });\n\n      // Call the callback with failure result",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 275,
-        "end": 299,
-        "startLoc": {
-          "line": 275,
-          "column": 40,
-          "position": 1878
-        },
-        "endLoc": {
-          "line": 299,
-          "column": 41,
-          "position": 2017
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/runner-adapter.test.ts",
-        "start": 206,
-        "end": 230,
-        "startLoc": {
-          "line": 206,
-          "column": 45,
-          "position": 1458
-        },
-        "endLoc": {
-          "line": 230,
-          "column": 21,
-          "position": 1597
+          "position": 1197
         }
       }
     },
