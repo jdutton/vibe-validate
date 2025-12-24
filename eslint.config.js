@@ -313,6 +313,8 @@ export default [
 
       // ESLint core rules - code quality
       'no-negated-condition': 'error', // Avoid negated conditions with else clauses
+      // Enforce function declarations at module scope (prevent SonarQube code smells)
+      'no-inner-declarations': ['error', 'functions'], // Functions must be at module/outer function scope
 
       // Import rules - organization and quality
       ...importRules,
