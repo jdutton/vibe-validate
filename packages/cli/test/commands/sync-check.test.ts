@@ -26,6 +26,50 @@ vi.mock('../../src/utils/config-loader.js', async () => {
 // Type alias for process.exit mock parameter
 type ProcessExitCode = string | number | null | undefined;
 
+/**
+ * Helper: Create mock branch sync result with defaults
+ */
+function createMockResult(overrides: Partial<{
+  hasRemote: boolean;
+  isUpToDate: boolean;
+  currentBranch: string;
+  behindBy: number;
+}> = {}) {
+  return {
+    hasRemote: true,
+    isUpToDate: true,
+    currentBranch: 'main',
+    behindBy: 0,
+    ...overrides,
+  };
+}
+
+/**
+ * Helper: Create process.exit spy that throws on exit
+ */
+function createExitSpy() {
+  return vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
+    throw new Error(`process.exit(${code})`);
+  }) as any;
+}
+
+/**
+ * Helper: Verify YAML output was written with separator
+ */
+function expectYamlOutput(contains?: string) {
+  const writeCalls = vi.mocked(process.stdout.write).mock.calls;
+  const separatorCall = writeCalls.find(call => call[0] === '---\n');
+  expect(separatorCall).toBeDefined();
+
+  if (contains) {
+    const yamlContent = writeCalls
+      .filter(call => typeof call[0] === 'string')
+      .map(call => call[0])
+      .join('');
+    expect(yamlContent).toContain(contains);
+  }
+}
+
 describe('sync-check command', () => {
   let env: CommanderTestEnv;
 
@@ -51,37 +95,10 @@ describe('sync-check command', () => {
   });
 
   /**
-   * Helper: Create mock branch sync result with defaults
-   */
-  function createMockResult(overrides: Partial<{
-    hasRemote: boolean;
-    isUpToDate: boolean;
-    currentBranch: string;
-    behindBy: number;
-  }> = {}) {
-    return {
-      hasRemote: true,
-      isUpToDate: true,
-      currentBranch: 'main',
-      behindBy: 0,
-      ...overrides,
-    };
-  }
-
-  /**
-   * Helper: Create process.exit spy that throws on exit
-   */
-  function createExitSpy() {
-    return vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-      throw new Error(`process.exit(${code})`);
-    }) as any;
-  }
-
-  /**
    * Helper: Run sync-check command and optionally verify exit code
    */
   async function runSyncCheck(args: string[] = [], expectedExitCode?: number) {
-    const exitSpy = expectedExitCode !== undefined ? createExitSpy() : null;
+    const exitSpy = expectedExitCode === undefined ? null : createExitSpy();
 
     syncCheckCommand(env.program);
 
@@ -106,23 +123,6 @@ describe('sync-check command', () => {
     const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
     expect(command).toBeDefined();
     return command!;
-  }
-
-  /**
-   * Helper: Verify YAML output was written with separator
-   */
-  function expectYamlOutput(contains?: string) {
-    const writeCalls = vi.mocked(process.stdout.write).mock.calls;
-    const separatorCall = writeCalls.find(call => call[0] === '---\n');
-    expect(separatorCall).toBeDefined();
-
-    if (contains) {
-      const yamlContent = writeCalls
-        .filter(call => typeof call[0] === 'string')
-        .map(call => call[0])
-        .join('');
-      expect(yamlContent).toContain(contains);
-    }
   }
 
   describe('command registration', () => {

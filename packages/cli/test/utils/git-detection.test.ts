@@ -25,6 +25,82 @@ vi.mock('@vibe-validate/git', async () => {
   };
 });
 
+/**
+ * Helper: Create test directory structure with .git and optional test file
+ * @param rootName Directory name for test root
+ * @param options Optional configuration for test file creation
+ */
+function createTestGitStructure(
+  rootName: string,
+  options: { createTestFile?: boolean; fileContent?: string } = {}
+): {
+  testRoot: string;
+  testSubdir: string;
+  cleanup: () => void;
+} {
+  const { createTestFile = false, fileContent = 'test content' } = options;
+  const testRoot = join(process.cwd(), rootName);
+  const testSubdir = join(testRoot, 'packages', 'cli');
+
+  // Create test directory structure with .git
+  mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
+  mkdirSyncReal(testSubdir, { recursive: true });
+
+  // Optionally create a test file at git root
+  if (createTestFile) {
+    mkdirSyncReal(join(testRoot, '.github', 'workflows'), { recursive: true });
+    writeFileSync(join(testRoot, '.github/workflows/validate.yml'), fileContent);
+  }
+
+  return {
+    testRoot,
+    testSubdir,
+    cleanup: () => {
+      if (existsSync(testRoot)) {
+        rmSync(testRoot, { recursive: true, force: true });
+      }
+    },
+  };
+}
+
+/**
+ * Helper: Create mock for executeGitCommand with command → response mapping
+ * @param responses Map of command string to git command result
+ * @returns Mock implementation function
+ */
+function mockGitCommand(responses: Record<string, { success: boolean; stdout: string; stderr: string; exitCode: number }>) {
+  return (args: string[]) => {
+    const cmd = args.join(' ');
+    if (cmd in responses) {
+      return responses[cmd];
+    }
+    return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+  };
+}
+
+/**
+ * Helper: Setup executeGitCommand mock with responses
+ * @param responses Map of command string to git command result
+ */
+async function setupGitCommandMock(responses: Record<string, { success: boolean; stdout: string; stderr: string; exitCode: number }>) {
+  const { executeGitCommand } = await import('@vibe-validate/git');
+  vi.mocked(executeGitCommand).mockImplementation(mockGitCommand(responses));
+}
+
+/**
+ * Helper: Create successful git command response
+ */
+function successResponse(stdout: string) {
+  return { success: true, stdout, stderr: '', exitCode: 0 };
+}
+
+/**
+ * Helper: Create failed git command response
+ */
+function failureResponse(stderr: string) {
+  return { success: false, stdout: '', stderr, exitCode: 1 };
+}
+
 describe('git-detection', () => {
   beforeEach(async () => {
     // Reset mocks to default implementation
@@ -34,82 +110,6 @@ describe('git-detection', () => {
       return { success: true, stdout: '', stderr: '', exitCode: 0 };
     });
   });
-
-  /**
-   * Helper: Create test directory structure with .git and optional test file
-   * @param rootName Directory name for test root
-   * @param options Optional configuration for test file creation
-   */
-  function createTestGitStructure(
-    rootName: string,
-    options: { createTestFile?: boolean; fileContent?: string } = {}
-  ): {
-    testRoot: string;
-    testSubdir: string;
-    cleanup: () => void;
-  } {
-    const { createTestFile = false, fileContent = 'test content' } = options;
-    const testRoot = join(process.cwd(), rootName);
-    const testSubdir = join(testRoot, 'packages', 'cli');
-
-    // Create test directory structure with .git
-    mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
-    mkdirSyncReal(testSubdir, { recursive: true });
-
-    // Optionally create a test file at git root
-    if (createTestFile) {
-      mkdirSyncReal(join(testRoot, '.github', 'workflows'), { recursive: true });
-      writeFileSync(join(testRoot, '.github/workflows/validate.yml'), fileContent);
-    }
-
-    return {
-      testRoot,
-      testSubdir,
-      cleanup: () => {
-        if (existsSync(testRoot)) {
-          rmSync(testRoot, { recursive: true, force: true });
-        }
-      },
-    };
-  }
-
-  /**
-   * Helper: Create mock for executeGitCommand with command → response mapping
-   * @param responses Map of command string to git command result
-   * @returns Mock implementation function
-   */
-  function mockGitCommand(responses: Record<string, { success: boolean; stdout: string; stderr: string; exitCode: number }>) {
-    return (args: string[]) => {
-      const cmd = args.join(' ');
-      if (cmd in responses) {
-        return responses[cmd];
-      }
-      return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
-    };
-  }
-
-  /**
-   * Helper: Setup executeGitCommand mock with responses
-   * @param responses Map of command string to git command result
-   */
-  async function setupGitCommandMock(responses: Record<string, { success: boolean; stdout: string; stderr: string; exitCode: number }>) {
-    const { executeGitCommand } = await import('@vibe-validate/git');
-    vi.mocked(executeGitCommand).mockImplementation(mockGitCommand(responses));
-  }
-
-  /**
-   * Helper: Create successful git command response
-   */
-  function successResponse(stdout: string) {
-    return { success: true, stdout, stderr: '', exitCode: 0 };
-  }
-
-  /**
-   * Helper: Create failed git command response
-   */
-  function failureResponse(stderr: string) {
-    return { success: false, stdout: '', stderr, exitCode: 1 };
-  }
 
   describe('detectGitConfig', () => {
     it('should return defaults when not in a git repository', async () => {
