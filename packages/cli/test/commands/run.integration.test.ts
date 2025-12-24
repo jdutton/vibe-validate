@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { getNotesRefs } from '@vibe-validate/git';
-import { normalizePath } from '@vibe-validate/utils';
+import { normalizePath, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 import yaml from 'yaml';
 
@@ -294,11 +294,12 @@ describe('run command integration', () => {
     });
 
     it('should disable caching in non-git repositories with inline YAML comment', async () => {
-      // Test in /tmp which is guaranteed to not be a git repository
+      // Test in system temp dir which is guaranteed to not be a git repository
+      const tmpDir = normalizedTmpdir();
 
       // Capture stdout only (YAML with embedded comment)
       const output = await execCLIWithCwd(['run', "echo 'test'"], {
-        cwd: '/tmp',
+        cwd: tmpDir,
       });
 
       // Parse YAML output
@@ -333,7 +334,7 @@ describe('run command integration', () => {
       // Add a small delay to ensure different timestamp (and thus different temp dir)
       const sleepCommand = 'sleep 1 && echo "test2"';
       const secondOutput = await execCLIWithCwd(['run', sleepCommand], {
-        cwd: '/tmp',
+        cwd: tmpDir,
       });
 
       const secondYamlContent = secondOutput.replace(/^---\n/, '').replace(/\n---\n?$/, '');
