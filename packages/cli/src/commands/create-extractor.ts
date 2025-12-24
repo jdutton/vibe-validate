@@ -56,7 +56,7 @@ export function createExtractorCommand(program: Command): void {
         // Normalize cwd to avoid Windows short path issues (e.g., RUNNER~1)
         const cwd = normalizePath(process.cwd());
 
-        // Interactive prompts for missing information
+        // Interactive prompts for missing information (skip entirely if all options provided)
         const context = await gatherContext(name, options);
 
         // Determine output directory
@@ -95,14 +95,13 @@ export function createExtractorCommand(program: Command): void {
 }
 
 /**
- * Gather context from command-line arguments and interactive prompts
+ * Build prompts configuration for missing options
  */
-async function gatherContext(
+function buildPromptsConfig(
   name: string | undefined,
   options: CreateExtractorOptions
-): Promise<TemplateContext> {
-  // Prompt for missing information
-  const responses = await prompts([
+): prompts.PromptObject[] {
+  return [
     {
       type: name ? null : 'text',
       name: 'pluginName',
@@ -130,18 +129,38 @@ async function gatherContext(
       message: 'Detection keyword (e.g., "ERROR:", "[FAIL]"):',
       validate: (value: string) => value.length > 0 || 'Detection keyword is required',
     },
-  ]);
+  ];
+}
 
-  // User cancelled prompts
-  if (!responses.pluginName && !name) {
-    console.log(chalk.yellow('\n✋ Cancelled'));
-    process.exit(0);
+/**
+ * Gather context from command-line arguments and interactive prompts
+ */
+async function gatherContext(
+  name: string | undefined,
+  options: CreateExtractorOptions
+): Promise<TemplateContext> {
+  // Check if all required options are provided (skip prompts for non-TTY/CI environments)
+  // CRITICAL: The prompts library has issues on Windows CI even when all prompts have type: null.
+  // By skipping the prompts() call entirely when all options are provided, we avoid these issues.
+  const hasAllOptions = name && options.description && options.author && options.detectionPattern;
+
+  let responses: Record<string, string | undefined> = {};
+
+  // Only run prompts if we're missing required information
+  if (!hasAllOptions) {
+    responses = await prompts(buildPromptsConfig(name, options));
+
+    // User cancelled prompts
+    if (!responses.pluginName && !name) {
+      console.log(chalk.yellow('\n✋ Cancelled'));
+      process.exit(0);
+    }
   }
 
-  const pluginName = name ?? responses.pluginName;
-  const description = options.description ?? responses.description;
+  const pluginName = (name ?? responses.pluginName) as string;
+  const description = (options.description ?? responses.description) as string;
   const author = options.author ?? responses.author ?? 'Unknown';
-  const detectionPattern = options.detectionPattern ?? responses.detectionPattern;
+  const detectionPattern = (options.detectionPattern ?? responses.detectionPattern) as string;
   const priority = typeof options.priority === 'number'
     ? options.priority
     : Number.parseInt(options.priority ?? '70', 10);

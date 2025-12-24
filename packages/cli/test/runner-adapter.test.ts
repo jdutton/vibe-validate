@@ -1,8 +1,81 @@
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import type { RunnerConfig } from '@vibe-validate/core';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import type { AgentContext } from '../src/utils/context-detector.js';
 import { createRunnerConfig } from '../src/utils/runner-adapter.js';
+
+/**
+ * Create a mock VibeValidateConfig for testing
+ * @param phases - Optional array of phases (defaults to single test phase)
+ * @returns Minimal test config
+ */
+function createMockConfig(phases?: VibeValidateConfig['validation']['phases']): VibeValidateConfig {
+  if (phases === undefined) {
+    return {
+      validation: {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [{ name: 'Test Step', command: 'echo test' }]
+          }
+        ]
+      }
+    };
+  }
+
+  return phases.length === 0
+    ? { validation: { phases: [] } }
+    : { validation: { phases } };
+}
+
+/**
+ * Create a mock AgentContext for testing
+ * @param overrides - Optional context properties to override
+ * @returns Test agent context
+ */
+function createMockContext(overrides?: Partial<AgentContext>): AgentContext {
+  return {
+    isAgent: false,
+    isCI: false,
+    isInteractive: true,
+    ...overrides
+  };
+}
+
+/**
+ * Setup a runner test with config, context, and options
+ * @param configPhases - Optional phases for config
+ * @param contextOverrides - Optional context overrides
+ * @param verbose - Verbose flag (default: true)
+ * @returns Object with config, context, and runnerConfig
+ */
+function setupRunnerTest(
+  configPhases?: VibeValidateConfig['validation']['phases'],
+  contextOverrides?: Partial<AgentContext>,
+  verbose = true
+) {
+  const config = createMockConfig(configPhases);
+  const context = createMockContext(contextOverrides);
+  const runnerConfig = createRunnerConfig(config, { verbose, context });
+
+  return { config, context, runnerConfig };
+}
+
+/**
+ * Assert basic runner behavior expectations
+ * @param runnerConfig - Runner config to validate
+ * @param expectedPhases - Expected phases array
+ */
+function expectRunnerBehavior(
+  runnerConfig: RunnerConfig,
+  expectedPhases: VibeValidateConfig['validation']['phases']
+) {
+  expect(runnerConfig.phases).toEqual(expectedPhases);
+  expect(runnerConfig.enableFailFast).toBe(true);
+  expect(runnerConfig.env).toBeDefined();
+}
 
 describe('runner-adapter', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -29,53 +102,12 @@ describe('runner-adapter', () => {
 
   describe('createRunnerConfig', () => {
     it('should create basic runner config from vibe-validate config', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'echo test' }
-              ]
-            }
-          ]
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
-
-      expect(runnerConfig.phases).toEqual(config.validation.phases);
-      expect(runnerConfig.enableFailFast).toBe(true);
-      expect(runnerConfig.env).toBeDefined();
+      const { config, runnerConfig } = setupRunnerTest();
+      expectRunnerBehavior(runnerConfig, config.validation.phases);
     });
 
     it('should include environment variables in runner config', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: []
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
+      const { runnerConfig } = setupRunnerTest([]);
 
       expect(runnerConfig.env).toBeDefined();
       expect(runnerConfig.env?.TEST_VAR).toBe('test-value');
@@ -87,22 +119,7 @@ describe('runner-adapter', () => {
       // Add an undefined variable
       process.env.UNDEFINED_VAR = undefined;
 
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: []
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
+      const { runnerConfig } = setupRunnerTest([]);
 
       expect(runnerConfig.env?.UNDEFINED_VAR).toBeUndefined();
       // All env values should be strings
@@ -113,38 +130,14 @@ describe('runner-adapter', () => {
 
     it('should use empty phases array if validation config is missing', () => {
       const config: VibeValidateConfig = {};
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
+      const context = createMockContext();
+      const runnerConfig = createRunnerConfig(config, { verbose: true, context });
 
       expect(runnerConfig.phases).toEqual([]);
     });
 
     it('should include verbose callbacks when verbose=true', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: []
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
+      const { runnerConfig } = setupRunnerTest([]);
 
       expect(runnerConfig.onPhaseStart).toBeDefined();
       expect(runnerConfig.onPhaseComplete).toBeDefined();
@@ -153,23 +146,11 @@ describe('runner-adapter', () => {
     });
 
     it('should include minimal callbacks when verbose=false', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: []
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: true,
-        agentName: 'claude-code',
-        isCI: false,
-        isInteractive: false
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: false,
-        context
-      });
+      const { runnerConfig } = setupRunnerTest(
+        [],
+        { isAgent: true, agentName: 'claude-code', isInteractive: false },
+        false
+      );
 
       expect(runnerConfig.onPhaseStart).toBeDefined();
       expect(runnerConfig.onPhaseComplete).toBeDefined();
@@ -178,22 +159,11 @@ describe('runner-adapter', () => {
     });
 
     it('should include minimal callbacks for CI context (verbose=false)', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: []
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: true,
-        isInteractive: false
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: false,
-        context
-      });
+      const { runnerConfig } = setupRunnerTest(
+        [],
+        { isCI: true, isInteractive: false },
+        false
+      );
 
       expect(runnerConfig.onPhaseStart).toBeDefined();
       expect(runnerConfig.onPhaseComplete).toBeDefined();
@@ -204,28 +174,9 @@ describe('runner-adapter', () => {
 
   describe('verbose callbacks', () => {
     it('should log colorful output for phase start', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: []
-            }
-          ]
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
+      const { config, runnerConfig } = setupRunnerTest([
+        { name: 'Test Phase', parallel: true, steps: [] }
+      ]);
 
       // Call the callback
       runnerConfig.onPhaseStart?.(config.validation.phases[0]);
@@ -236,28 +187,9 @@ describe('runner-adapter', () => {
     });
 
     it('should log success for phase complete', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: []
-            }
-          ]
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
+      const { config, runnerConfig } = setupRunnerTest([
+        { name: 'Test Phase', parallel: true, steps: [] }
+      ]);
 
       // Call the callback with success result
       runnerConfig.onPhaseComplete?.(config.validation.phases[0], {
@@ -273,28 +205,9 @@ describe('runner-adapter', () => {
     });
 
     it('should log failure for phase complete', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: []
-            }
-          ]
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: false,
-        isInteractive: true
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: true,
-        context
-      });
+      const { config, runnerConfig } = setupRunnerTest([
+        { name: 'Test Phase', parallel: true, steps: [] }
+      ]);
 
       // Call the callback with failure result
       runnerConfig.onPhaseComplete?.(config.validation.phases[0], {
@@ -312,29 +225,11 @@ describe('runner-adapter', () => {
 
   describe('minimal callbacks', () => {
     it('should log minimal structured output when verbose=false', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: []
-            }
-          ]
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: true,
-        agentName: 'claude-code',
-        isCI: false,
-        isInteractive: false
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: false,
-        context
-      });
+      const { config, runnerConfig } = setupRunnerTest(
+        [{ name: 'Test Phase', parallel: true, steps: [] }],
+        { isAgent: true, agentName: 'claude-code', isInteractive: false },
+        false
+      );
 
       // Call phase start callback
       runnerConfig.onPhaseStart?.(config.validation.phases[0]);
@@ -343,28 +238,11 @@ describe('runner-adapter', () => {
     });
 
     it('should log minimal output for CI context (not silent)', () => {
-      const config: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: []
-            }
-          ]
-        }
-      };
-
-      const context: AgentContext = {
-        isAgent: false,
-        isCI: true,
-        isInteractive: false
-      };
-
-      const runnerConfig = createRunnerConfig(config, {
-        verbose: false,
-        context
-      });
+      const { config, runnerConfig } = setupRunnerTest(
+        [{ name: 'Test Phase', parallel: true, steps: [] }],
+        { isCI: true, isInteractive: false },
+        false
+      );
 
       // Call callbacks - should log minimal YAML output
       runnerConfig.onPhaseStart?.(config.validation.phases[0]);

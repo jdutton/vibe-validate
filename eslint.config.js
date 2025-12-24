@@ -8,6 +8,17 @@ import pluginNode from 'eslint-plugin-n';
 import importPlugin from 'eslint-plugin-import';
 import localRules from './tools/eslint-local-rules/index.js';
 
+/**
+ * SHARED RULES PHILOSOPHY
+ *
+ * Why rules are defined at the top:
+ * - Define once, apply everywhere (DRY principle)
+ * - Consistent standards across all contexts (test, production, tools)
+ * - Override only where legitimately needed (explicit exceptions)
+ *
+ * This approach makes security boundaries and exceptions visible and auditable.
+ */
+
 // Shared Unicorn rules for modern JavaScript standards (applies to both test and production code)
 const unicornRules = {
   'unicorn/prefer-node-protocol': 'error', // Enforce node: prefix for built-ins (security + clarity)
@@ -67,6 +78,7 @@ const customRules = {
   'local/no-child-process-execSync': 'error',
   'local/no-git-commands-direct': 'error',
   'local/no-gh-commands-direct': 'error',
+  'local/no-direct-cli-bin-execution': 'error', // Test files only - enforce shared CLI helpers
 };
 
 export default [
@@ -82,6 +94,29 @@ export default [
   sonarjs.configs.recommended,
   security.configs.recommended,
   {
+    /**
+     * TEST FILES CONFIGURATION
+     *
+     * Why project: false (no type-aware linting):
+     * - Test files are excluded from tsconfig.json (via exclude patterns)
+     * - Reason for exclusion: Build performance + published packages shouldn't include test types
+     * - Trade-off: Faster builds vs type-aware linting in tests
+     *
+     * What this means:
+     * - Type-aware rules like no-floating-promises can't work (need type info)
+     * - We catch fewer bugs in test code (unhandled promises, await mistakes)
+     * - But linting is ~30-50% faster (no type-checking for tests)
+     *
+     * Why rules are relaxed:
+     * - Tests use 'any' for mocking/fixtures (explicit-any off)
+     * - Tests execute commands for validation (security rules relaxed)
+     * - Tests have nested describe/it blocks (cognitive-complexity higher threshold)
+     * - Pragmatic testing standards vs strict production code standards
+     *
+     * Alternative considered:
+     * - Create tsconfig.test.json for type-aware linting in tests
+     * - Rejected: Would slow down linting significantly without clear benefit
+     */
     // Test files - disable type-aware linting (test files excluded from tsconfig)
     // This MUST come before general TS config (more specific patterns first in flat config)
     files: ['**/*.test.ts', '**/test/**/*.ts', '**/test-*.ts', '**/tests/**/*.ts', '**/scripts/**/*.ts', '**/vitest.config.ts'],
@@ -130,6 +165,9 @@ export default [
       'sonarjs/slow-regex': 'off', // No DoS risk in test code
       'sonarjs/cognitive-complexity': ['warn', 20], // Higher threshold for tests (20 vs 15)
 
+      // Enforce function declarations at module scope (prevent SonarQube code smells)
+      'no-inner-declarations': ['error', 'functions'], // Functions must be at module/outer function scope
+
       // Keep strict on real code quality issues
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
@@ -150,6 +188,31 @@ export default [
     },
   },
   {
+    /**
+     * PRODUCTION TYPESCRIPT CONFIGURATION
+     *
+     * Why project: true (full type-aware linting):
+     * - Production code is in tsconfig.json (src/** files)
+     * - TypeScript can provide type information for advanced linting
+     * - Catches bugs that simple AST analysis can't find
+     *
+     * What type-aware linting catches:
+     * - Unhandled promises (@typescript-eslint/no-floating-promises)
+     * - Awaiting non-promises (@typescript-eslint/await-thenable)
+     * - Promise misuse in conditionals (@typescript-eslint/no-misused-promises)
+     * - Unnecessary null checks when TypeScript knows value isn't null
+     *
+     * Why rules are strict:
+     * - Production code ships to users (quality matters)
+     * - Security vulnerabilities have real impact (detect-child-process enforced)
+     * - Maintainability over years (explicit-module-boundary-types required)
+     * - Bundle size optimization (consistent-type-imports for tree-shaking)
+     *
+     * Trade-off:
+     * - Slower linting (type-checking required)
+     * - More false positives to suppress
+     * - But catches real bugs before production
+     */
     // General TypeScript files (production code with type-aware linting)
     // Exclude test files and tools - they have their own configs
     files: ['**/*.ts', '**/*.tsx'],
@@ -250,6 +313,8 @@ export default [
 
       // ESLint core rules - code quality
       'no-negated-condition': 'error', // Avoid negated conditions with else clauses
+      // Enforce function declarations at module scope (prevent SonarQube code smells)
+      'no-inner-declarations': ['error', 'functions'], // Functions must be at module/outer function scope
 
       // Import rules - organization and quality
       ...importRules,
@@ -259,6 +324,40 @@ export default [
     },
   },
   {
+    /**
+     * GIT-AWARE PACKAGES - SECURITY EXCEPTION
+     *
+     * ⚠️  CRITICAL: This is an explicit security boundary exception
+     *
+     * Why these packages need command execution:
+     * - @vibe-validate/git: Centralized git command execution (@vibe-validate/git functions)
+     * - @vibe-validate/cli: Invokes git commands via @vibe-validate/git
+     * - @vibe-validate/core: Orchestrates validation (uses git for tree hashing)
+     * - @vibe-validate/history: Git notes storage (uses @vibe-validate/git)
+     *
+     * Security model:
+     * - Command execution is REQUIRED for git operations (no alternative)
+     * - Commands use secure patterns: safeExecSync (no shell, args array)
+     * - Commands validated in GH-57 security review
+     * - These packages are the ONLY ones allowed to execute commands
+     *
+     * Why each rule is disabled:
+     * - security/detect-child-process: Git operations require spawnSync/execSync
+     * - sonarjs/os-command: Git commands are system commands
+     * - sonarjs/no-os-command-from-path: git/gh commands resolved via PATH
+     * - local/no-git-commands-direct: These packages ARE the centralization point
+     * - local/no-gh-commands-direct: These packages ARE the centralization point
+     *
+     * What's enforced everywhere else:
+     * - @vibe-validate/extractors: CANNOT execute commands (parses test output only)
+     * - @vibe-validate/config: CANNOT execute commands (reads config files only)
+     * - Test files: Command execution validated as test infrastructure
+     *
+     * Architecture principle:
+     * - Security by default (strict everywhere)
+     * - Explicit exceptions (only where REQUIRED)
+     * - Centralized command execution (@vibe-validate/git)
+     */
     // Git-aware packages - OS command execution is intentional and necessary
     files: [
       'packages/cli/src/**/*.ts',
@@ -276,6 +375,30 @@ export default [
     },
   },
   {
+    /**
+     * EXTRACTOR PLUGINS - REGEX SECURITY EXCEPTION
+     *
+     * Why unsafe regex rules are relaxed:
+     * - Extractors parse controlled test framework output (vitest, jest, playwright, etc.)
+     * - Input is NOT user-controlled (no ReDoS attack vector)
+     * - Test frameworks have deterministic output formats
+     *
+     * What extractors do:
+     * - Parse test output to extract errors, file paths, line numbers
+     * - Use regex to match known patterns (e.g., "Error: ... at file:line:col")
+     * - Transform verbose test output into concise, LLM-friendly YAML
+     *
+     * Why security/detect-unsafe-regex is off:
+     * - Rule catches potential ReDoS (Regular expression Denial of Service)
+     * - ReDoS requires attacker-controlled input (we don't have that)
+     * - Test output is generated by known, trusted test frameworks
+     * - Still protected by sonarjs/slow-regex (warns on catastrophic backtracking)
+     *
+     * Security boundary:
+     * - Extractors CANNOT execute commands (enforced by parent config)
+     * - Extractors only READ test output (no file system access)
+     * - No user input ever reaches extractors (validated by test runner)
+     */
     // Extractor plugins - parse controlled test framework output (not user input)
     files: ['packages/extractors/src/extractors/**/*.ts'],
     rules: {
@@ -283,6 +406,30 @@ export default [
     },
   },
   {
+    /**
+     * CONFIG LOADER - FILE PATH SECURITY EXCEPTION
+     *
+     * Why security/detect-non-literal-fs-filename is relaxed:
+     * - Config loader needs to read config files from computed paths
+     * - Paths are validated BEFORE reaching the loader (no path traversal risk)
+     * - User provides config file location via CLI flag or default search
+     *
+     * What config loader does:
+     * - Searches for vibe-validate.config.yaml in project directory tree
+     * - Reads config file from validated path
+     * - Parses YAML and validates against schema
+     *
+     * Security model:
+     * - CLI validates --config flag path (no ../ traversal)
+     * - Default search is limited to project directory tree (upward only)
+     * - Loader receives pre-validated paths (not user input directly)
+     * - YAML parsing uses safe-load (no code execution)
+     *
+     * Why this is safe:
+     * - Path validation happens at CLI layer (entry point)
+     * - Loader is internal API (not exposed to external callers)
+     * - No arbitrary file read (only config files in project tree)
+     */
     // Config loader - reads config files from filesystem
     files: ['packages/config/src/loader.ts'],
     rules: {
@@ -290,6 +437,35 @@ export default [
     },
   },
   {
+    /**
+     * TOOLS SCRIPTS - DEVELOPMENT TOOLING
+     *
+     * Why tools need flexibility:
+     * - Build scripts, dev utilities, pre-publish checks
+     * - Execute system commands (npm, git, file operations)
+     * - Process dynamic paths (generate docs, check duplication)
+     * - Development environment only (never shipped to users)
+     *
+     * Why rules are still strict:
+     * - Tools are part of the codebase (maintainability matters)
+     * - Build failures impact all developers (reliability important)
+     * - Security still matters (supply chain attacks target build tools)
+     *
+     * What's relaxed vs production:
+     * - security/detect-child-process: Tools spawn npm, git, etc.
+     * - security/detect-non-literal-fs-filename: Tools process dynamic paths
+     * - sonarjs/cognitive-complexity: 20 vs 15 (tools have complex logic)
+     *
+     * What's enforced same as production:
+     * - Windows compatibility rules (no-os-tmpdir, no-fs-mkdirSync)
+     * - Architecture rules (no-git-commands-direct, no-gh-commands-direct)
+     * - Code quality rules (unicorn, import organization)
+     *
+     * Why project: false:
+     * - Tools not in tsconfig.json project references (separate from packages)
+     * - Don't need type-aware linting (simple scripts)
+     * - Faster linting for frequently-edited tools
+     */
     // Tools scripts - strict linting (match production standards)
     files: ['tools/**/*.ts'],
     languageOptions: {

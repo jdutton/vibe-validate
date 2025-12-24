@@ -104,9 +104,11 @@ export {
   listPullRequests,
   fetchRunLogs,
   fetchRunDetails,
+  fetchRunJobs,
   listWorkflowRuns,
   type GitHubPullRequest,
-  type GitHubRun
+  type GitHubRun,
+  type GitHubJob
 } from './gh-commands.js';
 
 // Branch cleanup analysis (identify safe-to-delete branches)

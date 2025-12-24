@@ -25,6 +25,109 @@ vi.mock('@vibe-validate/git', async () => {
   };
 });
 
+/**
+ * Helper: Create test directory structure with .git and optional test file
+ * @param rootName Directory name for test root
+ * @param options Optional configuration for test file creation
+ */
+function createTestGitStructure(
+  rootName: string,
+  options: { createTestFile?: boolean; fileContent?: string } = {}
+): {
+  testRoot: string;
+  testSubdir: string;
+  cleanup: () => void;
+} {
+  const { createTestFile = false, fileContent = 'test content' } = options;
+  const testRoot = join(process.cwd(), rootName);
+  const testSubdir = join(testRoot, 'packages', 'cli');
+
+  // Create test directory structure with .git
+  mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
+  mkdirSyncReal(testSubdir, { recursive: true });
+
+  // Optionally create a test file at git root
+  if (createTestFile) {
+    mkdirSyncReal(join(testRoot, '.github', 'workflows'), { recursive: true });
+    writeFileSync(join(testRoot, '.github/workflows/validate.yml'), fileContent);
+  }
+
+  return {
+    testRoot,
+    testSubdir,
+    cleanup: () => {
+      if (existsSync(testRoot)) {
+        rmSync(testRoot, { recursive: true, force: true });
+      }
+    },
+  };
+}
+
+/**
+ * Helper: Create mock for executeGitCommand with command → response mapping
+ * @param responses Map of command string to git command result
+ * @returns Mock implementation function
+ */
+function mockGitCommand(responses: Record<string, { success: boolean; stdout: string; stderr: string; exitCode: number }>) {
+  return (args: string[]) => {
+    const cmd = args.join(' ');
+    if (cmd in responses) {
+      return responses[cmd];
+    }
+    return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+  };
+}
+
+/**
+ * Helper: Setup executeGitCommand mock with responses
+ * @param responses Map of command string to git command result
+ */
+async function setupGitCommandMock(responses: Record<string, { success: boolean; stdout: string; stderr: string; exitCode: number }>) {
+  const { executeGitCommand } = await import('@vibe-validate/git');
+  vi.mocked(executeGitCommand).mockImplementation(mockGitCommand(responses));
+}
+
+/**
+ * Helper: Create successful git command response
+ */
+function successResponse(stdout: string) {
+  return { success: true, stdout, stderr: '', exitCode: 0 };
+}
+
+/**
+ * Helper: Create failed git command response
+ */
+function failureResponse(stderr: string) {
+  return { success: false, stdout: '', stderr, exitCode: 1 };
+}
+
+/**
+ * Helper: Create and cleanup temporary non-git directory for testing
+ * @param callback Test function that receives the non-git directory path
+ */
+function withNonGitDirectory<T>(callback: (_dir: string) => T): T {
+  const nonGitDir = join('/tmp', `test-temp-non-git-${Date.now()}`);
+  mkdirSyncReal(nonGitDir, { recursive: true });
+
+  try {
+    return callback(nonGitDir);
+  } finally {
+    rmSync(nonGitDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Helper: Assert git config result matches defaults
+ * @param result The result from detectGitConfig()
+ */
+function expectDefaultGitConfig(result: ReturnType<typeof detectGitConfig>) {
+  expect(result).toEqual({
+    mainBranch: 'main',
+    remoteOrigin: 'origin',
+    detected: false,
+  });
+}
+
 describe('git-detection', () => {
   beforeEach(async () => {
     // Reset mocks to default implementation
@@ -45,31 +148,17 @@ describe('git-detection', () => {
       const result = detectGitConfig();
 
       // Assert
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
 
     it('should detect main branch from remote HEAD', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
-          return { success: true, stdout: 'refs/remotes/origin/main', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('origin'),
+        'symbolic-ref refs/remotes/origin/HEAD': successResponse('refs/remotes/origin/main'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
       expect(result).toEqual({
         mainBranch: 'main',
         remoteOrigin: 'origin',
@@ -78,23 +167,13 @@ describe('git-detection', () => {
     });
 
     it('should detect master branch from remote HEAD', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
-          return { success: true, stdout: 'refs/remotes/origin/master', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('origin'),
+        'symbolic-ref refs/remotes/origin/HEAD': successResponse('refs/remotes/origin/master'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
       expect(result).toEqual({
         mainBranch: 'master',
         remoteOrigin: 'origin',
@@ -103,23 +182,13 @@ describe('git-detection', () => {
     });
 
     it('should prefer upstream over origin remote', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'origin\nupstream', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/upstream/HEAD') {
-          return { success: true, stdout: 'refs/remotes/upstream/main', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('origin\nupstream'),
+        'symbolic-ref refs/remotes/upstream/HEAD': successResponse('refs/remotes/upstream/main'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
       expect(result).toEqual({
         mainBranch: 'main',
         remoteOrigin: 'upstream',
@@ -128,23 +197,13 @@ describe('git-detection', () => {
     });
 
     it('should use first remote if neither origin nor upstream exists', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'custom-remote', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/custom-remote/HEAD') {
-          return { success: true, stdout: 'refs/remotes/custom-remote/develop', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('custom-remote'),
+        'symbolic-ref refs/remotes/custom-remote/HEAD': successResponse('refs/remotes/custom-remote/develop'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
       expect(result).toEqual({
         mainBranch: 'develop',
         remoteOrigin: 'custom-remote',
@@ -153,26 +212,14 @@ describe('git-detection', () => {
     });
 
     it('should detect main from ls-remote when symbolic-ref fails', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
-          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
-        }
-        if (cmd === 'ls-remote --heads origin') {
-          return { success: true, stdout: 'abc123\trefs/heads/main\ndef456\trefs/heads/feature', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('origin'),
+        'symbolic-ref refs/remotes/origin/HEAD': failureResponse('Remote HEAD not set'),
+        'ls-remote --heads origin': successResponse('abc123\trefs/heads/main\ndef456\trefs/heads/feature'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
       expect(result).toEqual({
         mainBranch: 'main',
         remoteOrigin: 'origin',
@@ -181,26 +228,14 @@ describe('git-detection', () => {
     });
 
     it('should detect master from ls-remote when main does not exist', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
-          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
-        }
-        if (cmd === 'ls-remote --heads origin') {
-          return { success: true, stdout: 'abc123\trefs/heads/master\ndef456\trefs/heads/feature', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('origin'),
+        'symbolic-ref refs/remotes/origin/HEAD': failureResponse('Remote HEAD not set'),
+        'ls-remote --heads origin': successResponse('abc123\trefs/heads/master\ndef456\trefs/heads/feature'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
       expect(result).toEqual({
         mainBranch: 'master',
         remoteOrigin: 'origin',
@@ -209,26 +244,14 @@ describe('git-detection', () => {
     });
 
     it('should detect develop from ls-remote when main and master do not exist', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
-          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
-        }
-        if (cmd === 'ls-remote --heads origin') {
-          return { success: true, stdout: 'abc123\trefs/heads/develop\ndef456\trefs/heads/feature', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('origin'),
+        'symbolic-ref refs/remotes/origin/HEAD': failureResponse('Remote HEAD not set'),
+        'ls-remote --heads origin': successResponse('abc123\trefs/heads/develop\ndef456\trefs/heads/feature'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
       expect(result).toEqual({
         mainBranch: 'develop',
         remoteOrigin: 'origin',
@@ -237,138 +260,77 @@ describe('git-detection', () => {
     });
 
     it('should return defaults when no remotes exist', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: '', stderr: '', exitCode: 0 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse(''),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
 
     it('should return defaults when ls-remote fails', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: true, stdout: 'origin', stderr: '', exitCode: 0 };
-        }
-        if (cmd === 'symbolic-ref refs/remotes/origin/HEAD') {
-          return { success: false, stdout: '', stderr: 'Remote HEAD not set', exitCode: 1 };
-        }
-        if (cmd === 'ls-remote --heads origin') {
-          return { success: false, stdout: '', stderr: 'Network error', exitCode: 1 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': successResponse('origin'),
+        'symbolic-ref refs/remotes/origin/HEAD': failureResponse('Remote HEAD not set'),
+        'ls-remote --heads origin': failureResponse('Network error'),
       });
 
-      // Act
       const result = detectGitConfig();
 
-      // Assert
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
 
     it('should return defaults when git remote command fails', async () => {
-      // Arrange
-      const { executeGitCommand } = await import('@vibe-validate/git');
-      vi.mocked(executeGitCommand).mockImplementation((args: string[]) => {
-        const cmd = args.join(' ');
-        if (cmd === 'remote') {
-          return { success: false, stdout: '', stderr: 'Git error', exitCode: 1 };
-        }
-        return { success: false, stdout: '', stderr: `Unexpected command: ${cmd}`, exitCode: 1 };
+      await setupGitCommandMock({
+        'remote': failureResponse('Git error'),
       });
 
       // Act
       const result = detectGitConfig();
 
       // Assert
-      expect(result).toEqual({
-        mainBranch: 'main',
-        remoteOrigin: 'origin',
-        detected: false,
-      });
+      expectDefaultGitConfig(result);
     });
   });
 
   describe('findGitRoot', () => {
-    const testRoot = join(process.cwd(), 'test-temp-git-root');
-    const testSubdir = join(testRoot, 'packages', 'cli');
+    let testEnv: ReturnType<typeof createTestGitStructure>;
 
     beforeEach(() => {
-      // Create test directory structure with .git
-      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
-      mkdirSyncReal(testSubdir, { recursive: true });
+      testEnv = createTestGitStructure('test-temp-git-root');
     });
 
     afterEach(() => {
-      // Clean up test directories
-      if (existsSync(testRoot)) {
-        rmSync(testRoot, { recursive: true, force: true });
-      }
+      testEnv.cleanup();
     });
 
     it('should find git root from repository root', () => {
-      // Act
-      const result = findGitRoot(testRoot);
-
-      // Assert
-      expect(result).toBe(testRoot);
+      const result = findGitRoot(testEnv.testRoot);
+      expect(result).toBe(testEnv.testRoot);
     });
 
     it('should find git root from subdirectory', () => {
-      // Act
-      const result = findGitRoot(testSubdir);
-
-      // Assert
-      expect(result).toBe(testRoot);
+      const result = findGitRoot(testEnv.testSubdir);
+      expect(result).toBe(testEnv.testRoot);
     });
 
     it('should find git root from deeply nested subdirectory', () => {
-      // Arrange
-      const deepSubdir = join(testSubdir, 'src', 'commands', 'subdir');
+      const deepSubdir = join(testEnv.testSubdir, 'src', 'commands', 'subdir');
       mkdirSyncReal(deepSubdir, { recursive: true });
 
-      // Act
       const result = findGitRoot(deepSubdir);
-
-      // Assert
-      expect(result).toBe(testRoot);
+      expect(result).toBe(testEnv.testRoot);
     });
 
     it('should return null when not in git repository', () => {
-      // Arrange: Use /tmp which is outside any git repo
-      const nonGitDir = join('/tmp', 'test-temp-non-git-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
+      withNonGitDirectory((nonGitDir) => {
         // Act
         const result = findGitRoot(nonGitDir);
 
         // Assert
         expect(result).toBeNull();
-      } finally {
-        // Cleanup
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should use process.cwd() when startDir not provided', () => {
@@ -391,98 +353,64 @@ describe('git-detection', () => {
   });
 
   describe('resolveProjectPath', () => {
-    const testRoot = join(process.cwd(), 'test-temp-resolve-path');
-    const testSubdir = join(testRoot, 'packages', 'cli');
+    let testEnv: ReturnType<typeof createTestGitStructure>;
 
     beforeEach(() => {
-      // Create test directory structure with .git
-      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
-      mkdirSyncReal(testSubdir, { recursive: true });
+      testEnv = createTestGitStructure('test-temp-resolve-path');
     });
 
     afterEach(() => {
-      // Clean up test directories
-      if (existsSync(testRoot)) {
-        rmSync(testRoot, { recursive: true, force: true });
-      }
+      testEnv.cleanup();
     });
 
     it('should resolve path relative to git root from root directory', () => {
-      // Act
-      const result = resolveProjectPath('.github/workflows/validate.yml', testRoot);
-
-      // Assert
-      expect(result).toBe(join(testRoot, '.github/workflows/validate.yml'));
+      const result = resolveProjectPath('.github/workflows/validate.yml', testEnv.testRoot);
+      expect(result).toBe(join(testEnv.testRoot, '.github/workflows/validate.yml'));
     });
 
     it('should resolve path relative to git root from subdirectory', () => {
-      // Act
-      const result = resolveProjectPath('.github/workflows/validate.yml', testSubdir);
-
-      // Assert
-      expect(result).toBe(join(testRoot, '.github/workflows/validate.yml'));
+      const result = resolveProjectPath('.github/workflows/validate.yml', testEnv.testSubdir);
+      expect(result).toBe(join(testEnv.testRoot, '.github/workflows/validate.yml'));
     });
 
     it('should return null when not in git repository', () => {
-      // Arrange: Use /tmp which is outside any git repo
-      const nonGitDir = join('/tmp', 'test-temp-non-git-resolve-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
-        // Act
+      withNonGitDirectory((nonGitDir) => {
         const result = resolveProjectPath('.github/workflows/validate.yml', nonGitDir);
-
-        // Assert
         expect(result).toBeNull();
-      } finally {
-        // Cleanup
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should handle nested relative paths', () => {
-      // Act
-      const result = resolveProjectPath('packages/cli/src/commands/doctor.ts', testRoot);
-
-      // Assert
-      expect(result).toBe(join(testRoot, 'packages/cli/src/commands/doctor.ts'));
+      const result = resolveProjectPath('packages/cli/src/commands/doctor.ts', testEnv.testRoot);
+      expect(result).toBe(join(testEnv.testRoot, 'packages/cli/src/commands/doctor.ts'));
     });
 
-    it.skipIf(process.platform === 'win32')('should use process.cwd() when startDir not provided', () => {
+    it('should use process.cwd() when startDir not provided', () => {
       // Act
       const result = resolveProjectPath('.github/workflows/validate.yml');
 
       // Assert: should find vibe-validate git root
       expect(result).not.toBeNull();
       expect(result).toContain('vibe-validate');
-      expect(result).toContain('.github/workflows/validate.yml');
+      // Normalize paths for cross-platform comparison (Windows uses backslashes)
+      expect(result?.replaceAll('\\', '/')).toContain('.github/workflows/validate.yml');
     });
   });
 
   describe('projectFileExists', () => {
-    const testRoot = join(process.cwd(), 'test-temp-file-exists');
-    const testSubdir = join(testRoot, 'packages', 'cli');
+    let testEnv: ReturnType<typeof createTestGitStructure>;
 
     beforeEach(() => {
-      // Create test directory structure with .git
-      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
-      mkdirSyncReal(testSubdir, { recursive: true });
-
-      // Create a test file at git root
-      mkdirSyncReal(join(testRoot, '.github', 'workflows'), { recursive: true });
-      writeFileSync(join(testRoot, '.github/workflows/validate.yml'), 'test content');
+      testEnv = createTestGitStructure('test-temp-file-exists', { createTestFile: true });
     });
 
     afterEach(() => {
-      // Clean up test directories
-      if (existsSync(testRoot)) {
-        rmSync(testRoot, { recursive: true, force: true });
-      }
+      testEnv.cleanup();
     });
 
     it('should return true when file exists at git root (from root)', () => {
       // Act
-      const result = projectFileExists('.github/workflows/validate.yml', testRoot);
+      const result = projectFileExists('.github/workflows/validate.yml', testEnv.testRoot);
 
       // Assert
       expect(result).toBe(true);
@@ -490,7 +418,7 @@ describe('git-detection', () => {
 
     it('should return true when file exists at git root (from subdirectory)', () => {
       // Act
-      const result = projectFileExists('.github/workflows/validate.yml', testSubdir);
+      const result = projectFileExists('.github/workflows/validate.yml', testEnv.testSubdir);
 
       // Assert
       expect(result).toBe(true);
@@ -498,27 +426,20 @@ describe('git-detection', () => {
 
     it('should return false when file does not exist', () => {
       // Act
-      const result = projectFileExists('.github/workflows/nonexistent.yml', testRoot);
+      const result = projectFileExists('.github/workflows/nonexistent.yml', testEnv.testRoot);
 
       // Assert
       expect(result).toBe(false);
     });
 
     it('should return false when not in git repository', () => {
-      // Arrange: Use /tmp which is outside any git repo
-      const nonGitDir = join('/tmp', 'test-temp-non-git-exists-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
+      withNonGitDirectory((nonGitDir) => {
         // Act
         const result = projectFileExists('.github/workflows/validate.yml', nonGitDir);
 
         // Assert
         expect(result).toBe(false);
-      } finally {
-        // Cleanup
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should use process.cwd() when startDir not provided', () => {
@@ -531,30 +452,20 @@ describe('git-detection', () => {
   });
 
   describe('readProjectFile', () => {
-    const testRoot = join(process.cwd(), 'test-temp-read-file');
-    const testSubdir = join(testRoot, 'packages', 'cli');
     const testContent = 'test workflow content\nline 2';
+    let testEnv: ReturnType<typeof createTestGitStructure>;
 
     beforeEach(() => {
-      // Create test directory structure with .git
-      mkdirSyncReal(join(testRoot, '.git'), { recursive: true });
-      mkdirSyncReal(testSubdir, { recursive: true });
-
-      // Create a test file at git root
-      mkdirSyncReal(join(testRoot, '.github', 'workflows'), { recursive: true });
-      writeFileSync(join(testRoot, '.github/workflows/validate.yml'), testContent);
+      testEnv = createTestGitStructure('test-temp-read-file', { createTestFile: true, fileContent: testContent });
     });
 
     afterEach(() => {
-      // Clean up test directories
-      if (existsSync(testRoot)) {
-        rmSync(testRoot, { recursive: true, force: true });
-      }
+      testEnv.cleanup();
     });
 
     it('should read file content from git root (from root)', () => {
       // Act
-      const result = readProjectFile('.github/workflows/validate.yml', 'utf8', testRoot);
+      const result = readProjectFile('.github/workflows/validate.yml', 'utf8', testEnv.testRoot);
 
       // Assert
       expect(result).toBe(testContent);
@@ -562,7 +473,7 @@ describe('git-detection', () => {
 
     it('should read file content from git root (from subdirectory)', () => {
       // Act
-      const result = readProjectFile('.github/workflows/validate.yml', 'utf8', testSubdir);
+      const result = readProjectFile('.github/workflows/validate.yml', 'utf8', testEnv.testSubdir);
 
       // Assert
       expect(result).toBe(testContent);
@@ -570,32 +481,25 @@ describe('git-detection', () => {
 
     it('should return null when file does not exist', () => {
       // Act
-      const result = readProjectFile('.github/workflows/nonexistent.yml', 'utf8', testRoot);
+      const result = readProjectFile('.github/workflows/nonexistent.yml', 'utf8', testEnv.testRoot);
 
       // Assert
       expect(result).toBeNull();
     });
 
     it('should return null when not in git repository', () => {
-      // Arrange: Use /tmp which is outside any git repo
-      const nonGitDir = join('/tmp', 'test-temp-non-git-read-' + Date.now());
-      mkdirSyncReal(nonGitDir, { recursive: true });
-
-      try {
+      withNonGitDirectory((nonGitDir) => {
         // Act
         const result = readProjectFile('.github/workflows/validate.yml', 'utf8', nonGitDir);
 
         // Assert
         expect(result).toBeNull();
-      } finally {
-        // Cleanup
-        rmSync(nonGitDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('should use default encoding (utf8) when not specified', () => {
       // Act
-      const result = readProjectFile('.github/workflows/validate.yml', undefined, testRoot);
+      const result = readProjectFile('.github/workflows/validate.yml', undefined, testEnv.testRoot);
 
       // Assert
       expect(result).toBe(testContent);
@@ -604,10 +508,10 @@ describe('git-detection', () => {
     it('should handle different encodings', () => {
       // Arrange
       const binaryContent = Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]); // "Hello"
-      writeFileSync(join(testRoot, '.github/workflows/binary.yml'), binaryContent);
+      writeFileSync(join(testEnv.testRoot, '.github/workflows/binary.yml'), binaryContent);
 
       // Act
-      const result = readProjectFile('.github/workflows/binary.yml', 'utf8', testRoot);
+      const result = readProjectFile('.github/workflows/binary.yml', 'utf8', testEnv.testRoot);
 
       // Assert
       expect(result).toBe('Hello');

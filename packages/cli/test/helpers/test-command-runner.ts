@@ -38,6 +38,19 @@ function processQuote(
 
 /**
  * Process a single character during command parsing
+ *
+ * CRITICAL FIX (Issue #86): Only escape quotes and backslashes, not all characters.
+ * This prevents Windows paths (C:\Users\...) from being mangled by escape processing.
+ *
+ * Example problem before fix:
+ * - Input: node "C:\Users\test\bin.js"
+ * - After parsing: node "C:Userstestbin.js" (backslashes consumed!)
+ * - Node error: Cannot find module 'C:Userstestbin.js'
+ *
+ * After fix:
+ * - Input: node "C:\Users\test\bin.js"
+ * - After parsing: node "C:\Users\test\bin.js" (backslashes preserved)
+ * - Works correctly on Windows
  */
 function processCommandChar(
   char: string,
@@ -45,10 +58,16 @@ function processCommandChar(
   state: { current: string; parts: string[]; inQuotes: boolean; quoteChar: string; i: number },
   commandString: string
 ): { skipExtra: number } {
-  // Handle escape sequences
+  // Handle escape sequences - only escape quotes and backslashes
+  // This prevents Windows paths (C:\Users\...) from being mangled
   if (char === '\\' && state.i + 1 < commandString.length) {
-    state.current += commandString[state.i + 1];
-    return { skipExtra: 1 }; // Skip next character
+    const nextChar = commandString[state.i + 1];
+    // Only treat as escape if next char is a quote or backslash
+    if (isQuoteChar(nextChar) || nextChar === '\\') {
+      state.current += nextChar;
+      return { skipExtra: 1 }; // Skip next character
+    }
+    // Otherwise treat backslash as literal (important for Windows paths!)
   }
 
   // Handle quotes
@@ -152,7 +171,10 @@ export function executeCommand(
     const [cmd, args] = parseCommand(command);
     output = safeExecSync(cmd, args, execOptions);
   } catch (err: any) {
-    output = err.stdout || err.stderr || '';
+    // Combine stdout and stderr for output
+    const stdout = typeof err.stdout === 'string' ? err.stdout : err.stdout?.toString() || '';
+    const stderr = typeof err.stderr === 'string' ? err.stderr : err.stderr?.toString() || '';
+    output = stdout + stderr;
     exitCode = err.status || 1;
   }
 

@@ -28,6 +28,80 @@ function parseWorkflowYaml(workflowYaml: string): any {
   return parseYaml(yamlContent);
 }
 
+/**
+ * Setup mock for package.json with specified packageManager
+ */
+function mockPackageJson(packageManager?: string, engines?: { node: string }) {
+  vi.mocked(readFileSync).mockImplementation((path: any) => {
+    if (path.toString().endsWith('package.json')) {
+      const pkg: any = { name: 'test-project' };
+      if (packageManager) pkg.packageManager = packageManager;
+      if (engines) pkg.engines = engines;
+      return JSON.stringify(pkg);
+    }
+    return '';
+  });
+}
+
+/**
+ * Setup mock for lockfile detection
+ */
+function mockLockfiles(options: {
+  hasPackageLock?: boolean;
+  hasPnpmLock?: boolean;
+  packageJsonExists?: boolean;
+}) {
+  vi.mocked(existsSync).mockImplementation((path: any) => {
+    const pathStr = path.toString();
+    if (pathStr.endsWith('package-lock.json')) return options.hasPackageLock ?? false;
+    if (pathStr.endsWith('pnpm-lock.yaml')) return options.hasPnpmLock ?? false;
+    if (pathStr.endsWith('package.json')) return options.packageJsonExists ?? true;
+    return false;
+  });
+}
+
+/**
+ * Find step in job by predicate
+ */
+function findStep(job: any, predicate: (_step: any) => boolean) {
+  return job.steps.find(predicate);
+}
+
+/**
+ * Expect all-validation-passed gate job with correct dependencies
+ */
+function expectGateJob(workflow: any, expectedNeeds: string[]) {
+  expect(workflow.jobs).toHaveProperty('all-validation-passed');
+  expect(workflow.jobs['all-validation-passed'].if).toBe('always()');
+  expect(workflow.jobs['all-validation-passed'].needs).toEqual(expectedNeeds);
+}
+
+/**
+ * Expect step to exist with uses action
+ */
+function expectStepWithUses(job: any, uses: string) {
+  const step = findStep(job, (s: any) => s.uses === uses || s.uses?.includes(uses));
+  expect(step).toBeDefined();
+  return step;
+}
+
+/**
+ * Expect step to exist with run command
+ */
+function expectStepWithRun(job: any, run: string) {
+  const step = findStep(job, (s: any) => s.run === run);
+  expect(step).toBeDefined();
+  return step;
+}
+
+/**
+ * Expect step NOT to exist
+ */
+function expectNoStepWithUses(job: any, uses: string) {
+  const step = findStep(job, (s: any) => s.uses?.includes(uses));
+  expect(step).toBeUndefined();
+}
+
 describe('generate-workflow command', () => {
   const mockConfig: VibeValidateConfig = {
     validation: {
@@ -77,6 +151,17 @@ describe('generate-workflow command', () => {
     vi.restoreAllMocks();
   });
 
+  /**
+   * Generate workflow and parse YAML in one step
+   */
+  function generateAndParseWorkflow(
+    config: VibeValidateConfig = mockConfig,
+    options?: GenerateWorkflowOptions
+  ) {
+    const workflowYaml = generateWorkflow(config, options);
+    return parseWorkflowYaml(workflowYaml);
+  }
+
   describe('toJobId', () => {
     it('should convert phase/step names to valid GitHub Actions job IDs', () => {
       expect(toJobId('TypeScript Type Check')).toBe('typescript-type-check');
@@ -115,8 +200,7 @@ describe('generate-workflow command', () => {
 
   describe('generateWorkflow', () => {
     it('should generate valid GitHub Actions workflow YAML', () => {
-      const workflowYaml = generateWorkflow(mockConfig);
-      const workflow = parseWorkflowYaml(workflowYaml);
+      const workflow = generateAndParseWorkflow();
 
       expect(workflow.name).toBe('Validation Pipeline');
       expect(workflow.on.push.branches).toContain('main');
@@ -124,8 +208,7 @@ describe('generate-workflow command', () => {
     });
 
     it('should generate jobs for each validation step in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
+      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
       expect(workflow.jobs).toHaveProperty('typescript-type-check');
       expect(workflow.jobs).toHaveProperty('eslint-code-quality');
@@ -133,8 +216,7 @@ describe('generate-workflow command', () => {
     });
 
     it('should auto-depend on previous phase in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
+      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
       // Testing phase (phase 2) auto-depends on Pre-Qualification phase (phase 1)
       expect(workflow.jobs['testing'].needs).toEqual([
@@ -144,8 +226,7 @@ describe('generate-workflow command', () => {
     });
 
     it('should include checkout and setup-node steps in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
+      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
       const job = workflow.jobs['typescript-type-check'];
       expect(job.steps[0].uses).toBe('actions/checkout@v4');
@@ -154,12 +235,9 @@ describe('generate-workflow command', () => {
 
 
     it('should add all-validation-passed gate job in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
+      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
-      expect(workflow.jobs).toHaveProperty('all-validation-passed');
-      expect(workflow.jobs['all-validation-passed'].if).toBe('always()');
-      expect(workflow.jobs['all-validation-passed'].needs).toEqual([
+      expectGateJob(workflow, [
         'typescript-type-check',
         'eslint-code-quality',
         'testing', // Phase 2 job named after phase
@@ -167,31 +245,25 @@ describe('generate-workflow command', () => {
     });
 
     it('should detect pnpm and add pnpm installation steps in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, {
+      const workflow = generateAndParseWorkflow(mockConfig, {
         packageManager: 'pnpm',
         useMatrix: false,
       });
-      const workflow = parseWorkflowYaml(workflowYaml);
 
       const job = workflow.jobs['typescript-type-check'];
-      const pnpmStep = job.steps.find((s: any) => s.uses === 'pnpm/action-setup@v2');
-      expect(pnpmStep).toBeDefined();
+      const pnpmStep = expectStepWithUses(job, 'pnpm/action-setup');
       expect(pnpmStep.with.version).toBe('8');
-
-      const installStep = job.steps.find((s: any) => s.run === 'pnpm install');
-      expect(installStep).toBeDefined();
+      expectStepWithRun(job, 'pnpm install');
     });
 
     it('should use npm ci when packageManager is npm in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, {
+      const workflow = generateAndParseWorkflow(mockConfig, {
         packageManager: 'npm',
         useMatrix: false,
       });
-      const workflow = parseWorkflowYaml(workflowYaml);
 
       const job = workflow.jobs['typescript-type-check'];
-      const npmStep = job.steps.find((s: any) => s.run === 'npm ci');
-      expect(npmStep).toBeDefined();
+      expectStepWithRun(job, 'npm ci');
     });
 
     it('should add coverage reporting when enabled in non-matrix mode', () => {
@@ -598,165 +670,71 @@ describe('generate-workflow command', () => {
 
     describe('Package manager detection improvements', () => {
       it('should detect pnpm from packageManager field in package.json', () => {
-        // Mock package.json with packageManager field
-        vi.mocked(readFileSync).mockImplementation((path: any) => {
-          if (path.toString().endsWith('package.json')) {
-            return JSON.stringify({
-              name: 'test-project',
-              packageManager: 'pnpm@9.0.0',
-            });
-          }
-          return '';
-        });
+        mockPackageJson('pnpm@9.0.0');
         vi.mocked(existsSync).mockReturnValue(true);
 
-        const workflowYaml = generateWorkflow(mockConfig);
-        const workflow = parseWorkflowYaml(workflowYaml);
+        const workflow = generateAndParseWorkflow();
 
         // Should use pnpm based on packageManager field
         const job = workflow.jobs['typescript-type-check'] || workflow.jobs['validate'];
-        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
-        expect(pnpmStep).toBeDefined();
+        expectStepWithUses(job, 'pnpm/action-setup');
       });
 
       it('should detect npm from packageManager field in package.json', () => {
-        // Mock package.json with packageManager field
-        vi.mocked(readFileSync).mockImplementation((path: any) => {
-          if (path.toString().endsWith('package.json')) {
-            return JSON.stringify({
-              name: 'test-project',
-              packageManager: 'npm@10.0.0',
-            });
-          }
-          return '';
-        });
+        mockPackageJson('npm@10.0.0');
         vi.mocked(existsSync).mockReturnValue(true);
 
-        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-        const workflow = parseWorkflowYaml(workflowYaml);
+        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
         // Should use npm based on packageManager field
         const job = workflow.jobs['typescript-type-check'];
-        const npmStep = job.steps.find((s: any) => s.run === 'npm ci');
-        expect(npmStep).toBeDefined();
-
-        // Should NOT have pnpm setup
-        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
-        expect(pnpmStep).toBeUndefined();
+        expectStepWithRun(job, 'npm ci');
+        expectNoStepWithUses(job, 'pnpm/action-setup');
       });
 
       it('should prefer npm when both lockfiles exist (more conservative default)', () => {
-        // Mock fs to show both lockfiles exist
-        vi.mocked(existsSync).mockImplementation((path: any) => {
-          const pathStr = path.toString();
-          if (pathStr.endsWith('package-lock.json')) return true;
-          if (pathStr.endsWith('pnpm-lock.yaml')) return true;
-          return false;
-        });
+        mockLockfiles({ hasPackageLock: true, hasPnpmLock: true });
+        mockPackageJson(undefined, { node: '>=22.0.0' });
 
-        // Mock package.json without packageManager field
-        vi.mocked(readFileSync).mockImplementation((path: any) => {
-          if (path.toString().endsWith('package.json')) {
-            return JSON.stringify({
-              name: 'test-project',
-              engines: { node: '>=22.0.0' },
-            });
-          }
-          return '';
-        });
-
-        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-        const workflow = parseWorkflowYaml(workflowYaml);
+        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
         // Should default to npm when both exist (more conservative)
         const job = workflow.jobs['typescript-type-check'];
-        const npmStep = job.steps.find((s: any) => s.run === 'npm ci');
-        expect(npmStep).toBeDefined();
-
-        // Should NOT have pnpm setup
-        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
-        expect(pnpmStep).toBeUndefined();
+        expectStepWithRun(job, 'npm ci');
+        expectNoStepWithUses(job, 'pnpm/action-setup');
       });
 
       it('should use pnpm when only pnpm-lock.yaml exists', () => {
-        // Mock fs to show only pnpm lockfile
-        vi.mocked(existsSync).mockImplementation((path: any) => {
-          const pathStr = path.toString();
-          if (pathStr.endsWith('package-lock.json')) return false;
-          if (pathStr.endsWith('pnpm-lock.yaml')) return true;
-          return true; // package.json exists
-        });
+        mockLockfiles({ hasPackageLock: false, hasPnpmLock: true, packageJsonExists: true });
+        mockPackageJson(undefined, { node: '>=22.0.0' });
 
-        vi.mocked(readFileSync).mockImplementation((path: any) => {
-          if (path.toString().endsWith('package.json')) {
-            return JSON.stringify({
-              name: 'test-project',
-              engines: { node: '>=22.0.0' },
-            });
-          }
-          return '';
-        });
-
-        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-        const workflow = parseWorkflowYaml(workflowYaml);
+        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
         // Should use pnpm when only pnpm-lock exists
         const job = workflow.jobs['typescript-type-check'];
-        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
-        expect(pnpmStep).toBeDefined();
+        expectStepWithUses(job, 'pnpm/action-setup');
       });
 
       it('should use npm when only package-lock.json exists', () => {
-        // Mock fs to show only npm lockfile
-        vi.mocked(existsSync).mockImplementation((path: any) => {
-          const pathStr = path.toString();
-          if (pathStr.endsWith('package-lock.json')) return true;
-          if (pathStr.endsWith('pnpm-lock.yaml')) return false;
-          return true; // package.json exists
-        });
+        mockLockfiles({ hasPackageLock: true, hasPnpmLock: false, packageJsonExists: true });
+        mockPackageJson(undefined, { node: '>=22.0.0' });
 
-        vi.mocked(readFileSync).mockImplementation((path: any) => {
-          if (path.toString().endsWith('package.json')) {
-            return JSON.stringify({
-              name: 'test-project',
-              engines: { node: '>=22.0.0' },
-            });
-          }
-          return '';
-        });
-
-        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-        const workflow = parseWorkflowYaml(workflowYaml);
+        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
         // Should use npm when only package-lock exists
         const job = workflow.jobs['typescript-type-check'];
-        const npmStep = job.steps.find((s: any) => s.run === 'npm ci');
-        expect(npmStep).toBeDefined();
+        expectStepWithRun(job, 'npm ci');
       });
 
       it('should prioritize packageManager field over lockfile detection', () => {
-        // Mock both lockfiles existing
         vi.mocked(existsSync).mockReturnValue(true);
+        mockPackageJson('pnpm@9.0.0', { node: '>=22.0.0' });
 
-        // Mock package.json with explicit pnpm packageManager
-        vi.mocked(readFileSync).mockImplementation((path: any) => {
-          if (path.toString().endsWith('package.json')) {
-            return JSON.stringify({
-              name: 'test-project',
-              packageManager: 'pnpm@9.0.0',
-              engines: { node: '>=22.0.0' },
-            });
-          }
-          return '';
-        });
-
-        const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-        const workflow = parseWorkflowYaml(workflowYaml);
+        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
 
         // Should use pnpm from packageManager field (not default to npm)
         const job = workflow.jobs['typescript-type-check'];
-        const pnpmStep = job.steps.find((s: any) => s.uses?.includes('pnpm/action-setup'));
-        expect(pnpmStep).toBeDefined();
+        expectStepWithUses(job, 'pnpm/action-setup');
       });
     });
   });

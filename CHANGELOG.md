@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- **CRITICAL: Complete Windows compatibility for development and usage** (Issue #86, PR #94)
+  - **Problem**: Tests failed on Windows CI due to path handling issues and incompatible shell commands
+  - **What was fixed**:
+    - Path normalization: Use `normalizedTmpdir()` to resolve Windows 8.3 short names (RUNNER~1 → runneradmin)
+    - Test execution: All CLI spawn calls now use `node` directly for cross-platform compatibility
+    - Build process: Fixed Windows-specific build failures
+  - **Impact**: vibe-validate now works correctly on Windows for both development and end-user usage
+  - **Code quality**: Reduced code duplication from 4.73% to 1.43% during refactoring
+
 ### Features
 
 - **CRITICAL: `cleanup` command now detects squash-merged branches** - **BREAKING CHANGES**

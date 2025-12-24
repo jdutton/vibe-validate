@@ -15,6 +15,7 @@
 
 import type {
   CheckConclusion,
+  CheckStatus,
   ExternalCheck,
   GitHubActionCheck,
   Guidance,
@@ -214,15 +215,87 @@ export class WatchPROrchestrator {
   }
 
   /**
+   * Build GitHub Action check from a workflow job
+   */
+  private async buildCheckFromJob(
+    job: { id: number; run_id: number; name: string; status: string; conclusion: string | null; started_at: string; completed_at: string | null },
+    runId: number,
+    workflowName: string
+  ): Promise<GitHubActionCheck> {
+    // Calculate duration
+    const startTime = new Date(job.started_at).getTime();
+    const endTime = job.completed_at ? new Date(job.completed_at).getTime() : Date.now();
+    const durationSecs = Math.floor((endTime - startTime) / 1000);
+
+    // Normalize status
+    let jobStatus: CheckStatus = 'queued';
+    if (job.status === 'completed') {
+      jobStatus = 'completed';
+    } else if (job.status === 'in_progress') {
+      jobStatus = 'in_progress';
+    }
+
+    const actionCheck: GitHubActionCheck = {
+      name: job.name,
+      status: jobStatus,
+      conclusion: job.conclusion ? (job.conclusion as CheckConclusion) : undefined,
+      run_id: runId,
+      workflow: workflowName,
+      started_at: job.started_at,
+      duration: `${durationSecs}s`,
+    };
+
+    // Extract errors from failed jobs
+    if (job.status === 'completed' && job.conclusion === 'failure') {
+      await this.extractErrorsForCheck(actionCheck, runId);
+    }
+
+    return actionCheck;
+  }
+
+  /**
+   * Extract errors for a check from run logs
+   */
+  private async extractErrorsForCheck(check: GitHubActionCheck, runId: number): Promise<void> {
+    const logs = await this.fetchLogsWithRetry(runId);
+    if (!logs) return;
+
+    const extraction = await this.extractionDetector.detectAndExtract(check, logs);
+    if (extraction) {
+      check.extraction = extraction;
+    }
+
+    // Save to cache
+    if (this.cacheManager) {
+      await this.cacheManager.saveLog(runId, logs);
+      if (extraction) {
+        await this.cacheManager.saveExtraction(runId, extraction);
+      }
+    }
+  }
+
+  /**
+   * Determine overall PR status from checks
+   */
+  private determineOverallStatus(checks: GitHubActionCheck[]): PRStatus {
+    const hasFailure = checks.some(c => c.conclusion === 'failure');
+    const hasPending = checks.some(c => c.status === 'in_progress' || c.status === 'queued');
+
+    if (hasFailure) return 'failed';
+    if (hasPending) return 'pending';
+    return 'passed';
+  }
+
+  /**
    * Build result for a specific run ID
    *
-   * Useful for watching specific failed runs to test extraction.
-   * Does not use history summary (since it's a single run).
+   * Fetches all jobs for the workflow run and creates individual checks for each job.
+   * This provides consistent job-level detail matching the default behavior.
    *
    * @param prNumber - PR number
    * @param runId - GitHub run ID
    * @param options - Options (useCache)
-   * @returns WatchPRResult with single check
+   * @returns WatchPRResult with job-level checks
    */
   async buildResultForRun(
     prNumber: number,
@@ -236,64 +309,33 @@ export class WatchPROrchestrator {
       this.cacheManager = new CacheManager(`${this.owner}/${this.repo}`, prNumber);
     }
 
-    // Fetch PR metadata (still needed for context)
+    // Fetch metadata
     const prMetadata = await this.fetcher.fetchPRDetails(prNumber);
-
-    // Fetch specific run details
     const runDetails = await this.fetcher.fetchRunDetails(runId);
+    const jobs = await this.fetcher.fetchRunJobs(runId);
 
-    // Build GitHub Action check from run details
-    const actionCheck: GitHubActionCheck = {
-      name: runDetails.name,
-      status: runDetails.status,
-      conclusion: runDetails.conclusion,
-      run_id: runDetails.run_id,
-      workflow: runDetails.workflow,
-      started_at: runDetails.started_at,
-      duration: runDetails.duration,
-    };
+    // Build checks from jobs
+    const actionChecks = await Promise.all(
+      jobs.map(job => this.buildCheckFromJob(job, runId, runDetails.workflow))
+    );
 
-    // Try to extract errors from logs (with retry logic for Issue #4)
-    const logs = await this.fetchLogsWithRetry(runId);
-    if (logs) {
-      const extraction = await this.extractionDetector.detectAndExtract(actionCheck, logs);
-      if (extraction) {
-        actionCheck.extraction = extraction;
-      }
-
-      // Save logs to cache (extraction can be re-run later)
-      if (this.cacheManager) {
-        await this.cacheManager.saveLog(runId, logs);
-        if (extraction) {
-          await this.cacheManager.saveExtraction(runId, extraction);
-        }
-      }
-    }
-    // If logs are null, gracefully continue without extraction
-    // No noisy error output (Issue #4 fix)
-
-    // Fetch file changes (for context)
+    // Fetch file changes
     const changes = await this.fetcher.fetchFileChanges(prNumber);
 
-    // Determine status from the single check
-    let status: PRStatus = 'passed';
-    if (actionCheck.conclusion === 'failure') {
-      status = 'failed';
-    } else if (actionCheck.status === 'in_progress' || actionCheck.status === 'queued') {
-      status = 'pending';
-    }
+    // Determine status
+    const status = this.determineOverallStatus(actionChecks);
 
-    // Calculate check counts (single check)
-    const totalChecks = 1;
-    const passedChecks = actionCheck.conclusion === 'success' ? 1 : 0;
-    const failedChecks = actionCheck.conclusion === 'failure' ? 1 : 0;
-    const pendingChecks = actionCheck.status === 'in_progress' || actionCheck.status === 'queued' ? 1 : 0;
+    // Calculate counts
+    const totalChecks = actionChecks.length;
+    const passedChecks = actionChecks.filter(c => c.conclusion === 'success').length;
+    const failedChecks = actionChecks.filter(c => c.conclusion === 'failure').length;
+    const pendingChecks = actionChecks.filter(c => c.status === 'in_progress' || c.status === 'queued').length;
 
-    // Generate guidance (simplified for single run)
-    const guidance = this.generateGuidance(status, [actionCheck], [], prMetadata.mergeable);
+    // Generate guidance
+    const guidance = this.generateGuidance(status, actionChecks, [], prMetadata.mergeable);
 
     // Build result
-    const result: WatchPRResult = {
+    return {
       pr: prMetadata,
       status,
       checks: {
@@ -301,18 +343,12 @@ export class WatchPROrchestrator {
         passed: passedChecks,
         failed: failedChecks,
         pending: pendingChecks,
-        github_actions: [actionCheck],
+        github_actions: this.orderChecks(actionChecks),
         external_checks: [],
       },
       changes,
       guidance,
-      // Note: cache field removed - will be added back when actually needed
     };
-
-    // Don't cache metadata for single-run mode (historical runs are immutable)
-    // But logs and extractions are already cached above
-
-    return result;
   }
 
   /**

@@ -15,9 +15,11 @@ import {
   fetchPRChecks,
   fetchRunLogs as ghFetchRunLogs,
   fetchRunDetails as ghFetchRunDetails,
+  fetchRunJobs as ghFetchRunJobs,
   getDiffStats,
   getCommitCount,
   listWorkflowRuns,
+  type GitHubJob,
 } from '@vibe-validate/git';
 
 import type {
@@ -208,6 +210,16 @@ export class GitHubFetcher {
       duration: this.calculateDuration(data.createdAt, data.updatedAt),
       url: data.url,
     };
+  }
+
+  /**
+   * Fetch jobs for a workflow run
+   *
+   * @param runId - Run ID
+   * @returns List of jobs for the run
+   */
+  async fetchRunJobs(runId: number): Promise<GitHubJob[]> {
+    return ghFetchRunJobs(runId, this.owner, this.repo);
   }
 
   /**

@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with the vibe-validate codebase.
 
+## **CRITICAL: DO NOT MODIFY vibe-validate.config.yaml WITHOUT EXPLICIT PERMISSION**
+
+**NEVER, EVER modify `vibe-validate.config.yaml` without asking the user first.**
+
+- ❌ **DO NOT** remove validation steps
+- ❌ **DO NOT** change commands
+- ❌ **DO NOT** "fix" the config because validation is failing
+- ❌ **DO NOT** assume you know better than the existing configuration
+
+**If validation fails:**
+1. **ASK the user** what to do about the failure
+2. Investigate the root cause (wrong directory? missing dependency? actual test failure?)
+3. **DO NOT modify the config** to make validation "pass"
+
+**The config defines what success means for this project. You do NOT get to redefine success without permission.**
+
 ## Project Overview
 
 **vibe-validate** is a git-aware validation orchestration tool designed for LLM-assisted development (vibe coding). It caches validation state using git tree hashes, runs steps in parallel, and formats errors for LLM consumption.
@@ -192,10 +208,9 @@ The script automatically updates:
 
 **Normal Release Workflow:**
 
-1. **Update CHANGELOG.md** (MANDATORY before release)
-   - Add changes to appropriate version section
-   - Format: `## [X.Y.Z] - YYYY-MM-DD`
-   - Follow [Keep a Changelog](https://keepachangelog.com/) format
+1. **Update CHANGELOG.md** (stable releases only)
+   - **RC releases**: Leave changes in "Unreleased" section
+   - **Stable releases**: Move "Unreleased" → `## [X.Y.Z] - YYYY-MM-DD`
 
 2. **Bump version**:
    ```bash
@@ -606,6 +621,35 @@ Example CHANGELOG entry:
 - Test agent context detection
 - Test error formatting with real tools
 - Verify caching behavior
+
+### Test Helper Patterns (DRY Enforcement)
+
+**CRITICAL**: Code duplication actively monitored by `pnpm duplication-check` (jscpd).
+
+**Duplication targets:**
+- **jscpd (CI enforced):** < 3% (current: 1.74%)
+- **SonarQube:** Tracks additional duplication patterns beyond jscpd
+- **Goal:** Drive duplication as low as practical for both tools
+
+**When duplication detected (3+ instances), create helpers using these patterns:**
+- `create*()` - Factory functions for test objects with defaults
+- `setup*()` - Configure mocks and environment
+- `expect*()` - Common assertion patterns
+- `run*()`/`execute*()` - Standardized command execution
+
+**Helper location (CRITICAL - SonarQube/ESLint enforced):**
+- **Module scope** (outside describe blocks) - REQUIRED for maintainability and performance
+- **Rationale**: Nested functions inside describe blocks create new function instances on every test run, increase cognitive complexity, and trigger SonarQube code smells
+- **Shared file** `test/helpers/*.ts` when used across multiple test files
+- **Never** cross-package test helpers
+- ⚠️ **NEVER define helper functions inside describe blocks** - ESLint `no-inner-declarations` will flag this
+
+**Requirements:**
+- All helpers MUST have JSDoc comments
+- ESLint requires explicit `expect()` in each test (helper assertions don't count)
+- Update baseline after refactoring: `npx tsx tools/jscpd-update-baseline.ts`
+
+**See `docs/testing-patterns.md` for detailed patterns, examples, and guidelines.**
 
 ### Cross-Platform Testing (Windows Compatibility)
 

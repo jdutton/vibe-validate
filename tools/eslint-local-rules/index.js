@@ -11,6 +11,7 @@
  * - no-child-process-execSync: Enforce safeExecSync() instead of execSync() (security + cross-platform)
  * - no-git-commands-direct: Enforce @vibe-validate/git functions instead of direct git commands
  * - no-gh-commands-direct: Enforce @vibe-validate/git functions instead of direct gh commands
+ * - no-direct-cli-bin-execution: Enforce shared CLI execution helpers instead of direct node + bin.js
  */
 
 import { createRequire } from 'node:module';
@@ -28,5 +29,6 @@ export default {
     'no-child-process-execSync': require('./no-child-process-execSync.cjs'),
     'no-git-commands-direct': require('./no-git-commands-direct.cjs'),
     'no-gh-commands-direct': require('./no-gh-commands-direct.cjs'),
+    'no-direct-cli-bin-execution': require('./no-direct-cli-bin-execution.cjs'),
   },
 };

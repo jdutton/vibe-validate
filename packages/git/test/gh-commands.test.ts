@@ -12,9 +12,11 @@ import {
   listPullRequests,
   fetchRunLogs,
   fetchRunDetails,
+  fetchRunJobs,
   listWorkflowRuns,
   type GitHubPullRequest,
   type GitHubRun,
+  type GitHubJob,
 } from '../src/gh-commands.js';
 
 // Mock @vibe-validate/utils
@@ -406,6 +408,64 @@ describe('gh-commands', () => {
         'gh',
         expect.arrayContaining(['--repo', 'owner/repo']),
         expect.any(Object)
+      );
+    });
+  });
+
+  describe('fetchRunJobs', () => {
+    it('should fetch jobs for a workflow run', () => {
+      const mockJobs: GitHubJob[] = [
+        {
+          id: 1,
+          run_id: 12345,
+          name: 'build (ubuntu-latest, 22)',
+          status: 'completed',
+          conclusion: 'success',
+          started_at: '2025-12-20T00:00:00Z',
+          completed_at: '2025-12-20T00:05:00Z',
+          html_url: 'https://github.com/owner/repo/runs/1',
+        },
+        {
+          id: 2,
+          run_id: 12345,
+          name: 'build (windows-latest, 22)',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-20T00:00:00Z',
+          completed_at: '2025-12-20T00:06:00Z',
+          html_url: 'https://github.com/owner/repo/runs/2',
+        },
+      ];
+
+      vi.mocked(utils.safeExecSync).mockReturnValue(JSON.stringify({ jobs: mockJobs }));
+
+      const result = fetchRunJobs(12345, 'owner', 'repo');
+
+      expect(utils.safeExecSync).toHaveBeenCalledWith(
+        'gh',
+        ['api', 'repos/owner/repo/actions/runs/12345/jobs'],
+        { encoding: 'utf8' }
+      );
+      expect(result).toEqual(mockJobs);
+    });
+
+    it('should return empty array when no jobs', () => {
+      vi.mocked(utils.safeExecSync).mockReturnValue(JSON.stringify({}));
+
+      const result = fetchRunJobs(12345, 'owner', 'repo');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should use :owner/:repo placeholder when owner/repo not provided', () => {
+      vi.mocked(utils.safeExecSync).mockReturnValue(JSON.stringify({ jobs: [] }));
+
+      fetchRunJobs(12345);
+
+      expect(utils.safeExecSync).toHaveBeenCalledWith(
+        'gh',
+        ['api', 'repos/:owner/:repo/actions/runs/12345/jobs'],
+        { encoding: 'utf8' }
       );
     });
   });

@@ -45,6 +45,30 @@ function mockFileChanges(overrides = {}) {
 }
 
 /**
+ * Helper: Create mock GitHub Action check
+ */
+function mockGitHubActionCheck(overrides: {
+  name?: string;
+  conclusion?: 'success' | 'failure' | 'neutral';
+  run_id?: number;
+  workflow?: string;
+  started_at?: string;
+  duration?: string;
+} = {}) {
+  return {
+    type: 'github_action',
+    name: overrides.name ?? 'test',
+    status: 'completed',
+    conclusion: overrides.conclusion ?? 'success',
+    run_id: overrides.run_id ?? 12345,
+    workflow: overrides.workflow ?? 'CI',
+    started_at: overrides.started_at ?? '2025-01-01T10:00:00Z',
+    duration: overrides.duration ?? '2m15s',
+    log_command: `gh run view ${overrides.run_id ?? 12345}`,
+  };
+}
+
+/**
  * Helper: Setup standard history summary mock data
  */
 function mockHistorySummary(overrides = {}) {
@@ -53,6 +77,93 @@ function mockHistorySummary(overrides = {}) {
     recent_pattern: 'No previous runs',
     ...overrides,
   };
+}
+
+/**
+ * Helper: Setup standard run jobs mock data
+ */
+function mockRunJobs(runId = 12345, overrides: Record<string, unknown>[] = []) {
+  const defaultJobs = [
+    {
+      id: 1,
+      run_id: runId,
+      name: 'build (ubuntu-latest, 22)',
+      status: 'completed',
+      conclusion: 'success',
+      started_at: '2025-12-20T00:00:00Z',
+      completed_at: '2025-12-20T00:05:00Z',
+      html_url: `https://github.com/test-owner/test-repo/runs/1`,
+    },
+  ];
+
+  return overrides.length > 0 ? overrides : defaultJobs;
+}
+
+/**
+ * Helper: Setup mocks for buildResultForRun tests
+ */
+function setupRunMocks(
+  prNumber: number,
+  runId: number,
+  runDetails: {
+    name: string;
+    workflow: string;
+    status: string;
+    conclusion?: string;
+    started_at: string;
+    duration: string;
+  },
+  jobs?: Record<string, unknown>[],
+  options: {
+    prDetails?: Record<string, unknown>;
+    fileChanges?: Record<string, unknown>;
+    historySummary?: Record<string, unknown>;
+  } = {}
+) {
+  setupStandardMocks(prNumber, options);
+
+  vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
+    run_id: runId,
+    ...runDetails,
+    url: `https://github.com/test-owner/test-repo/actions/runs/${runId}`,
+  } as never);
+
+  vi.spyOn(GitHubFetcher.prototype, 'fetchRunJobs').mockResolvedValue(
+    mockRunJobs(runId, jobs) as never
+  );
+}
+
+/**
+ * Helper: Setup mocks for failed integration test scenario
+ * (used by multiple tests that test extraction/retry logic)
+ */
+function setupFailedIntegrationTestMocks(prNumber: number, runId: number) {
+  setupRunMocks(prNumber, runId, {
+    name: 'Tests / Integration',
+    workflow: 'Tests',
+    status: 'completed',
+    conclusion: 'failure',
+    started_at: '2025-12-17T14:00:00Z',
+    duration: '8m20s',
+  }, [
+    {
+      id: 1,
+      run_id: runId,
+      name: 'integration-tests',
+      status: 'completed',
+      conclusion: 'failure',
+      started_at: '2025-12-17T14:00:00Z',
+      completed_at: '2025-12-17T14:08:20Z',
+      html_url: `https://github.com/test-owner/test-repo/runs/1`,
+    },
+  ], {
+    fileChanges: {
+      files_changed: 4,
+      insertions: 80,
+      deletions: 40,
+      commits: 2,
+    },
+  });
 }
 
 /**
@@ -119,19 +230,7 @@ describe('WatchPROrchestrator', () => {
 
     it('should classify GitHub Actions checks correctly', async () => {
       setupStandardMocks(mockPRNumber, {
-        checks: [
-          {
-            type: 'github_action',
-            name: 'test',
-            status: 'completed',
-            conclusion: 'success',
-            run_id: 12345,
-            workflow: 'CI',
-            started_at: '2025-01-01T10:00:00Z',
-            duration: '2m15s',
-            log_command: 'gh run view 12345',
-          },
-        ],
+        checks: [mockGitHubActionCheck()],
       });
 
       const result = await orchestrator.buildResult(mockPRNumber, { useCache: false });
@@ -165,28 +264,14 @@ describe('WatchPROrchestrator', () => {
     it('should order checks with failures first', async () => {
       setupStandardMocks(mockPRNumber, {
         checks: [
-          {
-            type: 'github_action',
-            name: 'test-1',
-            status: 'completed',
-            conclusion: 'success',
-            run_id: 12345,
-            workflow: 'CI',
-            started_at: '2025-01-01T10:00:00Z',
-            duration: '2m15s',
-            log_command: 'gh run view 12345',
-          },
-          {
-            type: 'github_action',
+          mockGitHubActionCheck({ name: 'test-1' }),
+          mockGitHubActionCheck({
             name: 'test-2',
-            status: 'completed',
             conclusion: 'failure',
             run_id: 12346,
-            workflow: 'CI',
             started_at: '2025-01-01T10:05:00Z',
-            duration: '1m30s',
-            log_command: 'gh run view 12346',
-          },
+            duration: '1m30s'
+          }),
         ],
       });
 
@@ -201,19 +286,7 @@ describe('WatchPROrchestrator', () => {
 
     it('should generate guidance for failed checks', async () => {
       setupStandardMocks(mockPRNumber, {
-        checks: [
-          {
-            type: 'github_action',
-            name: 'test',
-            status: 'completed',
-            conclusion: 'failure',
-            run_id: 12345,
-            workflow: 'CI',
-            started_at: '2025-01-01T10:00:00Z',
-            duration: '2m15s',
-            log_command: 'gh run view 12345',
-          },
-        ],
+        checks: [mockGitHubActionCheck({ conclusion: 'failure' })],
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs');
@@ -279,17 +352,13 @@ describe('WatchPROrchestrator', () => {
     const mockRunId = 12345;
 
     it('should build result for a specific run with all required fields', async () => {
-      setupStandardMocks(mockPRNumber);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
+      setupRunMocks(mockPRNumber, mockRunId, {
         name: 'CI / Build',
         workflow: 'CI',
         status: 'completed',
         conclusion: 'failure',
         started_at: '2025-12-17T10:00:00Z',
         duration: '5m30s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs for run');
@@ -306,24 +375,20 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should validate result against schema', async () => {
-      setupStandardMocks(mockPRNumber, {
-        fileChanges: {
-          files_changed: 2,
-          insertions: 50,
-          deletions: 25,
-          commits: 1,
-        },
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
+      setupRunMocks(mockPRNumber, mockRunId, {
         name: 'Tests / Unit',
         workflow: 'Tests',
         status: 'completed',
         conclusion: 'success',
         started_at: '2025-12-17T11:00:00Z',
         duration: '3m15s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      }, undefined, {
+        fileChanges: {
+          files_changed: 2,
+          insertions: 50,
+          deletions: 25,
+          commits: 1,
+        },
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('test logs');
@@ -336,24 +401,31 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should handle failed runs correctly', async () => {
-      setupStandardMocks(mockPRNumber, {
-        fileChanges: {
-          files_changed: 3,
-          insertions: 75,
-          deletions: 30,
-          commits: 2,
-        },
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
+      setupRunMocks(mockPRNumber, mockRunId, {
         name: 'Lint / ESLint',
         workflow: 'Lint',
         status: 'completed',
         conclusion: 'failure',
         started_at: '2025-12-17T12:00:00Z',
         duration: '1m45s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      }, [
+        {
+          id: 1,
+          run_id: mockRunId,
+          name: 'lint',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-17T12:00:00Z',
+          completed_at: '2025-12-17T12:01:45Z',
+          html_url: `https://github.com/test-owner/test-repo/runs/1`,
+        },
+      ], {
+        fileChanges: {
+          files_changed: 3,
+          insertions: 75,
+          deletions: 30,
+          commits: 2,
+        },
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('lint error logs');
@@ -367,24 +439,31 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should handle in-progress runs', async () => {
-      setupStandardMocks(mockPRNumber, {
-        fileChanges: {
-          files_changed: 1,
-          insertions: 10,
-          deletions: 5,
-          commits: 1,
-        },
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
+      setupRunMocks(mockPRNumber, mockRunId, {
         name: 'Deploy / Production',
         workflow: 'Deploy',
         status: 'in_progress',
         conclusion: undefined,
         started_at: '2025-12-17T13:00:00Z',
         duration: '2m30s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
+      }, [
+        {
+          id: 1,
+          run_id: mockRunId,
+          name: 'deploy',
+          status: 'in_progress',
+          conclusion: null,
+          started_at: '2025-12-17T13:00:00Z',
+          completed_at: null,
+          html_url: `https://github.com/test-owner/test-repo/runs/1`,
+        },
+      ], {
+        fileChanges: {
+          files_changed: 1,
+          insertions: 10,
+          deletions: 5,
+          commits: 1,
+        },
       });
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('deployment in progress...');
@@ -399,25 +478,7 @@ describe('WatchPROrchestrator', () => {
     it('should attempt extraction for failed runs', async () => {
       // This test verifies that extraction is attempted for failed runs
       // The actual extraction logic is tested in extraction-mode-detector.test.ts
-      setupStandardMocks(mockPRNumber, {
-        fileChanges: {
-          files_changed: 4,
-          insertions: 80,
-          deletions: 40,
-          commits: 2,
-        },
-      });
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
-        name: 'Tests / Integration',
-        workflow: 'Tests',
-        status: 'completed',
-        conclusion: 'failure',
-        started_at: '2025-12-17T14:00:00Z',
-        duration: '8m20s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
-      });
+      setupFailedIntegrationTestMocks(mockPRNumber, mockRunId);
 
       const fetchLogsSpy = vi
         .spyOn(GitHubFetcher.prototype, 'fetchRunLogs')
@@ -441,18 +502,7 @@ describe('WatchPROrchestrator', () => {
       // Use fake timers to avoid actual delays
       vi.useFakeTimers();
 
-      setupStandardMocks(mockPRNumber);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
-        name: 'Tests / Integration',
-        workflow: 'Tests',
-        status: 'completed',
-        conclusion: 'failure',
-        started_at: '2025-12-17T14:00:00Z',
-        duration: '8m20s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
-      });
+      setupFailedIntegrationTestMocks(mockPRNumber, mockRunId);
 
       // Simulate race condition: first 2 calls fail, 3rd succeeds
       let callCount = 0;
@@ -493,18 +543,7 @@ describe('WatchPROrchestrator', () => {
       // Use fake timers to avoid actual delays
       vi.useFakeTimers();
 
-      setupStandardMocks(mockPRNumber);
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
-        name: 'Tests / Integration',
-        workflow: 'Tests',
-        status: 'completed',
-        conclusion: 'failure',
-        started_at: '2025-12-17T14:00:00Z',
-        duration: '8m20s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
-      });
+      setupFailedIntegrationTestMocks(mockPRNumber, mockRunId);
 
       // Always fail (simulate persistent GitHub API issue)
       const fetchLogsSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockRejectedValue(
@@ -534,28 +573,17 @@ describe('WatchPROrchestrator', () => {
     });
 
     it('should still fetch PR details and file changes', async () => {
-      const fetchPRSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails').mockResolvedValue(
-        mockPRDetails(mockPRNumber) as never
-      );
-
-      const fetchFileChangesSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges').mockResolvedValue(
-        mockFileChanges() as never
-      );
-
-      vi.spyOn(HistorySummaryBuilder.prototype, 'buildSummary').mockResolvedValue(
-        mockHistorySummary() as never
-      );
-
-      vi.spyOn(GitHubFetcher.prototype, 'fetchRunDetails').mockResolvedValue({
-        run_id: mockRunId,
+      setupRunMocks(mockPRNumber, mockRunId, {
         name: 'CI / Build',
         workflow: 'CI',
         status: 'completed',
         conclusion: 'success',
         started_at: '2025-12-17T15:00:00Z',
         duration: '4m10s',
-        url: 'https://github.com/test-owner/test-repo/actions/runs/12345',
       });
+
+      const fetchPRSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchPRDetails');
+      const fetchFileChangesSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchFileChanges');
 
       vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue('build logs');
 

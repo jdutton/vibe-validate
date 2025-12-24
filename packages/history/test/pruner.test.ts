@@ -13,6 +13,74 @@ import type { HistoryNote } from '../src/types.js';
 vi.mock('@vibe-validate/git');
 vi.mock('../src/reader.js');
 
+/**
+ * Helper: Create a date N days ago
+ */
+function createOldDate(daysAgo: number): Date {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date;
+}
+
+/**
+ * Helper: Create a validation run with defaults
+ */
+function createRun(overrides: Partial<{
+  id: string;
+  timestamp: string;
+  duration: number;
+  passed: boolean;
+  branch: string;
+  headCommit: string;
+  uncommittedChanges: boolean;
+  treeHash: string;
+}> = {}) {
+  const now = new Date().toISOString();
+  const treeHash = overrides.treeHash ?? 'abc123';
+
+  return {
+    id: 'run-1',
+    timestamp: now,
+    duration: 5000,
+    passed: true,
+    branch: 'main',
+    headCommit: 'commit123',
+    uncommittedChanges: false,
+    ...overrides,
+    result: {
+      passed: overrides.passed ?? true,
+      timestamp: overrides.timestamp ?? now,
+      treeHash,
+      phases: [],
+    },
+  };
+}
+
+/**
+ * Helper: Create a history note with defaults
+ */
+function createHistoryNote(overrides: Partial<{
+  treeHash: string;
+  runs: any[];
+}> = {}) {
+  const treeHash = overrides.treeHash ?? 'abc123';
+
+  return {
+    treeHash,
+    runs: overrides.runs ?? [createRun({ treeHash })],
+  };
+}
+
+/**
+ * Helper: Setup pruner test with mocked notes
+ */
+function setupPrunerTest(notes: HistoryNote[], removeNoteResolves = true) {
+  vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
+  if (removeNoteResolves) {
+    vi.mocked(git.removeNote).mockResolvedValue();
+  }
+}
+
 describe('pruner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -21,8 +89,7 @@ describe('pruner', () => {
   describe('pruneHistoryByAge', () => {
     describe('when no notes exist', () => {
       it('should return zero counts', async () => {
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue([]);
-
+        setupPrunerTest([]);
         const result = await pruneHistoryByAge(90);
 
         expect(result.notesPruned).toBe(0);
@@ -35,31 +102,7 @@ describe('pruner', () => {
 
     describe('when notes exist but none are old enough', () => {
       it('should not prune any notes', async () => {
-        const recentNotes: HistoryNote[] = [
-          {
-            treeHash: 'abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: new Date().toISOString(), // Recent
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit123',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(recentNotes);
-
+        setupPrunerTest([createHistoryNote()]);
         const result = await pruneHistoryByAge(90);
 
         expect(result.notesPruned).toBe(0);
@@ -72,34 +115,12 @@ describe('pruner', () => {
 
     describe('when notes exceed age threshold', () => {
       it('should prune old notes', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100); // 100 days ago
-
-        const oldNotes: HistoryNote[] = [
-          {
-            treeHash: 'old-abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit123',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        const oldTimestamp = createOldDate(100).toISOString();
+        const oldNote = createHistoryNote({
+          treeHash: 'old-abc123',
+          runs: [createRun({ treeHash: 'old-abc123', timestamp: oldTimestamp })],
+        });
+        setupPrunerTest([oldNote]);
 
         const result = await pruneHistoryByAge(90);
 
@@ -107,7 +128,6 @@ describe('pruner', () => {
         expect(result.runsPruned).toBe(1);
         expect(result.notesRemaining).toBe(0);
         expect(result.prunedTreeHashes).toEqual(['old-abc123']);
-
         expect(git.removeNote).toHaveBeenCalledWith(
           'vibe-validate/validate',
           'old-abc123'
@@ -115,54 +135,18 @@ describe('pruner', () => {
       });
 
       it('should prune multiple old notes', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100);
-
-        const oldNotes: HistoryNote[] = [
-          {
+        const oldTimestamp = createOldDate(100).toISOString();
+        const oldNotes = [
+          createHistoryNote({
             treeHash: 'old-1',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-1',
-                  phases: [],
-                },
-              },
-            ],
-          },
-          {
+            runs: [createRun({ id: 'run-1', treeHash: 'old-1', timestamp: oldTimestamp, headCommit: 'commit1' })],
+          }),
+          createHistoryNote({
             treeHash: 'old-2',
-            runs: [
-              {
-                id: 'run-2',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit2',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-2',
-                  phases: [],
-                },
-              },
-            ],
-          },
+            runs: [createRun({ id: 'run-2', treeHash: 'old-2', timestamp: oldTimestamp, headCommit: 'commit2' })],
+          }),
         ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        setupPrunerTest(oldNotes);
 
         const result = await pruneHistoryByAge(90);
 
@@ -174,64 +158,16 @@ describe('pruner', () => {
       });
 
       it('should count multiple runs in pruned notes', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100);
-
-        const oldNoteWithMultipleRuns: HistoryNote[] = [
-          {
-            treeHash: 'old-abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-abc123',
-                  phases: [],
-                },
-              },
-              {
-                id: 'run-2',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit2',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-abc123',
-                  phases: [],
-                },
-              },
-              {
-                id: 'run-3',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit3',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNoteWithMultipleRuns);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        const oldTimestamp = createOldDate(100).toISOString();
+        const oldNote = createHistoryNote({
+          treeHash: 'old-abc123',
+          runs: [
+            createRun({ id: 'run-1', treeHash: 'old-abc123', timestamp: oldTimestamp, headCommit: 'commit1' }),
+            createRun({ id: 'run-2', treeHash: 'old-abc123', timestamp: oldTimestamp, headCommit: 'commit2' }),
+            createRun({ id: 'run-3', treeHash: 'old-abc123', timestamp: oldTimestamp, headCommit: 'commit3' }),
+          ],
+        });
+        setupPrunerTest([oldNote]);
 
         const result = await pruneHistoryByAge(90);
 
@@ -242,54 +178,16 @@ describe('pruner', () => {
 
     describe('when notes are mixed old and new', () => {
       it('should prune only old notes', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100);
-
-        const mixedNotes: HistoryNote[] = [
-          {
-            treeHash: 'old-abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-          {
-            treeHash: 'new-def456',
-            runs: [
-              {
-                id: 'run-2',
-                timestamp: new Date().toISOString(), // Recent
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit2',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'new-def456',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(mixedNotes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        const oldTimestamp = createOldDate(100).toISOString();
+        const oldNote = createHistoryNote({
+          treeHash: 'old-abc123',
+          runs: [createRun({ id: 'run-1', treeHash: 'old-abc123', timestamp: oldTimestamp, headCommit: 'commit1' })],
+        });
+        const newNote = createHistoryNote({
+          treeHash: 'new-def456',
+          runs: [createRun({ id: 'run-2', treeHash: 'new-def456', headCommit: 'commit2' })],
+        });
+        setupPrunerTest([oldNote, newNote]);
 
         const result = await pruneHistoryByAge(90);
 
@@ -309,33 +207,12 @@ describe('pruner', () => {
 
     describe('dry-run mode', () => {
       it('should count notes but not delete when dryRun=true', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100);
-
-        const oldNotes: HistoryNote[] = [
-          {
-            treeHash: 'old-abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit123',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
+        const oldTimestamp = createOldDate(100).toISOString();
+        const oldNote = createHistoryNote({
+          treeHash: 'old-abc123',
+          runs: [createRun({ treeHash: 'old-abc123', timestamp: oldTimestamp })],
+        });
+        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue([oldNote]);
 
         const result = await pruneHistoryByAge(90, {}, true);
 
@@ -351,34 +228,12 @@ describe('pruner', () => {
 
     describe('custom configuration', () => {
       it('should use custom notes ref', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100);
-
-        const oldNotes: HistoryNote[] = [
-          {
-            treeHash: 'old-abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit123',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        const oldTimestamp = createOldDate(100).toISOString();
+        const oldNote = createHistoryNote({
+          treeHash: 'old-abc123',
+          runs: [createRun({ treeHash: 'old-abc123', timestamp: oldTimestamp })],
+        });
+        setupPrunerTest([oldNote]);
 
         await pruneHistoryByAge(90, {
           gitNotes: {
@@ -396,52 +251,17 @@ describe('pruner', () => {
 
     describe('error handling', () => {
       it('should ignore git command errors and continue', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100);
-
-        const oldNotes: HistoryNote[] = [
-          {
+        const oldTimestamp = createOldDate(100).toISOString();
+        const oldNotes = [
+          createHistoryNote({
             treeHash: 'old-1',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-1',
-                  phases: [],
-                },
-              },
-            ],
-          },
-          {
+            runs: [createRun({ id: 'run-1', treeHash: 'old-1', timestamp: oldTimestamp, headCommit: 'commit1' })],
+          }),
+          createHistoryNote({
             treeHash: 'old-2',
-            runs: [
-              {
-                id: 'run-2',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit2',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-2',
-                  phases: [],
-                },
-              },
-            ],
-          },
+            runs: [createRun({ id: 'run-2', treeHash: 'old-2', timestamp: oldTimestamp, headCommit: 'commit2' })],
+          }),
         ];
-
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
 
         // First delete fails, second succeeds
@@ -458,38 +278,18 @@ describe('pruner', () => {
       });
 
       it('should skip notes with no runs', async () => {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 100);
-
-        const notes: HistoryNote[] = [
-          {
+        const oldTimestamp = createOldDate(100).toISOString();
+        const notes = [
+          createHistoryNote({
             treeHash: 'empty-note',
             runs: [],
-          },
-          {
+          }),
+          createHistoryNote({
             treeHash: 'old-note',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: oldDate.toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: oldDate.toISOString(),
-                  treeHash: 'old-note',
-                  phases: [],
-                },
-              },
-            ],
-          },
+            runs: [createRun({ id: 'run-1', treeHash: 'old-note', timestamp: oldTimestamp, headCommit: 'commit1' })],
+          }),
         ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        setupPrunerTest(notes);
 
         const result = await pruneHistoryByAge(90);
 
@@ -504,7 +304,7 @@ describe('pruner', () => {
   describe('pruneAllHistory', () => {
     describe('when no notes exist', () => {
       it('should return zero counts', async () => {
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue([]);
+        setupPrunerTest([]);
 
         const result = await pruneAllHistory();
 
@@ -518,51 +318,17 @@ describe('pruner', () => {
 
     describe('when notes exist', () => {
       it('should prune all notes', async () => {
-        const notes: HistoryNote[] = [
-          {
+        const notes = [
+          createHistoryNote({
             treeHash: 'abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-          {
+            runs: [createRun({ id: 'run-1', treeHash: 'abc123', headCommit: 'commit1' })],
+          }),
+          createHistoryNote({
             treeHash: 'def456',
-            runs: [
-              {
-                id: 'run-2',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit2',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'def456',
-                  phases: [],
-                },
-              },
-            ],
-          },
+            runs: [createRun({ id: 'run-2', treeHash: 'def456', headCommit: 'commit2' })],
+          }),
         ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        setupPrunerTest(notes);
 
         const result = await pruneAllHistory();
 
@@ -582,61 +348,15 @@ describe('pruner', () => {
       });
 
       it('should count all runs in pruned notes', async () => {
-        const notes: HistoryNote[] = [
-          {
-            treeHash: 'abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'abc123',
-                  phases: [],
-                },
-              },
-              {
-                id: 'run-2',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit2',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'abc123',
-                  phases: [],
-                },
-              },
-              {
-                id: 'run-3',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit3',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        const note = createHistoryNote({
+          treeHash: 'abc123',
+          runs: [
+            createRun({ id: 'run-1', treeHash: 'abc123', headCommit: 'commit1' }),
+            createRun({ id: 'run-2', treeHash: 'abc123', headCommit: 'commit2' }),
+            createRun({ id: 'run-3', treeHash: 'abc123', headCommit: 'commit3' }),
+          ],
+        });
+        setupPrunerTest([note]);
 
         const result = await pruneAllHistory();
 
@@ -645,15 +365,11 @@ describe('pruner', () => {
       });
 
       it('should handle notes without runs gracefully', async () => {
-        const notes: HistoryNote[] = [
-          {
-            treeHash: 'abc123',
-            runs: undefined as any, // Missing runs
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        const note: HistoryNote = {
+          treeHash: 'abc123',
+          runs: undefined as any, // Missing runs
+        };
+        setupPrunerTest([note]);
 
         const result = await pruneAllHistory();
 
@@ -664,30 +380,8 @@ describe('pruner', () => {
 
     describe('dry-run mode', () => {
       it('should count notes but not delete when dryRun=true', async () => {
-        const notes: HistoryNote[] = [
-          {
-            treeHash: 'abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
+        const note = createHistoryNote();
+        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue([note]);
 
         const result = await pruneAllHistory({}, true);
 
@@ -703,31 +397,8 @@ describe('pruner', () => {
 
     describe('custom configuration', () => {
       it('should use custom notes ref', async () => {
-        const notes: HistoryNote[] = [
-          {
-            treeHash: 'abc123',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'abc123',
-                  phases: [],
-                },
-              },
-            ],
-          },
-        ];
-
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-        vi.mocked(git.removeNote).mockResolvedValue();
+        const note = createHistoryNote();
+        setupPrunerTest([note]);
 
         await pruneAllHistory({
           gitNotes: {
@@ -745,49 +416,16 @@ describe('pruner', () => {
 
     describe('error handling', () => {
       it('should ignore git command errors and continue', async () => {
-        const notes: HistoryNote[] = [
-          {
+        const notes = [
+          createHistoryNote({
             treeHash: 'note-1',
-            runs: [
-              {
-                id: 'run-1',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit1',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'note-1',
-                  phases: [],
-                },
-              },
-            ],
-          },
-          {
+            runs: [createRun({ id: 'run-1', treeHash: 'note-1', headCommit: 'commit1' })],
+          }),
+          createHistoryNote({
             treeHash: 'note-2',
-            runs: [
-              {
-                id: 'run-2',
-                timestamp: new Date().toISOString(),
-                duration: 5000,
-                passed: true,
-                branch: 'main',
-                headCommit: 'commit2',
-                uncommittedChanges: false,
-                result: {
-                  passed: true,
-                  timestamp: new Date().toISOString(),
-                  treeHash: 'note-2',
-                  phases: [],
-                },
-              },
-            ],
-          },
+            runs: [createRun({ id: 'run-2', treeHash: 'note-2', headCommit: 'commit2' })],
+          }),
         ];
-
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
 
         // First delete fails, second succeeds
