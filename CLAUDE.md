@@ -622,6 +622,33 @@ Example CHANGELOG entry:
 - Test error formatting with real tools
 - Verify caching behavior
 
+### Test Helper Patterns (DRY Enforcement)
+
+**CRITICAL**: Code duplication actively monitored by `pnpm duplication-check` (jscpd).
+
+**Duplication targets:**
+- **jscpd (CI enforced):** < 3% (current: 1.74%)
+- **SonarQube:** Tracks additional duplication patterns beyond jscpd
+- **Goal:** Drive duplication as low as practical for both tools
+
+**When duplication detected (3+ instances), create helpers using these patterns:**
+- `create*()` - Factory functions for test objects with defaults
+- `setup*()` - Configure mocks and environment
+- `expect*()` - Common assertion patterns
+- `run*()`/`execute*()` - Standardized command execution
+
+**Helper location:**
+- **Inline** at top of `describe` block (most common)
+- **Shared file** `test/helpers/*.ts` when used across multiple test files
+- **Never** cross-package test helpers
+
+**Requirements:**
+- All helpers MUST have JSDoc comments
+- ESLint requires explicit `expect()` in each test (helper assertions don't count)
+- Update baseline after refactoring: `npx tsx tools/jscpd-update-baseline.ts`
+
+**See `docs/testing-patterns.md` for detailed patterns, examples, and guidelines.**
+
 ### Cross-Platform Testing (Windows Compatibility)
 
 **CRITICAL**: All tests that spawn CLI processes MUST use the cross-platform pattern to work on Windows.

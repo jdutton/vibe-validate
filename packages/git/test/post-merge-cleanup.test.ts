@@ -124,13 +124,12 @@ const createMergeScenario = (config: MergeScenarioConfig = {}) => {
     mocks.push(createSpawnError('merge failed'));
     return mocks;
   }
-  mocks.push(createSpawnResult(''));
-
-  // Step 4: Fetch remote info
-  mocks.push(createSpawnResult(''));
-
-  // Step 5: List branches
-  mocks.push(createSpawnResult(branches.join('\n') + (branches.length > 0 ? '\n' : '')));
+  // Step 4: Fetch remote info and list branches
+  mocks.push(
+    createSpawnResult(''), // Fetch remote
+    createSpawnResult(''), // Fetch remote info
+    createSpawnResult(branches.join('\n') + (branches.length > 0 ? '\n' : '')) // List branches
+  );
 
   // Step 5: For each branch, check if merged and delete
   for (const branch of branches) {

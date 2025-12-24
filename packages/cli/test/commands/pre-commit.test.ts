@@ -130,6 +130,7 @@ describe('pre-commit command', () => {
   // ========================================================================
   // FACTORY FUNCTIONS: Create test objects
   // ========================================================================
+  // NOSONAR: Helper functions intentionally in describe block per testing-patterns.md
 
   /**
    * Factory: Create minimal config with optional overrides

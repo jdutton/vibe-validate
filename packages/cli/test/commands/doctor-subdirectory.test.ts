@@ -111,55 +111,79 @@ describe('doctor command from subdirectories', () => {
     vi.restoreAllMocks();
   });
 
+  /**
+   * Sets up successful config discovery mocks
+   * @param includeFileSystem - Whether to mock file system (default: true)
+   */
+  async function setupConfigFoundMocks(includeFileSystem = true): Promise<void> {
+    if (includeFileSystem) {
+      await mockDoctorFileSystem();
+    }
+    mockDoctorEnvironment();
+
+    vi.mocked(findConfigPath).mockReturnValue(configPath);
+    vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+    vi.mocked(loadConfigWithErrors).mockResolvedValue({
+      config: mockConfig,
+      errors: null,
+      filePath: configPath,
+    });
+    vi.mocked(checkSync).mockReturnValue({ inSync: true });
+  }
+
+  /**
+   * Sets up config not found mocks (for negative test cases)
+   */
+  function setupConfigNotFoundMocks(): void {
+    mockDoctorEnvironment();
+
+    vi.mocked(findConfigPath).mockReturnValue(null);
+    vi.mocked(loadConfig).mockResolvedValue(null);
+    vi.mocked(loadConfigWithErrors).mockResolvedValue({
+      config: null,
+      errors: null,
+      filePath: null,
+    });
+  }
+
+  /**
+   * Executes doctor command and returns result
+   */
+  async function runDoctorVerbose() {
+    return await runDoctor({ verbose: true });
+  }
+
+  /**
+   * Asserts that config file check passed with expected message
+   */
+  function expectConfigCheckPassed(result: Awaited<ReturnType<typeof runDoctor>>): void {
+    assertCheck(result, 'Configuration file', {
+      passed: true,
+      messageContains: 'vibe-validate.config.yaml',
+    });
+  }
+
   describe('checkConfigFile from different working directories', () => {
     it('should find config when run from project root', async () => {
       // ARRANGE: Simulate running from project root
-      await mockDoctorFileSystem();
-      mockDoctorEnvironment();
-
-      // Mock config discovery to return config path from root
-      vi.mocked(findConfigPath).mockReturnValue(configPath);
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(loadConfigWithErrors).mockResolvedValue({
-        config: mockConfig,
-        errors: null,
-        filePath: configPath,
-      });
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await setupConfigFoundMocks();
 
       // ACT: Run doctor from project root
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctorVerbose();
 
       // ASSERT: Config file check should pass
-      assertCheck(result, 'Configuration file', {
-        passed: true,
-        messageContains: 'vibe-validate.config.yaml',
-      });
+      expectConfigCheckPassed(result);
     });
 
     it('should find config when run from packages/ subdirectory', async () => {
       // ARRANGE: Simulate running from packages/ subdirectory
-      await mockDoctorFileSystem();
-      mockDoctorEnvironment();
-
-      // Mock config discovery to find config in parent directory
-      vi.mocked(findConfigPath).mockReturnValue(configPath);
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(loadConfigWithErrors).mockResolvedValue({
-        config: mockConfig,
-        errors: null,
-        filePath: configPath,
-      });
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await setupConfigFoundMocks();
 
       // ACT: Run doctor (simulated from subdirectory via mocked findConfigPath)
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctorVerbose();
 
       // ASSERT: Config file check should pass and find config in parent
-      assertCheck(result, 'Configuration file', {
-        passed: true,
-        messageContains: 'vibe-validate.config.yaml',
-      });
+      expectConfigCheckPassed(result);
 
       // Verify findConfigPath was called (proving walk-up logic is used)
       expect(findConfigPath).toHaveBeenCalled();
@@ -167,69 +191,32 @@ describe('doctor command from subdirectories', () => {
 
     it('should find config when run from packages/cli/ subdirectory', async () => {
       // ARRANGE: Simulate running from packages/cli/ subdirectory (2 levels deep)
-      await mockDoctorFileSystem();
-      mockDoctorEnvironment();
-
-      // Mock config discovery to find config two levels up
-      vi.mocked(findConfigPath).mockReturnValue(configPath);
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(loadConfigWithErrors).mockResolvedValue({
-        config: mockConfig,
-        errors: null,
-        filePath: configPath,
-      });
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await setupConfigFoundMocks();
 
       // ACT: Run doctor
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctorVerbose();
 
       // ASSERT: Config file check should pass
-      assertCheck(result, 'Configuration file', {
-        passed: true,
-        messageContains: 'vibe-validate.config.yaml',
-      });
+      expectConfigCheckPassed(result);
     });
 
     it('should find config when run from packages/cli/test/ subdirectory', async () => {
       // ARRANGE: Simulate running from packages/cli/test/ subdirectory (3 levels deep)
-      await mockDoctorFileSystem();
-      mockDoctorEnvironment();
-
-      // Mock config discovery to find config three levels up
-      vi.mocked(findConfigPath).mockReturnValue(configPath);
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(loadConfigWithErrors).mockResolvedValue({
-        config: mockConfig,
-        errors: null,
-        filePath: configPath,
-      });
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await setupConfigFoundMocks();
 
       // ACT: Run doctor
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctorVerbose();
 
       // ASSERT: Config file check should pass
-      assertCheck(result, 'Configuration file', {
-        passed: true,
-        messageContains: 'vibe-validate.config.yaml',
-      });
+      expectConfigCheckPassed(result);
     });
 
     it('should fail when run from non-project directory (no config found)', async () => {
       // ARRANGE: Simulate running from /tmp (no config anywhere)
-      mockDoctorEnvironment();
-
-      // Mock config discovery to return null (no config found)
-      vi.mocked(findConfigPath).mockReturnValue(null);
-      vi.mocked(loadConfig).mockResolvedValue(null);
-      vi.mocked(loadConfigWithErrors).mockResolvedValue({
-        config: null,
-        errors: null,
-        filePath: null,
-      });
+      setupConfigNotFoundMocks();
 
       // ACT: Run doctor
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctorVerbose();
 
       // ASSERT: Config file check should fail
       assertCheck(result, 'Configuration file', {
@@ -240,21 +227,10 @@ describe('doctor command from subdirectories', () => {
 
     it('should use findConfigPath() consistently with validate command', async () => {
       // ARRANGE: This test verifies the contract between doctor and validate commands
-      await mockDoctorFileSystem();
-      mockDoctorEnvironment();
-
-      const expectedConfigPath = configPath;
-      vi.mocked(findConfigPath).mockReturnValue(expectedConfigPath);
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(loadConfigWithErrors).mockResolvedValue({
-        config: mockConfig,
-        errors: null,
-        filePath: expectedConfigPath,
-      });
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await setupConfigFoundMocks();
 
       // ACT: Run doctor
-      await runDoctor({ verbose: true });
+      await runDoctorVerbose();
 
       // ASSERT: Verify findConfigPath() was called
       // This proves doctor uses the same config discovery as validate command
@@ -265,25 +241,14 @@ describe('doctor command from subdirectories', () => {
   describe('regression: checkConfigFile should not use hardcoded existsSync', () => {
     it('should NOT directly call existsSync("vibe-validate.config.yaml")', async () => {
       // ARRANGE: Simulate subdirectory where hardcoded check would fail
-      await mockDoctorFileSystem();
-      mockDoctorEnvironment();
+      await setupConfigFoundMocks();
 
-      // Mock existsSync to track calls
+      // Mock existsSync to track calls - hardcoded path would not exist
       const existsSyncSpy = vi.mocked(existsSync);
-      existsSyncSpy.mockReturnValue(false); // Hardcoded path would not exist
-
-      // But config discovery SHOULD find it via walk-up
-      vi.mocked(findConfigPath).mockReturnValue(configPath);
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(loadConfigWithErrors).mockResolvedValue({
-        config: mockConfig,
-        errors: null,
-        filePath: configPath,
-      });
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      existsSyncSpy.mockReturnValue(false);
 
       // ACT: Run doctor
-      const result = await runDoctor({ verbose: true });
+      const result = await runDoctorVerbose();
 
       // ASSERT: Config check should pass (using findConfigPath, not hardcoded existsSync)
       assertCheck(result, 'Configuration file', {
