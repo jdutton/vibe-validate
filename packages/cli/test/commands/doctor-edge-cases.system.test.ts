@@ -17,12 +17,10 @@ import {  writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { executeGitCommand } from '@vibe-validate/git';
-import { safeExecSync, mkdirSyncReal } from '@vibe-validate/utils';
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-// Get path to the vv binary from the built CLI package
-const PROJECT_ROOT = join(__dirname, '../../../..');
-const VV_BINARY = join(PROJECT_ROOT, 'packages/cli/dist/bin/vv');
+import { executeWrapperSync } from '../helpers/test-command-runner.js';
 
 // Base directory for test environments
 // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test isolation requires /tmp
@@ -58,26 +56,16 @@ function runDoctorInDir(cwd: string): {
   output: string;
   allPassed: boolean;
 } {
-  try {
-    const output = safeExecSync('node', [VV_BINARY, 'doctor', '--verbose'], {
-      cwd,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+  const result = executeWrapperSync(['doctor', '--verbose'], { cwd });
 
-    return {
-      exitCode: 0,
-      output,
-      allPassed: output.includes('All checks passed'),
-    };
-  } catch (error: any) {
-    const output = error.stdout || error.stderr || error.message || '';
-    return {
-      exitCode: error.status || 1,
-      output,
-      allPassed: false,
-    };
-  }
+  const output = result.stdout + result.stderr;
+  const exitCode = result.status ?? 1;
+
+  return {
+    exitCode,
+    output,
+    allPassed: output.includes('All checks passed'),
+  };
 }
 
 /**

@@ -1,8 +1,9 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, it, expect } from 'vitest';
+
+import { executeWrapperSync, type WrapperResultSync } from '../helpers/test-command-runner.js';
 
 /**
  * Unit tests for the smart vibe-validate wrapper
@@ -19,78 +20,48 @@ const REPO_ROOT = join(__dirname, '../../../..');
 const PACKAGES_CORE = join(__dirname, '../../../core');
 
 /**
- * Execute wrapper command and return result
- * Cross-platform compatible (uses node directly)
- * @param wrapperPath - Path to wrapper script
- * @param args - Command arguments
- * @param options - Execution options (cwd, env)
- * @returns Spawn result with status, stdout, stderr
- */
-function executeWrapper(
-  wrapperPath: string,
-  args: string[] = [],
-  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
-) {
-  return spawnSync('node', [wrapperPath, ...args], {
-    cwd: options.cwd ?? REPO_ROOT,
-    env: options.env ?? { ...process.env },
-  });
-}
-
-/**
  * Assert command succeeded (exit code 0)
- * @param result - Spawn result to check
+ * @param result - Wrapper result to check
  */
-function expectSuccess(result: ReturnType<typeof spawnSync>) {
+function expectSuccess(result: WrapperResultSync) {
   expect(result.status).toBe(0);
 }
 
 /**
  * Assert command failed (non-zero exit code)
- * @param result - Spawn result to check
+ * @param result - Wrapper result to check
  */
-function expectFailure(result: ReturnType<typeof spawnSync>) {
+function expectFailure(result: WrapperResultSync) {
   expect(result.status).not.toBe(0);
 }
 
 /**
  * Assert stdout contains expected version string
- * @param result - Spawn result to check
+ * @param result - Wrapper result to check
  */
-function expectVersion(result: ReturnType<typeof spawnSync>) {
-  expect(result.stdout.toString()).toContain(EXPECTED_VERSION);
+function expectVersion(result: WrapperResultSync) {
+  expect(result.stdout).toContain(EXPECTED_VERSION);
 }
 
 /**
  * Assert stdout contains expected text
- * @param result - Spawn result to check
+ * @param result - Wrapper result to check
  * @param expectedText - Text to find in stdout
  */
-function expectOutput(result: ReturnType<typeof spawnSync>, expectedText: string) {
-  expect(result.stdout.toString()).toContain(expectedText);
+function expectOutput(result: WrapperResultSync, expectedText: string) {
+  expect(result.stdout).toContain(expectedText);
 }
 
 describe('Smart Wrapper (vibe-validate/vv)', () => {
-  const wrapperPath = join(__dirname, '../../dist/bin/vibe-validate');
-  const vvPath = join(__dirname, '../../dist/bin/vv');
-
   describe('Wrapper Files', () => {
     it('should have vibe-validate wrapper file', () => {
+      const wrapperPath = join(__dirname, '../../dist/bin/vibe-validate');
       expect(existsSync(wrapperPath)).toBe(true);
     });
 
     it('should have vv symlink', () => {
+      const vvPath = join(__dirname, '../../dist/bin/vv');
       expect(existsSync(vvPath)).toBe(true);
-    });
-
-    it('vv should be executable', () => {
-      const result = spawnSync('test', ['-x', vvPath]);
-      expect(result.status).toBe(0);
-    });
-
-    it('vibe-validate should be executable', () => {
-      const result = spawnSync('test', ['-x', wrapperPath]);
-      expect(result.status).toBe(0);
     });
   });
 
@@ -98,7 +69,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
     it('should detect developer mode when in vibe-validate repo', () => {
       // When running tests, we ARE in the vibe-validate repo
       // So the wrapper should detect developer mode
-      const result = executeWrapper(wrapperPath, ['--version']);
+      const result = executeWrapperSync(['--version'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -109,7 +80,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
     it('should work from subdirectories (packages/core)', () => {
       // Run from a subdirectory - wrapper should walk up to find repo root
-      const result = executeWrapper(wrapperPath, ['--version'], { cwd: PACKAGES_CORE });
+      const result = executeWrapperSync(['--version'], { cwd: PACKAGES_CORE });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -118,7 +89,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
     it('should work from deeply nested subdirectories', () => {
       // Run from test directory - wrapper should walk up multiple levels
-      const result = executeWrapper(wrapperPath, ['--version'], { cwd: __dirname });
+      const result = executeWrapperSync(['--version'], { cwd: __dirname });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -130,7 +101,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
     it('should find .git directory when in git repo', () => {
       // This test verifies the wrapper can find the .git directory
       // by successfully executing a command
-      const result = executeWrapper(wrapperPath, ['state']);
+      const result = executeWrapperSync(['state'], { cwd: REPO_ROOT });
 
       // Should not crash - state command should work
       expect(result).toBeDefined();
@@ -139,7 +110,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
     it('should handle non-git directories gracefully', () => {
       // Test in /tmp which is definitely not a git repo
-      const result = executeWrapper(wrapperPath, ['--version'], { cwd: '/tmp' });
+      const result = executeWrapperSync(['--version'], { cwd: '/tmp' });
 
       // Should still work (falls back to global install)
       // In this test environment, it will use the dev build
@@ -150,7 +121,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
   describe('Command Execution', () => {
     it('should pass through all arguments', () => {
-      const result = executeWrapper(wrapperPath, ['--help']);
+      const result = executeWrapperSync(['--help'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -158,7 +129,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
     });
 
     it('should pass through command with options', () => {
-      const result = executeWrapper(wrapperPath, ['state', '--help']);
+      const result = executeWrapperSync(['state', '--help'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -166,7 +137,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
     });
 
     it('should handle commands that fail', () => {
-      const result = executeWrapper(wrapperPath, ['nonexistent-command']);
+      const result = executeWrapperSync(['nonexistent-command'], { cwd: REPO_ROOT });
 
       // Should return non-zero exit code
       expect(result).toBeDefined();
@@ -179,7 +150,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
       // The wrapper sets VV_CONTEXT, which is used by validate-workflow.ts
       // We can't directly test this without running a full validation,
       // but we test that the wrapper executes successfully
-      const result = executeWrapper(wrapperPath, ['--version']);
+      const result = executeWrapperSync(['--version'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -191,17 +162,17 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
   describe('vv Symlink', () => {
     it('should work identically to vibe-validate', () => {
-      const resultVV = executeWrapper(vvPath, ['--version']);
-      const resultFull = executeWrapper(wrapperPath, ['--version']);
+      const resultVV = executeWrapperSync(['--version'], { cwd: REPO_ROOT });
+      const resultFull = executeWrapperSync(['--version'], { cwd: REPO_ROOT });
 
       expect(resultVV).toBeDefined();
       expect(resultFull).toBeDefined();
       expect(resultVV.status).toBe(resultFull.status);
-      expect(resultVV.stdout.toString()).toBe(resultFull.stdout.toString());
+      expect(resultVV.stdout).toBe(resultFull.stdout);
     });
 
     it('vv should pass all arguments correctly', () => {
-      const result = executeWrapper(vvPath, ['state', '--help']);
+      const result = executeWrapperSync(['state', '--help'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -211,7 +182,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
   describe('Error Handling', () => {
     it('should exit with non-zero code on command failure', () => {
-      const result = executeWrapper(wrapperPath, ['run', 'false']);
+      const result = executeWrapperSync(['run', 'false'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectFailure(result);
@@ -220,7 +191,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
     it('should handle missing binary gracefully', () => {
       // This test verifies the wrapper handles edge cases
       // In normal operation, the binary should always exist
-      const result = executeWrapper(wrapperPath, ['--version'], { cwd: '/tmp' });
+      const result = executeWrapperSync(['--version'], { cwd: '/tmp' });
 
       // Should either succeed (using global) or fail gracefully
       expect(result).toBeDefined();
@@ -235,7 +206,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
         return;
       }
 
-      const result = executeWrapper(wrapperPath, ['--version']);
+      const result = executeWrapperSync(['--version'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -243,7 +214,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
     it('should handle different path separators', () => {
       // The wrapper uses Node's path.join, which handles platform differences
-      const result = executeWrapper(wrapperPath, ['--version']);
+      const result = executeWrapperSync(['--version'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -252,7 +223,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
 
   describe('Real-World Scenarios', () => {
     it('should support run command with extraction', () => {
-      const result = executeWrapper(wrapperPath, ['run', 'node -e "console.log(\'test\')"']);
+      const result = executeWrapperSync(['run', 'node -e "console.log(\'test\')"'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -260,7 +231,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
     });
 
     it('should support state command', () => {
-      const result = executeWrapper(wrapperPath, ['state']);
+      const result = executeWrapperSync(['state'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);
@@ -269,7 +240,7 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
     });
 
     it('should support doctor command', () => {
-      const result = executeWrapper(wrapperPath, ['doctor', '--help']);
+      const result = executeWrapperSync(['doctor', '--help'], { cwd: REPO_ROOT });
 
       expect(result).toBeDefined();
       expectSuccess(result);

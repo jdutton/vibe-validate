@@ -2,26 +2,20 @@
  * Tests for vibe-validate wrapper's version detection and warning system
  */
 
-import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, it, expect } from 'vitest';
 
+import { executeWrapperSync } from '../helpers/test-command-runner.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Path to the built vv wrapper
-const vvPath = join(__dirname, '../../dist/bin/vv');
-
 describe('vv wrapper version detection', () => {
   it('should detect and report version in debug mode', () => {
-    const result = spawnSync(process.execPath, [vvPath, '--version'], {
-      env: {
-        ...process.env,
-        VV_DEBUG: '1',
-      },
-      encoding: 'utf-8',
+    const result = executeWrapperSync(['--version'], {
+      env: { VV_DEBUG: '1' },
     });
 
     expect(result.status).toBe(0);
@@ -36,9 +30,7 @@ describe('vv wrapper version detection', () => {
   });
 
   it('should not show debug output without VV_DEBUG=1', () => {
-    const result = spawnSync(process.execPath, [vvPath, '--version'], {
-      encoding: 'utf-8',
-    });
+    const result = executeWrapperSync(['--version']);
 
     expect(result.status).toBe(0);
     expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
@@ -49,13 +41,9 @@ describe('vv wrapper version detection', () => {
 
   it('should report dev context when in vibe-validate repo', () => {
     // Run from the repo root
-    const result = spawnSync(process.execPath, [vvPath, '--version'], {
+    const result = executeWrapperSync(['--version'], {
       cwd: join(__dirname, '../../../..'), // Go to repo root
-      env: {
-        ...process.env,
-        VV_DEBUG: '1',
-      },
-      encoding: 'utf-8',
+      env: { VV_DEBUG: '1' },
     });
 
     expect(result.status).toBe(0);

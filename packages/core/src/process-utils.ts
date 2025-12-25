@@ -158,9 +158,9 @@ export async function stopProcessGroup(
  *   env: { NODE_ENV: 'production' }
  * });
  *
- * // Git command with timeout
- * const proc = spawnCommand('git', {
- *   args: ['fetch', 'origin'],
+ * // Command with timeout
+ * const proc = spawnCommand('npm', {
+ *   args: ['install'],
  *   timeout: 30000
  * });
  * ```
