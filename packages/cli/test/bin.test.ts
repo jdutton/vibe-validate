@@ -8,6 +8,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { initializeGitRepo } from './helpers/integration-setup-helpers.js';
 import { executeCommandWithSeparateStreams } from './helpers/test-command-runner.js';
 
+/**
+ * Helper to send SIGINT to a process after a delay
+ */
+function sendSigintAfterDelay(child: { kill: (_signal: string) => void }, delayMs: number): void {
+  setTimeout(() => child.kill('SIGINT'), delayMs);
+}
+
 describe('bin.ts - CLI entry point', () => {
   let testDir: string;
   let originalCwd: string;
@@ -48,13 +55,6 @@ describe('bin.ts - CLI entry point', () => {
     initializeGitRepo(testDir);
     executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
     executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
-  }
-
-  /**
-   * Helper to send SIGINT to a process after a delay
-   */
-  function sendSigintAfterDelay(child: { kill: (_signal: string) => void }, delayMs: number): void {
-    setTimeout(() => child.kill('SIGINT'), delayMs);
   }
 
   /**

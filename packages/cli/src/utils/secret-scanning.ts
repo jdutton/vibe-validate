@@ -140,10 +140,12 @@ function toSafeString(value: unknown): string {
     try {
       return JSON.stringify(value);
     } catch {
-      return String(value);
+      // JSON.stringify failed (circular reference, etc.) - return error indicator
+      return '[Unable to stringify object]';
     }
   }
-  if (value) {
+  // Handle primitives (number, boolean, etc.) - these stringify safely
+  if (value !== null && value !== undefined) {
     return String(value);
   }
   return '';
