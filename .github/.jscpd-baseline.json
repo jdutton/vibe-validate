@@ -2,78 +2,6 @@
   "duplicates": [
     {
       "format": "typescript",
-      "lines": 7,
-      "fragment": ".trim();\n\n      const result = extract(output);\n\n      expect(result.errors).toHaveLength(1);\n      expect(result.errors[0].file).toBe('vitest.config.ts');\n      expect(result.errors[0].message).toContain('Timeout calling \"onTaskUpdate\"'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/vitest/index.test.ts",
-        "start": 397,
-        "end": 403,
-        "startLoc": {
-          "line": 397,
-          "column": 8,
-          "position": 2031
-        },
-        "endLoc": {
-          "line": 403,
-          "column": 33,
-          "position": 2100
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/vitest/index.test.ts",
-        "start": 369,
-        "end": 375,
-        "startLoc": {
-          "line": 369,
-          "column": 8,
-          "position": 1865
-        },
-        "endLoc": {
-          "line": 375,
-          "column": 25,
-          "position": 1934
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ".trim();\n\n      const result = extract(output);\n\n      expect(result.errors).toHaveLength(1);\n      expect(result.errors[0].file).toBe('vitest.config.ts');\n      expect(result.errors[0].message).toContain('Timeout calling \"onTaskUpdate\"');\n      expect(result.errors[0].message).toContain('system resource constraints');\n      expect(result.errors[0].message).toContain('Kill background processes');\n      expect(result.totalErrors).toBe(1);\n      expect(result.summary).toBe('1 test failure(s)');\n    });\n\n    it('should extract multiple unhandled rejections (issue #84)'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/vitest/index.test.ts",
-        "start": 430,
-        "end": 443,
-        "startLoc": {
-          "line": 430,
-          "column": 8,
-          "position": 2197
-        },
-        "endLoc": {
-          "line": 443,
-          "column": 59,
-          "position": 2345
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/vitest/index.test.ts",
-        "start": 369,
-        "end": 410,
-        "startLoc": {
-          "line": 369,
-          "column": 8,
-          "position": 1865
-        },
-        "endLoc": {
-          "line": 410,
-          "column": 77,
-          "position": 2179
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 11,
       "fragment": ");\n\n      // totalErrors should be 15 (full count)\n      expect(result.totalErrors).toBe(15);\n\n      // errors array should be truncated to MAX_ERRORS_IN_ARRAY (10)\n      expect(result.errors).toHaveLength(MAX_ERRORS_IN_ARRAY);\n      expect(result.errors).toHaveLength(10);\n\n      // Verify we got the first 10 errors\n      expect(result.errors[0].file).toBe('src/file1.ts'",
       "tokens": 0,
@@ -94,17 +22,17 @@
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/vitest/index.test.ts",
-        "start": 557,
-        "end": 567,
+        "start": 509,
+        "end": 519,
         "startLoc": {
-          "line": 557,
+          "line": 509,
           "column": 9,
-          "position": 2809
+          "position": 2854
         },
         "endLoc": {
-          "line": 567,
+          "line": 519,
           "column": 26,
-          "position": 2881
+          "position": 2926
         }
       }
     },
@@ -275,16 +203,16 @@
       "secondFile": {
         "name": "packages/extractors/src/extractors/typescript/index.test.ts",
         "start": 203,
-        "end": 567,
+        "end": 519,
         "startLoc": {
           "line": 203,
           "column": 5,
           "position": 1536
         },
         "endLoc": {
-          "line": 567,
+          "line": 519,
           "column": 5,
-          "position": 2876
+          "position": 2921
         }
       }
     },

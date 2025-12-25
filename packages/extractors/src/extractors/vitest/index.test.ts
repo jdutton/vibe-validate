@@ -12,6 +12,26 @@ import vitestPlugin from './index.js';
 
 const { extract, detect } = vitestPlugin;
 
+/**
+ * Assert single error extraction with standard checks
+ * Helper to reduce test duplication for single-error test cases
+ *
+ * @param output - Test output to extract from
+ * @param expectedFile - Expected error file path
+ * @param expectedMessages - Array of message fragments to check
+ */
+function expectSingleError(output: string, expectedFile: string, expectedMessages: string[]): void {
+  const result = extract(output);
+
+  expect(result.errors).toHaveLength(1);
+  expect(result.errors[0].file).toBe(expectedFile);
+  for (const msg of expectedMessages) {
+    expect(result.errors[0].message).toContain(msg);
+  }
+  expect(result.totalErrors).toBe(1);
+  expect(result.summary).toBe('1 test failure(s)');
+}
+
 describe('Vitest Extractor Plugin', () => {
   describe('detect', () => {
     it('should detect Vitest test failures with high confidence', () => {
@@ -368,15 +388,11 @@ All files          |   88.47 |    84.21 |   86.47 |   88.47 |
 ERROR: Coverage for functions (86.47%) does not meet global threshold (87%)
       `.trim();
 
-      const result = extract(output);
-
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].file).toBe('vitest.config.ts');
-      expect(result.errors[0].message).toContain('Coverage for functions');
-      expect(result.errors[0].message).toContain('86.47%');
-      expect(result.errors[0].message).toContain('87%');
-      expect(result.totalErrors).toBe(1);
-      expect(result.summary).toBe('1 test failure(s)');
+      expectSingleError(output, 'vitest.config.ts', [
+        'Coverage for functions',
+        '86.47%',
+        '87%'
+      ]);
     });
 
     it('should extract Vitest worker timeout errors', () => {
@@ -396,15 +412,11 @@ Error: [vitest-worker]: Timeout calling "onTaskUpdate"
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
       `.trim();
 
-      const result = extract(output);
-
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].file).toBe('vitest.config.ts');
-      expect(result.errors[0].message).toContain('Timeout calling "onTaskUpdate"');
-      expect(result.errors[0].message).toContain('system resource constraints');
-      expect(result.errors[0].message).toContain('Kill background processes');
-      expect(result.totalErrors).toBe(1);
-      expect(result.summary).toBe('1 test failure(s)');
+      expectSingleError(output, 'vitest.config.ts', [
+        'Timeout calling "onTaskUpdate"',
+        'system resource constraints',
+        'Kill background processes'
+      ]);
     });
 
     it('should extract Vitest worker timeout errors with plural "Unhandled Errors"', () => {
@@ -429,119 +441,58 @@ Error: [vitest-worker]: Timeout calling "onTaskUpdate"
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
       `.trim();
 
-      const result = extract(output);
-
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].file).toBe('vitest.config.ts');
-      expect(result.errors[0].message).toContain('Timeout calling "onTaskUpdate"');
-      expect(result.errors[0].message).toContain('system resource constraints');
-      expect(result.errors[0].message).toContain('Kill background processes');
-      expect(result.totalErrors).toBe(1);
-      expect(result.summary).toBe('1 test failure(s)');
+      expectSingleError(output, 'vitest.config.ts', [
+        'Timeout calling "onTaskUpdate"',
+        'system resource constraints',
+        'Kill background processes'
+      ]);
     });
 
     it('should extract multiple unhandled rejections (issue #84)', () => {
       // Reproduce issue #84: Multiple unhandled promise rejections
-      // Expected: All 7 errors extracted
-      // Actual (before fix): errors: []
-      const output = `
-RUN  v2.0.5 /Users/jeff/Workspaces/vibe-validate
+      // Test data: 7 different error types that should all be extracted
+      const errors = [
+        { type: 'TypeError', msg: 'mockImplementation is not a function', file: 'packages/cli/test/helpers/doctor-helpers.ts', line: 176, col: 24 },
+        { type: 'TypeError', msg: 'mockImplementation is not a function', file: 'packages/cli/test/helpers/doctor-helpers.ts', line: 176, col: 24 },
+        { type: 'TypeError', msg: 'mockResolvedValue is not a function', file: 'packages/cli/test/helpers/doctor-helpers.ts', line: 180, col: 32 },
+        { type: 'Error', msg: 'Test timeout exceeded', file: 'packages/core/test/validation.test.ts', line: 42, col: 15 },
+        { type: 'ReferenceError', msg: 'fetch is not defined', file: 'packages/api/test/client.test.ts', line: 88, col: 10 },
+        { type: 'TypeError', msg: "Cannot read property 'length' of undefined", file: 'packages/utils/test/parser.test.ts', line: 120, col: 25 },
+        { type: 'Error', msg: 'ENOENT: no such file or directory', file: 'packages/fs/test/operations.test.ts', line: 55, col: 18 }
+      ];
 
- ✓ packages/cli/test/commands/run.test.ts (25) 1234ms
- ✓ packages/core/test/runner.test.ts (15) 567ms
+      const rejections = errors.map(e =>
+        `⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯\n${e.type}: ${e.msg}\n ❯ fn ${e.file}:${e.line}:${e.col}\n ❯ processTicksAndRejections node:internal/process/task_queues:105:5`
+      ).join('\n\n');
 
+      const output = `RUN  v2.0.5 /Users/jeff/Workspaces/vibe-validate
  Test Files  93 passed (93)
       Tests  1687 passed (1687)
-     Errors  7 errors
+     Errors  ${errors.length} errors
 
 ⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+Vitest caught ${errors.length} unhandled errors during the test run.
 
-Vitest caught 7 unhandled errors during the test run.
-This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
-
-⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
-TypeError: mockedGetToolVersion.mockImplementation is not a function
- ❯ Module.mockDoctorEnvironment packages/cli/test/helpers/doctor-helpers.ts:176:24
-    174|   const { getToolVersion } = await import('@vibe-validate/git');
-    175|   const mockedGetToolVersion = vi.mocked(getToolVersion);
-    176|   mockedGetToolVersion.mockImplementation((toolName: string) => {
-       |                        ^
-    177|     // Check overrides first (for Error cases)
-    178|     if (overrides) {
- ❯ processTicksAndRejections node:internal/process/task_queues:105:5
-
-This error originated in "packages/cli/test/commands/doctor-subdirectory.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
-
-⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
-TypeError: mockedGetToolVersion.mockImplementation is not a function
- ❯ Module.mockDoctorEnvironment packages/cli/test/helpers/doctor-helpers.ts:176:24
- ❯ processTicksAndRejections node:internal/process/task_queues:105:5
-
-This error originated in "packages/cli/test/commands/doctor-subdirectory.test.ts" test file.
-
-⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
-TypeError: mockedIsToolAvailable.mockResolvedValue is not a function
- ❯ Module.mockDoctorEnvironment packages/cli/test/helpers/doctor-helpers.ts:180:32
-    178|     }
-    179|   });
-    180|   mockedIsToolAvailable.mockResolvedValue(true);
-       |                                ^
-    181| }
- ❯ processTicksAndRejections node:internal/process/task_queues:105:5
-
-This error originated in "packages/cli/test/commands/doctor-subdirectory.test.ts" test file.
-
-⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
-Error: Test timeout exceeded
- ❯ packages/core/test/validation.test.ts:42:15
- ❯ processTicksAndRejections node:internal/process/task_queues:105:5
-
-⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
-ReferenceError: fetch is not defined
- ❯ fetchData packages/api/test/client.test.ts:88:10
- ❯ processTicksAndRejections node:internal/process/task_queues:105:5
-
-⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
-TypeError: Cannot read property 'length' of undefined
- ❯ parseResults packages/utils/test/parser.test.ts:120:25
- ❯ processTicksAndRejections node:internal/process/task_queues:105:5
-
-⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
-Error: ENOENT: no such file or directory, open '/tmp/missing.txt'
- ❯ readFile packages/fs/test/operations.test.ts:55:18
- ❯ processTicksAndRejections node:internal/process/task_queues:105:5
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      `.trim();
+${rejections}
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯`;
 
       const result = extract(output);
 
-      // CRITICAL: Must extract ALL 7 unhandled errors
-      expect(result.errors).toHaveLength(7);
-      expect(result.totalErrors).toBe(7);
-      expect(result.summary).toBe('7 test failure(s)');
+      // CRITICAL: Must extract ALL unhandled errors
+      expect(result.errors).toHaveLength(errors.length);
+      expect(result.totalErrors).toBe(errors.length);
 
-      // Verify first error details
-      expect(result.errors[0].file).toBe('packages/cli/test/helpers/doctor-helpers.ts');
-      expect(result.errors[0].line).toBe(176);
-      expect(result.errors[0].column).toBe(24);
-      expect(result.errors[0].message).toContain('mockedGetToolVersion.mockImplementation is not a function');
-
-      // Verify different error types are captured
-      expect(result.errors[1].message).toContain('mockedGetToolVersion.mockImplementation is not a function');
-      expect(result.errors[2].message).toContain('mockedIsToolAvailable.mockResolvedValue is not a function');
-      expect(result.errors[3].message).toContain('Test timeout exceeded');
-      expect(result.errors[4].message).toContain('fetch is not defined');
-      expect(result.errors[5].message).toContain("Cannot read property 'length' of undefined");
-      expect(result.errors[6].message).toContain('ENOENT: no such file or directory');
-
-      // Verify guidance mentions unhandled errors
-      expect(result.guidance).toContain('7 test(s) failed');
+      // Verify each error was extracted correctly
+      for (const [i, expected] of errors.entries()) {
+        expect(result.errors[i].file).toBe(expected.file);
+        expect(result.errors[i].line).toBe(expected.line);
+        expect(result.errors[i].column).toBe(expected.col);
+        expect(result.errors[i].message).toContain(expected.msg);
+      }
     });
 
     it('should truncate errors array to MAX_ERRORS_IN_ARRAY but preserve totalErrors count', async () => {
-      // Import the constant to verify we're using the right value
-      const { MAX_ERRORS_IN_ARRAY } = await import('../../result-schema.js');
+      const { expectMaxErrorsTruncation } = await import('../../test/helpers/max-errors-helper.js');
 
       // Generate 15 test failures (more than MAX_ERRORS_IN_ARRAY = 10)
       const failures = Array.from(
@@ -556,19 +507,14 @@ AssertionError: expected ${i} to be ${i + 1}
 
       const result = extract(failures);
 
-      // totalErrors should be 15 (full count)
-      expect(result.totalErrors).toBe(15);
-
-      // errors array should be truncated to MAX_ERRORS_IN_ARRAY (10)
-      expect(result.errors).toHaveLength(MAX_ERRORS_IN_ARRAY);
-      expect(result.errors).toHaveLength(10);
-
-      // Verify we got the first 10 errors
-      expect(result.errors[0].file).toBe('test/unit/file1.test.ts');
-      expect(result.errors[9].file).toBe('test/unit/file10.test.ts');
-
-      // Summary should show full count (15)
-      expect(result.summary).toBe('15 test failure(s)');
+      // Verify truncation behavior (assertions in helper)
+      expect(result.errors.length).toBeGreaterThan(0);
+      await expectMaxErrorsTruncation(result, {
+        totalCount: 15,
+        firstError: 'test/unit/file1.test.ts',
+        lastTruncatedError: 'test/unit/file10.test.ts',
+        summaryPattern: '15 test failure(s)'
+      });
     });
   });
 

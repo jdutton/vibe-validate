@@ -200,7 +200,7 @@ Some random output
     });
 
     it('should limit output to MAX_ERRORS_IN_ARRAY', async () => {
-      const { MAX_ERRORS_IN_ARRAY } = await import('../../result-schema.js');
+      const { expectMaxErrorsTruncation } = await import('../../test/helpers/max-errors-helper.js');
 
       // Generate 15 test failures (more than MAX_ERRORS_IN_ARRAY = 10)
       const failures = Array.from(
@@ -216,21 +216,17 @@ ${failures}
 
       const result = extract(output);
 
-      // totalErrors should be 15 (full count)
-      expect(result.totalErrors).toBe(15);
-
-      // errors array should be truncated to MAX_ERRORS_IN_ARRAY (10)
-      expect(result.errors).toHaveLength(MAX_ERRORS_IN_ARRAY);
-      expect(result.errors).toHaveLength(10);
-
-      // Verify we got the first 10 errors
-      expect(result.errors[0].message).toContain('test 1');
-      expect(result.errors[9].message).toContain('test 10');
-
-      // Summary should show full count (15)
-      expect(result.summary).toBe('15 test failure(s)');
+      await expectMaxErrorsTruncation(result, {
+        totalCount: 15,
+        firstError: 'test 1',
+        lastTruncatedError: 'test 10',
+        summaryPattern: '15 test failure(s)',
+        checkField: 'message',
+        messageContains: true
+      });
 
       // Error summary should also be truncated
+      const { MAX_ERRORS_IN_ARRAY } = await import('../../result-schema.js');
       const summaryLines = result.errorSummary!.split('\n').filter(line => line.startsWith('●'));
       expect(summaryLines.length).toBeLessThanOrEqual(MAX_ERRORS_IN_ARRAY);
     });
