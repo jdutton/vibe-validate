@@ -10,7 +10,7 @@
  */
 
 import test from 'tape';
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 
 // ============================================================================
 // REAL VIBE-VALIDATE USAGE (80%)

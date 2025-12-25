@@ -4,8 +4,14 @@
  * Eliminates duplication of execSync try/catch patterns across test files.
  */
 
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { safeExecSync } from '@vibe-validate/utils';
 import yaml from 'yaml';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Check if a character is a quote character
@@ -268,6 +274,93 @@ export interface CommandResultDetailed extends CommandResult {
 }
 
 /**
+ * Synchronous wrapper execution result
+ */
+export interface WrapperResultSync {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Execute the vv wrapper binary (synchronous)
+ *
+ * Tests the wrapper's context detection and delegation logic.
+ * Use this for simple wrapper tests that don't need async features.
+ *
+ * @param args - Wrapper arguments (e.g., ['--version'])
+ * @param options - Execution options (cwd, env, encoding)
+ * @returns Wrapper result with status, stdout, stderr
+ *
+ * @example
+ * ```typescript
+ * const result = executeWrapperSync(['--version'], {
+ *   cwd: '/tmp/test',
+ *   env: { VV_DEBUG: '1' }
+ * });
+ * expect(result.status).toBe(0);
+ * expect(result.stdout).toContain('0.18.0');
+ * ```
+ */
+export function executeWrapperSync(
+  args: string[] = [],
+  options: { cwd?: string; env?: Record<string, string>; encoding?: BufferEncoding } = {}
+): WrapperResultSync {
+  const { spawnSync } = require('node:child_process');
+  const wrapperPath = join(__dirname, '../../dist/bin/vv');
+
+  const result = spawnSync('node', [wrapperPath, ...args], {
+    cwd: options.cwd,
+    env: options.env ? { ...process.env, ...options.env } : process.env,
+    encoding: options.encoding ?? 'utf-8',
+  });
+
+  return {
+    status: result.status,
+    stdout: result.stdout?.toString() ?? '',
+    stderr: result.stderr?.toString() ?? '',
+  };
+}
+
+/**
+ * Execute the vv wrapper binary (asynchronous with separate streams)
+ *
+ * Tests the wrapper's context detection and delegation logic.
+ * Use this for advanced wrapper tests that need stream control or signal handling.
+ *
+ * @param args - Wrapper arguments (e.g., ['watch-pr', '123'])
+ * @param options - Execution options (cwd, env, timeout, onSpawn)
+ * @returns Command result with exitCode, stdout, stderr
+ *
+ * @example
+ * ```typescript
+ * const result = await executeWrapperCommand(['state'], {
+ *   cwd: '/tmp/test',
+ *   env: { VV_DEBUG: '1' },
+ *   timeout: 30000
+ * });
+ * expect(result.exitCode).toBe(0);
+ * expect(result.stdout).toContain('treeHash:');
+ * ```
+ *
+ * @example With signal handling
+ * ```typescript
+ * const result = await executeWrapperCommand(['watch-pr'], {
+ *   onSpawn: (child) => {
+ *     setTimeout(() => child.kill('SIGINT'), 100);
+ *   }
+ * });
+ * ```
+ */
+export async function executeWrapperCommand(
+  args: string[] = [],
+  options: SpawnOptions = {}
+): Promise<CommandResultDetailed> {
+  const wrapperPath = join(__dirname, '../../dist/bin/vv');
+  return executeCommandWithSeparateStreams(wrapperPath, args, options);
+}
+
+/**
  * Options for spawning commands
  */
 export interface SpawnOptions extends ExecOptions {
@@ -276,6 +369,13 @@ export interface SpawnOptions extends ExecOptions {
    * If not provided, inherits parent environment by default
    */
   env?: Record<string, string>;
+  /**
+   * Optional callback invoked immediately after process spawns
+   * Receives the child process object for manual control (e.g., sending signals)
+   * Useful for testing signal handling or other process lifecycle events
+   */
+  // eslint-disable-next-line no-unused-vars -- Parameter name documents API for callback users
+  onSpawn?: (child: any) => void;
 }
 
 /**
@@ -298,6 +398,21 @@ export interface SpawnOptions extends ExecOptions {
  * );
  * expect(result.stderr).toContain('Error');
  * ```
+ *
+ * @example Manual process control with onSpawn
+ * ```typescript
+ * const result = await executeCommandWithSeparateStreams(
+ *   '/path/to/cli.js',
+ *   ['state'],
+ *   {
+ *     onSpawn: (child) => {
+ *       // Send SIGINT after 100ms to test signal handling
+ *       setTimeout(() => child.kill('SIGINT'), 100);
+ *     }
+ *   }
+ * );
+ * expect(result.exitCode).toBe(0);
+ * ```
  */
 export async function executeCommandWithSeparateStreams(
   command: string,
@@ -318,6 +433,11 @@ export async function executeCommandWithSeparateStreams(
     }
 
     const proc = spawn('node', [command, ...args], spawnOptions);
+
+    // Invoke onSpawn callback if provided (for manual process control)
+    if (options.onSpawn) {
+      options.onSpawn(proc);
+    }
 
     let stdout = '';
     let stderr = '';

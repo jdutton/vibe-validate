@@ -1172,24 +1172,26 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   }
 
   // Run all checks
-  allChecks.push(await checkVersion(versionChecker));
-  allChecks.push(checkCliBuildSync());
-  allChecks.push(checkNodeVersion());
-  allChecks.push(checkGitInstalled());
-  allChecks.push(checkGitRepository());
-  allChecks.push(checkConfigFile());
-  allChecks.push(await checkConfigValid(config, configWithErrors));
-  allChecks.push(await checkPackageManager(config));
-  allChecks.push(await checkMainBranch(config));
-  allChecks.push(await checkRemoteOrigin(config));
-  allChecks.push(await checkRemoteMainBranch(config));
-  allChecks.push(await checkWorkflowSync(config));
-  allChecks.push(await checkPreCommitHook(config));
-  allChecks.push(await checkSecretScanning(config));
-  allChecks.push(checkGitignoreStateFile());
-  allChecks.push(checkValidationState());
-  allChecks.push(checkCacheMigration());
-  allChecks.push(await checkHistoryHealth());
+  allChecks.push(
+    await checkVersion(versionChecker),
+    checkCliBuildSync(),
+    checkNodeVersion(),
+    checkGitInstalled(),
+    checkGitRepository(),
+    checkConfigFile(),
+    await checkConfigValid(config, configWithErrors),
+    await checkPackageManager(config),
+    await checkMainBranch(config),
+    await checkRemoteOrigin(config),
+    await checkRemoteMainBranch(config),
+    await checkWorkflowSync(config),
+    await checkPreCommitHook(config),
+    await checkSecretScanning(config),
+    checkGitignoreStateFile(),
+    checkValidationState(),
+    checkCacheMigration(),
+    await checkHistoryHealth()
+  );
 
   // Collect suggestions from failed checks
   const suggestions: string[] = allChecks

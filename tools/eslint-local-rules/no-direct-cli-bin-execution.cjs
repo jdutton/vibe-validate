@@ -32,12 +32,17 @@ function looksLikeCliBinaryPath(element) {
     return false;
   }
 
-  // Check for CLI_BIN identifier or clipath variable
-  if (
-    element.type === 'Identifier' &&
-    (element.name === 'CLI_BIN' || element.name.toLowerCase().includes('clipath'))
-  ) {
-    return true;
+  // Check for CLI_BIN identifier or CLI binary path variables
+  if (element.type === 'Identifier') {
+    const name = element.name.toLowerCase();
+    if (
+      element.name === 'CLI_BIN' ||
+      name.includes('clipath') ||
+      name.includes('binpath') ||
+      name === 'binpath'
+    ) {
+      return true;
+    }
   }
 
   // Check for member expressions (e.g., path.join(..., 'bin.js'))

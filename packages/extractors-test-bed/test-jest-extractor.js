@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 import { extractJestErrors } from '../extractors/src/jest-extractor.ts';
 
 const jestOutput = readFileSync('/tmp/jest-comprehensive-output.txt', 'utf8');

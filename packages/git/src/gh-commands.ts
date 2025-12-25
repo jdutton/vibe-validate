@@ -208,12 +208,18 @@ export function listPullRequests(
  * @param runId - GitHub run ID
  * @param owner - Repository owner (optional)
  * @param repo - Repository name (optional)
+ * @param jobId - GitHub job ID (optional, for matrix strategy jobs)
  * @returns Raw log output
+ *
+ * When jobId is provided, fetches logs for a specific job within the run.
+ * This is CRITICAL for matrix strategy builds where a single run contains multiple jobs.
+ * Without jobId, gh returns combined logs from ALL jobs, making error extraction unreliable.
  */
-export function fetchRunLogs(runId: number, owner?: string, repo?: string): string {
+export function fetchRunLogs(runId: number, owner?: string, repo?: string, jobId?: number): string {
   const repoFlag = owner && repo ? ['--repo', `${owner}/${repo}`] : [];
+  const jobFlag = jobId ? ['--job', String(jobId)] : [];
 
-  const logs = safeExecSync('gh', ['run', 'view', String(runId), ...repoFlag, '--log'], {
+  const logs = safeExecSync('gh', ['run', 'view', String(runId), ...repoFlag, ...jobFlag, '--log'], {
     encoding: 'utf8',
   });
 

@@ -11,8 +11,13 @@ on:
   workflow_dispatch:  # Manual trigger only
     inputs:
       node_version:
-        description: 'Node.js version to test (default: 24)'
+        description: 'Node.js version to test'
         required: false
+        type: choice
+        options:
+          - '20'
+          - '22'
+          - '24'
         default: '24'
   push:
     branches:

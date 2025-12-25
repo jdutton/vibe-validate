@@ -51,6 +51,9 @@ export interface CheckResult {
   /** GitHub run ID (for GitHub Actions) */
   run_id?: number;
 
+  /** GitHub job ID (for matrix strategy jobs) */
+  job_id?: number;
+
   /** Workflow name (for GitHub Actions) */
   workflow?: string;
 
@@ -180,10 +183,14 @@ export class GitHubFetcher {
    * Fetch run logs for a GitHub Actions run
    *
    * @param runId - GitHub run ID
+   * @param jobId - GitHub job ID (optional, for matrix strategy jobs)
    * @returns Raw log output
+   *
+   * When jobId is provided, fetches logs for a specific job within the run.
+   * This is critical for matrix strategy builds where extraction needs job-specific logs.
    */
-  async fetchRunLogs(runId: number): Promise<string> {
-    return ghFetchRunLogs(runId, this.owner, this.repo);
+  async fetchRunLogs(runId: number, jobId?: number): Promise<string> {
+    return ghFetchRunLogs(runId, this.owner, this.repo, jobId);
   }
 
   /**
@@ -345,6 +352,7 @@ export class GitHubFetcher {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private mapCheckRun(check: any): CheckResult {
     const runId = this.extractRunId(check.detailsUrl);
+    const jobId = this.extractJobId(check.detailsUrl);
     const workflow = this.extractWorkflowName(check.name);
 
     return {
@@ -353,6 +361,7 @@ export class GitHubFetcher {
       status: this.normalizeStatus(check.status),
       conclusion: check.conclusion ? this.normalizeConclusion(check.conclusion) : undefined,
       run_id: runId ?? undefined,
+      job_id: jobId ?? undefined,
       workflow,
       started_at: check.startedAt,
       duration: this.calculateDuration(check.startedAt, check.completedAt),
@@ -385,6 +394,21 @@ export class GitHubFetcher {
    */
   private extractRunId(url: string): number | null {
     const regex = /\/runs\/(\d+)/;
+    const match = regex.exec(url);
+    return match ? Number.parseInt(match[1], 10) : null;
+  }
+
+  /**
+   * Extract job ID from GitHub Actions URL
+   *
+   * Matrix strategy jobs have URLs like:
+   * https://github.com/owner/repo/actions/runs/12345/job/67890
+   *
+   * @param url - GitHub Actions URL
+   * @returns Job ID or null
+   */
+  private extractJobId(url: string): number | null {
+    const regex = /\/job\/(\d+)/;
     const match = regex.exec(url);
     return match ? Number.parseInt(match[1], 10) : null;
   }

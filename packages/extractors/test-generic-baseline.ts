@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
-import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { extractGenericErrors } from './src/generic-extractor.js';
 
@@ -41,7 +41,7 @@ for (const category of categories) {
     console.log(`     Total count: ${result.totalCount}`);
     console.log(`     Clean output length: ${result.errorSummary.length} chars`);
     console.log(`     First 300 chars of clean output:`);
-    const preview = result.errorSummary.substring(0, 300).replace(/\n/g, '\n     ');
+    const preview = result.errorSummary.substring(0, 300).replaceAll('\n', '\n     ');
     console.log(`     ${preview}${result.errorSummary.length > 300 ? '...' : ''}`);
   }
 }

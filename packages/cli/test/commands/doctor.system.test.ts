@@ -12,8 +12,9 @@
 
 import { join } from 'node:path';
 
-import { safeExecFromString } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
+
+import { executeWrapperSync } from '../helpers/test-command-runner.js';
 
 // Get the project root (vibe-validate repo root)
 const PROJECT_ROOT = join(__dirname, '../../../..');
@@ -29,36 +30,31 @@ function runDoctorCommand(cwd: string): {
   allPassed: boolean;
   failedChecks: string[];
 } {
-  // Use absolute path to vv binary (works from any cwd)
-  const vvBinary = join(PROJECT_ROOT, 'packages/cli/dist/bin/vv');
+  const result = executeWrapperSync(['doctor', '--verbose'], { cwd });
 
-  try {
-    const output = safeExecFromString(`node "${vvBinary}" doctor --verbose`, {
-      cwd,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+  const output = result.stdout + result.stderr;
+  const exitCode = result.status ?? 1;
 
+  if (exitCode === 0) {
     return {
       exitCode: 0,
       output,
       allPassed: !output.includes('❌') && output.includes('All checks passed'),
       failedChecks: [],
     };
-  } catch (error: any) {
-    // Doctor returns non-zero exit code when checks fail
-    const output = error.stdout || error.stderr || '';
-    const failedChecks = (output.match(/❌ .+/g) || []).map((line: string) =>
-      line.replace(/^❌\s+/, '').split('\n')[0]
-    );
-
-    return {
-      exitCode: error.status || 1,
-      output,
-      allPassed: false,
-      failedChecks,
-    };
   }
+
+  // Doctor returns non-zero exit code when checks fail
+  const failedChecks = (output.match(/❌ .+/g) || []).map((line: string) =>
+    line.replace(/^❌\s+/, '').split('\n')[0]
+  );
+
+  return {
+    exitCode,
+    output,
+    allPassed: false,
+    failedChecks,
+  };
 }
 
 /**

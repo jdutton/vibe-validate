@@ -840,7 +840,11 @@ export async function runStepsInParallel(
             } else {
               // On first failure, kill other processes if fail-fast enabled
               firstFailure = handleFailFast(enableFailFast, firstFailure, step, output, processes, log, ignoreStopErrors);
-              reject({ step, output, durationSecs });
+              const error = new Error(`Validation step failed: ${step.name}`) as Error & { step: ValidationStep; output: string; durationSecs: number };
+              error.step = step;
+              error.output = output;
+              error.durationSecs = durationSecs;
+              reject(error);
             }
           })(); // Close async IIFE
         });

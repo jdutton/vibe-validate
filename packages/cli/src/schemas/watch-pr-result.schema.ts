@@ -133,6 +133,7 @@ export const PRMetadataSchema = z.object({
  *
  * Check run from GitHub Actions workflow.
  * Includes run_id for drilling down with `gh run view`.
+ * May include job_id for matrix strategy jobs (required for per-job log extraction).
  * May include extraction (from matrix or non-matrix mode).
  */
 export const GitHubActionCheckSchema = z.object({
@@ -147,6 +148,17 @@ export const GitHubActionCheckSchema = z.object({
 
   /** GitHub run ID for this check */
   run_id: z.number().int().positive(),
+
+  /**
+   * GitHub job ID for this check (optional)
+   *
+   * Present for matrix strategy jobs. Used to fetch job-specific logs via:
+   * `gh run view <run-id> --log --job <job-id>`
+   *
+   * Without job_id, `gh run view <run-id> --log` returns combined logs from ALL jobs,
+   * which makes error extraction unreliable for matrix runs.
+   */
+  job_id: z.number().int().positive().optional(),
 
   /** Workflow name */
   workflow: z.string(),

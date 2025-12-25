@@ -10,7 +10,7 @@
 import { readdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { getTempDir, ensureDir as ensureDirCore } from '@vibe-validate/core';
+import { getTempDir } from '@vibe-validate/core';
 import { normalizedTmpdir } from '@vibe-validate/utils';
 
 /**
@@ -34,7 +34,7 @@ export function getRunOutputDir(treeHash: string): string {
  * Ensure a directory exists (create if needed)
  * Re-exports shared utility from @vibe-validate/core
  */
-export const ensureDir = ensureDirCore;
+export { ensureDir } from '@vibe-validate/core';
 
 /**
  * Get the size of a directory recursively (in bytes)

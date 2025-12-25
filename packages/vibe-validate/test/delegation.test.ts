@@ -23,6 +23,7 @@ const binDir = join(__dirname, '../bin');
  */
 function execCLI(binPath: string, args: string[], options?: { cwd?: string }): string {
   try {
+    // eslint-disable-next-line local/no-direct-cli-bin-execution -- Meta-package can't import CLI test helpers (circular dependency)
     return safeExecSync('node', [binPath, ...args], { encoding: 'utf-8', ...options }) as string;
   } catch (err: any) {
     // For successful non-zero exits, return output

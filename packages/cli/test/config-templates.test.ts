@@ -25,6 +25,64 @@ const TEMPLATE_FILES = [
   'minimal.yaml',
 ];
 
+/**
+ * Helper: Read template file content
+ */
+function readTemplateFile(filename: string): string {
+  const filePath = resolve(TEMPLATES_DIR, filename);
+  return readFileSync(filePath, 'utf-8');
+}
+
+/**
+ * Helper: Check if YAML content is valid
+ */
+function isValidYaml(content: string): boolean {
+  try {
+    parseYaml(content);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper: Validate config without $schema property
+ */
+function validateConfigContent(content: string, filename: string): { success: boolean; errors?: any } {
+  const raw = parseYaml(content);
+  let config = raw;
+  if (raw && typeof raw === 'object' && '$schema' in raw) {
+    // eslint-disable-next-line sonarjs/no-unused-vars -- NOSONAR - Unused variable intentional, destructured only to exclude $schema
+    const { $schema: _$schema, ...rest } = raw as any;
+    config = rest;
+  }
+  const result = safeValidateConfig(config);
+  if (!result.success) {
+    console.error(`Validation errors in ${filename}:`, result.errors);
+  }
+  return result;
+}
+
+/**
+ * Helper: Read and parse template config
+ */
+function readTemplateConfig(filename: string): any {
+  const filePath = resolve(TEMPLATES_DIR, filename);
+  const content = readFileSync(filePath, 'utf-8');
+  return parseYaml(content);
+}
+
+/**
+ * Helper: Verify template has expected validation phases
+ */
+function expectTemplatePhasesToMatch(filename: string, expectedPhases: string[]): void {
+  const config = readTemplateConfig(filename);
+  expect(config.validation.phases).toHaveLength(expectedPhases.length);
+  for (const [index, expectedName] of expectedPhases.entries()) {
+    expect(config.validation.phases[index].name).toBe(expectedName);
+  }
+}
+
 describe('config-templates/', () => {
   describe('directory structure', () => {
     it('should have config-templates directory in CLI package', () => {
@@ -47,33 +105,19 @@ describe('config-templates/', () => {
         });
 
         it('should be valid YAML', () => {
-          const content = readFileSync(filePath, 'utf-8');
-          expect(() => parseYaml(content)).not.toThrow();
+          const content = readTemplateFile(filename);
+          expect(isValidYaml(content)).toBe(true);
         });
 
         it('should have JSON Schema reference', () => {
-          const content = readFileSync(filePath, 'utf-8');
+          const content = readTemplateFile(filename);
           expect(content).toContain('$schema:');
           expect(content).toContain('config.schema.json');
         });
 
         it('should pass strict config validation (no unknown properties)', () => {
-          const content = readFileSync(filePath, 'utf-8');
-          const raw = parseYaml(content);
-
-          // Remove $schema property before validation (not part of config schema)
-          let config = raw;
-          if (raw && typeof raw === 'object' && '$schema' in raw) {
-            // eslint-disable-next-line sonarjs/no-unused-vars -- NOSONAR - Unused variable intentional, destructured only to exclude $schema
-            const { $schema: _$schema, ...rest } = raw as any;
-            config = rest;
-          }
-          const result = safeValidateConfig(config);
-
-          if (!result.success) {
-            console.error(`Validation errors in ${filename}:`, result.errors);
-          }
-
+          const content = readTemplateFile(filename);
+          const result = validateConfigContent(content, filename);
           expect(result.success).toBe(true);
         });
       });
@@ -108,42 +152,20 @@ describe('config-templates/', () => {
 
   describe('template content', () => {
     it('typescript-library should have Pre-Qualification and Build & Test phases', () => {
-      const filePath = resolve(TEMPLATES_DIR, 'typescript-library.yaml');
-      const content = readFileSync(filePath, 'utf-8');
-      const config = parseYaml(content) as any;
-
-      expect(config.validation.phases).toHaveLength(2);
-      expect(config.validation.phases[0].name).toBe('Pre-Qualification');
-      expect(config.validation.phases[1].name).toBe('Build & Test');
+      expectTemplatePhasesToMatch('typescript-library.yaml', ['Pre-Qualification', 'Build & Test']);
     });
 
     it('typescript-nodejs should have Pre-Qualification, Testing, and Build phases', () => {
-      const filePath = resolve(TEMPLATES_DIR, 'typescript-nodejs.yaml');
-      const content = readFileSync(filePath, 'utf-8');
-      const config = parseYaml(content) as any;
-
-      expect(config.validation.phases).toHaveLength(3);
-      expect(config.validation.phases[0].name).toBe('Pre-Qualification');
-      expect(config.validation.phases[1].name).toBe('Testing');
-      expect(config.validation.phases[2].name).toBe('Build');
+      expectTemplatePhasesToMatch('typescript-nodejs.yaml', ['Pre-Qualification', 'Testing', 'Build']);
     });
 
     it('typescript-react should have Pre-Qualification, Testing, and Build phases', () => {
-      const filePath = resolve(TEMPLATES_DIR, 'typescript-react.yaml');
-      const content = readFileSync(filePath, 'utf-8');
-      const config = parseYaml(content) as any;
-
-      expect(config.validation.phases).toHaveLength(3);
-      expect(config.validation.phases[0].name).toBe('Pre-Qualification');
-      expect(config.validation.phases[1].name).toBe('Testing');
-      expect(config.validation.phases[2].name).toBe('Build');
+      expectTemplatePhasesToMatch('typescript-react.yaml', ['Pre-Qualification', 'Testing', 'Build']);
     });
 
     it('all templates should have git.mainBranch configured', () => {
       for (const filename of TEMPLATE_FILES) {
-        const filePath = resolve(TEMPLATES_DIR, filename);
-        const content = readFileSync(filePath, 'utf-8');
-        const config = parseYaml(content) as any;
+        const config = readTemplateConfig(filename);
 
         expect(config.git).toBeDefined();
         expect(config.git.mainBranch).toBe('main');
@@ -152,9 +174,7 @@ describe('config-templates/', () => {
 
     it('all templates should omit failFast (uses default true)', () => {
       for (const filename of TEMPLATE_FILES) {
-        const filePath = resolve(TEMPLATES_DIR, filename);
-        const content = readFileSync(filePath, 'utf-8');
-        const config = parseYaml(content) as any;
+        const config = readTemplateConfig(filename);
 
         // failFast should be omitted (defaults to true in schema)
         expect(config.validation.failFast).toBeUndefined();
