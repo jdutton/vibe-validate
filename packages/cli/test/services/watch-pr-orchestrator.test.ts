@@ -640,13 +640,37 @@ describe('WatchPROrchestrator', () => {
       );
 
       // Mock fetchRunLogs to return job-specific logs when job_id is passed
+      // Use a realistic vitest failure log that will trigger extraction
+      const mockViTestFailureLogs = `
+ RUN  v1.0.0
+
+ ✓ packages/cli/test/other.test.ts (1)
+ ✓ packages/cli/test/another.test.ts (2)
+ × packages/cli/test/bin.test.ts (1) 1234ms
+   ✓ some passing test
+   × should include EXIT CODES section 100ms
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+ FAIL  packages/cli/test/bin.test.ts > should include EXIT CODES section
+AssertionError: expected 'foo' to contain 'bar'
+ ❯ packages/cli/test/bin.test.ts:265:31
+     263|   it('should include EXIT CODES section', () => {
+     264|     const result = getHelp();
+     265|     expect(result).toContain('## Exit Codes');
+         |                               ^
+     266|   });
+     267|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 3 passed (4)
+`;
+
       const fetchLogsSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockImplementation((rid, jid) => {
         if (jid === jobId) {
-          // Return job-specific logs from fixture
-          const fs = require('node:fs');
-          return Promise.resolve(
-            fs.readFileSync('packages/cli/test/fixtures/watch-pr/matrix-ubuntu24-failure.log', 'utf8')
-          );
+          // Return job-specific logs that will trigger extraction
+          return Promise.resolve(mockViTestFailureLogs);
         }
         return Promise.resolve('other job logs');
       });

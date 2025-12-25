@@ -145,10 +145,12 @@ function toSafeString(value: unknown): string {
     }
   }
   // Handle primitives (number, boolean, etc.) - these stringify safely
-  if (value !== null && value !== undefined) {
+  // Explicitly check it's not an object to satisfy SonarQube's object stringification warning
+  if (value !== null && value !== undefined && typeof value !== 'object' && typeof value !== 'function') {
     return String(value);
   }
-  return '';
+  // Fallback for anything else (shouldn't happen, but be safe)
+  return '[Unhandled value type]';
 }
 
 /**
