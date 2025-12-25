@@ -276,6 +276,13 @@ export interface SpawnOptions extends ExecOptions {
    * If not provided, inherits parent environment by default
    */
   env?: Record<string, string>;
+  /**
+   * Optional callback invoked immediately after process spawns
+   * Receives the child process object for manual control (e.g., sending signals)
+   * Useful for testing signal handling or other process lifecycle events
+   */
+  // eslint-disable-next-line no-unused-vars -- Parameter name documents API for callback users
+  onSpawn?: (child: any) => void;
 }
 
 /**
@@ -298,6 +305,21 @@ export interface SpawnOptions extends ExecOptions {
  * );
  * expect(result.stderr).toContain('Error');
  * ```
+ *
+ * @example Manual process control with onSpawn
+ * ```typescript
+ * const result = await executeCommandWithSeparateStreams(
+ *   '/path/to/cli.js',
+ *   ['state'],
+ *   {
+ *     onSpawn: (child) => {
+ *       // Send SIGINT after 100ms to test signal handling
+ *       setTimeout(() => child.kill('SIGINT'), 100);
+ *     }
+ *   }
+ * );
+ * expect(result.exitCode).toBe(0);
+ * ```
  */
 export async function executeCommandWithSeparateStreams(
   command: string,
@@ -318,6 +340,11 @@ export async function executeCommandWithSeparateStreams(
     }
 
     const proc = spawn('node', [command, ...args], spawnOptions);
+
+    // Invoke onSpawn callback if provided (for manual process control)
+    if (options.onSpawn) {
+      options.onSpawn(proc);
+    }
 
     let stdout = '';
     let stderr = '';

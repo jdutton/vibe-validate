@@ -126,6 +126,22 @@ export interface ScanResult {
 }
 
 /**
+ * Convert Buffer or string to string, avoiding [object Object] for Buffers
+ */
+function toSafeString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (Buffer.isBuffer(value)) {
+    return value.toString('utf-8');
+  }
+  if (value) {
+    return String(value);
+  }
+  return '';
+}
+
+/**
  * Run a secret scanning command
  */
 export function runSecretScan(
@@ -189,22 +205,8 @@ export function runSecretScan(
     if (error && typeof error === 'object' && 'stderr' in error && 'stdout' in error) {
       // Safely convert stderr/stdout to strings (may be Buffer or string from child_process)
       // Handle potential undefined/null values before stringification to avoid [object Object]
-      const stderrValue = error.stderr;
-      const stdoutValue = error.stdout;
-
-      let stderr = '';
-      if (typeof stderrValue === 'string') {
-        stderr = stderrValue;
-      } else if (stderrValue) {
-        stderr = String(stderrValue);
-      }
-
-      let stdout = '';
-      if (typeof stdoutValue === 'string') {
-        stdout = stdoutValue;
-      } else if (stdoutValue) {
-        stdout = String(stdoutValue);
-      }
+      const stderr = toSafeString(error.stderr);
+      const stdout = toSafeString(error.stdout);
 
       return {
         tool,

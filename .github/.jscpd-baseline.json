@@ -2887,32 +2887,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/bin.test.ts",
-        "start": 767,
-        "end": 775,
+        "start": 703,
+        "end": 711,
         "startLoc": {
-          "line": 767,
+          "line": 703,
           "column": 2,
-          "position": 7470
+          "position": 6856
         },
         "endLoc": {
-          "line": 775,
+          "line": 711,
           "column": 29,
-          "position": 7560
+          "position": 6946
         }
       },
       "secondFile": {
         "name": "packages/cli/test/bin.test.ts",
-        "start": 682,
-        "end": 690,
+        "start": 618,
+        "end": 626,
         "startLoc": {
-          "line": 682,
+          "line": 618,
           "column": 2,
-          "position": 6711
+          "position": 6097
         },
         "endLoc": {
-          "line": 690,
+          "line": 626,
           "column": 32,
-          "position": 6801
+          "position": 6187
         }
       }
     }

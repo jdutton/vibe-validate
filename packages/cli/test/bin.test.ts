@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import {  rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -7,6 +6,7 @@ import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { initializeGitRepo } from './helpers/integration-setup-helpers.js';
+import { executeCommandWithSeparateStreams } from './helpers/test-command-runner.js';
 
 describe('bin.ts - CLI entry point', () => {
   let testDir: string;
@@ -66,83 +66,19 @@ describe('bin.ts - CLI entry point', () => {
 
   /**
    * Helper function to execute CLI and capture output
+   * Uses shared test-command-runner helper for cross-platform compatibility
    */
-  function executeCLI(
+  async function executeCLI(
     args: string[],
     timeoutMs: number = 10000,
     customEnv?: Record<string, string>
   ): Promise<{ code: number; stdout: string; stderr: string }> {
-    return new Promise((resolve, reject) => {
-      const child = spawn('node', [binPath, ...args], {
-        cwd: testDir,
-        env: { ...process.env, NO_COLOR: '1', ...customEnv }, // Disable colors for easier testing, merge custom env
-      });
-
-      let stdout = '';
-      let stderr = '';
-      let resolved = false;
-      let stdoutEnded = false;
-      let stderrEnded = false;
-      let exitCode: number | null = null;
-
-      // Timeout handler to prevent hanging
-      const timeout = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          child.kill('SIGTERM');
-          reject(new Error(`Command timed out after ${timeoutMs}ms: node ${binPath} ${args.join(' ')}`));
-        }
-      }, timeoutMs);
-
-      // Helper to check if we can resolve
-      const tryResolve = () => {
-        // Only resolve once we have: exit code AND both streams ended
-        if (!resolved && exitCode !== null && stdoutEnded && stderrEnded) {
-          resolved = true;
-          clearTimeout(timeout);
-          if (exitCode === null) {
-            console.warn(`Warning: Child process closed with null exit code for: ${args.join(' ')}`);
-            console.warn(`  Stdout: ${stdout.substring(0, 200)}`);
-            console.warn(`  Stderr: ${stderr.substring(0, 200)}`);
-            resolve({ code: 1, stdout, stderr: stderr + '\n[Process closed with null exit code]' });
-          } else {
-            resolve({ code: exitCode, stdout, stderr });
-          }
-        }
-      };
-
-      child.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      child.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      // Wait for streams to end (all data flushed)
-      child.stdout.on('end', () => {
-        stdoutEnded = true;
-        tryResolve();
-      });
-
-      child.stderr.on('end', () => {
-        stderrEnded = true;
-        tryResolve();
-      });
-
-      child.on('close', (code) => {
-        exitCode = code ?? 1;
-        tryResolve();
-      });
-
-      child.on('error', (error) => {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeout);
-          resolve({ code: 1, stdout, stderr: error.message });
-        }
-      });
+    const result = await executeCommandWithSeparateStreams(binPath, args, {
+      cwd: testDir,
+      timeout: timeoutMs,
+      env: { NO_COLOR: '1', ...customEnv },
     });
+    return { code: result.exitCode, stdout: result.stdout, stderr: result.stderr };
   }
 
   describe('version display', () => {
@@ -874,29 +810,18 @@ git:
     });
 
     it('should handle SIGINT gracefully', async () => {
-      // This is a challenging test - we spawn a long-running process and kill it
-      const child = spawn('node', [binPath, 'state'], {
+      // Test signal handling using onSpawn callback for manual process control
+      const result = await executeCommandWithSeparateStreams(binPath, ['state'], {
         cwd: testDir,
+        timeout: 5000,
+        onSpawn: (child) => {
+          // Give process time to start, then send SIGINT
+          setTimeout(() => child.kill('SIGINT'), 100);
+        },
       });
 
-      // Give process time to start
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Send SIGINT
-      child.kill('SIGINT');
-
-      // Wait for process to exit
-      const exitCode = await new Promise<number>((resolve) => {
-        child.on('close', (code) => resolve(code ?? 1));
-        // Timeout after 2 seconds
-        setTimeout(() => {
-          child.kill('SIGKILL');
-          resolve(1);
-        }, 2000);
-      });
-
-      // Process should exit (code might be 0 or non-zero depending on timing)
-      expect(typeof exitCode).toBe('number');
+      // Process should exit gracefully (exit code should be a number)
+      expect(typeof result.exitCode).toBe('number');
     }, 10000); // Increase test timeout to 10 seconds
   });
 });
