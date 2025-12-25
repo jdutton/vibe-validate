@@ -105,6 +105,7 @@ export class WatchPROrchestrator {
           status: check.status,
           conclusion: check.conclusion,
           run_id: check.run_id,
+          job_id: check.job_id,
           workflow: check.workflow,
           started_at: check.started_at,
           duration: check.duration,
@@ -113,7 +114,8 @@ export class WatchPROrchestrator {
         // Try to extract errors if check failed
         if (check.conclusion === 'failure' && check.run_id) {
           // Use retry logic to handle GitHub API race condition (Issue #4)
-          const logs = await this.fetchLogsWithRetry(check.run_id);
+          // Pass job_id for matrix strategy jobs to get job-specific logs
+          const logs = await this.fetchLogsWithRetry(check.run_id, check.job_id);
           if (logs) {
             const extraction = await this.extractionDetector.detectAndExtract(actionCheck, logs);
             if (extraction) {
@@ -240,6 +242,7 @@ export class WatchPROrchestrator {
       status: jobStatus,
       conclusion: job.conclusion ? (job.conclusion as CheckConclusion) : undefined,
       run_id: runId,
+      job_id: job.id, // CRITICAL: Include job_id for matrix strategy support
       workflow: workflowName,
       started_at: job.started_at,
       duration: `${durationSecs}s`,
@@ -247,7 +250,7 @@ export class WatchPROrchestrator {
 
     // Extract errors from failed jobs
     if (job.status === 'completed' && job.conclusion === 'failure') {
-      await this.extractErrorsForCheck(actionCheck, runId);
+      await this.extractErrorsForCheck(actionCheck, runId, job.id);
     }
 
     return actionCheck;
@@ -256,8 +259,8 @@ export class WatchPROrchestrator {
   /**
    * Extract errors for a check from run logs
    */
-  private async extractErrorsForCheck(check: GitHubActionCheck, runId: number): Promise<void> {
-    const logs = await this.fetchLogsWithRetry(runId);
+  private async extractErrorsForCheck(check: GitHubActionCheck, runId: number, jobId?: number): Promise<void> {
+    const logs = await this.fetchLogsWithRetry(runId, jobId);
     if (!logs) return;
 
     const extraction = await this.extractionDetector.detectAndExtract(check, logs);
@@ -488,13 +491,14 @@ export class WatchPROrchestrator {
    * Retry schedule: 2s, 4s, 8s (total 3 attempts over ~14 seconds)
    *
    * @param runId - GitHub run ID
+   * @param jobId - GitHub job ID (optional, for matrix strategy jobs)
    * @param maxRetries - Maximum number of retry attempts (default: 3)
    * @returns Log content, or null if all retries failed
    */
-  private async fetchLogsWithRetry(runId: number, maxRetries = 3): Promise<string | null> {
+  private async fetchLogsWithRetry(runId: number, jobId?: number, maxRetries = 3): Promise<string | null> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return await this.fetcher.fetchRunLogs(runId);
+        return await this.fetcher.fetchRunLogs(runId, jobId);
       } catch {
         // Intentionally suppress error (Issue #4 fix: no noisy output)
         // If this was the last attempt, break without sleeping

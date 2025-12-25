@@ -487,7 +487,8 @@ describe('WatchPROrchestrator', () => {
       const result = await orchestrator.buildResultForRun(mockPRNumber, mockRunId, { useCache: false });
 
       // Verify logs were fetched (extraction was attempted)
-      expect(fetchLogsSpy).toHaveBeenCalledWith(mockRunId);
+      // Now includes job_id (1) from the mocked job
+      expect(fetchLogsSpy).toHaveBeenCalledWith(mockRunId, 1);
 
       // Verify result structure is correct
       expect(result.checks.github_actions).toHaveLength(1);
@@ -592,6 +593,137 @@ describe('WatchPROrchestrator', () => {
       // Verify PR context is still fetched
       expect(fetchPRSpy).toHaveBeenCalledWith(mockPRNumber);
       expect(fetchFileChangesSpy).toHaveBeenCalledWith(mockPRNumber);
+    });
+  });
+
+  describe('matrix job extraction', () => {
+    it('should extract errors from specific matrix job using job_id', async () => {
+      // GIVEN: A matrix run with multiple jobs
+      const prNumber = 96;
+      const runId = 20499466496;
+      const jobId = 58904629442; // Ubuntu 24 job ID
+
+      // Setup PR and run details
+      setupRunMocks(
+        prNumber,
+        runId,
+        {
+          name: 'Run vibe-validate validation',
+          workflow: 'Validation Pipeline',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-25T05:11:54Z',
+          duration: '3m20s',
+        },
+        [
+          {
+            id: 58904629438,
+            run_id: runId,
+            name: 'Run vibe-validate validation (ubuntu-latest, 22)',
+            status: 'completed',
+            conclusion: 'success',
+            started_at: '2025-12-25T05:11:54Z',
+            completed_at: '2025-12-25T05:14:00Z',
+            html_url: `https://github.com/jdutton/vibe-validate/actions/runs/${runId}/job/58904629438`,
+          },
+          {
+            id: jobId,
+            run_id: runId,
+            name: 'Run vibe-validate validation (ubuntu-latest, 24)',
+            status: 'completed',
+            conclusion: 'failure',
+            started_at: '2025-12-25T05:11:54Z',
+            completed_at: '2025-12-25T05:15:14Z',
+            html_url: `https://github.com/jdutton/vibe-validate/actions/runs/${runId}/job/${jobId}`,
+          },
+        ]
+      );
+
+      // Mock fetchRunLogs to return job-specific logs when job_id is passed
+      const fetchLogsSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockImplementation((rid, jid) => {
+        if (jid === jobId) {
+          // Return job-specific logs from fixture
+          const fs = require('node:fs');
+          return Promise.resolve(
+            fs.readFileSync('packages/cli/test/fixtures/watch-pr/matrix-ubuntu24-failure.log', 'utf8')
+          );
+        }
+        return Promise.resolve('other job logs');
+      });
+
+      // WHEN: Building result for the run
+      const result = await orchestrator.buildResultForRun(prNumber, runId, { useCache: false });
+
+      // THEN: Verify fetchRunLogs was called with job_id for the failed job
+      expect(fetchLogsSpy).toHaveBeenCalledWith(runId, jobId);
+
+      // Find the Ubuntu 24 job (the failed one)
+      const ubuntu24Job = result.checks.github_actions.find(
+        (c) => c.name === 'Run vibe-validate validation (ubuntu-latest, 24)'
+      );
+
+      // Verify job_id is present
+      expect(ubuntu24Job).toBeDefined();
+      expect(ubuntu24Job?.job_id).toBe(jobId);
+
+      // Verify extraction is populated for the failed job
+      expect(ubuntu24Job?.extraction).toBeDefined();
+      expect(ubuntu24Job?.extraction?.errors).toBeDefined();
+      expect(ubuntu24Job?.extraction?.errors.length).toBeGreaterThan(0);
+      expect(ubuntu24Job?.extraction?.errors[0]).toMatchObject({
+        file: 'packages/cli/test/bin.test.ts',
+        line: 265,
+      });
+    });
+
+    it('should not extract errors from successful matrix jobs', async () => {
+      // GIVEN: A matrix run with one successful job
+      const prNumber = 96;
+      const runId = 20499466496;
+      const jobId = 58904629438; // Ubuntu 22 job ID (successful)
+
+      setupRunMocks(
+        prNumber,
+        runId,
+        {
+          name: 'Run vibe-validate validation',
+          workflow: 'Validation Pipeline',
+          status: 'completed',
+          conclusion: 'success',
+          started_at: '2025-12-25T05:11:54Z',
+          duration: '3m00s',
+        },
+        [
+          {
+            id: jobId,
+            run_id: runId,
+            name: 'Run vibe-validate validation (ubuntu-latest, 22)',
+            status: 'completed',
+            conclusion: 'success',
+            started_at: '2025-12-25T05:11:54Z',
+            completed_at: '2025-12-25T05:14:54Z',
+            html_url: `https://github.com/jdutton/vibe-validate/actions/runs/${runId}/job/${jobId}`,
+          },
+        ]
+      );
+
+      // Mock fetchRunLogs - should NOT be called for successful jobs
+      const fetchLogsSpy = vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs');
+
+      // WHEN: Building result for the run
+      const result = await orchestrator.buildResultForRun(prNumber, runId, { useCache: false });
+
+      // THEN: Verify fetchRunLogs was NOT called (no failed jobs)
+      expect(fetchLogsSpy).not.toHaveBeenCalled();
+
+      // Find the Ubuntu 22 job
+      const ubuntu22Job = result.checks.github_actions.find(
+        (c) => c.name === 'Run vibe-validate validation (ubuntu-latest, 22)'
+      );
+
+      expect(ubuntu22Job).toBeDefined();
+      expect(ubuntu22Job?.conclusion).toBe('success');
+      expect(ubuntu22Job?.extraction).toBeUndefined();
     });
   });
 
