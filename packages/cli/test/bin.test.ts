@@ -51,6 +51,13 @@ describe('bin.ts - CLI entry point', () => {
   }
 
   /**
+   * Helper to send SIGINT to a process after a delay
+   */
+  function sendSigintAfterDelay(child: { kill: (_signal: string) => void }, delayMs: number): void {
+    setTimeout(() => child.kill('SIGINT'), delayMs);
+  }
+
+  /**
    * Helper to log detailed diagnostics when a CLI command fails unexpectedly
    */
   function logCommandFailure(
@@ -815,10 +822,7 @@ git:
       const result = await executeCommandWithSeparateStreams(binPath, ['state'], {
         cwd: testDir,
         timeout: 5000,
-        onSpawn: (child) => {
-          // Give process time to start, then send SIGINT
-          setTimeout(() => child.kill('SIGINT'), 100);
-        },
+        onSpawn: (child) => sendSigintAfterDelay(child, 100),
       });
 
       // Process should exit gracefully (exit code should be a number)

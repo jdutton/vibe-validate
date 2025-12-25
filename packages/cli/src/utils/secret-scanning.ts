@@ -135,6 +135,14 @@ function toSafeString(value: unknown): string {
   if (Buffer.isBuffer(value)) {
     return value.toString('utf-8');
   }
+  if (value && typeof value === 'object') {
+    // Handle objects - use JSON.stringify to avoid "[object Object]"
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
   if (value) {
     return String(value);
   }
