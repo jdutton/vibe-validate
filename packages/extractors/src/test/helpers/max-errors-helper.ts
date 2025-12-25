@@ -82,15 +82,14 @@ export async function expectMaxErrorsTruncation(
   if (checkField === 'file') {
     expect(result.errors[0].file).toBe(firstError);
     expect(result.errors[9].file).toBe(lastTruncatedError);
+  } else if (messageContains) {
+    // Check message field with contains
+    expect(result.errors[0].message).toContain(firstError);
+    expect(result.errors[9].message).toContain(lastTruncatedError);
   } else {
-    // Check message field
-    if (messageContains) {
-      expect(result.errors[0].message).toContain(firstError);
-      expect(result.errors[9].message).toContain(lastTruncatedError);
-    } else {
-      expect(result.errors[0].message).toBe(firstError);
-      expect(result.errors[9].message).toBe(lastTruncatedError);
-    }
+    // Check message field with exact match
+    expect(result.errors[0].message).toBe(firstError);
+    expect(result.errors[9].message).toBe(lastTruncatedError);
   }
 
   // Summary should show full count
