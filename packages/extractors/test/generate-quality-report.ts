@@ -235,6 +235,83 @@ function detectRegressions(current: QualityMetrics, previous: QualityMetrics): v
   console.log(`  ${current.regressions.length} regressions`);
 }
 
+/**
+ * Helper: Get status emoji for tool stats
+ */
+function getToolStatusEmoji(stats: { passed: number; failed: number }): string {
+  if (stats.failed === 0) {
+    return '✅';
+  } else if (stats.passed > stats.failed) {
+    return '⚠️ ';
+  } else {
+    return '❌';
+  }
+}
+
+/**
+ * Helper: Display tool statistics
+ */
+function displayToolStats(byTool: QualityMetrics['byTool']): void {
+  console.log('\nBy Tool:');
+  for (const [tool, stats] of Object.entries(byTool)) {
+    const emoji = getToolStatusEmoji(stats);
+    console.log(`  ${emoji} ${tool}: ${(stats.avgScore * 100).toFixed(1)}% (${stats.passed}/${stats.count} passed)`);
+  }
+}
+
+/**
+ * Helper: Display difficulty statistics
+ */
+function displayDifficultyStats(byDifficulty: QualityMetrics['byDifficulty']): void {
+  console.log('\nBy Difficulty:');
+  for (const [difficulty, stats] of Object.entries(byDifficulty)) {
+    console.log(`  ${difficulty}: ${(stats.avgScore * 100).toFixed(1)}% (${stats.passed}/${stats.count} passed)`);
+  }
+}
+
+/**
+ * Helper: Display failed samples
+ */
+function displayFailures(failures: QualityMetrics['failures']): void {
+  if (failures.length > 0) {
+    console.log('\n❌ Failed Samples:');
+    for (const failure of failures) {
+      console.log(
+        `  ${failure.sample}: ${(failure.score * 100).toFixed(1)}% (need ${(failure.threshold * 100).toFixed(0)}%)`
+      );
+      console.log(`    Issues: ${failure.issues.slice(0, 3).join(', ')}`);
+    }
+  }
+}
+
+/**
+ * Helper: Display regressions
+ */
+function displayRegressions(regressions?: QualityMetrics['regressions']): void {
+  if (regressions && regressions.length > 0) {
+    console.log('\n⚠️  Regressions Detected:');
+    for (const reg of regressions) {
+      console.log(
+        `  ${reg.sample}: ${(reg.previousScore * 100).toFixed(1)}% → ${(reg.currentScore * 100).toFixed(1)}% (-${(reg.regression * 100).toFixed(1)}%)`
+      );
+    }
+  }
+}
+
+/**
+ * Helper: Display improvements
+ */
+function displayImprovements(improvements?: QualityMetrics['improvements']): void {
+  if (improvements && improvements.length > 0) {
+    console.log('\n✅ Improvements:');
+    for (const imp of improvements) {
+      console.log(
+        `  ${imp.sample}: ${(imp.previousScore * 100).toFixed(1)}% → ${(imp.currentScore * 100).toFixed(1)}% (+${(imp.improvement * 100).toFixed(1)}%)`
+      );
+    }
+  }
+}
+
 function displaySummary(metrics: QualityMetrics, checkOnly: boolean = false) {
   console.log('\n' + '='.repeat(60));
   console.log('📊 Quality Report Summary');
@@ -243,51 +320,11 @@ function displaySummary(metrics: QualityMetrics, checkOnly: boolean = false) {
   console.log(`Total Samples: ${metrics.totalSamples}`);
   console.log(`Overall Score: ${(metrics.overallScore * 100).toFixed(1)}%`);
 
-  console.log('\nBy Tool:');
-  for (const [tool, stats] of Object.entries(metrics.byTool)) {
-    let emoji: string;
-    if (stats.failed === 0) {
-      emoji = '✅';
-    } else if (stats.passed > stats.failed) {
-      emoji = '⚠️ ';
-    } else {
-      emoji = '❌';
-    }
-    console.log(`  ${emoji} ${tool}: ${(stats.avgScore * 100).toFixed(1)}% (${stats.passed}/${stats.count} passed)`);
-  }
-
-  console.log('\nBy Difficulty:');
-  for (const [difficulty, stats] of Object.entries(metrics.byDifficulty)) {
-    console.log(`  ${difficulty}: ${(stats.avgScore * 100).toFixed(1)}% (${stats.passed}/${stats.count} passed)`);
-  }
-
-  if (metrics.failures.length > 0) {
-    console.log('\n❌ Failed Samples:');
-    for (const failure of metrics.failures) {
-      console.log(
-        `  ${failure.sample}: ${(failure.score * 100).toFixed(1)}% (need ${(failure.threshold * 100).toFixed(0)}%)`
-      );
-      console.log(`    Issues: ${failure.issues.slice(0, 3).join(', ')}`);
-    }
-  }
-
-  if (metrics.regressions && metrics.regressions.length > 0) {
-    console.log('\n⚠️  Regressions Detected:');
-    for (const reg of metrics.regressions) {
-      console.log(
-        `  ${reg.sample}: ${(reg.previousScore * 100).toFixed(1)}% → ${(reg.currentScore * 100).toFixed(1)}% (-${(reg.regression * 100).toFixed(1)}%)`
-      );
-    }
-  }
-
-  if (metrics.improvements && metrics.improvements.length > 0) {
-    console.log('\n✅ Improvements:');
-    for (const imp of metrics.improvements) {
-      console.log(
-        `  ${imp.sample}: ${(imp.previousScore * 100).toFixed(1)}% → ${(imp.currentScore * 100).toFixed(1)}% (+${(imp.improvement * 100).toFixed(1)}%)`
-      );
-    }
-  }
+  displayToolStats(metrics.byTool);
+  displayDifficultyStats(metrics.byDifficulty);
+  displayFailures(metrics.failures);
+  displayRegressions(metrics.regressions);
+  displayImprovements(metrics.improvements);
 
   if (!checkOnly) {
     console.log('\n📁 Full report: test/quality-report.json');

@@ -270,10 +270,11 @@ describe('Markdown Examples Validation', () => {
         `${relative(projectRoot, e.file)}:${e.lineNumber} (${e.tag})`
       );
 
+      const locationsList = relativePaths.map(p => `    - ${p}`).join('\n');
       console.warn(
         `\n⚠️  Found ${unknownTagExamples.length} examples with unknown tags:\n` +
         `  Tags: ${[...unknownTags].join(', ')}\n` +
-        `  Locations:\n${relativePaths.map(p => `    - ${p}`).join('\n')}\n\n` +
+        `  Locations:\n${locationsList}\n\n` +
         `  Known tags: ${VALIDATORS.flatMap(v => v.tags).join(', ')}\n`
       );
 

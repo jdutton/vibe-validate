@@ -153,7 +153,7 @@ async function handleVerboseHelp(args: string[], program: Command): Promise<bool
 
   // Special case: 'run' command
   // Check if there's a command specified after 'run' (non-flag argument)
-  const runIndex = args.findIndex(arg => arg === 'run');
+  const runIndex = args.indexOf('run');
   if (runIndex !== -1) {
     // Look for first non-flag argument after 'run'
     const argsAfterRun = args.slice(runIndex + 1);

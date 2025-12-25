@@ -74,10 +74,11 @@ describe('Sample-Driven Extractor Tests', () => {
 
           // Test assertions
           const threshold = getThreshold(sample.metadata.difficulty);
+          const issuesList = issues.map(i => `  - ${i}`).join('\n');
           expect(
             score,
             `Extraction quality too low (${(score * 100).toFixed(1)}% < ${(threshold * 100).toFixed(1)}%)\n` +
-              `Issues:\n${issues.map(i => `  - ${i}`).join('\n')}\n`
+              `Issues:\n${issuesList}\n`
           ).toBeGreaterThanOrEqual(threshold);
 
           // Basic checks
@@ -107,8 +108,10 @@ describe('Sample-Driven Extractor Tests', () => {
         if (failures.length > 0) {
           console.log(`\n    Failed Samples:`);
           for (const failure of failures) {
+            const matchingSample = samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === failure.fixture)!;
+            const thresholdPercent = (getThreshold(matchingSample.metadata.difficulty) * 100).toFixed(0);
             console.log(
-              `      - ${failure.sample}: ${(failure.score * 100).toFixed(1)}% (threshold: ${(getThreshold(samples.find(f => `${f.metadata.tool}/${f.metadata.category}` === failure.fixture)!.metadata.difficulty) * 100).toFixed(0)}%)`
+              `      - ${failure.sample}: ${(failure.score * 100).toFixed(1)}% (threshold: ${thresholdPercent}%)`
             );
             console.log(`        Issues: ${failure.issues.join(', ')}`);
           }

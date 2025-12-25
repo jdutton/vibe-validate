@@ -26,7 +26,7 @@ echo ""
 # Jest - JUnit XML
 echo "📄 Capturing Jest JUnit XML..."
 npm run test:jest:junit || true
-if [ -f junit-output/junit.xml ]; then
+if [[ -f junit-output/junit.xml ]]; then
   cp junit-output/junit.xml ../extractors/test/samples/jest/extraction-test-bed.junit.xml
   echo "✅ Saved to: ../extractors/test/samples/jest/extraction-test-bed.junit.xml"
 else
@@ -43,7 +43,7 @@ echo ""
 # Vitest - JUnit XML
 echo "📄 Capturing Vitest JUnit XML..."
 npm run test:vitest:junit || true
-if [ -f junit-output/vitest-results.xml ]; then
+if [[ -f junit-output/vitest-results.xml ]]; then
   cp junit-output/vitest-results.xml ../extractors/test/samples/vitest/extraction-test-bed.junit.xml
   echo "✅ Saved to: ../extractors/test/samples/vitest/extraction-test-bed.junit.xml"
 else

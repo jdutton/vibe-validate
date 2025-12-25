@@ -41,6 +41,16 @@ describe('bin.ts - CLI entry point', () => {
   });
 
   /**
+   * Helper to initialize git repo and create initial commit
+   */
+  function setupGitRepo(configContent: string): void {
+    writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
+    initializeGitRepo(testDir);
+    executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
+    executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
+  }
+
+  /**
    * Helper to log detailed diagnostics when a CLI command fails unexpectedly
    */
   function logCommandFailure(
@@ -49,7 +59,8 @@ describe('bin.ts - CLI entry point', () => {
     expectedCode: number,
     context?: string
   ): void {
-    console.error(`${context ? `${context}: ` : ''}Command failed unexpectedly`);
+    const prefix = context ? `${context}: ` : '';
+    console.error(`${prefix}Command failed unexpectedly`);
     console.error('Command:', args.join(' '));
     console.error('Expected exit code:', expectedCode);
     console.error('Actual exit code:', result.code);
@@ -616,12 +627,7 @@ git:
 git:
   mainBranch: main
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
-
-      // Initialize git
-      initializeGitRepo(testDir);
-      executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
-      executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
+      setupGitRepo(configContent);
 
       // Run validation (should fail)
       const validateResult = await executeCLI(['validate']);
@@ -701,12 +707,7 @@ git:
 git:
   mainBranch: main
 `;
-      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
-
-      // Initialize git
-      initializeGitRepo(testDir);
-      executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
-      executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
+      setupGitRepo(configContent);
 
       // Run validate with --force
       const forcedRun = await executeCLI(['validate', '--force']);
