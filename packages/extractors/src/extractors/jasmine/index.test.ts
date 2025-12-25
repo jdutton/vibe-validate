@@ -8,7 +8,6 @@ import { describe, it, expect } from 'vitest';
 
 import {
   expectDetection,
-  expectEmptyExtraction,
   expectPluginMetadata,
 } from '../../test/helpers/extractor-test-helpers.js';
 
@@ -288,7 +287,10 @@ Started
 Finished in 0.037 seconds
 `;
 
-        expectEmptyExtraction(() => jasminePlugin.extract(input), '0 test(s) failed');
+        const result = jasminePlugin.extract(input);
+        expect(result.errors).toHaveLength(0);
+        expect(result.totalErrors).toBe(0);
+        expect(result.summary).toBe('0 test(s) failed');
         expect(jasminePlugin).toBeDefined();
       });
 

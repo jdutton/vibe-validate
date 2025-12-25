@@ -8,7 +8,6 @@ import { describe, it, expect } from 'vitest';
 
 import {
   expectDetection,
-  expectEmptyExtraction,
   expectPluginMetadata,
 } from '../../test/helpers/extractor-test-helpers.js';
 
@@ -254,7 +253,10 @@ describe('mocha extractor plugin', () => {
   0 failing
 `;
 
-        expectEmptyExtraction(() => mochaPlugin.extract(input), '0 test(s) failed');
+        const result = mochaPlugin.extract(input);
+        expect(result.errors).toHaveLength(0);
+        expect(result.totalErrors).toBe(0);
+        expect(result.summary).toBe('0 test(s) failed');
         expect(mochaPlugin).toBeDefined();
       });
 

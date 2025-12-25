@@ -8,7 +8,6 @@ import { describe, it, expect } from 'vitest';
 
 import {
   expectDetection,
-  expectEmptyExtraction,
   expectPluginMetadata,
 } from '../../test/helpers/extractor-test-helpers.js';
 
@@ -137,10 +136,10 @@ Running 5 tests using 2 workers
   5 passed (1.2s)
 `;
 
-        expectEmptyExtraction(() => playwrightPlugin.extract(output), '0 test(s) failed');
-
-        // Verify metadata (this is beyond the helper's scope, so keep explicit check)
         const result = playwrightPlugin.extract(output);
+        expect(result.errors).toHaveLength(0);
+        expect(result.totalErrors).toBe(0);
+        expect(result.summary).toBe('0 test(s) failed');
         expect(result.metadata!.completeness).toBe(100);
       });
     });
