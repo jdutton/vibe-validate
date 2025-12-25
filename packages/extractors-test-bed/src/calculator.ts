@@ -42,6 +42,6 @@ export class Calculator {
    */
   getVersion(): string {
     // @ts-expect-error - INTENTIONAL TYPE ERROR
-    return 1.0; // Should return string, returns number
+    return 1; // Should return string, returns number
   }
 }

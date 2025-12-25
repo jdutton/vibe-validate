@@ -127,15 +127,15 @@ export function groupSamplesBy<K extends keyof Sample['metadata']>(
 export function getThreshold(difficulty: Sample['metadata']['difficulty']): number {
   switch (difficulty) {
     case 'easy':
-      return 0.90;
+      return 0.9;
     case 'medium':
       return 0.75;
     case 'hard':
-      return 0.60;
+      return 0.6;
     case 'very-hard':
-      return 0.40;
+      return 0.4;
     default:
-      return 0.70;
+      return 0.7;
   }
 }
 
@@ -193,9 +193,9 @@ export function computeQualityScore(
 
   // Check tool detection
   if (actual.detectedTool === expected.detectedTool) {
-    fieldScores.tool = 1.0;
+    fieldScores.tool = 1;
   } else {
-    fieldScores.tool = 0.0;
+    fieldScores.tool = 0;
     issues.push(
       `Tool mismatch: detected '${actual.detectedTool}' but expected '${expected.detectedTool}'`
     );
@@ -203,7 +203,7 @@ export function computeQualityScore(
 
   // Check detection confidence
   if (actual.detectionConfidence >= expected.detectionConfidence * 0.9) {
-    fieldScores.confidence = 1.0;
+    fieldScores.confidence = 1;
   } else {
     fieldScores.confidence = actual.detectionConfidence / expected.detectionConfidence;
     issues.push(
@@ -213,7 +213,7 @@ export function computeQualityScore(
 
   // Check failure count
   if (actual.failures.length === expected.failures.length) {
-    fieldScores.count = 1.0;
+    fieldScores.count = 1;
   } else {
     fieldScores.count = Math.min(
       actual.failures.length / expected.failures.length,
