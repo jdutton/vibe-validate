@@ -85,6 +85,35 @@ export interface ValidationConfig {
   onStepComplete?: (_step: ValidationStep, _result: StepResult) => void;
 }
 
+/**
+ * Options for processing step output
+ */
+interface ProcessOutputOptions {
+  /** Show verbose output */
+  verbose: boolean;
+  /** Enable debug mode (create output files for all steps) */
+  debug: boolean;
+  /** Logging function */
+  log: (_msg: string) => void;
+}
+
+/**
+ * Options for step execution (sequential or parallel)
+ */
+interface StepExecutionOptions {
+  /** Enable fail-fast (stop on first failure) */
+  enableFailFast?: boolean;
+  /** Additional environment variables */
+  env?: Record<string, string>;
+  /** Show verbose output */
+  verbose?: boolean;
+  /** Output YAML result to stdout */
+  yaml?: boolean;
+  /** Developer feedback mode */
+  developerFeedback?: boolean;
+  /** Enable debug mode (create output files for all steps) */
+  debug?: boolean;
+}
 
 /**
  * Parse test output to extract specific failures
@@ -363,14 +392,11 @@ async function createStepOutputFiles(
  */
 async function processStepOutput(
   stepName: string,
-  _command: string,
   exitCode: number,
   stdout: string,
   stderr: string,
   combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
-  verbose: boolean,
-  debug: boolean,
-  log: (_msg: string) => void
+  options: ProcessOutputOptions
 ): Promise<{
   extraction?: ErrorExtractorResult;
   isCachedResult?: boolean;
@@ -385,20 +411,20 @@ async function processStepOutput(
   // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer
   if (exitCode !== 0 && output && output.trim()) {
     extraction = extractFromFailedOutput(output);
-    const result = parseAndLogCacheStatus(output, verbose, log);
+    const result = parseAndLogCacheStatus(output, options.verbose, options.log);
     isCachedResult = result.isCachedResult;
     outputFiles = result.outputFiles;
   } else if (output?.trim()) {
     // Process passing steps - check if cached
-    const result = parseAndLogCacheStatus(output, verbose, log);
+    const result = parseAndLogCacheStatus(output, options.verbose, options.log);
     isCachedResult = result.isCachedResult;
     outputFiles = result.outputFiles;
   }
 
   // Create output files if needed
-  const shouldCreateFiles = exitCode !== 0 || debug;
+  const shouldCreateFiles = exitCode !== 0 || options.debug;
   if (shouldCreateFiles && !outputFiles) {
-    outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, verbose, log);
+    outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, options.verbose, options.log);
   }
 
   return { extraction, isCachedResult, outputFiles };
@@ -456,14 +482,11 @@ async function executeSingleStep(
   // Process output: parse, extract, create files
   const { extraction, isCachedResult, outputFiles } = await processStepOutput(
     step.name,
-    step.command,
     code,
     stdout,
     stderr,
     combinedLines,
-    verbose,
-    debug,
-    log
+    { verbose, debug, log }
   );
 
   // Create step result (build without type annotation to let TS infer)
@@ -494,8 +517,7 @@ async function executeSingleStep(
  *
  * @param steps - Array of validation steps to execute sequentially
  * @param phaseName - Human-readable phase name for logging
- * @param enableFailFast - If true, stops on first failure (recommended for sequential)
- * @param env - Additional environment variables for child processes
+ * @param options - Execution options (enableFailFast, env, verbose, yaml, debug, etc.)
  * @returns Promise resolving to execution results with outputs and step results
  *
  * @example
@@ -507,8 +529,7 @@ async function executeSingleStep(
  *     { name: 'ESLint', command: 'pnpm lint' },
  *   ],
  *   'Pre-Qualification',
- *   true,
- *   { NODE_ENV: 'test' }
+ *   { enableFailFast: true, env: { NODE_ENV: 'test' } }
  * );
  *
  * if (!result.success) {
@@ -521,18 +542,20 @@ async function executeSingleStep(
 export async function runStepsSequentially(
   steps: ValidationStep[],
   phaseName: string,
-  enableFailFast: boolean = true,
-  env: Record<string, string> = {},
-  verbose: boolean = false,
-  yaml: boolean = false,
-  _developerFeedback: boolean = false,
-  debug: boolean = false
+  options: StepExecutionOptions = {}
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
   outputs: Map<string, string>;
   stepResults: StepResult[];
 }> {
+  const {
+    enableFailFast = true,
+    env = {},
+    verbose = false,
+    yaml = false,
+    debug = false,
+  } = options;
   // When yaml mode is on, write progress to stderr to keep stdout clean
   const log = yaml ?
     (msg: string) => process.stderr.write(msg + '\n') :
@@ -591,8 +614,7 @@ export async function runStepsSequentially(
  *
  * @param steps - Array of validation steps to execute in parallel
  * @param phaseName - Human-readable phase name for logging
- * @param enableFailFast - If true, kills remaining processes on first failure
- * @param env - Additional environment variables for child processes
+ * @param options - Execution options (enableFailFast, env, verbose, yaml, debug, etc.)
  * @returns Promise resolving to execution results with outputs and step results
  *
  * @example
@@ -603,8 +625,7 @@ export async function runStepsSequentially(
  *     { name: 'ESLint', command: 'pnpm lint' },
  *   ],
  *   'Pre-Qualification',
- *   true,  // Enable fail-fast
- *   { NODE_ENV: 'test' }
+ *   { enableFailFast: true, env: { NODE_ENV: 'test' } }
  * );
  *
  * if (!result.success) {
@@ -617,18 +638,21 @@ export async function runStepsSequentially(
 export async function runStepsInParallel(
   steps: ValidationStep[],
   phaseName: string,
-  enableFailFast: boolean = false,
-  env: Record<string, string> = {},
-  verbose: boolean = false,
-  yaml: boolean = false,
-  developerFeedback: boolean = false,
-  debug: boolean = false
+  options: StepExecutionOptions = {}
 ): Promise<{
   success: boolean;
   failedStep?: ValidationStep;
   outputs: Map<string, string>;
   stepResults: StepResult[];
 }> {
+  const {
+    enableFailFast = false,
+    env = {},
+    verbose = false,
+    yaml = false,
+    developerFeedback = false,
+    debug = false,
+  } = options;
   // When yaml mode is on, write progress to stderr to keep stdout clean
   const log = yaml ?
     (msg: string) => process.stderr.write(msg + '\n') :
@@ -1007,12 +1031,14 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     const result = await runSteps(
       phase.steps,
       phase.name,
-      enableFailFast,
-      env,
-      config.verbose ?? false,
-      config.yaml ?? false,
-      config.developerFeedback ?? false,
-      config.debug ?? false
+      {
+        enableFailFast,
+        env,
+        verbose: config.verbose ?? false,
+        yaml: config.yaml ?? false,
+        developerFeedback: config.developerFeedback ?? false,
+        debug: config.debug ?? false,
+      }
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
     const durationSecs = Number.parseFloat((phaseDurationMs / 1000).toFixed(1));

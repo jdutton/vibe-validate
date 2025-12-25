@@ -121,7 +121,7 @@ describe('runner', () => {
         { name: 'Step2', command: 'node -e "console.log(\'test2\')"' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', false);
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
 
       expect(result.success).toBe(true);
       expect(result.outputs.size).toBe(2);
@@ -136,7 +136,7 @@ describe('runner', () => {
         { name: 'Failure', command: 'node -e "process.exit(1)"' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', false);
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
 
       expect(result.success).toBe(false);
       expect(result.failedStep?.name).toBe('Failure');
@@ -147,7 +147,7 @@ describe('runner', () => {
         { name: 'Output', command: 'node -e "console.log(\'stdout\'); console.error(\'stderr\')"' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', false);
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
 
       const output = result.outputs.get('Output');
       expect(output).toContain('stdout');
@@ -159,7 +159,7 @@ describe('runner', () => {
         { name: 'Quick', command: 'node -e "setTimeout(() => process.exit(0), 100)"' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', false);
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
 
       expect(result.stepResults[0].durationSecs).toBeGreaterThan(0.05);
     });
@@ -171,8 +171,10 @@ describe('runner', () => {
         { name: 'EnvTest', command: 'node -e "console.log(process.env.TEST_VAR)"' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', false, {
-        TEST_VAR: 'test-value',
+      const result = await runStepsInParallel(steps, 'Test Phase', {
+        env: {
+          TEST_VAR: 'test-value',
+        },
       });
 
       const output = result.outputs.get('EnvTest');
@@ -186,7 +188,7 @@ describe('runner', () => {
       ];
 
       const startTime = Date.now();
-      const result = await runStepsInParallel(steps, 'Test Phase', true);
+      const result = await runStepsInParallel(steps, 'Test Phase', { enableFailFast: true });
       const duration = Date.now() - startTime;
 
       expect(result.success).toBe(false);
@@ -199,7 +201,7 @@ describe('runner', () => {
         { name: 'Quick', command: 'node -e "console.log(\'done\')"' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', false);
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
 
       expect(result.success).toBe(false);
       // Both steps should complete
@@ -212,7 +214,7 @@ describe('runner', () => {
         { name: 'Slow Process', command: 'node -e "setTimeout(() => { console.log(\'done\'); process.exit(0); }, 10000)"' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', true);
+      const result = await runStepsInParallel(steps, 'Test Phase', { enableFailFast: true });
 
       expect(result.success).toBe(false);
       expect(result.stepResults).toHaveLength(2);
@@ -236,7 +238,7 @@ describe('runner', () => {
         { name: 'Silent', command: 'true' },
       ];
 
-      const result = await runStepsInParallel(steps, 'Test Phase', false);
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
 
       expect(result.success).toBe(true);
       expect(result.outputs.get('Silent')).toBeDefined();

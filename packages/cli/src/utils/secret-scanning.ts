@@ -129,14 +129,23 @@ export interface ScanResult {
  * Convert Buffer or string to string, avoiding [object Object] for Buffers
  */
 function toSafeString(value: unknown): string {
+  // Handle string
   if (typeof value === 'string') {
     return value;
   }
+
+  // Handle Buffer
   if (Buffer.isBuffer(value)) {
     return value.toString('utf-8');
   }
-  if (value && typeof value === 'object') {
-    // Handle objects - use JSON.stringify to avoid "[object Object]"
+
+  // Handle null/undefined
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  // Handle objects (including arrays, dates, etc.) - use JSON.stringify to avoid "[object Object]"
+  if (typeof value === 'object') {
     try {
       return JSON.stringify(value);
     } catch {
@@ -144,13 +153,25 @@ function toSafeString(value: unknown): string {
       return '[Unable to stringify object]';
     }
   }
-  // Handle primitives (number, boolean, etc.) - these stringify safely
-  // Explicitly check it's not an object to satisfy SonarQube's object stringification warning
-  if (value !== null && value !== undefined && typeof value !== 'object' && typeof value !== 'function') {
+
+  // Handle primitives explicitly to satisfy SonarQube
+  // These all have safe toString() implementations
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     return String(value);
   }
-  // Fallback for anything else (shouldn't happen, but be safe)
-  return '[Unhandled value type]';
+
+  // Handle symbol
+  if (typeof value === 'symbol') {
+    return value.toString();
+  }
+
+  // Handle function (edge case - shouldn't normally happen)
+  if (typeof value === 'function') {
+    return '[Function]';
+  }
+
+  // Fallback for any other type (shouldn't happen with current JS types)
+  return '[Unknown type]';
 }
 
 /**
