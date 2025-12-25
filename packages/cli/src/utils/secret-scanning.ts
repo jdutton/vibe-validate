@@ -197,7 +197,7 @@ export function runSecretScan(
       tool,
       passed: true,
       duration,
-      output: verbose ? result.toString() : undefined,
+      output: verbose ? toSafeString(result) : undefined,
     };
   } catch (error: unknown) {
     const duration = Date.now() - startTime;

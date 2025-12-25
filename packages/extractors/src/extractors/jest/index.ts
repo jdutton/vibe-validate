@@ -162,10 +162,12 @@ function processLine(
 function formatJestFailures(failures: JestFailure[]): string {
   const errorSummaryLines: string[] = [];
   for (const failure of failures) {
-    errorSummaryLines.push(`● ${failure.testHierarchy}`);
-    errorSummaryLines.push(`  ${failure.errorMessage}`);
-    errorSummaryLines.push(`  Location: ${failure.location}`);
-    errorSummaryLines.push('');
+    errorSummaryLines.push(
+      `● ${failure.testHierarchy}`,
+      `  ${failure.errorMessage}`,
+      `  Location: ${failure.location}`,
+      ''
+    );
   }
   return errorSummaryLines.join('\n');
 }

@@ -1115,8 +1115,7 @@ async function displayCommandOutput(
       const stream = streamColor(`[${line.stream}]`);
       process.stderr.write(`${stream} ${line.line}\n`);
     }
-  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Display errors are non-critical, YAML already written
-  } catch (_err) {
+  } catch {
     // Silently ignore errors in display - YAML output is already written
   }
 }

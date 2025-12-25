@@ -274,7 +274,7 @@ function formatFailuresOutput(
         parts.push('', f.sourceLine);
       }
 
-      return parts.filter(p => p).join('\n');
+      return parts.filter(Boolean).join('\n');
     })
     .join('\n\n');
 }
