@@ -440,6 +440,105 @@ Error: [vitest-worker]: Timeout calling "onTaskUpdate"
       expect(result.summary).toBe('1 test failure(s)');
     });
 
+    it('should extract multiple unhandled rejections (issue #84)', () => {
+      // Reproduce issue #84: Multiple unhandled promise rejections
+      // Expected: All 7 errors extracted
+      // Actual (before fix): errors: []
+      const output = `
+RUN  v2.0.5 /Users/jeff/Workspaces/vibe-validate
+
+ ✓ packages/cli/test/commands/run.test.ts (25) 1234ms
+ ✓ packages/core/test/runner.test.ts (15) 567ms
+
+ Test Files  93 passed (93)
+      Tests  1687 passed (1687)
+     Errors  7 errors
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 7 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: mockedGetToolVersion.mockImplementation is not a function
+ ❯ Module.mockDoctorEnvironment packages/cli/test/helpers/doctor-helpers.ts:176:24
+    174|   const { getToolVersion } = await import('@vibe-validate/git');
+    175|   const mockedGetToolVersion = vi.mocked(getToolVersion);
+    176|   mockedGetToolVersion.mockImplementation((toolName: string) => {
+       |                        ^
+    177|     // Check overrides first (for Error cases)
+    178|     if (overrides) {
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+This error originated in "packages/cli/test/commands/doctor-subdirectory.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: mockedGetToolVersion.mockImplementation is not a function
+ ❯ Module.mockDoctorEnvironment packages/cli/test/helpers/doctor-helpers.ts:176:24
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+This error originated in "packages/cli/test/commands/doctor-subdirectory.test.ts" test file.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: mockedIsToolAvailable.mockResolvedValue is not a function
+ ❯ Module.mockDoctorEnvironment packages/cli/test/helpers/doctor-helpers.ts:180:32
+    178|     }
+    179|   });
+    180|   mockedIsToolAvailable.mockResolvedValue(true);
+       |                                ^
+    181| }
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+This error originated in "packages/cli/test/commands/doctor-subdirectory.test.ts" test file.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: Test timeout exceeded
+ ❯ packages/core/test/validation.test.ts:42:15
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+ReferenceError: fetch is not defined
+ ❯ fetchData packages/api/test/client.test.ts:88:10
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: Cannot read property 'length' of undefined
+ ❯ parseResults packages/utils/test/parser.test.ts:120:25
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: ENOENT: no such file or directory, open '/tmp/missing.txt'
+ ❯ readFile packages/fs/test/operations.test.ts:55:18
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      `.trim();
+
+      const result = extract(output);
+
+      // CRITICAL: Must extract ALL 7 unhandled errors
+      expect(result.errors).toHaveLength(7);
+      expect(result.totalErrors).toBe(7);
+      expect(result.summary).toBe('7 test failure(s)');
+
+      // Verify first error details
+      expect(result.errors[0].file).toBe('packages/cli/test/helpers/doctor-helpers.ts');
+      expect(result.errors[0].line).toBe(176);
+      expect(result.errors[0].column).toBe(24);
+      expect(result.errors[0].message).toContain('mockedGetToolVersion.mockImplementation is not a function');
+
+      // Verify different error types are captured
+      expect(result.errors[1].message).toContain('mockedGetToolVersion.mockImplementation is not a function');
+      expect(result.errors[2].message).toContain('mockedIsToolAvailable.mockResolvedValue is not a function');
+      expect(result.errors[3].message).toContain('Test timeout exceeded');
+      expect(result.errors[4].message).toContain('fetch is not defined');
+      expect(result.errors[5].message).toContain("Cannot read property 'length' of undefined");
+      expect(result.errors[6].message).toContain('ENOENT: no such file or directory');
+
+      // Verify guidance mentions unhandled errors
+      expect(result.guidance).toContain('7 test(s) failed');
+    });
+
     it('should truncate errors array to MAX_ERRORS_IN_ARRAY but preserve totalErrors count', async () => {
       // Import the constant to verify we're using the right value
       const { MAX_ERRORS_IN_ARRAY } = await import('../../result-schema.js');

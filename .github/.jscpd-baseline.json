@@ -39,7 +39,7 @@
     {
       "format": "typescript",
       "lines": 14,
-      "fragment": ".trim();\n\n      const result = extract(output);\n\n      expect(result.errors).toHaveLength(1);\n      expect(result.errors[0].file).toBe('vitest.config.ts');\n      expect(result.errors[0].message).toContain('Timeout calling \"onTaskUpdate\"');\n      expect(result.errors[0].message).toContain('system resource constraints');\n      expect(result.errors[0].message).toContain('Kill background processes');\n      expect(result.totalErrors).toBe(1);\n      expect(result.summary).toBe('1 test failure(s)');\n    });\n\n    it('should truncate errors array to MAX_ERRORS_IN_ARRAY but preserve totalErrors count'",
+      "fragment": ".trim();\n\n      const result = extract(output);\n\n      expect(result.errors).toHaveLength(1);\n      expect(result.errors[0].file).toBe('vitest.config.ts');\n      expect(result.errors[0].message).toContain('Timeout calling \"onTaskUpdate\"');\n      expect(result.errors[0].message).toContain('system resource constraints');\n      expect(result.errors[0].message).toContain('Kill background processes');\n      expect(result.totalErrors).toBe(1);\n      expect(result.summary).toBe('1 test failure(s)');\n    });\n\n    it('should extract multiple unhandled rejections (issue #84)'",
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/vitest/index.test.ts",
@@ -52,7 +52,7 @@
         },
         "endLoc": {
           "line": 443,
-          "column": 85,
+          "column": 59,
           "position": 2345
         }
       },
@@ -94,17 +94,17 @@
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/vitest/index.test.ts",
-        "start": 458,
-        "end": 468,
+        "start": 557,
+        "end": 567,
         "startLoc": {
-          "line": 458,
+          "line": 557,
           "column": 9,
-          "position": 2491
+          "position": 2809
         },
         "endLoc": {
-          "line": 468,
+          "line": 567,
           "column": 26,
-          "position": 2563
+          "position": 2881
         }
       }
     },
@@ -275,16 +275,16 @@
       "secondFile": {
         "name": "packages/extractors/src/extractors/typescript/index.test.ts",
         "start": 203,
-        "end": 468,
+        "end": 567,
         "startLoc": {
           "line": 203,
           "column": 5,
           "position": 1536
         },
         "endLoc": {
-          "line": 468,
+          "line": 567,
           "column": 5,
-          "position": 2558
+          "position": 2876
         }
       }
     },
@@ -1119,7 +1119,7 @@
     {
       "format": "javascript",
       "lines": 17,
-      "fragment": ";\nimport { readFileSync } from 'fs';\n\n// ============================================================================\n// REAL VIBE-VALIDATE USAGE (80%)\n// ============================================================================\n\ntest('Extractors › Assertion Errors › should extract TypeScript errors correctly', async (t) => {\n  // FAILURE TYPE 1: Assertion Error\n  // INTENTIONAL FAILURE: Test extractor against known output, expect wrong count\n  const { extractTypeScriptErrors } = await import('@vibe-validate/extractors');\n\n  const tsOutput = 'src/runner.ts(45,10): error TS2345: Type mismatch.';\n  const result = extractTypeScriptErrors(tsOutput);\n\n  // Expected: 1 error, but we assert 5 (INTENTIONAL FAILURE)\n  t.is",
+      "fragment": ";\nimport { readFileSync } from 'node:fs';\n\n// ============================================================================\n// REAL VIBE-VALIDATE USAGE (80%)\n// ============================================================================\n\ntest('Extractors › Assertion Errors › should extract TypeScript errors correctly', async (t) => {\n  // FAILURE TYPE 1: Assertion Error\n  // INTENTIONAL FAILURE: Test extractor against known output, expect wrong count\n  const { extractTypeScriptErrors } = await import('@vibe-validate/extractors');\n\n  const tsOutput = 'src/runner.ts(45,10): error TS2345: Type mismatch.';\n  const result = extractTypeScriptErrors(tsOutput);\n\n  // Expected: 1 error, but we assert 5 (INTENTIONAL FAILURE)\n  t.is",
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors-test-bed/tests/ava/comprehensive-failures.test.js",
@@ -2841,78 +2841,6 @@
           "line": 161,
           "column": 3,
           "position": 1197
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ");\n      const content = readFileSync(filePath, 'utf-8');\n      const config = parseYaml(content) as any;\n\n      expect(config.validation.phases).toHaveLength(3);\n      expect(config.validation.phases[0].name).toBe('Pre-Qualification');\n      expect(config.validation.phases[1].name).toBe('Testing');\n      expect(config.validation.phases[2].name).toBe('Build');\n    });\n\n    it('all templates should have git.mainBranch configured'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/config-templates.test.ts",
-        "start": 132,
-        "end": 142,
-        "startLoc": {
-          "line": 132,
-          "column": 24,
-          "position": 1192
-        },
-        "endLoc": {
-          "line": 142,
-          "column": 54,
-          "position": 1317
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/config-templates.test.ts",
-        "start": 121,
-        "end": 131,
-        "startLoc": {
-          "line": 121,
-          "column": 25,
-          "position": 1044
-        },
-        "endLoc": {
-          "line": 131,
-          "column": 76,
-          "position": 1169
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": ";\n      writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);\n\n      // Initialize git\n      initializeGitRepo(testDir);\n      executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });\n      executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });\n\n      // Run validate with --force",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/bin.test.ts",
-        "start": 703,
-        "end": 711,
-        "startLoc": {
-          "line": 703,
-          "column": 2,
-          "position": 6856
-        },
-        "endLoc": {
-          "line": 711,
-          "column": 29,
-          "position": 6946
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/bin.test.ts",
-        "start": 618,
-        "end": 626,
-        "startLoc": {
-          "line": 618,
-          "column": 2,
-          "position": 6097
-        },
-        "endLoc": {
-          "line": 626,
-          "column": 32,
-          "position": 6187
         }
       }
     }

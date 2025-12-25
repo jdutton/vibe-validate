@@ -329,40 +329,90 @@ function generateGuidanceText(
 }
 
 /**
+ * Extract location from unhandled rejection stack trace
+ * Prefers user code locations over node:internal
+ *
+ * @param section - Unhandled rejection section text
+ * @returns File path and location string
+ *
+ * @internal
+ */
+function extractRejectionLocation(section: string): { file: string; location: string } {
+  const lines = section.split('\n');
+  let file = 'unknown';
+  let location = '';
+  let fallbackFile = '';
+  let fallbackLocation = '';
+
+  for (const line of lines) {
+    // Match ❯ marker with location (file path may contain colons, dashes, dots, slashes)
+    const locationMatch = /❯\s+\S+\s+([\w:/.@-]+):(\d+):(\d+)/.exec(line);
+    if (locationMatch) {
+      const filepath = locationMatch[1];
+      const loc = `${filepath}:${locationMatch[2]}:${locationMatch[3]}`;
+
+      // Prefer user code locations over node:internal
+      if (!filepath.startsWith('node:internal')) {
+        file = filepath;
+        location = loc;
+        break;
+      } else if (!fallbackFile) {
+        // Save first node:internal location as fallback
+        fallbackFile = filepath;
+        fallbackLocation = loc;
+      }
+    }
+  }
+
+  // Use fallback if no user code location found
+  if (file === 'unknown' && fallbackFile) {
+    file = fallbackFile;
+    location = fallbackLocation;
+  }
+
+  return { file, location };
+}
+
+/**
  * Extract runtime errors (Unhandled Rejection, ENOENT, etc.)
  *
  * @param output - Full test output
- * @returns Test failure object if runtime error found
+ * @returns Array of test failure objects for all runtime errors found
  */
-function extractRuntimeError(output: string): TestFailure | null {
-  // Look for "Unhandled Rejection" section
-  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework runtime errors (controlled output), not user input
-  const unhandledMatch = /⎯+\s*Unhandled Rejection\s*⎯+\s*\n\s*(Error:[^\n]+(?:\n\s*[^\n❯⎯]+)?)/.exec(output);
-  if (!unhandledMatch) {
-    return null;
+function extractRuntimeErrors(output: string): TestFailure[] {
+  const failures: TestFailure[] = [];
+
+  // Split output by unhandled rejection markers to find all occurrences
+  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework section headers (controlled output), limited line length
+  const rejectionSections = output.split(/⎯+\s*Unhandled Rejection\s*⎯+/);
+
+  // Skip first section (before any rejection markers)
+  for (let i = 1; i < rejectionSections.length; i++) {
+    const section = rejectionSections[i];
+
+    // Extract error type and message (first non-empty line)
+    // Match patterns like: "TypeError: message", "Error: message", "ReferenceError: message"
+    const errorMatch = /^\s*((?:Type|Reference|Range|Syntax)?Error:[^\n]+(?:\n\s*[^\n❯⎯]+)?)/.exec(section);
+    if (!errorMatch) {
+      continue;
+    }
+
+    // Error message may span multiple lines (e.g., path on next line)
+    const errorMessage = errorMatch[1].trim().replaceAll(/\n\s+/g, ' ');
+
+    // Extract location from stack trace
+    const { file, location } = extractRejectionLocation(section);
+
+    failures.push({
+      file,
+      location,
+      testHierarchy: 'Runtime Error',
+      errorMessage,
+      sourceLine: ''
+    });
   }
 
-  // Error message may span multiple lines (e.g., path on next line)
-  const errorMessage = unhandledMatch[1].trim().replaceAll(/\n\s+/g, ' ');
-
-  // Extract location from stack trace (❯ function file:line:col)
-  // File path may contain colons (e.g., node:internal/fs/promises), so match ❯ function filepath:number:number
-  const locationMatch = /❯\s+\S+\s+([\w:/.]+):(\d+):(\d+)/.exec(output);
-  let file = 'unknown';
-  let location = '';
-
-  if (locationMatch) {
-    file = locationMatch[1];
-    location = `${locationMatch[1]}:${locationMatch[2]}:${locationMatch[3]}`;
-  }
-
-  return {
-    file,
-    location,
-    testHierarchy: 'Runtime Error',
-    errorMessage,
-    sourceLine: ''
-  };
+  return failures;
 }
 
 /**
@@ -449,10 +499,8 @@ function extract(output: string): ErrorExtractorResult {
   let inDetailSection = false; // Track if we're past summary section (after "Failed Tests" separator)
 
   // First, check for runtime errors (Unhandled Rejection, ENOENT, etc.)
-  const runtimeError = extractRuntimeError(output);
-  if (runtimeError) {
-    failures.push(runtimeError);
-  }
+  const runtimeErrors = extractRuntimeErrors(output);
+  failures.push(...runtimeErrors);
 
   // Check for coverage threshold failures
   const coverageError = extractCoverageThresholdError(output);
