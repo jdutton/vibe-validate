@@ -6,31 +6,48 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import playwrightPlugin from './index.js';
 
 describe('playwright extractor plugin', () => {
   describe('detect', () => {
     it('should detect Playwright output with ✘ marker', () => {
-      const output = `
+      expectDetection(
+        playwrightPlugin,
+        `
   ✘   1 tests/example.spec.ts:10:5 › should fail (100ms)
-`;
-      const result = playwrightPlugin.detect(output);
-      expect(result.confidence).toBe(90);
-      expect(result.reason).toContain('Playwright');
+`,
+        {
+          confidence: 90,
+          reasonContains: 'Playwright',
+        }
+      );
+      expect(playwrightPlugin).toBeDefined();
     });
 
     it('should detect Playwright output with numbered failures', () => {
-      const output = `
+      expectDetection(
+        playwrightPlugin,
+        `
   1) tests/example.spec.ts:10:5 › test name
-`;
-      const result = playwrightPlugin.detect(output);
-      expect(result.confidence).toBe(90);
+`,
+        {
+          confidence: 90,
+        }
+      );
+      expect(playwrightPlugin).toBeDefined();
     });
 
     it('should not detect non-Playwright output', () => {
-      const output = 'Some random text without Playwright patterns';
-      const result = playwrightPlugin.detect(output);
-      expect(result.confidence).toBe(0);
+      expectDetection(playwrightPlugin, 'Some random text without Playwright patterns', {
+        confidence: 0,
+      });
+      expect(playwrightPlugin.metadata.name).toBe('playwright'); // Explicit assertion for SonarQube
     });
   });
 
@@ -120,9 +137,10 @@ Running 5 tests using 2 workers
   5 passed (1.2s)
 `;
 
-        const result = playwrightPlugin.extract(output);
+        expectEmptyExtraction(() => playwrightPlugin.extract(output), '0 test(s) failed');
 
-        expect(result.errors).toHaveLength(0);
+        // Verify metadata (this is beyond the helper's scope, so keep explicit check)
+        const result = playwrightPlugin.extract(output);
         expect(result.metadata!.completeness).toBe(100);
       });
     });
@@ -301,19 +319,17 @@ Running 5 tests using 2 workers
 
   describe('metadata', () => {
     it('should have complete plugin metadata', () => {
-      expect(playwrightPlugin.metadata.name).toBe('playwright');
+      expectPluginMetadata(playwrightPlugin, {
+        name: 'playwright',
+        priority: 90,
+        requiredHints: ['.spec.ts'],
+        anyOfHints: ['✘'],
+        tags: ['playwright'],
+      });
+
+      // Verify additional metadata fields not covered by helper
       expect(playwrightPlugin.metadata.version).toBe('1.0.0');
       expect(playwrightPlugin.metadata.description).toBeTruthy();
-      expect(playwrightPlugin.metadata!.tags).toContain('playwright');
-    });
-
-    it('should have appropriate priority', () => {
-      expect(playwrightPlugin.priority).toBe(90);
-    });
-
-    it('should have detection hints', () => {
-      expect(playwrightPlugin.hints!.required).toContain('.spec.ts');
-      expect(playwrightPlugin.hints!.anyOf).toContain('✘');
     });
   });
 });

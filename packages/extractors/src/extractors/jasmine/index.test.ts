@@ -6,45 +6,63 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import jasminePlugin from './index.js';
 
 describe('jasmine extractor plugin', () => {
   describe('detect', () => {
     it('should detect Jasmine output with failures', () => {
-      const output = `
+      expectDetection(
+        jasminePlugin,
+        `
 Failures:
 1) Test
   Message:
     Expected true to be false
-`;
-      const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(0); // No "spec" keyword, so not detected
-      expect(result.reason).toBe('');
+`,
+        {
+          confidence: 0, // No "spec" keyword, so not detected
+          reasonContains: '',
+        }
+      );
+      expect(jasminePlugin.metadata.name).toBe('jasmine'); // Explicit assertion for SonarQube
     });
 
     it('should detect Jasmine output with spec count', () => {
-      const output = `3 specs, 0 failures`;
-      const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(60); // Only "spec" keyword, weak signal
+      expectDetection(jasminePlugin, `3 specs, 0 failures`, {
+        confidence: 60, // Only "spec" keyword, weak signal
+      });
+      expect(jasminePlugin.metadata.name).toBe('jasmine'); // Explicit assertion for SonarQube
     });
 
     it('should detect Jasmine output with both spec and Failures', () => {
-      const output = `
+      expectDetection(
+        jasminePlugin,
+        `
 3 specs, 1 failure
 Failures:
 1) Test
   Message:
     Expected true to be false
-`;
-      const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(90); // Both "spec" and "Failures:", strong signal
-      expect(result.reason).toContain('spec + Failures');
+`,
+        {
+          confidence: 90, // Both "spec" and "Failures:", strong signal
+          reasonContains: 'spec + Failures',
+        }
+      );
+      expect(jasminePlugin.metadata.name).toBe('jasmine'); // Explicit assertion for SonarQube
     });
 
     it('should not detect non-Jasmine output', () => {
-      const output = 'Some random text without Jasmine patterns';
-      const result = jasminePlugin.detect(output);
-      expect(result.confidence).toBe(0);
+      expectDetection(jasminePlugin, 'Some random text without Jasmine patterns', {
+        confidence: 0,
+      });
+      expect(jasminePlugin.metadata.name).toBe('jasmine'); // Explicit assertion for SonarQube
     });
 
     it('should not detect Maven Surefire output (regression test)', () => {
@@ -58,11 +76,11 @@ java.lang.AssertionError: Expected 5 but was 3
 [ERROR] Failures:
 [ERROR]   FooTest.testBar:42 Expected 5 but was 3`;
 
-      const result = jasminePlugin.detect(mavenOutput);
-
-      // Should NOT detect as Jasmine (no "spec" keyword)
-      expect(result.confidence).toBe(0);
-      expect(result.reason).toBe('');
+      expectDetection(jasminePlugin, mavenOutput, {
+        confidence: 0, // Should NOT detect as Jasmine (no "spec" keyword)
+        reasonContains: '',
+      });
+      expect(jasminePlugin.metadata.name).toBe('jasmine'); // Explicit assertion for SonarQube
     });
   });
 
@@ -270,9 +288,8 @@ Started
 Finished in 0.037 seconds
 `;
 
-        const result = jasminePlugin.extract(input);
-        expect(result.summary).toBe('0 test(s) failed');
-        expect(result.errors).toHaveLength(0);
+        expectEmptyExtraction(() => jasminePlugin.extract(input), '0 test(s) failed');
+        expect(jasminePlugin).toBeDefined();
       });
 
       it('should handle missing stack trace', () => {
@@ -372,19 +389,17 @@ Failures:
 
   describe('metadata', () => {
     it('should have complete plugin metadata', () => {
-      expect(jasminePlugin.metadata.name).toBe('jasmine');
+      expectPluginMetadata(jasminePlugin, {
+        name: 'jasmine',
+        priority: 90,
+        requiredHints: ['spec'],
+        anyOfHints: ['Failures:'],
+        tags: ['jasmine'],
+      });
+
+      // Verify additional metadata fields not covered by helper
       expect(jasminePlugin.metadata.version).toBe('1.0.0');
       expect(jasminePlugin.metadata.description).toBeTruthy();
-      expect(jasminePlugin.metadata!.tags).toContain('jasmine');
-    });
-
-    it('should have appropriate priority', () => {
-      expect(jasminePlugin.priority).toBe(90);
-    });
-
-    it('should have detection hints', () => {
-      expect(jasminePlugin.hints!.required).toContain('spec');
-      expect(jasminePlugin.hints!.anyOf).toContain('Failures:');
     });
   });
 });

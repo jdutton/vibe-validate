@@ -4,27 +4,29 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, it, expect } from 'vitest';
 
-import mavenCheckstyleExtractor, { detectMavenCheckstyle, extractMavenCheckstyle } from './index.js';
+import {
+  expectDetection,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
+
+import mavenCheckstyleExtractor, { extractMavenCheckstyle } from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('Maven Checkstyle Extractor Plugin', () => {
   describe('plugin metadata', () => {
     it('should have correct metadata', () => {
-      expect(mavenCheckstyleExtractor.metadata.name).toBe('maven-checkstyle');
+      expectPluginMetadata(mavenCheckstyleExtractor, {
+        name: 'maven-checkstyle',
+        priority: 60,
+        requiredHints: ['[WARN]', '[INFO]'],
+        tags: ['maven', 'checkstyle'],
+      });
+
+      // Verify additional metadata fields not covered by helper
       expect(mavenCheckstyleExtractor.metadata.version).toBe('1.0.0');
-      expect(mavenCheckstyleExtractor.metadata!.tags).toContain('maven');
-      expect(mavenCheckstyleExtractor.metadata!.tags).toContain('checkstyle');
-    });
-
-    it('should have hints for fast filtering', () => {
-      expect(mavenCheckstyleExtractor.hints!.required).toContain('[WARN]');
-      expect(mavenCheckstyleExtractor.hints!.required).toContain('[INFO]');
-      expect(mavenCheckstyleExtractor.hints!.anyOf).toBeDefined();
-    });
-
-    it('should have priority defined', () => {
-      expect(mavenCheckstyleExtractor.priority).toBe(60);
+      expect(mavenCheckstyleExtractor.hints?.anyOf).toBeDefined();
     });
 
     it('should have samples', () => {
@@ -35,38 +37,49 @@ describe('Maven Checkstyle Extractor Plugin', () => {
 
   describe('detectMavenCheckstyle', () => {
     it('should detect Maven Checkstyle output with high confidence', () => {
-      const output = `[INFO] Starting audit...
+      expectDetection(
+        mavenCheckstyleExtractor,
+        `[INFO] Starting audit...
 [WARN] /path/to/File.java:10:5: Missing Javadoc comment. [JavadocVariable]
 Audit done.
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-checkstyle-plugin:3.3.1:check: You have 5 Checkstyle violations.`;
-
-      const result = detectMavenCheckstyle(output);
-
-      expect(result.confidence).toBeGreaterThanOrEqual(100);
-      expect(result.patterns).toContain('maven-checkstyle-plugin reference');
-      expect(result.patterns).toContain('Checkstyle audit start marker');
-      expect(result.patterns).toContain('Checkstyle audit complete marker');
-      expect(result.patterns).toContain('Checkstyle violation summary');
-      expect(result.reason).toBe('Maven Checkstyle plugin output detected');
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-checkstyle-plugin:3.3.1:check: You have 5 Checkstyle violations.`,
+        {
+          confidence: { min: 100 },
+          patterns: [
+            'maven-checkstyle-plugin reference',
+            'Checkstyle audit start marker',
+            'Checkstyle audit complete marker',
+            'Checkstyle violation summary',
+          ],
+          reasonContains: 'Maven Checkstyle plugin output detected',
+        }
+      );
+      expect(mavenCheckstyleExtractor).toBeDefined();
     });
 
     it('should have low confidence for non-Checkstyle output', () => {
-      const output = `Some random build output
+      expectDetection(
+        mavenCheckstyleExtractor,
+        `Some random build output
 No Checkstyle markers here
-Just normal text`;
-
-      const result = detectMavenCheckstyle(output);
-
-      expect(result.confidence).toBeLessThan(40);
+Just normal text`,
+        {
+          confidence: { max: 39 },
+        }
+      );
+      expect(mavenCheckstyleExtractor).toBeDefined();
     });
 
     it('should detect plugin reference for medium confidence', () => {
-      const output = `[INFO] Running maven-checkstyle-plugin`;
-
-      const result = detectMavenCheckstyle(output);
-
-      expect(result.confidence).toBeGreaterThanOrEqual(40);
-      expect(result.patterns).toContain('maven-checkstyle-plugin reference');
+      expectDetection(
+        mavenCheckstyleExtractor,
+        `[INFO] Running maven-checkstyle-plugin`,
+        {
+          confidence: { min: 40 },
+          patterns: ['maven-checkstyle-plugin reference'],
+        }
+      );
+      expect(mavenCheckstyleExtractor).toBeDefined();
     });
   });
 

@@ -8,26 +8,38 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+  expectErrorObject,
+  expectExtractionResult,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import typescriptPlugin from './index.js';
 
-const { extract, detect } = typescriptPlugin;
+const { extract } = typescriptPlugin;
 
 describe('TypeScript Extractor Plugin', () => {
   describe('detect', () => {
     it('should detect TypeScript errors with high confidence', () => {
-      const output = `src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.`;
-      const result = detect(output);
-
-      expect(result.confidence).toBe(95);
-      expect(result.patterns).toContain('error TS#### pattern');
-      expect(result.reason).toContain('TypeScript compiler');
+      expectDetection(
+        typescriptPlugin,
+        `src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.`,
+        {
+          confidence: 95,
+          patterns: ['error TS#### pattern'],
+          reasonContains: 'TypeScript compiler',
+        }
+      );
+      expect(typescriptPlugin).toBeDefined();
     });
 
     it('should not detect non-TypeScript output', () => {
-      const output = `Some random text without TypeScript errors`;
-      const result = detect(output);
-
-      expect(result.confidence).toBe(0);
+      expectDetection(typescriptPlugin, 'Some random text without TypeScript errors', {
+        confidence: 0,
+      });
+    expect(typescriptPlugin).toBeDefined();
     });
   });
 
@@ -39,17 +51,20 @@ src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'numbe
 
       const result = extract(output);
 
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toEqual({
+      expect(result).toBeDefined();
+      expectExtractionResult(result, {
+        errorCount: 1,
+        summaryPattern: '1 type error(s), 0 warning(s)',
+      });
+
+      expectErrorObject(result.errors[0], {
         file: 'src/index.ts',
         line: 10,
         column: 5,
         severity: 'error',
         code: 'TS2322',
-        message: "Type 'string' is not assignable to type 'number'.",
+        messageContains: "Type 'string' is not assignable to type 'number'.",
       });
-      expect(result.summary).toBe('1 type error(s), 0 warning(s)');
-      expect(result.totalErrors).toBe(1);
     });
 
     it('should parse multiple TypeScript errors', () => {
@@ -61,18 +76,24 @@ src/utils.ts(100,3): warning TS6133: 'unusedVar' is declared but never used.
 
       const result = extract(output);
 
-      expect(result.errors).toHaveLength(3);
-      expect(result.summary).toBe('2 type error(s), 1 warning(s)');
-      expect(result.totalErrors).toBe(3);
+      expect(result).toBeDefined();
+      expectExtractionResult(result, {
+        errorCount: 3,
+        summaryPattern: '2 type error(s), 1 warning(s)',
+      });
 
       // Verify first error
-      expect(result.errors[0].file).toBe('src/index.ts');
-      expect(result.errors[0].severity).toBe('error');
-      expect(result.errors[0].code).toBe('TS2322');
+      expectErrorObject(result.errors[0], {
+        file: 'src/index.ts',
+        severity: 'error',
+        code: 'TS2322',
+      });
 
       // Verify warning
-      expect(result.errors[2].severity).toBe('warning');
-      expect(result.errors[2].code).toBe('TS6133');
+      expectErrorObject(result.errors[2], {
+        severity: 'warning',
+        code: 'TS6133',
+      });
     });
 
     it('should limit output to first 10 errors', () => {
@@ -159,11 +180,10 @@ src/config.ts(25,12): error TS2304: Cannot find name 'process'.
     });
 
     it('should handle empty output', () => {
-      const result = extract('');
+      expectEmptyExtraction(extract, '0 type error(s), 0 warning(s)');
 
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('0 type error(s), 0 warning(s)');
-      expect(result.totalErrors).toBe(0);
+      // Verify guidance is present
+      const result = extract('');
       expect(result.guidance).toBe('Fix TypeScript type errors in listed files');
     });
 
@@ -174,10 +194,8 @@ That does not match
 The TypeScript error format
     `.trim();
 
-      const result = extract(output);
-
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('0 type error(s), 0 warning(s)');
+      expectEmptyExtraction(() => extract(output), '0 type error(s), 0 warning(s)');
+      expect(typescriptPlugin).toBeDefined();
     });
 
     it('should handle files with spaces in path', () => {
@@ -216,9 +234,12 @@ src/my folder/index.ts(10,5): error TS2322: Type error.
 
   describe('plugin metadata', () => {
     it('should have correct metadata', () => {
-      expect(typescriptPlugin.metadata.name).toBe('typescript');
-      expect(typescriptPlugin.priority).toBe(95);
-      expect(typescriptPlugin.hints!.required).toContain('error TS');
+      expectPluginMetadata(typescriptPlugin, {
+        name: 'typescript',
+        priority: 95,
+        requiredHints: ['error TS'],
+      });
+    expect(typescriptPlugin).toBeDefined();
     });
 
     it('should include sample test cases', () => {

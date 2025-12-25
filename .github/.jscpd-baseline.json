@@ -2,73 +2,37 @@
   "duplicates": [
     {
       "format": "typescript",
-      "lines": 11,
-      "fragment": ");\n\n      // totalErrors should be 15 (full count)\n      expect(result.totalErrors).toBe(15);\n\n      // errors array should be truncated to MAX_ERRORS_IN_ARRAY (10)\n      expect(result.errors).toHaveLength(MAX_ERRORS_IN_ARRAY);\n      expect(result.errors).toHaveLength(10);\n\n      // Verify we got the first 10 errors\n      expect(result.errors[0].file).toBe('src/file1.ts'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/typescript/index.test.ts",
-        "start": 205,
-        "end": 215,
-        "startLoc": {
-          "line": 205,
-          "column": 7,
-          "position": 1550
-        },
-        "endLoc": {
-          "line": 215,
-          "column": 15,
-          "position": 1622
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/vitest/index.test.ts",
-        "start": 509,
-        "end": 519,
-        "startLoc": {
-          "line": 509,
-          "column": 9,
-          "position": 2854
-        },
-        "endLoc": {
-          "line": 519,
-          "column": 26,
-          "position": 2926
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 10,
-      "fragment": ".extract(sample.input!);\n        expect(result.errors.length).toBeGreaterThan(0);\n        expect(result.errors.length).toBe(sample.expectedErrors);\n      }\n    });\n  });\n\n  describe('metadata', () => {\n    it('should have complete plugin metadata', () => {\n      expect(mochaPlugin",
+      "fragment": ".extract(sample.input!);\n        expect(result.errors.length).toBeGreaterThan(0);\n        expect(result.errors.length).toBe(sample.expectedErrors);\n      }\n    });\n  });\n\n  describe('metadata', () => {\n    it('should have complete plugin metadata', () => {\n      expectPluginMetadata(mochaPlugin",
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 321,
-        "end": 330,
+        "start": 337,
+        "end": 346,
         "startLoc": {
-          "line": 321,
+          "line": 337,
           "column": 12,
-          "position": 1853
+          "position": 1876
         },
         "endLoc": {
-          "line": 330,
+          "line": 346,
           "column": 12,
-          "position": 1940
+          "position": 1963
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/playwright/index.test.ts",
-        "start": 295,
-        "end": 304,
+        "start": 313,
+        "end": 322,
         "startLoc": {
-          "line": 295,
+          "line": 313,
           "column": 17,
-          "position": 1501
+          "position": 1531
         },
         "endLoc": {
-          "line": 304,
+          "line": 322,
           "column": 17,
-          "position": 1588
+          "position": 1618
         }
       }
     },
@@ -79,32 +43,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 198,
-        "end": 206,
+        "start": 211,
+        "end": 219,
         "startLoc": {
-          "line": 198,
+          "line": 211,
           "column": 7,
-          "position": 1644
+          "position": 1594
         },
         "endLoc": {
-          "line": 206,
+          "line": 219,
           "column": 41,
-          "position": 1729
+          "position": 1679
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 187,
-        "end": 195,
+        "start": 200,
+        "end": 208,
         "startLoc": {
-          "line": 187,
+          "line": 200,
           "column": 7,
-          "position": 1518
+          "position": 1468
         },
         "endLoc": {
-          "line": 195,
+          "line": 208,
           "column": 48,
-          "position": 1603
+          "position": 1553
         }
       }
     },
@@ -115,32 +79,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 207,
-        "end": 214,
+        "start": 220,
+        "end": 227,
         "startLoc": {
-          "line": 207,
+          "line": 220,
           "column": 18,
-          "position": 1766
+          "position": 1716
         },
         "endLoc": {
-          "line": 214,
+          "line": 227,
           "column": 2,
-          "position": 1848
+          "position": 1798
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 187,
-        "end": 195,
+        "start": 200,
+        "end": 208,
         "startLoc": {
-          "line": 187,
+          "line": 200,
           "column": 7,
-          "position": 1518
+          "position": 1468
         },
         "endLoc": {
-          "line": 195,
+          "line": 208,
           "column": 3,
-          "position": 1601
+          "position": 1551
         }
       }
     },
@@ -151,68 +115,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/maven-checkstyle/index.test.ts",
-        "start": 211,
-        "end": 222,
+        "start": 224,
+        "end": 235,
         "startLoc": {
-          "line": 211,
+          "line": 224,
           "column": 23,
-          "position": 1778
+          "position": 1697
         },
         "endLoc": {
-          "line": 222,
+          "line": 235,
           "column": 2,
-          "position": 1896
+          "position": 1815
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/maven-checkstyle/index.test.ts",
-        "start": 198,
-        "end": 210,
+        "start": 211,
+        "end": 223,
         "startLoc": {
-          "line": 198,
+          "line": 211,
           "column": 20,
-          "position": 1623
+          "position": 1542
         },
         "endLoc": {
-          "line": 210,
+          "line": 223,
           "column": 3,
-          "position": 1742
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ");\n\n      const result = extract(output);\n\n      // totalErrors should be 15 (full count)\n      expect(result.totalErrors).toBe(15);\n\n      // errors array should be truncated to MAX_ERRORS_IN_ARRAY (10)\n      expect(result.errors).toHaveLength(MAX_ERRORS_IN_ARRAY);\n      expect(result.errors).toHaveLength(10);\n\n      // Verify we got the first 10 errors\n      expect(result.errors[0].message",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/jest/index.test.ts",
-        "start": 215,
-        "end": 227,
-        "startLoc": {
-          "line": 215,
-          "column": 2,
-          "position": 1414
-        },
-        "endLoc": {
-          "line": 227,
-          "column": 8,
-          "position": 1495
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/typescript/index.test.ts",
-        "start": 203,
-        "end": 519,
-        "startLoc": {
-          "line": 203,
-          "column": 5,
-          "position": 1536
-        },
-        "endLoc": {
-          "line": 519,
-          "column": 5,
-          "position": 2921
+          "position": 1661
         }
       }
     },
@@ -295,32 +223,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/jasmine/index.test.ts",
-        "start": 129,
-        "end": 140,
+        "start": 147,
+        "end": 158,
         "startLoc": {
-          "line": 129,
+          "line": 147,
           "column": 14,
-          "position": 603
+          "position": 636
         },
         "endLoc": {
-          "line": 140,
+          "line": 158,
           "column": 33,
-          "position": 723
+          "position": 756
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 89,
-        "end": 100,
+        "start": 106,
+        "end": 117,
         "startLoc": {
-          "line": 89,
+          "line": 106,
           "column": 12,
-          "position": 444
+          "position": 479
         },
         "endLoc": {
-          "line": 100,
+          "line": 117,
           "column": 31,
-          "position": 564
+          "position": 599
         }
       }
     },
@@ -331,176 +259,68 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/jasmine/index.test.ts",
-        "start": 220,
-        "end": 235,
+        "start": 238,
+        "end": 253,
         "startLoc": {
-          "line": 220,
+          "line": 238,
           "column": 14,
-          "position": 1026
+          "position": 1059
         },
         "endLoc": {
-          "line": 235,
+          "line": 253,
           "column": 2,
-          "position": 1097
+          "position": 1130
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 163,
-        "end": 175,
+        "start": 180,
+        "end": 192,
         "startLoc": {
-          "line": 163,
+          "line": 180,
           "column": 12,
-          "position": 866
+          "position": 901
         },
         "endLoc": {
-          "line": 175,
+          "line": 192,
           "column": 2,
-          "position": 937
+          "position": 972
         }
       }
     },
     {
       "format": "typescript",
       "lines": 10,
-      "fragment": ".extract(sample.input!);\n        expect(result.errors.length).toBeGreaterThan(0);\n        expect(result.errors.length).toBe(sample.expectedErrors);\n      }\n    });\n  });\n\n  describe('metadata', () => {\n    it('should have complete plugin metadata', () => {\n      expect(jasminePlugin",
+      "fragment": ".extract(sample.input!);\n        expect(result.errors.length).toBeGreaterThan(0);\n        expect(result.errors.length).toBe(sample.expectedErrors);\n      }\n    });\n  });\n\n  describe('metadata', () => {\n    it('should have complete plugin metadata', () => {\n      expectPluginMetadata(jasminePlugin",
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/jasmine/index.test.ts",
-        "start": 366,
-        "end": 375,
+        "start": 383,
+        "end": 392,
         "startLoc": {
-          "line": 366,
+          "line": 383,
           "column": 14,
-          "position": 1886
+          "position": 1907
         },
         "endLoc": {
-          "line": 375,
+          "line": 392,
           "column": 14,
-          "position": 1973
+          "position": 1994
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/playwright/index.test.ts",
-        "start": 295,
-        "end": 304,
+        "start": 313,
+        "end": 322,
         "startLoc": {
-          "line": 295,
+          "line": 313,
           "column": 17,
-          "position": 1501
+          "position": 1531
         },
         "endLoc": {
-          "line": 304,
+          "line": 322,
           "column": 17,
-          "position": 1588
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ";\n      const result = eslintPlugin.detect(output);\n\n      expect(result.confidence).toBe(85);\n      expect(result.patterns).toContain('file:line:col: error/warning rule-name');\n      expect(result.reason).toBe('ESLint error format detected');\n    });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/eslint/index.test.ts",
-        "start": 48,
-        "end": 55,
-        "startLoc": {
-          "line": 48,
-          "column": 76,
-          "position": 372
-        },
-        "endLoc": {
-          "line": 55,
-          "column": 2,
-          "position": 438
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/eslint/index.test.ts",
-        "start": 16,
-        "end": 24,
-        "startLoc": {
-          "line": 16,
-          "column": 67,
-          "position": 79
-        },
-        "endLoc": {
-          "line": 24,
-          "column": 3,
-          "position": 146
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": ");\n      expect(result.totalErrors).toBe(3);\n\n      // Verify first error\n      expect(result.errors[0].file).toBe('src/index.ts');\n      expect(result.errors[0].severity).toBe('error');\n      expect(result.errors[0].code).toBe('no-console'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/eslint/index.test.ts",
-        "start": 84,
-        "end": 90,
-        "startLoc": {
-          "line": 84,
-          "column": 34,
-          "position": 670
-        },
-        "endLoc": {
-          "line": 90,
-          "column": 13,
-          "position": 744
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/typescript/index.test.ts",
-        "start": 65,
-        "end": 71,
-        "startLoc": {
-          "line": 65,
-          "column": 32,
-          "position": 454
-        },
-        "endLoc": {
-          "line": 71,
-          "column": 9,
-          "position": 528
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ";\n\n      const result = eslintPlugin.extract(output);\n\n      expect(result.errors).toHaveLength(3);\n      expect(result.summary).toBe('2 ESLint error(s), 1 warning(s)');\n      expect(result.totalErrors).toBe(3);\n\n      // Verify first error\n      expect(result.errors[0].file).toBe('src/index.ts');\n      expect(result.errors[0].line",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/eslint/index.test.ts",
-        "start": 175,
-        "end": 185,
-        "startLoc": {
-          "line": 175,
-          "column": 113,
-          "position": 1439
-        },
-        "endLoc": {
-          "line": 185,
-          "column": 5,
-          "position": 1533
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/eslint/index.test.ts",
-        "start": 79,
-        "end": 89,
-        "startLoc": {
-          "line": 79,
-          "column": 50,
-          "position": 626
-        },
-        "endLoc": {
-          "line": 89,
-          "column": 9,
-          "position": 720
+          "position": 1618
         }
       }
     },
@@ -583,32 +403,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/ava/index.test.ts",
-        "start": 150,
-        "end": 157,
+        "start": 163,
+        "end": 170,
         "startLoc": {
-          "line": 150,
+          "line": 163,
           "column": 17,
-          "position": 807
+          "position": 848
         },
         "endLoc": {
-          "line": 157,
+          "line": 170,
           "column": 7,
-          "position": 899
+          "position": 940
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 89,
-        "end": 96,
+        "start": 106,
+        "end": 113,
         "startLoc": {
-          "line": 89,
+          "line": 106,
           "column": 8,
-          "position": 446
+          "position": 481
         },
         "endLoc": {
-          "line": 96,
+          "line": 113,
           "column": 2,
-          "position": 538
+          "position": 573
         }
       }
     },

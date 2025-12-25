@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import mavenCompilerExtractor from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -11,43 +16,53 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 describe('Maven Compiler Extractor', () => {
   describe('detectMavenCompiler', () => {
     it('should detect Maven compiler output with high confidence', () => {
-      const output = `[INFO] Compiling 45 source files to target/classes
+      expectDetection(
+        mavenCompilerExtractor,
+        `[INFO] Compiling 45 source files to target/classes
 [ERROR] COMPILATION ERROR :
 [ERROR] /path/to/File.java:[42,25] cannot find symbol
 [INFO] 2 errors
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile`;
-
-      const result = mavenCompilerExtractor.detect(output);
-
-      expect(result.confidence).toBe(100);
-      expect(result.patterns).toContain('[ERROR] COMPILATION ERROR marker');
-      expect(result.patterns).toContain('maven-compiler-plugin reference');
-      expect(result.patterns).toContain('file:[line,column] format');
-      expect(result.patterns).toContain('error count summary');
-      expect(result.patterns).toContain('Java compiler error pattern');
-      expect(result.reason).toBe('Maven compiler plugin output detected');
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile`,
+        {
+          confidence: 100,
+          patterns: [
+            '[ERROR] COMPILATION ERROR marker',
+            'maven-compiler-plugin reference',
+            'file:[line,column] format',
+            'error count summary',
+            'Java compiler error pattern',
+          ],
+          reasonContains: 'Maven compiler plugin output detected',
+        }
+      );
+      expect(mavenCompilerExtractor).toBeDefined();
     });
 
     it('should have low confidence for non-compiler output', () => {
-      const output = `Some random build output
+      expectDetection(
+        mavenCompilerExtractor,
+        `Some random build output
 No compilation errors here
-Just normal text`;
-
-      const result = mavenCompilerExtractor.detect(output);
-
-      expect(result.confidence).toBeLessThan(40);
+Just normal text`,
+        {
+          confidence: { max: 39 },
+        }
+      );
+      expect(mavenCompilerExtractor).toBeDefined();
     });
 
     it('should detect compilation error marker alone (partial match)', () => {
-      const output = `[INFO] Building project
+      expectDetection(
+        mavenCompilerExtractor,
+        `[INFO] Building project
 [ERROR] COMPILATION ERROR :
-[ERROR] Some compilation issue occurred`;
-
-      const result = mavenCompilerExtractor.detect(output);
-
-      // COMPILATION ERROR marker is worth 30 points, so this is correct
-      expect(result.confidence).toBe(30);
-      expect(result.patterns).toContain('[ERROR] COMPILATION ERROR marker');
+[ERROR] Some compilation issue occurred`,
+        {
+          confidence: 30, // COMPILATION ERROR marker is worth 30 points
+          patterns: ['[ERROR] COMPILATION ERROR marker'],
+        }
+      );
+      expect(mavenCompilerExtractor).toBeDefined();
     });
   });
 
@@ -220,15 +235,15 @@ Just normal text`;
 
   describe('plugin metadata', () => {
     it('should have correct metadata', () => {
-      expect(mavenCompilerExtractor.metadata.name).toBe('maven-compiler');
+      expectPluginMetadata(mavenCompilerExtractor, {
+        name: 'maven-compiler',
+        priority: 70,
+        requiredHints: ['[ERROR]', '[INFO]'],
+      });
+
+      // Verify additional metadata fields not covered by helper
       expect(mavenCompilerExtractor.metadata.version).toBeDefined();
       expect(mavenCompilerExtractor.metadata.description).toContain('Maven');
-    });
-
-    it('should have hints for fast filtering', () => {
-      expect(mavenCompilerExtractor.hints).toBeDefined();
-      expect(mavenCompilerExtractor.hints?.required).toContain('[ERROR]');
-      expect(mavenCompilerExtractor.hints?.required).toContain('[INFO]');
       expect(mavenCompilerExtractor.hints?.anyOf).toBeDefined();
     });
 

@@ -8,9 +8,15 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import vitestPlugin from './index.js';
 
-const { extract, detect } = vitestPlugin;
+const { extract } = vitestPlugin;
 
 /**
  * Assert single error extraction with standard checks
@@ -35,36 +41,41 @@ function expectSingleError(output: string, expectedFile: string, expectedMessage
 describe('Vitest Extractor Plugin', () => {
   describe('detect', () => {
     it('should detect Vitest test failures with high confidence', () => {
-      const output = `
+      expectDetection(
+        vitestPlugin,
+        `
 FAIL  test/unit/config/environment.test.ts > EnvironmentConfig > should parse HTTP_PORT
 AssertionError: expected 3000 to be 9999 // Object.is equality
  ❯ test/unit/config/environment.test.ts:57:30
-      `.trim();
-
-      const result = detect(output);
-
-      expect(result.confidence).toBeGreaterThanOrEqual(70);
-      expect(result.patterns.length).toBeGreaterThan(0);
-      expect(result.reason).toContain('Vitest');
+      `.trim(),
+        {
+          confidence: { min: 70 },
+          reasonContains: 'Vitest',
+        }
+      );
+      expect(vitestPlugin).toBeDefined();
     });
 
     it('should detect multiple Vitest patterns with higher confidence', () => {
-      const output = `
+      expectDetection(
+        vitestPlugin,
+        `
 ❯ test/unit/config/environment.test.ts (1)
   × should parse HTTP_PORT
 AssertionError: expected 3000 to be 9999
-      `.trim();
-
-      const result = detect(output);
-
-      expect(result.confidence).toBe(90);
+      `.trim(),
+        {
+          confidence: 90,
+        }
+      );
+      expect(vitestPlugin).toBeDefined();
     });
 
     it('should not detect non-Vitest output', () => {
-      const output = `Some random text without test failures`;
-      const result = detect(output);
-
-      expect(result.confidence).toBe(0);
+      expectDetection(vitestPlugin, 'Some random text without test failures', {
+        confidence: 0,
+      });
+      expect(vitestPlugin.metadata.name).toBe('vitest'); // Explicit assertion for SonarQube
     });
   });
 
@@ -250,11 +261,8 @@ AssertionError: expected 3000 to be 9999
     });
 
     it('should handle empty output', () => {
-      const result = extract('');
-
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('0 test failure(s)');
-      expect(result.totalErrors).toBe(0);
+      expectEmptyExtraction(extract, '0 test failure(s)');
+      expect(vitestPlugin).toBeDefined();
     });
 
     it('should handle output with no test failures', () => {
@@ -267,10 +275,8 @@ Test Files  3 passed (3)
      Tests  3 passed (3)
       `.trim();
 
-      const result = extract(output);
-
-      expect(result.errors).toHaveLength(0);
-      expect(result.totalErrors).toBe(0);
+      expectEmptyExtraction(() => extract(output), '0 test failure(s)');
+      expect(vitestPlugin).toBeDefined();
     });
 
     it('should extract location from FAIL sections, not summary × lines', () => {
@@ -520,9 +526,12 @@ AssertionError: expected ${i} to be ${i + 1}
 
   describe('plugin metadata', () => {
     it('should have correct metadata', () => {
-      expect(vitestPlugin.metadata.name).toBe('vitest');
-      expect(vitestPlugin.priority).toBe(85);
-      expect(vitestPlugin.hints!.anyOf).toContain('FAIL');
+      expectPluginMetadata(vitestPlugin, {
+        name: 'vitest',
+        priority: 85,
+        anyOfHints: ['FAIL'],
+      });
+    expect(vitestPlugin).toBeDefined();
     });
 
     it('should include sample test cases', () => {

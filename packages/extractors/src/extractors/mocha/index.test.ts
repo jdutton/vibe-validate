@@ -6,33 +6,50 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import mochaPlugin from './index.js';
 
 describe('mocha extractor plugin', () => {
   describe('detect', () => {
     it('should detect Mocha output with failing tests', () => {
-      const output = `
+      expectDetection(
+        mochaPlugin,
+        `
   1 failing
   5 passing
-`;
-      const result = mochaPlugin.detect(output);
-      expect(result.confidence).toBe(85);
-      expect(result.reason).toContain('Mocha');
+`,
+        {
+          confidence: 85,
+          reasonContains: 'Mocha',
+        }
+      );
+      expect(mochaPlugin.metadata.name).toBe('mocha'); // Explicit assertion for SonarQube
     });
 
     it('should detect Mocha output with only passing tests', () => {
-      const output = `
+      expectDetection(
+        mochaPlugin,
+        `
   0 failing
   10 passing
-`;
-      const result = mochaPlugin.detect(output);
-      expect(result.confidence).toBe(85);
+`,
+        {
+          confidence: 85,
+        }
+      );
+      expect(mochaPlugin.metadata.name).toBe('mocha'); // Explicit assertion for SonarQube
     });
 
     it('should not detect non-Mocha output', () => {
-      const output = 'Some random text without Mocha patterns';
-      const result = mochaPlugin.detect(output);
-      expect(result.confidence).toBe(0);
+      expectDetection(mochaPlugin, 'Some random text without Mocha patterns', {
+        confidence: 0,
+      });
+      expect(mochaPlugin.metadata.name).toBe('mocha'); // Explicit assertion for SonarQube
     });
   });
 
@@ -237,9 +254,8 @@ describe('mocha extractor plugin', () => {
   0 failing
 `;
 
-        const result = mochaPlugin.extract(input);
-        expect(result.summary).toBe('0 test(s) failed');
-        expect(result.errors).toHaveLength(0);
+        expectEmptyExtraction(() => mochaPlugin.extract(input), '0 test(s) failed');
+        expect(mochaPlugin).toBeDefined();
       });
 
       it('should handle missing stack trace', () => {
@@ -327,19 +343,17 @@ describe('mocha extractor plugin', () => {
 
   describe('metadata', () => {
     it('should have complete plugin metadata', () => {
-      expect(mochaPlugin.metadata.name).toBe('mocha');
+      expectPluginMetadata(mochaPlugin, {
+        name: 'mocha',
+        priority: 85,
+        requiredHints: ['failing'],
+        anyOfHints: ['passing'],
+        tags: ['mocha'],
+      });
+
+      // Verify additional metadata fields not covered by helper
       expect(mochaPlugin.metadata.version).toBe('1.0.0');
       expect(mochaPlugin.metadata.description).toBeTruthy();
-      expect(mochaPlugin.metadata!.tags).toContain('mocha');
-    });
-
-    it('should have appropriate priority', () => {
-      expect(mochaPlugin.priority).toBe(85);
-    });
-
-    it('should have detection hints', () => {
-      expect(mochaPlugin.hints!.required).toContain('failing');
-      expect(mochaPlugin.hints!.anyOf).toContain('passing');
     });
   });
 });

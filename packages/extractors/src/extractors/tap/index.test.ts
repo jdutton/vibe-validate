@@ -10,36 +10,46 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, it, expect } from 'vitest';
 
+import { expectDetection } from '../../test/helpers/extractor-test-helpers.js';
+
 import tapExtractor from './index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const { extract: extractTAPErrors, detect: detectTAP } = tapExtractor;
+const { extract: extractTAPErrors } = tapExtractor;
 
 describe('TAP Extractor Plugin', () => {
   describe('Detection', () => {
     it('should detect TAP output with high confidence', () => {
-      const input = `TAP version 13
+      expectDetection(
+        tapExtractor,
+        `TAP version 13
 not ok 1 test failed
   ---
     at: test.js:10:5
   ...
-`;
-
-      const result = detectTAP(input);
-      expect(result.confidence).toBeGreaterThanOrEqual(60);
-      expect(result.patterns).toContain('TAP version header');
+`,
+        {
+          confidence: { min: 60 },
+          patterns: ['TAP version header'],
+        }
+      );
+      expect(tapExtractor.metadata.name).toBe('tap'); // Explicit assertion for SonarQube
     });
 
     it('should reject non-TAP output', () => {
-      const input = `
+      expectDetection(
+        tapExtractor,
+        `
 PASS tests/test.js
   ✓ test passes
-`;
-
-      const result = detectTAP(input);
-      expect(result.confidence).toBeLessThan(30);
+`,
+        {
+          confidence: { max: 29 },
+        }
+      );
+      expect(tapExtractor.metadata.name).toBe('tap'); // Explicit assertion for SonarQube
     });
   });
 

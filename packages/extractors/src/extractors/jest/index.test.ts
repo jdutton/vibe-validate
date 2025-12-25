@@ -8,47 +8,64 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import jestPlugin from './index.js';
 
-const { extract, detect } = jestPlugin;
+const { extract } = jestPlugin;
 
 describe('Jest Extractor Plugin', () => {
   describe('detect', () => {
     it('should detect Jest output with FAIL marker', () => {
-      const output = ` FAIL test/example.test.ts
+      expectDetection(
+        jestPlugin,
+        ` FAIL test/example.test.ts
   Example Suite
-    ✕ should pass`;
-      const result = detect(output);
-
-      expect(result.confidence).toBe(90);
-      expect(result.patterns).toContain('FAIL marker');
-      expect(result.reason).toContain('Jest test framework');
+    ✕ should pass`,
+        {
+          confidence: 90,
+          patterns: ['FAIL marker'],
+          reasonContains: 'Jest test framework',
+        }
+      );
+      expect(jestPlugin.metadata.name).toBe('jest'); // Explicit assertion for SonarQube
     });
 
     it('should detect Jest output with detailed marker and test markers', () => {
-      const output = `  ● Example Suite › should handle errors
-    ✕ test failed`;
-      const result = detect(output);
-
-      expect(result.confidence).toBe(90);
-      expect(result.patterns).toContain('● detailed format');
-      expect(result.patterns).toContain('test markers (✕/✓)');
+      expectDetection(
+        jestPlugin,
+        `  ● Example Suite › should handle errors
+    ✕ test failed`,
+        {
+          confidence: 90,
+          patterns: ['● detailed format', 'test markers (✕/✓)'],
+        }
+      );
+      expect(jestPlugin.metadata.name).toBe('jest'); // Explicit assertion for SonarQube
     });
 
     it('should detect Jest output with test markers only (lower confidence)', () => {
-      const output = `    ✕ some test
-    ✓ passing test`;
-      const result = detect(output);
-
-      expect(result.confidence).toBe(50);
-      expect(result.patterns).toContain('test markers (✕/✓)');
+      expectDetection(
+        jestPlugin,
+        `    ✕ some test
+    ✓ passing test`,
+        {
+          confidence: 50,
+          patterns: ['test markers (✕/✓)'],
+        }
+      );
+      expect(jestPlugin.metadata.name).toBe('jest'); // Explicit assertion for SonarQube
     });
 
     it('should not detect non-Jest output', () => {
-      const output = `Some random text without Jest markers`;
-      const result = detect(output);
-
-      expect(result.confidence).toBe(0);
+      expectDetection(jestPlugin, 'Some random text without Jest markers', {
+        confidence: 0,
+      });
+      expect(jestPlugin.metadata.name).toBe('jest'); // Explicit assertion for SonarQube
     });
   });
 
@@ -232,11 +249,10 @@ ${failures}
     });
 
     it('should handle empty output', () => {
-      const result = extract('');
+      expectEmptyExtraction(extract, 'No test failures detected');
 
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('No test failures detected');
-      expect(result.totalErrors).toBe(0);
+      // Verify guidance field (beyond helper's scope)
+      const result = extract('');
       expect(result.guidance).toBe('');
     });
 
@@ -247,11 +263,8 @@ ${failures}
     ✓ should pass (5 ms)
     `.trim();
 
-      const result = extract(output);
-
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('No test failures detected');
-      expect(result.totalErrors).toBe(0);
+      expectEmptyExtraction(() => extract(output), 'No test failures detected');
+      expect(jestPlugin.metadata.name).toBe('jest'); // Explicit assertion for SonarQube
     });
 
     it('should generate clean errorSummary output', () => {
@@ -366,12 +379,14 @@ ${failures}
 
   describe('plugin metadata', () => {
     it('should have correct metadata', () => {
-      expect(jestPlugin.metadata.name).toBe('jest');
+      expectPluginMetadata(jestPlugin, {
+        name: 'jest',
+        priority: 90,
+        anyOfHints: ['FAIL', '✕', '●'],
+      });
+
+      // Verify additional metadata fields not covered by helper
       expect(jestPlugin.metadata.description).toContain('Jest');
-      expect(jestPlugin.priority).toBe(90);
-      expect(jestPlugin.hints!.anyOf).toContain('FAIL');
-      expect(jestPlugin.hints!.anyOf).toContain('✕');
-      expect(jestPlugin.hints!.anyOf).toContain('●');
     });
 
     it('should include sample test cases', () => {
