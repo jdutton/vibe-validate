@@ -30,7 +30,7 @@ if [[ -f junit-output/junit.xml ]]; then
   cp junit-output/junit.xml ../extractors/test/samples/jest/extraction-test-bed.junit.xml
   echo "✅ Saved to: ../extractors/test/samples/jest/extraction-test-bed.junit.xml"
 else
-  echo "⚠️  JUnit XML not found at junit-output/junit.xml"
+  echo "⚠️  JUnit XML not found at junit-output/junit.xml" >&2
 fi
 echo ""
 
@@ -47,7 +47,7 @@ if [[ -f junit-output/vitest-results.xml ]]; then
   cp junit-output/vitest-results.xml ../extractors/test/samples/vitest/extraction-test-bed.junit.xml
   echo "✅ Saved to: ../extractors/test/samples/vitest/extraction-test-bed.junit.xml"
 else
-  echo "⚠️  JUnit XML not found at junit-output/vitest-results.xml"
+  echo "⚠️  JUnit XML not found at junit-output/vitest-results.xml" >&2
 fi
 echo ""
 
