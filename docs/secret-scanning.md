@@ -291,11 +291,11 @@ If you want belt-and-suspenders protection, you can also add gitleaks to your CI
 
 - **Gitleaks Documentation**: https://gitleaks.io/
 - **Gitleaks GitHub**: https://github.com/gitleaks/gitleaks
-- **Configuration Reference**: [configuration-reference.md](./configuration-reference.md)
-- **Pre-commit Workflow**: [pre-commit-workflow.md](./pre-commit-workflow.md)
+- **Configuration Reference**: [configuration-reference.md](./skill/resources/configuration-reference.md)
+- **Pre-commit Workflow**: [pre-commit command](./skill/resources/cli-reference.md#pre-commit)
 
 ## Related
 
-- [Pre-commit Workflow](./pre-commit-workflow.md)
-- [Configuration Reference](./configuration-reference.md)
-- [Doctor Command](./doctor-command.md)
+- [Pre-commit Workflow](./getting-started.md#pre-commit-validation)
+- [Configuration Reference](./skill/resources/configuration-reference.md)
+- [Doctor Command](./skill/resources/cli-reference.md#doctor)

@@ -913,17 +913,17 @@ vibe-validate validate --check
 vibe-validate state | grep -A 10 "Failed step"
 ```
 
-Ensure error extractors are working correctly (see [Error Extractors Guide](./error-extractors-guide.md)).
+Ensure error extractors are working correctly (see [Error Extractors Guide](./skill/resources/error-extractors-guide.md)).
 
 ---
 
 ## Related Documentation
 
 - [Getting Started Guide](./getting-started.md)
-- [Configuration Reference](./configuration-reference.md)
-- [CLI Reference](./cli-reference.md)
-- [Config Templates Guide](./../packages/cli/config-templates/README.md)
-- [Error Extractors Guide](./error-extractors-guide.md)
+- [Configuration Reference](./skill/resources/configuration-reference.md)
+- [CLI Reference](./skill/resources/cli-reference.md)
+- [Config Templates Guide](../packages/cli/config-templates/README.md)
+- [Error Extractors Guide](./skill/resources/error-extractors-guide.md)
 
 ---
 

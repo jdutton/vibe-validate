@@ -365,11 +365,11 @@ vv cleanup
 
 ## Next Steps
 
-- **Customize configuration**: See [Configuration Reference](configuration-reference.md)
-- **Learn CLI commands**: See [CLI Reference](cli-reference.md)
+- **Customize configuration**: See [Configuration Reference](./skill/resources/configuration-reference.md)
+- **Learn CLI commands**: See [CLI Reference](./skill/resources/cli-reference.md)
 - **Use config templates**: See [Config Templates Guide](../packages/cli/config-templates/README.md)
-- **Integrate with AI assistants**: See [Agent Integration Guide](agent-integration-guide.md)
-- **Understand error extractors**: See [Error Extractors Guide](error-extractors-guide.md)
+- **Integrate with AI assistants**: See [Agent Integration Guide](./agent-integration-guide.md)
+- **Understand error extractors**: See [Error Extractors Guide](./skill/resources/error-extractors-guide.md)
 
 ## Troubleshooting
 

@@ -913,10 +913,10 @@ steps:
 
 ## Further Reading
 
-- [Configuration Reference](configuration-reference.md) - Complete `cwd` field documentation
-- [CLI Reference](cli-reference.md) - `--cwd` flag usage
-- [Workflow Generation](workflow-generation.md) - GitHub Actions integration
-- [Caching Guide](caching.md) - Deep dive on git tree hash caching
+- [Configuration Reference](./skill/resources/configuration-reference.md) - Complete `cwd` field documentation
+- [CLI Reference](./skill/resources/cli-reference.md) - `--cwd` flag usage
+- [Workflow Generation](./skill/resources/cli-reference.md#generate-workflow) - GitHub Actions integration
+- [Caching Guide](./git-validation-tracking.md) - Deep dive on git tree hash caching
 
 ---
 
