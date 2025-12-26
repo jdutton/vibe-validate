@@ -716,7 +716,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
     - Directory scope: No shared resources, parallel worktrees OK
     - Project scope: Tests use fixed ports (3000, 8080) or shared databases
     - Disable: CI environments with isolated containers
-  - See [Locking Configuration Guide](docs/locking-configuration.md) for details
+  - See [Locking Configuration Guide](./docs/locking-configuration.md) for details
 
 ### ♻️ Refactoring
 
@@ -1016,7 +1016,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
 - **Removed TypeScript Preset System**
   - `preset:` property no longer supported in configs
   - Migration: Copy YAML templates from `config-templates/` directory instead
-  - See [Config Templates Guide](./config-templates/README.md) for migration instructions
+  - See [Config Templates Guide](./packages/cli/config-templates/README.md) for migration instructions
 
 - **Strict Schema Validation Enabled**
   - Unknown properties in configs now cause validation errors (previously ignored silently)
@@ -1041,7 +1041,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
 
 ### 📝 Documentation
 
-- **New**: [Config Templates Guide](./config-templates/README.md)
+- **New**: [Config Templates Guide](./packages/cli/config-templates/README.md)
   - Explains how to use YAML templates
   - Migration guide from old `preset:` system
   - Best practices for customizing templates

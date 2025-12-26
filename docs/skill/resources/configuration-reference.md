@@ -440,7 +440,7 @@ validation:
           cwd: services/ml-engine
 ```
 
-**Use case**: Perfect for monorepos and heterogeneous projects with multiple languages or build systems. See the [Heterogeneous Projects Guide](heterogeneous-projects.md) for comprehensive examples.
+**Use case**: Perfect for monorepos and heterogeneous projects with multiple languages or build systems. See the [Heterogeneous Projects Guide](../../heterogeneous-projects.md) for comprehensive examples.
 
 **Security**: All `cwd` paths are validated to prevent directory traversal attacks. Paths must resolve within the git repository.
 
@@ -974,7 +974,7 @@ Validation state is stored in git notes (not files):
 
 ## See Also
 
-- [Getting Started](getting-started.md) - Initial setup
-- [CLI Reference](cli-reference.md) - Command-line options
-- [Config Templates Guide](./../../packages/cli/config-templates/README.md) - Using and customizing templates
-- [Error Extractors Guide](error-extractors-guide.md) - Error formatting details
+- [Getting Started](../../getting-started.md) - Initial setup
+- [CLI Reference](./cli-reference.md) - Command-line options
+- [Config Templates Guide](../../../packages/cli/config-templates/README.md) - Using and customizing templates
+- [Error Extractors Guide](./error-extractors-guide.md) - Error formatting details

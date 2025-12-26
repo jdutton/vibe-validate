@@ -460,9 +460,9 @@ Or use `--no-lock` flag.
 
 ## Related Documentation
 
-- [CLI Reference](cli-reference.md) - All CLI flags and commands
-- [Configuration Schema](configuration.md) - Full config options
-- [Pre-Commit Workflow](pre-commit.md) - Using locks in hooks
+- [CLI Reference](./skill/resources/cli-reference.md) - All CLI flags and commands
+- [Configuration Schema](./skill/resources/configuration-reference.md) - Full config options
+- [Pre-Commit Workflow](./getting-started.md#pre-commit-validation) - Using locks in hooks
 
 ## Future Enhancements
 
