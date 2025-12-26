@@ -7,37 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Bug Fixes
-
-- **CRITICAL: Complete Windows compatibility for development and usage** (Issue #86, PR #94)
-  - **Problem**: Tests failed on Windows CI due to path handling issues and incompatible shell commands
-  - **What was fixed**:
-    - Path normalization: Use `normalizedTmpdir()` to resolve Windows 8.3 short names (RUNNER~1 → runneradmin)
-    - Test execution: All CLI spawn calls now use `node` directly for cross-platform compatibility
-    - Build process: Fixed Windows-specific build failures
-  - **Impact**: vibe-validate now works correctly on Windows for both development and end-user usage
-  - **Code quality**: Reduced code duplication from 4.73% to 1.43% during refactoring
+## [0.18.0] - 2025-12-26
 
 ### Features
 
-- **CRITICAL: `cleanup` command now detects squash-merged branches** - **BREAKING CHANGES**
-  - **Problem**: After squash-merging PRs on GitHub, `cleanup` couldn't detect merged branches, requiring manual verification
-  - **Solution**: Now uses GitHub CLI to detect squash/rebase merges and auto-switches from current branch if needed
+- **`watch-pr` complete redesign with error extraction** (PR #92) - **BREAKING CHANGES**
+  - **Problem**: CI failures showed "check failed" with no details - had to click through GitHub UI to find what broke
+  - **What's new**:
+    - Extracts test failures with file:line:message from GitHub Actions logs (Vitest, Jest, ESLint, TypeScript, Playwright)
+    - Shows flaky test patterns and success rates from PR history
+    - View all runs with `--history` to discover run IDs
+    - Inspect specific failures with `--run-id <id>` (useful for testing extractors)
+    - Monitor any repo with `--repo owner/repo`
+    - 24x faster with local caching
+    - Auto-polls until CI completes
   - **Breaking changes**:
-    - GitHub CLI (`gh`) now required
-    - Removed `--main-branch`, `--dry-run`, and `--yaml` options
-    - Output is now always YAML with new structure
-  - **Impact**: No more manual branch cleanup after squash merges
+    - Removed `--provider` option (GitHub Actions only, no GitLab support)
+    - Changed timeout default from 60 minutes to 30 minutes
+    - Different output format (LLM-optimized YAML structure)
+  - **Impact**: Get actionable errors immediately without leaving terminal
 
-- **`watch-pr` now extracts actual test failures from CI logs**
-  - **Problem**: When CI failed, users only saw "check failed" with no error details
-  - **Solution**: Extracts actual test failures from GitHub Actions logs (supports vitest, jest, eslint)
-  - **New capabilities**: History summary, file changes, cross-repo monitoring, local caching (24x faster)
-  - **Impact**: No more clicking through GitHub UI to find what actually failed
+- **`cleanup` redesigned for safe LLM-guided branch deletion** (Issue #93, PR #95) - **BREAKING CHANGES**
+  - **Problem**: Old cleanup was unsafe (could delete current branch) and lacked context about why branches exist
+  - **What's new**:
+    - Safe to run - auto-switches off current branch, never deletes it
+    - Fetches PR metadata from GitHub (open/closed/merged, merge method, who merged it)
+    - Explains why squash/rebase merged branches show as "not merged" in git
+    - Clear assessment for each branch with context (safe to delete, needs review, has unpushed work)
+    - 6.4x faster (parallel GitHub API fetching)
+    - LLM-optimized YAML output with actionable guidance
+  - **Breaking changes**:
+    - Requires `gh` CLI
+    - Removed `--main-branch`, `--dry-run`, `--yaml` flags (auto-detects main, always previews, always YAML output)
+    - Always outputs structured YAML (no human-friendly text mode)
+  - **Impact**: Safe for LLMs to run with clear contextual guidance for decision-making
+
+### Bug Fixes
+
+- **Windows compatibility** (Issue #86, PR #94) - vibe-validate now works correctly on Windows (path handling, process spawning)
+- **Vitest extractor** (Issue #84, PR #98) - Fixed unhandled promise rejections causing silent failures
+
+### Internal
+
+- Reduced code duplication 70% (4.73% → 1.43%)
+- Eliminated SonarQube security blockers and code quality violations
 
 ### Documentation
 
-- Added comprehensive `watch-pr` command documentation with examples
+- Added comprehensive `watch-pr` command guide (650+ lines)
 - Updated README with latest features
 
 ## [0.17.6] - 2025-12-15
