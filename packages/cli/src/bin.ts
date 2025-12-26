@@ -575,8 +575,14 @@ function showComprehensiveHelp(program: Command): void {
 // Custom help handler: --help --verbose shows detailed documentation
 const didHandleVerboseHelp = await handleVerboseHelp(process.argv, program);
 if (didHandleVerboseHelp) {
-  process.exit(0);
+  // Ensure stdout is fully flushed before exit (critical for Node 24+)
+  // Using process.exitCode allows event loop to complete I/O operations
+  process.exitCode = 0;
+  // Force flush stdout to handle buffering differences across Node versions
+  await new Promise<void>((resolve) => {
+    process.stdout.write('', () => resolve());
+  });
+} else {
+  // Parse command line arguments
+  program.parse();
 }
-
-// Parse command line arguments
-program.parse();
