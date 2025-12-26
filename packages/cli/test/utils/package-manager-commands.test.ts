@@ -24,13 +24,32 @@ import {
   getAllUpgradeCommands,
 } from '../../src/utils/package-manager-commands.js';
 
+/**
+ * Package managers to test against
+ */
+const ALL_PACKAGE_MANAGERS: PackageManager[] = ['npm', 'pnpm', 'yarn', 'bun'];
+
+/**
+ * Test a command function across all package managers
+ */
+function testAllPackageManagers(
+  commandFn: (_packageManager: PackageManager) => string,
+  expected: Record<PackageManager, string>
+) {
+  for (const pm of ALL_PACKAGE_MANAGERS) {
+    expect(commandFn(pm)).toBe(expected[pm]);
+  }
+}
+
 describe('package-manager-commands', () => {
   describe('getInstallCommand', () => {
     it('should return frozen lockfile commands for CI', () => {
-      expect(getInstallCommand('npm')).toBe('npm ci');
-      expect(getInstallCommand('pnpm')).toBe('pnpm install --frozen-lockfile');
-      expect(getInstallCommand('yarn')).toBe('yarn install --frozen-lockfile');
-      expect(getInstallCommand('bun')).toBe('bun install');
+      testAllPackageManagers(getInstallCommand, {
+        npm: 'npm ci',
+        pnpm: 'pnpm install --frozen-lockfile',
+        yarn: 'yarn install --frozen-lockfile',
+        bun: 'bun install',
+      });
     });
 
     it('should default to npm ci for unknown package manager', () => {
@@ -40,19 +59,26 @@ describe('package-manager-commands', () => {
 
   describe('getInstallCommandUnfrozen', () => {
     it('should return regular install commands for local development', () => {
-      expect(getInstallCommandUnfrozen('npm')).toBe('npm install');
-      expect(getInstallCommandUnfrozen('pnpm')).toBe('pnpm install');
-      expect(getInstallCommandUnfrozen('yarn')).toBe('yarn install');
-      expect(getInstallCommandUnfrozen('bun')).toBe('bun install');
+      testAllPackageManagers(getInstallCommandUnfrozen, {
+        npm: 'npm install',
+        pnpm: 'pnpm install',
+        yarn: 'yarn install',
+        bun: 'bun install',
+      });
     });
   });
 
   describe('getDevInstallCommand', () => {
     it('should return dev dependency install commands', () => {
-      expect(getDevInstallCommand('npm', 'typescript')).toBe('npm install --save-dev typescript');
-      expect(getDevInstallCommand('pnpm', 'typescript')).toBe('pnpm add -D typescript');
-      expect(getDevInstallCommand('yarn', 'typescript')).toBe('yarn add --dev typescript');
-      expect(getDevInstallCommand('bun', 'typescript')).toBe('bun add --dev typescript');
+      testAllPackageManagers(
+        (pm) => getDevInstallCommand(pm, 'typescript'),
+        {
+          npm: 'npm install --save-dev typescript',
+          pnpm: 'pnpm add -D typescript',
+          yarn: 'yarn add --dev typescript',
+          bun: 'bun add --dev typescript',
+        }
+      );
     });
 
     it('should handle multiple packages', () => {
@@ -63,35 +89,55 @@ describe('package-manager-commands', () => {
 
   describe('getGlobalInstallCommand', () => {
     it('should return global install commands', () => {
-      expect(getGlobalInstallCommand('npm', 'vibe-validate')).toBe('npm install -g vibe-validate');
-      expect(getGlobalInstallCommand('pnpm', 'vibe-validate')).toBe('pnpm add -g vibe-validate');
-      expect(getGlobalInstallCommand('yarn', 'vibe-validate')).toBe('yarn global add vibe-validate');
-      expect(getGlobalInstallCommand('bun', 'vibe-validate')).toBe('bun add --global vibe-validate');
+      testAllPackageManagers(
+        (pm) => getGlobalInstallCommand(pm, 'vibe-validate'),
+        {
+          npm: 'npm install -g vibe-validate',
+          pnpm: 'pnpm add -g vibe-validate',
+          yarn: 'yarn global add vibe-validate',
+          bun: 'bun add --global vibe-validate',
+        }
+      );
     });
   });
 
   describe('getAddCommand', () => {
     it('should return regular dependency install commands', () => {
-      expect(getAddCommand('npm', 'react')).toBe('npm install react');
-      expect(getAddCommand('pnpm', 'react')).toBe('pnpm add react');
-      expect(getAddCommand('yarn', 'react')).toBe('yarn add react');
-      expect(getAddCommand('bun', 'react')).toBe('bun add react');
+      testAllPackageManagers(
+        (pm) => getAddCommand(pm, 'react'),
+        {
+          npm: 'npm install react',
+          pnpm: 'pnpm add react',
+          yarn: 'yarn add react',
+          bun: 'bun add react',
+        }
+      );
     });
   });
 
   describe('getUpgradeCommand', () => {
     it('should return local upgrade commands', () => {
-      expect(getUpgradeCommand('npm', 'vibe-validate', 'local')).toBe('npm install -D vibe-validate@latest');
-      expect(getUpgradeCommand('pnpm', 'vibe-validate', 'local')).toBe('pnpm update vibe-validate');
-      expect(getUpgradeCommand('yarn', 'vibe-validate', 'local')).toBe('yarn upgrade vibe-validate');
-      expect(getUpgradeCommand('bun', 'vibe-validate', 'local')).toBe('bun update vibe-validate');
+      testAllPackageManagers(
+        (pm) => getUpgradeCommand(pm, 'vibe-validate', 'local'),
+        {
+          npm: 'npm install -D vibe-validate@latest',
+          pnpm: 'pnpm update vibe-validate',
+          yarn: 'yarn upgrade vibe-validate',
+          bun: 'bun update vibe-validate',
+        }
+      );
     });
 
     it('should return global upgrade commands', () => {
-      expect(getUpgradeCommand('npm', 'vibe-validate', 'global')).toBe('npm install -g vibe-validate@latest');
-      expect(getUpgradeCommand('pnpm', 'vibe-validate', 'global')).toBe('pnpm add -g vibe-validate@latest');
-      expect(getUpgradeCommand('yarn', 'vibe-validate', 'global')).toBe('yarn global add vibe-validate@latest');
-      expect(getUpgradeCommand('bun', 'vibe-validate', 'global')).toBe('bun add --global vibe-validate@latest');
+      testAllPackageManagers(
+        (pm) => getUpgradeCommand(pm, 'vibe-validate', 'global'),
+        {
+          npm: 'npm install -g vibe-validate@latest',
+          pnpm: 'pnpm add -g vibe-validate@latest',
+          yarn: 'yarn global add vibe-validate@latest',
+          bun: 'bun add --global vibe-validate@latest',
+        }
+      );
     });
 
     it('should default to local scope', () => {
@@ -101,37 +147,48 @@ describe('package-manager-commands', () => {
 
   describe('getBuildCommand', () => {
     it('should return build commands', () => {
-      expect(getBuildCommand('npm')).toBe('npm run build');
-      expect(getBuildCommand('pnpm')).toBe('pnpm -r build');
-      expect(getBuildCommand('yarn')).toBe('yarn run build');
-      expect(getBuildCommand('bun')).toBe('bun run build');
+      testAllPackageManagers(getBuildCommand, {
+        npm: 'npm run build',
+        pnpm: 'pnpm -r build',
+        yarn: 'yarn run build',
+        bun: 'bun run build',
+      });
     });
   });
 
   describe('getValidateCommand', () => {
     it('should return validate commands', () => {
-      expect(getValidateCommand('npm')).toBe('npm run validate');
-      expect(getValidateCommand('pnpm')).toBe('pnpm validate');
-      expect(getValidateCommand('yarn')).toBe('yarn run validate');
-      expect(getValidateCommand('bun')).toBe('bun run validate');
+      testAllPackageManagers(getValidateCommand, {
+        npm: 'npm run validate',
+        pnpm: 'pnpm validate',
+        yarn: 'yarn run validate',
+        bun: 'bun run validate',
+      });
     });
   });
 
   describe('getCoverageCommand', () => {
     it('should return coverage commands', () => {
-      expect(getCoverageCommand('npm')).toBe('npm run test:coverage');
-      expect(getCoverageCommand('pnpm')).toBe('pnpm test:coverage');
-      expect(getCoverageCommand('yarn')).toBe('yarn run test:coverage');
-      expect(getCoverageCommand('bun')).toBe('bun run test:coverage');
+      testAllPackageManagers(getCoverageCommand, {
+        npm: 'npm run test:coverage',
+        pnpm: 'pnpm test:coverage',
+        yarn: 'yarn run test:coverage',
+        bun: 'bun run test:coverage',
+      });
     });
   });
 
   describe('getRunCommand', () => {
     it('should return run commands with script name', () => {
-      expect(getRunCommand('npm', 'test')).toBe('npm run test');
-      expect(getRunCommand('pnpm', 'test')).toBe('pnpm test');
-      expect(getRunCommand('yarn', 'test')).toBe('yarn run test');
-      expect(getRunCommand('bun', 'test')).toBe('bun run test');
+      testAllPackageManagers(
+        (pm) => getRunCommand(pm, 'test'),
+        {
+          npm: 'npm run test',
+          pnpm: 'pnpm test',
+          yarn: 'yarn run test',
+          bun: 'bun run test',
+        }
+      );
     });
   });
 

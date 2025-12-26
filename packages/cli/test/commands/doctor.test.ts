@@ -24,7 +24,8 @@ import {
   mockDoctorFileSystem,
   mockDoctorGit,
   findCheck,
-  assertCheck
+  assertCheck,
+  assertAllPackageManagerCommands
 } from '../helpers/doctor-helpers.js';
 
 // Mock dependencies
@@ -1466,11 +1467,12 @@ describe('doctor command', () => {
         suggestionContains: 'vibe-validate'
       });
       // Should show upgrade commands for all package managers
-      const suggestion = findCheck(result, 'vibe-validate version').suggestion ?? '';
-      expect(suggestion).toContain('npm install -D vibe-validate@latest');
-      expect(suggestion).toContain('pnpm update vibe-validate');
-      expect(suggestion).toContain('yarn upgrade vibe-validate');
-      expect(suggestion).toContain('bun update vibe-validate');
+      assertAllPackageManagerCommands(result, 'vibe-validate version', {
+        npm: 'npm install -D vibe-validate@latest',
+        pnpm: 'pnpm update vibe-validate',
+        yarn: 'yarn upgrade vibe-validate',
+        bun: 'bun update vibe-validate'
+      });
     });
 
     it('should show global install command when VV_CONTEXT=global', async () => {
@@ -1487,11 +1489,12 @@ describe('doctor command', () => {
         suggestionContains: 'vibe-validate'
       });
       // Should show global upgrade commands for all package managers
-      const suggestion = findCheck(result, 'vibe-validate version').suggestion ?? '';
-      expect(suggestion).toContain('npm install -g vibe-validate@latest');
-      expect(suggestion).toContain('pnpm add -g vibe-validate@latest');
-      expect(suggestion).toContain('yarn global add vibe-validate@latest');
-      expect(suggestion).toContain('bun add --global vibe-validate@latest');
+      assertAllPackageManagerCommands(result, 'vibe-validate version', {
+        npm: 'npm install -g vibe-validate@latest',
+        pnpm: 'pnpm add -g vibe-validate@latest',
+        yarn: 'yarn global add vibe-validate@latest',
+        bun: 'bun add --global vibe-validate@latest'
+      });
     });
 
     it('should show dev context label when VV_CONTEXT=dev', async () => {
