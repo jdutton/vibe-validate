@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- Fixed crash when running `vv snapshot` or `vv validate` in fresh git repos (after `git init`, before first commit)
+
+### Documentation
+
+- Fixed broken markdown links across documentation
+
 ## [0.18.0] - 2025-12-26
 
 ### Features
