@@ -364,8 +364,11 @@ echo "path/to/file.txt:generic-api-key:123" >> .gitleaksignore
 
 **Option 2: secretlint (npm-based, always available)**
 \`\`\`bash
-# Install
+# Install (choose your package manager)
 npm install --save-dev @secretlint/secretlint-rule-preset-recommend secretlint
+# or: pnpm add -D @secretlint/secretlint-rule-preset-recommend secretlint
+# or: yarn add --dev @secretlint/secretlint-rule-preset-recommend secretlint
+# or: bun add --dev @secretlint/secretlint-rule-preset-recommend secretlint
 
 # Create config
 cat > .secretlintrc.json << 'EOF'

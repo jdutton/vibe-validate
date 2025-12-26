@@ -30,6 +30,12 @@ import { getCommandName } from '../utils/command-name.js';
 import { formatDoctorConfigError } from '../utils/config-error-reporter.js';
 import { loadConfig, findConfigPath, loadConfigWithErrors } from '../utils/config-loader.js';
 import { findGitRoot } from '../utils/git-detection.js';
+import {
+  detectPackageManager,
+  getGlobalInstallCommand,
+  getAllUpgradeCommands,
+  getDevInstallCommand,
+} from '../utils/package-manager-commands.js';
 import { detectSecretScanningTools, selectToolsToRun } from '../utils/secret-scanning.js';
 import { formatTemplateList } from '../utils/template-discovery.js';
 
@@ -415,13 +421,17 @@ async function checkPackageManager(config?: VibeValidateConfig | null): Promise<
       };
     }
 
+    // Generate install suggestion based on current project's package manager
+    const currentPm = detectPackageManager(process.cwd());
+    const installCmd = getGlobalInstallCommand(currentPm, pm);
+
     return {
       name: 'Package manager',
       passed: false,
       message: `${pm} not found (required by config commands)`,
-      suggestion: pm === 'pnpm'
-        ? 'Install pnpm: npm install -g pnpm'
-        : 'npm should be installed with Node.js',
+      suggestion: pm === 'npm'
+        ? 'npm should be installed with Node.js'
+        : `Install ${pm}: ${installCmd}`,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -606,9 +616,8 @@ function getContextLabel(context: string): string {
  * Get upgrade command based on context
  */
 function getUpgradeCommand(context: string): string {
-  return context === 'local'
-    ? 'npm install -D vibe-validate@latest (or pnpm add -D vibe-validate@latest)'
-    : 'npm install -g vibe-validate@latest';
+  const scope = context === 'local' ? 'local' : 'global';
+  return getAllUpgradeCommands('vibe-validate', scope);
 }
 
 /**
@@ -1073,11 +1082,14 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
     const availableTools = detectSecretScanningTools();
 
     if (toolsToRun.length === 0) {
+      const pm = detectPackageManager(process.cwd());
+      const secretlintInstall = getDevInstallCommand(pm, '@secretlint/secretlint-rule-preset-recommend secretlint');
+
       return {
         name: 'Pre-commit secret scanning',
         passed: true,
         message: 'Secret scanning enabled but no tools available',
-        suggestion: 'Install a secret scanning tool:\n   • gitleaks: brew install gitleaks\n   • secretlint: npm install --save-dev @secretlint/secretlint-rule-preset-recommend\n   • Or add config files: .gitleaks.toml or .secretlintrc.json',
+        suggestion: `Install a secret scanning tool:\n   • gitleaks: brew install gitleaks\n   • secretlint: ${secretlintInstall}\n   • Or add config files: .gitleaks.toml or .secretlintrc.json`,
       };
     }
 
@@ -1379,8 +1391,11 @@ vibe-validate doctor
 ### After upgrading vibe-validate
 
 \`\`\`bash
-# Upgrade package
+# Upgrade package (choose your package manager)
 npm install -D vibe-validate@latest
+# or: pnpm update vibe-validate
+# or: yarn upgrade vibe-validate
+# or: bun update vibe-validate
 
 # CRITICAL: Always run doctor after upgrade
 vibe-validate doctor

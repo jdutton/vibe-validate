@@ -15,6 +15,7 @@ import type { Command } from 'commander';
 import prompts from 'prompts';
 
 import { getCommandName } from '../utils/command-name.js';
+import { detectPackageManager, getInstallCommandUnfrozen } from '../utils/package-manager-commands.js';
 
 /**
  * Options for the create-extractor command
@@ -77,13 +78,16 @@ export function createExtractorCommand(program: Command): void {
         console.log(chalk.green('✅ Extractor plugin created successfully!'));
         console.log(chalk.blue(`📁 Created: ${pluginDir}`));
         const cmd = getCommandName();
+        const pm = detectPackageManager(pluginDir);
+        const installCmd = getInstallCommandUnfrozen(pm);
+
         console.log();
         console.log(chalk.yellow('Next steps:'));
         console.log(chalk.gray('  1. cd ' + `vibe-validate-plugin-${context.pluginName}`));
-        console.log(chalk.gray('  2. npm install'));
+        console.log(chalk.gray(`  2. ${installCmd}`));
         console.log(chalk.gray('  3. Add your sample error output to samples/sample-error.txt'));
         console.log(chalk.gray('  4. Implement detect() and extract() functions in index.ts'));
-        console.log(chalk.gray('  5. Run tests: npm test'));
+        console.log(chalk.gray(`  5. Run tests: ${pm} test`));
         console.log(chalk.gray(`  6. Test the plugin: ${cmd} test-extractor .`));
 
         process.exit(0);
@@ -439,7 +443,11 @@ ${context.description}
 ## Installation
 
 \`\`\`bash
+# Choose your package manager
 npm install vibe-validate-plugin-${context.pluginName}
+# or: pnpm add vibe-validate-plugin-${context.pluginName}
+# or: yarn add vibe-validate-plugin-${context.pluginName}
+# or: bun add vibe-validate-plugin-${context.pluginName}
 \`\`\`
 
 ## Usage
@@ -465,14 +473,17 @@ extractors:
 ## Development
 
 \`\`\`bash
-# Install dependencies
+# Install dependencies (choose your package manager)
 npm install
+# or: pnpm install
+# or: yarn install
+# or: bun install
 
 # Run tests
-npm test
+npm test    # or: pnpm test / yarn test / bun test
 
 # Build
-npm run build
+npm run build    # or: pnpm build / yarn build / bun run build
 \`\`\`
 
 ## How It Works
@@ -831,8 +842,8 @@ vibe-validate create-extractor my-tool
 # 2. Navigate to plugin directory
 cd vibe-validate-plugin-my-tool
 
-# 3. Install dependencies
-npm install
+# 3. Install dependencies (choose your package manager)
+npm install    # or: pnpm install / yarn install / bun install
 
 # 4. Add real error output to samples/
 # Copy actual error output from your tool

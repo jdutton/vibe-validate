@@ -1463,9 +1463,14 @@ describe('doctor command', () => {
       assertCheck(result, 'vibe-validate version', {
         passed: true,
         messageContains: '0.9.10 (local)',
-        suggestionContains: 'npm install -D vibe-validate@latest'
+        suggestionContains: 'vibe-validate'
       });
-      expect(findCheck(result, 'vibe-validate version').suggestion).toContain('pnpm add -D');
+      // Should show upgrade commands for all package managers
+      const suggestion = findCheck(result, 'vibe-validate version').suggestion ?? '';
+      expect(suggestion).toContain('npm install -D vibe-validate@latest');
+      expect(suggestion).toContain('pnpm update vibe-validate');
+      expect(suggestion).toContain('yarn upgrade vibe-validate');
+      expect(suggestion).toContain('bun update vibe-validate');
     });
 
     it('should show global install command when VV_CONTEXT=global', async () => {
@@ -1479,8 +1484,14 @@ describe('doctor command', () => {
       assertCheck(result, 'vibe-validate version', {
         passed: true,
         messageContains: '0.9.10 (global)',
-        suggestionContains: 'npm install -g vibe-validate@latest'
+        suggestionContains: 'vibe-validate'
       });
+      // Should show global upgrade commands for all package managers
+      const suggestion = findCheck(result, 'vibe-validate version').suggestion ?? '';
+      expect(suggestion).toContain('npm install -g vibe-validate@latest');
+      expect(suggestion).toContain('pnpm add -g vibe-validate@latest');
+      expect(suggestion).toContain('yarn global add vibe-validate@latest');
+      expect(suggestion).toContain('bun add --global vibe-validate@latest');
     });
 
     it('should show dev context label when VV_CONTEXT=dev', async () => {

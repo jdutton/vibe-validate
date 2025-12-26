@@ -26,6 +26,14 @@ import { stringify as yamlStringify } from 'yaml';
 import { loadConfig } from '../utils/config-loader.js';
 import { findGitRoot } from '../utils/git-detection.js';
 import { normalizeLineEndings } from '../utils/normalize-line-endings.js';
+import {
+  type PackageManager,
+  detectPackageManager,
+  getInstallCommand,
+  getBuildCommand,
+  getValidateCommand,
+  getCoverageCommand,
+} from '../utils/package-manager-commands.js';
 
 /**
  * GitHub Actions workflow step structure
@@ -76,8 +84,8 @@ export interface GenerateWorkflowOptions {
   nodeVersions?: string[];
   /** Operating systems to test (default: ['ubuntu-latest']) - set to single OS to disable matrix */
   os?: string[];
-  /** Package manager (default: 'npm', auto-detects pnpm) */
-  packageManager?: 'npm' | 'pnpm';
+  /** Package manager (default: auto-detect from packageManager field or lockfiles) */
+  packageManager?: PackageManager;
   /** Enable coverage reporting (default: false) */
   enableCoverage?: boolean;
   /** Coverage provider (default: 'codecov') */
@@ -131,7 +139,7 @@ export function getAllJobIds(phases: ValidationPhase[]): string[] {
  */
 function createCommonJobSetupSteps(
   nodeVersion: string,
-  packageManager: string
+  packageManager: PackageManager
 ): GitHubWorkflowStep[] {
   const steps: GitHubWorkflowStep[] = [
     {
@@ -140,27 +148,57 @@ function createCommonJobSetupSteps(
         'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
       }
     },
-    {
-      uses: 'actions/setup-node@v4',
-      with: {
-        'node-version': nodeVersion,
-        cache: packageManager,
-      },
-    },
   ];
 
-  // Install dependencies
-  if (packageManager === 'pnpm') {
+  // Setup package manager and Node.js
+  if (packageManager === 'bun') {
+    // Bun uses its own setup action (includes Node.js)
     steps.push(
       {
-        name: 'Install pnpm',
+        name: 'Setup Bun',
+        uses: 'oven-sh/setup-bun@v2',
+      },
+      { run: getInstallCommand(packageManager) }
+    );
+  } else if (packageManager === 'pnpm') {
+    steps.push(
+      {
+        name: 'Setup pnpm',
         uses: 'pnpm/action-setup@v2',
         with: { version: '8' },
       },
-      { run: 'pnpm install' }
+      {
+        uses: 'actions/setup-node@v4',
+        with: {
+          'node-version': nodeVersion,
+          cache: 'pnpm',
+        },
+      },
+      { run: getInstallCommand(packageManager) }
+    );
+  } else if (packageManager === 'yarn') {
+    steps.push(
+      {
+        uses: 'actions/setup-node@v4',
+        with: {
+          'node-version': nodeVersion,
+          cache: 'yarn',
+        },
+      },
+      { run: getInstallCommand(packageManager) }
     );
   } else {
-    steps.push({ run: 'npm ci' });
+    // npm
+    steps.push(
+      {
+        uses: 'actions/setup-node@v4',
+        with: {
+          'node-version': nodeVersion,
+          cache: 'npm',
+        },
+      },
+      { run: getInstallCommand(packageManager) }
+    );
   }
 
   return steps;
@@ -209,39 +247,6 @@ function generateCheckScript(jobNames: string[]): string {
             exit 1
           fi
           echo "✅ All validation checks passed!"`;
-}
-
-/**
- * Detect package manager from package.json and lockfiles
- * Priority:
- * 1. package.json packageManager field (official spec)
- * 2. Lockfile detection (prefer npm when both exist)
- */
-function detectPackageManager(cwd: string = process.cwd()): 'npm' | 'pnpm' {
-  // 1. Check package.json packageManager field (official spec)
-  try {
-    const packageJsonPath = join(cwd, 'package.json');
-    if (existsSync(packageJsonPath)) {
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-      if (packageJson.packageManager) {
-        if (packageJson.packageManager.startsWith('pnpm@')) return 'pnpm';
-        if (packageJson.packageManager.startsWith('npm@')) return 'npm';
-      }
-    }
-  } catch {
-    // Continue to lockfile detection
-  }
-
-  // 2. Check for lockfiles
-  const hasNpmLock = existsSync(join(cwd, 'package-lock.json'));
-  const hasPnpmLock = existsSync(join(cwd, 'pnpm-lock.yaml'));
-
-  // If only one lockfile exists, use that package manager
-  if (hasPnpmLock && !hasNpmLock) return 'pnpm';
-  if (hasNpmLock && !hasPnpmLock) return 'npm';
-
-  // If both exist, prefer npm (more conservative default)
-  return 'npm';
 }
 
 /**
@@ -309,8 +314,13 @@ export function generateWorkflow(
       },
     ];
 
-    // Add pnpm setup if needed
-    if (packageManager === 'pnpm') {
+    // Setup package manager
+    if (packageManager === 'bun') {
+      jobSteps.push({
+        name: 'Setup Bun',
+        uses: 'oven-sh/setup-bun@v2',
+      });
+    } else if (packageManager === 'pnpm') {
       jobSteps.push({
         name: 'Setup pnpm',
         uses: 'pnpm/action-setup@v2',
@@ -318,20 +328,22 @@ export function generateWorkflow(
       });
     }
 
-    // Setup Node.js with matrix variable
-    jobSteps.push({
-      name: 'Setup Node.js ${{ matrix.node }}',
-      uses: 'actions/setup-node@v4',
-      with: {
-        'node-version': '${{ matrix.node }}',
-        cache: packageManager,
-      },
-    });
+    // Setup Node.js with matrix variable (not needed for Bun)
+    if (packageManager !== 'bun') {
+      jobSteps.push({
+        name: 'Setup Node.js ${{ matrix.node }}',
+        uses: 'actions/setup-node@v4',
+        with: {
+          'node-version': '${{ matrix.node }}',
+          cache: packageManager,
+        },
+      });
+    }
 
     // Install dependencies
     jobSteps.push({
       name: 'Install dependencies',
-      run: packageManager === 'pnpm' ? 'pnpm install' : 'npm ci',
+      run: getInstallCommand(packageManager),
     });
 
     // Add build step if needed (common pattern)
@@ -341,20 +353,16 @@ export function generateWorkflow(
     if (hasBuildPhase) {
       jobSteps.push({
         name: 'Build packages',
-        run: packageManager === 'pnpm' ? 'pnpm -r build' : 'npm run build',
+        run: getBuildCommand(packageManager),
       });
     }
 
     // Run validation - use exit code to determine success/failure
     // No need for YAML output, grep checks, or platform-specific logic
     // GitHub Actions will automatically fail the job if exit code != 0
-    const validateCommand = packageManager === 'pnpm'
-      ? 'pnpm validate'
-      : 'npm run validate';
-
     jobSteps.push({
       name: 'Run validation',
-      run: validateCommand,
+      run: getValidateCommand(packageManager),
       env: {
         GH_TOKEN: '${{ github.token }}',
       },
@@ -384,7 +392,12 @@ export function generateWorkflow(
         },
       ];
 
-      if (packageManager === 'pnpm') {
+      if (packageManager === 'bun') {
+        coverageSteps.push({
+          name: 'Setup Bun',
+          uses: 'oven-sh/setup-bun@v2',
+        });
+      } else if (packageManager === 'pnpm') {
         coverageSteps.push({
           name: 'Setup pnpm',
           uses: 'pnpm/action-setup@v2',
@@ -392,30 +405,32 @@ export function generateWorkflow(
         });
       }
 
-      coverageSteps.push({
-        name: 'Setup Node.js',
-        uses: 'actions/setup-node@v4',
-        with: {
-          'node-version': nodeVersions[0],
-          cache: packageManager,
-        },
-      });
+      if (packageManager !== 'bun') {
+        coverageSteps.push({
+          name: 'Setup Node.js',
+          uses: 'actions/setup-node@v4',
+          with: {
+            'node-version': nodeVersions[0],
+            cache: packageManager,
+          },
+        });
+      }
 
       coverageSteps.push({
         name: 'Install dependencies',
-        run: packageManager === 'pnpm' ? 'pnpm install' : 'npm ci',
+        run: getInstallCommand(packageManager),
       });
 
       if (hasBuildPhase) {
         coverageSteps.push({
           name: 'Build packages',
-          run: packageManager === 'pnpm' ? 'pnpm -r build' : 'npm run build',
+          run: getBuildCommand(packageManager),
         });
       }
 
       coverageSteps.push({
         name: 'Run tests with coverage',
-        run: packageManager === 'pnpm' ? 'pnpm test:coverage' : 'npm run test:coverage',
+        run: getCoverageCommand(packageManager),
       });
 
       if (coverageProvider === 'codecov') {
@@ -458,7 +473,7 @@ export function generateWorkflow(
         if (hasBuildStep) {
           jobSteps.push({
             name: 'Build packages',
-            run: packageManager === 'pnpm' ? 'pnpm -r build' : 'npm run build',
+            run: getBuildCommand(packageManager),
           });
         }
 
@@ -599,6 +614,7 @@ export function ciConfigToWorkflowOptions(config: VibeValidateConfig): Partial<G
   return {
     nodeVersions: config.ci.nodeVersions,
     os: config.ci.os,
+    packageManager: config.ci.packageManager,
     matrixFailFast: config.ci.failFast,
     enableCoverage: config.ci.coverage,
   };
