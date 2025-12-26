@@ -11,7 +11,7 @@
  * git write-tree produces content-based hashes only (no timestamps).
  */
 
-import { copyFileSync, unlinkSync } from 'node:fs';
+import { copyFileSync, existsSync, unlinkSync } from 'node:fs';
 
 import { executeGitCommand } from './git-executor.js';
 import type { TreeHash } from './types.js';
@@ -47,11 +47,16 @@ export async function getGitTreeHash(): Promise<TreeHash> {
     const tempIndexFile = `${gitDir}/vibe-validate-temp-index`;
 
     try {
-      // Step 1: Copy current index to temp index
+      // Step 1: Copy current index to temp index (if it exists)
       const currentIndex = `${gitDir}/index`;
-      // SECURITY: Use Node.js fs.copyFileSync instead of shell cp command
-      // Prevents potential command injection if gitDir contains malicious characters
-      copyFileSync(currentIndex, tempIndexFile);
+
+      // CRITICAL: In fresh repos (git init, no commits), .git/index doesn't exist yet
+      // Only copy if index exists; git add will create temp index if it doesn't
+      if (existsSync(currentIndex)) {
+        // SECURITY: Use Node.js fs.copyFileSync instead of shell cp command
+        // Prevents potential command injection if gitDir contains malicious characters
+        copyFileSync(currentIndex, tempIndexFile);
+      }
 
       // Step 2: Use temp index for all operations (doesn't affect real index)
       const tempIndexEnv = {

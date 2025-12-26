@@ -135,6 +135,57 @@ describe('getGitTreeHash - integration tests', () => {
     expect(hash).toMatch(/^[0-9a-f]{40}$/);
   });
 
+  it('should handle fresh repository with no commits (no .git/index)', async () => {
+    // CRITICAL: Do NOT create any commits - test truly fresh repo
+    // In a fresh repo, .git/index doesn't exist until first `git add`
+    // This reproduces the bug reported in: "Try running 'vv snapshot' from brand new repo"
+
+    // Verify .git/index doesn't exist (fresh repo state)
+    const gitIndexPath = join(testRepoPath, '.git', 'index');
+    expect(existsSync(gitIndexPath)).toBe(false);
+
+    // Add a file but don't commit (creates working tree content)
+    writeFileSync(join(testRepoPath, 'test.txt'), 'content');
+
+    // This should work without crashing (currently fails with ENOENT)
+    const hash = await getGitTreeHash();
+
+    // Should return valid hash (empty tree hash since nothing is committed)
+    expect(hash).toMatch(/^[0-9a-f]{40}$/);
+
+    // The hash should be different from empty tree if file is tracked
+    // But since no git add yet, it might be the empty tree hash
+    expect(hash).toBeDefined();
+  });
+
+  it('should return "unknown" for non-git directory', async () => {
+    // Create a directory with NO .git (not a git repository at all)
+    const nonGitPath = join(normalizedTmpdir(), `vibe-validate-non-git-test-${Date.now()}`);
+    mkdirSyncReal(nonGitPath, { recursive: true });
+
+    try {
+      // Change to non-git directory
+      process.chdir(nonGitPath);
+
+      // Verify no .git directory
+      expect(existsSync(join(nonGitPath, '.git'))).toBe(false);
+
+      // Should return 'unknown' (not throw)
+      const hash = await getGitTreeHash();
+
+      // CRITICAL: Must return 'unknown' so caller can skip caching
+      expect(hash).toBe('unknown');
+    } finally {
+      // Restore to test repo
+      process.chdir(testRepoPath);
+
+      // Clean up
+      if (existsSync(nonGitPath)) {
+        rmSync(nonGitPath, { recursive: true, force: true });
+      }
+    }
+  });
+
   it('should handle deleted files', async () => {
     // Setup: Create and commit file
     writeFileSync(join(testRepoPath, 'delete-me.txt'), 'content');
