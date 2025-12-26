@@ -6,11 +6,62 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import genericExtractor from './index.js';
 
 const { extract: extractGenericErrors } = genericExtractor;
 
 describe('Generic Extractor Plugin', () => {
+  describe('detect', () => {
+    it('should always return low confidence (fallback)', () => {
+      expectDetection(
+        genericExtractor,
+        'Any random output text that does not match any specific format',
+        {
+          confidence: 10,
+          patterns: ['Generic fallback'],
+          reasonContains: 'Fallback extractor',
+        }
+      );
+      expect(genericExtractor).toBeDefined();
+    });
+
+    it('should return same confidence for any input', () => {
+      expectDetection(
+        genericExtractor,
+        'FAILED tests/test.py - Error',
+        {
+          confidence: 10,
+        }
+      );
+      expect(genericExtractor).toBeDefined();
+    });
+  });
+
+  describe('metadata', () => {
+    it('should have correct plugin metadata', () => {
+      expectPluginMetadata(genericExtractor, {
+        name: 'generic',
+        priority: 10,
+        tags: ['generic', 'fallback'],
+      });
+      expect(genericExtractor).toBeDefined();
+    });
+
+    it('should have undefined hints (accepts everything)', () => {
+      expect(genericExtractor.hints).toBeUndefined();
+    });
+
+    it('should have samples', () => {
+      expect(genericExtractor.samples).toBeDefined();
+      expect(genericExtractor.samples.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Python pytest output', () => {
     it('should extract error lines from pytest output', () => {
       const pytestOutput = `

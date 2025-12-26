@@ -1,20 +1,25 @@
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
+
 import mavenSurefireExtractor from './index.js';
 
 describe('Maven Surefire Extractor Plugin', () => {
   describe('metadata', () => {
     it('should have correct plugin metadata', () => {
-      expect(mavenSurefireExtractor.metadata.name).toBe('maven-surefire');
-      expect(mavenSurefireExtractor.metadata.version).toBe('1.0.0');
-      expect(mavenSurefireExtractor.metadata!.tags).toContain('maven');
-      expect(mavenSurefireExtractor.metadata!.tags).toContain('junit');
-    });
+      expectPluginMetadata(mavenSurefireExtractor, {
+        name: 'maven-surefire',
+        priority: 95,
+        requiredHints: ['[ERROR]', 'Tests run:'],
+        tags: ['maven', 'junit'],
+      });
 
-    it('should have hints for fast filtering', () => {
-      expect(mavenSurefireExtractor.hints).toBeDefined();
-      expect(mavenSurefireExtractor.hints?.required).toContain('[ERROR]');
-      expect(mavenSurefireExtractor.hints?.required).toContain('Tests run:');
+      // Verify additional metadata fields not covered by helper
+      expect(mavenSurefireExtractor.metadata.version).toBe('1.0.0');
       expect(mavenSurefireExtractor.hints?.anyOf).toBeDefined();
     });
 
@@ -28,37 +33,45 @@ describe('Maven Surefire Extractor Plugin', () => {
 
   describe('detect', () => {
     it('should detect Maven Surefire output with high confidence', () => {
-      const output = `[INFO] Running tests...
+      expectDetection(
+        mavenSurefireExtractor,
+        `[INFO] Running tests...
 [ERROR] Tests run: 10, Failures: 3, Errors: 1, Skipped: 0
 [ERROR] com.example.FooTest.testBar -- Time elapsed: 0.123 s <<< FAILURE!
-java.lang.AssertionError: Expected 5 but was 3`;
-
-      const result = mavenSurefireExtractor.detect(output);
-
-      expect(result.confidence).toBeGreaterThanOrEqual(70);
-      expect(result.patterns).toContain('Test summary (Tests run, Failures, Errors)');
-      expect(result.patterns).toContain('Test failure markers');
-      expect(result.reason).toContain('Maven Surefire');
+java.lang.AssertionError: Expected 5 but was 3`,
+        {
+          confidence: { min: 70 },
+          patterns: ['Test summary (Tests run, Failures, Errors)', 'Test failure markers'],
+          reasonContains: 'Maven Surefire',
+        }
+      );
+      expect(mavenSurefireExtractor).toBeDefined();
     });
 
     it('should detect JUnit assertion errors', () => {
-      const output = `[ERROR] Tests run: 5, Failures: 2, Errors: 0
+      expectDetection(
+        mavenSurefireExtractor,
+        `[ERROR] Tests run: 5, Failures: 2, Errors: 0
 [ERROR] testFoo -- Time elapsed: 0.1 s <<< FAILURE!
-org.opentest4j.AssertionFailedError: expected: "foo" but was: "bar"`;
-
-      const result = mavenSurefireExtractor.detect(output);
-
-      expect(result.confidence).toBeGreaterThanOrEqual(70);
-      expect(result.patterns).toContain('JUnit assertion errors');
+org.opentest4j.AssertionFailedError: expected: "foo" but was: "bar"`,
+        {
+          confidence: { min: 70 },
+          patterns: ['JUnit assertion errors'],
+        }
+      );
+      expect(mavenSurefireExtractor).toBeDefined();
     });
 
     it('should have low confidence for non-Surefire output', () => {
-      const output = `Some random output
-No test markers here`;
-
-      const result = mavenSurefireExtractor.detect(output);
-
-      expect(result.confidence).toBeLessThan(40);
+      expectDetection(
+        mavenSurefireExtractor,
+        `Some random output
+No test markers here`,
+        {
+          confidence: { max: 39 },
+        }
+      );
+      expect(mavenSurefireExtractor).toBeDefined();
     });
   });
 

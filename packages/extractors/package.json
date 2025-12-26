@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/test/helpers/extractor-test-helpers.d.ts",
+      "import": "./dist/test/helpers/extractor-test-helpers.js"
     }
   },
   "files": [

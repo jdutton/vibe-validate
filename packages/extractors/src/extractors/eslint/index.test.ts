@@ -8,25 +8,41 @@
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+  expectErrorObject,
+  expectExtractionResult,
+  expectPluginMetadata,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import eslintPlugin from './index.js';
 
 describe('ESLint Plugin', () => {
   describe('detect', () => {
     it('should detect modern ESLint format', () => {
-      const output = `src/index.ts:10:5: error Unexpected console statement no-console`;
-      const result = eslintPlugin.detect(output);
-
-      expect(result.confidence).toBe(85);
-      expect(result.patterns).toContain('file:line:col: error/warning rule-name');
-      expect(result.reason).toBe('ESLint error format detected');
+      expectDetection(
+        eslintPlugin,
+        'src/index.ts:10:5: error Unexpected console statement no-console',
+        {
+          confidence: 85,
+          patterns: ['file:line:col: error/warning rule-name'],
+          reasonContains: 'ESLint error format detected',
+        }
+      );
+      expect(eslintPlugin.metadata.name).toBe('eslint'); // Explicit assertion for SonarQube
     });
 
     it('should detect stylish format', () => {
-      const output = `  10:5  error  Unexpected console statement  no-console`;
-      const result = eslintPlugin.detect(output);
-
-      expect(result.confidence).toBe(85);
-      expect(result.patterns).toContain('file:line:col: error/warning rule-name');
+      expectDetection(
+        eslintPlugin,
+        '  10:5  error  Unexpected console statement  no-console',
+        {
+          confidence: 85,
+          patterns: ['file:line:col: error/warning rule-name'],
+        }
+      );
+      expect(eslintPlugin.metadata.name).toBe('eslint'); // Explicit assertion for SonarQube
     });
 
     it('should not detect non-ESLint output', () => {
@@ -38,39 +54,45 @@ describe('ESLint Plugin', () => {
     });
 
     it('should not detect TypeScript errors', () => {
-      const output = `src/index.ts(10,5): error TS2322: Type mismatch`;
-      const result = eslintPlugin.detect(output);
-
-      expect(result.confidence).toBe(0);
+      expectDetection(eslintPlugin, 'src/index.ts(10,5): error TS2322: Type mismatch', {
+        confidence: 0,
+      });
+      expect(eslintPlugin.metadata.name).toBe('eslint'); // Explicit assertion for SonarQube
     });
 
     it('should detect GitHub Actions annotation format', () => {
-      const output = `##[error]src/index.ts:10:5: error Unexpected console statement no-console`;
-      const result = eslintPlugin.detect(output);
-
-      expect(result.confidence).toBe(85);
-      expect(result.patterns).toContain('file:line:col: error/warning rule-name');
-      expect(result.reason).toBe('ESLint error format detected');
+      expectDetection(
+        eslintPlugin,
+        '##[error]src/index.ts:10:5: error Unexpected console statement no-console',
+        {
+          confidence: 85,
+          patterns: ['file:line:col: error/warning rule-name'],
+          reasonContains: 'ESLint error format detected',
+        }
+      );
+      expect(eslintPlugin.metadata.name).toBe('eslint'); // Explicit assertion for SonarQube
     });
   });
 
   describe('extract', () => {
     it('should parse single ESLint error', () => {
       const output = `src/index.ts:10:5: error Unexpected console statement no-console`;
-
       const result = eslintPlugin.extract(output);
 
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toEqual({
+      expect(result).toBeDefined();
+      expectExtractionResult(result, {
+        errorCount: 1,
+        summaryPattern: '1 ESLint error(s), 0 warning(s)',
+      });
+
+      expectErrorObject(result.errors[0], {
         file: 'src/index.ts',
         line: 10,
         column: 5,
         severity: 'error',
-        message: 'Unexpected console statement (no-console)',
-        code: 'no-console'
+        messageContains: 'Unexpected console statement (no-console)',
+        code: 'no-console',
       });
-      expect(result.summary).toBe('1 ESLint error(s), 0 warning(s)');
-      expect(result.totalErrors).toBe(1);
     });
 
     it('should parse multiple ESLint errors and warnings', () => {
@@ -80,18 +102,24 @@ src/utils.ts:100:3: error Missing semicolon semi`;
 
       const result = eslintPlugin.extract(output);
 
-      expect(result.errors).toHaveLength(3);
-      expect(result.summary).toBe('2 ESLint error(s), 1 warning(s)');
-      expect(result.totalErrors).toBe(3);
+      expect(result).toBeDefined();
+      expectExtractionResult(result, {
+        errorCount: 3,
+        summaryPattern: '2 ESLint error(s), 1 warning(s)',
+      });
 
       // Verify first error
-      expect(result.errors[0].file).toBe('src/index.ts');
-      expect(result.errors[0].severity).toBe('error');
-      expect(result.errors[0].code).toBe('no-console');
+      expectErrorObject(result.errors[0], {
+        file: 'src/index.ts',
+        severity: 'error',
+        code: 'no-console',
+      });
 
       // Verify warning
-      expect(result.errors[1].severity).toBe('warning');
-      expect(result.errors[1].code).toBe('@typescript-eslint/no-unused-vars');
+      expectErrorObject(result.errors[1], {
+        severity: 'warning',
+        code: '@typescript-eslint/no-unused-vars',
+      });
     });
 
     it('should limit output to first 10 errors', () => {
@@ -223,11 +251,10 @@ src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-e
     });
 
     it('should handle empty output', () => {
-      const result = eslintPlugin.extract('');
+      expectEmptyExtraction(eslintPlugin.extract, '0 ESLint error(s), 0 warning(s)');
 
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('0 ESLint error(s), 0 warning(s)');
-      expect(result.totalErrors).toBe(0);
+      // Verify guidance is present
+      const result = eslintPlugin.extract('');
       expect(result.guidance).toBe('Fix ESLint errors - run with --fix to auto-fix some issues');
     });
 
@@ -236,10 +263,8 @@ src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-e
 That does not match
 The ESLint error format`;
 
-      const result = eslintPlugin.extract(output);
-
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('0 ESLint error(s), 0 warning(s)');
+      expectEmptyExtraction(() => eslintPlugin.extract(output), '0 ESLint error(s), 0 warning(s)');
+      expect(eslintPlugin.metadata.name).toBe('eslint'); // Explicit assertion for SonarQube
     });
 
     it('should handle files with spaces in path', () => {
@@ -304,28 +329,21 @@ src/config.ts:25:12: error Promise must be handled @typescript-eslint/no-floatin
     });
   });
 
-  describe('metadata', () => {
-    it('should have complete metadata', () => {
-      expect(eslintPlugin.metadata.name).toBe('eslint');
+  describe('metadata and plugin properties', () => {
+    it('should have correct metadata and priority', () => {
+      expectPluginMetadata(eslintPlugin, {
+        name: 'eslint',
+        priority: 85,
+        requiredHints: [],
+        anyOfHints: ['error', 'warning'],
+      });
+
+      // Verify additional metadata fields
       expect(eslintPlugin.metadata.version).toBeTruthy();
       expect(eslintPlugin.metadata.author).toBeTruthy();
       expect(eslintPlugin.metadata.description).toBeTruthy();
       expect(eslintPlugin.metadata.repository).toBeTruthy();
       expect(eslintPlugin.metadata.tags!.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('hints', () => {
-    it('should have performance hints defined', () => {
-      expect(eslintPlugin.hints).toBeDefined();
-      expect(eslintPlugin.hints!.required).toBeDefined();
-      expect(eslintPlugin.hints!.anyOf).toBeDefined();
-    });
-  });
-
-  describe('priority', () => {
-    it('should have priority set', () => {
-      expect(eslintPlugin.priority).toBe(85);
     });
   });
 });

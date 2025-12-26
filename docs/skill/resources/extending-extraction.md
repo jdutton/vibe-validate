@@ -339,6 +339,249 @@ extract(output: string) {
 - Output has unexpected whitespace or formatting
 - Error lines are multi-line but code assumes single-line
 
+## Testing Your Plugin
+
+### Why Test?
+
+Testing ensures your extractor:
+- Correctly identifies tool output (detection)
+- Accurately parses errors (extraction)
+- Handles edge cases (empty output, malformed data)
+- Maintains quality over time (regression prevention)
+
+### Using the Test Helpers
+
+vibe-validate provides universal test helpers to make testing consistent and simple.
+
+**Import the helpers:**
+```typescript
+import { describe, it, expect } from 'vitest';
+import {
+  expectPluginMetadata,
+  expectDetection,
+  expectExtractionResult,
+  expectEmptyExtraction,
+  expectErrorObject,
+} from '@vibe-validate/extractors/testing';
+
+import myPlugin from './index.js';
+```
+
+### Test Helper Reference
+
+#### 1. `expectPluginMetadata(plugin, expected)`
+
+Verifies plugin metadata (name, priority, hints, tags).
+
+```typescript
+describe('metadata', () => {
+  it('should have correct plugin metadata', () => {
+    expectPluginMetadata(myPlugin, {
+      name: 'my-tool',
+      priority: 85,
+      requiredHints: ['ERROR:', 'FAILED'],
+      tags: ['build', 'compiler'],
+    });
+    expect(myPlugin).toBeDefined();
+  });
+});
+```
+
+**Parameters:**
+- `name`: Plugin name (must match metadata.name)
+- `priority`: Detection priority (10-100, higher = checked first)
+- `requiredHints`: Patterns that must appear in output (optional)
+- `tags`: Plugin tags for categorization (optional)
+
+#### 2. `expectDetection(plugin, output, expected)`
+
+Verifies detection logic returns correct confidence and reasoning.
+
+```typescript
+describe('detect', () => {
+  it('should detect tool output with high confidence', () => {
+    expectDetection(
+      myPlugin,
+      'ERROR: Build failed at line 42',
+      {
+        confidence: 90,
+        patterns: ['ERROR:', 'Build failed'],
+        reasonContains: 'Tool-specific error format detected',
+      }
+    );
+    expect(myPlugin).toBeDefined();
+  });
+
+  it('should not detect non-tool output', () => {
+    expectDetection(
+      myPlugin,
+      'Some random text',
+      {
+        confidence: 0,
+      }
+    );
+    expect(myPlugin).toBeDefined();
+  });
+});
+```
+
+**Parameters:**
+- `confidence`: Expected confidence (0-100) or `{ min: number }` for range
+- `patterns`: Array of pattern descriptions (optional)
+- `reasonContains`: Substring expected in detection reason (optional)
+
+#### 3. `expectExtractionResult(result, expected)`
+
+Verifies extraction result structure and content.
+
+```typescript
+describe('extract', () => {
+  it('should extract errors from tool output', () => {
+    const output = 'ERROR: Type mismatch at src/index.ts:42:5';
+    const result = myPlugin.extract(output);
+
+    expectExtractionResult(result, {
+      errorCount: 1,
+      summaryPattern: '1 error(s)',
+    });
+
+    expect(result.errors[0].file).toBe('src/index.ts');
+  });
+});
+```
+
+**Parameters:**
+- `errorCount`: Expected number of errors
+- `summaryPattern`: Regex or string to match against result.summary
+
+#### 4. `expectEmptyExtraction(extractFn, expectedSummary)`
+
+Verifies behavior when no errors are found.
+
+```typescript
+describe('extract', () => {
+  it('should handle empty output', () => {
+    expectEmptyExtraction(myPlugin.extract, '0 error(s)');
+  });
+});
+```
+
+**Parameters:**
+- `extractFn`: Extract function reference
+- `expectedSummary`: Expected summary for empty results
+
+#### 5. `expectErrorObject(error, expected)`
+
+Verifies individual error object fields.
+
+```typescript
+describe('extract', () => {
+  it('should parse error details correctly', () => {
+    const output = 'ERROR: Type mismatch at src/index.ts:42:5';
+    const result = myPlugin.extract(output);
+
+    expectErrorObject(result.errors[0], {
+      file: 'src/index.ts',
+      line: 42,
+      column: 5,
+      severity: 'error',
+      messageContains: 'Type mismatch',
+    });
+  });
+});
+```
+
+**Parameters:**
+- `file`: Expected file path
+- `line`: Expected line number
+- `column`: Expected column number (optional)
+- `severity`: 'error' | 'warning'
+- `code`: Error code (e.g., 'TS2322') (optional)
+- `messageContains`: Substring expected in error message
+
+### Complete Test Example
+
+```typescript
+/**
+ * My Tool Extractor Tests
+ */
+import { describe, it, expect } from 'vitest';
+import {
+  expectPluginMetadata,
+  expectDetection,
+  expectExtractionResult,
+  expectEmptyExtraction,
+  expectErrorObject,
+} from '@vibe-validate/extractors/testing';
+
+import myToolPlugin from './index.js';
+
+describe('My Tool Extractor Plugin', () => {
+  describe('detect', () => {
+    it('should detect tool output', () => {
+      expectDetection(
+        myToolPlugin,
+        'ERROR: Build failed',
+        {
+          confidence: 90,
+          patterns: ['ERROR:', 'Build failed'],
+          reasonContains: 'tool',
+        }
+      );
+      expect(myToolPlugin).toBeDefined();
+    });
+  });
+
+  describe('extract', () => {
+    it('should extract single error', () => {
+      const output = 'ERROR: Type error at src/index.ts:42:5';
+      const result = myToolPlugin.extract(output);
+
+      expectExtractionResult(result, {
+        errorCount: 1,
+        summaryPattern: '1 error(s)',
+      });
+
+      expectErrorObject(result.errors[0], {
+        file: 'src/index.ts',
+        line: 42,
+        column: 5,
+        severity: 'error',
+        messageContains: 'Type error',
+      });
+    });
+
+    it('should handle no errors', () => {
+      expectEmptyExtraction(myToolPlugin.extract, '0 error(s)');
+    });
+  });
+
+  describe('metadata', () => {
+    it('should have correct metadata', () => {
+      expectPluginMetadata(myToolPlugin, {
+        name: 'my-tool',
+        priority: 85,
+        requiredHints: ['ERROR:'],
+      });
+      expect(myToolPlugin).toBeDefined();
+    });
+  });
+});
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run specific test file
+npm test -- index.test.ts
+```
+
 ## Advanced: Contributing Back
 
 Once your plugin is working well:

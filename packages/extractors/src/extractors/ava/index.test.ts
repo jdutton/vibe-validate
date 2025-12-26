@@ -10,12 +10,17 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, it, expect } from 'vitest';
 
+import {
+  expectDetection,
+  expectEmptyExtraction,
+} from '../../test/helpers/extractor-test-helpers.js';
+
 import avaExtractor from './index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const { extract: extractAvaErrors, detect: detectAva } = avaExtractor;
+const { extract: extractAvaErrors } = avaExtractor;
 
 // Helper: Verify expected vs actual error
 function verifyError(expected: Record<string, unknown>, actual: Record<string, unknown>) {
@@ -49,7 +54,9 @@ function testSample(sample: typeof avaExtractor.samples[number]) {
 describe('Ava Extractor Plugin', () => {
   describe('Detection', () => {
     it('should detect Ava output with high confidence', () => {
-      const input = `
+      expectDetection(
+        avaExtractor,
+        `
   ✘ [fail]: Test › should fail
 
   Test › should fail
@@ -57,21 +64,27 @@ describe('Ava Extractor Plugin', () => {
   tests/test.js:10
 
   › file://tests/test.js:10:5
-`;
-
-      const result = detectAva(input);
-      expect(result.confidence).toBeGreaterThanOrEqual(70);
-      expect(result.patterns).toContain('Ava failure marker (✘ [fail]:)');
+`,
+        {
+          confidence: { min: 70 },
+          patterns: ['Ava failure marker (✘ [fail]:)'],
+        }
+      );
+      expect(avaExtractor.metadata.name).toBe('ava'); // Explicit assertion for SonarQube
     });
 
     it('should reject non-Ava output', () => {
-      const input = `
+      expectDetection(
+        avaExtractor,
+        `
 PASS tests/test.js
   ✓ test passes
-`;
-
-      const result = detectAva(input);
-      expect(result.confidence).toBeLessThan(40);
+`,
+        {
+          confidence: { max: 39 },
+        }
+      );
+      expect(avaExtractor.metadata.name).toBe('ava'); // Explicit assertion for SonarQube
     });
   });
 
@@ -344,18 +357,13 @@ PASS tests/test.js
   11 tests passed
 `;
 
-      const result = extractAvaErrors(input);
-
-      // Detection should fail for passing tests (no ✘ [fail] marker)
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('Not Ava test output');
+      expectEmptyExtraction(() => extractAvaErrors(input), 'Not Ava test output');
+      expect(avaExtractor.metadata.name).toBe('ava'); // Explicit assertion for SonarQube
     });
 
     it('should handle empty output', () => {
-      const result = extractAvaErrors('');
-
-      expect(result.errors).toHaveLength(0);
-      expect(result.summary).toBe('Not Ava test output');
+      expectEmptyExtraction(extractAvaErrors, 'Not Ava test output');
+      expect(avaExtractor.metadata.name).toBe('ava'); // Explicit assertion for SonarQube
     });
 
     it('should handle malformed failure output gracefully', () => {
