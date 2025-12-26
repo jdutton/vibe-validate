@@ -27,18 +27,24 @@ describe('Command Injection Prevention', () => {
     expect(content).toContain("spawnSync('git', args,");
   });
 
-  it('should use spawn with array arguments in branch-sync', () => {
+  it('should use centralized git-executor in branch-sync', () => {
     const filePath = path.join(__dirname, '../src/branch-sync.ts');
     const content = fs.readFileSync(filePath, 'utf8');
 
-    // Verify import uses spawn (not execSync)
-    expect(content).toContain("import { spawn }");
+    // Verify import uses centralized git-executor (architectural mandate)
+    expect(content).toContain("import { executeGitCommand } from './git-executor.js'");
 
-    // Verify spawn is called with array arguments
-    expect(content).toContain("spawn('git', args,");
+    // Verify no direct spawn import (should use git-executor)
+    expect(content).not.toContain("import { spawn }");
+
+    // Verify no direct execSync usage (security)
+    expect(content).not.toMatch(/import.*execSync.*from.*'child_process'/);
+
+    // Verify executeGitCommand is called with array arguments
+    expect(content).toContain('executeGitCommand(args,');
 
     // Verify no template literal git commands
-    expect(content).not.toMatch(/spawn\(`git/);
+    expect(content).not.toMatch(/executeGitCommand\(`/);
   });
 
   it('should not have shell injection vulnerabilities in git commands', () => {

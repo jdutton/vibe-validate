@@ -11,9 +11,7 @@
  * - Cross-platform compatibility
  */
 
-import { spawn } from 'node:child_process';
-
-const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
+import { executeGitCommand } from './git-executor.js';
 
 export interface SyncCheckResult {
   isUpToDate: boolean;
@@ -32,45 +30,25 @@ export interface SyncCheckOptions {
 }
 
 /**
- * Execute git command safely using spawn (prevents command injection)
+ * Adapt centralized git-executor to the async GitExecutor interface
+ *
+ * Uses the centralized git command execution from git-executor.ts,
+ * wrapping it in a Promise to maintain compatibility with the async
+ * GitExecutor interface used for dependency injection in tests.
  *
  * @param args - Git command arguments (e.g., ['rev-parse', '--abbrev-ref', 'HEAD'])
  * @returns Promise resolving to stdout and stderr
  */
 function execGit(args: string[]): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn('git', args, {
-      timeout: GIT_TIMEOUT,
-      stdio: ['ignore', 'pipe', 'pipe'], // No stdin (git commands shouldn't need interactive input), capture stdout/stderr
+  try {
+    const result = executeGitCommand(args, { ignoreErrors: false });
+    return Promise.resolve({
+      stdout: result.stdout,
+      stderr: result.stderr,
     });
-
-    let stdout = '';
-    let stderr = '';
-
-    if (child.stdout) {
-      child.stdout.on('data', (data: Buffer) => {
-        stdout += data.toString();
-      });
-    }
-
-    if (child.stderr) {
-      child.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
-      });
-    }
-
-    child.on('error', (error: Error) => {
-      reject(error);
-    });
-
-    child.on('close', (code: number | null) => {
-      if (code === 0) {
-        resolve({ stdout, stderr });
-      } else {
-        reject(new Error(`git exited with code ${code}: ${stderr}`));
-      }
-    });
-  });
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 /**
