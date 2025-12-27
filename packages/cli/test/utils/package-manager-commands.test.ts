@@ -250,6 +250,18 @@ describe('package-manager-commands', () => {
       expect(detectPackageManager(testDir)).toBe(pm);
     }
 
+    /**
+     * Test package manager priority when multiple lockfiles exist
+     */
+    function testLockfilePriority(lockfiles: string[], expected: PackageManager) {
+      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
+      for (const lockfile of lockfiles) {
+        const content = lockfile.endsWith('.json') ? '{}' : '';
+        writeFileSync(join(testDir, lockfile), content);
+      }
+      expect(detectPackageManager(testDir)).toBe(expected);
+    }
+
     it('should detect from package.json packageManager field (highest priority)', () => {
       testPackageManagerField('pnpm', '9.0.0');
     });
@@ -283,26 +295,18 @@ describe('package-manager-commands', () => {
     });
 
     it('should prefer npm over pnpm when both lockfiles exist (conservative)', () => {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, 'package-lock.json'), '{}');
-      writeFileSync(join(testDir, 'pnpm-lock.yaml'), '');
-      expect(detectPackageManager(testDir)).toBe('npm');
+      testLockfilePriority(['package-lock.json', 'pnpm-lock.yaml'], 'npm');
     });
 
     it('should prefer bun over all other lockfiles', () => {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, 'bun.lockb'), '');
-      writeFileSync(join(testDir, 'yarn.lock'), '');
-      writeFileSync(join(testDir, 'package-lock.json'), '{}');
-      writeFileSync(join(testDir, 'pnpm-lock.yaml'), '');
-      expect(detectPackageManager(testDir)).toBe('bun');
+      testLockfilePriority(
+        ['bun.lockb', 'yarn.lock', 'package-lock.json', 'pnpm-lock.yaml'],
+        'bun'
+      );
     });
 
     it('should prefer yarn over npm', () => {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, 'yarn.lock'), '');
-      writeFileSync(join(testDir, 'package-lock.json'), '{}');
-      expect(detectPackageManager(testDir)).toBe('yarn');
+      testLockfilePriority(['yarn.lock', 'package-lock.json'], 'yarn');
     });
 
     it('should default to npm when no lockfiles exist', () => {
