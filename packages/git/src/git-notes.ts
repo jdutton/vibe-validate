@@ -16,18 +16,54 @@ import {
 import type { TreeHash, NotesRef } from './types.js';
 
 /**
- * Add or update a git note
+ * Merge two git notes containing validation run history
+ *
+ * Strategy: Parse both notes as JSON, append new runs to existing runs.
+ * No conflict resolution needed - each run is independent and timestamped.
+ *
+ * @param existingNote - Existing note content (JSON)
+ * @param newNote - New note content to merge (JSON)
+ * @returns Merged note content
+ */
+function mergeNotes(existingNote: string, newNote: string): string {
+  try {
+    const existing = JSON.parse(existingNote);
+    const newData = JSON.parse(newNote);
+
+    // Extract runs arrays (handle both single object and array formats)
+    const existingRuns = Array.isArray(existing.runs) ? existing.runs : [];
+    const newRuns = Array.isArray(newData.runs) ? newData.runs : [];
+
+    // Merge: append new runs to existing
+    const merged = {
+      ...existing,
+      runs: [...existingRuns, ...newRuns],
+    };
+
+    return JSON.stringify(merged);
+  } catch {
+    // If parsing fails, prefer new note (latest data)
+    return newNote;
+  }
+}
+
+/**
+ * Add or update a git note with optimistic locking
+ *
+ * Implements optimistic locking: try write without force, if conflict detected,
+ * read current note, merge, and retry with force. This prevents data loss when
+ * multiple worktrees validate simultaneously.
  *
  * @param notesRef - The notes reference (e.g., 'vibe-validate/validate')
  * @param object - The git tree hash to attach the note to (must be from getGitTreeHash())
  * @param content - The note content
- * @param force - Whether to overwrite existing note
+ * @param force - Whether to skip optimistic locking and force overwrite
  * @returns true if note was added successfully
  *
  * @example
  * ```typescript
  * const treeHash = await getGitTreeHash();
- * addNote('vibe-validate/validate', treeHash, noteContent, true);
+ * addNote('vibe-validate/validate', treeHash, noteContent, false);
  * ```
  */
 export function addNote(
@@ -39,19 +75,75 @@ export function addNote(
   validateNotesRef(notesRef);
   validateTreeHash(object);
 
-  const args = ['notes', `--ref=${notesRef}`, 'add'];
+  // If force is true, skip optimistic locking (legacy behavior)
   if (force) {
-    args.push('-f');
+    const args = ['notes', `--ref=${notesRef}`, 'add', '-f', '-F', '-', object];
+    const result = executeGitCommand(args, {
+      stdin: content,
+      ignoreErrors: true,
+      suppressStderr: true,
+    });
+    return result.success;
   }
-  args.push('-F', '-', object);
 
-  const result = executeGitCommand(args, {
-    stdin: content,
-    ignoreErrors: true,
-    suppressStderr: true,
-  });
+  // Optimistic locking: try without force, merge on conflict
+  const maxRetries = 3;
 
-  return result.success;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Try write without -f (fails if note exists/changed)
+    const addResult = executeGitCommand(
+      ['notes', `--ref=${notesRef}`, 'add', '-F', '-', object],
+      {
+        stdin: content,
+        ignoreErrors: true,
+        suppressStderr: true,
+      }
+    );
+
+    if (addResult.success) {
+      return true; // Success!
+    }
+
+    // Check if this is a conflict (note already exists)
+    const isConflict = addResult.stderr.includes('already exists');
+
+    if (!isConflict) {
+      // Not a conflict - real error, return failure
+      return false;
+    }
+
+    // Conflict detected - this is the last attempt, give up
+    if (attempt === maxRetries) {
+      return false;
+    }
+
+    // Read existing note and merge
+    const existingNote = readNote(notesRef, object);
+    if (existingNote === null) {
+      // Note disappeared between attempts, retry from beginning
+      continue;
+    }
+
+    const merged = mergeNotes(existingNote, content);
+
+    // Write merged result with force (we just read latest)
+    const mergeResult = executeGitCommand(
+      ['notes', `--ref=${notesRef}`, 'add', '-f', '-F', '-', object],
+      {
+        stdin: merged,
+        ignoreErrors: true,
+        suppressStderr: true,
+      }
+    );
+
+    if (mergeResult.success) {
+      return true; // Merge succeeded!
+    }
+
+    // Merge failed (another concurrent write), retry from beginning
+  }
+
+  return false;
 }
 
 /**

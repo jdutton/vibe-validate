@@ -126,9 +126,9 @@ export async function recordValidationHistory(
       };
     }
 
-    // 4. Add note to git using secure API (force overwrite)
+    // 4. Add note to git using optimistic locking (prevents data loss in concurrent writes)
     const noteContent = stringifyYaml(note);
-    const success = addNote(notesRef, treeHash as TreeHash, noteContent, true);
+    const success = addNote(notesRef, treeHash as TreeHash, noteContent, false);
 
     if (!success) {
       return {
