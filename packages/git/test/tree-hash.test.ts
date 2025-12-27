@@ -5,8 +5,9 @@
  * to ensure validation state caching works correctly across runs.
  */
 
-import { copyFileSync, existsSync, unlinkSync } from 'node:fs';
+import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
 
+import * as utils from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import * as gitExecutor from '../src/git-executor.js';
@@ -22,11 +23,21 @@ vi.mock('fs', () => ({
   copyFileSync: vi.fn(),
   existsSync: vi.fn(),
   unlinkSync: vi.fn(),
+  readdirSync: vi.fn(),
+  statSync: vi.fn(),
+}));
+
+// Mock @vibe-validate/utils
+vi.mock('@vibe-validate/utils', () => ({
+  isProcessRunning: vi.fn(),
 }));
 
 const mockCopyFileSync = copyFileSync as ReturnType<typeof vi.fn>;
 const mockExistsSync = existsSync as ReturnType<typeof vi.fn>;
 const mockUnlinkSync = unlinkSync as ReturnType<typeof vi.fn>;
+const mockReaddirSync = readdirSync as ReturnType<typeof vi.fn>;
+const mockStatSync = statSync as ReturnType<typeof vi.fn>;
+const mockIsProcessRunning = utils.isProcessRunning as ReturnType<typeof vi.fn>;
 
 /**
  * Helper to mock initial git commands (repo check, git dir, add)
@@ -255,5 +266,262 @@ describe('getGitTreeHash', () => {
     expect(mockUnlinkSync).toHaveBeenCalledWith(
       expect.stringContaining('vibe-validate-temp-index')
     );
+  });
+
+  describe('PID-based temp index naming', () => {
+    it('should use PID suffix in temp index filename', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue([]);
+
+      await getGitTreeHash();
+
+      // Verify temp index filename includes PID
+      expect(mockCopyFileSync).toHaveBeenCalledWith(
+        expect.stringContaining('index'),
+        expect.stringMatching(/vibe-validate-temp-index-\d+$/)
+      );
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringMatching(/vibe-validate-temp-index-\d+$/)
+      );
+    });
+
+    it('should create unique temp index files for different processes', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue([]);
+
+      const originalPid = process.pid;
+      try {
+        // Simulate different PIDs
+        Object.defineProperty(process, 'pid', { value: 12345, writable: true });
+        await getGitTreeHash();
+        const firstCall = mockCopyFileSync.mock.calls[0];
+
+        vi.clearAllMocks();
+        mockStandardGitCommands();
+        mockReaddirSync.mockReturnValue([]);
+
+        Object.defineProperty(process, 'pid', { value: 67890, writable: true });
+        await getGitTreeHash();
+        const secondCall = mockCopyFileSync.mock.calls[0];
+
+        // Different PIDs should create different temp index files
+        expect(firstCall[1]).toContain('vibe-validate-temp-index-12345');
+        expect(secondCall[1]).toContain('vibe-validate-temp-index-67890');
+        expect(firstCall[1]).not.toBe(secondCall[1]);
+      } finally {
+        Object.defineProperty(process, 'pid', { value: originalPid, writable: true });
+      }
+    });
+  });
+
+  describe('cleanupStaleIndexes', () => {
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000 + 1000); // 5 minutes + 1 second ago
+    const fourMinutesAgo = Date.now() - (4 * 60 * 1000); // 4 minutes ago
+
+    /**
+     * Helper to create mock file stats
+     */
+    function createMockStats(mtimeMs: number) {
+      return { mtimeMs };
+    }
+
+    beforeEach(() => {
+      // Default: cleanup doesn't find any files
+      mockReaddirSync.mockReturnValue([]);
+      // Suppress console.warn in tests (we verify it was called, don't want noise)
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    it('should skip recent temp index files (< 5 minutes old)', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue([
+        'vibe-validate-temp-index-12345',
+        'other-file.txt'
+      ]);
+      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as any);
+      mockIsProcessRunning.mockReturnValue(false);
+
+      await getGitTreeHash();
+
+      // Should not clean up files younger than 5 minutes
+      expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+      expect(mockUnlinkSync).not.toHaveBeenCalledWith(
+        expect.stringContaining('vibe-validate-temp-index-12345')
+      );
+    });
+
+    it('should skip temp index files from running processes', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockIsProcessRunning.mockReturnValue(true); // Process still running
+
+      await getGitTreeHash();
+
+      // Should not clean up files from running processes
+      expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+      expect(mockUnlinkSync).not.toHaveBeenCalledWith(
+        expect.stringContaining('vibe-validate-temp-index-12345')
+      );
+    });
+
+    it('should remove old temp index files from dead processes', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue([
+        'vibe-validate-temp-index-12345',
+        'other-file.txt'
+      ]);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockIsProcessRunning.mockReturnValue(false); // Process not running
+
+      await getGitTreeHash();
+
+      // Should clean up stale file AND current process temp index
+      expect(mockUnlinkSync).toHaveBeenCalledTimes(2);
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('vibe-validate-temp-index-12345')
+      );
+    });
+
+    it('should warn when cleaning up stale files', async () => {
+      const warnSpy = vi.spyOn(console, 'warn');
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-99999']);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockIsProcessRunning.mockReturnValue(false);
+
+      await getGitTreeHash();
+
+      // Should warn about cleanup (bug detection canary)
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Cleaned up stale temp index from PID 99999')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/\d+s old/)
+      );
+    });
+
+    it('should handle legacy temp index (no PID suffix)', async () => {
+      const warnSpy = vi.spyOn(console, 'warn');
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+
+      await getGitTreeHash();
+
+      // Should clean up legacy temp index
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('.git/vibe-validate-temp-index')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Cleaned up legacy temp index')
+      );
+    });
+
+    it('should skip recent legacy temp index', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
+      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as any);
+
+      await getGitTreeHash();
+
+      // Should not clean up recent legacy file
+      // Only current process temp index cleanup (1 call)
+      expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+      // Verify it's NOT the legacy file (no PID suffix) - should be current process file (has PID)
+      const unlinkedPath = mockUnlinkSync.mock.calls[0][0];
+      expect(unlinkedPath).toMatch(/vibe-validate-temp-index-\d+$/);
+      expect(unlinkedPath).not.toMatch(/vibe-validate-temp-index$/);
+    });
+
+    it('should fail gracefully if cleanup fails', async () => {
+      const warnSpy = vi.spyOn(console, 'warn');
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockIsProcessRunning.mockReturnValue(false);
+
+      // Mock unlinkSync to fail for stale file but succeed for current process
+      mockUnlinkSync.mockImplementationOnce(() => {
+        throw new Error('EACCES: permission denied');
+      }).mockImplementationOnce(() => {
+        // Current process cleanup succeeds
+      });
+
+      // Should not throw - cleanup failures are warnings only
+      await expect(getGitTreeHash()).resolves.toBeDefined();
+
+      // Should warn about cleanup failure
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to clean up stale temp index')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('EACCES: permission denied')
+      );
+    });
+
+    it('should handle errors reading file stats gracefully', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
+      mockStatSync.mockImplementation(() => {
+        throw new Error('File vanished');
+      });
+
+      // Should not throw - stat errors are ignored (file may have been deleted)
+      await expect(getGitTreeHash()).resolves.toBeDefined();
+    });
+
+    it('should handle errors reading directory gracefully', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockImplementation(() => {
+        throw new Error('ENOENT: directory not found');
+      });
+
+      // Should not throw - directory read errors are ignored (fail-safe)
+      await expect(getGitTreeHash()).resolves.toBeDefined();
+    });
+
+    it('should clean up multiple stale files', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue([
+        'vibe-validate-temp-index-11111',
+        'vibe-validate-temp-index-22222',
+        'vibe-validate-temp-index-33333',
+        'other-file.txt'
+      ]);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockIsProcessRunning.mockReturnValue(false);
+
+      await getGitTreeHash();
+
+      // Should clean up all 3 stale files + current process temp index
+      expect(mockUnlinkSync).toHaveBeenCalledTimes(4);
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('vibe-validate-temp-index-11111')
+      );
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('vibe-validate-temp-index-22222')
+      );
+      expect(mockUnlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('vibe-validate-temp-index-33333')
+      );
+    });
+
+    it('should ignore non-temp-index files', async () => {
+      mockStandardGitCommands();
+      mockReaddirSync.mockReturnValue([
+        'index',
+        'HEAD',
+        'config',
+        'vibe-validate-something-else',
+        'temp-index-12345'
+      ]);
+
+      await getGitTreeHash();
+
+      // Should only clean up current process temp index (not other files)
+      expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
+      expect(mockStatSync).not.toHaveBeenCalled();
+    });
   });
 });

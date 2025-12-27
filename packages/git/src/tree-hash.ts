@@ -11,12 +11,102 @@
  * git write-tree produces content-based hashes only (no timestamps).
  */
 
-import { copyFileSync, existsSync, unlinkSync } from 'node:fs';
+import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { isProcessRunning } from '@vibe-validate/utils';
 
 import { executeGitCommand } from './git-executor.js';
 import type { TreeHash } from './types.js';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
+
+/**
+ * Try to clean up a legacy temp index file (no PID suffix)
+ * @param gitDir - Git directory path
+ */
+function tryCleanupLegacyTempIndex(gitDir: string): void {
+  try {
+    const filePath = join(gitDir, 'vibe-validate-temp-index');
+    const stats = statSync(filePath);
+    const ageMs = Date.now() - stats.mtimeMs;
+
+    if (ageMs >= 5 * 60 * 1000) {
+      unlinkSync(filePath);
+      console.warn(`⚠️  Cleaned up legacy temp index (${Math.round(ageMs/1000)}s old)`);
+    }
+  } catch {
+    // Ignore cleanup errors (file may not exist or be in use)
+  }
+}
+
+/**
+ * Try to clean up a PID-suffixed temp index file if it's stale
+ * @param gitDir - Git directory path
+ * @param file - Filename to check
+ * @param pid - Process ID from filename
+ */
+function tryCleanupPidTempIndex(gitDir: string, file: string, pid: number): void {
+  try {
+    const filePath = join(gitDir, file);
+    const stats = statSync(filePath);
+    const ageMs = Date.now() - stats.mtimeMs;
+
+    // Skip if younger than 5 minutes
+    if (ageMs < 5 * 60 * 1000) return;
+
+    // Skip if process is still running
+    if (isProcessRunning(pid)) return;
+
+    // Stale file - clean it up
+    try {
+      unlinkSync(filePath);
+      const ageSec = Math.round(ageMs / 1000);
+      console.warn(`⚠️  Cleaned up stale temp index from PID ${pid} (${ageSec}s old, process not running)`);
+    } catch (err) {
+      const error = err as Error;
+      console.warn(`⚠️  Failed to clean up stale temp index ${file}: ${error.message}`);
+    }
+  } catch {
+    // Ignore errors reading file stats (file may have been deleted)
+  }
+}
+
+/**
+ * Clean up stale temp index files from crashed processes
+ *
+ * Scans git directory for temp index files and removes those that are:
+ * - Older than 5 minutes AND
+ * - Process no longer running
+ *
+ * Warns to stderr when cleanup occurs (bug detection canary).
+ * Fails gracefully if cleanup fails (warn and continue).
+ */
+function cleanupStaleIndexes(gitDir: string): void {
+  const pattern = /^vibe-validate-temp-index-(\d+)$/;
+
+  try {
+    const files = readdirSync(gitDir);
+
+    for (const file of files) {
+      // Handle legacy temp index (no PID suffix)
+      if (file === 'vibe-validate-temp-index') {
+        tryCleanupLegacyTempIndex(gitDir);
+        continue;
+      }
+
+      // Handle PID-suffixed temp index
+      const match = pattern.exec(file);
+      if (!match) continue;
+
+      const pid = Number.parseInt(match[1], 10);
+      tryCleanupPidTempIndex(gitDir, file, pid);
+    }
+  } catch {
+    // If we can't read directory, skip cleanup (fail-safe)
+    // This can happen if .git directory doesn't exist yet
+  }
+}
 
 /**
  * Get deterministic git tree hash representing current working tree state
@@ -44,7 +134,8 @@ export async function getGitTreeHash(): Promise<TreeHash> {
 
     // Get git directory and create temp index path
     const gitDir = executeGitCommand(['rev-parse', '--git-dir'], { timeout: GIT_TIMEOUT }).stdout.trim();
-    const tempIndexFile = `${gitDir}/vibe-validate-temp-index`;
+    cleanupStaleIndexes(gitDir);
+    const tempIndexFile = `${gitDir}/vibe-validate-temp-index-${process.pid}`;
 
     try {
       // Step 1: Copy current index to temp index (if it exists)
