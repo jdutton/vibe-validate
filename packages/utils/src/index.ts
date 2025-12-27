@@ -26,3 +26,8 @@ export {
   mkdirSyncReal,
   normalizePath
 } from './path-helpers.js';
+
+// Process checking (cross-platform)
+export {
+  isProcessRunning
+} from './process-check.js';

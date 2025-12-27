@@ -8,7 +8,7 @@
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { normalizedTmpdir } from '@vibe-validate/utils';
+import { normalizedTmpdir, isProcessRunning } from '@vibe-validate/utils';
 
 
 /**
@@ -95,23 +95,6 @@ function getLockFilePath(directory: string, options: LockOptions = {}): string {
   // Directory-scoped (default): /tmp/vibe-validate-{encoded-dir}.lock
   const encoded = encodeDirectoryPath(directory);
   return join(normalizedTmpdir(), `vibe-validate-${encoded}.lock`);
-}
-
-/**
- * Check if a process is running
- *
- * Cross-platform process check using Node.js process.kill(pid, 0)
- * which doesn't actually kill the process, just tests if it exists.
- */
-function isProcessRunning(pid: number): boolean {
-  try {
-    // Signal 0 tests for process existence without killing it
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    // ESRCH = no such process - expected when process doesn't exist
-    return false;
-  }
 }
 
 /**
