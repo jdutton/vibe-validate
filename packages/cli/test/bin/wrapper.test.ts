@@ -15,7 +15,7 @@ import { executeWrapperSync, type WrapperResultSync } from '../helpers/test-comm
  */
 
 // Test constants
-const EXPECTED_VERSION = '0.18.0'; // BUMP_VERSION_UPDATE
+const EXPECTED_VERSION = '0.18.1'; // BUMP_VERSION_UPDATE
 const REPO_ROOT = join(__dirname, '../../../..');
 const PACKAGES_CORE = join(__dirname, '../../../core');
 

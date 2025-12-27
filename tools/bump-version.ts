@@ -216,8 +216,10 @@ for (const testFile of testFilesWithVersions) {
     const content = readFileSync(testFile, 'utf8');
 
     // Find all lines with BUMP_VERSION_UPDATE marker
-    // Pattern matches: .toContain('0.17.0-rc4'); // BUMP_VERSION_UPDATE
-    const versionPattern = /(['"])\d+\.\d+\.\d+(-[\w.]+)?\1\);?\s*\/\/\s*BUMP_VERSION_UPDATE/g;
+    // Pattern matches:
+    //   .toContain('0.17.0-rc4'); // BUMP_VERSION_UPDATE
+    //   const EXPECTED_VERSION = '0.18.0'; // BUMP_VERSION_UPDATE
+    const versionPattern = /(['"])\d+\.\d+\.\d+(-[\w.]+)?\1[);]*\s*\/\/\s*BUMP_VERSION_UPDATE/g;
     const matches = [...content.matchAll(versionPattern)];
 
     if (matches.length === 0) {
@@ -227,9 +229,20 @@ for (const testFile of testFilesWithVersions) {
     }
 
     // Replace all version strings marked with BUMP_VERSION_UPDATE
+    // Capture the ending characters ([);]*) to preserve them in replacement
     const updatedContent = content.replaceAll(
       versionPattern,
-      `$1${newVersion}$1); // BUMP_VERSION_UPDATE`
+      (match) => {
+        // Extract quote type and trailing characters (;, ), etc.) after version
+        const quoteMatch = match.match(/(['"])/);
+        const quote = quoteMatch?.[1] ?? "'";
+        // Find the last occurrence of the quote to get trailing characters
+        const lastQuoteIndex = match.lastIndexOf(quote);
+        const afterLastQuote = match.substring(lastQuoteIndex + 1);
+        const trailingMatch = afterLastQuote.match(/^([);]*)/);
+        const trailing = trailingMatch?.[1] ?? '';
+        return `${quote}${newVersion}${quote}${trailing} // BUMP_VERSION_UPDATE`;
+      }
     );
 
     if (updatedContent === content) {

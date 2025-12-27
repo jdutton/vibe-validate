@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] - 2025-12-26
+
 ### Features
 
 - **Expanded package manager support to yarn and bun**
@@ -14,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-detection priority: bun > yarn > npm > pnpm (npm preferred when both npm/pnpm exist)
   - All CLI examples and error messages now show commands for all 4 package managers
   - CI workflows use proper frozen lockfile commands (`pnpm install --frozen-lockfile`, `npm ci`, etc.)
+  - Support both `bun.lock` (text) and `bun.lockb` (binary) lockfile formats
+  - Include Node.js setup for Bun projects in matrix mode to ensure compatibility testing across Node versions for npm package consumers
 
 ### Bug Fixes
 
