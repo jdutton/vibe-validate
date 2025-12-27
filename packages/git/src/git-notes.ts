@@ -112,15 +112,13 @@ export function addNote(
       return false;
     }
 
-    // Conflict detected - this is the last attempt, give up
-    if (attempt === maxRetries) {
-      return false;
-    }
-
-    // Read existing note and merge
+    // Conflict detected - try to merge (even on last attempt)
     const existingNote = readNote(notesRef, object);
     if (existingNote === null) {
-      // Note disappeared between attempts, retry from beginning
+      // Note disappeared between attempts, retry if not last attempt
+      if (attempt === maxRetries) {
+        return false; // Last attempt, can't retry
+      }
       continue;
     }
 
@@ -137,10 +135,13 @@ export function addNote(
     );
 
     if (mergeResult.success) {
-      return true; // Merge succeeded!
+      return true; // Merge succeeded! Return immediately
     }
 
-    // Merge failed (another concurrent write), retry from beginning
+    // Merge failed (another concurrent write), retry from beginning if not last attempt
+    if (attempt === maxRetries) {
+      return false; // Last attempt, merge failed
+    }
   }
 
   return false;

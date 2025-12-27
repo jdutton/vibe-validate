@@ -258,12 +258,14 @@ describe('git-notes - error handling', () => {
       mockConflictResult();
       mockReadExistingNote();
       mockConflictResult();
-      // Attempt 3: conflict (final attempt)
+      // Attempt 3: conflict, read, merge fails (last attempt - now tries to merge)
+      mockConflictResult();
+      mockReadExistingNote();
       mockConflictResult();
 
       const result = addNote(TEST_REF, VALID_HASH, '{"treeHash":"abc123","runs":[{"id":"run-2"}]}', false);
       expect(result).toBe(false);
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(7); // 3 attempts + 2 reads + 2 merge attempts
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(9); // 3 attempts + 3 reads + 3 merge attempts
     });
 
     it('should handle merge failure and retry from beginning', () => {
