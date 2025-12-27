@@ -230,60 +230,56 @@ describe('package-manager-commands', () => {
       }
     });
 
-    it('should detect from package.json packageManager field (highest priority)', () => {
+    /**
+     * Test package manager detection from packageManager field
+     */
+    function testPackageManagerField(pm: PackageManager, version: string) {
       writeFileSync(
         join(testDir, 'package.json'),
-        JSON.stringify({ packageManager: 'pnpm@9.0.0' })
+        JSON.stringify({ packageManager: `${pm}@${version}` })
       );
-      expect(detectPackageManager(testDir)).toBe('pnpm');
+      expect(detectPackageManager(testDir)).toBe(pm);
+    }
+
+    /**
+     * Test package manager detection from lockfile
+     */
+    function testLockfileDetection(pm: PackageManager, lockfile: string, content = '') {
+      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
+      writeFileSync(join(testDir, lockfile), content);
+      expect(detectPackageManager(testDir)).toBe(pm);
+    }
+
+    it('should detect from package.json packageManager field (highest priority)', () => {
+      testPackageManagerField('pnpm', '9.0.0');
     });
 
     it('should detect bun from packageManager field', () => {
-      writeFileSync(
-        join(testDir, 'package.json'),
-        JSON.stringify({ packageManager: 'bun@1.0.0' })
-      );
-      expect(detectPackageManager(testDir)).toBe('bun');
+      testPackageManagerField('bun', '1.0.0');
     });
 
     it('should detect yarn from packageManager field', () => {
-      writeFileSync(
-        join(testDir, 'package.json'),
-        JSON.stringify({ packageManager: 'yarn@4.0.0' })
-      );
-      expect(detectPackageManager(testDir)).toBe('yarn');
+      testPackageManagerField('yarn', '4.0.0');
     });
 
     it('should detect npm from packageManager field', () => {
-      writeFileSync(
-        join(testDir, 'package.json'),
-        JSON.stringify({ packageManager: 'npm@10.0.0' })
-      );
-      expect(detectPackageManager(testDir)).toBe('npm');
+      testPackageManagerField('npm', '10.0.0');
     });
 
     it('should detect from bun.lockb when no packageManager field', () => {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, 'bun.lockb'), '');
-      expect(detectPackageManager(testDir)).toBe('bun');
+      testLockfileDetection('bun', 'bun.lockb');
     });
 
     it('should detect from yarn.lock when no packageManager field', () => {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, 'yarn.lock'), '');
-      expect(detectPackageManager(testDir)).toBe('yarn');
+      testLockfileDetection('yarn', 'yarn.lock');
     });
 
     it('should detect from package-lock.json when no packageManager field', () => {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, 'package-lock.json'), '{}');
-      expect(detectPackageManager(testDir)).toBe('npm');
+      testLockfileDetection('npm', 'package-lock.json', '{}');
     });
 
     it('should detect from pnpm-lock.yaml when no packageManager field', () => {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, 'pnpm-lock.yaml'), '');
-      expect(detectPackageManager(testDir)).toBe('pnpm');
+      testLockfileDetection('pnpm', 'pnpm-lock.yaml');
     });
 
     it('should prefer npm over pnpm when both lockfiles exist (conservative)', () => {

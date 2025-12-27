@@ -123,6 +123,17 @@ describe('doctor command', () => {
     },
   };
 
+  /**
+   * Setup all doctor mocks with defaults and configure loadConfig/checkSync
+   */
+  async function mockDoctorDefaults() {
+    await mockDoctorFileSystem();
+    await mockDoctorGit();
+    await mockDoctorEnvironment();
+    vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+    vi.mocked(checkSync).mockReturnValue({ inSync: true });
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -1172,11 +1183,7 @@ describe('doctor command', () => {
     };
 
     it('should use mocked version checker when provided', async () => {
-      await mockDoctorFileSystem();
-      await mockDoctorGit();
-      await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await mockDoctorDefaults();
 
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
 
@@ -1185,11 +1192,7 @@ describe('doctor command', () => {
     });
 
     it('should show Node.js and Git checks with mock', async () => {
-      await mockDoctorFileSystem();
-      await mockDoctorGit();
-      await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await mockDoctorDefaults();
 
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
 
@@ -1198,11 +1201,7 @@ describe('doctor command', () => {
     });
 
     it('should be fast with mocked version checker', async () => {
-      await mockDoctorFileSystem();
-      await mockDoctorGit();
-      await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await mockDoctorDefaults();
 
       const start = Date.now();
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
