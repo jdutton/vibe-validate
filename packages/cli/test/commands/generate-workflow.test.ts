@@ -107,6 +107,91 @@ function expectNoStepWithUses(job: any, uses: string) {
   expect(step).toBeUndefined();
 }
 
+/**
+ * Generate workflow and parse YAML in one step
+ */
+function generateAndParseWorkflow(
+  config: VibeValidateConfig = baseMockConfig,
+  options?: GenerateWorkflowOptions
+) {
+  const workflowYaml = generateWorkflow(config, options);
+  return parseWorkflowYaml(workflowYaml);
+}
+
+/**
+ * Test package manager detection from packageManager field
+ */
+function testPackageManagerDetection(
+  pm: string,
+  version: string,
+  expectedAction: string | null,
+  expectedCommand?: string
+) {
+  mockPackageJson(`${pm}@${version}`);
+  vi.mocked(existsSync).mockReturnValue(true);
+
+  const workflow = generateAndParseWorkflow(baseMockConfig, { useMatrix: false });
+  const job = workflow.jobs['typescript-type-check'];
+
+  if (expectedAction) {
+    expectStepWithUses(job, expectedAction);
+  }
+  if (expectedCommand) {
+    expectStepWithRun(job, expectedCommand);
+  }
+}
+
+/**
+ * Test package manager detection from lockfile
+ */
+function testLockfileDetection(
+  lockfileConfig: {
+    hasPackageLock?: boolean;
+    hasPnpmLock?: boolean;
+    hasYarnLock?: boolean;
+    hasBunLock?: boolean;
+  },
+  expectedAction: string | null,
+  expectedCommand: string
+) {
+  mockLockfiles({ ...lockfileConfig, packageJsonExists: true });
+  mockPackageJson(undefined, { node: '>=22.0.0' });
+
+  const workflow = generateAndParseWorkflow(baseMockConfig, { useMatrix: false });
+  const job = workflow.jobs['typescript-type-check'];
+
+  if (expectedAction) {
+    expectStepWithUses(job, expectedAction);
+  }
+  expectStepWithRun(job, expectedCommand);
+}
+
+/**
+ * Test package manager commands in build workflow
+ */
+function testBuildCommands(pm: string, version: string, installCmd: string, buildCmd: string) {
+  mockPackageJson(`${pm}@${version}`);
+  vi.mocked(existsSync).mockReturnValue(true);
+
+  const configWithBuild = {
+    ...baseMockConfig,
+    validation: {
+      phases: [
+        {
+          name: 'Build',
+          parallel: false,
+          steps: [{ name: 'Build packages', command: buildCmd }],
+        },
+      ],
+    },
+  };
+
+  const workflow = generateAndParseWorkflow(configWithBuild, { useMatrix: false });
+  const job = workflow.jobs['build'];
+  expectStepWithRun(job, installCmd);
+  expectStepWithRun(job, buildCmd);
+}
+
 describe('generate-workflow command', () => {
   const mockConfig = baseMockConfig;
 
@@ -117,17 +202,6 @@ describe('generate-workflow command', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
-
-  /**
-   * Generate workflow and parse YAML in one step
-   */
-  function generateAndParseWorkflow(
-    config: VibeValidateConfig = mockConfig,
-    options?: GenerateWorkflowOptions
-  ) {
-    const workflowYaml = generateWorkflow(config, options);
-    return parseWorkflowYaml(workflowYaml);
-  }
 
   describe('toJobId', () => {
     it('should convert phase/step names to valid GitHub Actions job IDs', () => {
@@ -636,54 +710,6 @@ describe('generate-workflow command', () => {
     });
 
     describe('Package manager detection improvements', () => {
-      /**
-       * Test package manager detection from packageManager field
-       */
-      function testPackageManagerDetection(
-        pm: string,
-        version: string,
-        expectedAction: string | null,
-        expectedCommand?: string
-      ) {
-        mockPackageJson(`${pm}@${version}`);
-        vi.mocked(existsSync).mockReturnValue(true);
-
-        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
-        const job = workflow.jobs['typescript-type-check'];
-
-        if (expectedAction) {
-          expectStepWithUses(job, expectedAction);
-        }
-        if (expectedCommand) {
-          expectStepWithRun(job, expectedCommand);
-        }
-      }
-
-      /**
-       * Test package manager detection from lockfile
-       */
-      function testLockfileDetection(
-        lockfileConfig: {
-          hasPackageLock?: boolean;
-          hasPnpmLock?: boolean;
-          hasYarnLock?: boolean;
-          hasBunLock?: boolean;
-        },
-        expectedAction: string | null,
-        expectedCommand: string
-      ) {
-        mockLockfiles({ ...lockfileConfig, packageJsonExists: true });
-        mockPackageJson(undefined, { node: '>=22.0.0' });
-
-        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
-        const job = workflow.jobs['typescript-type-check'];
-
-        if (expectedAction) {
-          expectStepWithUses(job, expectedAction);
-        }
-        expectStepWithRun(job, expectedCommand);
-      }
-
       it('should detect pnpm from packageManager field in package.json', () => {
         testPackageManagerDetection('pnpm', '9.0.0', 'pnpm/action-setup', 'pnpm install --frozen-lockfile');
       });
@@ -782,32 +808,6 @@ describe('generate-workflow command', () => {
           'yarn install --frozen-lockfile'
         );
       });
-
-      /**
-       * Test package manager commands in build workflow
-       */
-      function testBuildCommands(pm: string, version: string, installCmd: string, buildCmd: string) {
-        mockPackageJson(`${pm}@${version}`);
-        vi.mocked(existsSync).mockReturnValue(true);
-
-        const configWithBuild = {
-          ...mockConfig,
-          validation: {
-            phases: [
-              {
-                name: 'Build',
-                parallel: false,
-                steps: [{ name: 'Build packages', command: buildCmd }],
-              },
-            ],
-          },
-        };
-
-        const workflow = generateAndParseWorkflow(configWithBuild, { useMatrix: false });
-        const job = workflow.jobs['build'];
-        expectStepWithRun(job, installCmd);
-        expectStepWithRun(job, buildCmd);
-      }
 
       it('should use bun commands for build and validate', () => {
         testBuildCommands('bun', '1.0.0', 'bun install', 'bun run build');
