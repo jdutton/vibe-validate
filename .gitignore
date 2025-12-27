@@ -45,6 +45,8 @@ pnpm-debug.log*
 # Development/extraction tracking (git-ignored, local only)
 TODO.md
 TODO*.md
+docs/plans/
+.worktrees/
 
 # At this point, top level markdown files are usually status, summary, or undesirable artifacts from agentic coding tools, so ignore all top-level *.md files that don't already exist
 /*.md
