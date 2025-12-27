@@ -22,6 +22,16 @@ import type { TreeHash } from './types.js';
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
 /**
+ * Minimum age (milliseconds) before cleaning up stale temp index files
+ *
+ * Rationale: 5 minutes balances:
+ * - Avoiding false positives (very slow validations in progress)
+ * - Timely cleanup (don't accumulate too many stale files)
+ * - Typical validation duration (< 2 minutes in most projects)
+ */
+const STALE_INDEX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
  * Try to clean up a legacy temp index file (no PID suffix)
  * @param gitDir - Git directory path
  */
@@ -31,7 +41,7 @@ function tryCleanupLegacyTempIndex(gitDir: string): void {
     const stats = statSync(filePath);
     const ageMs = Date.now() - stats.mtimeMs;
 
-    if (ageMs >= 5 * 60 * 1000) {
+    if (ageMs >= STALE_INDEX_AGE_MS) {
       unlinkSync(filePath);
       console.warn(`⚠️  Cleaned up legacy temp index (${Math.round(ageMs/1000)}s old)`);
     }
@@ -52,8 +62,8 @@ function tryCleanupPidTempIndex(gitDir: string, file: string, pid: number): void
     const stats = statSync(filePath);
     const ageMs = Date.now() - stats.mtimeMs;
 
-    // Skip if younger than 5 minutes
-    if (ageMs < 5 * 60 * 1000) return;
+    // Skip if younger than threshold
+    if (ageMs < STALE_INDEX_AGE_MS) return;
 
     // Skip if process is still running
     if (isProcessRunning(pid)) return;
@@ -102,9 +112,19 @@ function cleanupStaleIndexes(gitDir: string): void {
       const pid = Number.parseInt(match[1], 10);
       tryCleanupPidTempIndex(gitDir, file, pid);
     }
-  } catch {
-    // If we can't read directory, skip cleanup (fail-safe)
-    // This can happen if .git directory doesn't exist yet
+  } catch (error) {
+    // Expected errors (fail-safe, no action needed):
+    // - ENOENT: .git directory doesn't exist (fresh repo)
+    // - ENOTDIR: gitDir points to a file, not directory
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {
+      return; // Expected failure - skip cleanup
+    }
+
+    // Unexpected errors (should warn for debugging)
+    console.warn(`⚠️  Unexpected error during temp index cleanup: ${err.message}`);
+    console.warn(`   Git dir: ${gitDir}`);
+    console.warn(`   This may indicate a bug - please report if you see this often`);
   }
 }
 

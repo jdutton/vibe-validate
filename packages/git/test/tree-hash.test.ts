@@ -471,14 +471,52 @@ describe('getGitTreeHash', () => {
       await expect(getGitTreeHash()).resolves.toBeDefined();
     });
 
-    it('should handle errors reading directory gracefully', async () => {
+    it('should handle expected errors reading directory gracefully (ENOENT)', async () => {
       mockStandardGitCommands();
+      const enoentError = new Error('ENOENT: directory not found') as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
       mockReaddirSync.mockImplementation(() => {
-        throw new Error('ENOENT: directory not found');
+        throw enoentError;
       });
 
-      // Should not throw - directory read errors are ignored (fail-safe)
+      // Should not throw - ENOENT is expected (fail-safe)
       await expect(getGitTreeHash()).resolves.toBeDefined();
+    });
+
+    it('should handle expected errors reading directory gracefully (ENOTDIR)', async () => {
+      mockStandardGitCommands();
+      const enotdirError = new Error('ENOTDIR: not a directory') as NodeJS.ErrnoException;
+      enotdirError.code = 'ENOTDIR';
+      mockReaddirSync.mockImplementation(() => {
+        throw enotdirError;
+      });
+
+      // Should not throw - ENOTDIR is expected (fail-safe)
+      await expect(getGitTreeHash()).resolves.toBeDefined();
+    });
+
+    it('should warn on unexpected errors reading directory (EPERM)', async () => {
+      const warnSpy = vi.spyOn(console, 'warn');
+      mockStandardGitCommands();
+      const epermError = new Error('EPERM: operation not permitted') as NodeJS.ErrnoException;
+      epermError.code = 'EPERM';
+      mockReaddirSync.mockImplementation(() => {
+        throw epermError;
+      });
+
+      // Should not throw - unexpected errors are warnings (fail-safe)
+      await expect(getGitTreeHash()).resolves.toBeDefined();
+
+      // Should warn about unexpected error (debugging aid)
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Unexpected error during temp index cleanup')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('EPERM: operation not permitted')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('This may indicate a bug')
+      );
     });
 
     it('should clean up multiple stale files', async () => {
