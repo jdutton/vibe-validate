@@ -188,7 +188,8 @@ function detectFromPackageJson(cwd: string): PackageManager | null {
  * Note: npm preferred over pnpm when both exist (more conservative default)
  */
 function detectFromLockfiles(cwd: string): PackageManager {
-  const hasBunLock = existsSync(join(cwd, 'bun.lockb'));
+  // Check both bun.lockb (binary, older) and bun.lock (text, newer)
+  const hasBunLock = existsSync(join(cwd, 'bun.lockb')) || existsSync(join(cwd, 'bun.lock'));
   const hasPnpmLock = existsSync(join(cwd, 'pnpm-lock.yaml'));
   const hasYarnLock = existsSync(join(cwd, 'yarn.lock'));
   const hasNpmLock = existsSync(join(cwd, 'package-lock.json'));

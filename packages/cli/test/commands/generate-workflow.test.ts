@@ -59,7 +59,8 @@ function mockLockfiles(options: {
     if (pathStr.endsWith('package-lock.json')) return options.hasPackageLock ?? false;
     if (pathStr.endsWith('pnpm-lock.yaml')) return options.hasPnpmLock ?? false;
     if (pathStr.endsWith('yarn.lock')) return options.hasYarnLock ?? false;
-    if (pathStr.endsWith('bun.lockb')) return options.hasBunLock ?? false;
+    // Support both bun.lockb (binary) and bun.lock (text) formats
+    if (pathStr.endsWith('bun.lockb') || pathStr.endsWith('bun.lock')) return options.hasBunLock ?? false;
     if (pathStr.endsWith('package.json')) return options.packageJsonExists ?? true;
     return false;
   });
@@ -190,6 +191,26 @@ function testBuildCommands(pm: string, version: string, installCmd: string, buil
   const job = workflow.jobs['build'];
   expectStepWithRun(job, installCmd);
   expectStepWithRun(job, buildCmd);
+}
+
+/**
+ * Generate Bun matrix workflow and return validate job
+ * Helper to reduce duplication in Bun matrix tests
+ */
+function generateBunMatrixWorkflow(options: {
+  nodeVersions?: string[];
+  os?: string[];
+} = {}) {
+  mockPackageJson('bun@1.0.0');
+  vi.mocked(existsSync).mockReturnValue(true);
+
+  const workflow = generateAndParseWorkflow(baseMockConfig, {
+    useMatrix: true,
+    nodeVersions: options.nodeVersions ?? ['20', '22'],
+    os: options.os ?? ['ubuntu-latest', 'windows-latest']
+  });
+
+  return workflow.jobs['validate'];
 }
 
 describe('generate-workflow command', () => {
@@ -818,21 +839,52 @@ describe('generate-workflow command', () => {
       });
 
       it('should use bun in matrix mode', () => {
-        mockPackageJson('bun@1.0.0');
-        vi.mocked(existsSync).mockReturnValue(true);
+        const job = generateBunMatrixWorkflow();
 
-        const workflow = generateAndParseWorkflow(mockConfig, {
-          useMatrix: true,
-          nodeVersions: ['20', '22'],
-          os: ['ubuntu-latest', 'windows-latest']
-        });
-
-        const job = workflow.jobs['validate'];
         expect(job.strategy.matrix.node).toEqual(['20', '22']);
         expect(job.strategy.matrix.os).toEqual(['ubuntu-latest', 'windows-latest']);
         expectStepWithUses(job, 'oven-sh/setup-bun@v2');
         expectStepWithRun(job, 'bun install');
         expectStepWithRun(job, 'bun run validate');
+      });
+
+      it('should include Node.js setup for Bun projects with matrix for compatibility testing', () => {
+        const job = generateBunMatrixWorkflow();
+
+        // Should have BOTH Bun and Node.js setup
+        const bunStep = expectStepWithUses(job, 'oven-sh/setup-bun@v2');
+        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v4');
+
+        // Verify Node.js setup uses matrix variable
+        expect(nodeStep.with['node-version']).toBe('${{ matrix.node }}');
+
+        // Verify Node.js setup does NOT have cache for Bun (Bun doesn't use Node's cache)
+        expect(nodeStep.with.cache).toBeUndefined();
+
+        // Bun setup should come before Node.js setup
+        const bunIndex = job.steps.indexOf(bunStep);
+        const nodeIndex = job.steps.indexOf(nodeStep);
+        expect(bunIndex).toBeLessThan(nodeIndex);
+      });
+
+      it('should include Node.js setup for Bun projects detected from bun.lock (new format)', () => {
+        mockLockfiles({ hasBunLock: true, hasPackageLock: false, hasPnpmLock: false, hasYarnLock: false });
+        mockPackageJson(undefined, { node: '>=22.0.0' });
+
+        const workflow = generateAndParseWorkflow(mockConfig, {
+          useMatrix: true,
+          nodeVersions: ['22', '24'],
+        });
+
+        const job = workflow.jobs['validate'];
+
+        // Should detect Bun and include both setups
+        expectStepWithUses(job, 'oven-sh/setup-bun@v2');
+        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v4');
+
+        // Node.js setup should use matrix variable and not have cache
+        expect(nodeStep.with['node-version']).toBe('${{ matrix.node }}');
+        expect(nodeStep.with.cache).toBeUndefined();
       });
 
       it('should use yarn in matrix mode', () => {

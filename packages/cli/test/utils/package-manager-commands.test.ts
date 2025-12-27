@@ -278,8 +278,12 @@ describe('package-manager-commands', () => {
       testPackageManagerField('npm', '10.0.0');
     });
 
-    it('should detect from bun.lockb when no packageManager field', () => {
+    it('should detect from bun.lockb when no packageManager field (binary format)', () => {
       testLockfileDetection('bun', 'bun.lockb');
+    });
+
+    it('should detect from bun.lock when no packageManager field (text format)', () => {
+      testLockfileDetection('bun', 'bun.lock');
     });
 
     it('should detect from yarn.lock when no packageManager field', () => {
@@ -298,11 +302,22 @@ describe('package-manager-commands', () => {
       testLockfilePriority(['package-lock.json', 'pnpm-lock.yaml'], 'npm');
     });
 
-    it('should prefer bun over all other lockfiles', () => {
+    it('should prefer bun over all other lockfiles (binary format)', () => {
       testLockfilePriority(
         ['bun.lockb', 'yarn.lock', 'package-lock.json', 'pnpm-lock.yaml'],
         'bun'
       );
+    });
+
+    it('should prefer bun over all other lockfiles (text format)', () => {
+      testLockfilePriority(
+        ['bun.lock', 'yarn.lock', 'package-lock.json', 'pnpm-lock.yaml'],
+        'bun'
+      );
+    });
+
+    it('should detect bun when both lockfile formats exist', () => {
+      testLockfilePriority(['bun.lockb', 'bun.lock'], 'bun');
     });
 
     it('should prefer yarn over npm', () => {

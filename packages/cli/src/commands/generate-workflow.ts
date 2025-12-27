@@ -328,17 +328,18 @@ export function generateWorkflow(
       });
     }
 
-    // Setup Node.js with matrix variable (not needed for Bun)
-    if (packageManager !== 'bun') {
-      jobSteps.push({
-        name: 'Setup Node.js ${{ matrix.node }}',
-        uses: 'actions/setup-node@v4',
-        with: {
-          'node-version': '${{ matrix.node }}',
-          cache: packageManager,
-        },
-      });
-    }
+    // Setup Node.js with matrix variable
+    // Important: Even for Bun projects, Node.js setup ensures compatibility testing
+    // across versions that npm package consumers will use
+    const nodeCacheConfig = packageManager === 'bun' ? {} : { cache: packageManager };
+    jobSteps.push({
+      name: 'Setup Node.js ${{ matrix.node }}',
+      uses: 'actions/setup-node@v4',
+      with: {
+        'node-version': '${{ matrix.node }}',
+        ...nodeCacheConfig,
+      },
+    });
 
     // Install dependencies
     jobSteps.push({
