@@ -132,6 +132,15 @@
                 "type": "string"
               }
             },
+            "packageManager": {
+              "type": "string",
+              "enum": [
+                "npm",
+                "pnpm",
+                "yarn",
+                "bun"
+              ]
+            },
             "failFast": {
               "type": "boolean"
             },

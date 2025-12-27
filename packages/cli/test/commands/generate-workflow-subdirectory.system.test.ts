@@ -8,55 +8,18 @@
 import {  writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { VibeValidateConfig } from '@vibe-validate/config';
 import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { generateWorkflow, checkSync, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
+import { mockConfig as baseMockConfig } from '../helpers/generate-workflow-fixtures.js';
 
 describe('generate-workflow subdirectory support (system tests)', () => {
   const testRoot = join(process.cwd(), 'test-temp-generate-workflow-system');
   const testSubdir = join(testRoot, 'packages', 'cli');
   const workflowPath = join(testRoot, '.github/workflows/validate.yml');
 
-  const mockConfig: VibeValidateConfig = {
-    validation: {
-      phases: [
-        {
-          name: 'Pre-Qualification',
-          parallel: true,
-          steps: [
-            {
-              name: 'TypeScript Type Check',
-              command: 'pnpm -r typecheck',
-            },
-            {
-              name: 'ESLint Code Quality',
-              command: 'pnpm lint',
-            },
-          ],
-          timeout: 300000,
-          failFast: true,
-        },
-        {
-          name: 'Testing',
-          parallel: false,
-          steps: [
-            {
-              name: 'Unit Tests with Coverage',
-              command: 'pnpm test:coverage',
-            },
-          ],
-          timeout: 600000,
-          failFast: false,
-        },
-      ],
-    },
-    git: {
-      mainBranch: 'main',
-      remoteOrigin: 'origin',
-    },
-  };
+  const mockConfig = baseMockConfig;
 
   beforeEach(() => {
     // Create test directory structure with .git

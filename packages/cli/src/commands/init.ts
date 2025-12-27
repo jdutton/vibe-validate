@@ -15,6 +15,7 @@ import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
 import { getCommandName } from '../utils/command-name.js';
 import { configExists } from '../utils/config-loader.js';
 import { detectGitConfig, type DetectedGitConfig } from '../utils/git-detection.js';
+import { detectPackageManager } from '../utils/package-manager-commands.js';
 import { GitignoreSetupCheck } from '../utils/setup-checks/gitignore-check.js';
 import { HooksSetupCheck } from '../utils/setup-checks/hooks-check.js';
 import { WorkflowSetupCheck } from '../utils/setup-checks/workflow-check.js';
@@ -303,6 +304,15 @@ function generateYamlConfig(templateName: string, gitConfig: DetectedGitConfig):
     gitSection.remoteOrigin = gitConfig.remoteOrigin;
   }
 
+  // Auto-detect and add package manager to CI config
+  const packageManager = detectPackageManager(process.cwd());
+  templateConfig.ci ??= {};
+  if (typeof templateConfig.ci === 'object' && templateConfig.ci !== null) {
+    const ciSection = templateConfig.ci as Record<string, unknown>;
+    // Only set if not already specified in template
+    ciSection.packageManager ??= packageManager;
+  }
+
   // Add version-pinned $schema URL for IDE validation
   // Uses unpkg CDN to ensure schema matches installed CLI version
   const __filename = fileURLToPath(import.meta.url);
@@ -490,8 +500,8 @@ vibe-validate init --template typescript-nodejs
 
 **If Husky install fails:**
 \`\`\`bash
-# Manually install Husky
-npm install --save-dev husky
+# Manually install Husky (choose your package manager)
+npm install --save-dev husky    # or: pnpm add -D husky / yarn add --dev husky / bun add --dev husky
 npx husky install
 
 # Then retry

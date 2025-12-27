@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Features
+
+- **Expanded package manager support to yarn and bun**
+  - Config schema now supports `ci.packageManager: npm | pnpm | yarn | bun`
+  - Auto-detection priority: bun > yarn > npm > pnpm (npm preferred when both npm/pnpm exist)
+  - All CLI examples and error messages now show commands for all 4 package managers
+  - CI workflows use proper frozen lockfile commands (`pnpm install --frozen-lockfile`, `npm ci`, etc.)
+
 ### Bug Fixes
 
 - Fixed crash when running `vv snapshot` or `vv validate` in fresh git repos (after `git init`, before first commit)
+- Fixed package manager detection to prefer npm over pnpm when both lockfiles exist (more conservative default)
 
 ### Documentation
 

@@ -494,3 +494,48 @@ export function assertCheck(
     }
   }
 }
+
+/**
+ * Assert that suggestion contains upgrade commands for all package managers
+ *
+ * Reduces structural duplication when checking for all package manager commands.
+ *
+ * @param result - Doctor command result
+ * @param checkName - Name of the check (typically 'vibe-validate version')
+ * @param commands - Expected commands for each package manager
+ *
+ * @example
+ * ```typescript
+ * // Check local upgrade commands
+ * assertAllPackageManagerCommands(result, 'vibe-validate version', {
+ *   npm: 'npm install -D vibe-validate@latest',
+ *   pnpm: 'pnpm update vibe-validate',
+ *   yarn: 'yarn upgrade vibe-validate',
+ *   bun: 'bun update vibe-validate'
+ * });
+ *
+ * // Check global upgrade commands
+ * assertAllPackageManagerCommands(result, 'vibe-validate version', {
+ *   npm: 'npm install -g vibe-validate@latest',
+ *   pnpm: 'pnpm add -g vibe-validate@latest',
+ *   yarn: 'yarn global add vibe-validate@latest',
+ *   bun: 'bun add --global vibe-validate@latest'
+ * });
+ * ```
+ */
+export function assertAllPackageManagerCommands(
+  result: { checks: DoctorCheckResult[] },
+  checkName: string,
+  commands: {
+    npm: string;
+    pnpm: string;
+    yarn: string;
+    bun: string;
+  }
+): void {
+  const suggestion = findCheck(result, checkName).suggestion ?? '';
+  expect(suggestion).toContain(commands.npm);
+  expect(suggestion).toContain(commands.pnpm);
+  expect(suggestion).toContain(commands.yarn);
+  expect(suggestion).toContain(commands.bun);
+}

@@ -109,6 +109,18 @@ export const CIConfigSchema = z.object({
   /** Operating systems to test in CI (default: ['ubuntu-latest']) */
   os: z.array(z.string()).optional(),
 
+  /**
+   * Package manager to use in CI workflows (default: auto-detect)
+   *
+   * Auto-detection priority:
+   * 1. package.json packageManager field
+   * 2. Lock file detection (bun.lockb, yarn.lock, package-lock.json, pnpm-lock.yaml)
+   *    Note: npm preferred over pnpm when both exist (more conservative default)
+   *
+   * Explicit configuration overrides auto-detection.
+   */
+  packageManager: z.enum(['npm', 'pnpm', 'yarn', 'bun']).optional(),
+
   /** Fail fast in matrix strategy (default: false) */
   failFast: z.boolean().optional(),
 

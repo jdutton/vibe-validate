@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
 import { generateWorkflow, checkSync, toJobId, getAllJobIds, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
+import { mockConfig as baseMockConfig } from '../helpers/generate-workflow-fixtures.js';
 
 
 // Mock fs module
@@ -49,12 +50,17 @@ function mockPackageJson(packageManager?: string, engines?: { node: string }) {
 function mockLockfiles(options: {
   hasPackageLock?: boolean;
   hasPnpmLock?: boolean;
+  hasYarnLock?: boolean;
+  hasBunLock?: boolean;
   packageJsonExists?: boolean;
 }) {
   vi.mocked(existsSync).mockImplementation((path: any) => {
     const pathStr = path.toString();
     if (pathStr.endsWith('package-lock.json')) return options.hasPackageLock ?? false;
     if (pathStr.endsWith('pnpm-lock.yaml')) return options.hasPnpmLock ?? false;
+    if (pathStr.endsWith('yarn.lock')) return options.hasYarnLock ?? false;
+    // Support both bun.lockb (binary) and bun.lock (text) formats
+    if (pathStr.endsWith('bun.lockb') || pathStr.endsWith('bun.lock')) return options.hasBunLock ?? false;
     if (pathStr.endsWith('package.json')) return options.packageJsonExists ?? true;
     return false;
   });
@@ -102,46 +108,113 @@ function expectNoStepWithUses(job: any, uses: string) {
   expect(step).toBeUndefined();
 }
 
-describe('generate-workflow command', () => {
-  const mockConfig: VibeValidateConfig = {
+/**
+ * Generate workflow and parse YAML in one step
+ */
+function generateAndParseWorkflow(
+  config: VibeValidateConfig = baseMockConfig,
+  options?: GenerateWorkflowOptions
+) {
+  const workflowYaml = generateWorkflow(config, options);
+  return parseWorkflowYaml(workflowYaml);
+}
+
+/**
+ * Test package manager detection from packageManager field
+ */
+function testPackageManagerDetection(
+  pm: string,
+  version: string,
+  expectedAction: string | null,
+  expectedCommand?: string
+) {
+  mockPackageJson(`${pm}@${version}`);
+  vi.mocked(existsSync).mockReturnValue(true);
+
+  const workflow = generateAndParseWorkflow(baseMockConfig, { useMatrix: false });
+  const job = workflow.jobs['typescript-type-check'];
+
+  if (expectedAction) {
+    expectStepWithUses(job, expectedAction);
+  }
+  if (expectedCommand) {
+    expectStepWithRun(job, expectedCommand);
+  }
+}
+
+/**
+ * Test package manager detection from lockfile
+ */
+function testLockfileDetection(
+  lockfileConfig: {
+    hasPackageLock?: boolean;
+    hasPnpmLock?: boolean;
+    hasYarnLock?: boolean;
+    hasBunLock?: boolean;
+  },
+  expectedAction: string | null,
+  expectedCommand: string
+) {
+  mockLockfiles({ ...lockfileConfig, packageJsonExists: true });
+  mockPackageJson(undefined, { node: '>=22.0.0' });
+
+  const workflow = generateAndParseWorkflow(baseMockConfig, { useMatrix: false });
+  const job = workflow.jobs['typescript-type-check'];
+
+  if (expectedAction) {
+    expectStepWithUses(job, expectedAction);
+  }
+  expectStepWithRun(job, expectedCommand);
+}
+
+/**
+ * Test package manager commands in build workflow
+ */
+function testBuildCommands(pm: string, version: string, installCmd: string, buildCmd: string) {
+  mockPackageJson(`${pm}@${version}`);
+  vi.mocked(existsSync).mockReturnValue(true);
+
+  const configWithBuild = {
+    ...baseMockConfig,
     validation: {
       phases: [
         {
-          name: 'Pre-Qualification',
-          parallel: true,
-          steps: [
-            {
-              name: 'TypeScript Type Check',
-              command: 'pnpm -r typecheck',
-            },
-            {
-              name: 'ESLint Code Quality',
-              command: 'pnpm lint',
-            },
-          ],
-          timeout: 300000,
-          failFast: true,
-        },
-        {
-          name: 'Testing',
+          name: 'Build',
           parallel: false,
-          steps: [
-            {
-              name: 'Unit Tests with Coverage',
-              command: 'pnpm test:coverage',
-            },
-          ],
-          timeout: 300000,
-          failFast: true,
+          steps: [{ name: 'Build packages', command: buildCmd }],
         },
       ],
     },
-    git: {
-      mainBranch: 'main',
-      autoSync: false,
-      warnIfBehind: true,
-    },
   };
+
+  const workflow = generateAndParseWorkflow(configWithBuild, { useMatrix: false });
+  const job = workflow.jobs['build'];
+  expectStepWithRun(job, installCmd);
+  expectStepWithRun(job, buildCmd);
+}
+
+/**
+ * Generate Bun matrix workflow and return validate job
+ * Helper to reduce duplication in Bun matrix tests
+ */
+function generateBunMatrixWorkflow(options: {
+  nodeVersions?: string[];
+  os?: string[];
+} = {}) {
+  mockPackageJson('bun@1.0.0');
+  vi.mocked(existsSync).mockReturnValue(true);
+
+  const workflow = generateAndParseWorkflow(baseMockConfig, {
+    useMatrix: true,
+    nodeVersions: options.nodeVersions ?? ['20', '22'],
+    os: options.os ?? ['ubuntu-latest', 'windows-latest']
+  });
+
+  return workflow.jobs['validate'];
+}
+
+describe('generate-workflow command', () => {
+  const mockConfig = baseMockConfig;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -150,17 +223,6 @@ describe('generate-workflow command', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
-
-  /**
-   * Generate workflow and parse YAML in one step
-   */
-  function generateAndParseWorkflow(
-    config: VibeValidateConfig = mockConfig,
-    options?: GenerateWorkflowOptions
-  ) {
-    const workflowYaml = generateWorkflow(config, options);
-    return parseWorkflowYaml(workflowYaml);
-  }
 
   describe('toJobId', () => {
     it('should convert phase/step names to valid GitHub Actions job IDs', () => {
@@ -253,7 +315,7 @@ describe('generate-workflow command', () => {
       const job = workflow.jobs['typescript-type-check'];
       const pnpmStep = expectStepWithUses(job, 'pnpm/action-setup');
       expect(pnpmStep.with.version).toBe('8');
-      expectStepWithRun(job, 'pnpm install');
+      expectStepWithRun(job, 'pnpm install --frozen-lockfile');
     });
 
     it('should use npm ci when packageManager is npm in non-matrix mode', () => {
@@ -670,14 +732,7 @@ describe('generate-workflow command', () => {
 
     describe('Package manager detection improvements', () => {
       it('should detect pnpm from packageManager field in package.json', () => {
-        mockPackageJson('pnpm@9.0.0');
-        vi.mocked(existsSync).mockReturnValue(true);
-
-        const workflow = generateAndParseWorkflow();
-
-        // Should use pnpm based on packageManager field
-        const job = workflow.jobs['typescript-type-check'] || workflow.jobs['validate'];
-        expectStepWithUses(job, 'pnpm/action-setup');
+        testPackageManagerDetection('pnpm', '9.0.0', 'pnpm/action-setup', 'pnpm install --frozen-lockfile');
       });
 
       it('should detect npm from packageManager field in package.json', () => {
@@ -685,8 +740,6 @@ describe('generate-workflow command', () => {
         vi.mocked(existsSync).mockReturnValue(true);
 
         const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
-
-        // Should use npm based on packageManager field
         const job = workflow.jobs['typescript-type-check'];
         expectStepWithRun(job, 'npm ci');
         expectNoStepWithUses(job, 'pnpm/action-setup');
@@ -735,6 +788,120 @@ describe('generate-workflow command', () => {
         // Should use pnpm from packageManager field (not default to npm)
         const job = workflow.jobs['typescript-type-check'];
         expectStepWithUses(job, 'pnpm/action-setup');
+      });
+
+      it('should detect bun from packageManager field in package.json', () => {
+        testPackageManagerDetection('bun', '1.0.0', 'oven-sh/setup-bun@v2', 'bun install');
+      });
+
+      it('should detect yarn from packageManager field in package.json', () => {
+        testPackageManagerDetection('yarn', '4.0.0', null, 'yarn install --frozen-lockfile');
+      });
+
+      it('should use bun when only bun.lockb exists', () => {
+        testLockfileDetection(
+          { hasBunLock: true, hasPackageLock: false, hasPnpmLock: false, hasYarnLock: false },
+          'oven-sh/setup-bun@v2',
+          'bun install'
+        );
+      });
+
+      it('should use yarn when only yarn.lock exists', () => {
+        testLockfileDetection(
+          { hasYarnLock: true, hasPackageLock: false, hasPnpmLock: false, hasBunLock: false },
+          null,
+          'yarn install --frozen-lockfile'
+        );
+      });
+
+      it('should prioritize bun over other lockfiles when multiple exist', () => {
+        testLockfileDetection(
+          { hasBunLock: true, hasPackageLock: true, hasPnpmLock: true, hasYarnLock: true },
+          'oven-sh/setup-bun@v2',
+          'bun install'
+        );
+      });
+
+      it('should prioritize yarn over npm when both exist', () => {
+        testLockfileDetection(
+          { hasYarnLock: true, hasPackageLock: true, hasPnpmLock: false, hasBunLock: false },
+          null,
+          'yarn install --frozen-lockfile'
+        );
+      });
+
+      it('should use bun commands for build and validate', () => {
+        testBuildCommands('bun', '1.0.0', 'bun install', 'bun run build');
+      });
+
+      it('should use yarn commands for build and validate', () => {
+        testBuildCommands('yarn', '4.0.0', 'yarn install --frozen-lockfile', 'yarn run build');
+      });
+
+      it('should use bun in matrix mode', () => {
+        const job = generateBunMatrixWorkflow();
+
+        expect(job.strategy.matrix.node).toEqual(['20', '22']);
+        expect(job.strategy.matrix.os).toEqual(['ubuntu-latest', 'windows-latest']);
+        expectStepWithUses(job, 'oven-sh/setup-bun@v2');
+        expectStepWithRun(job, 'bun install');
+        expectStepWithRun(job, 'bun run validate');
+      });
+
+      it('should include Node.js setup for Bun projects with matrix for compatibility testing', () => {
+        const job = generateBunMatrixWorkflow();
+
+        // Should have BOTH Bun and Node.js setup
+        const bunStep = expectStepWithUses(job, 'oven-sh/setup-bun@v2');
+        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v4');
+
+        // Verify Node.js setup uses matrix variable
+        expect(nodeStep.with['node-version']).toBe('${{ matrix.node }}');
+
+        // Verify Node.js setup does NOT have cache for Bun (Bun doesn't use Node's cache)
+        expect(nodeStep.with.cache).toBeUndefined();
+
+        // Bun setup should come before Node.js setup
+        const bunIndex = job.steps.indexOf(bunStep);
+        const nodeIndex = job.steps.indexOf(nodeStep);
+        expect(bunIndex).toBeLessThan(nodeIndex);
+      });
+
+      it('should include Node.js setup for Bun projects detected from bun.lock (new format)', () => {
+        mockLockfiles({ hasBunLock: true, hasPackageLock: false, hasPnpmLock: false, hasYarnLock: false });
+        mockPackageJson(undefined, { node: '>=22.0.0' });
+
+        const workflow = generateAndParseWorkflow(mockConfig, {
+          useMatrix: true,
+          nodeVersions: ['22', '24'],
+        });
+
+        const job = workflow.jobs['validate'];
+
+        // Should detect Bun and include both setups
+        expectStepWithUses(job, 'oven-sh/setup-bun@v2');
+        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v4');
+
+        // Node.js setup should use matrix variable and not have cache
+        expect(nodeStep.with['node-version']).toBe('${{ matrix.node }}');
+        expect(nodeStep.with.cache).toBeUndefined();
+      });
+
+      it('should use yarn in matrix mode', () => {
+        mockPackageJson('yarn@4.0.0');
+        vi.mocked(existsSync).mockReturnValue(true);
+
+        const workflow = generateAndParseWorkflow(mockConfig, {
+          useMatrix: true,
+          nodeVersions: ['20', '22'],
+          os: ['ubuntu-latest']
+        });
+
+        const job = workflow.jobs['validate'];
+        expectStepWithRun(job, 'yarn install --frozen-lockfile');
+        expectStepWithRun(job, 'yarn run validate');
+        expectNoStepWithUses(job, 'pnpm/action-setup');
+        expectNoStepWithUses(job, 'oven-sh/setup-bun');
       });
     });
   });

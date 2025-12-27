@@ -24,7 +24,8 @@ import {
   mockDoctorFileSystem,
   mockDoctorGit,
   findCheck,
-  assertCheck
+  assertCheck,
+  assertAllPackageManagerCommands
 } from '../helpers/doctor-helpers.js';
 
 // Mock dependencies
@@ -121,6 +122,17 @@ describe('doctor command', () => {
       warnIfBehind: true,
     },
   };
+
+  /**
+   * Setup all doctor mocks with defaults and configure loadConfig/checkSync
+   */
+  async function mockDoctorDefaults() {
+    await mockDoctorFileSystem();
+    await mockDoctorGit();
+    await mockDoctorEnvironment();
+    vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+    vi.mocked(checkSync).mockReturnValue({ inSync: true });
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1171,11 +1183,7 @@ describe('doctor command', () => {
     };
 
     it('should use mocked version checker when provided', async () => {
-      await mockDoctorFileSystem();
-      await mockDoctorGit();
-      await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await mockDoctorDefaults();
 
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
 
@@ -1184,11 +1192,7 @@ describe('doctor command', () => {
     });
 
     it('should show Node.js and Git checks with mock', async () => {
-      await mockDoctorFileSystem();
-      await mockDoctorGit();
-      await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await mockDoctorDefaults();
 
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
 
@@ -1197,11 +1201,7 @@ describe('doctor command', () => {
     });
 
     it('should be fast with mocked version checker', async () => {
-      await mockDoctorFileSystem();
-      await mockDoctorGit();
-      await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-      vi.mocked(checkSync).mockReturnValue({ inSync: true });
+      await mockDoctorDefaults();
 
       const start = Date.now();
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
@@ -1463,9 +1463,15 @@ describe('doctor command', () => {
       assertCheck(result, 'vibe-validate version', {
         passed: true,
         messageContains: '0.9.10 (local)',
-        suggestionContains: 'npm install -D vibe-validate@latest'
+        suggestionContains: 'vibe-validate'
       });
-      expect(findCheck(result, 'vibe-validate version').suggestion).toContain('pnpm add -D');
+      // Should show upgrade commands for all package managers
+      assertAllPackageManagerCommands(result, 'vibe-validate version', {
+        npm: 'npm install -D vibe-validate@latest',
+        pnpm: 'pnpm update vibe-validate',
+        yarn: 'yarn upgrade vibe-validate',
+        bun: 'bun update vibe-validate'
+      });
     });
 
     it('should show global install command when VV_CONTEXT=global', async () => {
@@ -1479,7 +1485,14 @@ describe('doctor command', () => {
       assertCheck(result, 'vibe-validate version', {
         passed: true,
         messageContains: '0.9.10 (global)',
-        suggestionContains: 'npm install -g vibe-validate@latest'
+        suggestionContains: 'vibe-validate'
+      });
+      // Should show global upgrade commands for all package managers
+      assertAllPackageManagerCommands(result, 'vibe-validate version', {
+        npm: 'npm install -g vibe-validate@latest',
+        pnpm: 'pnpm add -g vibe-validate@latest',
+        yarn: 'yarn global add vibe-validate@latest',
+        bun: 'bun add --global vibe-validate@latest'
       });
     });
 
