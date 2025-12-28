@@ -75,7 +75,7 @@ function readTreeEntries(commitSha: string): TreeEntry[] {
 
     entries.push({
       mode,
-      type: type as 'blob' | 'tree',
+      type,
       sha,
       name,
     });
