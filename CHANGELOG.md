@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- **Worktree safety hardening** (Issue #103) - Fixed race conditions when running validation in multiple worktrees or processes simultaneously. Uses PID-based temp index files and optimistic locking on git notes to prevent data loss.
+
 ## [0.18.1] - 2025-12-26
 
 ### Features
