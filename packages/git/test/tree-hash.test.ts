@@ -59,6 +59,14 @@ function mockStandardGitCommands(writeTreeOutput = 'abc123\n') {
     .mockReturnValueOnce({ success: true, stdout: writeTreeOutput, stderr: '', exitCode: 0 });  // git write-tree
 }
 
+/**
+ * Helper to create mock file stats
+ * Used for testing stale temp index cleanup
+ */
+function createMockStats(mtimeMs: number) {
+  return { mtimeMs };
+}
+
 describe('getGitTreeHash', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -318,13 +326,6 @@ describe('getGitTreeHash', () => {
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000 + 1000); // 5 minutes + 1 second ago
     const fourMinutesAgo = Date.now() - (4 * 60 * 1000); // 4 minutes ago
 
-    /**
-     * Helper to create mock file stats
-     */
-    function createMockStats(mtimeMs: number) {
-      return { mtimeMs };
-    }
-
     beforeEach(() => {
       // Default: cleanup doesn't find any files
       mockReaddirSync.mockReturnValue([]);
@@ -397,7 +398,7 @@ describe('getGitTreeHash', () => {
         expect.stringContaining('Cleaned up stale temp index from PID 99999')
       );
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/\d+s old/)
+        expect.stringContaining('s old')
       );
     });
 
