@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.2-rc.1] - 2025-12-28
+
 ### Bug Fixes
 
-- **Worktree safety hardening** (Issue #103) - Fixed race conditions when running validation in multiple worktrees or processes simultaneously. Uses PID-based temp index files and optimistic locking on git notes to prevent data loss.
+- **Complete atomic safety for concurrent worktrees** (Issue #103, PR #105)
+  - Implemented true atomic compare-and-swap (CAS) operations for git notes merge
+  - Eliminates race condition from PR #104's optimistic locking approach
+  - Uses git plumbing commands (hash-object, ls-tree, mktree, commit-tree, update-ref)
+  - Guarantees zero data loss under any concurrency level
+  - 7 git commands per conflict vs 3 (acceptable trade-off for 100% safety)
 
 ## [0.18.1] - 2025-12-26
 
