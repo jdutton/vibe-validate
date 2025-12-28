@@ -55,6 +55,12 @@ export interface GitExecutionOptions {
    * Merged with process.env
    */
   env?: NodeJS.ProcessEnv;
+
+  /**
+   * Working directory for git command execution
+   * @default process.cwd()
+   */
+  cwd?: string;
 }
 
 /**
@@ -105,6 +111,9 @@ export interface GitCommandError extends Error {
  *   ['notes', '--ref=vibe-validate/validate', 'add', '-f', '-F', '-', treeHash],
  *   { stdin: noteContent }
  * );
+ *
+ * // Execute in specific directory
+ * executeGitCommand(['status'], { cwd: '/path/to/repo' });
  * ```
  */
 export function executeGitCommand(
@@ -118,6 +127,7 @@ export function executeGitCommand(
     ignoreErrors = false,
     suppressStderr = false,
     env,
+    cwd,
   } = options;
 
   // Validate arguments
@@ -131,6 +141,7 @@ export function executeGitCommand(
     timeout,
     maxBuffer: 10 * 1024 * 1024, // 10MB buffer
     env: env ? { ...process.env, ...env } : process.env,
+    cwd,
   };
 
   // Configure stdio

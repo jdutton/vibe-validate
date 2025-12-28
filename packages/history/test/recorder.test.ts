@@ -35,7 +35,7 @@ describe('recordValidationHistory', () => {
 
     // Re-establish default success mock for addNote
     const { addNote } = await import('@vibe-validate/git');
-    vi.mocked(addNote).mockReturnValue({ success: true, stdout: '', stderr: '', exitCode: 0 });
+    vi.mocked(addNote).mockReturnValue(true);
   });
 
   it('should record validation result to git notes', async () => {
@@ -66,7 +66,7 @@ describe('recordValidationHistory', () => {
       'vibe-validate/validate',
       treeHash,
       expect.any(String), // YAML content
-      true // force flag
+      false // optimistic locking (not force)
     );
   });
 
@@ -169,7 +169,7 @@ describe('checkWorktreeStability', () => {
     const { getGitTreeHash } = await import('@vibe-validate/git');
     const treeHash = 'abc123def456';
 
-    vi.mocked(getGitTreeHash).mockResolvedValue(treeHash);
+    vi.mocked(getGitTreeHash).mockResolvedValue(treeHash as any);
 
     const stability = await checkWorktreeStability(treeHash);
 
@@ -183,7 +183,7 @@ describe('checkWorktreeStability', () => {
     const treeHashBefore = 'abc123def456';
     const treeHashAfter = 'def456abc123';
 
-    vi.mocked(getGitTreeHash).mockResolvedValue(treeHashAfter);
+    vi.mocked(getGitTreeHash).mockResolvedValue(treeHashAfter as any);
 
     const stability = await checkWorktreeStability(treeHashBefore);
 

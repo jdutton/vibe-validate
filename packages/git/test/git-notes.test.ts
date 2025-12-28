@@ -79,6 +79,30 @@ function mockFailedCommand(stderr = '', exitCode = 1): void {
   });
 }
 
+/**
+ * Mock a conflict scenario (note already exists)
+ */
+function mockConflictResult(): void {
+  vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({
+    success: false,
+    stdout: '',
+    stderr: 'error: Object already exists',
+    exitCode: 1,
+  });
+}
+
+/**
+ * Mock reading an existing note (for merge scenarios)
+ */
+function mockReadExistingNote(): void {
+  vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({
+    success: true,
+    stdout: '{"treeHash":"abc123","runs":[{"id":"run-1"}]}',
+    stderr: '',
+    exitCode: 0,
+  });
+}
+
 describe('git-notes - error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -134,6 +158,134 @@ describe('git-notes - error handling', () => {
         ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
         expect.objectContaining({ stdin: 'content' })
       );
+    });
+  });
+
+  describe('addNote - optimistic locking', () => {
+    it('should succeed on first write when note does not exist', () => {
+      mockSuccessfulValidation();
+      mockSuccessfulCommand();
+
+      const result = addNote(TEST_REF, VALID_HASH, 'content', false);
+      expect(result).toBe(true);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(1);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
+        ['notes', '--ref=vibe-validate/test', 'add', '-F', '-', VALID_HASH],
+        expect.objectContaining({ stdin: 'content' })
+      );
+    });
+
+    it('should retry and merge when note already exists', () => {
+      mockSuccessfulValidation();
+
+      // First call: fails with "already exists"
+      vi.mocked(gitExecutor.executeGitCommand)
+        .mockReturnValueOnce({
+          success: false,
+          stdout: '',
+          stderr: 'error: Object already exists for abc123',
+          exitCode: 1,
+        })
+        // Second call: read existing note
+        .mockReturnValueOnce({
+          success: true,
+          stdout: '{"treeHash":"abc123","runs":[{"id":"run-1","timestamp":"2024-01-01T00:00:00Z","duration":1000,"passed":true,"branch":"main","headCommit":"commit1","uncommittedChanges":false,"result":{}}]}',
+          stderr: '',
+          exitCode: 0,
+        })
+        // Third call: write merged note with force
+        .mockReturnValueOnce({
+          success: true,
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+        });
+
+      const newNote = '{"treeHash":"abc123","runs":[{"id":"run-2","timestamp":"2024-01-01T00:01:00Z","duration":2000,"passed":true,"branch":"main","headCommit":"commit2","uncommittedChanges":false,"result":{}}]}';
+      const result = addNote(TEST_REF, VALID_HASH, newNote, false);
+
+      expect(result).toBe(true);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(3);
+
+      // First attempt without force
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(1,
+        ['notes', '--ref=vibe-validate/test', 'add', '-F', '-', VALID_HASH],
+        expect.objectContaining({ stdin: newNote })
+      );
+
+      // Read existing note
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(2,
+        ['notes', '--ref=vibe-validate/test', 'show', VALID_HASH],
+        expect.objectContaining({ ignoreErrors: true })
+      );
+
+      // Write merged with force
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(3,
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
+        expect.objectContaining({ stdin: expect.stringContaining('"run-1"') })
+      );
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(3,
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
+        expect.objectContaining({ stdin: expect.stringContaining('"run-2"') })
+      );
+    });
+
+    it('should throw non-conflict errors immediately', () => {
+      mockSuccessfulValidation();
+
+      // Return permission denied error (not "already exists")
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({
+        success: false,
+        stdout: '',
+        stderr: 'error: Permission denied',
+        exitCode: 1,
+      });
+
+      const result = addNote(TEST_REF, VALID_HASH, 'content', false);
+      expect(result).toBe(false);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry up to maxRetries times', () => {
+      mockSuccessfulValidation();
+
+      // All 3 attempts fail with conflict
+      // Attempt 1: conflict, read, merge fails
+      mockConflictResult();
+      mockReadExistingNote();
+      mockConflictResult();
+      // Attempt 2: conflict, read, merge fails
+      mockConflictResult();
+      mockReadExistingNote();
+      mockConflictResult();
+      // Attempt 3: conflict, read, merge fails (last attempt - now tries to merge)
+      mockConflictResult();
+      mockReadExistingNote();
+      mockConflictResult();
+
+      const result = addNote(TEST_REF, VALID_HASH, '{"treeHash":"abc123","runs":[{"id":"run-2"}]}', false);
+      expect(result).toBe(false);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(9); // 3 attempts + 3 reads + 3 merge attempts
+    });
+
+    it('should handle merge failure and retry from beginning', () => {
+      mockSuccessfulValidation();
+
+      // Attempt 1: conflict, read, merge fails
+      mockConflictResult();
+      mockReadExistingNote();
+      mockConflictResult();
+      // Attempt 2: succeeds (no one else wrote)
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({
+        success: true,
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const result = addNote(TEST_REF, VALID_HASH, '{"treeHash":"abc123","runs":[{"id":"run-2"}]}', false);
+      expect(result).toBe(true);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(4);
     });
   });
 
