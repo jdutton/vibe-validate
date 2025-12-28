@@ -16,6 +16,207 @@ import {
 import type { TreeHash, NotesRef } from './types.js';
 
 /**
+ * Git tree entry for mktree
+ */
+interface TreeEntry {
+  mode: string;
+  type: 'blob' | 'tree';
+  sha: string;
+  name: string;
+}
+
+/**
+ * Create a blob from content using git hash-object
+ *
+ * @param content - The content to store as a blob
+ * @returns The blob SHA
+ */
+function createBlob(content: string): string {
+  const result = executeGitCommand(['hash-object', '-w', '--stdin'], {
+    stdin: content,
+  });
+  return result.stdout;
+}
+
+/**
+ * Read tree entries from a commit
+ *
+ * @param commitSha - The commit SHA to read the tree from
+ * @returns Array of tree entries
+ */
+function readTreeEntries(commitSha: string): TreeEntry[] {
+  const result = executeGitCommand(['ls-tree', commitSha], {
+    ignoreErrors: true,
+  });
+
+  if (!result.success || !result.stdout) {
+    return [];
+  }
+
+  const entries: TreeEntry[] = [];
+  for (const line of result.stdout.split('\n')) {
+    if (!line) continue;
+
+    // Format: "MODE TYPE SHA\tNAME" (note: TAB before name, not space)
+    // Use split to avoid backtracking regex issues
+    const parts = line.split(/\s+/);
+    if (parts.length < 4) continue;
+
+    const mode = parts[0];
+    const type = parts[1];
+    const sha = parts[2];
+    // Name may contain spaces, so join the rest
+    const name = parts.slice(3).join(' ');
+
+    // Validate format
+    if (!/^\d+$/.test(mode)) continue;
+    if (type !== 'blob' && type !== 'tree') continue;
+    if (!/^[0-9a-f]+$/.test(sha)) continue;
+
+    entries.push({
+      mode,
+      type: type as 'blob' | 'tree',
+      sha,
+      name,
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Create a tree from entries using git mktree
+ *
+ * @param entries - Array of tree entries
+ * @returns The tree SHA
+ */
+function createTree(entries: TreeEntry[]): string {
+  // Format for mktree: "MODE TYPE SHA\tNAME"
+  const input = entries
+    .map((e) => `${e.mode} ${e.type} ${e.sha}\t${e.name}`)
+    .join('\n');
+
+  const result = executeGitCommand(['mktree'], {
+    stdin: input,
+  });
+
+  return result.stdout;
+}
+
+/**
+ * Create a notes commit using git commit-tree
+ *
+ * @param treeSha - The tree SHA
+ * @param parentSha - The parent commit SHA (or null for first commit)
+ * @param message - Commit message
+ * @returns The commit SHA
+ */
+function createNotesCommit(
+  treeSha: string,
+  parentSha: string | null,
+  message: string
+): string {
+  const args = ['commit-tree', treeSha, '-m', message];
+  if (parentSha) {
+    args.push('-p', parentSha);
+  }
+
+  const result = executeGitCommand(args);
+  return result.stdout;
+}
+
+/**
+ * Atomically update a ref using compare-and-swap
+ *
+ * @param ref - The ref to update (e.g., 'refs/notes/vibe-validate/validate')
+ * @param newSha - The new commit SHA
+ * @param oldSha - The expected current commit SHA (or null for new ref)
+ * @returns true if update succeeded, false if ref changed (CAS failure)
+ */
+function atomicUpdateRef(ref: string, newSha: string, oldSha: string | null): boolean {
+  const args = ['update-ref', ref, newSha];
+  if (oldSha) {
+    args.push(oldSha);
+  }
+
+  const result = executeGitCommand(args, {
+    ignoreErrors: true,
+    suppressStderr: true,
+  });
+
+  return result.success;
+}
+
+/**
+ * Attempt atomic merge of a note (single retry attempt)
+ *
+ * @param notesRef - The notes reference
+ * @param fullRef - The full ref path (refs/notes/...)
+ * @param object - The object to attach the note to
+ * @param content - The new note content to merge
+ * @returns true if merge succeeded, false if CAS failed or error occurred
+ */
+function attemptAtomicMerge(
+  notesRef: NotesRef,
+  fullRef: string,
+  object: TreeHash,
+  content: string
+): boolean {
+  // Step 1: Get current notes ref commit SHA (snapshot for compare-and-swap)
+  const currentCommitSha = getNotesRefSha(notesRef);
+  if (!currentCommitSha) {
+    return false; // Ref disappeared
+  }
+
+  // Step 2: Read existing note and merge
+  const existingNote = readNote(notesRef, object);
+  if (existingNote === null) {
+    return false; // Note disappeared
+  }
+
+  const merged = mergeNotes(existingNote, content);
+
+  // Step 3: Build new notes commit atomically
+  try {
+    // Read current tree entries
+    const entries = readTreeEntries(currentCommitSha);
+
+    // Create blob with merged content
+    const blobSha = createBlob(merged);
+
+    // Update or add entry for this object
+    const existingEntryIndex = entries.findIndex((e) => e.name === object);
+    const newEntry: TreeEntry = {
+      mode: '100644',
+      type: 'blob',
+      sha: blobSha,
+      name: object,
+    };
+
+    if (existingEntryIndex >= 0) {
+      entries[existingEntryIndex] = newEntry;
+    } else {
+      entries.push(newEntry);
+    }
+
+    // Create new tree
+    const treeSha = createTree(entries);
+
+    // Create new commit
+    const commitSha = createNotesCommit(
+      treeSha,
+      currentCommitSha,
+      'Notes added by vibe-validate'
+    );
+
+    // Step 4: Atomically update ref (compare-and-swap)
+    return atomicUpdateRef(fullRef, commitSha, currentCommitSha);
+  } catch {
+    return false; // Git plumbing operation failed
+  }
+}
+
+/**
  * Merge two git notes containing validation run history
  *
  * Strategy: Parse both notes as JSON, append new runs to existing runs.
@@ -48,11 +249,17 @@ function mergeNotes(existingNote: string, newNote: string): string {
 }
 
 /**
- * Add or update a git note with optimistic locking
+ * Add or update a git note with atomic compare-and-swap
  *
- * Implements optimistic locking: try write without force, if conflict detected,
- * read current note, merge, and retry with force. This prevents data loss when
- * multiple worktrees validate simultaneously.
+ * Implements atomic optimistic locking using git plumbing commands.
+ * When a conflict is detected:
+ * 1. Read the current notes ref commit SHA (snapshot)
+ * 2. Read and merge the existing note
+ * 3. Build a new notes commit with merged content
+ * 4. Atomically update the ref only if it hasn't changed (compare-and-swap)
+ * 5. If ref changed, retry from step 1
+ *
+ * This prevents data loss when multiple worktrees validate simultaneously.
  *
  * @param notesRef - The notes reference (e.g., 'vibe-validate/validate')
  * @param object - The git tree hash to attach the note to (must be from getGitTreeHash())
@@ -75,6 +282,11 @@ export function addNote(
   validateNotesRef(notesRef);
   validateTreeHash(object);
 
+  // Convert short ref to full ref
+  const fullRef = notesRef.startsWith('refs/')
+    ? notesRef
+    : `refs/notes/${notesRef}`;
+
   // If force is true, skip optimistic locking (legacy behavior)
   if (force) {
     const args = ['notes', `--ref=${notesRef}`, 'add', '-f', '-F', '-', object];
@@ -86,61 +298,41 @@ export function addNote(
     return result.success;
   }
 
-  // Optimistic locking: try without force, merge on conflict
+  // Fast path: Try to add note without force (for new notes)
+  const addResult = executeGitCommand(
+    ['notes', `--ref=${notesRef}`, 'add', '-F', '-', object],
+    {
+      stdin: content,
+      ignoreErrors: true,
+      suppressStderr: true,
+    }
+  );
+
+  if (addResult.success) {
+    return true; // Success! Note didn't exist, added cleanly
+  }
+
+  // Check if this is a conflict (note already exists)
+  const isConflict = addResult.stderr.includes('already exists');
+
+  if (!isConflict) {
+    // Not a conflict - real error, return failure
+    return false;
+  }
+
+  // Conflict detected - enter atomic merge path with retry
   const maxRetries = 3;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // Try write without -f (fails if note exists/changed)
-    const addResult = executeGitCommand(
-      ['notes', `--ref=${notesRef}`, 'add', '-F', '-', object],
-      {
-        stdin: content,
-        ignoreErrors: true,
-        suppressStderr: true,
-      }
-    );
+    const success = attemptAtomicMerge(notesRef, fullRef, object, content);
 
-    if (addResult.success) {
-      return true; // Success!
+    if (success) {
+      return true; // Success! Atomic merge succeeded
     }
 
-    // Check if this is a conflict (note already exists)
-    const isConflict = addResult.stderr.includes('already exists');
-
-    if (!isConflict) {
-      // Not a conflict - real error, return failure
-      return false;
-    }
-
-    // Conflict detected - try to merge (even on last attempt)
-    const existingNote = readNote(notesRef, object);
-    if (existingNote === null) {
-      // Note disappeared between attempts, retry if not last attempt
-      if (attempt === maxRetries) {
-        return false; // Last attempt, can't retry
-      }
-      continue;
-    }
-
-    const merged = mergeNotes(existingNote, content);
-
-    // Write merged result with force (we just read latest)
-    const mergeResult = executeGitCommand(
-      ['notes', `--ref=${notesRef}`, 'add', '-f', '-F', '-', object],
-      {
-        stdin: merged,
-        ignoreErrors: true,
-        suppressStderr: true,
-      }
-    );
-
-    if (mergeResult.success) {
-      return true; // Merge succeeded! Return immediately
-    }
-
-    // Merge failed (another concurrent write), retry from beginning if not last attempt
+    // Failed - retry if not last attempt
     if (attempt === maxRetries) {
-      return false; // Last attempt, merge failed
+      return false;
     }
   }
 
