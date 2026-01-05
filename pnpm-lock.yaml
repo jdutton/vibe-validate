@@ -231,6 +231,9 @@ importers:
       '@vibe-validate/utils':
         specifier: workspace:*
         version: link:../utils
+      yaml:
+        specifier: ^2.8.2
+        version: 2.8.2
     devDependencies:
       '@types/node':
         specifier: ^22.19.2

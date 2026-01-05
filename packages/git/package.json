@@ -44,7 +44,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@vibe-validate/utils": "workspace:*"
+    "@vibe-validate/utils": "workspace:*",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@types/node": "^22.19.2",
