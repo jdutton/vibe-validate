@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.3] - 2026-01-05
+
 ### Bug Fixes
 
-- **CRITICAL: Fixed history recording failure due to YAML/JSON format mismatch** (Issue #106)
+- **CRITICAL: Fixed history recording failure due to YAML/JSON format mismatch** (Issue #106, PR #107)
   - **Problem**: History recording failed silently when validating the same code twice, losing all previous runs
   - **Root cause**: `mergeNotes()` used JSON.parse/stringify but notes are written as YAML
   - **Impact**: Affected v0.18.1 and v0.18.2-rc.1 (Dec 28 - Jan 5)

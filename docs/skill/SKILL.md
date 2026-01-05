@@ -1,6 +1,6 @@
 ---
 name: vibe-validate
-version: 0.18.3-rc.1 # Tracks vibe-validate package version
+version: 0.18.3 # Tracks vibe-validate package version
 description: Expert guidance for vibe-validate, an LLM-optimized validation orchestration tool. Use when working with vibe-validate commands, configuration, pre-commit workflows, or validation orchestration in TypeScript projects.
 model: claude-sonnet-4-5
 tools:
