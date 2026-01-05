@@ -7,6 +7,8 @@
  * @packageDocumentation
  */
 
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+
 import {
   executeGitCommand,
   tryGitCommand,
@@ -219,17 +221,17 @@ function attemptAtomicMerge(
 /**
  * Merge two git notes containing validation run history
  *
- * Strategy: Parse both notes as JSON, append new runs to existing runs.
+ * Strategy: Parse both notes as YAML, append new runs to existing runs.
  * No conflict resolution needed - each run is independent and timestamped.
  *
- * @param existingNote - Existing note content (JSON)
- * @param newNote - New note content to merge (JSON)
+ * @param existingNote - Existing note content (YAML)
+ * @param newNote - New note content to merge (YAML)
  * @returns Merged note content
  */
 function mergeNotes(existingNote: string, newNote: string): string {
   try {
-    const existing = JSON.parse(existingNote);
-    const newData = JSON.parse(newNote);
+    const existing = parseYaml(existingNote);
+    const newData = parseYaml(newNote);
 
     // Extract runs arrays (handle both single object and array formats)
     const existingRuns = Array.isArray(existing.runs) ? existing.runs : [];
@@ -241,7 +243,7 @@ function mergeNotes(existingNote: string, newNote: string): string {
       runs: [...existingRuns, ...newRuns],
     };
 
-    return JSON.stringify(merged);
+    return stringifyYaml(merged);
   } catch {
     // If parsing fails, prefer new note (latest data)
     return newNote;

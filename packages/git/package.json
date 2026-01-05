@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/git",
-  "version": "0.18.2",
+  "version": "0.18.3",
   "description": "Git utilities for vibe-validate - tree hash calculation, branch sync, and post-merge cleanup",
   "type": "module",
   "main": "./dist/index.js",
@@ -44,7 +44,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@vibe-validate/utils": "workspace:*"
+    "@vibe-validate/utils": "workspace:*",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@types/node": "^22.19.2",

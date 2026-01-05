@@ -184,8 +184,29 @@ describe('git-notes - error handling', () => {
     it('should retry and merge when note already exists (atomic CAS)', () => {
       mockSuccessfulValidation();
 
-      const existingNote = '{"treeHash":"abc123","runs":[{"id":"run-1","timestamp":"2024-01-01T00:00:00Z","duration":1000,"passed":true,"branch":"main","headCommit":"commit1","uncommittedChanges":false,"result":{}}]}';
-      const newNote = '{"treeHash":"abc123","runs":[{"id":"run-2","timestamp":"2024-01-01T00:01:00Z","duration":2000,"passed":true,"branch":"main","headCommit":"commit2","uncommittedChanges":false,"result":{}}]}';
+      // YAML format (as written by packages/history/src/recorder.ts)
+      const existingNote = `treeHash: abc123
+runs:
+  - id: run-1
+    timestamp: '2024-01-01T00:00:00Z'
+    duration: 1000
+    passed: true
+    branch: main
+    headCommit: commit1
+    uncommittedChanges: false
+    result: {}
+`;
+      const newNote = `treeHash: abc123
+runs:
+  - id: run-2
+    timestamp: '2024-01-01T00:01:00Z'
+    duration: 2000
+    passed: true
+    branch: main
+    headCommit: commit2
+    uncommittedChanges: false
+    result: {}
+`;
 
       vi.mocked(gitExecutor.executeGitCommand)
         // 1. Try to add note (conflict)
@@ -274,14 +295,14 @@ describe('git-notes - error handling', () => {
         expect.any(Object)
       );
 
-      // Verify hash-object call (should contain merged content)
+      // Verify hash-object call (should contain merged content in YAML format)
       expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
         ['hash-object', '-w', '--stdin'],
-        expect.objectContaining({ stdin: expect.stringContaining('"run-1"') })
+        expect.objectContaining({ stdin: expect.stringContaining('run-1') })
       );
       expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
         ['hash-object', '-w', '--stdin'],
-        expect.objectContaining({ stdin: expect.stringContaining('"run-2"') })
+        expect.objectContaining({ stdin: expect.stringContaining('run-2') })
       );
 
       // Verify mktree call
@@ -321,8 +342,14 @@ describe('git-notes - error handling', () => {
     it('should retry up to maxRetries times with atomic CAS failures', () => {
       mockSuccessfulValidation();
 
-      const existingNote = '{"treeHash":"abc123","runs":[{"id":"run-1"}]}';
-      const newNote = '{"treeHash":"abc123","runs":[{"id":"run-2"}]}';
+      const existingNote = `treeHash: abc123
+runs:
+  - id: run-1
+`;
+      const newNote = `treeHash: abc123
+runs:
+  - id: run-2
+`;
 
       // Fast path: initial add attempt (conflict)
       mockConflictResult();
@@ -345,8 +372,14 @@ describe('git-notes - error handling', () => {
     it('should handle CAS failure and retry until success', () => {
       mockSuccessfulValidation();
 
-      const existingNote = '{"treeHash":"abc123","runs":[{"id":"run-1"}]}';
-      const newNote = '{"treeHash":"abc123","runs":[{"id":"run-2"}]}';
+      const existingNote = `treeHash: abc123
+runs:
+  - id: run-1
+`;
+      const newNote = `treeHash: abc123
+runs:
+  - id: run-2
+`;
 
       // Fast path: initial add attempt (conflict)
       mockConflictResult();
@@ -361,6 +394,60 @@ describe('git-notes - error handling', () => {
       expect(result).toBe(true);
       // 1 (initial conflict) + 7 (attempt 1) + 7 (attempt 2) = 15 total calls
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(15);
+    });
+
+    it('should merge YAML-formatted notes correctly (bug fix test)', () => {
+      mockSuccessfulValidation();
+
+      // YAML format (as written by packages/history/src/recorder.ts)
+      const existingNote = `treeHash: abc123
+runs:
+  - id: run-1
+    timestamp: '2024-01-01T00:00:00Z'
+    duration: 1000
+    passed: true
+    branch: main
+    headCommit: commit1
+    uncommittedChanges: false
+    result: {}
+`;
+
+      const newNote = `treeHash: abc123
+runs:
+  - id: run-2
+    timestamp: '2024-01-01T00:01:00Z'
+    duration: 2000
+    passed: true
+    branch: main
+    headCommit: commit2
+    uncommittedChanges: false
+    result: {}
+`;
+
+      // Fast path: initial add attempt (conflict)
+      mockConflictResult();
+
+      // Atomic merge attempt (succeeds)
+      mockAtomicMergeAttempt('commit-sha-123', existingNote, true);
+
+      const result = addNote(TEST_REF, VALID_HASH, newNote, false);
+
+      expect(result).toBe(true);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(8);
+
+      // Verify hash-object call contains merged content with BOTH runs
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
+        ['hash-object', '-w', '--stdin'],
+        expect.objectContaining({
+          stdin: expect.stringMatching(/run-1/)
+        })
+      );
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
+        ['hash-object', '-w', '--stdin'],
+        expect.objectContaining({
+          stdin: expect.stringMatching(/run-2/)
+        })
+      );
     });
   });
 
