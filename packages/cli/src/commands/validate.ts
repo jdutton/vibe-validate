@@ -15,6 +15,55 @@ import { acquireLock, releaseLock, checkLock, waitForLock, type LockOptions } fr
 import { detectProjectId } from '../utils/project-id.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
 
+/**
+ * Display the result of waiting for validation lock
+ *
+ * @param timedOut - Whether the wait timed out
+ * @param yamlMode - Whether in YAML output mode
+ */
+function displayWaitResult(timedOut: boolean, yamlMode: boolean): void {
+  if (yamlMode) return; // No output in YAML mode
+
+  if (timedOut) {
+    console.log(chalk.yellow('⏱️  Wait timed out, proceeding with validation'));
+  } else {
+    console.log(chalk.green('✓ Background validation completed'));
+  }
+}
+
+/**
+ * Display information about existing validation lock
+ *
+ * @param existingLock - The existing lock information
+ * @param currentTreeHash - Current git tree hash
+ * @param yamlMode - Whether in YAML output mode
+ */
+function displayExistingLockInfo(
+  existingLock: { directory: string; treeHash: string; pid: number; startTime: string },
+  currentTreeHash: string,
+  yamlMode: boolean
+): void {
+  if (yamlMode) return; // No output in YAML mode
+
+  const isCurrentHash = existingLock.treeHash === currentTreeHash;
+  const hashStatus = isCurrentHash
+    ? 'same as current'
+    : `stale - current is ${currentTreeHash.substring(0, 7)}`;
+
+  const elapsed = Math.floor(
+    (Date.now() - new Date(existingLock.startTime).getTime()) / 1000,
+  );
+  const elapsedStr =
+    elapsed < 60
+      ? `${elapsed} seconds ago`
+      : `${Math.floor(elapsed / 60)} minutes ago`;
+
+  console.log(chalk.yellow('⚠️  Validation already running'));
+  console.log(`  Directory: ${existingLock.directory}`);
+  console.log(`  Tree Hash: ${existingLock.treeHash.substring(0, 7)} (${hashStatus})`);
+  console.log(`  PID: ${existingLock.pid}`);
+  console.log(`  Started: ${elapsedStr}`);
+}
 
 export function validateCommand(program: Command): void {
   program
@@ -122,15 +171,7 @@ export function validateCommand(program: Command): void {
 
             const waitResult = await waitForLock(configDir, waitTimeout, 1000, lockOptions);
 
-            if (waitResult.timedOut) {
-              if (!options.yaml) {
-                console.log(chalk.yellow('⏱️  Wait timed out, proceeding with validation'));
-              }
-              // Continue with normal validation flow
-            } else if (!options.yaml) {
-              console.log(chalk.green('✓ Background validation completed'));
-              // Continue to check cache/run validation
-            }
+            displayWaitResult(waitResult.timedOut, options.yaml);
           }
           // If no lock exists, proceed normally
         }
@@ -147,32 +188,7 @@ export function validateCommand(program: Command): void {
 
             // If --no-wait specified, exit immediately (for background hooks)
             if (!shouldWait) {
-              const existing = lockResult.existingLock;
-              const isCurrentHash = existing.treeHash === treeHash;
-              const hashStatus = isCurrentHash
-                ? 'same as current'
-                : `stale - current is ${treeHash.substring(0, 7)}`;
-
-              const elapsed = Math.floor(
-                (Date.now() - new Date(existing.startTime).getTime()) / 1000,
-              );
-              const elapsedStr =
-                elapsed < 60
-                  ? `${elapsed} seconds ago`
-                  : `${Math.floor(elapsed / 60)} minutes ago`;
-
-              if (!options.yaml) {
-                console.log(
-                  chalk.yellow('⚠️  Validation already running'),
-                );
-                console.log(`  Directory: ${existing.directory}`);
-                console.log(
-                  `  Tree Hash: ${existing.treeHash.substring(0, 7)} (${hashStatus})`,
-                );
-                console.log(`  PID: ${existing.pid}`);
-                console.log(`  Started: ${elapsedStr}`);
-              }
-
+              displayExistingLockInfo(lockResult.existingLock, treeHash, options.yaml);
               process.exit(0); // Exit 0 to not trigger errors in hooks
             }
 

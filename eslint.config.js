@@ -42,6 +42,12 @@ const unicornRules = {
   'unicorn/prefer-set-has': 'error', // Optimize Set lookups over Array.includes()
   'unicorn/no-instanceof-array': 'error', // Enforce Array.isArray() over instanceof
   'unicorn/prefer-date-now': 'error', // Prefer Date.now() over new Date().getTime()
+
+  // Additional rules from ts-monorepo-template
+  'unicorn/prefer-at': 'error', // Prefer .at() for array/string access (ES2022)
+  'unicorn/prefer-export-from': 'error', // Prefer export {foo} from 'bar' over import then export
+  'unicorn/prefer-structured-clone': 'error', // Prefer structuredClone() over JSON.parse(JSON.stringify())
+  'unicorn/no-zero-fractions': 'error', // Disallow 1.0, use 1 instead
 };
 
 // Shared import organization rules (applies to both test and production code)
@@ -73,6 +79,7 @@ const customRules = {
   'local/no-fs-mkdirSync': 'error',
   'local/no-fs-realpathSync': 'error',
   'local/no-path-resolve-dirname': 'error', // Test files only
+  'local/no-unix-shell-commands': 'error', // Prevent Unix-specific commands (tar, ls, grep, etc.)
 
   // Security and architecture rules
   'local/no-child-process-execSync': 'error',
@@ -255,6 +262,11 @@ export default [
       '@typescript-eslint/prefer-nullish-coalescing': 'error', // Promoted from warn - enforce ?? usage
       '@typescript-eslint/prefer-optional-chain': 'error', // Promote from warn - enforce ?. usage
 
+      // Additional TypeScript type safety rules (from ts-monorepo-template)
+      '@typescript-eslint/no-redundant-type-constituents': 'error', // Flag redundant types in unions
+      '@typescript-eslint/prefer-function-type': 'error', // Prefer function types over interfaces
+      '@typescript-eslint/no-require-imports': 'error', // Enforce ESM (no require)
+
       // TypeScript type safety & optimization rules
       '@typescript-eslint/consistent-type-imports': ['error', {
         prefer: 'type-imports',
@@ -273,6 +285,8 @@ export default [
         varsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
       }],
+      'max-depth': ['error', 4], // Maximum nesting depth (aligns with SonarQube)
+      'max-params': ['error', 7], // Maximum function parameters (matches SonarQube threshold)
 
       // Security - vulnerability detection (CRITICAL)
       'security/detect-child-process': 'error', // Catch command injection vulnerabilities
@@ -495,6 +509,7 @@ export default [
       'local/no-os-tmpdir': 'error',
       'local/no-fs-mkdirSync': 'error',
       'local/no-fs-realpathSync': 'error',
+      'local/no-unix-shell-commands': 'error',
 
       // Security and architecture rules
       'local/no-child-process-execSync': 'error',

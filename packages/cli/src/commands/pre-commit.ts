@@ -27,6 +27,7 @@ import {
   showSecretsDetectedError,
   formatToolName,
   hasGitleaksConfig,
+  type SecretScanningTool,
 } from '../utils/secret-scanning.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
 
@@ -45,6 +46,41 @@ function showWorkProtectionMessage(treeHash: string | null, recoveryCommand: str
     console.error(chalk.yellow('\n   ⚠️  No snapshot created - proceed with caution'));
     console.error(chalk.yellow('   To fix, run:'));
     console.error(chalk.gray(`     ${recoveryCommand}`));
+  }
+}
+
+/**
+ * Handle the result of a secret scanning tool
+ *
+ * @param result - The scan result
+ * @param tool - The tool name (SecretScanningTool type)
+ * @param verbose - Whether to show verbose output
+ * @param scanCommand - The configured scan command (undefined or 'autodetect' = auto mode)
+ */
+function handleScanResult(
+  result: { passed: boolean; skipped?: boolean; output?: string; duration: number; tool: string },
+  tool: SecretScanningTool,
+  verbose: boolean,
+  scanCommand: string | undefined
+): void {
+  // Handle skipped scans (e.g., gitleaks not available but config exists)
+  if (result.skipped) {
+    if (hasGitleaksConfig() && !isToolAvailable('gitleaks')) {
+      console.warn(chalk.yellow(`⚠️  Found .gitleaks.toml but gitleaks command not available, skipping`));
+      console.warn(chalk.gray('   Install gitleaks: brew install gitleaks'));
+    }
+    return;
+  }
+
+  // Show verbose output if requested
+  if (verbose && result.output) {
+    console.log(chalk.gray(result.output));
+  }
+
+  // Show performance warning if scan was slow (hardcoded 5s threshold)
+  if (result.passed) {
+    const hasExplicitCommand = scanCommand !== undefined && scanCommand !== 'autodetect';
+    showPerformanceWarning(tool, result.duration, 5000, hasExplicitCommand);
   }
 }
 
@@ -187,25 +223,7 @@ export function preCommitCommand(program: Command): void {
               const result = runSecretScan(tool, command, verbose);
               results.push(result);
 
-              // Handle skipped scans (e.g., gitleaks not available but config exists)
-              if (result.skipped) {
-                if (hasGitleaksConfig() && !isToolAvailable('gitleaks')) {
-                  console.warn(chalk.yellow(`⚠️  Found .gitleaks.toml but gitleaks command not available, skipping`));
-                  console.warn(chalk.gray('   Install gitleaks: brew install gitleaks'));
-                }
-                continue;
-              }
-
-              // Show verbose output if requested
-              if (verbose && result.output) {
-                console.log(chalk.gray(result.output));
-              }
-
-              // Show performance warning if scan was slow (hardcoded 5s threshold)
-              if (result.passed) {
-                const hasExplicitCommand = secretScanning.scanCommand !== undefined && secretScanning.scanCommand !== 'autodetect';
-                showPerformanceWarning(tool, result.duration, 5000, hasExplicitCommand);
-              }
+              handleScanResult(result, tool, verbose, secretScanning.scanCommand);
             }
 
             // Check if any scans failed

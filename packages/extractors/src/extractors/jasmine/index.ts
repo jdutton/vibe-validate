@@ -6,12 +6,22 @@
  * @package @vibe-validate/extractors
  */
 
+// max-depth disabled: Test framework output parsing requires nested loops for message/stack
+// section handling, pattern matching, and state tracking across multiple parsing phases.
+/* eslint-disable max-depth */
+
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
   DetectionResult,
   ExtractorSample,
 } from '../../types.js';
+import {
+  collectLinesUntil,
+  parseStackLocation,
+  extractErrorType,
+  type StackLocationPattern,
+} from '../../utils/parser-utils.js';
 import { processTestFailures, type TestFailureInfo } from '../../utils/test-framework-utils.js';
 
 /**
@@ -53,22 +63,16 @@ function extractFailures(output: string): TestFailureInfo[] {
         if (nextLine.trim() === 'Message:') {
           j++;
           // Collect message lines until we hit "Stack:" or empty line
-          const messageLines: string[] = [];
-          while (j < lines.length) {
-            const msgLine = lines[j];
-            if (msgLine.trim() === 'Stack:' || msgLine.trim() === '') {
-              break;
-            }
-            messageLines.push(msgLine.trim());
-            j++;
-          }
-          message = messageLines.join(' ').trim();
+          const { lines: messageLines, nextIndex } = collectLinesUntil(
+            lines,
+            j,
+            (line) => line.trim() === 'Stack:' || line.trim() === ''
+          );
+          j = nextIndex;
+          message = messageLines.map((line) => line.trim()).join(' ').trim();
 
           // Extract error type if present (e.g., "TypeError:", "Error:")
-          const errorMatch = /^([A-Za-z]*Error):\s*/.exec(message);
-          if (errorMatch) {
-            errorType = errorMatch[1];
-          }
+          errorType = extractErrorType(message);
 
           continue;
         }
@@ -77,37 +81,44 @@ function extractFailures(output: string): TestFailureInfo[] {
         if (nextLine.trim() === 'Stack:') {
           j++;
           // Scan stack trace for file location
-          while (j < lines.length && j < i + 40) {
-            const stackLine = lines[j];
+          const { lines: stackLines, nextIndex } = collectLinesUntil(
+            lines,
+            j,
+            (line, index) =>
+              /^\d+\)\s+/.exec(line) !== null ||
+              (line.trim() === '' && /^\d+\)\s+/.exec(lines[index + 1] ?? '') !== null) ||
+              index >= i + 40
+          );
+          j = nextIndex;
 
-            // Stop if we hit the next failure or empty section
-            if (/^\d+\)\s+/.exec(stackLine) || (stackLine.trim() === '' && /^\d+\)\s+/.exec(lines[j + 1] ?? ''))) {
+          // Parse stack lines to extract file location
+          const jasminePatterns: StackLocationPattern[] = [
+            // UserContext.<anonymous> pattern (Jasmine-specific)
+            {
+              regex: /UserContext\.<anonymous> \(([^:)]+):(\d+)(?::(\d+))?\)/,
+              fileGroup: 1,
+              lineGroup: 2,
+              columnGroup: 3,
+            },
+            // Generic function call pattern (fallback)
+            {
+              // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jasmine test framework stack traces (controlled output), not user input
+              regex: /\(([^:)]+):(\d+)(?::(\d+))?\)/,
+              fileGroup: 1,
+              lineGroup: 2,
+              columnGroup: 3,
+            },
+          ];
+
+          for (const stackLine of stackLines) {
+            const location = parseStackLocation(stackLine, jasminePatterns);
+            if (location.file) {
+              file = location.file;
+              lineNumber = location.line;
               break;
             }
-
-            // Extract file from UserContext.<anonymous> stack lines
-            if (stackLine.includes('UserContext.<anonymous>')) {
-              const locationMatch = /UserContext\.<anonymous> \(([^:)]+):(\d+)(?::(\d+))?\)/.exec(stackLine);
-              if (locationMatch) {
-                file = locationMatch[1];
-                lineNumber = Number.parseInt(locationMatch[2], 10);
-                break;
-              }
-            }
-
-            // Also try Object.* patterns
-            if (!file && stackLine.includes(' (') && stackLine.includes('.js:')) {
-              // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jasmine test framework stack traces (controlled output), not user input
-              const altMatch = /\(([^:)]+):(\d+)(?::(\d+))?\)/.exec(stackLine);
-              if (altMatch) {
-                file = altMatch[1];
-                lineNumber = Number.parseInt(altMatch[2], 10);
-                break;
-              }
-            }
-
-            j++;
           }
+
           continue;
         }
 

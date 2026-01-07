@@ -6,6 +6,7 @@
  * - no-fs-mkdirSync: Enforce mkdirSyncReal() instead of fs.mkdirSync()
  * - no-fs-realpathSync: Enforce normalizePath() instead of fs.realpathSync()
  * - no-path-resolve-dirname: Enforce normalizePath() instead of path.resolve(__dirname) in tests
+ * - no-unix-shell-commands: Prevent Unix-specific commands (tar, ls, grep, etc.) that break Windows compatibility
  *
  * Security and Architecture Rules:
  * - no-child-process-execSync: Enforce safeExecSync() instead of execSync() (security + cross-platform)
@@ -24,6 +25,7 @@ export default {
     'no-fs-mkdirSync': require('./no-fs-mkdirSync.cjs'),
     'no-fs-realpathSync': require('./no-fs-realpathSync.cjs'),
     'no-path-resolve-dirname': require('./no-path-resolve-dirname.cjs'),
+    'no-unix-shell-commands': require('./no-unix-shell-commands.cjs'),
 
     // Security and architecture rules
     'no-child-process-execSync': require('./no-child-process-execSync.cjs'),

@@ -49,6 +49,21 @@ function displayErrorSamples(extraction: RunCacheNote['extraction']): void {
 }
 
 /**
+ * Display phases from a validation run
+ *
+ * @param phases - The phases from a validation result
+ */
+function displayRunPhases(phases: Array<{ name: string; passed: boolean; durationSecs: number }> | undefined): void {
+  if (!phases) return;
+
+  console.log(`  Phases:`);
+  for (const phase of phases) {
+    const phaseStatus = phase.passed ? '✓' : '✗';
+    console.log(`    ${phaseStatus} ${phase.name} (${phase.durationSecs.toFixed(1)}s)`);
+  }
+}
+
+/**
  * Display prune results summary
  *
  * @param result - The prune operation result
@@ -533,13 +548,7 @@ async function showHistory(
           console.log(`  Commit: ${run.headCommit}`);
           console.log(`  Uncommitted Changes: ${run.uncommittedChanges ? 'yes' : 'no'}`);
 
-          if (run.result.phases) {
-            console.log(`  Phases:`);
-            for (const phase of run.result.phases) {
-              const phaseStatus = phase.passed ? '✓' : '✗';
-              console.log(`    ${phaseStatus} ${phase.name} (${phase.durationSecs.toFixed(1)}s)`);
-            }
-          }
+          displayRunPhases(run.result.phases);
 
           console.log('');
         }

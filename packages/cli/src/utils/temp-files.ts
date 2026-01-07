@@ -67,6 +67,117 @@ async function getDirectorySize(dirPath: string): Promise<number> {
 }
 
 /**
+ * Options for cleaning up temp files
+ */
+export interface CleanupOptions {
+  /** Delete files older than this many days (default: 7) */
+  olderThanDays?: number;
+  /** Dry run: show what would be deleted without actually deleting */
+  dryRun?: boolean;
+  /** Delete all temp files regardless of age */
+  deleteAll?: boolean;
+}
+
+/**
+ * Result of cleanup operation
+ */
+export interface CleanupResult {
+  /** Number of run directories deleted */
+  deletedCount: number;
+  /** Number of bytes freed */
+  freedBytes: number;
+  /** Paths that were deleted (or would be deleted in dry run) */
+  deletedPaths: string[];
+  /** Errors encountered during cleanup */
+  errors: Array<{ path: string; error: string }>;
+}
+
+/**
+ * Process a single date directory during cleanup
+ *
+ * @param dateDirPath - Path to the date directory
+ * @param cutoffDate - Files older than this date should be deleted
+ * @param deleteAll - Whether to delete all runs
+ * @param dryRun - Whether this is a dry run (no actual deletion)
+ * @param result - Accumulator for cleanup results
+ */
+async function processDateDirectory(
+  dateDirPath: string,
+  cutoffDate: Date,
+  deleteAll: boolean,
+  dryRun: boolean,
+  result: CleanupResult
+): Promise<void> {
+  const runDirs = await readdir(dateDirPath, { withFileTypes: true });
+
+  for (const runDir of runDirs) {
+    if (!runDir.isDirectory()) continue;
+
+    const runDirPath = join(dateDirPath, runDir.name);
+
+    try {
+      await processRunDirectory(runDirPath, cutoffDate, deleteAll, dryRun, result);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      result.errors.push({ path: runDirPath, error: errorMsg });
+    }
+  }
+
+  // Try to remove empty date directories
+  if (!dryRun) {
+    await cleanupEmptyDirectory(dateDirPath);
+  }
+}
+
+/**
+ * Process a single run directory during cleanup
+ *
+ * @param runDirPath - Path to the run directory
+ * @param cutoffDate - Files older than this date should be deleted
+ * @param deleteAll - Whether to delete all runs
+ * @param dryRun - Whether this is a dry run (no actual deletion)
+ * @param result - Accumulator for cleanup results
+ */
+async function processRunDirectory(
+  runDirPath: string,
+  cutoffDate: Date,
+  deleteAll: boolean,
+  dryRun: boolean,
+  result: CleanupResult
+): Promise<void> {
+  const stats = await stat(runDirPath);
+  const shouldDelete = deleteAll || stats.mtime < cutoffDate;
+
+  if (!shouldDelete) return;
+
+  const dirSize = await getDirectorySize(runDirPath);
+
+  if (!dryRun) {
+    await rm(runDirPath, { recursive: true, force: true });
+  }
+
+  result.deletedCount++;
+  result.freedBytes += dirSize;
+  result.deletedPaths.push(runDirPath);
+}
+
+/**
+ * Remove a directory if it's empty
+ *
+ * @param dirPath - Path to the directory
+ */
+async function cleanupEmptyDirectory(dirPath: string): Promise<void> {
+  try {
+    const remaining = await readdir(dirPath);
+    if (remaining.length === 0) {
+      await rm(dirPath, { recursive: true });
+    }
+  } catch {
+    // Ignore errors when cleaning up empty directories
+  }
+}
+
+/**
  * Count the number of run directories
  */
 async function countRunDirectories(runsDir: string): Promise<number> {
@@ -129,35 +240,8 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
- * Options for cleaning up temp files
- */
-export interface CleanupOptions {
-  /** Delete files older than this many days (default: 7) */
-  olderThanDays?: number;
-  /** Dry run: show what would be deleted without actually deleting */
-  dryRun?: boolean;
-  /** Delete all temp files regardless of age */
-  deleteAll?: boolean;
-}
-
-/**
- * Result of cleanup operation
- */
-export interface CleanupResult {
-  /** Number of run directories deleted */
-  deletedCount: number;
-  /** Number of bytes freed */
-  freedBytes: number;
-  /** Paths that were deleted (or would be deleted in dry run) */
-  deletedPaths: string[];
-  /** Errors encountered during cleanup */
-  errors: Array<{ path: string; error: string }>;
-}
-
-/**
  * Clean up old temporary files
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Cleanup logic requires nested loops and error handling for directory traversal
 export async function cleanupOldTempFiles(
   options: CleanupOptions = {}
 ): Promise<CleanupResult> {
@@ -188,45 +272,7 @@ export async function cleanupOldTempFiles(
       const dateDirPath = join(runsDir, dateDir.name);
 
       try {
-        const runDirs = await readdir(dateDirPath, { withFileTypes: true });
-
-        for (const runDir of runDirs) {
-          if (!runDir.isDirectory()) continue;
-
-          const runDirPath = join(dateDirPath, runDir.name);
-
-          try {
-            const stats = await stat(runDirPath);
-            const shouldDelete = deleteAll || stats.mtime < cutoffDate;
-
-            if (shouldDelete) {
-              const dirSize = await getDirectorySize(runDirPath);
-
-              if (!dryRun) {
-                await rm(runDirPath, { recursive: true, force: true });
-              }
-
-              result.deletedCount++;
-              result.freedBytes += dirSize;
-              result.deletedPaths.push(runDirPath);
-            }
-          } catch (err: unknown) {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            result.errors.push({ path: runDirPath, error: errorMsg });
-          }
-        }
-
-        // Try to remove empty date directories
-        if (!dryRun) {
-          try {
-            const remaining = await readdir(dateDirPath);
-            if (remaining.length === 0) {
-              await rm(dateDirPath, { recursive: true });
-            }
-          } catch {
-            // Ignore errors when cleaning up empty directories
-          }
-        }
+        await processDateDirectory(dateDirPath, cutoffDate, deleteAll, dryRun, result);
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.errors.push({ path: dateDirPath, error: errorMsg });
