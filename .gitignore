@@ -7,6 +7,9 @@ build/
 *.tsbuildinfo
 *.tgz
 
+# Turborepo cache
+.turbo/
+
 # Testing
 coverage/
 .vitest/

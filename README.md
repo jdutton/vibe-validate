@@ -267,6 +267,19 @@ vibe-validate includes 14+ built-in extractors that parse verbose output from po
 
 ---
 
+## Related Tools
+
+vibe-validate complements build optimization tools like Turborepo:
+
+- **Turborepo**: Optimizes build speed through intelligent caching and parallel task execution
+- **vibe-validate**: Optimizes validation output for AI agents through error extraction and structured YAML
+
+**Use both for best results**: Turbo handles fast builds/tests, vibe-validate makes validation AI-consumable.
+
+See [docs/comparisons/turborepo.md](docs/comparisons/turborepo.md) for detailed comparison and integration examples.
+
+---
+
 ## Contributing
 
 See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup and guidelines.
