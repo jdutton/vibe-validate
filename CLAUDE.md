@@ -76,6 +76,65 @@ pnpm pre-commit        # Branch sync + validation
 pnpm exec vibe-validate doctor  # Diagnose setup issues (run after upgrade!)
 ```
 
+## Turborepo Integration
+
+This project uses **Turborepo v2.7.3** for intelligent task caching and orchestration, providing **79x faster cached builds**.
+
+### When Turbo Is Used
+
+**Turbo commands** (via `turbo run <task>`):
+- `pnpm build` - TypeScript compilation across all packages (parallel, cached)
+- `pnpm typecheck` - Type checking (parallel, cached, depends on build)
+- `pnpm test` - Unit tests per package (parallel, depends on build, NOT cached)
+- `pnpm dev` - Watch mode development (persistent task)
+- `pnpm clean` - Clean build artifacts (not cached)
+
+**Direct commands** (NOT through Turbo):
+- `pnpm lint` - ESLint (root-level monorepo-wide command, not per-package)
+- `pnpm test:coverage` - Vitest coverage (always fresh, root-level)
+- `pnpm duplication-check` - JSCPD analysis (always fresh)
+- All `vv` commands (validate, state, history, etc.)
+
+### Performance Benefits
+
+- **79x faster cached builds** (5.3s → 67ms when nothing changed)
+- Parallel execution across all packages
+- Content-based caching (same code = same hash = instant cache hit)
+- Incremental builds (only changed packages rebuild)
+
+### Validation Config Uses Turbo
+
+`vibe-validate.config.yaml` uses Turbo for build/typecheck:
+```yaml
+validation:
+  phases:
+    - name: Pre-Qualification
+      steps:
+        - command: turbo run typecheck  # Uses Turbo cache
+        - command: pnpm lint            # Direct eslint (monorepo-wide)
+        - command: turbo run build      # Uses Turbo cache
+    - name: Testing
+      steps:
+        - command: pnpm test:coverage   # Direct vitest (no cache)
+```
+
+### Error Extraction Works Through Turbo
+
+vibe-validate's error extraction works seamlessly with Turbo output:
+- Turbo output → vibe-validate auto-detects extractor → structured YAML
+- Step names trigger auto-detection (e.g., "TypeScript" → typescript extractor)
+- No explicit extractor configuration needed
+- See `docs/comparisons/turborepo.md` for detailed integration examples
+
+### Architecture Pattern
+
+**Clean pattern**: `vibe-validate → turbo → tool`
+- vibe-validate: Workflow orchestration + error extraction
+- Turbo: Task orchestration + caching
+- Tool: TypeScript, ESLint, Vitest, etc.
+
+This replaced the previous redundant `vibe-validate → pnpm → vv run → tool` pattern.
+
 ## LLM-Optimized Testing (Use This!)
 
 **CRITICAL for AI agents**: Use `vv run` to wrap test/validation commands. Saves 90-95% of context window by extracting only errors.
