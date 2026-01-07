@@ -202,20 +202,24 @@ Use `getCommandName()` in error messages to match user's invocation (`vv` or `vi
 
 ### MANDATORY Steps for ANY Code Change
 
+**CRITICAL**: After fixing errors, ALWAYS run `pnpm validate` again before asking to commit (cache makes it instant if correct, catches side effects if wrong).
+
 1. **Create feature branch** (never work on main)
 2. **Make changes**
-3. **Run validation** (`pnpm validate`)
-4. **Ask user permission before committing** (MANDATORY)
+3. **Run `pnpm validate`** → Fix errors → **Run `pnpm validate` again** → Repeat until passes
+4. **Ask user permission** → Only after final validation passes
 5. **Commit with proper format**
 6. **Push to remote**
 
 ### Commit Workflow
 
-**Step 1: Ask Permission (MANDATORY)**
-- Ask: "Ready to commit these changes?"
-- Only proceed if user explicitly grants permission
+**Step 1: Validate**
+Run `pnpm validate`, fix errors, **run full validate again** (cached if no side effects).
 
-**Step 2: Commit**
+**Step 2: Ask Permission**
+Ask: "Ready to commit these changes?"
+
+**Step 3: Commit**
 ```bash
 git commit -m "type: description
 

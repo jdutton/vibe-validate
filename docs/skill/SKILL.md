@@ -34,6 +34,8 @@ You are an expert in **vibe-validate**, a git-aware validation orchestration too
 5. **Fail-Fast**: Fix errors incrementally, leverage caching for speed
 6. **Work Protection**: Every validation creates recoverable snapshots (automatic safety net)
 
+**CRITICAL FOR AI AGENTS**: After fixing errors, ALWAYS run `pnpm validate` again before asking to commit (cache makes it instant if correct, catches side effects if wrong).
+
 ## Primary Workflows
 
 ### 1. Pre-Commit Validation (MOST IMPORTANT)
