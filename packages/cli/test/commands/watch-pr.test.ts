@@ -337,13 +337,14 @@ describe('watch-pr command', () => {
 
     it('should accept valid run ID and attempt to fetch run details', async () => {
       // This test verifies the CLI accepts valid run IDs and attempts to fetch
-      // Actual fetching will fail without full API mocking, but that's expected
-      const result = await executeVv(['watch-pr', '90', '--run-id', '19744677825']);
+      // Use --timeout 1 to fail fast (API call will fail in test environment)
+      // The important thing is it didn't reject the run ID format
+      const result = await executeVv(['watch-pr', '90', '--run-id', '19744677825', '--timeout', '1']);
 
       // Should NOT show "Invalid run ID" error
       expect(result.stderr).not.toContain('Invalid run ID');
-      // Will fail with API error (expected without mocking GitHub API)
-      // The important thing is it didn't reject the run ID format
+      // Will show API/timeout error (expected - gh command fails in test environment)
+      // Test passes if run ID validation succeeded (no "Invalid run ID" message)
     });
   });
 
