@@ -7,6 +7,10 @@
  * @package @vibe-validate/extractors
  */
 
+// max-depth disabled: Test framework output parsing requires nested loops for message/stack
+// section handling, pattern matching, and state tracking across multiple parsing phases.
+/* eslint-disable max-depth */
+
 import type {
   ExtractorPlugin,
   DetectionResult,
@@ -16,6 +20,11 @@ import type {
 } from '../../types.js';
 import { formatCleanOutput } from '../../utils/formatter-utils.js';
 import { generateGuidanceFromPatterns, type GuidancePattern } from '../../utils/guidance-generator.js';
+import {
+  collectLinesUntil,
+  parseStackLocation,
+  type StackLocationPattern,
+} from '../../utils/parser-utils.js';
 
 /**
  * TAP-specific guidance patterns
@@ -257,10 +266,15 @@ function extractFailures(output: string): FailureInfo[] {
         i += 2; // Skip "not ok" line and "---" line
 
         // Parse YAML block until we hit "..."
-        while (i < lines.length && !lines[i].trim().startsWith('...')) {
-          const yamlLine = lines[i];
+        const { lines: yamlLines, nextIndex } = collectLinesUntil(
+          lines,
+          i,
+          (line) => line.trim().startsWith('...')
+        );
+        i = nextIndex;
 
-          // Extract location from "at:" field
+        // Extract location from "at:" field
+        for (const yamlLine of yamlLines) {
           // Format: "at: Test.<anonymous> (file:///path/to/file.js:line:col)"
           // or: "at: file.js:line:col"
           // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TAP test framework YAML diagnostics (controlled output), not user input
@@ -270,9 +284,8 @@ function extractFailures(output: string): FailureInfo[] {
             const { file, line } = parseLocation(location);
             if (file) failure.file = file;
             if (line) failure.line = line;
+            break;
           }
-
-          i++;
         }
       }
 
@@ -299,25 +312,25 @@ function extractFailures(output: string): FailureInfo[] {
  * - file.js:28:5
  */
 function parseLocation(location: string): { file?: string; line?: number } {
-  // Try to extract from parentheses first: (file:///path:line:col) or (path:line:col)
-  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TAP test framework location strings (controlled output), not user input
-  const parenMatch = /\(([^)]+)\)/.exec(location);
-  const pathString = parenMatch ? parenMatch[1] : location;
+  const tapPatterns: StackLocationPattern[] = [
+    // Pattern 1: Function call with parentheses and file:// URL
+    {
+      // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses TAP test framework location strings (controlled output), not user input
+      regex: /\((?:file:\/\/)?([^:)]+):(\d+):(\d+)\)/,
+      fileGroup: 1,
+      lineGroup: 2,
+      columnGroup: 3,
+    },
+    // Pattern 2: Direct file path with line and column
+    {
+      regex: /^(?:file:\/\/)?([^:]+):(\d+):(\d+)$/,
+      fileGroup: 1,
+      lineGroup: 2,
+      columnGroup: 3,
+    },
+  ];
 
-  // Remove file:// protocol if present
-  const cleanPath = pathString.replace(/^file:\/\//, '');
-
-  // Extract file path and line number
-  // Format: /path/to/file.js:line:col or path/to/file.js:line:col
-  const match = /^(.+):(\d+):\d+$/.exec(cleanPath);
-  if (match) {
-    return {
-      file: match[1],
-      line: Number.parseInt(match[2], 10),
-    };
-  }
-
-  return {};
+  return parseStackLocation(location, tapPatterns);
 }
 
 /**

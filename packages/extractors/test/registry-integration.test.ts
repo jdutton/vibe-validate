@@ -228,7 +228,7 @@ describe('Extractor Registry - Trust Level Integration', () => {
       expect(priorities[1]).toBeGreaterThanOrEqual(90);
 
       // Check that generic extractor (priority 10) is last
-      const lastExtractor = EXTRACTOR_REGISTRY[EXTRACTOR_REGISTRY.length - 1];
+      const lastExtractor = EXTRACTOR_REGISTRY.at(-1);
       expect(lastExtractor.name).toBe('generic');
       expect(lastExtractor.priority).toBe(10);
     });

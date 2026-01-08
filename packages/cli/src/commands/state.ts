@@ -75,7 +75,9 @@ async function loadValidationHistory(treeHash: string): Promise<ValidationResult
   const historyNote = await readHistoryNote(treeHash);
   if (!historyNote || historyNote.runs.length === 0) return null;
 
-  const mostRecentRun = historyNote.runs[historyNote.runs.length - 1];
+  const mostRecentRun = historyNote.runs.at(-1);
+  if (!mostRecentRun) return null; // Should never happen due to length check above
+
   return {
     passed: mostRecentRun.result.passed,
     timestamp: mostRecentRun.result.timestamp,

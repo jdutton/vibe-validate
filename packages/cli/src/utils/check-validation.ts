@@ -13,6 +13,23 @@ import chalk from 'chalk';
 import { displayCachedResult } from './display-cached-result.js';
 import { outputYamlResult } from './yaml-output.js';
 
+/**
+ * Display information about failed phase and step
+ *
+ * @param phases - The validation phases from result
+ */
+function displayFailedPhaseInfo(phases: Array<{ name: string; passed: boolean; steps?: Array<{ name: string; passed: boolean }> }> | undefined): void {
+  if (!phases) return;
+
+  const failedPhase = phases.find(p => !p.passed);
+  if (!failedPhase) return;
+
+  console.log(chalk.red(`\n   Failed phase: ${failedPhase.name}`));
+  const failedStep = failedPhase.steps?.find(s => !s.passed);
+  if (failedStep) {
+    console.log(chalk.red(`   Failed step: ${failedStep.name}`));
+  }
+}
 
 /**
  * Check validation status for current working tree
@@ -95,7 +112,15 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
 
   if (!passingRun) {
     // Last validation failed - show error details (same as fresh failure)
-    const mostRecent = historyNote.runs[historyNote.runs.length - 1];
+    const mostRecent = historyNote.runs.at(-1);
+
+    // This should never happen (we already checked runs.length > 0), but TypeScript needs the check
+    if (!mostRecent) {
+      console.log(chalk.yellow('⚠️  No validation history for current working tree'));
+      console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
+      console.log(chalk.blue('\n💡 Run validation:'), chalk.white('npx vibe-validate validate'));
+      process.exit(2);
+    }
 
     if (yaml) {
       // YAML mode: Output failed result as YAML to stdout
@@ -108,16 +133,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
       console.log(chalk.gray(`   Branch: ${mostRecent.branch}`));
 
       // Show which phase/step failed (actionable info)
-      if (mostRecent.result?.phases) {
-        const failedPhase = mostRecent.result.phases.find(p => !p.passed);
-        if (failedPhase) {
-          console.log(chalk.red(`\n   Failed phase: ${failedPhase.name}`));
-          const failedStep = failedPhase.steps?.find(s => !s.passed);
-          if (failedStep) {
-            console.log(chalk.red(`   Failed step: ${failedStep.name}`));
-          }
-        }
-      }
+      displayFailedPhaseInfo(mostRecent.result?.phases);
 
       console.log(chalk.blue('\n📋 View full error details:'), chalk.white('vibe-validate state'));
       console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white('npx vibe-validate validate'));

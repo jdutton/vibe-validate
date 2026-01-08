@@ -6,12 +6,21 @@
  * @package @vibe-validate/extractors
  */
 
+// max-depth disabled: Test framework output parsing requires nested loops for message/stack
+// section handling, pattern matching, and state tracking across multiple parsing phases.
+/* eslint-disable max-depth */
+
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
   DetectionResult,
   ExtractorSample,
 } from '../../types.js';
+import {
+  collectLinesUntil,
+  parseStackLocation,
+  COMMON_STACK_PATTERNS,
+} from '../../utils/parser-utils.js';
 import { processTestFailures, type TestFailureInfo } from '../../utils/test-framework-utils.js';
 
 /**
@@ -50,26 +59,20 @@ function extractFailures(output: string): TestFailureInfo[] {
       // If simple format, don't try to collect more hierarchy
       if (!isSimpleFormat) {
         // Continue collecting hierarchy lines until we hit blank line or error
-        while (j < lines.length) {
-          const nextLine = lines[j];
+        const { lines: hierarchyLines, nextIndex } = collectLinesUntil(
+          lines,
+          j,
+          (line) =>
+            line.trim() === '' || /^\s+(Error|AssertionError|TypeError)/.exec(line) !== null
+        );
+        j = nextIndex;
 
-          // Blank line marks end of hierarchy
-          if (nextLine.trim() === '') {
-            break;
-          }
-
-          // Error line marks end of hierarchy
-          if (/^\s+(Error|AssertionError|TypeError)/.exec(nextLine)) {
-            break;
-          }
-
-          // Indented lines are part of hierarchy (at least 5 spaces for Mocha)
-          if (/^\s{5,}\S/.exec(nextLine)) {
-            const part = nextLine.trim().replace(/:$/, ''); // Remove trailing colon
+        // Extract indented hierarchy lines (at least 5 spaces for Mocha)
+        for (const line of hierarchyLines) {
+          if (/^\s{5,}\S/.exec(line)) {
+            const part = line.trim().replace(/:$/, ''); // Remove trailing colon
             testNameParts.push(part);
           }
-
-          j++;
         }
       }
 
@@ -105,14 +108,10 @@ function extractFailures(output: string): TestFailureInfo[] {
 
         // Extract file location from stack trace
         if (!file && nextLine.includes('at Context.<anonymous>')) {
-          // Match various path formats:
-          // - file:///path/to/file.js:10:20
-          // - /absolute/path/file.js:10:20
-          // - relative/path/file.js:10:20
-          const locationMatch = /at Context\.<anonymous> \((?:file:\/\/)?([^:)]+):(\d+)(?::(\d+))?\)/.exec(nextLine);
-          if (locationMatch) {
-            file = locationMatch[1];
-            lineNumber = Number.parseInt(locationMatch[2], 10);
+          const location = parseStackLocation(nextLine, COMMON_STACK_PATTERNS.contextAnonymous);
+          if (location.file) {
+            file = location.file;
+            lineNumber = location.line;
           }
         }
 

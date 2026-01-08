@@ -113,25 +113,7 @@ export class WatchPROrchestrator {
 
         // Try to extract errors if check failed
         if (check.conclusion === 'failure' && check.run_id) {
-          // Use retry logic to handle GitHub API race condition (Issue #4)
-          // Pass job_id for matrix strategy jobs to get job-specific logs
-          const logs = await this.fetchLogsWithRetry(check.run_id, check.job_id);
-          if (logs) {
-            const extraction = await this.extractionDetector.detectAndExtract(actionCheck, logs);
-            if (extraction) {
-              actionCheck.extraction = extraction;
-            }
-
-            // Save logs to cache
-            if (this.cacheManager) {
-              await this.cacheManager.saveLog(check.run_id, logs);
-              if (extraction) {
-                await this.cacheManager.saveExtraction(check.run_id, extraction);
-              }
-            }
-          }
-          // If logs are null, gracefully continue without extraction
-          // No noisy error output (Issue #4 fix)
+          await this.processFailedCheck(actionCheck, check.run_id, check.job_id);
         }
 
         githubActions.push(actionCheck);
@@ -254,6 +236,37 @@ export class WatchPROrchestrator {
     }
 
     return actionCheck;
+  }
+
+  /**
+   * Process a failed check by extracting errors and caching results
+   *
+   * @param check - The action check to process
+   * @param runId - The workflow run ID
+   * @param jobId - Optional job ID for matrix strategies
+   */
+  private async processFailedCheck(check: GitHubActionCheck, runId: number, jobId?: number): Promise<void> {
+    // Use retry logic to handle GitHub API race condition (Issue #4)
+    // Pass job_id for matrix strategy jobs to get job-specific logs
+    const logs = await this.fetchLogsWithRetry(runId, jobId);
+    if (!logs) {
+      // If logs are null, gracefully continue without extraction
+      // No noisy error output (Issue #4 fix)
+      return;
+    }
+
+    const extraction = await this.extractionDetector.detectAndExtract(check, logs);
+    if (extraction) {
+      check.extraction = extraction;
+    }
+
+    // Save logs to cache
+    if (this.cacheManager) {
+      await this.cacheManager.saveLog(runId, logs);
+      if (extraction) {
+        await this.cacheManager.saveExtraction(runId, extraction);
+      }
+    }
   }
 
   /**

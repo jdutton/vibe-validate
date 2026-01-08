@@ -9,6 +9,7 @@
 
 import { mkdirSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 
 
 
@@ -133,7 +134,7 @@ export function normalizePath(...paths: string[]): string {
   // First resolve to absolute path (handles multiple segments)
   const resolved = paths.length === 1
     ? paths[0]
-    : require('node:path').resolve(...paths);
+    : resolve(...paths);
 
   try {
     // Use native OS realpath for better Windows compatibility

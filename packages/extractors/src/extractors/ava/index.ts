@@ -20,6 +20,11 @@ import {
   COMMON_GUIDANCE_PATTERNS,
   type GuidancePattern,
 } from '../../utils/guidance-generator.js';
+import {
+  collectLinesUntil,
+  parseStackLocation,
+  COMMON_STACK_PATTERNS,
+} from '../../utils/parser-utils.js';
 
 /**
  * Ava-specific guidance patterns
@@ -347,21 +352,25 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     }
 
     // Extract file path: "tests/ava/test.js:28" (appears right after test name header)
-    const fileMatch = /^([^:]+\.(?:js|ts|mjs|cjs)):(\d+)$/.exec(trimmed);
-    if (fileMatch && !failure.file) {
-      failure.file = fileMatch[1];
-      failure.line = Number.parseInt(fileMatch[2], 10);
-      i++;
-      continue;
+    if (!failure.file) {
+      const location = parseStackLocation(trimmed, COMMON_STACK_PATTERNS.simpleFileLine);
+      if (location.file) {
+        failure.file = location.file;
+        failure.line = location.line;
+        i++;
+        continue;
+      }
     }
 
     // Extract from file:// URL: "› file://tests/ava/test.js:28:5"
-    const urlMatch = /^›\s+file:\/\/(.+?):(\d+):\d+$/.exec(trimmed);
-    if (urlMatch && !failure.file) {
-      failure.file = urlMatch[1];
-      failure.line = Number.parseInt(urlMatch[2], 10);
-      i++;
-      continue;
+    if (!failure.file) {
+      const location = parseStackLocation(trimmed, COMMON_STACK_PATTERNS.avaFileUrl);
+      if (location.file) {
+        failure.file = location.file;
+        failure.line = location.line;
+        i++;
+        continue;
+      }
     }
 
     // Code snippet marker (line numbers like "  28:   code here")
@@ -414,20 +423,19 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
 
       // Look for file in stack trace (next few lines)
       if (!failure.file && i + 1 < lines.length) {
-        for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
-          const stackLine = lines[j].trim();
-          // Match: at file:///path/to/file.js:110:24
-          // But skip node_modules and ava lib files
-          // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Ava test framework stack traces (controlled output), not user input
-          const stackMatch = /at\s+(?:.*?\s+)?\(?file:\/\/([^:)]+):(\d+):\d+/.exec(stackLine);
-          if (stackMatch) {
-            const stackFile = stackMatch[1];
-            // Skip node_modules and ava library files
-            if (!stackFile.includes('node_modules') && !stackFile.includes('/ava/lib/')) {
-              failure.file = stackFile;
-              failure.line = Number.parseInt(stackMatch[2], 10);
-              break;
-            }
+        const { lines: stackLines } = collectLinesUntil(
+          lines,
+          i + 1,
+          (_line, index) => index >= i + 10
+        );
+
+        for (const stackLine of stackLines) {
+          const location = parseStackLocation(stackLine, COMMON_STACK_PATTERNS.avaFileUrl);
+          // Skip node_modules and ava library files
+          if (location.file && !location.file.includes('node_modules') && !location.file.includes('/ava/lib/')) {
+            failure.file = location.file;
+            failure.line = location.line;
+            break;
           }
         }
       }

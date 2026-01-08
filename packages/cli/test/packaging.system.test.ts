@@ -33,7 +33,7 @@ describe('npm package tarball (system test)', () => {
     // Extract tarball filename from pnpm pack output
     // pnpm outputs the full path on the last line
     const lines = output.trim().split('\n');
-    const tarballFullPath = lines[lines.length - 1].trim();
+    const tarballFullPath = lines.at(-1).trim();
 
     // Get just the filename
     const tarballName = tarballFullPath.split('/').pop() || '';

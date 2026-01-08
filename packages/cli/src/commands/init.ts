@@ -19,7 +19,7 @@ import { detectPackageManager } from '../utils/package-manager-commands.js';
 import { GitignoreSetupCheck } from '../utils/setup-checks/gitignore-check.js';
 import { HooksSetupCheck } from '../utils/setup-checks/hooks-check.js';
 import { WorkflowSetupCheck } from '../utils/setup-checks/workflow-check.js';
-import type { SetupCheck } from '../utils/setup-engine.js';
+import type { SetupCheck, PreviewResult } from '../utils/setup-engine.js';
 import { discoverTemplates } from '../utils/template-discovery.js';
 
 /**
@@ -78,6 +78,27 @@ export function initCommand(program: Command): void {
 }
 
 /**
+ * Display preview changes for a setup operation
+ *
+ * @param operationName - Name of the operation
+ * @param preview - Preview result with changes
+ */
+function displayPreviewChanges(operationName: string, preview: PreviewResult): void {
+  console.log(chalk.blue(`\n🔍 ${operationName} (dry-run):`));
+  console.log(chalk.gray(`   ${preview.description}`));
+
+  if (!preview.changes || preview.changes.length === 0) return;
+
+  console.log(chalk.yellow('   Would create:'));
+  for (const change of preview.changes) {
+    console.log(chalk.gray(`   - ${change.file} (${change.action})`));
+    if (change.content && change.content.length < 500) {
+      console.log(chalk.gray('\n' + change.content));
+    }
+  }
+}
+
+/**
  * Handle focused operations (--setup-hooks, --setup-workflow, --fix-gitignore)
  *
  * Executes specific setup tasks independently without creating config files.
@@ -127,18 +148,7 @@ async function handleFocusedOperations(cwd: string, options: InitOptions, isDryR
     if (isDryRun) {
       // Preview mode
       const preview = await operation.check.preview(fixOptions);
-      console.log(chalk.blue(`\n🔍 ${operation.name} (dry-run):`));
-      console.log(chalk.gray(`   ${preview.description}`));
-
-      if (preview.changes && preview.changes.length > 0) {
-        console.log(chalk.yellow('   Would create:'));
-        for (const change of preview.changes) {
-          console.log(chalk.gray(`   - ${change.file} (${change.action})`));
-          if (change.content && change.content.length < 500) {
-            console.log(chalk.gray('\n' + change.content));
-          }
-        }
-      }
+      displayPreviewChanges(operation.name, preview);
     } else {
       // Fix mode
       const result = await operation.check.fix(fixOptions);

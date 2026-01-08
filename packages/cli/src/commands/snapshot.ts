@@ -30,6 +30,34 @@ export function snapshotCommand(program: Command): void {
 }
 
 /**
+ * Display validation history for a tree hash
+ */
+async function displayValidationHistory(treeHash: string, programName: string): Promise<void> {
+  const hasHistory = await hasHistoryForTree(treeHash);
+  if (!hasHistory) {
+    console.log(chalk.gray('  Validation Status: Not yet validated'));
+    return;
+  }
+
+  const historyNote = await readHistoryNote(treeHash);
+  if (!historyNote || historyNote.runs.length === 0) {
+    console.log(chalk.gray('  Validation Status: Not yet validated'));
+    return;
+  }
+
+  const mostRecentRun = historyNote.runs.at(-1);
+  if (!mostRecentRun) return;
+
+  const passed = mostRecentRun.result.passed;
+  const status = passed ? chalk.green('✅ Passed') : chalk.red('❌ Failed');
+  console.log(chalk.gray(`  Validation Status: ${status}`));
+  console.log(chalk.gray(`  Last validated: ${new Date(mostRecentRun.result.timestamp).toLocaleString()}`));
+  if (!passed) {
+    console.log(chalk.yellow(`  Run '${programName} state' for detailed error information`));
+  }
+}
+
+/**
  * Execute the snapshot command logic
  */
 async function executeSnapshotCommand(options: { verbose?: boolean }, programName: string): Promise<void> {
@@ -40,22 +68,7 @@ async function executeSnapshotCommand(options: { verbose?: boolean }, programNam
   console.log(chalk.green(`✓ Snapshot: ${treeHash}`));
 
   // Check if snapshot has validation history
-  const hasHistory = await hasHistoryForTree(treeHash);
-  if (hasHistory) {
-    const historyNote = await readHistoryNote(treeHash);
-    if (historyNote && historyNote.runs.length > 0) {
-      const mostRecentRun = historyNote.runs[historyNote.runs.length - 1];
-      const passed = mostRecentRun.result.passed;
-      const status = passed ? chalk.green('✅ Passed') : chalk.red('❌ Failed');
-      console.log(chalk.gray(`  Validation Status: ${status}`));
-      console.log(chalk.gray(`  Last validated: ${new Date(mostRecentRun.result.timestamp).toLocaleString()}`));
-      if (!passed) {
-        console.log(chalk.yellow(`  Run '${programName} state' for detailed error information`));
-      }
-    }
-  } else {
-    console.log(chalk.gray('  Validation Status: Not yet validated'));
-  }
+  await displayValidationHistory(treeHash, programName);
 
   // Show recovery instructions
   console.log(chalk.blue('\n🔧 Recovery Instructions\n'));

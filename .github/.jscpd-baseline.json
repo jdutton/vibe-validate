@@ -151,32 +151,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/jasmine/index.ts",
-        "start": 21,
-        "end": 29,
+        "start": 31,
+        "end": 39,
         "startLoc": {
-          "line": 21,
+          "line": 31,
           "column": 1,
-          "position": 55
+          "position": 91
         },
         "endLoc": {
-          "line": 29,
+          "line": 39,
           "column": 60,
-          "position": 144
+          "position": 180
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/mocha/index.ts",
-        "start": 21,
-        "end": 29,
+        "start": 30,
+        "end": 38,
         "startLoc": {
-          "line": 21,
+          "line": 30,
           "column": 1,
-          "position": 55
+          "position": 85
         },
         "endLoc": {
-          "line": 29,
+          "line": 38,
           "column": 53,
-          "position": 144
+          "position": 174
         }
       }
     },
@@ -187,32 +187,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/jasmine/index.ts",
-        "start": 160,
-        "end": 179,
+        "start": 171,
+        "end": 190,
         "startLoc": {
-          "line": 160,
+          "line": 171,
           "column": 2,
-          "position": 1104
+          "position": 1096
         },
         "endLoc": {
-          "line": 179,
+          "line": 190,
           "column": 4,
-          "position": 1194
+          "position": 1186
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/mocha/index.ts",
-        "start": 174,
-        "end": 193,
+        "start": 173,
+        "end": 192,
         "startLoc": {
-          "line": 174,
+          "line": 173,
           "column": 2,
-          "position": 1084
+          "position": 1096
         },
         "endLoc": {
-          "line": 193,
+          "line": 192,
           "column": 4,
-          "position": 1174
+          "position": 1186
         }
       }
     },
@@ -331,32 +331,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/ava/index.ts",
-        "start": 164,
-        "end": 180,
+        "start": 169,
+        "end": 185,
         "startLoc": {
-          "line": 164,
+          "line": 169,
           "column": 6,
-          "position": 1021
+          "position": 1044
         },
         "endLoc": {
-          "line": 180,
+          "line": 185,
           "column": 10,
-          "position": 1144
+          "position": 1167
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/tap/index.ts",
-        "start": 158,
-        "end": 174,
+        "start": 167,
+        "end": 183,
         "startLoc": {
-          "line": 158,
+          "line": 167,
           "column": 6,
-          "position": 988
+          "position": 1020
         },
         "endLoc": {
-          "line": 174,
+          "line": 183,
           "column": 10,
-          "position": 1111
+          "position": 1143
         }
       }
     },
@@ -367,32 +367,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/ava/index.ts",
-        "start": 211,
-        "end": 234,
+        "start": 216,
+        "end": 239,
         "startLoc": {
-          "line": 211,
+          "line": 216,
           "column": 6,
-          "position": 1417
+          "position": 1440
         },
         "endLoc": {
-          "line": 234,
+          "line": 239,
           "column": 4,
-          "position": 1518
+          "position": 1541
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/tap/index.ts",
-        "start": 204,
-        "end": 226,
+        "start": 213,
+        "end": 235,
         "startLoc": {
-          "line": 204,
+          "line": 213,
           "column": 6,
-          "position": 1362
+          "position": 1394
         },
         "endLoc": {
-          "line": 226,
+          "line": 235,
           "column": 4,
-          "position": 1463
+          "position": 1495
         }
       }
     },
@@ -1802,42 +1802,6 @@
     },
     {
       "format": "typescript",
-      "lines": 29,
-      "fragment": "const mockConfig: VibeValidateConfig = {\n    validation: {\n      phases: [\n        {\n          name: 'Pre-Qualification',\n          parallel: true,\n          steps: [\n            {\n              name: 'TypeScript Type Check',\n              command: 'pnpm -r typecheck',\n            },\n            {\n              name: 'ESLint Code Quality',\n              command: 'pnpm lint',\n            },\n          ],\n          timeout: 300000,\n          failFast: true,\n        },\n        {\n          name: 'Testing',\n          parallel: false,\n          steps: [\n            {\n              name: 'Unit Tests with Coverage',\n              command: 'pnpm test:coverage',\n            },\n          ],\n          timeout: 600000",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/generate-workflow-subdirectory.system.test.ts",
-        "start": 22,
-        "end": 50,
-        "startLoc": {
-          "line": 22,
-          "column": 3,
-          "position": 181
-        },
-        "endLoc": {
-          "line": 50,
-          "column": 7,
-          "position": 343
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/generate-workflow.test.ts",
-        "start": 106,
-        "end": 134,
-        "startLoc": {
-          "line": 106,
-          "column": 3,
-          "position": 932
-        },
-        "endLoc": {
-          "line": 134,
-          "column": 7,
-          "position": 1094
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 10,
       "fragment": "program.parseAsync(args, { from: 'user' });\n    return 0;\n  } catch (err: unknown) {\n    // Commander exitOverride throws CommanderError with exitCode\n    if (err && typeof err === 'object' && 'exitCode' in err) {\n      return (err as { exitCode: number }).exitCode;\n    }\n    // process.exit throws Error with message \"process.exit(code)\"\n    if (err instanceof Error && err.message.startsWith('process.exit(')) {\n      const",
       "tokens": 0,
@@ -2157,78 +2121,6 @@
           "line": 30,
           "column": 2,
           "position": 274
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ", async () => {\n    vi.mocked(gitExecutor.executeGitCommand)\n      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree\n      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir\n      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add\n      .mockReturnValueOnce({ success: true, stdout: '4b825dc642cb6eb9a060e54bf8d69288fbee4904\\n'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/tree-hash.test.ts",
-        "start": 195,
-        "end": 200,
-        "startLoc": {
-          "line": 195,
-          "column": 33,
-          "position": 1828
-        },
-        "endLoc": {
-          "line": 200,
-          "column": 45,
-          "position": 1966
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/tree-hash.test.ts",
-        "start": 175,
-        "end": 180,
-        "startLoc": {
-          "line": 175,
-          "column": 35,
-          "position": 1557
-        },
-        "endLoc": {
-          "line": 180,
-          "column": 17,
-          "position": 1695
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ", async () => {\n    vi.mocked(gitExecutor.executeGitCommand)\n      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree\n      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir\n      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add\n      .mockImplementationOnce",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/tree-hash.test.ts",
-        "start": 229,
-        "end": 234,
-        "startLoc": {
-          "line": 229,
-          "column": 54,
-          "position": 2319
-        },
-        "endLoc": {
-          "line": 234,
-          "column": 23,
-          "position": 2444
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/tree-hash.test.ts",
-        "start": 175,
-        "end": 180,
-        "startLoc": {
-          "line": 175,
-          "column": 35,
-          "position": 1557
-        },
-        "endLoc": {
-          "line": 180,
-          "column": 20,
-          "position": 1682
         }
       }
     },
