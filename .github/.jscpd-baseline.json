@@ -1730,37 +1730,37 @@
     },
     {
       "format": "typescript",
-      "lines": 14,
-      "fragment": ": vi.fn(),\n  };\n});\n\n// Mock the config loader\nvi.mock('../../src/utils/config-loader.js', async () => {\n  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');\n  return {\n    ...actual,\n    loadConfig: vi.fn(),\n  };\n});\n\n// ========================================================================",
+      "lines": 11,
+      "fragment": ": vi.fn(),\n  };\n});\n\n// Mock the config loader\nvi.mock('../../src/utils/config-loader.js', async () => {\n  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');\n  return {\n    ...actual,\n    loadConfig: vi.fn(),\n    loadConfigWithDir",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
         "start": 57,
-        "end": 70,
+        "end": 67,
         "startLoc": {
           "line": 57,
           "column": 19,
           "position": 554
         },
         "endLoc": {
-          "line": 70,
-          "column": 76,
-          "position": 642
+          "line": 67,
+          "column": 18,
+          "position": 634
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/sync-check.test.ts",
         "start": 13,
-        "end": 26,
+        "end": 23,
         "startLoc": {
           "line": 13,
           "column": 16,
           "position": 139
         },
         "endLoc": {
-          "line": 26,
-          "column": 46,
-          "position": 227
+          "line": 23,
+          "column": 2,
+          "position": 219
         }
       }
     },
@@ -1858,17 +1858,17 @@
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 403,
-        "end": 414,
+        "start": 407,
+        "end": 418,
         "startLoc": {
-          "line": 403,
+          "line": 407,
           "column": 32,
-          "position": 2723
+          "position": 2809
         },
         "endLoc": {
-          "line": 414,
+          "line": 418,
           "column": 5,
-          "position": 2803
+          "position": 2889
         }
       }
     },
@@ -1894,17 +1894,17 @@
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 433,
-        "end": 453,
+        "start": 437,
+        "end": 457,
         "startLoc": {
-          "line": 433,
+          "line": 437,
           "column": 3,
-          "position": 3078
+          "position": 3164
         },
         "endLoc": {
-          "line": 453,
+          "line": 457,
           "column": 43,
-          "position": 3192
+          "position": 3278
         }
       }
     },
