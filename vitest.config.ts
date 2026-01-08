@@ -54,8 +54,13 @@ export default defineConfig({
         'packages/cli/src/services/ci-provider.ts',
         // Zod schemas (type definitions with validation)
         'packages/cli/src/schemas/**/*.ts',
-        // Integration test files (don't collect coverage from test files)
-        'packages/*/test/integration/**/*.ts',
+        // Test files (don't collect coverage from test files themselves)
+        'packages/*/test/**/*.ts',
+        'packages/*/src/**/*.test.ts',  // Co-located test files
+        'packages/*/src/**/*.spec.ts',  // Co-located spec files
+        // CLI utils tested via integration (deferred per v0.15.0 RC)
+        'packages/cli/src/utils/temp-files.ts',
+        'packages/cli/src/utils/check-validation.ts',
       ],
       thresholds: {
         // v0.14.2: Enforced quality gates at 80% minimum

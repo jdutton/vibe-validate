@@ -115,7 +115,7 @@ module.exports = {
     }
 
     const factory = require('./no-command-direct-factory.cjs');
-    const { createCommandChecker, commandMatchesExecSync } = factory;
+    const { createCommandChecker } = factory;
 
     return {
       CallExpression: createCommandChecker({

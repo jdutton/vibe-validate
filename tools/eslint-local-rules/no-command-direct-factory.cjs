@@ -39,6 +39,57 @@ function commandMatchesExecSync(firstArg, command) {
 }
 
 /**
+ * Check shell-free command execution (safeExecSync, spawn, etc.)
+ * @private
+ */
+function checkShellFreeExecution(node, context, shouldReport, messageId) {
+  const firstArg = node.arguments[0];
+
+  if (firstArg.type !== 'Literal') {
+    return;
+  }
+
+  const result = shouldReport(node, firstArg);
+  if (result) {
+    context.report({
+      node,
+      messageId,
+      data: typeof result === 'object' ? result : undefined,
+    });
+  }
+}
+
+/**
+ * Check execSync command execution (shell-based)
+ * @private
+ */
+function checkExecSyncExecution(node, context, shouldReport, messageId) {
+  const firstArg = node.arguments[0];
+  const result = shouldReport(node, firstArg, commandMatchesExecSync);
+
+  if (result) {
+    context.report({
+      node,
+      messageId,
+      data: typeof result === 'object' ? result : undefined,
+    });
+  }
+}
+
+/**
+ * Check if function is a shell-free execution method
+ * @private
+ */
+function isShellFreeExecution(functionName) {
+  return (
+    functionName === 'safeExecSync' ||
+    functionName === 'safeExecResult' ||
+    functionName === 'spawn' ||
+    functionName === 'spawnSync'
+  );
+}
+
+/**
  * Create a CallExpression checker that validates command execution calls
  *
  * This centralizes the logic for detecting command execution patterns across
@@ -86,47 +137,24 @@ function createCommandChecker(options) {
   return function CallExpression(node) {
     const functionName = node.callee.name;
 
+    if (node.arguments.length === 0) {
+      return;
+    }
+
     // Check for shell-free command execution patterns:
     // - safeExecSync('cmd', ...)
     // - safeExecResult('cmd', ...)
     // - spawn('cmd', ...)
     // - spawnSync('cmd', ...)
-    if (
-      (functionName === 'safeExecSync' ||
-       functionName === 'safeExecResult' ||
-       functionName === 'spawn' ||
-       functionName === 'spawnSync') &&
-      node.arguments.length > 0
-    ) {
-      const firstArg = node.arguments[0];
-
-      // Check if first argument should be reported
-      if (firstArg.type === 'Literal') {
-        const result = shouldReport(node, firstArg);
-        if (result) {
-          context.report({
-            node,
-            messageId,
-            data: typeof result === 'object' ? result : undefined,
-          });
-        }
-      }
+    if (isShellFreeExecution(functionName)) {
+      checkShellFreeExecution(node, context, shouldReport, messageId);
+      return;
     }
 
     // Check for execSync('cmd ...') or execSync(`cmd ...`)
     // Note: execSync is discouraged for security reasons (uses shell)
-    if (functionName === 'execSync' && node.arguments.length > 0) {
-      const firstArg = node.arguments[0];
-
-      // For execSync, pass the commandMatchesExecSync helper
-      const result = shouldReport(node, firstArg, commandMatchesExecSync);
-      if (result) {
-        context.report({
-          node,
-          messageId,
-          data: typeof result === 'object' ? result : undefined,
-        });
-      }
+    if (functionName === 'execSync') {
+      checkExecSyncExecution(node, context, shouldReport, messageId);
     }
   };
 }
