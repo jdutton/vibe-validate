@@ -4,6 +4,8 @@
  * @package @vibe-validate/extractors
  */
 
+/* eslint-disable sonarjs/publicly-writable-directories -- Test file: all /tmp/ references are in expected output objects for parsing tests, not actual file operations */
+
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -11,7 +13,37 @@ import {
   parseStackLocation,
   extractErrorType,
   COMMON_STACK_PATTERNS,
+  type ParsedLocation,
+  type StackLocationPattern,
 } from './parser-utils.js';
+
+// ============================================================================
+// TEST HELPERS - DRY pattern for assertions
+// ============================================================================
+
+/**
+ * Helper: Assert parseStackLocation result matches expected location
+ */
+function expectParsedLocation(
+  line: string,
+  patterns: StackLocationPattern[],
+  expected: ParsedLocation
+): void {
+  const result = parseStackLocation(line, patterns);
+  expect(result).toEqual(expected);
+}
+
+/**
+ * Helper: Assert extractErrorType returns expected type
+ */
+function expectErrorType(message: string, expectedType?: string): void {
+  const result = extractErrorType(message);
+  if (expectedType === undefined) {
+    expect(result).toBeUndefined();
+  } else {
+    expect(result).toBe(expectedType);
+  }
+}
 
 describe('collectLinesUntil', () => {
   it('should collect lines until condition is met', () => {
@@ -58,89 +90,65 @@ describe('collectLinesUntil', () => {
 describe('parseStackLocation', () => {
   describe('Context.<anonymous> patterns (Mocha)', () => {
     it('should parse Context.<anonymous> with file URL', () => {
-      const line = '      at Context.<anonymous> (file:///tmp/test.js:42:10)';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.contextAnonymous);
-
-      expect(result).toEqual({
-        // eslint-disable-next-line sonarjs/publicly-writable-directories -- Safe: test file path, not actual file operations
-        file: '/tmp/test.js',
-        line: 42,
-        column: 10,
-      });
+      expectParsedLocation(
+        '      at Context.<anonymous> (file:///tmp/test.js:42:10)',
+        COMMON_STACK_PATTERNS.contextAnonymous,
+        { file: '/tmp/test.js', line: 42, column: 10 }
+      );
     });
 
     it('should parse Context.<anonymous> without file URL', () => {
-      const line = '      at Context.<anonymous> (test.js:42:10)';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.contextAnonymous);
-
-      expect(result).toEqual({
-        file: 'test.js',
-        line: 42,
-        column: 10,
-      });
+      expectParsedLocation(
+        '      at Context.<anonymous> (test.js:42:10)',
+        COMMON_STACK_PATTERNS.contextAnonymous,
+        { file: 'test.js', line: 42, column: 10 }
+      );
     });
 
     it('should parse Context.<anonymous> without column', () => {
-      const line = '      at Context.<anonymous> (/path/to/test.js:42)';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.contextAnonymous);
-
-      expect(result).toEqual({
-        file: '/path/to/test.js',
-        line: 42,
-        column: undefined,
-      });
+      expectParsedLocation(
+        '      at Context.<anonymous> (/path/to/test.js:42)',
+        COMMON_STACK_PATTERNS.contextAnonymous,
+        { file: '/path/to/test.js', line: 42, column: undefined }
+      );
     });
   });
 
   describe('UserContext.<anonymous> patterns (Jasmine)', () => {
     it('should parse UserContext.<anonymous>', () => {
-      const line = '        at UserContext.<anonymous> (/private/tmp/jasmine-test.js:9:17)';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.contextAnonymous);
-
-      expect(result).toEqual({
-        // eslint-disable-next-line sonarjs/publicly-writable-directories -- Safe: test file path, not actual file operations
-        file: '/private/tmp/jasmine-test.js',
-        line: 9,
-        column: 17,
-      });
+      expectParsedLocation(
+        '        at UserContext.<anonymous> (/private/tmp/jasmine-test.js:9:17)',
+        COMMON_STACK_PATTERNS.contextAnonymous,
+        { file: '/private/tmp/jasmine-test.js', line: 9, column: 17 }
+      );
     });
   });
 
   describe('Ava file:// URL patterns', () => {
     it('should parse › file:// format', () => {
-      const line = '  › file:///Users/jeff/project/tests/ava/test.js:28:5';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.avaFileUrl);
-
-      expect(result).toEqual({
-        file: '/Users/jeff/project/tests/ava/test.js',
-        line: 28,
-        column: 5,
-      });
+      expectParsedLocation(
+        '  › file:///Users/jeff/project/tests/ava/test.js:28:5',
+        COMMON_STACK_PATTERNS.avaFileUrl,
+        { file: '/Users/jeff/project/tests/ava/test.js', line: 28, column: 5 }
+      );
     });
 
     it('should parse at file:// format', () => {
-      const line = '    at file:///tmp/test.js:118:21';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.avaFileUrl);
-
-      expect(result).toEqual({
-        // eslint-disable-next-line sonarjs/publicly-writable-directories -- Safe: test file path, not actual file operations
-        file: '/tmp/test.js',
-        line: 118,
-        column: 21,
-      });
+      expectParsedLocation(
+        '    at file:///tmp/test.js:118:21',
+        COMMON_STACK_PATTERNS.avaFileUrl,
+        { file: '/tmp/test.js', line: 118, column: 21 }
+      );
     });
   });
 
   describe('Simple file:line format', () => {
     it('should parse file.js:line format', () => {
-      const line = 'tests/unit/helpers.test.js:128';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.simpleFileLine);
-
-      expect(result).toEqual({
-        file: 'tests/unit/helpers.test.js',
-        line: 128,
-        column: undefined,
-      });
+      expectParsedLocation(
+        'tests/unit/helpers.test.js:128',
+        COMMON_STACK_PATTERNS.simpleFileLine,
+        { file: 'tests/unit/helpers.test.js', line: 128, column: undefined }
+      );
     });
 
     it('should parse various file extensions', () => {
@@ -158,84 +166,70 @@ describe('parseStackLocation', () => {
 
   describe('Generic stack patterns', () => {
     it('should parse generic at function pattern', () => {
-      const line = '      at Object.someFunction (test.js:42:15)';
-      const result = parseStackLocation(line, COMMON_STACK_PATTERNS.generic);
-
-      expect(result).toEqual({
-        file: 'test.js',
-        line: 42,
-        column: 15,
-      });
+      expectParsedLocation(
+        '      at Object.someFunction (test.js:42:15)',
+        COMMON_STACK_PATTERNS.generic,
+        { file: 'test.js', line: 42, column: 15 }
+      );
     });
   });
 
   it('should return empty object when no patterns match', () => {
-    const line = 'some random line with no location';
-    const result = parseStackLocation(line, COMMON_STACK_PATTERNS.contextAnonymous);
-
-    expect(result).toEqual({});
+    expectParsedLocation(
+      'some random line with no location',
+      COMMON_STACK_PATTERNS.contextAnonymous,
+      {}
+    );
   });
 
   it('should try patterns in order and return first match', () => {
-    const line = '  at Context.<anonymous> (test.js:10:5)';
     const patterns = [
       ...COMMON_STACK_PATTERNS.simpleFileLine, // Won't match
       ...COMMON_STACK_PATTERNS.contextAnonymous, // Will match
     ];
 
-    const result = parseStackLocation(line, patterns);
-
-    expect(result).toEqual({
-      file: 'test.js',
-      line: 10,
-      column: 5,
-    });
+    expectParsedLocation(
+      '  at Context.<anonymous> (test.js:10:5)',
+      patterns,
+      { file: 'test.js', line: 10, column: 5 }
+    );
   });
 });
 
 describe('extractErrorType', () => {
   it('should extract TypeError', () => {
-    const message = "TypeError: Cannot read properties of null (reading 'value')";
-    expect(extractErrorType(message)).toBe('TypeError');
+    expectErrorType("TypeError: Cannot read properties of null (reading 'value')", 'TypeError');
   });
 
   it('should extract AssertionError', () => {
-    const message = 'AssertionError: Expected 4 to equal 5';
-    expect(extractErrorType(message)).toBe('AssertionError');
+    expectErrorType('AssertionError: Expected 4 to equal 5', 'AssertionError');
   });
 
   it('should extract AssertionError with code', () => {
-    const message = 'AssertionError [ERR_ASSERTION]: Expected 1 to equal 2';
-    expect(extractErrorType(message)).toBe('AssertionError');
+    expectErrorType('AssertionError [ERR_ASSERTION]: Expected 1 to equal 2', 'AssertionError');
   });
 
   it('should extract plain Error', () => {
-    const message = 'Error: ENOENT: no such file or directory';
-    expect(extractErrorType(message)).toBe('Error');
+    expectErrorType('Error: ENOENT: no such file or directory', 'Error');
   });
 
   it('should extract ReferenceError', () => {
-    const message = 'ReferenceError: foo is not defined';
-    expect(extractErrorType(message)).toBe('ReferenceError');
+    expectErrorType('ReferenceError: foo is not defined', 'ReferenceError');
   });
 
   it('should extract custom error types', () => {
-    const message = 'ValidationError: Invalid input format';
-    expect(extractErrorType(message)).toBe('ValidationError');
+    expectErrorType('ValidationError: Invalid input format', 'ValidationError');
   });
 
   it('should return undefined for messages without error type', () => {
-    const message = 'Expected 4 to equal 5';
-    expect(extractErrorType(message)).toBeUndefined();
+    expectErrorType('Expected 4 to equal 5');
   });
 
   it('should return undefined for non-error messages', () => {
-    const message = 'Some random text';
-    expect(extractErrorType(message)).toBeUndefined();
+    expectErrorType('Some random text');
   });
 
   it('should handle messages with colons but no error type', () => {
-    const message = 'Warning: This is not an error';
-    expect(extractErrorType(message)).toBeUndefined();
+    expectErrorType('Warning: This is not an error');
   });
 });
