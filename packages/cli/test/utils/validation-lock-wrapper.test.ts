@@ -60,8 +60,10 @@ async function expectProcessExitOnConfigError(): Promise<void> {
  */
 function checkLockExists(): boolean {
   const { readdirSync } = require('node:fs');
-  const files = readdirSync(testDir) as string[];
-  return files.some((f: string) => f.includes('vibe-validate') && f.endsWith('.lock'));
+  const locksDir = join(testDir, '.vibe-validate', 'locks');
+  if (!existsSync(locksDir)) return false;
+  const files = readdirSync(locksDir) as string[];
+  return files.some((f: string) => f.endsWith('.lock') || f.endsWith('.meta.json'));
 }
 
 /**
@@ -326,14 +328,15 @@ validation:
         { lockEnabled: true },
         async () => {
           const { readdirSync } = await import('node:fs');
-          const files = readdirSync(testDir);
-          const lockFile = files.find((f: string) => f.includes('vibe-validate') && f.endsWith('.lock'));
+          const locksDir = join(testDir, '.vibe-validate', 'locks');
+          const files = readdirSync(locksDir);
+          const lockFile = files.find((f: string) => f.endsWith('.lock'));
           lockFileName = lockFile ?? null;
         }
       );
 
       // Should use project-scoped lock filename
-      expect(lockFileName).toContain('vibe-validate-project-test-project.lock');
+      expect(lockFileName).toContain('project-test-project.lock');
     });
 
     it('should exit with error when project scope specified but projectId cannot be detected', async () => {

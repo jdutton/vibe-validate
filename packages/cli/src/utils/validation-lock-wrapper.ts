@@ -16,7 +16,6 @@ import type { AgentContext } from './context-detector.js';
 import { detectContext } from './context-detector.js';
 import {
   acquireLock,
-  releaseLock,
   checkLock,
   waitForLock,
   type LockOptions,
@@ -131,7 +130,7 @@ export async function withValidationLock<T>(
   options: ValidationLockOptions,
   callback: (_ctx: ValidationLockContext) => Promise<T>
 ): Promise<T> {
-  let lockFile: string | null = null;
+  let lockRelease: (() => Promise<void>) | null = null;
 
   try {
     // Load configuration first (needed for lock config)
@@ -235,9 +234,9 @@ export async function withValidationLock<T>(
 
         // If wait is enabled (default), the wait logic above already handled it
         // Just don't try to acquire lock again
-      } else {
-        // Lock acquired successfully
-        lockFile = lockResult.lockFile;
+      } else if (lockResult.release) {
+        // Lock acquired successfully - store release function
+        lockRelease = lockResult.release;
       }
     }
 
@@ -245,8 +244,8 @@ export async function withValidationLock<T>(
     return await callback({ config, configDir, context });
   } finally {
     // Always release lock when done
-    if (lockFile) {
-      await releaseLock(lockFile);
+    if (lockRelease) {
+      await lockRelease();
     }
   }
 }
