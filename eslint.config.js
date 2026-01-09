@@ -48,6 +48,7 @@ const unicornRules = {
   'unicorn/prefer-export-from': 'error', // Prefer export {foo} from 'bar' over import then export
   'unicorn/prefer-structured-clone': 'error', // Prefer structuredClone() over JSON.parse(JSON.stringify())
   'unicorn/no-zero-fractions': 'error', // Disallow 1.0, use 1 instead
+  'unicorn/no-array-push-push': 'error', // Prefer array.push(a, b) over array.push(a); array.push(b)
 };
 
 // Shared import organization rules (applies to both test and production code)
@@ -174,6 +175,8 @@ export default [
 
       // Enforce function declarations at module scope (prevent SonarQube code smells)
       'no-inner-declarations': ['error', 'functions'], // Functions must be at module/outer function scope
+      'max-nested-callbacks': ['error', 4], // Limit function nesting depth (aligns with SonarQube S2004)
+      'no-negated-condition': 'error', // Avoid negated conditions with else clauses (aligns with SonarQube)
 
       // Keep strict on real code quality issues
       '@typescript-eslint/no-unused-vars': ['error', {
@@ -257,6 +260,7 @@ export default [
       '@typescript-eslint/no-floating-promises': 'error', // Catch unhandled promises
       '@typescript-eslint/await-thenable': 'error', // Prevent awaiting non-promises
       '@typescript-eslint/no-misused-promises': 'error', // Catch promise misuse in conditionals
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error', // Remove unnecessary type assertions (aligns with SonarQube)
 
       // Modern JavaScript patterns (promoted to errors - already compliant)
       '@typescript-eslint/prefer-nullish-coalescing': 'error', // Promoted from warn - enforce ?? usage
@@ -287,6 +291,7 @@ export default [
       }],
       'max-depth': ['error', 4], // Maximum nesting depth (aligns with SonarQube)
       'max-params': ['error', 7], // Maximum function parameters (matches SonarQube threshold)
+      'max-nested-callbacks': ['error', 4], // Limit function nesting depth (aligns with SonarQube S2004)
 
       // Security - vulnerability detection (CRITICAL)
       'security/detect-child-process': 'error', // Catch command injection vulnerabilities
@@ -554,6 +559,7 @@ export default [
 
       // ESLint core rules - code quality
       'no-negated-condition': 'error', // Avoid negated conditions with else clauses
+      'max-nested-callbacks': ['error', 4], // Limit function nesting depth (aligns with SonarQube S2004)
 
       // Import rules - organization and quality
       ...importRules,

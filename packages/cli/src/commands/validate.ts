@@ -4,66 +4,10 @@
  * Runs validation phases with git tree hash caching and history recording.
  */
 
-import { getGitTreeHash } from '@vibe-validate/git';
-import chalk from 'chalk';
 import type { Command } from 'commander';
 
-import { displayConfigErrors } from '../utils/config-error-reporter.js';
-import { loadConfigWithErrors, loadConfigWithDir } from '../utils/config-loader.js';
-import { detectContext } from '../utils/context-detector.js';
-import { acquireLock, releaseLock, checkLock, waitForLock, type LockOptions } from '../utils/pid-lock.js';
-import { detectProjectId } from '../utils/project-id.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
-
-/**
- * Display the result of waiting for validation lock
- *
- * @param timedOut - Whether the wait timed out
- * @param yamlMode - Whether in YAML output mode
- */
-function displayWaitResult(timedOut: boolean, yamlMode: boolean): void {
-  if (yamlMode) return; // No output in YAML mode
-
-  if (timedOut) {
-    console.log(chalk.yellow('⏱️  Wait timed out, proceeding with validation'));
-  } else {
-    console.log(chalk.green('✓ Background validation completed'));
-  }
-}
-
-/**
- * Display information about existing validation lock
- *
- * @param existingLock - The existing lock information
- * @param currentTreeHash - Current git tree hash
- * @param yamlMode - Whether in YAML output mode
- */
-function displayExistingLockInfo(
-  existingLock: { directory: string; treeHash: string; pid: number; startTime: string },
-  currentTreeHash: string,
-  yamlMode: boolean
-): void {
-  if (yamlMode) return; // No output in YAML mode
-
-  const isCurrentHash = existingLock.treeHash === currentTreeHash;
-  const hashStatus = isCurrentHash
-    ? 'same as current'
-    : `stale - current is ${currentTreeHash.substring(0, 7)}`;
-
-  const elapsed = Math.floor(
-    (Date.now() - new Date(existingLock.startTime).getTime()) / 1000,
-  );
-  const elapsedStr =
-    elapsed < 60
-      ? `${elapsed} seconds ago`
-      : `${Math.floor(elapsed / 60)} minutes ago`;
-
-  console.log(chalk.yellow('⚠️  Validation already running'));
-  console.log(`  Directory: ${existingLock.directory}`);
-  console.log(`  Tree Hash: ${existingLock.treeHash.substring(0, 7)} (${hashStatus})`);
-  console.log(`  PID: ${existingLock.pid}`);
-  console.log(`  Started: ${elapsedStr}`);
-}
+import { withValidationLock } from '../utils/validation-lock-wrapper.js';
 
 export function validateCommand(program: Command): void {
   program
@@ -77,10 +21,7 @@ export function validateCommand(program: Command): void {
     .option('--no-lock', 'Allow concurrent validation runs (disables single-instance mode)')
     .option('--no-wait', 'Exit immediately if validation is already running (for background hooks)')
     .option('--wait-timeout <seconds>', 'Maximum time to wait for running validation (default: 300)', '300')
-    // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 50 acceptable for main validation command handler (orchestrates options, locking, caching, and validation)
     .action(async (options) => {
-
-      let lockFile: string | null = null;
       try {
         // Normalize conflicting options
         // When using --check (just checking state, not running validation):
@@ -97,118 +38,26 @@ export function validateCommand(program: Command): void {
           options.lock = true;
         }
 
-        // Load configuration first (needed for lock config)
-        // Use loadConfigWithDir to get config directory for locking
-        const configResult = await loadConfigWithDir();
-        if (!configResult) {
-          // Get detailed error information to distinguish between missing file and validation errors
-          const configWithErrors = await loadConfigWithErrors();
-
-          if (configWithErrors.errors && configWithErrors.filePath) {
-            // Config file exists but has validation errors
-            const fileName = configWithErrors.filePath.split('/').pop() ?? 'vibe-validate.config.yaml';
-            displayConfigErrors({
-              fileName,
-              errors: configWithErrors.errors
+        // Use validation lock wrapper to handle config, context, and locking
+        const result = await withValidationLock(
+          {
+            lockEnabled: options.lock,
+            waitEnabled: options.wait !== false,
+            waitTimeout: Number.parseInt(options.waitTimeout, 10) || 300,
+            yaml: options.yaml
+          },
+          async ({ config, context }) => {
+            // Run shared validation workflow
+            return await runValidateWorkflow(config, {
+              force: options.force,
+              verbose: options.verbose,
+              yaml: options.yaml,
+              check: options.check,
+              debug: options.debug,
+              context,
             });
-          } else {
-            // Config file doesn't exist
-            console.error(chalk.red('❌ No configuration found'));
           }
-
-          process.exit(1);
-        }
-
-        const { config, configDir } = configResult;
-
-        // Detect context (Claude Code, CI, etc.)
-        const context = detectContext();
-
-        // Determine lock options from config
-        const lockConfig = config.locking ?? { enabled: true, concurrencyScope: 'directory' };
-
-        // If config disables locking, override CLI flag
-        if (!lockConfig.enabled) {
-          options.lock = false;
-        }
-
-        let lockOptions: LockOptions = {};
-        if (lockConfig.concurrencyScope === 'project') {
-          // Project-scoped locking - need projectId
-          const projectId = lockConfig.projectId ?? detectProjectId();
-          if (!projectId) {
-            console.error(chalk.red('❌ ERROR: concurrencyScope=project but projectId cannot be detected'));
-            console.error(chalk.yellow('Solutions:'));
-            console.error('  1. Add locking.projectId to vibe-validate.config.yaml');
-            console.error('  2. Ensure git remote is configured');
-            console.error('  3. Ensure package.json has name field');
-            process.exit(1);
-          }
-          lockOptions = { scope: 'project', projectId };
-        } else {
-          // Directory-scoped locking (default)
-          lockOptions = { scope: 'directory' };
-        }
-
-        // Default behavior: wait is enabled (wait for running validation)
-        // Users can opt out with --no-wait for background hooks
-        const shouldWait = options.wait !== false;
-
-        // Handle wait mode (default: wait for running validation to complete)
-        if (shouldWait) {
-          // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
-          const existingLock = await checkLock(configDir, lockOptions);
-
-          if (existingLock) {
-            const waitTimeout = Number.parseInt(options.waitTimeout, 10) || 300;
-
-            if (!options.yaml) {
-              console.log(chalk.yellow('⏳ Waiting for running validation to complete...'));
-              console.log(`  PID: ${existingLock.pid}`);
-              console.log(`  Started: ${new Date(existingLock.startTime).toLocaleTimeString()}`);
-              console.log(`  Timeout: ${waitTimeout}s`);
-            }
-
-            const waitResult = await waitForLock(configDir, waitTimeout, 1000, lockOptions);
-
-            displayWaitResult(waitResult.timedOut, options.yaml);
-          }
-          // If no lock exists, proceed normally
-        }
-
-        // Handle lock mode (single-instance execution)
-        if (options.lock) {
-          // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
-          const treeHash = await getGitTreeHash();
-
-          const lockResult = await acquireLock(configDir, treeHash, lockOptions);
-
-          if (!lockResult.acquired && lockResult.existingLock) {
-            // Another validation is already running
-
-            // If --no-wait specified, exit immediately (for background hooks)
-            if (!shouldWait) {
-              displayExistingLockInfo(lockResult.existingLock, treeHash, options.yaml);
-              process.exit(0); // Exit 0 to not trigger errors in hooks
-            }
-
-            // If wait is enabled (default), the wait logic above already handled it
-            // Just don't try to acquire lock again
-          } else {
-            // Lock acquired successfully
-            lockFile = lockResult.lockFile;
-          }
-        }
-
-        // Run shared validation workflow
-        const result = await runValidateWorkflow(config, {
-          force: options.force,
-          verbose: options.verbose,
-          yaml: options.yaml,
-          check: options.check,
-          debug: options.debug,
-          context,
-        });
+        );
 
         // Only call process.exit for non-cached results
         // Cache hits return early without calling process.exit (to support testing)
@@ -223,11 +72,6 @@ export function validateCommand(program: Command): void {
         }
         // Error already logged by runValidateWorkflow
         process.exit(1);
-      } finally {
-        // Always release lock when done
-        if (lockFile) {
-          await releaseLock(lockFile);
-        }
       }
     });
 }

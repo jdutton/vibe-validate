@@ -356,7 +356,7 @@ describe('Markdown Examples Validation', () => {
     console.log('\nExamples by schema:');
     for (const validator of VALIDATORS) {
       const count = examplesByValidator.get(validator.name)?.length || 0;
-      console.log(`  ${validator.name}: ${count} example${count !== 1 ? 's' : ''}`);
+      console.log(`  ${validator.name}: ${count} example${count === 1 ? '' : 's'}`);
     }
 
     // Summary by file

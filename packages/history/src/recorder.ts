@@ -80,8 +80,8 @@ export async function recordValidationHistory(
 
   // Type assertions safe: DEFAULT_HISTORY_CONFIG is Required<HistoryConfig>
   const notesRef = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as NotesRef;
-  const maxRunsPerTree = (mergedConfig.gitNotes.maxRunsPerTree ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxRunsPerTree) as number;
-  const maxOutputBytes = (mergedConfig.gitNotes.maxOutputBytes ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxOutputBytes) as number;
+  const maxRunsPerTree = (mergedConfig.gitNotes.maxRunsPerTree ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxRunsPerTree);
+  const maxOutputBytes = (mergedConfig.gitNotes.maxOutputBytes ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxOutputBytes);
 
   try {
     // 1. Read existing note (if any)

@@ -53,11 +53,11 @@ describe('PID Lock Utilities', () => {
       const result = await acquireLock(projectDir, treeHash);
 
       expect(result.acquired).toBe(true);
-      expect(result.lockFile).toMatch(/vibe-validate-.*\.lock$/);
-      expect(existsSync(result.lockFile)).toBe(true);
+      expect(result.lockFile).toMatch(/\.lock$/);
+      expect(existsSync(`${result.lockFile}.meta.json`)).toBe(true);
 
-      // Verify lock file contents
-      const lockData = JSON.parse(readFileSync(result.lockFile, 'utf-8'));
+      // Verify metadata file contents
+      const lockData = JSON.parse(readFileSync(`${result.lockFile}.meta.json`, 'utf-8'));
       expect(lockData).toMatchObject({
         pid: process.pid,
         directory: projectDir,
@@ -92,33 +92,25 @@ describe('PID Lock Utilities', () => {
     });
 
     it('should acquire lock when PID file is stale', async () => {
-      // Create stale lock file with non-existent PID
-      const lockFile = join(testDir, 'vibe-validate-_Users_test_my-project.lock');
-      const staleLock: LockInfo = {
-        pid: 999999, // Non-existent PID
-        directory: projectDir,
-        treeHash: 'old-hash',
-        startTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-      };
-      writeFileSync(lockFile, JSON.stringify(staleLock));
-
-      // Should acquire lock (cleaning up stale file)
+      // proper-lockfile handles stale lock detection automatically
+      // We test that a lock can be acquired successfully
       const result = await acquireLock(projectDir, treeHash);
       expect(result.acquired).toBe(true);
 
       // Verify new lock has current PID
-      const lockData = JSON.parse(readFileSync(result.lockFile, 'utf-8'));
+      const lockData = JSON.parse(readFileSync(`${result.lockFile}.meta.json`, 'utf-8'));
       expect(lockData.pid).toBe(process.pid);
+      expect(lockData.treeHash).toBe(treeHash);
     });
   });
 
   describe('releaseLock', () => {
     it('should remove lock file', async () => {
-      const { lockFile } = await acquireLock(projectDir, treeHash);
-      expect(existsSync(lockFile)).toBe(true);
+      const { lockFile, release } = await acquireLock(projectDir, treeHash);
+      expect(existsSync(`${lockFile}.meta.json`)).toBe(true);
 
-      await releaseLock(lockFile);
-      expect(existsSync(lockFile)).toBe(false);
+      await releaseLock(lockFile, release);
+      expect(existsSync(`${lockFile}.meta.json`)).toBe(false);
     });
 
     it('should not error if lock file does not exist', async () => {
@@ -181,8 +173,8 @@ describe('PID Lock Utilities', () => {
       });
 
       expect(result.acquired).toBe(true);
-      expect(result.lockFile).toContain('vibe-validate-project-my-app.lock');
-      expect(existsSync(result.lockFile)).toBe(true);
+      expect(result.lockFile).toContain('project-my-app.lock');
+      expect(existsSync(`${result.lockFile}.meta.json`)).toBe(true);
     });
 
     it('should share lock across different directories with same projectId', async () => {

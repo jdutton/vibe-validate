@@ -64,6 +64,8 @@ vi.mock('../../src/utils/config-loader.js', async () => {
   return {
     ...actual,
     loadConfig: vi.fn(),
+    loadConfigWithDir: vi.fn(),
+    loadConfigWithErrors: vi.fn(),
   };
 });
 
@@ -227,6 +229,8 @@ function createCommandError(stdout = '', stderr = ''): Error & { stdout: string;
  */
 function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
   vi.mocked(configLoader.loadConfig).mockResolvedValue(config);
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: '/test/project' });
+  vi.mocked(configLoader.loadConfigWithErrors).mockResolvedValue({ config, configDir: '/test/project', filePath: '/test/project/vibe-validate.config.yaml', errors: null });
   vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
   vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 }
@@ -575,8 +579,7 @@ describe('pre-commit command', () => {
 
   describe('validation caching integration', () => {
     it('should use shared workflow which provides caching', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfigWithPhases());
-      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      setupSuccessfulPreCommit(createConfigWithPhases());
       setupCacheHit('abc123def456');
 
       await runPreCommit(env, 0);
@@ -589,10 +592,8 @@ describe('pre-commit command', () => {
     });
 
     it('should run validation when cache misses', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfigWithPhases());
-      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      setupSuccessfulPreCommit(createConfigWithPhases());
       setupCacheMiss('abc123def456');
-      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 
       await runPreCommit(env, 0);
 
@@ -666,15 +667,14 @@ describe('pre-commit command', () => {
     });
 
     it('should handle snapshot creation failure gracefully', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
-      vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
-      vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date
+      setupSuccessfulPreCommit(createConfig());
 
-      // Mock snapshot failure
-      vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('Git tree hash failed'));
+      // Mock snapshot failure on first call, but succeed on subsequent calls (for locking)
+      vi.mocked(git.getGitTreeHash)
+        .mockRejectedValueOnce(new Error('Git tree hash failed'))
+        .mockResolvedValue('abc123def456');
 
-      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
-      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
+      setupCacheMiss('abc123def456');
 
       await runPreCommit(env, 0);
 

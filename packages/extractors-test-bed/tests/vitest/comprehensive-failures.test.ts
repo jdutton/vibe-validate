@@ -13,6 +13,15 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import { Calculator } from '../../src/calculator.js';
 
+// Helper: Test body for deeply nested test (reduces nesting for max-nested-callbacks)
+async function testDeeplyNestedStripAnsi() {
+  const { stripAnsiCodes } = await import('@vibe-validate/extractors');
+  const input = '\x1b[31mError\x1b[0m';
+  const result = stripAnsiCodes(input);
+  // Wrong expectation (intentional failure)
+  expect(result).toBe('Error with ANSI codes still present');
+}
+
 // ============================================================================
 // REAL VIBE-VALIDATE USAGE (80%)
 // ============================================================================
@@ -162,15 +171,10 @@ describe('Vibe-Validate Integration Failures', () => {
     describe('Level 1', () => {
       describe('Level 2', () => {
         describe('Level 3', () => { // NOSONAR - Intentional deep nesting to test error extractor handling of nested test structures
+          // eslint-disable-next-line max-nested-callbacks -- Intentional deep nesting to test extractor behavior
           it('should test deeply nested vibe-validate usage', async () => {
             // INTENTIONAL FAILURE: Deep in hierarchy
-            const { stripAnsiCodes } = await import('@vibe-validate/extractors');
-
-            const input = '\x1b[31mError\x1b[0m';
-            const result = stripAnsiCodes(input);
-
-            // Wrong expectation
-            expect(result).toBe('Error with ANSI codes still present');
+            await testDeeplyNestedStripAnsi();
           });
         });
       });

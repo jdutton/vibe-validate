@@ -16,11 +16,34 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { executeGitCommand } from '../src/git-executor.js';
 import { getGitTreeHash } from '../src/tree-hash.js';
 
+/**
+ * Helper: Create initial commit in test repo so .git/index exists
+ * Many tests require an existing index file to test tree hash calculation
+ */
+function createInitialCommit(repoPath: string): void {
+  writeFileSync(join(repoPath, 'initial.txt'), 'initial');
+  executeGitCommand(['add', 'initial.txt'], { suppressStderr: true });
+  executeGitCommand(['commit', '-m', 'initial'], { suppressStderr: true });
+}
+
 describe('getGitTreeHash - integration tests', () => {
   let testRepoPath: string;
   let originalCwd: string;
 
   beforeEach(() => {
+    // CRITICAL: Clear git environment variables to prevent test isolation failures
+    // Git environment variables (GIT_DIR, GIT_WORK_TREE, etc.) override process.cwd(),
+    // causing git commands to operate on the parent repository instead of the temp test directory.
+    // This can corrupt worktrees by committing test files to production branches.
+    // Clearing these variables ensures git respects process.cwd() and stays isolated to /tmp.
+    delete process.env.GIT_DIR;
+    delete process.env.GIT_WORK_TREE;
+    delete process.env.GIT_INDEX_FILE;
+    delete process.env.GIT_COMMON_DIR;
+    delete process.env.GIT_OBJECT_DIRECTORY;
+    delete process.env.GIT_ALTERNATE_OBJECT_DIRECTORIES;
+    delete process.env.GIT_CEILING_DIRECTORIES;
+
     // Save original directory
     originalCwd = process.cwd();
 
@@ -104,10 +127,7 @@ describe('getGitTreeHash - integration tests', () => {
   });
 
   it('should produce deterministic hash for same content', async () => {
-    // Create initial commit so index exists
-    writeFileSync(join(testRepoPath, 'initial.txt'), 'initial');
-    executeGitCommand(['add', 'initial.txt'], { suppressStderr: true });
-    executeGitCommand(['commit', '-m', 'initial'], { suppressStderr: true });
+    createInitialCommit(testRepoPath);
 
     // Create file
     writeFileSync(join(testRepoPath, 'test.txt'), 'deterministic content');
@@ -121,10 +141,7 @@ describe('getGitTreeHash - integration tests', () => {
   });
 
   it('should handle empty repository', async () => {
-    // Create initial commit so index exists
-    writeFileSync(join(testRepoPath, 'initial.txt'), 'initial');
-    executeGitCommand(['add', 'initial.txt'], { suppressStderr: true });
-    executeGitCommand(['commit', '-m', 'initial'], { suppressStderr: true });
+    createInitialCommit(testRepoPath);
 
     // Delete all files to make working tree "empty"
     rmSync(join(testRepoPath, 'initial.txt'));

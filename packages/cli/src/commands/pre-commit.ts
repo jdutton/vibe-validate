@@ -19,7 +19,6 @@ import type { Command } from 'commander';
 
 import { getCommandName } from '../utils/command-name.js';
 import { loadConfig } from '../utils/config-loader.js';
-import { detectContext } from '../utils/context-detector.js';
 import {
   selectToolsToRun,
   runSecretScan,
@@ -30,6 +29,7 @@ import {
   type SecretScanningTool,
 } from '../utils/secret-scanning.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
+import { withValidationLock } from '../utils/validation-lock-wrapper.js';
 
 
 /**
@@ -96,6 +96,7 @@ export function preCommitCommand(program: Command): void {
     const programName = program.name();
       try {
         // Step 1: Load configuration (needed for git settings)
+        // Note: Config loading is now handled by withValidationLock wrapper
         const config = await loadConfig();
         if (!config) {
           const cmd = getCommandName();
@@ -198,13 +199,10 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
-        // Step 5: Detect context
-        const context = detectContext();
-
-        // Step 6: Verbose mode is ONLY enabled via explicit --verbose flag
+        // Step 5: Verbose mode is ONLY enabled via explicit --verbose flag
         const verbose = options.verbose ?? false;
 
-        // Step 7: Run secret scanning if enabled
+        // Step 6: Run secret scanning if enabled
         const secretScanning = config.hooks?.preCommit?.secretScanning;
         if (secretScanning?.enabled) {
           console.log(chalk.blue('\n🔒 Running secret scanning...'));
@@ -243,16 +241,26 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
-        // Step 8: Run validation with caching
+        // Step 7: Run validation with caching AND locking
         console.log(chalk.blue('\n🔄 Running validation...'));
 
-        const result = await runValidateWorkflow(config, {
-          force: false, // Respect cache by default
-          verbose,
-          yaml: false, // Pre-commit uses human-readable output
-          check: false,
-          context,
-        });
+        const result = await withValidationLock(
+          {
+            lockEnabled: true,  // Always enable locking for pre-commit
+            waitEnabled: true,  // Always wait for running validation
+            waitTimeout: 30,    // Shorter timeout than validate command (30s vs 300s)
+            yaml: false         // Pre-commit uses human-readable output
+          },
+          async ({ config, context }) => {
+            return await runValidateWorkflow(config, {
+              force: false, // Respect cache by default
+              verbose,
+              yaml: false, // Pre-commit uses human-readable output
+              check: false,
+              context,
+            });
+          }
+        );
 
         // Step 9: Report results
         if (result.passed) {
