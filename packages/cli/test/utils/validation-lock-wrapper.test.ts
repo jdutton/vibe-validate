@@ -24,6 +24,11 @@ vi.mock('os', async () => {
   };
 });
 
+// Helper: Find lock file in directory (reduces nesting for max-nested-callbacks)
+function findLockFile(files: string[]): string | undefined {
+  return files.find((f: string) => f.endsWith('.lock'));
+}
+
 // Create a test fixture directory
 const fixtureDir = join(testDir, 'project-fixture');
 const configContent = `
@@ -330,7 +335,7 @@ validation:
           const { readdirSync } = await import('node:fs');
           const locksDir = join(testDir, '.vibe-validate', 'locks');
           const files = readdirSync(locksDir);
-          const lockFile = files.find((f: string) => f.endsWith('.lock'));
+          const lockFile = findLockFile(files);
           lockFileName = lockFile ?? null;
         }
       );

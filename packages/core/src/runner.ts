@@ -316,7 +316,7 @@ function extractFromFailedOutput(output: string): ErrorExtractorResult | undefin
   const parsed = parseVibeValidateOutput(output);
 
   if (parsed?.extraction) {
-    return parsed.extraction as ErrorExtractorResult;
+    return parsed.extraction;
   }
 
   // No vibe-validate YAML detected - use standard extraction

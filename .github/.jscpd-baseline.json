@@ -619,32 +619,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 42,
-        "end": 54,
+        "start": 50,
+        "end": 62,
         "startLoc": {
-          "line": 42,
+          "line": 50,
           "column": 7,
-          "position": 179
+          "position": 230
         },
         "endLoc": {
-          "line": 54,
+          "line": 62,
           "column": 47,
-          "position": 265
+          "position": 316
         }
       },
       "secondFile": {
         "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 39,
-        "end": 50,
+        "start": 48,
+        "end": 59,
         "startLoc": {
-          "line": 39,
+          "line": 48,
           "column": 7,
-          "position": 202
+          "position": 274
         },
         "endLoc": {
-          "line": 50,
+          "line": 59,
           "column": 6,
-          "position": 287
+          "position": 359
         }
       }
     },
@@ -655,104 +655,104 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 88,
-        "end": 128,
+        "start": 96,
+        "end": 136,
         "startLoc": {
-          "line": 88,
+          "line": 96,
           "column": 7,
-          "position": 484
+          "position": 535
         },
         "endLoc": {
-          "line": 128,
+          "line": 136,
           "column": 2,
-          "position": 704
+          "position": 755
         }
       },
       "secondFile": {
         "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 91,
-        "end": 131,
+        "start": 100,
+        "end": 140,
         "startLoc": {
-          "line": 91,
+          "line": 100,
           "column": 7,
-          "position": 595
+          "position": 667
         },
         "endLoc": {
-          "line": 131,
+          "line": 140,
           "column": 7,
-          "position": 815
+          "position": 887
         }
       }
     },
     {
       "format": "typescript",
-      "lines": 14,
-      "fragment": "expect(tsResult.summary).toContain('999 errors'); // Wrong\n    });\n  });\n\n  // FAILURE TYPE 10: Nested Describe Blocks (Deep Hierarchy)\n  describe('Deep Nesting', () => {\n    describe('Level 1', () => {\n      describe('Level 2', () => {\n        describe('Level 3', () => { // NOSONAR - Intentional deep nesting to test error extractor handling of nested test structures\n          it('should test deeply nested vibe-validate usage', async () => {\n            // INTENTIONAL FAILURE: Deep in hierarchy\n            \n\n            const input",
+      "lines": 13,
+      "fragment": "expect(tsResult.summary).toContain('999 errors'); // Wrong\n    });\n  });\n\n  // FAILURE TYPE 10: Nested Describe Blocks (Deep Hierarchy)\n  describe('Deep Nesting', () => {\n    describe('Level 1', () => {\n      describe('Level 2', () => {\n        describe('Level 3', () => { // NOSONAR - Intentional deep nesting to test error extractor handling of nested test structures\n          // eslint-disable-next-line max-nested-callbacks -- Intentional deep nesting to test extractor behavior\n          it('should test deeply nested vibe-validate usage', async () => {\n            // INTENTIONAL FAILURE: Deep in hierarchy\n            testDeeplyNestedStripAnsi",
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 151,
-        "end": 164,
+        "start": 159,
+        "end": 171,
         "startLoc": {
-          "line": 151,
+          "line": 159,
           "column": 7,
-          "position": 872
+          "position": 923
         },
         "endLoc": {
-          "line": 164,
+          "line": 171,
+          "column": 26,
+          "position": 1028
+        }
+      },
+      "secondFile": {
+        "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
+        "start": 165,
+        "end": 177,
+        "startLoc": {
+          "line": 165,
+          "column": 7,
+          "position": 1091
+        },
+        "endLoc": {
+          "line": 177,
           "column": 6,
-          "position": 979
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 156,
-        "end": 167,
-        "startLoc": {
-          "line": 156,
-          "column": 7,
-          "position": 1019
-        },
-        "endLoc": {
-          "line": 167,
-          "column": 2,
-          "position": 1123
+          "position": 1196
         }
       }
     },
     {
       "format": "typescript",
-      "lines": 48,
-      "fragment": "const input = '\\x1b[31mError\\x1b[0m';\n            const result = stripAnsiCodes(input);\n\n            // Wrong expectation\n            expect(result).toBe('Error with ANSI codes still present');\n          });\n        });\n      });\n    });\n  });\n});\n\n// ============================================================================\n// SIMPLE EDGE CASES (20%)\n// ============================================================================\n\ndescribe('Edge Cases (Simple Code)', () => {\n  let calc: Calculator;\n\n  beforeEach(() => {\n    calc = new Calculator();\n  });\n\n  // FAILURE TYPE 1: Basic Assertion Error\n  describe('Calculator › Assertions', () => {\n    it('should add numbers correctly', () => {\n      // INTENTIONAL FAILURE: Bug in Calculator.add()\n      const result = calc.add(6, 7);\n      expect(result).toBe(13); // Expected: 13, Actual: 14\n    });\n  });\n\n  // FAILURE TYPE 3: Runtime Error (ENOENT)\n  describe('File System › ENOENT', () => {\n    it('should read config file', async () => {\n      // INTENTIONAL FAILURE: File doesn't exist\n      const fs = await import('node:fs/promises');\n      const config = await fs.readFile('/this/file/does/not/exist.json', 'utf8');\n      expect(config).toBeDefined();\n    });\n  });\n\n  // FAILURE TYPE 5: Timeout\n  describe('Performance › Timeout', () => {\n    it('should complete within timeout', async () => {\n      // INTENTIONAL FAILURE: Test times out\n      await new Promise(resolve => setTimeout(resolve, 100000));\n    }",
+      "lines": 44,
+      "fragment": "testDeeplyNestedStripAnsi();\n          });\n        });\n      });\n    });\n  });\n});\n\n// ============================================================================\n// SIMPLE EDGE CASES (20%)\n// ============================================================================\n\ndescribe('Edge Cases (Simple Code)', () => {\n  let calc: Calculator;\n\n  beforeEach(() => {\n    calc = new Calculator();\n  });\n\n  // FAILURE TYPE 1: Basic Assertion Error\n  describe('Calculator › Assertions', () => {\n    it('should add numbers correctly', () => {\n      // INTENTIONAL FAILURE: Bug in Calculator.add()\n      const result = calc.add(6, 7);\n      expect(result).toBe(13); // Expected: 13, Actual: 14\n    });\n  });\n\n  // FAILURE TYPE 3: Runtime Error (ENOENT)\n  describe('File System › ENOENT', () => {\n    it('should read config file', async () => {\n      // INTENTIONAL FAILURE: File doesn't exist\n      const fs = await import('node:fs/promises');\n      const config = await fs.readFile('/this/file/does/not/exist.json', 'utf8');\n      expect(config).toBeDefined();\n    });\n  });\n\n  // FAILURE TYPE 5: Timeout\n  describe('Performance › Timeout', () => {\n    it('should complete within timeout', async () => {\n      // INTENTIONAL FAILURE: Test times out\n      await new Promise(resolve => setTimeout(resolve, 100000));\n    }",
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 164,
-        "end": 211,
+        "start": 171,
+        "end": 214,
         "startLoc": {
-          "line": 164,
+          "line": 171,
           "column": 13,
-          "position": 977
+          "position": 1028
         },
         "endLoc": {
-          "line": 211,
+          "line": 214,
           "column": 2,
-          "position": 1324
+          "position": 1342
         }
       },
       "secondFile": {
         "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 169,
-        "end": 216,
+        "start": 177,
+        "end": 220,
         "startLoc": {
-          "line": 169,
-          "column": 13,
-          "position": 1141
+          "line": 177,
+          "column": 2,
+          "position": 1198
         },
         "endLoc": {
-          "line": 216,
+          "line": 220,
           "column": 7,
-          "position": 1488
+          "position": 1512
         }
       }
     },
@@ -763,32 +763,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 211,
-        "end": 222,
+        "start": 214,
+        "end": 225,
         "startLoc": {
-          "line": 211,
+          "line": 214,
           "column": 5,
-          "position": 1324
+          "position": 1342
         },
         "endLoc": {
-          "line": 222,
+          "line": 225,
           "column": 2,
-          "position": 1411
+          "position": 1429
         }
       },
       "secondFile": {
         "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 217,
-        "end": 228,
+        "start": 221,
+        "end": 232,
         "startLoc": {
-          "line": 217,
+          "line": 221,
           "column": 5,
-          "position": 1502
+          "position": 1526
         },
         "endLoc": {
-          "line": 228,
+          "line": 232,
           "column": 2,
-          "position": 1589
+          "position": 1613
         }
       }
     },
@@ -2121,42 +2121,6 @@
           "line": 30,
           "column": 2,
           "position": 274
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": ", async () => {\n    // Create initial commit so index exists\n    writeFileSync(join(testRepoPath, 'initial.txt'), 'initial');\n    executeGitCommand(['add', 'initial.txt'], { suppressStderr: true });\n    executeGitCommand(['commit', '-m', 'initial'], { suppressStderr: true });\n\n    // Delete all files to make working tree \"empty\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/tree-hash.integration.test.ts",
-        "start": 123,
-        "end": 129,
-        "startLoc": {
-          "line": 123,
-          "column": 33,
-          "position": 1050
-        },
-        "endLoc": {
-          "line": 129,
-          "column": 49,
-          "position": 1129
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/tree-hash.integration.test.ts",
-        "start": 106,
-        "end": 112,
-        "startLoc": {
-          "line": 106,
-          "column": 53,
-          "position": 895
-        },
-        "endLoc": {
-          "line": 112,
-          "column": 15,
-          "position": 974
         }
       }
     },

@@ -77,7 +77,7 @@ export async function loadPlugin(source: PluginSource): Promise<ExtractorPlugin>
   // Validate plugin interface
   validatePluginInterface(plugin, pluginPath);
 
-  return plugin as ExtractorPlugin;
+  return plugin;
 }
 
 /**
