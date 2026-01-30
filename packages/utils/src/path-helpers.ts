@@ -150,3 +150,26 @@ export function normalizePath(...paths: string[]): string {
     }
   }
 }
+
+/**
+ * Convert a path to forward slashes
+ *
+ * Windows accepts both forward slashes and backslashes as path separators.
+ * This function normalizes all paths to use forward slashes for consistency.
+ * Useful for glob pattern matching, cross-platform comparisons, and string operations.
+ *
+ * @param p - Path to convert
+ * @returns Path with forward slashes
+ *
+ * @example
+ * ```typescript
+ * toForwardSlash('C:\\Users\\docs\\README.md')
+ * // Returns: 'C:/Users/docs/README.md'
+ *
+ * toForwardSlash('/project/docs/README.md')
+ * // Returns: '/project/docs/README.md' (unchanged)
+ * ```
+ */
+export function toForwardSlash(p: string): string {
+  return p.replaceAll('\\', '/');
+}

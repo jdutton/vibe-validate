@@ -81,6 +81,9 @@ const customRules = {
   'local/no-fs-realpathSync': 'error',
   'local/no-path-resolve-dirname': 'error', // Test files only
   'local/no-unix-shell-commands': 'error', // Prevent Unix-specific commands (tar, ls, grep, etc.)
+  'local/no-manual-path-normalize': 'error', // Enforce toForwardSlash() instead of .split(path.sep).join('/') (auto-fixable)
+  'local/no-path-sep-in-strings': 'error', // Prevent path.sep in string operations (split, includes, etc.)
+  'local/no-path-operations-in-comparisons': 'error', // Require normalizing path operations before comparisons
 
   // Security and architecture rules
   'local/no-child-process-execSync': 'error',
@@ -515,6 +518,9 @@ export default [
       'local/no-fs-mkdirSync': 'error',
       'local/no-fs-realpathSync': 'error',
       'local/no-unix-shell-commands': 'error',
+      'local/no-manual-path-normalize': 'error',
+      'local/no-path-sep-in-strings': 'error',
+      'local/no-path-operations-in-comparisons': 'error',
 
       // Security and architecture rules
       'local/no-child-process-execSync': 'error',

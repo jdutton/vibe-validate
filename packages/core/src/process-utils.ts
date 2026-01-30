@@ -10,7 +10,7 @@ import { writeFile } from 'node:fs/promises';
 import { join, normalize, resolve } from 'node:path';
 
 import { getRepositoryRoot } from '@vibe-validate/git';
-import { safeExecSync } from '@vibe-validate/utils';
+import { safeExecSync, toForwardSlash } from '@vibe-validate/utils';
 
 import { ensureDir, createLogFileWrite, createCombinedJsonl } from './fs-utils.js';
 import type { CapturedOutput, OutputLine } from './output-capture-schema.js';
@@ -53,7 +53,7 @@ export function resolveGitRelativePath(cwd: string): string {
   }
 
   // Convert to forward slashes (git convention) for consistency across platforms
-  return resolved.split('\\').join('/');
+  return toForwardSlash(resolved);
 }
 
 /**

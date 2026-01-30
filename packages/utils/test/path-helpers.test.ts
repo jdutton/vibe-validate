@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { normalizePath } from '@vibe-validate/utils';
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { normalizedTmpdir, mkdirSyncReal } from '../src/path-helpers.js';
+import { normalizedTmpdir, mkdirSyncReal, toForwardSlash } from '../src/path-helpers.js';
 
 describe('path-helpers', () => {
   const testDirs: string[] = [];
@@ -195,6 +195,81 @@ describe('path-helpers', () => {
       expect(result).toContain('file.txt');
       // Should still be absolute even if not normalized
       expect(result.startsWith('/')).toBe(process.platform !== 'win32');
+    });
+  });
+
+  describe('toForwardSlash()', () => {
+    it('should convert Windows backslashes to forward slashes', () => {
+      const windowsPath = String.raw`C:\Users\docs\README.md`;
+      const result = toForwardSlash(windowsPath);
+
+      expect(result).toBe('C:/Users/docs/README.md');
+    });
+
+    it('should leave Unix paths unchanged', () => {
+      const unixPath = '/project/docs/README.md';
+      const result = toForwardSlash(unixPath);
+
+      expect(result).toBe('/project/docs/README.md');
+    });
+
+    it('should handle mixed slashes', () => {
+      const mixedPath = String.raw`C:\Users/docs\file.txt`;
+      const result = toForwardSlash(mixedPath);
+
+      expect(result).toBe('C:/Users/docs/file.txt');
+    });
+
+    it('should handle empty string', () => {
+      const result = toForwardSlash('');
+
+      expect(result).toBe('');
+    });
+
+    it('should handle multiple consecutive backslashes', () => {
+      const path = String.raw`path\\with\\\\multiple`;
+      const result = toForwardSlash(path);
+
+      expect(result).toBe('path//with////multiple');
+    });
+
+    it('should handle UNC paths (Windows network paths)', () => {
+      const uncPath = String.raw`\\server\share\folder`;
+      const result = toForwardSlash(uncPath);
+
+      expect(result).toBe('//server/share/folder');
+    });
+
+    it('should be useful for glob pattern matching', () => {
+      // Glob patterns expect forward slashes
+      const windowsPath = String.raw`src\utils\helpers.ts`;
+      const normalized = toForwardSlash(windowsPath);
+
+      expect(normalized).toBe('src/utils/helpers.ts');
+      expect(normalized).toMatch(/^src\/utils\/.*\.ts$/);
+    });
+
+    it('should enable cross-platform path comparisons', () => {
+      const windowsPath = String.raw`src\utils\helpers.ts`;
+      const unixPath = 'src/utils/helpers.ts';
+
+      expect(toForwardSlash(windowsPath)).toBe(toForwardSlash(unixPath));
+    });
+
+    it('should work with path.sep-based string operations', () => {
+      // Common pattern: split by path.sep
+      const windowsPath = String.raw`C:\Users\docs\file.txt`;
+      const normalized = toForwardSlash(windowsPath);
+      const parts = normalized.split('/');
+
+      expect(parts).toEqual(['C:', 'Users', 'docs', 'file.txt']);
+    });
+
+    it('should handle relative paths', () => {
+      const relativePath = String.raw`..\..\src\utils.ts`;
+      const result = toForwardSlash(relativePath);
+
+      expect(result).toBe('../../src/utils.ts');
     });
   });
 

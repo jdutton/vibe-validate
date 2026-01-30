@@ -24,7 +24,8 @@ export {
 export {
   normalizedTmpdir,
   mkdirSyncReal,
-  normalizePath
+  normalizePath,
+  toForwardSlash
 } from './path-helpers.js';
 
 // Process checking (cross-platform)
