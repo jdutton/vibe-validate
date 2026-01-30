@@ -346,7 +346,7 @@ expect(result).toMatchObject({ passed: true });
 3. Create appropriate helper function(s)
 4. Refactor tests to use helpers
 5. Verify tests still pass
-6. Update baseline: `npx tsx tools/jscpd-update-baseline.ts`
+6. Update baseline: `pnpm jscpd-update-baseline`
 
 **Example duplication output:**
 ```

@@ -165,7 +165,7 @@ When you run `vibe-validate generate-workflow`, the `parallel` flag controls how
     - name: ESLint
       command: pnpm lint
     - name: Code Duplication Check
-      command: node tools/jscpd-check.js
+      command: pnpm duplication-check
     - name: Build Packages
       command: pnpm -r build
 

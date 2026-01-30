@@ -24,7 +24,7 @@ pnpm bump-version <version>
 pnpm -r build
 
 # Run pre-publish checks
-tsx tools/pre-publish-check.ts
+pnpm pre-publish
 
 # Publish all packages
 pnpm publish:all
