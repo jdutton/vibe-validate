@@ -49,6 +49,7 @@ const unicornRules = {
   'unicorn/prefer-structured-clone': 'error', // Prefer structuredClone() over JSON.parse(JSON.stringify())
   'unicorn/no-zero-fractions': 'error', // Disallow 1.0, use 1 instead
   'unicorn/no-array-push-push': 'error', // Prefer array.push(a, b) over array.push(a); array.push(b)
+  'unicorn/no-useless-spread': 'error', // Prevent {...{foo: 'bar'}} → {foo: 'bar'}
 };
 
 // Shared import organization rules (applies to both test and production code)
@@ -282,7 +283,7 @@ export default [
       '@typescript-eslint/switch-exhaustiveness-check': 'error', // Catch missing switch cases
       '@typescript-eslint/no-unnecessary-condition': 'off', // Disabled: Too aggressive, catches defensive programming patterns (while(true), ??, ?.)
       '@typescript-eslint/prefer-string-starts-ends-with': 'error', // Prefer startsWith/endsWith
-      '@typescript-eslint/prefer-readonly': 'warn', // Suggest immutability improvements
+      '@typescript-eslint/prefer-readonly': 'error', // Enforce immutability for never-reassigned properties
 
       // General rules
       'no-console': 'off', // CLI tool needs console output
@@ -295,6 +296,7 @@ export default [
       'max-depth': ['error', 4], // Maximum nesting depth (aligns with SonarQube)
       'max-params': ['error', 7], // Maximum function parameters (matches SonarQube threshold)
       'max-nested-callbacks': ['error', 4], // Limit function nesting depth (aligns with SonarQube S2004)
+      'no-lonely-if': 'error', // Prevent else { if } → use else if instead
 
       // Security - vulnerability detection (CRITICAL)
       'security/detect-child-process': 'error', // Catch command injection vulnerabilities
