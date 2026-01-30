@@ -26,5 +26,5 @@ module.exports = factory({
     'fetchRunDetails()',
     'listWorkflowRuns()',
   ],
-  exemptPackage: 'packages/git/',
+  exemptPackage: 'packages/git/|packages/dev-tools/',
 });
