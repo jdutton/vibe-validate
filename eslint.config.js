@@ -42,6 +42,7 @@ const unicornRules = {
   'unicorn/prefer-set-has': 'error', // Optimize Set lookups over Array.includes()
   'unicorn/no-instanceof-array': 'error', // Enforce Array.isArray() over instanceof
   'unicorn/prefer-date-now': 'error', // Prefer Date.now() over new Date().getTime()
+  'unicorn/no-negated-condition': 'error', // Prefer positive conditions over negated ones
 
   // Additional rules from ts-monorepo-template
   'unicorn/prefer-at': 'error', // Prefer .at() for array/string access (ES2022)
