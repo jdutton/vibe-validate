@@ -30,11 +30,11 @@ import { PROJECT_ROOT, log } from './common.js';
  */
 function isCI(): boolean {
   return !!(
-    process.env.CI ||
-    process.env.GITHUB_ACTIONS ||
-    process.env.GITLAB_CI ||
-    process.env.CIRCLECI ||
-    process.env.TRAVIS ||
+    process.env.CI ??
+    process.env.GITHUB_ACTIONS ??
+    process.env.GITLAB_CI ??
+    process.env.CIRCLECI ??
+    process.env.TRAVIS ??
     process.env.JENKINS_URL
   );
 }

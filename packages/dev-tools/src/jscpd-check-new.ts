@@ -65,10 +65,22 @@ function runJscpd() {
   return JSON.parse(readFileSync(reportPath, 'utf-8'));
 }
 
+interface CloneLocation {
+  name: string;
+  startLoc: { line: number };
+  endLoc: { line: number };
+}
+
+interface Clone {
+  format: string;
+  firstFile: CloneLocation;
+  secondFile: CloneLocation;
+}
+
 /**
  * Create clone signature for comparison
  */
-function getCloneSignature(clone: any): string {
+function getCloneSignature(clone: Clone): string {
   return `${clone.format}:${clone.firstFile.name}:${clone.firstFile.startLoc.line}-${clone.firstFile.endLoc.line}:${clone.secondFile.name}:${clone.secondFile.startLoc.line}-${clone.secondFile.endLoc.line}`;
 }
 
@@ -80,7 +92,7 @@ function checkNewDuplications() {
 
   // Run current scan
   const currentReport = runJscpd();
-  const currentClones = currentReport.duplicates || [];
+  const currentClones = currentReport.duplicates ?? [];
 
   // Load baseline
   if (!existsSync(BASELINE_FILE)) {
@@ -93,13 +105,13 @@ function checkNewDuplications() {
   }
 
   const baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf-8'));
-  const baselineClones = baseline.duplicates || [];
+  const baselineClones = baseline.duplicates ?? [];
 
   // Build baseline signature set for comparison
   const baselineSignatures = new Set(baselineClones.map(getCloneSignature));
 
   // Find new clones (not in baseline)
-  const newClones = currentClones.filter((clone: any) =>
+  const newClones = currentClones.filter((clone: Clone) =>
     !baselineSignatures.has(getCloneSignature(clone))
   );
 

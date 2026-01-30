@@ -76,9 +76,9 @@ export function executeCLI(
   } catch (error: any) {
     // safeExecFromString throws on non-zero exit, but we want to capture the output
     return {
-      stdout: error.stdout || '',
-      stderr: error.stderr || '',
-      exitCode: error.status || 1,
+      stdout: error.stdout ?? '',
+      stderr: error.stderr ?? '',
+      exitCode: error.status ?? 1,
     };
   }
 }
@@ -108,7 +108,7 @@ export function executeCLIWithTimeout(
 ): CliExecutionResult {
   return executeCLI(command, {
     ...options,
-    timeout: options.timeout || 15000, // Default 15s timeout
+    timeout: options.timeout ?? 15000, // Default 15s timeout
     killSignal: 'SIGTERM', // Ensure child is killed on timeout
   });
 }

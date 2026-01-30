@@ -70,7 +70,7 @@ describe('CacheManager', () => {
 
     it('should handle special characters in repo name', async () => {
       const specialRepoName = 'my-org/my-repo';
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars, sonarjs/no-unused-vars, sonarjs/no-dead-store
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars, sonarjs/no-unused-vars, sonarjs/no-dead-store
       const specialCacheManager = new CacheManager(specialRepoName, prNumber, tmpDir);
 
       const cacheDir = path.join(

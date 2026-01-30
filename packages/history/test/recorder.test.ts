@@ -169,7 +169,7 @@ describe('checkWorktreeStability', () => {
     const { getGitTreeHash } = await import('@vibe-validate/git');
     const treeHash = 'abc123def456';
 
-    vi.mocked(getGitTreeHash).mockResolvedValue(treeHash as any);
+    vi.mocked(getGitTreeHash).mockResolvedValue(treeHash as ReturnType<typeof getGitTreeHash> extends Promise<infer T> ? T : never);
 
     const stability = await checkWorktreeStability(treeHash);
 
@@ -183,7 +183,7 @@ describe('checkWorktreeStability', () => {
     const treeHashBefore = 'abc123def456';
     const treeHashAfter = 'def456abc123';
 
-    vi.mocked(getGitTreeHash).mockResolvedValue(treeHashAfter as any);
+    vi.mocked(getGitTreeHash).mockResolvedValue(treeHashAfter as ReturnType<typeof getGitTreeHash> extends Promise<infer T> ? T : never);
 
     const stability = await checkWorktreeStability(treeHashBefore);
 

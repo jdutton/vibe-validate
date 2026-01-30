@@ -261,7 +261,7 @@ describe('secret-scanning', () => {
     };
 
     const mockError = (stderr: string, stdout = '') => {
-      const error: any = new Error('Command failed');
+      const error = new Error('Command failed') as Error & { stderr: Buffer; stdout: Buffer };
       error.stderr = Buffer.from(stderr);
       error.stdout = Buffer.from(stdout);
       vi.mocked(utils.safeExecFromString).mockImplementation(() => {

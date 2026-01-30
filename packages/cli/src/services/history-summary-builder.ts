@@ -11,9 +11,12 @@
  * @packageDocumentation
  */
 
-import { safeExecSync } from '@vibe-validate/utils';
+import { listWorkflowRuns } from '@vibe-validate/git';
 
 import type { CheckHistorySummary } from '../schemas/watch-pr-result.schema.js';
+
+// Constants (extracted to avoid duplication warnings)
+const NO_PREVIOUS_RUNS = 'No previous runs';
 
 /**
  * Workflow Run (subset of fields from GitHub API)
@@ -47,7 +50,7 @@ export class HistorySummaryBuilder {
       if (runs.length === 0) {
         return {
           total_runs: 0,
-          recent_pattern: 'No previous runs',
+          recent_pattern: NO_PREVIOUS_RUNS,
         };
       }
 
@@ -66,7 +69,7 @@ export class HistorySummaryBuilder {
       // Note: Error intentionally not logged for production use
       return {
         total_runs: 0,
-        recent_pattern: 'No previous runs',
+        recent_pattern: NO_PREVIOUS_RUNS,
       };
     }
   }
@@ -78,32 +81,17 @@ export class HistorySummaryBuilder {
    * @returns Array of workflow runs (sorted by created_at DESC)
    */
   private async fetchWorkflowRuns(branch: string): Promise<WorkflowRun[]> {
-    const output = safeExecSync(
-      'gh',
-      [
-        'run',
-        'list',
-        '--repo',
-        `${this._owner}/${this._repo}`,
-        '--branch',
-        branch,
-        '--json',
-        'conclusion,createdAt',
-        '--limit',
-        '50', // Fetch up to 50 runs (more than we need)
-      ],
-      { cwd: process.cwd(), encoding: 'utf8' },
+    const runs = listWorkflowRuns(
+      branch,
+      this._owner,
+      this._repo,
+      50, // Fetch up to 50 runs (more than we need)
+      ['conclusion', 'createdAt']
     );
-
-    const outputStr = typeof output === 'string' ? output : output.toString('utf8');
-    const runs = JSON.parse(outputStr) as Array<{
-      conclusion: string | null;
-      createdAt: string;
-    }>;
 
     // Map to our internal format
     return runs.map((run) => ({
-      conclusion: run.conclusion,
+      conclusion: run.conclusion ?? null,
       created_at: run.createdAt,
     }));
   }
@@ -124,7 +112,7 @@ export class HistorySummaryBuilder {
   // eslint-disable-next-line sonarjs/cognitive-complexity
   private detectPattern(runs: WorkflowRun[]): string {
     if (runs.length === 0) {
-      return 'No previous runs';
+      return NO_PREVIOUS_RUNS;
     }
 
     // Check for consistent success

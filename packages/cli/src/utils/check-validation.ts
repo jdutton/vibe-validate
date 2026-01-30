@@ -13,6 +13,10 @@ import chalk from 'chalk';
 import { displayCachedResult } from './display-cached-result.js';
 import { outputYamlResult } from './yaml-output.js';
 
+// Constants (extracted to avoid duplication warnings)
+const RUN_VALIDATION_HINT = '\n💡 Run validation:';
+const VALIDATE_COMMAND = 'npx vibe-validate validate';
+
 /**
  * Display information about failed phase and step
  *
@@ -62,7 +66,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  Not in git repository'));
       console.log(chalk.gray(`   ${errorMessage}`));
-      console.log(chalk.blue('\n💡 Run validation:'), chalk.white('npx vibe-validate validate'));
+      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
     }
     process.exit(2);
   }
@@ -84,7 +88,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
     } else {
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  Failed to read validation history'));
-      console.log(chalk.blue('\n💡 Run validation:'), chalk.white('npx vibe-validate validate'));
+      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
     }
     process.exit(2);
   }
@@ -102,7 +106,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  No validation history for current working tree'));
       console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
-      console.log(chalk.blue('\n💡 Run validation:'), chalk.white('npx vibe-validate validate'));
+      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
     }
     process.exit(2);
   }
@@ -118,7 +122,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
     if (!mostRecent) {
       console.log(chalk.yellow('⚠️  No validation history for current working tree'));
       console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
-      console.log(chalk.blue('\n💡 Run validation:'), chalk.white('npx vibe-validate validate'));
+      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
       process.exit(2);
     }
 

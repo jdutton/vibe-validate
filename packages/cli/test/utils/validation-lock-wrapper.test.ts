@@ -4,7 +4,7 @@
  * Ensures proper lock management for validation workflows
  */
 
-import { rmSync, existsSync, writeFileSync } from 'node:fs';
+import { rmSync, existsSync, writeFileSync, readdirSync } from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
 
@@ -64,10 +64,9 @@ async function expectProcessExitOnConfigError(): Promise<void> {
  * Helper to check if a lock file exists in testDir
  */
 function checkLockExists(): boolean {
-  const { readdirSync } = require('node:fs');
   const locksDir = join(testDir, '.vibe-validate', 'locks');
   if (!existsSync(locksDir)) return false;
-  const files = readdirSync(locksDir) as string[];
+  const files = readdirSync(locksDir);
   return files.some((f: string) => f.endsWith('.lock') || f.endsWith('.meta.json'));
 }
 

@@ -47,7 +47,7 @@ export function normalizedTmpdir(): string {
   } catch {
     // Fallback to regular realpathSync
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: temp is from tmpdir()
+       
       return realpathSync(temp);
     } catch {
       // Last resort: return original
@@ -91,7 +91,7 @@ export function mkdirSyncReal(
   path: string,
   options?: Parameters<typeof mkdirSync>[1]
 ): string {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- This IS the mkdirSyncReal() implementation
+   
   mkdirSync(path, options);
 
   try {
@@ -100,7 +100,7 @@ export function mkdirSyncReal(
   } catch {
     // Fallback to regular realpathSync
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter
+       
       return realpathSync(path);
     } catch {
       // Last resort: return original
@@ -142,7 +142,7 @@ export function normalizePath(...paths: string[]): string {
   } catch {
     // Fallback to regular realpathSync
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: resolved is from path.resolve
+       
       return realpathSync(resolved);
     } catch {
       // Last resort: return resolved path (better than original input)

@@ -5,6 +5,7 @@
  *
  * @package @vibe-validate/extractors
  */
+/* eslint-disable sonarjs/slow-regex -- Simple test regex patterns, not user-facing */
 
 import { describe, it, expect } from 'vitest';
 

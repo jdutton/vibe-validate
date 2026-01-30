@@ -326,3 +326,117 @@ export function expectErrorObject(error: FormattedError, expected: ErrorExpectat
     expect(error.code).toBe(expected.code);
   }
 }
+
+/**
+ * Verify that all sample inputs in a plugin can be successfully parsed
+ * and match expected error counts
+ *
+ * Reduces duplication in plugin sample tests by consolidating validation
+ * logic for plugin.samples array.
+ *
+ * @param plugin - The extractor plugin to test
+ *
+ * @example
+ * ```typescript
+ * expectSamplesParseSuccessfully(vitestPlugin);
+ * ```
+ */
+export function expectSamplesParseSuccessfully(plugin: ExtractorPlugin): void {
+  for (const sample of plugin.samples) {
+    expect(sample.input).toBeDefined();
+    const result = plugin.extract(sample.input ?? '');
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.length).toBe(sample.expectedErrors);
+  }
+}
+
+/**
+ * Verify extraction result has expected number of failures with specific line numbers
+ *
+ * Reduces duplication in tests that check multiple test failures
+ *
+ * @param result - Extract result to verify
+ * @param expectedLines - Array of expected line numbers
+ *
+ * @example
+ * ```typescript
+ * const result = plugin.extract(output);
+ * expectMultipleFailures(result, [10, 20, 30]);
+ * ```
+ */
+export function expectMultipleFailures(
+  result: ErrorExtractorResult,
+  expectedLines: number[]
+): void {
+  expect(result.summary).toBe(`${expectedLines.length} test(s) failed`);
+  expect(result.errors).toHaveLength(expectedLines.length);
+  for (const [index, expectedLine] of expectedLines.entries()) {
+    expect(result.errors[index].line).toBe(expectedLine);
+  }
+}
+
+/**
+ * Validate a specific sample from a plugin's samples array
+ *
+ * Reduces duplication in tests that validate individual named samples
+ *
+ * @param plugin - The extractor plugin
+ * @param sampleName - Name of the sample to validate
+ * @param extractFn - Optional extract function (defaults to plugin.extract)
+ *
+ * @example
+ * ```typescript
+ * expectSampleValidation(mavenPlugin, 'basic-assertion-failure');
+ * expectSampleValidation(checkstylePlugin, 'basic-warn-format', extractMavenCheckstyle);
+ * ```
+ */
+export function expectSampleValidation(
+  plugin: ExtractorPlugin,
+  sampleName: string,
+  extractFn?: (_input: string) => ErrorExtractorResult
+): void {
+  const sample = plugin.samples.find((s) => s.name === sampleName);
+  expect(sample).toBeDefined();
+
+  if (sample && 'input' in sample) {
+    expect(sample.input).toBeDefined();
+    const fn = extractFn ?? plugin.extract.bind(plugin);
+    const result = fn(sample.input ?? '');
+    const expected = sample.expected;
+    expect(result.totalErrors).toBe(expected?.totalErrors ?? 0);
+    if (expected?.errors && expected.errors.length > 0) {
+      expect(result.errors[0]).toMatchObject(expected.errors[0]);
+    }
+  }
+}
+
+/**
+ * Verify path extraction from test framework output
+ *
+ * Reduces duplication in path extraction tests for jasmine/mocha/etc
+ *
+ * @param plugin - The extractor plugin
+ * @param input - Test output containing path
+ * @param expectedFile - Expected file path
+ * @param expectedLine - Expected line number
+ *
+ * @example
+ * ```typescript
+ * expectPathExtraction(
+ *   jasminePlugin,
+ *   'at UserContext.<anonymous> (/path/to/test.js:42:15)',
+ *   '/path/to/test.js',
+ *   42
+ * );
+ * ```
+ */
+export function expectPathExtraction(
+  plugin: ExtractorPlugin,
+  input: string,
+  expectedFile: string,
+  expectedLine: number
+): void {
+  const result = plugin.extract(input);
+  expect(result.errors[0].file).toBe(expectedFile);
+  expect(result.errors[0].line).toBe(expectedLine);
+}

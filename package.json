@@ -45,6 +45,7 @@
     "lint": "eslint --max-warnings=0 \"packages/**/*.ts\"",
     "typecheck": "turbo run typecheck",
     "duplication-check": "tsx packages/dev-tools/src/duplication-check.ts",
+    "jscpd-update-baseline": "tsx packages/dev-tools/src/jscpd-update-baseline.ts",
     "clean": "turbo run clean && rm -rf node_modules",
     "dev": "turbo run dev",
     "validate": "node packages/cli/dist/bin/vv validate",

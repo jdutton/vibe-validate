@@ -1,4 +1,6 @@
-import { ChildProcess } from 'node:child_process';
+ 
+ 
+import { type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

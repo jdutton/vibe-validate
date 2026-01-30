@@ -32,6 +32,7 @@ export default {
     'no-manual-path-normalize': require('./no-manual-path-normalize.cjs'),
     'no-path-sep-in-strings': require('./no-path-sep-in-strings.cjs'),
     'no-path-operations-in-comparisons': require('./no-path-operations-in-comparisons.cjs'),
+    'no-path-startswith': require('./no-path-startswith.cjs'),
 
     // Security and architecture rules
     'no-child-process-execSync': require('./no-child-process-execSync.cjs'),

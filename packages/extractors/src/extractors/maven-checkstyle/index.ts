@@ -15,6 +15,10 @@ import type {
   ErrorExtractorResult,
   FormattedError,
 } from '../../types.js';
+import { createLowConfidenceResult, createMavenResult } from '../../utils/maven-extractor-utils.js';
+
+// Extractor name constant
+const EXTRACTOR_NAME = 'maven-checkstyle';
 
 /**
  * Maven Checkstyle output has TWO formats:
@@ -41,7 +45,7 @@ const CHECKSTYLE_PATTERNS = {
   warnFormat: /^\[WARN\]\s+([^:]+):(\d+):(\d+):\s+(.+?)\s+\[(\w+)\]$/,
 
   // Format 2: [WARNING] relative/path:[line,col] (category) Rule: message
-  // eslint-disable-next-line sonarjs/slow-regex -- Safe: Maven Checkstyle output is structured, limited line length
+  // eslint-disable-next-line sonarjs/slow-regex, security/detect-unsafe-regex -- Safe: Maven Checkstyle output is structured, limited line length
   warningFormat: /^\[WARNING\]\s+([^:]+):\[(\d+)(?:,(\d+))?\]\s+\((\w+)\)\s+(\w+):\s+(.+)$/,
 
   // Summary line: "You have N Checkstyle violations"
@@ -110,22 +114,7 @@ export function extractMavenCheckstyle(
   const detection = detectMavenCheckstyle(output);
 
   if (detection.confidence < 40) {
-    return {
-      summary: 'Not Maven Checkstyle output',
-      totalErrors: 0,
-      errors: [],
-      metadata: {
-        detection: {
-          extractor: 'maven-checkstyle',
-          confidence: detection.confidence,
-          patterns: detection.patterns,
-          reason: detection.reason,
-        },
-        confidence: detection.confidence,
-        completeness: 100,
-        issues: [],
-      },
-    };
+    return createLowConfidenceResult('Checkstyle', detection);
   }
 
   const violations: CheckstyleViolation[] = [];
@@ -187,24 +176,15 @@ export function extractMavenCheckstyle(
     ? errors.map((e, i) => `[Error ${i + 1}/${errors.length}] ${e.file}:${e.line}\n${e.message}`).join('\n\n')
     : undefined;
 
-  return {
+  return createMavenResult(
+    EXTRACTOR_NAME,
+    detection,
     summary,
-    totalErrors: uniqueViolations.length,
     errors,
+    uniqueViolations.length,
     guidance,
-    errorSummary,
-    metadata: {
-      detection: {
-        extractor: 'maven-checkstyle',
-        confidence: detection.confidence,
-        patterns: detection.patterns,
-        reason: detection.reason,
-      },
-      confidence: 100,
-      completeness: 100,
-      issues: [],
-    },
-  };
+    errorSummary
+  );
 }
 
 /**
@@ -250,7 +230,7 @@ function groupByFile(violations: CheckstyleViolation[]): Map<string, CheckstyleV
  */
 const mavenCheckstyleExtractor: ExtractorPlugin = {
   metadata: {
-    name: 'maven-checkstyle',
+    name: EXTRACTOR_NAME,
     version: '1.0.0',
     author: 'Jeff Dutton <jeff@duckcreek.com>',
     description: 'Extracts style violations from Maven Checkstyle plugin output',

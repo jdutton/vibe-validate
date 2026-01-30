@@ -8,7 +8,7 @@ describe('outputYamlResult', () => {
 
   beforeEach(() => {
     writtenData = [];
-    stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any): boolean => {
+    stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array): boolean => {
       if (typeof chunk === 'string') {
         writtenData.push(chunk);
       }

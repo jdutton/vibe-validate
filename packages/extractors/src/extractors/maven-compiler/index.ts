@@ -15,6 +15,10 @@ import type {
   ErrorExtractorResult,
   FormattedError,
 } from '../../types.js';
+import { createLowConfidenceResult, createMavenResult } from '../../utils/maven-extractor-utils.js';
+
+// Extractor name constant
+const EXTRACTOR_NAME = 'maven-compiler';
 
 /**
  * Maven compiler output format:
@@ -37,7 +41,7 @@ interface CompilationError {
 
 const COMPILER_PATTERNS = {
   // [ERROR] /path/to/File.java:[line,column] error message
-  // eslint-disable-next-line sonarjs/slow-regex -- Safe: Maven compiler output is structured, limited line length
+  // eslint-disable-next-line sonarjs/slow-regex, security/detect-unsafe-regex -- Safe: Maven compiler output is structured, limited line length
   errorLine: /^\[ERROR\]\s+([^:]+):\[(\d+)(?:,(\d+))?\]\s+(.+)$/,
 
   // Markers for high-confidence detection
@@ -133,22 +137,7 @@ export function extractMavenCompiler(
   const detection = detectMavenCompiler(output);
 
   if (detection.confidence < 40) {
-    return {
-      summary: 'Not Maven compiler output',
-      totalErrors: 0,
-      errors: [],
-      metadata: {
-        detection: {
-          extractor: 'maven-compiler',
-          confidence: detection.confidence,
-          patterns: detection.patterns,
-          reason: detection.reason,
-        },
-        confidence: detection.confidence,
-        completeness: 100,
-        issues: [],
-      },
-    };
+    return createLowConfidenceResult('compiler', detection);
   }
 
   const compilationErrors: CompilationError[] = [];
@@ -216,24 +205,15 @@ export function extractMavenCompiler(
       }).join('\n\n')
     : undefined;
 
-  return {
+  return createMavenResult(
+    EXTRACTOR_NAME,
+    detection,
     summary,
-    totalErrors: uniqueErrors.length,
     errors,
+    uniqueErrors.length,
     guidance,
-    errorSummary,
-    metadata: {
-      detection: {
-        extractor: 'maven-compiler',
-        confidence: detection.confidence,
-        patterns: detection.patterns,
-        reason: detection.reason,
-      },
-      confidence: 100,
-      completeness: 100,
-      issues: [],
-    },
-  };
+    errorSummary
+  );
 }
 
 /**
@@ -279,7 +259,7 @@ function groupByFile(errors: CompilationError[]): Map<string, CompilationError[]
  */
 const mavenCompilerExtractor: ExtractorPlugin = {
   metadata: {
-    name: 'maven-compiler',
+    name: EXTRACTOR_NAME,
     version: '1.0.0',
     author: 'Jeff Dutton <jeff@duckcreek.com>',
     description: 'Extracts Java compilation errors from Maven compiler plugin output',

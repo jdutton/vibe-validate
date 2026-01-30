@@ -123,7 +123,7 @@ describe('runner-adapter', () => {
 
       expect(runnerConfig.env?.UNDEFINED_VAR).toBeUndefined();
       // All env values should be strings
-      for (const value of Object.values(runnerConfig.env || {})) {
+      for (const value of Object.values(runnerConfig.env ?? {})) {
         expect(typeof value).toBe('string');
       }
     });

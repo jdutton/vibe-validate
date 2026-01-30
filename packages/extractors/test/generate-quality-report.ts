@@ -213,7 +213,7 @@ function detectRegressions(current: QualityMetrics, previous: QualityMetrics): v
 
       if (scoreDiff > 0.05) {
         // Improved by >5%
-        current.improvements!.push({
+        current.improvements.push({
           sample: fullName,
           previousScore: prevSample.score,
           currentScore: sample.score,
@@ -221,7 +221,7 @@ function detectRegressions(current: QualityMetrics, previous: QualityMetrics): v
         });
       } else if (scoreDiff < -0.05) {
         // Regressed by >5%
-        current.regressions!.push({
+        current.regressions.push({
           sample: fullName,
           previousScore: prevSample.score,
           currentScore: sample.score,

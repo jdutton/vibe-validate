@@ -27,7 +27,7 @@ import yaml from 'yaml';
  */
 export function parseRunYamlOutput(output: string): RunResult {
   // Parse YAML output - opening delimiter only (no display flags)
-  if (!output.match(/^---\n/)) {
+  if (!/^---\n/.exec(output)) {
     throw new Error('Expected YAML output to start with --- delimiter');
   }
 
@@ -51,7 +51,7 @@ export function parseRunYamlOutput(output: string): RunResult {
  * ```
  */
 export function expectValidRunYaml(output: string): void {
-  if (!output.match(/^---\n/)) {
+  if (!/^---\n/.exec(output)) {
     throw new Error(`Expected YAML output to start with --- delimiter, got: ${output.substring(0, 50)}`);
   }
 }

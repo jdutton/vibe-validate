@@ -18,8 +18,7 @@ import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 export function createTempTestDir(prefix: string): string {
   const targetDir = join(normalizedTmpdir(), `${prefix}-${Date.now()}`);
   // Use mkdirSyncReal to get normalized path (prevents Windows RUNNER~1 issues)
-  const testDir = mkdirSyncReal(targetDir, { recursive: true });
-  return testDir;
+  return mkdirSyncReal(targetDir, { recursive: true });
 }
 
 /**

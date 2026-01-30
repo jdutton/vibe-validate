@@ -228,6 +228,9 @@ importers:
       '@vibe-validate/config':
         specifier: workspace:*
         version: link:../config
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
       zod:
         specifier: ^3.25.76
         version: 3.25.76

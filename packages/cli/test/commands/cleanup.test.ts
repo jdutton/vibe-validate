@@ -157,7 +157,7 @@ describe('cleanup command', () => {
       const command = env.program.commands.find(cmd => cmd.name() === 'cleanup-temp');
       expect(command?.options).toBeDefined();
 
-      const optionNames = command?.options.map(opt => opt.long) || [];
+      const optionNames = command?.options.map(opt => opt.long) ?? [];
       expect(optionNames).toContain('--older-than');
       expect(optionNames).toContain('--all');
       expect(optionNames).toContain('--dry-run');

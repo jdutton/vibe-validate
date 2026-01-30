@@ -113,7 +113,7 @@ export function processWorkspacePackages<T extends PackageProcessResult>(
     const packages = readdirSync(packagesDir, { withFileTypes: true })
       .filter(dirent => dirent.isDirectory())
       .map(dirent => dirent.name)
-      .sort();
+      .sort((a, b) => a.localeCompare(b));
 
     for (const pkg of packages) {
       const pkgPath = join(packagesDir, pkg, 'package.json');
@@ -121,7 +121,7 @@ export function processWorkspacePackages<T extends PackageProcessResult>(
         const result = processor(pkgPath, pkg);
 
         if (result.skipped) {
-          const reasonText = formatSkipReason(result.reason || 'unknown', result.version);
+          const reasonText = formatSkipReason(result.reason ?? 'unknown', result.version);
           log(`  - ${result.name}: skipped (${reasonText})`, 'yellow');
           onSkip(result);
           skippedCount++;

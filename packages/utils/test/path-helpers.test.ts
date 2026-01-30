@@ -283,13 +283,11 @@ describe('path-helpers', () => {
       // it would return the same as tmpdir() WITHOUT normalization
       // This test detects that failure mode
 
-      if (process.platform === 'win32') {
+      if (process.platform === 'win32' && osTmp.includes('~')) {
         // On Windows, if tmpdir() returns a path with ~, normalizedTmpdir() MUST resolve it
-        if (osTmp.includes('~')) {
-          // If tmpdir() has short names, normalizedTmpdir() should NOT have them
-          expect(temp.includes('~')).toBe(false);
-          expect(temp).not.toBe(osTmp); // Should be different (normalized)
-        }
+        // If tmpdir() has short names, normalizedTmpdir() should NOT have them
+        expect(temp.includes('~')).toBe(false);
+        expect(temp).not.toBe(osTmp); // Should be different (normalized)
       }
 
       // On all platforms, normalizedTmpdir() should equal realpathSync(tmpdir())

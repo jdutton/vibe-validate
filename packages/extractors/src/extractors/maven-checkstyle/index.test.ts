@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expectDetection,
   expectPluginMetadata,
+  expectSampleValidation,
 } from '../../test/helpers/extractor-test-helpers.js';
 
 
@@ -208,29 +209,11 @@ Audit done.`;
 
   describe('plugin samples', () => {
     it('should validate basic-warn-format sample', () => {
-      const sample = mavenCheckstyleExtractor.samples.find(s => s.name === 'basic-warn-format');
-      expect(sample).toBeDefined();
-
-      if (sample && 'input' in sample) {
-        const result = extractMavenCheckstyle(sample.input!);
-        expect(result.totalErrors).toBe(sample.expected!.totalErrors);
-        if (sample.expected!.errors) {
-          expect(result.errors[0]).toMatchObject(sample.expected!.errors[0]);
-        }
-      }
+      expectSampleValidation(mavenCheckstyleExtractor, 'basic-warn-format', extractMavenCheckstyle);
     });
 
     it('should validate basic-warning-format sample', () => {
-      const sample = mavenCheckstyleExtractor.samples.find(s => s.name === 'basic-warning-format');
-      expect(sample).toBeDefined();
-
-      if (sample && 'input' in sample) {
-        const result = extractMavenCheckstyle(sample.input!);
-        expect(result.totalErrors).toBe(sample.expected!.totalErrors);
-        if (sample.expected!.errors) {
-          expect(result.errors[0]).toMatchObject(sample.expected!.errors[0]);
-        }
-      }
+      expectSampleValidation(mavenCheckstyleExtractor, 'basic-warning-format', extractMavenCheckstyle);
     });
   });
 

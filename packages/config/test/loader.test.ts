@@ -2,10 +2,12 @@
  * Tests for configuration loader
  */
 
-import { mkdir, writeFile, rm } from 'node:fs/promises';
+ 
+
+import { writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { normalizedTmpdir } from '@vibe-validate/utils';
+import { createTempTestDir } from '@vibe-validate/utils/test-helpers';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -14,14 +16,13 @@ import {
   CONFIG_FILE_NAME,
 } from '../src/loader.js';
 
+const YAML_CONFIG_FILE = 'vibe-validate.config.yaml';
+
 describe('loader', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    // Create unique temp directory for each test
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
-    testDir = join(normalizedTmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);
-    await mkdir(testDir, { recursive: true });
+    testDir = await createTempTestDir();
   });
 
   afterEach(async () => {
@@ -39,7 +40,7 @@ describe('loader', () => {
 
     // YAML Config Tests
     it('should load YAML config file (.yaml)', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const configPath = join(testDir, YAML_CONFIG_FILE);
       const yamlContent = `
 validation:
   phases:
@@ -64,7 +65,7 @@ git:
 
 
     it('should throw error for invalid YAML syntax', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const configPath = join(testDir, YAML_CONFIG_FILE);
       const invalidYaml = `
 validation:
   phases:
@@ -80,7 +81,7 @@ validation:
     });
 
     it('should throw error for YAML with invalid schema', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const configPath = join(testDir, YAML_CONFIG_FILE);
       const invalidSchemaYaml = `
 validation:
   phases:
@@ -96,7 +97,7 @@ validation:
     });
 
     it('should ignore $schema property in YAML config', async () => {
-      const configPath = join(testDir, 'vibe-validate.config.yaml');
+      const configPath = join(testDir, YAML_CONFIG_FILE);
       const yamlWithSchema = `
 $schema: ./node_modules/@vibe-validate/config/config.schema.json
 validation:

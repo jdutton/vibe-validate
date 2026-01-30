@@ -1,7 +1,9 @@
 #!/usr/bin/env tsx
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { parse as parseYaml } from 'yaml';
+
 import { extractGenericErrors } from './src/generic-extractor.js';
 
 const samplesDir = './test/samples';
@@ -28,7 +30,7 @@ for (const category of categories) {
     if (file.endsWith('.yaml')) {
       const content = readFileSync(filePath, 'utf8');
       const parsed = parseYaml(content);
-      rawOutput = parsed.input?.raw || '';
+      rawOutput = parsed.input?.raw ?? '';
     } else {
       rawOutput = readFileSync(filePath, 'utf8');
     }

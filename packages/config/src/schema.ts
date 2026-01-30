@@ -165,6 +165,11 @@ export const SecretScanningSchema = z.object({
 export type SecretScanningConfig = z.infer<typeof SecretScanningSchema>;
 
 /**
+ * Default pre-commit command
+ */
+const DEFAULT_PRE_COMMIT_COMMAND = 'npx vibe-validate pre-commit';
+
+/**
  * Hooks Configuration Schema
  */
 export const HooksConfigSchema = z.object({
@@ -174,13 +179,13 @@ export const HooksConfigSchema = z.object({
     enabled: z.boolean().default(true),
 
     /** Custom pre-commit command (default: 'npx vibe-validate pre-commit') */
-    command: z.string().default('npx vibe-validate pre-commit'),
+    command: z.string().default(DEFAULT_PRE_COMMIT_COMMAND),
 
     /** Secret scanning configuration (optional) */
     secretScanning: SecretScanningSchema.optional(),
   }).strict().optional().default({
     enabled: true,
-    command: 'npx vibe-validate pre-commit',
+    command: DEFAULT_PRE_COMMIT_COMMAND,
   }),
 }).strict();
 

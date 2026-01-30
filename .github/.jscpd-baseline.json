@@ -2,150 +2,6 @@
   "duplicates": [
     {
       "format": "typescript",
-      "lines": 10,
-      "fragment": ".extract(sample.input!);\n        expect(result.errors.length).toBeGreaterThan(0);\n        expect(result.errors.length).toBe(sample.expectedErrors);\n      }\n    });\n  });\n\n  describe('metadata', () => {\n    it('should have complete plugin metadata', () => {\n      expectPluginMetadata(mochaPlugin",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 339,
-        "end": 348,
-        "startLoc": {
-          "line": 339,
-          "column": 12,
-          "position": 1909
-        },
-        "endLoc": {
-          "line": 348,
-          "column": 12,
-          "position": 1996
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/playwright/index.test.ts",
-        "start": 312,
-        "end": 321,
-        "startLoc": {
-          "line": 312,
-          "column": 17,
-          "position": 1545
-        },
-        "endLoc": {
-          "line": 321,
-          "column": 17,
-          "position": 1632
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": ");\n      expect(sample).toBeDefined();\n      if (sample && 'input' in sample && sample.input) {\n        const result = mavenSurefireExtractor.extract(sample.input);\n        expect(result.totalErrors).toBe(sample.expected!.totalErrors);\n      }\n    });\n\n    it('should validate assertj-failure sample'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 211,
-        "end": 219,
-        "startLoc": {
-          "line": 211,
-          "column": 7,
-          "position": 1594
-        },
-        "endLoc": {
-          "line": 219,
-          "column": 41,
-          "position": 1679
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 200,
-        "end": 208,
-        "startLoc": {
-          "line": 200,
-          "column": 7,
-          "position": 1468
-        },
-        "endLoc": {
-          "line": 208,
-          "column": 48,
-          "position": 1553
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ");\n      expect(sample).toBeDefined();\n      if (sample && 'input' in sample && sample.input) {\n        const result = mavenSurefireExtractor.extract(sample.input);\n        expect(result.totalErrors).toBe(sample.expected!.totalErrors);\n      }\n    });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 220,
-        "end": 227,
-        "startLoc": {
-          "line": 220,
-          "column": 18,
-          "position": 1716
-        },
-        "endLoc": {
-          "line": 227,
-          "column": 2,
-          "position": 1798
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/maven-surefire/index.test.ts",
-        "start": 200,
-        "end": 208,
-        "startLoc": {
-          "line": 200,
-          "column": 7,
-          "position": 1468
-        },
-        "endLoc": {
-          "line": 208,
-          "column": 3,
-          "position": 1551
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ");\n      expect(sample).toBeDefined();\n\n      if (sample && 'input' in sample) {\n        const result = extractMavenCheckstyle(sample.input!);\n        expect(result.totalErrors).toBe(sample.expected!.totalErrors);\n        if (sample.expected!.errors) {\n          expect(result.errors[0]).toMatchObject(sample.expected!.errors[0]);\n        }\n      }\n    });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/maven-checkstyle/index.test.ts",
-        "start": 224,
-        "end": 235,
-        "startLoc": {
-          "line": 224,
-          "column": 23,
-          "position": 1697
-        },
-        "endLoc": {
-          "line": 235,
-          "column": 2,
-          "position": 1815
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/maven-checkstyle/index.test.ts",
-        "start": 211,
-        "end": 223,
-        "startLoc": {
-          "line": 211,
-          "column": 20,
-          "position": 1542
-        },
-        "endLoc": {
-          "line": 223,
-          "column": 3,
-          "position": 1661
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 9,
       "fragment": "function extractFailures(output: string): TestFailureInfo[] {\n  const failures: TestFailureInfo[] = [];\n  const lines = output.split('\\n');\n\n  let i = 0;\n  while (i < lines.length) {\n    const line = lines[i];\n\n    // Look for numbered failure markers (e.g., \"1) Test name\")",
       "tokens": 0,
@@ -187,140 +43,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/jasmine/index.ts",
-        "start": 171,
-        "end": 190,
+        "start": 172,
+        "end": 191,
         "startLoc": {
-          "line": 171,
+          "line": 172,
           "column": 2,
-          "position": 1096
+          "position": 1099
         },
         "endLoc": {
-          "line": 190,
+          "line": 191,
           "column": 4,
-          "position": 1186
+          "position": 1189
         }
       },
       "secondFile": {
         "name": "packages/extractors/src/extractors/mocha/index.ts",
-        "start": 173,
-        "end": 192,
+        "start": 174,
+        "end": 193,
         "startLoc": {
-          "line": 173,
+          "line": 174,
           "column": 2,
-          "position": 1096
+          "position": 1099
         },
         "endLoc": {
-          "line": 192,
+          "line": 193,
           "column": 4,
-          "position": 1186
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ".extract(input);\n\n        expect(result.summary).toBe('3 test(s) failed');\n        expect(result.errors).toHaveLength(3);\n        expect(result.errors[0].line).toBe(10);\n        expect(result.errors[1].line).toBe(20);\n        expect(result.errors[2].line).toBe(30);\n      });\n    });\n\n    describe('Error Type Detection', () => {\n      it('should detect assertion errors'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/jasmine/index.test.ts",
-        "start": 146,
-        "end": 157,
-        "startLoc": {
-          "line": 146,
-          "column": 14,
-          "position": 632
-        },
-        "endLoc": {
-          "line": 157,
-          "column": 33,
-          "position": 752
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 105,
-        "end": 116,
-        "startLoc": {
-          "line": 105,
-          "column": 12,
-          "position": 475
-        },
-        "endLoc": {
-          "line": 116,
-          "column": 31,
-          "position": 595
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ".extract(input);\n        expect(result.errors[0].file).toBe('/path/to/test.js');\n        expect(result.errors[0].line).toBe(42);\n      });\n\n      it('should handle relative paths', () => {\n        const input = `\nFailures:\n1) Test\n  Message:\n    Error: Test error\n  Stack:\n        at UserContext.<anonymous> (tests/unit/helpers.test.js:128:30)\n\n1 spec, 1 failure\n`",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/jasmine/index.test.ts",
-        "start": 237,
-        "end": 252,
-        "startLoc": {
-          "line": 237,
-          "column": 14,
-          "position": 1055
-        },
-        "endLoc": {
-          "line": 252,
-          "column": 2,
-          "position": 1126
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 179,
-        "end": 191,
-        "startLoc": {
-          "line": 179,
-          "column": 12,
-          "position": 897
-        },
-        "endLoc": {
-          "line": 191,
-          "column": 2,
-          "position": 968
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": ".extract(sample.input!);\n        expect(result.errors.length).toBeGreaterThan(0);\n        expect(result.errors.length).toBe(sample.expectedErrors);\n      }\n    });\n  });\n\n  describe('metadata', () => {\n    it('should have complete plugin metadata', () => {\n      expectPluginMetadata(jasminePlugin",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/jasmine/index.test.ts",
-        "start": 385,
-        "end": 394,
-        "startLoc": {
-          "line": 385,
-          "column": 14,
-          "position": 1940
-        },
-        "endLoc": {
-          "line": 394,
-          "column": 14,
-          "position": 2027
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/playwright/index.test.ts",
-        "start": 312,
-        "end": 321,
-        "startLoc": {
-          "line": 312,
-          "column": 17,
-          "position": 1545
-        },
-        "endLoc": {
-          "line": 321,
-          "column": 17,
-          "position": 1632
+          "position": 1189
         }
       }
     },
@@ -331,17 +79,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/ava/index.ts",
-        "start": 169,
-        "end": 185,
+        "start": 175,
+        "end": 191,
         "startLoc": {
-          "line": 169,
+          "line": 175,
           "column": 6,
-          "position": 1044
+          "position": 1083
         },
         "endLoc": {
-          "line": 185,
+          "line": 191,
           "column": 10,
-          "position": 1167
+          "position": 1206
         }
       },
       "secondFile": {
@@ -367,17 +115,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/extractors/src/extractors/ava/index.ts",
-        "start": 216,
-        "end": 239,
+        "start": 222,
+        "end": 245,
         "startLoc": {
-          "line": 216,
+          "line": 222,
           "column": 6,
-          "position": 1440
+          "position": 1479
         },
         "endLoc": {
-          "line": 239,
+          "line": 245,
           "column": 4,
-          "position": 1541
+          "position": 1580
         }
       },
       "secondFile": {
@@ -393,42 +141,6 @@
           "line": 235,
           "column": 4,
           "position": 1495
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": "(input);\n\n      expect(result.summary).toBe('3 test(s) failed');\n      expect(result.errors).toHaveLength(3);\n      expect(result.errors[0].line).toBe(10);\n      expect(result.errors[1].line).toBe(20);\n      expect(result.errors[2].line).toBe(30);\n      expect",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors/src/extractors/ava/index.test.ts",
-        "start": 163,
-        "end": 170,
-        "startLoc": {
-          "line": 163,
-          "column": 17,
-          "position": 848
-        },
-        "endLoc": {
-          "line": 170,
-          "column": 7,
-          "position": 940
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors/src/extractors/mocha/index.test.ts",
-        "start": 105,
-        "end": 112,
-        "startLoc": {
-          "line": 105,
-          "column": 8,
-          "position": 477
-        },
-        "endLoc": {
-          "line": 112,
-          "column": 2,
-          "position": 569
         }
       }
     },
@@ -552,12 +264,12 @@
         "startLoc": {
           "line": 205,
           "column": 66,
-          "position": 1690
+          "position": 1674
         },
         "endLoc": {
           "line": 222,
           "column": 10,
-          "position": 1819
+          "position": 1803
         }
       },
       "secondFile": {
@@ -567,12 +279,12 @@
         "startLoc": {
           "line": 174,
           "column": 68,
-          "position": 1462
+          "position": 1446
         },
         "endLoc": {
           "line": 191,
           "column": 10,
-          "position": 1591
+          "position": 1575
         }
       }
     },
@@ -588,12 +300,12 @@
         "startLoc": {
           "line": 222,
           "column": 10,
-          "position": 1820
+          "position": 1804
         },
         "endLoc": {
           "line": 233,
           "column": 10,
-          "position": 1904
+          "position": 1888
         }
       },
       "secondFile": {
@@ -603,192 +315,12 @@
         "startLoc": {
           "line": 191,
           "column": 10,
-          "position": 1592
+          "position": 1576
         },
         "endLoc": {
           "line": 202,
           "column": 10,
-          "position": 1676
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": "const eslintOutput = 'src/foo.ts\\n  45:10  error  Unused variable  no-unused-vars';\n      const result = extractESLintErrors(eslintOutput);\n\n      expect(result.summary).toBe('0 error(s)'); // Actually: \"1 error(s)\"\n    });\n  });\n\n  // FAILURE TYPE 2: TypeScript Type Errors\n  describe('Config › Type Errors', () => {\n    it('should fail when passing invalid config type', async () => {\n      // INTENTIONAL FAILURE: TypeScript type error - passing wrong type\n\n      // Pass invalid path type (runtime type error)",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 50,
-        "end": 62,
-        "startLoc": {
-          "line": 50,
-          "column": 7,
-          "position": 230
-        },
-        "endLoc": {
-          "line": 62,
-          "column": 47,
-          "position": 316
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 48,
-        "end": 59,
-        "startLoc": {
-          "line": 48,
-          "column": 7,
-          "position": 274
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 6,
-          "position": 359
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 41,
-      "fragment": "const vitestOutput = `\n❌ packages/core/test/runner.test.ts > ValidationRunner > should fail\n  AssertionError: expected 2 to equal 3\n    at Object.<anonymous> (packages/core/test/runner.test.ts:45:12)\n      `;\n\n      const result = extractVitestErrors(vitestOutput);\n\n      // Snapshot will fail because errors array contains dynamic data\n      expect(result).toMatchSnapshot();\n    });\n  });\n\n  // FAILURE TYPE 7: Async Rejection\n  describe('Core › Async Errors', () => {\n    it('should handle async function that rejects', async () => {\n      // INTENTIONAL FAILURE: Unhandled promise rejection\n\n      // Simulate async operation that rejects (like failed validation)\n      const asyncValidation = async () => {\n        throw new Error('Validation failed: Config schema mismatch');\n      };\n\n      // Don't await or catch - will cause unhandled rejection\n      asyncValidation();\n\n      // This assertion will run before the rejection happens\n      expect(true).toBe(true);\n    });\n  });\n\n  // FAILURE TYPE 8: Import Error\n  describe('Packages › Import Errors', () => {\n    it('should fail when importing non-existent export', async () => {\n      // INTENTIONAL FAILURE: Import error - function doesn't exist\n\n      // @ts-expect-error - INTENTIONAL IMPORT ERROR\n      const { nonExistentFunction } = await import('@vibe-validate/core');\n\n      nonExistentFunction();\n    }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 96,
-        "end": 136,
-        "startLoc": {
-          "line": 96,
-          "column": 7,
-          "position": 535
-        },
-        "endLoc": {
-          "line": 136,
-          "column": 2,
-          "position": 755
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 100,
-        "end": 140,
-        "startLoc": {
-          "line": 100,
-          "column": 7,
-          "position": 667
-        },
-        "endLoc": {
-          "line": 140,
-          "column": 7,
-          "position": 887
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": "expect(tsResult.summary).toContain('999 errors'); // Wrong\n    });\n  });\n\n  // FAILURE TYPE 10: Nested Describe Blocks (Deep Hierarchy)\n  describe('Deep Nesting', () => {\n    describe('Level 1', () => {\n      describe('Level 2', () => {\n        describe('Level 3', () => { // NOSONAR - Intentional deep nesting to test error extractor handling of nested test structures\n          // eslint-disable-next-line max-nested-callbacks -- Intentional deep nesting to test extractor behavior\n          it('should test deeply nested vibe-validate usage', async () => {\n            // INTENTIONAL FAILURE: Deep in hierarchy\n            testDeeplyNestedStripAnsi",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 159,
-        "end": 171,
-        "startLoc": {
-          "line": 159,
-          "column": 7,
-          "position": 923
-        },
-        "endLoc": {
-          "line": 171,
-          "column": 26,
-          "position": 1028
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 165,
-        "end": 177,
-        "startLoc": {
-          "line": 165,
-          "column": 7,
-          "position": 1091
-        },
-        "endLoc": {
-          "line": 177,
-          "column": 6,
-          "position": 1196
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 44,
-      "fragment": "testDeeplyNestedStripAnsi();\n          });\n        });\n      });\n    });\n  });\n});\n\n// ============================================================================\n// SIMPLE EDGE CASES (20%)\n// ============================================================================\n\ndescribe('Edge Cases (Simple Code)', () => {\n  let calc: Calculator;\n\n  beforeEach(() => {\n    calc = new Calculator();\n  });\n\n  // FAILURE TYPE 1: Basic Assertion Error\n  describe('Calculator › Assertions', () => {\n    it('should add numbers correctly', () => {\n      // INTENTIONAL FAILURE: Bug in Calculator.add()\n      const result = calc.add(6, 7);\n      expect(result).toBe(13); // Expected: 13, Actual: 14\n    });\n  });\n\n  // FAILURE TYPE 3: Runtime Error (ENOENT)\n  describe('File System › ENOENT', () => {\n    it('should read config file', async () => {\n      // INTENTIONAL FAILURE: File doesn't exist\n      const fs = await import('node:fs/promises');\n      const config = await fs.readFile('/this/file/does/not/exist.json', 'utf8');\n      expect(config).toBeDefined();\n    });\n  });\n\n  // FAILURE TYPE 5: Timeout\n  describe('Performance › Timeout', () => {\n    it('should complete within timeout', async () => {\n      // INTENTIONAL FAILURE: Test times out\n      await new Promise(resolve => setTimeout(resolve, 100000));\n    }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 171,
-        "end": 214,
-        "startLoc": {
-          "line": 171,
-          "column": 13,
-          "position": 1028
-        },
-        "endLoc": {
-          "line": 214,
-          "column": 2,
-          "position": 1342
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 177,
-        "end": 220,
-        "startLoc": {
-          "line": 177,
-          "column": 2,
-          "position": 1198
-        },
-        "endLoc": {
-          "line": 220,
-          "column": 7,
-          "position": 1512
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "}, 10); // 10ms timeout\n  });\n\n  // FAILURE TYPE 2: Simple Type Error\n  describe('Calculator › Type Errors', () => {\n    it('should return version as string', () => {\n      // INTENTIONAL FAILURE: Returns number, not string\n      const version = calc.getVersion();\n      expect(typeof version).toBe('string');\n    });\n  });\n});",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/extractors-test-bed/tests/jest/comprehensive-failures.test.ts",
-        "start": 214,
-        "end": 225,
-        "startLoc": {
-          "line": 214,
-          "column": 5,
-          "position": 1342
-        },
-        "endLoc": {
-          "line": 225,
-          "column": 2,
-          "position": 1429
-        }
-      },
-      "secondFile": {
-        "name": "packages/extractors-test-bed/tests/vitest/comprehensive-failures.test.ts",
-        "start": 221,
-        "end": 232,
-        "startLoc": {
-          "line": 221,
-          "column": 5,
-          "position": 1526
-        },
-        "endLoc": {
-          "line": 232,
-          "column": 2,
-          "position": 1613
+          "position": 1660
         }
       }
     },
@@ -1092,12 +624,12 @@
         "startLoc": {
           "line": 395,
           "column": 5,
-          "position": 3624
+          "position": 3642
         },
         "endLoc": {
           "line": 400,
           "column": 4,
-          "position": 3688
+          "position": 3706
         }
       },
       "secondFile": {
@@ -1107,12 +639,12 @@
         "startLoc": {
           "line": 385,
           "column": 6,
-          "position": 3510
+          "position": 3528
         },
         "endLoc": {
           "line": 390,
           "column": 10,
-          "position": 3574
+          "position": 3592
         }
       }
     },
@@ -1659,7 +1191,7 @@
     {
       "format": "typescript",
       "lines": 6,
-      "fragment": ".exitCode);\n      console.log('  Errors extracted:', parsed.extraction?.errors?.length || 0);\n      console.log('  Summary:', parsed.extraction?.summary);\n      if (parsed.extraction?.errors?.length) {\n        console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));\n      } else",
+      "fragment": ".exitCode);\n      console.log('  Errors extracted:', parsed.extraction?.errors?.length ?? 0);\n      console.log('  Summary:', parsed.extraction?.summary);\n      if (parsed.extraction?.errors?.length) {\n        console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));\n      } else",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/run.system.test.ts",
@@ -1668,12 +1200,12 @@
         "startLoc": {
           "line": 132,
           "column": 2,
-          "position": 947
+          "position": 949
         },
         "endLoc": {
           "line": 137,
           "column": 5,
-          "position": 1043
+          "position": 1046
         }
       },
       "secondFile": {
@@ -1683,19 +1215,19 @@
         "startLoc": {
           "line": 92,
           "column": 7,
-          "position": 616
+          "position": 617
         },
         "endLoc": {
           "line": 98,
           "column": 8,
-          "position": 713
+          "position": 715
         }
       }
     },
     {
       "format": "typescript",
       "lines": 11,
-      "fragment": ");\n      console.log('  Exit code:', parsed.exitCode);\n      console.log('  Errors extracted:', parsed.extraction?.errors?.length || 0);\n      console.log('  Summary:', parsed.extraction?.summary);\n      if (parsed.extraction?.errors?.length) {\n        console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));\n      } else {\n        console.log('  Raw output (first 800 chars):', parsed.rawOutput?.substring(0, 800));\n      }\n\n      // Should detect Playwright and extract errors",
+      "fragment": ");\n      console.log('  Exit code:', parsed.exitCode);\n      console.log('  Errors extracted:', parsed.extraction?.errors?.length ?? 0);\n      console.log('  Summary:', parsed.extraction?.summary);\n      if (parsed.extraction?.errors?.length) {\n        console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));\n      } else {\n        console.log('  Raw output (first 800 chars):', parsed.rawOutput?.substring(0, 800));\n      }\n\n      // Should detect Playwright and extract errors",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/run.system.test.ts",
@@ -1704,12 +1236,12 @@
         "startLoc": {
           "line": 170,
           "column": 42,
-          "position": 1268
+          "position": 1271
         },
         "endLoc": {
           "line": 180,
           "column": 47,
-          "position": 1408
+          "position": 1412
         }
       },
       "secondFile": {
@@ -1719,12 +1251,12 @@
         "startLoc": {
           "line": 91,
           "column": 38,
-          "position": 604
+          "position": 605
         },
         "endLoc": {
           "line": 141,
           "column": 41,
-          "position": 1075
+          "position": 1078
         }
       }
     },
@@ -1761,42 +1293,6 @@
           "line": 23,
           "column": 2,
           "position": 219
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "${Date.now()}-${Math.random()}`);\n    await mkdir(testDir, { recursive: true });\n    cliPath = join(__dirname, '../../dist/bin.js');\n  });\n\n  afterEach(async () => {\n    // Clean up test directory\n    await rm(testDir, { recursive: true, force: true });\n  });\n\n  describe('--dry-run'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/init-focused-modes.test.ts",
-        "start": 27,
-        "end": 37,
-        "startLoc": {
-          "line": 27,
-          "column": 21,
-          "position": 156
-        },
-        "endLoc": {
-          "line": 37,
-          "column": 12,
-          "position": 263
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/init-schema-validation.test.ts",
-        "start": 23,
-        "end": 33,
-        "startLoc": {
-          "line": 23,
-          "column": 28,
-          "position": 176
-        },
-        "endLoc": {
-          "line": 33,
-          "column": 34,
-          "position": 283
         }
       }
     },
@@ -1992,12 +1488,12 @@
         "startLoc": {
           "line": 230,
           "column": 30,
-          "position": 2100
+          "position": 2105
         },
         "endLoc": {
           "line": 238,
           "column": 6,
-          "position": 2187
+          "position": 2192
         }
       },
       "secondFile": {
@@ -2007,12 +1503,12 @@
         "startLoc": {
           "line": 117,
           "column": 25,
-          "position": 900
+          "position": 905
         },
         "endLoc": {
           "line": 125,
           "column": 6,
-          "position": 987
+          "position": 992
         }
       }
     },
@@ -2028,12 +1524,12 @@
         "startLoc": {
           "line": 253,
           "column": 48,
-          "position": 2283
+          "position": 2288
         },
         "endLoc": {
           "line": 265,
           "column": 3,
-          "position": 2433
+          "position": 2438
         }
       },
       "secondFile": {
@@ -2043,12 +1539,12 @@
         "startLoc": {
           "line": 137,
           "column": 34,
-          "position": 1092
+          "position": 1097
         },
         "endLoc": {
           "line": 149,
           "column": 16,
-          "position": 1242
+          "position": 1247
         }
       }
     },
@@ -2064,12 +1560,12 @@
         "startLoc": {
           "line": 309,
           "column": 2,
-          "position": 2826
+          "position": 2831
         },
         "endLoc": {
           "line": 319,
           "column": 19,
-          "position": 2916
+          "position": 2921
         }
       },
       "secondFile": {
@@ -2079,12 +1575,12 @@
         "startLoc": {
           "line": 93,
           "column": 3,
-          "position": 658
+          "position": 663
         },
         "endLoc": {
           "line": 103,
           "column": 43,
-          "position": 748
+          "position": 753
         }
       }
     },
@@ -2270,114 +1766,6 @@
     },
     {
       "format": "typescript",
-      "lines": 8,
-      "fragment": "}\n        }\n      }\n    });\n\n    const result = expectValidConfig(config);\n    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);\n    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBeUndefined",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 300,
-        "end": 307,
-        "startLoc": {
-          "line": 300,
-          "column": 11,
-          "position": 2177
-        },
-        "endLoc": {
-          "line": 307,
-          "column": 14,
-          "position": 2250
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 252,
-        "end": 259,
-        "startLoc": {
-          "line": 252,
-          "column": 11,
-          "position": 1820
-        },
-        "endLoc": {
-          "line": 259,
-          "column": 5,
-          "position": 1893
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ");\n\n    const result = expectValidConfig(config);\n    expect(result.data?.locking?.enabled).toBe(true);\n    expect(result.data?.locking?.concurrencyScope).toBe('directory');\n  });\n\n  it('should reject invalid concurrencyScope values'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 411,
-        "end": 418,
-        "startLoc": {
-          "line": 411,
-          "column": 2,
-          "position": 2995
-        },
-        "endLoc": {
-          "line": 418,
-          "column": 48,
-          "position": 3061
-        }
-      },
-      "secondFile": {
-        "name": "packages/config/test/schema.test.ts",
-        "start": 366,
-        "end": 373,
-        "startLoc": {
-          "line": 366,
-          "column": 2,
-          "position": 2617
-        },
-        "endLoc": {
-          "line": 373,
-          "column": 47,
-          "position": 2683
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": ": string;\n\n  beforeEach(async () => {\n    // Create unique temp directory for each test\n    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness\n    testDir = join(normalizedTmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);\n    await mkdir(testDir, { recursive: true });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/config/test/loader.test.ts",
-        "start": 18,
-        "end": 25,
-        "startLoc": {
-          "line": 18,
-          "column": 8,
-          "position": 115
-        },
-        "endLoc": {
-          "line": 25,
-          "column": 2,
-          "position": 191
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/init-focused-modes.test.ts",
-        "start": 22,
-        "end": 29,
-        "startLoc": {
-          "line": 22,
-          "column": 8,
-          "position": 119
-        },
-        "endLoc": {
-          "line": 29,
-          "column": 8,
-          "position": 195
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 9,
       "fragment": ");\n\n      expect(runnerConfig.onPhaseStart).toBeDefined();\n      expect(runnerConfig.onPhaseComplete).toBeDefined();\n      expect(runnerConfig.onStepStart).toBeDefined();\n      expect(runnerConfig.onStepComplete).toBeDefined();\n    });\n\n    it('should include minimal callbacks for CI context (verbose=false)'",
       "tokens": 0,
@@ -2388,12 +1776,12 @@
         "startLoc": {
           "line": 153,
           "column": 7,
-          "position": 1134
+          "position": 1135
         },
         "endLoc": {
           "line": 161,
           "column": 66,
-          "position": 1199
+          "position": 1200
         }
       },
       "secondFile": {
@@ -2403,12 +1791,12 @@
         "startLoc": {
           "line": 140,
           "column": 2,
-          "position": 1013
+          "position": 1014
         },
         "endLoc": {
           "line": 148,
           "column": 54,
-          "position": 1078
+          "position": 1079
         }
       }
     },
@@ -2424,12 +1812,12 @@
         "startLoc": {
           "line": 164,
           "column": 5,
-          "position": 1235
+          "position": 1236
         },
         "endLoc": {
           "line": 173,
           "column": 2,
-          "position": 1311
+          "position": 1312
         }
       },
       "secondFile": {
@@ -2439,12 +1827,12 @@
         "startLoc": {
           "line": 151,
           "column": 14,
-          "position": 1120
+          "position": 1121
         },
         "endLoc": {
           "line": 161,
           "column": 3,
-          "position": 1197
+          "position": 1198
         }
       }
     }

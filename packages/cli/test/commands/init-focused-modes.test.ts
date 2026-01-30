@@ -11,10 +11,11 @@
  */
 
 import { existsSync } from 'node:fs';
-import { mkdir, rm, writeFile, readFile } from 'node:fs/promises';
+import { rm, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { safeExecFromString, normalizedTmpdir } from '@vibe-validate/utils';
+import { safeExecFromString } from '@vibe-validate/utils';
+import { createTempTestDir } from '@vibe-validate/utils/test-helpers';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('init command - focused modes', () => {
@@ -22,10 +23,7 @@ describe('init command - focused modes', () => {
   let cliPath: string;
 
   beforeEach(async () => {
-    // Create unique temp directory for each test
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for test directory uniqueness
-    testDir = join(normalizedTmpdir(), `vibe-validate-test-${Date.now()}-${Math.random()}`);
-    await mkdir(testDir, { recursive: true });
+    testDir = await createTempTestDir();
     cliPath = join(__dirname, '../../dist/bin.js');
   });
 

@@ -15,6 +15,10 @@ import type {
   ExtractorSample,
 } from '../../types.js';
 
+// Guidance message constants
+const GUIDANCE_REPLACE_CONSOLE = 'Replace console.log with logger';
+const RULE_NO_CONSOLE = 'no-console';
+
 /**
  * Deduplicate ESLint errors by file:line:column
  *
@@ -74,8 +78,8 @@ function getESLintGuidance(errors: FormattedError[]): string {
     guidance.push('Remove or prefix unused variables with underscore');
   }
 
-  if (rules.has('no-console')) {
-    guidance.push('Replace console.log with logger');
+  if (rules.has(RULE_NO_CONSOLE)) {
+    guidance.push(GUIDANCE_REPLACE_CONSOLE);
   }
 
   if (guidance.length === 0) {
@@ -197,7 +201,7 @@ const samples: ExtractorSample[] = [
     description: 'Single ESLint no-console error',
     input: `src/index.ts:10:5: error Unexpected console statement no-console`,
     expectedErrors: 1,
-    expectedPatterns: ['no-console', 'Replace console.log with logger'],
+    expectedPatterns: [RULE_NO_CONSOLE, GUIDANCE_REPLACE_CONSOLE],
   },
   {
     name: 'multiple-errors-with-warning',
@@ -206,7 +210,7 @@ const samples: ExtractorSample[] = [
 src/config.ts:25:12: warning 'unusedVar' is defined but never used @typescript-eslint/no-unused-vars
 src/utils.ts:100:3: error Missing semicolon semi`,
     expectedErrors: 3,
-    expectedPatterns: ['no-console', '@typescript-eslint/no-unused-vars', 'semi'],
+    expectedPatterns: [RULE_NO_CONSOLE, '@typescript-eslint/no-unused-vars', 'semi'],
   },
 ];
 

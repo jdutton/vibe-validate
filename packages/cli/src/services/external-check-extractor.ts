@@ -17,11 +17,11 @@ export interface ExternalCheckExtractor {
   name: string;
 
   /** Check if this extractor can handle the given check */
-  // eslint-disable-next-line no-unused-vars
+   
   canHandle(check: ExternalCheck): boolean;
 
   /** Extract details from check */
-  // eslint-disable-next-line no-unused-vars
+   
   extract(check: ExternalCheck): Promise<ExternalCheckDetails | null>;
 }
 

@@ -145,7 +145,7 @@ async function autoDiscoverLocalPlugins(
 
   try {
     await access(localPluginsDir);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: localPluginsDir computed from validated config.baseDir (defaults to process.cwd()), no path traversal risk
+     
     const entries = await readdir(localPluginsDir, { withFileTypes: true });
 
     for (const entry of entries) {

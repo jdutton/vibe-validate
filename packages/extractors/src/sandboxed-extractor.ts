@@ -51,7 +51,7 @@ export interface SandboxedExtractorOptions {
 export function createSandboxedExtractor(
   plugin: ExtractorPlugin,
   options: SandboxedExtractorOptions = {}
-  // eslint-disable-next-line no-unused-vars
+   
 ): (output: string, command?: string) => Promise<ErrorExtractorResult> {
   const trust = options.trust ?? 'sandbox';
   const memoryLimitMB = options.memoryLimitMB ?? 128;

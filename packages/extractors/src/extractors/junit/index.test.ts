@@ -367,7 +367,8 @@ Error: Something went wrong
         throw new Error('Sample input is required');
       }
       const singleResult = extract(singleFailureSample.input);
-      expect(singleResult.totalErrors).toBe(singleFailureSample.expected!.totalErrors);
+      const singleExpected = singleFailureSample.expected;
+      expect(singleResult.totalErrors).toBe(singleExpected?.totalErrors ?? 0);
 
       // Validate multiple failures sample
       const multipleFailureSample = junitPlugin.samples[1];
@@ -375,7 +376,8 @@ Error: Something went wrong
         throw new Error('Sample input is required');
       }
       const multipleResult = extract(multipleFailureSample.input);
-      expect(multipleResult.totalErrors).toBe(multipleFailureSample.expected!.totalErrors);
+      const multipleExpected = multipleFailureSample.expected;
+      expect(multipleResult.totalErrors).toBe(multipleExpected?.totalErrors ?? 0);
     });
   });
 

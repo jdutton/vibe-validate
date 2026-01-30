@@ -120,6 +120,7 @@ if (['patch', 'minor', 'major'].includes(versionArg)) {
   newVersion = versionArg;
 
   // Validate version format (simple semver check)
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
   if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(newVersion)) {
     log(`✗ Invalid version format: ${newVersion}`, 'red');
     log('  Expected format: X.Y.Z or X.Y.Z-prerelease', 'yellow');
@@ -177,11 +178,11 @@ log('Updating root package.json...', 'blue');
 try {
   const result = updatePackageVersion(rootPackagePath, newVersion);
   if (result.skipped) {
-    log(`  - ${result.name || VIBE_VALIDATE_PKG_NAME}: skipped (${result.reason})`, 'yellow');
+    log(`  - ${result.name ?? VIBE_VALIDATE_PKG_NAME}: skipped (${result.reason})`, 'yellow');
   } else if (result.updated) {
-    log(`  ✓ ${result.name || VIBE_VALIDATE_PKG_NAME}: ${result.oldVersion} → ${result.newVersion}`, 'green');
+    log(`  ✓ ${result.name ?? VIBE_VALIDATE_PKG_NAME}: ${result.oldVersion} → ${result.newVersion}`, 'green');
   } else {
-    log(`  - ${result.name || VIBE_VALIDATE_PKG_NAME}: already at ${result.newVersion}`, 'yellow');
+    log(`  - ${result.name ?? VIBE_VALIDATE_PKG_NAME}: already at ${result.newVersion}`, 'yellow');
   }
 } catch (error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -229,6 +230,7 @@ for (const testFile of testFilesWithVersions) {
     // Pattern matches:
     //   .toContain('0.17.0-rc4'); // BUMP_VERSION_UPDATE
     //   const EXPECTED_VERSION = '0.18.0'; // BUMP_VERSION_UPDATE
+    // eslint-disable-next-line security/detect-unsafe-regex -- Backreference \1 is safe for matching quotes
     const versionPattern = /(['"])\d+\.\d+\.\d+(-[\w.]+)?\1[);]*\s*\/\/\s*BUMP_VERSION_UPDATE/g;
     const matches = [...content.matchAll(versionPattern)];
 
@@ -244,12 +246,14 @@ for (const testFile of testFilesWithVersions) {
       versionPattern,
       (match) => {
         // Extract quote type and trailing characters (;, ), etc.) after version
-        const quoteMatch = match.match(/(['"])/);
+        const quotePattern = /(['"])/;
+        const quoteMatch = quotePattern.exec(match);
         const quote = quoteMatch?.[1] ?? "'";
         // Find the last occurrence of the quote to get trailing characters
         const lastQuoteIndex = match.lastIndexOf(quote);
         const afterLastQuote = match.substring(lastQuoteIndex + 1);
-        const trailingMatch = afterLastQuote.match(/^([);]*)/);
+        const trailingPattern = /^([);]*)/;
+        const trailingMatch = trailingPattern.exec(afterLastQuote);
         const trailing = trailingMatch?.[1] ?? '';
         return `${quote}${newVersion}${quote}${trailing} // BUMP_VERSION_UPDATE`;
       }
@@ -264,7 +268,7 @@ for (const testFile of testFilesWithVersions) {
       testUpdatedCount++;
     }
   } catch (error: unknown) {
-    logFileError(testFile.split('/').pop() || testFile, error);
+    logFileError(testFile.split('/').pop() ?? testFile, error);
     testSkippedCount++;
   }
 }
@@ -282,8 +286,9 @@ try {
   const content = readFileSync(skillFile.path, 'utf8');
 
   // Match: version: 0.17.2 # Tracks vibe-validate package version
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
   const versionPattern = /^version:\s*(\d+\.\d+\.\d+(?:-[\w.]+)?)\s*#\s*Tracks vibe-validate package version/m;
-  const match = content.match(versionPattern);
+  const match = versionPattern.exec(content);
 
   if (match) {
     const oldVersion = match[1];

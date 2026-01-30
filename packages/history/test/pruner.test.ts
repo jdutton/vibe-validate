@@ -61,7 +61,7 @@ function createRun(overrides: Partial<{
  */
 function createHistoryNote(overrides: Partial<{
   treeHash: string;
-  runs: any[];
+  runs: ReturnType<typeof createRun>[];
 }> = {}) {
   const treeHash = overrides.treeHash ?? 'abc123';
 
@@ -367,7 +367,7 @@ describe('pruner', () => {
       it('should handle notes without runs gracefully', async () => {
         const note: HistoryNote = {
           treeHash: 'abc123',
-          runs: undefined as any, // Missing runs
+          runs: undefined as unknown as HistoryNote['runs'], // Missing runs
         };
         setupPrunerTest([note]);
 

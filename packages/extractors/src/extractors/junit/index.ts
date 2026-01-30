@@ -16,6 +16,10 @@ import type {
   ExtractorSample,
 } from '../../types.js';
 
+// XML tag constants
+const XML_TAG_TESTSUITE = '<testsuite';
+const XML_TAG_TESTSUITES = '<testsuites';
+
 /**
  * Failure information extracted from JUnit XML
  */
@@ -76,6 +80,7 @@ function extractFailures(xml: string): FailureInfo[] {
     const errorType = extractXmlAttribute(failureContent, 'type');
 
     // Extract location from failure text (❯ file:line:column)
+    // eslint-disable-next-line security/detect-unsafe-regex -- Safe: only parses JUnit XML test output (controlled output), not user input
     const locationPattern = /❯\s+([\w/.-]+):(\d+)(?::\d+)?/;
     const locationMatch = locationPattern.exec(failureText);
 
@@ -151,7 +156,7 @@ function getJUnitGuidance(failures: FailureInfo[]): string {
  */
 function extract(output: string): ErrorExtractorResult {
   // Validate XML structure
-  if (!output.includes('<testsuite') && !output.includes('<testsuites')) {
+  if (!output.includes(XML_TAG_TESTSUITE) && !output.includes(XML_TAG_TESTSUITES)) {
     return {
       summary: 'Unable to parse JUnit XML - invalid format',
       errors: [],
@@ -215,7 +220,7 @@ function extract(output: string): ErrorExtractorResult {
  */
 function detect(output: string): DetectionResult {
   // Check for JUnit XML structure
-  if (output.includes('<testsuite') || output.includes('<testsuites')) {
+  if (output.includes(XML_TAG_TESTSUITE) || output.includes(XML_TAG_TESTSUITES)) {
     // Check for failure elements
     if (output.includes('<failure')) {
       return {
@@ -299,7 +304,7 @@ const junitPlugin: ExtractorPlugin = {
     tags: ['junit', 'xml', 'testing', 'vitest', 'jest'],
   },
   hints: {
-    required: ['<testsuite'],
+    required: [XML_TAG_TESTSUITE],
     anyOf: [],
   },
   priority: 90,

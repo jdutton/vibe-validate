@@ -1,6 +1,11 @@
-import { readFileSync, unlinkSync, existsSync } from 'node:fs';
+ 
+/* eslint-disable sonarjs/deprecation */
+ 
+ 
+import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type * as GitModule from '@vibe-validate/git';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -15,7 +20,7 @@ import type { ValidationConfig, ValidationStep } from '../src/types.js';
 
 // Mock git functions
 vi.mock('@vibe-validate/git', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@vibe-validate/git')>();
+  const actual = await importOriginal() as GitModule;
   return {
     ...actual,
     getGitTreeHash: vi.fn(),
@@ -43,11 +48,11 @@ describe('runner', () => {
     // Clean up test files
     if (existsSync(testDir)) {
       try {
-        const files = require('node:fs').readdirSync(testDir);
+        const files = readdirSync(testDir);
         for (const file of files) {
           unlinkSync(join(testDir, file));
         }
-        require('node:fs').rmdirSync(testDir);
+        rmdirSync(testDir);
       } catch {
         // Ignore cleanup errors
       }
@@ -444,7 +449,7 @@ describe('runner', () => {
         // Assert: ValidationResult should NOT have extractionQuality field
         expect(result.phases).toBeDefined();
         expect(result.phases![0].steps).toBeDefined();
-        const failedStep = result.phases![0].steps![0];
+        const failedStep = result.phases![0].steps[0];
 
         expect(failedStep.passed).toBe(false);
         // This should NOT exist when developerFeedback is false
@@ -478,7 +483,7 @@ describe('runner', () => {
         // Assert: extraction.metadata should exist (from extractor)
         expect(result.phases).toBeDefined();
         expect(result.phases![0].steps).toBeDefined();
-        const failedStep = result.phases![0].steps![0];
+        const failedStep = result.phases![0].steps[0];
 
         expect(failedStep.passed).toBe(false);
         // Extraction should have metadata from the extractor
@@ -516,7 +521,7 @@ describe('runner', () => {
         // Assert: extractionQuality should NOT exist for passing tests
         expect(result.phases).toBeDefined();
         expect(result.phases![0].steps).toBeDefined();
-        const passingStep = result.phases![0].steps![0];
+        const passingStep = result.phases![0].steps[0];
 
         expect(passingStep.passed).toBe(true);
         // Should NOT extract on success - no failures to extract!
@@ -808,10 +813,10 @@ rawOutput: |
 
       // Verify files exist
       const { existsSync, readFileSync } = await import('node:fs');
-      expect(existsSync(outputFiles!.combined!)).toBe(true);
+      expect(existsSync(outputFiles!.combined)).toBe(true);
 
       // Verify combined.jsonl has timestamped entries
-      const combinedContent = readFileSync(outputFiles!.combined!, 'utf-8');
+      const combinedContent = readFileSync(outputFiles!.combined, 'utf-8');
       expect(combinedContent).toContain('"ts":"');
       expect(combinedContent).toContain('"stream":"stdout"');
       expect(combinedContent).toContain('"line":"error output"');
@@ -848,7 +853,7 @@ rawOutput: |
 
       // Verify files exist
       const { existsSync, readFileSync } = await import('node:fs');
-      expect(existsSync(outputFiles!.combined!)).toBe(true);
+      expect(existsSync(outputFiles!.combined)).toBe(true);
       expect(existsSync(outputFiles!.stdout!)).toBe(true);
 
       // Verify stdout.log has content
@@ -990,8 +995,8 @@ rawOutput: |
 
       // Verify content is different
       const { readFileSync } = await import('node:fs');
-      const step1Content = readFileSync(step1Files!.combined!, 'utf-8');
-      const step2Content = readFileSync(step2Files!.combined!, 'utf-8');
+      const step1Content = readFileSync(step1Files!.combined, 'utf-8');
+      const step2Content = readFileSync(step2Files!.combined, 'utf-8');
 
       expect(step1Content).toContain('step1 error');
       expect(step2Content).toContain('step2 error');
@@ -1030,7 +1035,7 @@ rawOutput: |
 
       // Verify file exists
       const { existsSync } = await import('node:fs');
-      expect(existsSync(result.outputFiles!.combined!)).toBe(true);
+      expect(existsSync(result.outputFiles!.combined)).toBe(true);
     });
 
     it('should include top-level outputFiles with debug mode enabled (failing)', async () => {
@@ -1064,7 +1069,7 @@ rawOutput: |
 
       // Verify file exists
       const { existsSync } = await import('node:fs');
-      expect(existsSync(result.outputFiles!.combined!)).toBe(true);
+      expect(existsSync(result.outputFiles!.combined)).toBe(true);
     });
 
     it('should NOT include top-level outputFiles without debug mode (passing)', async () => {

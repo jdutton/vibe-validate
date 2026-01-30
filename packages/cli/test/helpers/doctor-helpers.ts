@@ -6,6 +6,7 @@
  *
  * @package @vibe-validate/cli
  */
+/* eslint-disable sonarjs/deprecation -- Tests verify deprecated state file handling */
 
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -340,13 +341,13 @@ function handleGitForEachRef(args: string[], opts: { validationHistoryRefs?: str
 
   // Legacy validation history check
   if (args[2] === 'refs/notes/vibe-validate/runs') {
-    const refs = opts.validationHistoryRefs?.join('\n') || '';
+    const refs = opts.validationHistoryRefs?.join('\n') ?? '';
     return { success: true, stdout: refs, stderr: '', exitCode: 0 };
   }
 
   // Current run cache check
   if (args[2]?.startsWith('refs/notes/vibe-validate/run')) {
-    const refs = opts.runCacheRefs?.join('\n') || '';
+    const refs = opts.runCacheRefs?.join('\n') ?? '';
     return { success: true, stdout: refs, stderr: '', exitCode: 0 };
   }
 

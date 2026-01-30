@@ -35,6 +35,7 @@ interface ProcessLineResult {
  * Match FAIL line and extract file path
  */
 function matchFailLine(line: string): string | null {
+  // eslint-disable-next-line security/detect-unsafe-regex -- Safe: only parses Jest test framework output (controlled output), not user input
   const failMatch = /^\s*FAIL\s+(?:[\w-]+\s+)?([\w/-]+\.test\.\w+)/.exec(line);
   return failMatch ? failMatch[1] : null;
 }
@@ -43,7 +44,7 @@ function matchFailLine(line: string): string | null {
  * Match inline failure (✕) and extract test name
  */
 function matchInlineFailure(line: string): string | null {
-  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jest test framework output (controlled output), not user input
+  // eslint-disable-next-line sonarjs/slow-regex, security/detect-unsafe-regex -- Safe: only parses Jest test framework output (controlled output), not user input
   const failureMatch = /^\s+✕\s+(.+?)(?:\s+\(\d+\s*ms\))?$/.exec(line);
   return failureMatch ? failureMatch[1].trim() : null;
 }

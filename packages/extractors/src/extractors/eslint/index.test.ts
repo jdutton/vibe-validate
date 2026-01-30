@@ -307,21 +307,22 @@ src/config.ts:25:12: error Promise must be handled @typescript-eslint/no-floatin
         expect(sample.description).toBeTruthy();
         expect(sample.input).toBeTruthy();
         expect(sample.expectedErrors).toBeGreaterThan(0);
-        expect(sample.expectedPatterns!.length).toBeGreaterThan(0);
+        expect(sample.expectedPatterns?.length ?? 0).toBeGreaterThan(0);
       }
     });
 
     it('should extract expected errors from samples', () => {
       for (const sample of eslintPlugin.samples) {
-        const result = eslintPlugin.extract(sample.input!);
+        expect(sample.input).toBeDefined();
+        const result = eslintPlugin.extract(sample.input ?? '');
         expect(result.errors.length).toBe(sample.expectedErrors);
 
         // Verify expected patterns appear in output
-        for (const pattern of sample.expectedPatterns!) {
+        for (const pattern of sample.expectedPatterns ?? []) {
           const found = result.errors.some(e =>
-            e.code?.includes(pattern) ||
-            e.message?.includes(pattern) ||
-            result.guidance?.includes(pattern)
+            (e.code?.includes(pattern) ?? false) ||
+            (e.message?.includes(pattern) ?? false) ||
+            (result.guidance?.includes(pattern) ?? false)
           );
           expect(found).toBe(true);
         }
@@ -343,7 +344,7 @@ src/config.ts:25:12: error Promise must be handled @typescript-eslint/no-floatin
       expect(eslintPlugin.metadata.author).toBeTruthy();
       expect(eslintPlugin.metadata.description).toBeTruthy();
       expect(eslintPlugin.metadata.repository).toBeTruthy();
-      expect(eslintPlugin.metadata.tags!.length).toBeGreaterThan(0);
+      expect(eslintPlugin.metadata.tags?.length ?? 0).toBeGreaterThan(0);
     });
   });
 });

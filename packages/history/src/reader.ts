@@ -10,6 +10,8 @@ import type { HistoryNote } from './types.js';
 
 // Removed: Git operations now use secure @vibe-validate/git functions
 
+const DEFAULT_NOTES_REF = 'vibe-validate/validate';
+
 /**
  * Read validation history note for a tree hash
  *
@@ -19,7 +21,7 @@ import type { HistoryNote } from './types.js';
  */
 export async function readHistoryNote(
   treeHash: string,
-  notesRef: string = 'vibe-validate/validate'
+  notesRef: string = DEFAULT_NOTES_REF
 ): Promise<HistoryNote | null> {
   try {
     // Use secure readNote function (no command injection risk)
@@ -75,7 +77,7 @@ export async function readHistoryNote(
  * @returns Array of tree hashes with notes
  */
 export async function listHistoryTreeHashes(
-  notesRef: string = 'vibe-validate/validate'
+  notesRef: string = DEFAULT_NOTES_REF
 ): Promise<string[]> {
   try {
     // Use secure listNotes function (no command injection risk)
@@ -100,7 +102,7 @@ export async function listHistoryTreeHashes(
  * @returns Array of all history notes
  */
 export async function getAllHistoryNotes(
-  notesRef: string = 'vibe-validate/validate'
+  notesRef: string = DEFAULT_NOTES_REF
 ): Promise<HistoryNote[]> {
   const treeHashes = await listHistoryTreeHashes(notesRef);
   const notes: HistoryNote[] = [];
@@ -124,7 +126,7 @@ export async function getAllHistoryNotes(
  */
 export async function hasHistoryForTree(
   treeHash: string,
-  notesRef: string = 'vibe-validate/validate'
+  notesRef: string = DEFAULT_NOTES_REF
 ): Promise<boolean> {
   const note = await readHistoryNote(treeHash, notesRef);
   return note !== null;

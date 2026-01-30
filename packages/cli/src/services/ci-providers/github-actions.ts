@@ -79,6 +79,7 @@ export class GitHubActionsProvider implements CIProvider {
     // Get job details to find the check name
     let checkName = 'Unknown';
     try {
+      // eslint-disable-next-line local/no-gh-commands-direct -- No suitable wrapper exists for "gh run view --job <id> --json name" pattern. Future: Add fetchJobDetails() to @vibe-validate/git
       const jobOutput = safeExecSync('gh', ['run', 'view', '--job', jobId, '--json', 'name'], {
         encoding: 'utf8',
         stdio: 'pipe',
@@ -91,6 +92,7 @@ export class GitHubActionsProvider implements CIProvider {
 
     // Fetch logs for specific job (critical for matrix workflows)
     // Using --job ensures we get logs for THIS job only, not all jobs in the workflow run
+    // eslint-disable-next-line local/no-gh-commands-direct -- No suitable wrapper exists for "gh run view --log --job <id>" pattern. Future: Extend fetchRunLogs() to accept jobId-only parameter
     const logs = safeExecSync('gh', ['run', 'view', '--log', '--job', jobId], {
       encoding: 'utf8',
       stdio: 'pipe',

@@ -110,18 +110,20 @@ not ok 2 second error
       const result = extractTAPErrors(input);
 
       expect(result.errors.length).toBeGreaterThanOrEqual(10);
-      expect(result.metadata!.confidence).toBeGreaterThanOrEqual(80);
+      expect(result.metadata?.confidence ?? 0).toBeGreaterThanOrEqual(80);
     });
   });
 
   describe('Plugin Samples', () => {
     it('should pass all registered samples', () => {
       for (const sample of tapExtractor.samples) {
-        const input = sample.input ?? readFileSync(join(__dirname, sample.inputFile!), 'utf-8');
+        const inputFile = sample.inputFile;
+        const input = sample.input ?? (inputFile ? readFileSync(join(__dirname, inputFile), 'utf-8') : '');
         const result = extractTAPErrors(input);
 
-        if (sample.expected!.totalErrors !== undefined) {
-          expect(result.totalErrors).toBe(sample.expected!.totalErrors);
+        const expected = sample.expected;
+        if (expected?.totalErrors !== undefined) {
+          expect(result.totalErrors).toBe(expected.totalErrors);
         }
       }
     });

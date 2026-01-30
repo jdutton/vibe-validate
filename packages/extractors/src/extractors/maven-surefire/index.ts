@@ -14,6 +14,10 @@ import type {
   ErrorExtractorResult,
   FormattedError,
 } from '../../types.js';
+import { createLowConfidenceResult } from '../../utils/maven-extractor-utils.js';
+
+// Extractor name constant
+const EXTRACTOR_NAME = 'maven-surefire';
 
 /**
  * Maven Surefire/Failsafe output format:
@@ -43,6 +47,7 @@ const SUREFIRE_PATTERNS = {
 
   // [ERROR] com.example.FooTest.testBar:42 Expected 5 but was 3
   errorShort:
+    // eslint-disable-next-line security/detect-unsafe-regex -- Safe: Maven Surefire output is structured, limited line length
     /^\[ERROR\]\s+([^:]+)\.([^:]+):(\d+)\s+(\w+(?:Error|Exception|Failure))?\s*(.+)$/,
 
   // [ERROR] com.example.FooTest.testBar -- Time elapsed: 0.123 s <<< FAILURE!
@@ -115,22 +120,7 @@ export function extractMavenSurefire(
   const detection = detectMavenSurefire(output);
 
   if (detection.confidence < 40) {
-    return {
-      summary: 'Not Maven test output',
-      totalErrors: 0,
-      errors: [],
-      metadata: {
-        detection: {
-          extractor: 'maven-surefire',
-          confidence: detection.confidence,
-          patterns: detection.patterns,
-          reason: detection.reason,
-        },
-        confidence: detection.confidence,
-        completeness: 100,
-        issues: [],
-      },
-    };
+    return createLowConfidenceResult('test', detection);
   }
 
   const failures: TestFailure[] = [];
@@ -283,7 +273,7 @@ export function extractMavenSurefire(
     errorSummary,
     metadata: {
       detection: {
-        extractor: 'maven-surefire',
+        extractor: EXTRACTOR_NAME,
         confidence: detection.confidence,
         patterns: detection.patterns,
         reason: detection.reason,
@@ -300,7 +290,7 @@ export function extractMavenSurefire(
  */
 const mavenSurefireExtractor: ExtractorPlugin = {
   metadata: {
-    name: 'maven-surefire',
+    name: EXTRACTOR_NAME,
     version: '1.0.0',
     author: 'Jeff Dutton <jeff@duckcreek.com>',
     description: 'Extracts test failures from Maven Surefire and Failsafe plugin output',

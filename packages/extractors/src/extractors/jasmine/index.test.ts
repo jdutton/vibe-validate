@@ -9,6 +9,8 @@ import { describe, it, expect } from 'vitest';
 import {
   expectDetection,
   expectPluginMetadata,
+  expectSamplesParseSuccessfully,
+  expectPathExtraction,
 } from '../../test/helpers/extractor-test-helpers.js';
 
 import jasminePlugin from './index.js';
@@ -233,10 +235,7 @@ Failures:
 
 1 spec, 1 failure
 `;
-
-        const result = jasminePlugin.extract(input);
-        expect(result.errors[0].file).toBe('/path/to/test.js');
-        expect(result.errors[0].line).toBe(42);
+        expectPathExtraction(jasminePlugin, input, '/path/to/test.js', 42);
       });
 
       it('should handle relative paths', () => {
@@ -250,10 +249,7 @@ Failures:
 
 1 spec, 1 failure
 `;
-
-        const result = jasminePlugin.extract(input);
-        expect(result.errors[0].file).toBe('tests/unit/helpers.test.js');
-        expect(result.errors[0].line).toBe(128);
+        expectPathExtraction(jasminePlugin, input, 'tests/unit/helpers.test.js', 128);
       });
     });
 
@@ -367,9 +363,9 @@ Failures:
 
         const result = jasminePlugin.extract(input);
         expect(result.metadata).toBeDefined();
-        expect(result.metadata!.confidence).toBeGreaterThan(90);
-        expect(result.metadata!.completeness).toBe(100);
-        expect(result.metadata!.issues).toEqual([]);
+        expect(result.metadata?.confidence ?? 0).toBeGreaterThan(90);
+        expect(result.metadata?.completeness ?? 0).toBe(100);
+        expect(result.metadata?.issues ?? []).toEqual([]);
       });
     });
   });
@@ -381,11 +377,7 @@ Failures:
     });
 
     it('should successfully parse all sample inputs', () => {
-      for (const sample of jasminePlugin.samples) {
-        const result = jasminePlugin.extract(sample.input!);
-        expect(result.errors.length).toBeGreaterThan(0);
-        expect(result.errors.length).toBe(sample.expectedErrors);
-      }
+      expectSamplesParseSuccessfully(jasminePlugin);
     });
   });
 

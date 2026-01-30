@@ -35,6 +35,17 @@ import {
   getCoverageCommand,
 } from '../utils/package-manager-commands.js';
 
+// GitHub Actions constants
+const ACTIONS_CHECKOUT_V4 = 'actions/checkout@v4';
+const ACTIONS_SETUP_NODE_V4 = 'actions/setup-node@v4';
+const ACTIONS_SETUP_BUN_V2 = 'oven-sh/setup-bun@v2';
+const ACTIONS_SETUP_PNPM_V2 = 'pnpm/action-setup@v2';
+const WORKFLOW_PROPERTY_NODE_VERSION = 'node-version';
+const WORKFLOW_PROPERTY_FETCH_DEPTH = 'fetch-depth';
+const STEP_NAME_SETUP_PNPM = 'Setup pnpm';
+const DEFAULT_RUNNER_OS = 'ubuntu-latest';
+const STEP_NAME_BUILD_PACKAGES = 'Build packages';
+
 /**
  * GitHub Actions workflow step structure
  */
@@ -143,9 +154,9 @@ function createCommonJobSetupSteps(
 ): GitHubWorkflowStep[] {
   const steps: GitHubWorkflowStep[] = [
     {
-      uses: 'actions/checkout@v4',
+      uses: ACTIONS_CHECKOUT_V4,
       with: {
-        'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
+        [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
       }
     },
   ];
@@ -156,21 +167,21 @@ function createCommonJobSetupSteps(
     steps.push(
       {
         name: 'Setup Bun',
-        uses: 'oven-sh/setup-bun@v2',
+        uses: ACTIONS_SETUP_BUN_V2,
       },
       { run: getInstallCommand(packageManager) }
     );
   } else if (packageManager === 'pnpm') {
     steps.push(
       {
-        name: 'Setup pnpm',
-        uses: 'pnpm/action-setup@v2',
+        name: STEP_NAME_SETUP_PNPM,
+        uses: ACTIONS_SETUP_PNPM_V2,
         with: { version: '8' },
       },
       {
-        uses: 'actions/setup-node@v4',
+        uses: ACTIONS_SETUP_NODE_V4,
         with: {
-          'node-version': nodeVersion,
+          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersion,
           cache: 'pnpm',
         },
       },
@@ -179,9 +190,9 @@ function createCommonJobSetupSteps(
   } else if (packageManager === 'yarn') {
     steps.push(
       {
-        uses: 'actions/setup-node@v4',
+        uses: ACTIONS_SETUP_NODE_V4,
         with: {
-          'node-version': nodeVersion,
+          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersion,
           cache: 'yarn',
         },
       },
@@ -191,9 +202,9 @@ function createCommonJobSetupSteps(
     // npm
     steps.push(
       {
-        uses: 'actions/setup-node@v4',
+        uses: ACTIONS_SETUP_NODE_V4,
         with: {
-          'node-version': nodeVersion,
+          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersion,
           cache: 'npm',
         },
       },
@@ -289,7 +300,7 @@ export function generateWorkflow(
   const projectRoot = options.projectRoot ?? process.cwd();
   const {
     nodeVersions = [detectNodeVersion(projectRoot)],
-    os = ['ubuntu-latest'],
+    os = [DEFAULT_RUNNER_OS],
     packageManager = detectPackageManager(projectRoot),
     enableCoverage = false,
     coverageProvider = 'codecov',
@@ -307,9 +318,9 @@ export function generateWorkflow(
     // Matrix strategy: Create single job that runs validation with matrix
     const jobSteps: GitHubWorkflowStep[] = [
       {
-        uses: 'actions/checkout@v4',
+        uses: ACTIONS_CHECKOUT_V4,
         with: {
-          'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
+          [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
         }
       },
     ];
@@ -318,12 +329,12 @@ export function generateWorkflow(
     if (packageManager === 'bun') {
       jobSteps.push({
         name: 'Setup Bun',
-        uses: 'oven-sh/setup-bun@v2',
+        uses: ACTIONS_SETUP_BUN_V2,
       });
     } else if (packageManager === 'pnpm') {
       jobSteps.push({
-        name: 'Setup pnpm',
-        uses: 'pnpm/action-setup@v2',
+        name: STEP_NAME_SETUP_PNPM,
+        uses: ACTIONS_SETUP_PNPM_V2,
         with: { version: '9' },
       });
     }
@@ -334,9 +345,9 @@ export function generateWorkflow(
     const nodeCacheConfig = packageManager === 'bun' ? {} : { cache: packageManager };
     jobSteps.push({
       name: 'Setup Node.js ${{ matrix.node }}',
-      uses: 'actions/setup-node@v4',
+      uses: ACTIONS_SETUP_NODE_V4,
       with: {
-        'node-version': '${{ matrix.node }}',
+        [WORKFLOW_PROPERTY_NODE_VERSION]: '${{ matrix.node }}',
         ...nodeCacheConfig,
       },
     });
@@ -353,7 +364,7 @@ export function generateWorkflow(
     );
     if (hasBuildPhase) {
       jobSteps.push({
-        name: 'Build packages',
+        name: STEP_NAME_BUILD_PACKAGES,
         run: getBuildCommand(packageManager),
       });
     }
@@ -386,9 +397,9 @@ export function generateWorkflow(
     if (enableCoverage) {
       const coverageSteps: GitHubWorkflowStep[] = [
         {
-          uses: 'actions/checkout@v4',
+          uses: ACTIONS_CHECKOUT_V4,
           with: {
-            'fetch-depth': 0  // Fetch all history for git-based checks (doctor command)
+            [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
           }
         },
       ];
@@ -396,12 +407,12 @@ export function generateWorkflow(
       if (packageManager === 'bun') {
         coverageSteps.push({
           name: 'Setup Bun',
-          uses: 'oven-sh/setup-bun@v2',
+          uses: ACTIONS_SETUP_BUN_V2,
         });
       } else if (packageManager === 'pnpm') {
         coverageSteps.push({
-          name: 'Setup pnpm',
-          uses: 'pnpm/action-setup@v2',
+          name: STEP_NAME_SETUP_PNPM,
+          uses: ACTIONS_SETUP_PNPM_V2,
           with: { version: '9' },
         });
       }
@@ -409,9 +420,9 @@ export function generateWorkflow(
       if (packageManager !== 'bun') {
         coverageSteps.push({
           name: 'Setup Node.js',
-          uses: 'actions/setup-node@v4',
+          uses: ACTIONS_SETUP_NODE_V4,
           with: {
-            'node-version': nodeVersions[0],
+            [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersions[0],
             cache: packageManager,
           },
         });
@@ -424,7 +435,7 @@ export function generateWorkflow(
 
       if (hasBuildPhase) {
         coverageSteps.push({
-          name: 'Build packages',
+          name: STEP_NAME_BUILD_PACKAGES,
           run: getBuildCommand(packageManager),
         });
       }
@@ -448,7 +459,7 @@ export function generateWorkflow(
 
       jobs['validate-coverage'] = {
         name: 'Run validation with coverage',
-        'runs-on': 'ubuntu-latest',
+        'runs-on': DEFAULT_RUNNER_OS,
         steps: coverageSteps,
       };
     }
@@ -462,7 +473,7 @@ export function generateWorkflow(
     for (const phase of phases) {
 
       // Determine needs based on previous phase
-      let needs: string[] | undefined = previousJobIds;
+      const needs: string[] | undefined = previousJobIds;
 
       if (phase.parallel === false) {
         // Phase-based grouping: ONE job with sequential workflow steps
@@ -473,7 +484,7 @@ export function generateWorkflow(
         const hasBuildStep = phase.steps.some(s => s.name.toLowerCase().includes('build'));
         if (hasBuildStep) {
           jobSteps.push({
-            name: 'Build packages',
+            name: STEP_NAME_BUILD_PACKAGES,
             run: getBuildCommand(packageManager),
           });
         }
@@ -562,7 +573,7 @@ export function generateWorkflow(
 
   jobs['all-validation-passed'] = {
     name: 'All Validation Passed',
-    'runs-on': 'ubuntu-latest',
+    'runs-on': DEFAULT_RUNNER_OS,
     needs: allJobs,
     if: 'always()',
     steps: [

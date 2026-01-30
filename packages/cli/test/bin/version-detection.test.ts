@@ -1,6 +1,7 @@
 /**
  * Tests for vibe-validate wrapper's version detection and warning system
  */
+/* eslint-disable sonarjs/slow-regex -- Simple test regex patterns, not user-facing */
 
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

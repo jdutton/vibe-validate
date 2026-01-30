@@ -22,6 +22,8 @@ import type {
   FixOptions,
 } from '../setup-engine.js';
 
+const WORKFLOW_FILE_PATH = '.github/workflows/validate.yml';
+
 export class WorkflowSetupCheck implements SetupCheck {
   readonly id = 'workflow';
   readonly name = 'GitHub Actions Workflow Setup';
@@ -93,10 +95,10 @@ export class WorkflowSetupCheck implements SetupCheck {
 
     return {
       description: 'Create GitHub Actions workflow for vibe-validate',
-      filesAffected: ['.github/workflows/validate.yml'],
+      filesAffected: [WORKFLOW_FILE_PATH],
       changes: [
         {
-          file: '.github/workflows/validate.yml',
+          file: WORKFLOW_FILE_PATH,
           action: 'create',
           content: workflowContent,
         },
@@ -153,7 +155,7 @@ export class WorkflowSetupCheck implements SetupCheck {
     return {
       success: true,
       message: 'Created .github/workflows/validate.yml',
-      filesChanged: ['.github/workflows/validate.yml'],
+      filesChanged: [WORKFLOW_FILE_PATH],
     };
   }
 

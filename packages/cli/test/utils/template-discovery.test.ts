@@ -40,9 +40,9 @@ describe('template-discovery', () => {
 
       const actualFiles = readdirSync(templatesDir)
         .filter(file => file.endsWith('.yaml'))
-        .sort();
+        .sort((a, b) => a.localeCompare(b));
 
-      const discoveredFiles = templates.map(t => t.filename).sort();
+      const discoveredFiles = templates.map(t => t.filename).sort((a, b) => a.localeCompare(b));
 
       expect(discoveredFiles).toEqual(actualFiles);
     });
@@ -86,7 +86,7 @@ describe('template-discovery', () => {
       const filenames = templates.map(t => t.filename);
 
       // Check if sorted
-      const sorted = [...filenames].sort();
+      const sorted = [...filenames].sort((a, b) => a.localeCompare(b));
       expect(filenames).toEqual(sorted);
     });
   });
@@ -147,7 +147,7 @@ describe('template-discovery', () => {
       const formattedFilenames = formatted
         .filter(line => line !== 'No templates found')
         .map(line => {
-          const match = line.match(/• ([\w-]+\.yaml)/);
+          const match = /• ([\w-]+\.yaml)/.exec(line);
           return match ? match[1] : null;
         })
         .filter((name): name is string => name !== null);

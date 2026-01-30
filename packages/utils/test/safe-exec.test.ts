@@ -53,7 +53,7 @@ describe('safeExecSync', () => {
       const actualPath = result.trim();
       const expectedPath = tempDir;
       // Compare resolved paths to handle symlinks
-      expect(actualPath.endsWith(expectedPath.split('/').pop() || '')).toBe(true);
+      expect(actualPath.endsWith(expectedPath.split('/').pop() ?? '')).toBe(true);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -123,7 +123,7 @@ describe('safeExecSync', () => {
         timeout: 100,
       });
       expect.fail('Should have thrown timeout error');
-    } catch (error: any) {
+    } catch (error: unknown) {
       // spawnSync timeout error
       expect(error).toBeDefined();
     }

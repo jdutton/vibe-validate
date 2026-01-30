@@ -183,6 +183,7 @@ export function spawnCommand(
   // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
   // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
   // NOSONAR - Intentional shell execution of user-defined commands
+  // eslint-disable-next-line sonarjs/os-command
   return spawn(command, options?.args ?? [], {
     shell: true,
     stdio: ['ignore', 'pipe', 'pipe'], // No stdin (prevent hangs), capture stdout/stderr
@@ -327,6 +328,7 @@ export async function captureCommandOutput(
   // Write combined.jsonl (always)
   const combinedFile = join(outputDir, 'combined.jsonl');
   const combinedContent = createCombinedJsonl(combinedLines);
+   
   writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
 
   // Wait for all writes to complete

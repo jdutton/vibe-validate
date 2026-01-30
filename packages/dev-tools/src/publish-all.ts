@@ -31,7 +31,8 @@ const ROOT = join(__dirname, '..');
  */
 function determineTag(version: string): string {
   // Extract prerelease identifier (e.g., "rc1", "beta.2", "alpha", etc.)
-  const prereleaseMatch = version.match(/-([a-z]+)/i);
+  const prereleasePattern = /-([a-z]+)/i;
+  const prereleaseMatch = prereleasePattern.exec(version);
 
   if (!prereleaseMatch) {
     // No prerelease identifier → stable release

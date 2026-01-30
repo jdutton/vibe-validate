@@ -51,7 +51,7 @@ describe('snapshot command', () => {
     } catch (err: unknown) {
       // Extract exit code from process.exit mock error
       if (err instanceof Error && err.message.startsWith('process.exit')) {
-        const match = err.message.match(/process\.exit\((\d+)\)/);
+        const match = /process\.exit\((\d+)\)/.exec(err.message);
         return match ? Number.parseInt(match[1], 10) : 1;
       }
       if (err && typeof err === 'object' && 'exitCode' in err) {

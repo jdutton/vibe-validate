@@ -81,7 +81,7 @@ async function executeStateCommand(env: CommanderTestEnv, args: string[]): Promi
     // process.exit throws Error with message "process.exit(code)"
     if (err instanceof Error && err.message.startsWith('process.exit(')) {
       // Match numeric exit code
-      const match = err.message.match(/process\.exit\((\d+)\)/);
+      const match = /process\.exit\((\d+)\)/.exec(err.message);
       if (match) {
         return Number.parseInt(match[1], 10);
       }

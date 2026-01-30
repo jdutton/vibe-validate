@@ -22,6 +22,9 @@ import type {
 } from '../setup-engine.js';
 
 const VIBE_VALIDATE_COMMAND = 'npx vibe-validate pre-commit';
+const VIBE_VALIDATE_PRE_COMMIT = 'vibe-validate pre-commit';
+const HUSKY_PRE_COMMIT_PATH = '.husky/pre-commit';
+const PRE_COMMIT_HOOK_NAME = 'pre-commit';
 
 export class HooksSetupCheck implements SetupCheck {
   readonly id = 'hooks';
@@ -30,7 +33,7 @@ export class HooksSetupCheck implements SetupCheck {
   async check(options?: FixOptions): Promise<CheckResult> {
     const cwd = options?.cwd ?? process.cwd();
     const huskyDir = join(cwd, '.husky');
-    const preCommitPath = join(huskyDir, 'pre-commit');
+    const preCommitPath = join(huskyDir, PRE_COMMIT_HOOK_NAME);
 
     // Check if .husky directory exists
     if (!existsSync(huskyDir)) {
@@ -54,7 +57,7 @@ export class HooksSetupCheck implements SetupCheck {
     const content = await readFile(preCommitPath, 'utf-8');
 
     // Check if vibe-validate command exists
-    const hasCommand = content.includes('vibe-validate pre-commit');
+    const hasCommand = content.includes(VIBE_VALIDATE_PRE_COMMIT);
 
     if (!hasCommand) {
       return {
@@ -73,7 +76,7 @@ export class HooksSetupCheck implements SetupCheck {
   async preview(options?: FixOptions): Promise<PreviewResult> {
     const cwd = options?.cwd ?? process.cwd();
     const huskyDir = join(cwd, '.husky');
-    const preCommitPath = join(huskyDir, 'pre-commit');
+    const preCommitPath = join(huskyDir, PRE_COMMIT_HOOK_NAME);
 
     // Check current state
     const checkResult = await this.check(options);
@@ -91,10 +94,10 @@ export class HooksSetupCheck implements SetupCheck {
       const content = this.generateNewPreCommitHook();
       return {
         description: 'Install husky and create .husky/pre-commit hook with vibe-validate command',
-        filesAffected: ['.husky/pre-commit'],
+        filesAffected: [HUSKY_PRE_COMMIT_PATH],
         changes: [
           {
-            file: '.husky/pre-commit',
+            file: HUSKY_PRE_COMMIT_PATH,
             action: 'create',
             content,
           },
@@ -105,10 +108,10 @@ export class HooksSetupCheck implements SetupCheck {
     // If pre-commit exists but missing vibe-validate command
     return {
       description: 'Add vibe-validate command to existing pre-commit hook',
-      filesAffected: ['.husky/pre-commit'],
+      filesAffected: [HUSKY_PRE_COMMIT_PATH],
       changes: [
         {
-          file: '.husky/pre-commit',
+          file: HUSKY_PRE_COMMIT_PATH,
           action: 'modify',
         },
       ],
@@ -118,7 +121,7 @@ export class HooksSetupCheck implements SetupCheck {
   async fix(options?: FixOptions): Promise<FixResult> {
     const cwd = options?.cwd ?? process.cwd();
     const huskyDir = join(cwd, '.husky');
-    const preCommitPath = join(huskyDir, 'pre-commit');
+    const preCommitPath = join(huskyDir, PRE_COMMIT_HOOK_NAME);
     const dryRun = options?.dryRun ?? false;
 
     // Check current state
@@ -155,13 +158,13 @@ export class HooksSetupCheck implements SetupCheck {
       return {
         success: true,
         message: 'Created .husky/pre-commit hook (Note: Install husky as dev dependency if not already installed)',
-        filesChanged: ['.husky/pre-commit'],
+        filesChanged: [HUSKY_PRE_COMMIT_PATH],
       };
     }
 
     // If pre-commit exists, check if command is already there
     const content = await readFile(preCommitPath, 'utf-8');
-    const hasCommand = content.includes('vibe-validate pre-commit');
+    const hasCommand = content.includes(VIBE_VALIDATE_PRE_COMMIT);
 
     if (hasCommand) {
       // Command already exists (idempotent)
@@ -179,7 +182,7 @@ export class HooksSetupCheck implements SetupCheck {
     return {
       success: true,
       message: 'Added vibe-validate command to pre-commit hook',
-      filesChanged: ['.husky/pre-commit'],
+      filesChanged: [HUSKY_PRE_COMMIT_PATH],
     };
   }
 

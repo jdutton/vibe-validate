@@ -48,6 +48,7 @@ Exit codes:
 const expectedVersion = args[0];
 
 // Validate version format (semver)
+// eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
 if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(expectedVersion)) {
   log(`✗ Invalid version format: ${expectedVersion}`, 'red');
   log('  Expected format: X.Y.Z or X.Y.Z-prerelease', 'yellow');
@@ -58,8 +59,15 @@ if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(expectedVersion)) {
 log(`🔍 Validating version consistency: ${expectedVersion}`, 'blue');
 console.log('');
 
+interface VersionMismatch {
+  name: string;
+  actualVersion: string;
+  expectedVersion: string;
+  filePath: string;
+}
+
 let hasErrors = false;
-const mismatches: any[] = [];
+const mismatches: VersionMismatch[] = [];
 
 /**
  * Check version in a package.json file
@@ -110,9 +118,10 @@ const counts = processWorkspacePackages(
   (result) => {
     if (result.valid) {
       log(`  ✓ ${result.name}: ${result.version}`, 'green');
-    } else {
-      log(`  ✗ ${result.name}: ${result.actualVersion} (expected: ${result.expectedVersion})`, 'red');
-      mismatches.push(result);
+    } else if (!result.skipped) {
+      const mismatch = result as VersionMismatch;
+      log(`  ✗ ${mismatch.name}: ${mismatch.actualVersion} (expected: ${mismatch.expectedVersion})`, 'red');
+      mismatches.push(mismatch);
       hasErrors = true;
     }
   },

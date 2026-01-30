@@ -13,6 +13,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expectDetection,
   expectEmptyExtraction,
+  expectMultipleFailures,
 } from '../../test/helpers/extractor-test-helpers.js';
 
 import avaExtractor from './index.js';
@@ -39,15 +40,17 @@ function verifyErrors(expected: Array<Record<string, unknown>>, actual: Array<Re
 
 // Helper: Test a single sample
 function testSample(sample: typeof avaExtractor.samples[number]) {
-  const input = sample.input ?? readFileSync(join(__dirname, sample.inputFile!), 'utf-8');
+  const inputFile = sample.inputFile;
+  const input = sample.input ?? (inputFile ? readFileSync(join(__dirname, inputFile), 'utf-8') : '');
   const result = extractAvaErrors(input);
 
-  if (sample.expected!.totalErrors !== undefined) {
-    expect(result.totalErrors).toBe(sample.expected!.totalErrors);
+  const expected = sample.expected;
+  if (expected?.totalErrors !== undefined) {
+    expect(result.totalErrors).toBe(expected.totalErrors);
   }
 
-  if (sample.expected!.errors) {
-    verifyErrors(sample.expected!.errors, result.errors);
+  if (expected?.errors) {
+    verifyErrors(expected.errors, result.errors);
   }
 }
 
@@ -162,11 +165,7 @@ PASS tests/test.js
 
       const result = extractAvaErrors(input);
 
-      expect(result.summary).toBe('3 test(s) failed');
-      expect(result.errors).toHaveLength(3);
-      expect(result.errors[0].line).toBe(10);
-      expect(result.errors[1].line).toBe(20);
-      expect(result.errors[2].line).toBe(30);
+      expectMultipleFailures(result, [10, 20, 30]);
       expect(result.errors[0].message).toBe('error one');
       expect(result.errors[1].message).toBe('error two');
       expect(result.errors[2].message).toBe('error three');
@@ -427,9 +426,9 @@ PASS tests/test.js
       const result = extractAvaErrors(input);
 
       expect(result.metadata).toBeDefined();
-      expect(result.metadata!.confidence).toBeGreaterThan(0);
-      expect(result.metadata!.completeness).toBeGreaterThan(0);
-      expect(result.metadata!.issues).toBeInstanceOf(Array);
+      expect(result.metadata?.confidence ?? 0).toBeGreaterThan(0);
+      expect(result.metadata?.completeness ?? 0).toBeGreaterThan(0);
+      expect(result.metadata?.issues).toBeInstanceOf(Array);
     });
 
     it('should report high confidence for well-formed output', () => {
@@ -449,8 +448,8 @@ PASS tests/test.js
 
       const result = extractAvaErrors(input);
 
-      expect(result.metadata!.confidence).toBeGreaterThanOrEqual(90);
-      expect(result.metadata!.completeness).toBeGreaterThanOrEqual(90);
+      expect(result.metadata?.confidence ?? 0).toBeGreaterThanOrEqual(90);
+      expect(result.metadata?.completeness ?? 0).toBeGreaterThanOrEqual(90);
     });
   });
 
@@ -466,8 +465,8 @@ PASS tests/test.js
       expect(result.errors.length).toBeLessThanOrEqual(13);
 
       // Verify quality metadata
-      expect(result.metadata!.confidence).toBeGreaterThanOrEqual(85);
-      expect(result.metadata!.completeness).toBeGreaterThanOrEqual(70); // 8/11 failures have complete data
+      expect(result.metadata?.confidence ?? 0).toBeGreaterThanOrEqual(85);
+      expect(result.metadata?.completeness ?? 0).toBeGreaterThanOrEqual(70); // 8/11 failures have complete data
 
       // Spot check some specific failures
       const assertionErrors = result.errors.filter((e) => e.guidance?.includes('assertion'));

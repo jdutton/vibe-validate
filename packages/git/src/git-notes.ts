@@ -7,6 +7,7 @@
  * @packageDocumentation
  */
 
+import { toForwardSlash } from '@vibe-validate/utils';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 import {
@@ -479,7 +480,7 @@ export function hasNote(notesRef: NotesRef, object: TreeHash): boolean {
  */
 export function listNotesRefs(notesPath: string): string[] {
   // Normalize path
-  const fullPath = notesPath.startsWith('refs/') ? notesPath : `refs/notes/${notesPath}`;
+  const fullPath = toForwardSlash(notesPath).startsWith('refs/') ? notesPath : `refs/notes/${notesPath}`;
 
   const result = executeGitCommand(
     ['for-each-ref', '--format=%(refname)', fullPath],
@@ -513,10 +514,10 @@ export function listNotesRefs(notesPath: string): string[] {
  */
 export function removeNotesRefs(notesPath: string): number {
   // Normalize path
-  const fullPath = notesPath.startsWith('refs/') ? notesPath : `refs/notes/${notesPath}`;
+  const fullPath = toForwardSlash(notesPath).startsWith('refs/') ? notesPath : `refs/notes/${notesPath}`;
 
   // Security: Only allow deletion under refs/notes/vibe-validate/
-  if (!fullPath.startsWith('refs/notes/vibe-validate/')) {
+  if (!toForwardSlash(fullPath).startsWith('refs/notes/vibe-validate/')) {
     throw new Error(
       `Refusing to delete refs outside vibe-validate namespace: ${fullPath}`
     );
@@ -528,7 +529,7 @@ export function removeNotesRefs(notesPath: string): number {
   let deleted = 0;
   for (const ref of refs) {
     // Double-check each ref is under the expected namespace
-    if (!ref.startsWith('refs/notes/vibe-validate/')) {
+    if (!toForwardSlash(ref).startsWith('refs/notes/vibe-validate/')) {
       console.warn(`Skipping ref outside vibe-validate namespace: ${ref}`);
       continue;
     }

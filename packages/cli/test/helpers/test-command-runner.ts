@@ -178,10 +178,10 @@ export function executeCommand(
     output = safeExecSync(cmd, args, execOptions);
   } catch (err: any) {
     // Combine stdout and stderr for output
-    const stdout = typeof err.stdout === 'string' ? err.stdout : err.stdout?.toString() || '';
-    const stderr = typeof err.stderr === 'string' ? err.stderr : err.stderr?.toString() || '';
+    const stdout = typeof err.stdout === 'string' ? err.stdout : err.stdout?.toString() ?? '';
+    const stderr = typeof err.stderr === 'string' ? err.stderr : err.stderr?.toString() ?? '';
     output = stdout + stderr;
-    exitCode = err.status || 1;
+    exitCode = err.status ?? 1;
   }
 
   return { output, exitCode };
@@ -306,6 +306,7 @@ export function executeWrapperSync(
   args: string[] = [],
   options: { cwd?: string; env?: Record<string, string>; encoding?: BufferEncoding } = {}
 ): WrapperResultSync {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- Sync function requires synchronous import
   const { spawnSync } = require('node:child_process');
   const wrapperPath = join(__dirname, '../../dist/bin/vv');
 
@@ -374,7 +375,7 @@ export interface SpawnOptions extends ExecOptions {
    * Receives the child process object for manual control (e.g., sending signals)
    * Useful for testing signal handling or other process lifecycle events
    */
-  // eslint-disable-next-line no-unused-vars -- Parameter name documents API for callback users
+   
   onSpawn?: (child: any) => void;
 }
 

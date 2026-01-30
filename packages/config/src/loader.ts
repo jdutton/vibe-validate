@@ -39,6 +39,7 @@ export async function loadConfigFromFile(
     );
   }
 
+   
   const content = readFileSync(absolutePath, 'utf-8');
   const raw = parseYaml(content);
 

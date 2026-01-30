@@ -137,10 +137,10 @@ durationSecs: 2.5
 timestamp: 2025-12-16T10:01:01.000Z
 treeHash: abc123
 extraction:
-  summary: ${extraction.summary || 'Test failure'}
-  totalErrors: ${extraction.totalErrors || 1}
+  summary: ${extraction.summary ?? 'Test failure'}
+  totalErrors: ${extraction.totalErrors ?? 1}
   errors:
-${(extraction.errors || [{ message: 'Test error' }])
+${(extraction.errors ?? [{ message: 'Test error' }])
 	.map((e) => {
 		const filePart = e.file ? `file: ${e.file}\n      ` : '';
 		const linePart = e.line ? `line: ${e.line}\n      ` : '';

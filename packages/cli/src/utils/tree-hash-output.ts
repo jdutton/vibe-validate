@@ -10,12 +10,12 @@ import type { RunCacheNote } from '@vibe-validate/history';
 export function cleanRunCacheEntries(entries: RunCacheNote[]): RunCacheNote[] {
   return entries.map(entry => {
     // Remove treeHash from output (redundant at root level)
-    // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { treeHash, ...withoutTreeHash } = entry;
 
     // Remove empty workdir to save tokens
     if (withoutTreeHash.workdir === '') {
-      // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { workdir, ...withoutWorkdir } = withoutTreeHash;
       return withoutWorkdir as RunCacheNote;
     }
@@ -44,7 +44,7 @@ export function formatTreeHashOutput<T>(
   if (options.includeValidation && validationData) {
     // Remove treeHash from validation data (it's at root level)
     const validationObj = validationData as Record<string, unknown>;
-    // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { treeHash, ...validationWithoutTreeHash } = validationObj;
     output.validation = validationWithoutTreeHash;
   }

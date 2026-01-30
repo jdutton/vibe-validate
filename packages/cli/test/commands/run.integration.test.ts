@@ -90,7 +90,7 @@ async function executeNestedCommand(testCommand: string): Promise<{ parsed: any;
  * Reduces duplication in display flag tests
  */
 function parseYamlFrontMatter(stdout: string): any {
-  const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
+  const yamlMatch = /^---\n([\s\S]*?)\n---/.exec(stdout);
   expect(yamlMatch).toBeTruthy();
   const yamlContent = yamlMatch![1];
   const parsed = yaml.parse(yamlContent);
@@ -652,7 +652,7 @@ describe('run command integration', () => {
       const { stdout, stderr } = await execCLIWithStderr(['run', '--verbose', 'node --badarg']);
 
       // Extract YAML front matter from stdout
-      const yamlMatch = stdout.match(/^---\n([\s\S]*?)\n---/);
+      const yamlMatch = /^---\n([\s\S]*?)\n---/.exec(stdout);
       expect(yamlMatch).toBeTruthy();
       const yamlContent = yamlMatch![1];
       const parsed = yaml.parse(yamlContent);
