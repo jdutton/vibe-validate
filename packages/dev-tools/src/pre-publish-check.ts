@@ -20,8 +20,8 @@
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { executeGitCommand } from '../packages/git/dist/git-executor.js';
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
+import { executeGitCommand } from '../../git/dist/git-executor.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 import { PROJECT_ROOT, log } from './common.js';
 
@@ -224,14 +224,15 @@ console.log('');
 console.log('Running validation checks...');
 
 try {
-  safeExecSync('pnpm', ['validate'], { stdio: 'inherit', cwd: PROJECT_ROOT });
+  safeExecSync('pnpm', ['validate'], { stdio: ['inherit', 'inherit', 'inherit'], cwd: PROJECT_ROOT });
   log('✓ All validation checks passed', 'green');
-} catch (error) {
+} catch (error: unknown) {
   // Expected failure: validation checks failed (fatal, cannot proceed)
   console.log('');
   log('✗ Validation failed', 'red');
   console.log('  Check the output above and fix all issues before publishing');
-  if (error instanceof Error && error.message.includes('ENOENT')) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('ENOENT')) {
     console.log('  (pnpm not found - install pnpm to run validation)');
   }
   process.exit(1);
@@ -271,9 +272,10 @@ try {
       missingBuilds.push(`packages/${pkg}/`);
     }
   }
-} catch (err) {
+} catch (err: unknown) {
   log('✗ Failed to check package builds', 'red');
-  console.error(err.message);
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(message);
   process.exit(1);
 }
 

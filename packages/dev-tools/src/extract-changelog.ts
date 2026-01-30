@@ -34,7 +34,7 @@ const OUTPUT_PATH = join(PROJECT_ROOT, '.changelog-release.md');
  * @param {string} version - Version to extract (e.g., '0.17.5')
  * @returns {string} - Extracted content for the version
  */
-function extractVersionSection(changelogContent, version) {
+function extractVersionSection(changelogContent: string, version: string): string {
   // Escape version for regex (handles dots and dashes)
   const escapedVersion = version.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
@@ -43,7 +43,7 @@ function extractVersionSection(changelogContent, version) {
   const versionHeaderPattern = new RegExp(String.raw`^## \[${escapedVersion}\] - \d{4}-\d{2}-\d{2}$`, 'm');
   const versionHeaderMatch = changelogContent.match(versionHeaderPattern);
 
-  if (!versionHeaderMatch) {
+  if (!versionHeaderMatch || versionHeaderMatch.index === undefined) {
     throw new Error(`Version ${version} not found in CHANGELOG.md`);
   }
 
@@ -59,7 +59,7 @@ function extractVersionSection(changelogContent, version) {
   const nextVersionMatch = remainingContent.match(nextVersionPattern);
 
   let contentEnd;
-  if (nextVersionMatch) {
+  if (nextVersionMatch && nextVersionMatch.index !== undefined) {
     // Next version found - content ends there
     contentEnd = contentStart + nextVersionMatch.index;
   } else {
@@ -67,7 +67,7 @@ function extractVersionSection(changelogContent, version) {
     const linkReferencesPattern = /^\[Unreleased\]:/m;
     const linkReferencesMatch = remainingContent.match(linkReferencesPattern);
 
-    if (linkReferencesMatch) {
+    if (linkReferencesMatch && linkReferencesMatch.index !== undefined) {
       // Link references found - content ends there
       contentEnd = contentStart + linkReferencesMatch.index;
     } else {
@@ -124,8 +124,9 @@ let changelogContent;
 try {
   changelogContent = readFileSync(CHANGELOG_PATH, 'utf8');
   log(`✓ Read CHANGELOG.md (${changelogContent.length} bytes)`, 'green');
-} catch (error) {
-  log(`✗ Failed to read CHANGELOG.md: ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`✗ Failed to read CHANGELOG.md: ${message}`, 'red');
   process.exit(1);
 }
 
@@ -134,8 +135,9 @@ let content;
 try {
   content = extractVersionSection(changelogContent, version);
   log(`✓ Extracted version section (${content.length} bytes)`, 'green');
-} catch (error) {
-  log(`✗ ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`✗ ${message}`, 'red');
   console.log('');
   log('Recovery instructions:', 'yellow');
   log(`  1. Update CHANGELOG.md to include version ${version}`, 'yellow');
@@ -161,8 +163,9 @@ if (content.length < 50) {
 try {
   writeFileSync(OUTPUT_PATH, content, 'utf8');
   log(`✓ Wrote release notes to ${OUTPUT_PATH}`, 'green');
-} catch (error) {
-  log(`✗ Failed to write output file: ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`✗ Failed to write output file: ${message}`, 'red');
   process.exit(1);
 }
 

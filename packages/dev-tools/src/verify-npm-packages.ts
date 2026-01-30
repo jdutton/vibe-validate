@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,7 +45,7 @@ for (const packageName of publishablePackages) {
     const npmVersion = safeExecSync('npm', ['view', `${packageName}@${expectedVersion}`, 'version'], {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
-    }).trim();
+    }).toString().trim();
 
     if (npmVersion === expectedVersion) {
       results.push({ package: packageName, status: 'ok', version: npmVersion });

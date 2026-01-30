@@ -59,7 +59,7 @@ log(`🔍 Validating version consistency: ${expectedVersion}`, 'blue');
 console.log('');
 
 let hasErrors = false;
-const mismatches = [];
+const mismatches: any[] = [];
 
 /**
  * Check version in a package.json file
@@ -68,7 +68,7 @@ const mismatches = [];
  * @param {boolean} skipPrivate - Skip private packages
  * @returns {Object} Validation result
  */
-function checkPackageVersion(filePath, expectedVersion, skipPrivate = true) {
+function checkPackageVersion(filePath: string, expectedVersion: string, skipPrivate = true) {
   try {
     const content = readFileSync(filePath, 'utf8');
     const pkg = JSON.parse(content);
@@ -93,12 +93,14 @@ function checkPackageVersion(filePath, expectedVersion, skipPrivate = true) {
         actualVersion,
         expectedVersion,
         filePath,
+        skipped: false,
       };
     }
 
-    return { valid: true, name: pkg.name, version: actualVersion };
-  } catch (error) {
-    throw new Error(`Failed to read ${filePath}: ${error.message}`);
+    return { valid: true, name: pkg.name, version: actualVersion, skipped: false };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read ${filePath}: ${message}`);
   }
 }
 

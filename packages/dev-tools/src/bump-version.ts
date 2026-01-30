@@ -27,6 +27,13 @@ import { PROJECT_ROOT, log, processWorkspacePackages } from './common.js';
 const PACKAGE_JSON_FILENAME = 'package.json';
 const VIBE_VALIDATE_PKG_NAME = 'vibe-validate';
 
+// Helper to log file processing errors with proper error type handling
+function logFileError(fileName: string, error: unknown): void {
+  const code = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : undefined;
+  const message = error instanceof Error ? error.message : String(error);
+  log(`  - ${fileName}: skipped (${code === 'ENOENT' ? 'not found' : message})`, 'yellow');
+}
+
 // Parse command-line arguments
 const args = process.argv.slice(2);
 
@@ -60,7 +67,7 @@ Exit codes:
 const versionArg = args[0];
 
 // Helper to increment version
-function incrementVersion(currentVersion, type) {
+function incrementVersion(currentVersion: string, type: string): string {
   const parts = currentVersion.split('.').map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) {
     throw new Error(`Invalid current version: ${currentVersion}`);
@@ -103,8 +110,9 @@ if (['patch', 'minor', 'major'].includes(versionArg)) {
     newVersion = incrementVersion(currentVersion, versionArg);
     log(`Current version: ${currentVersion}`, 'blue');
     log(`Increment type: ${versionArg}`, 'blue');
-  } catch (error) {
-    log(`✗ Failed to read current version: ${error.message}`, 'red');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`✗ Failed to read current version: ${message}`, 'red');
     process.exit(1);
   }
 } else {
@@ -124,7 +132,7 @@ log(`📦 Bumping version to ${newVersion}`, 'blue');
 console.log('');
 
 // Function to update version in a package.json file
-function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
+function updatePackageVersion(filePath: string, newVersion: string, skipPrivate = true) {
   try {
     const content = readFileSync(filePath, 'utf8');
     const pkg = JSON.parse(content);
@@ -142,7 +150,7 @@ function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
     }
 
     if (oldVersion === newVersion) {
-      return { updated: false, oldVersion, newVersion, name: pkg.name };
+      return { updated: false, oldVersion, newVersion, name: pkg.name, skipped: false };
     }
 
     pkg.version = newVersion;
@@ -155,9 +163,10 @@ function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
 
     writeFileSync(filePath, updatedContent, 'utf8');
 
-    return { updated: true, oldVersion, newVersion, name: pkg.name };
-  } catch (error) {
-    throw new Error(`Failed to update ${filePath}: ${error.message}`);
+    return { updated: true, oldVersion, newVersion, name: pkg.name, skipped: false };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to update ${filePath}: ${message}`);
   }
 }
 
@@ -174,8 +183,9 @@ try {
   } else {
     log(`  - ${result.name || VIBE_VALIDATE_PKG_NAME}: already at ${result.newVersion}`, 'yellow');
   }
-} catch (error) {
-  log(`  ✗ ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`  ✗ ${message}`, 'red');
   process.exit(1);
 }
 
@@ -253,8 +263,8 @@ for (const testFile of testFilesWithVersions) {
       log(`  ✓ ${testFile.split('/').pop()}: updated ${matches.length} version expectation(s)`, 'green');
       testUpdatedCount++;
     }
-  } catch (error) {
-    log(`  - ${testFile.split('/').pop()}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
+  } catch (error: unknown) {
+    logFileError(testFile.split('/').pop() || testFile, error);
     testSkippedCount++;
   }
 }
@@ -293,8 +303,8 @@ try {
     log(`  - ${skillFile.name}: skipped (version tracking comment not found)`, 'yellow');
     skillSkippedCount++;
   }
-} catch (error) {
-  log(`  - ${skillFile.name}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
+} catch (error: unknown) {
+  logFileError(skillFile.name, error);
   skillSkippedCount++;
 }
 

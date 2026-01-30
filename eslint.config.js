@@ -6,7 +6,7 @@ import unicorn from 'eslint-plugin-unicorn';
 import security from 'eslint-plugin-security';
 import pluginNode from 'eslint-plugin-n';
 import importPlugin from 'eslint-plugin-import';
-import localRules from './tools/eslint-local-rules/index.js';
+import localRules from './packages/dev-tools/eslint-local-rules/index.js';
 
 /**
  * SHARED RULES PHILOSOPHY
@@ -226,7 +226,7 @@ export default [
     // General TypeScript files (production code with type-aware linting)
     // Exclude test files and tools - they have their own configs
     files: ['**/*.ts', '**/*.tsx'],
-    ignores: ['**/*.test.ts', '**/test/**/*.ts', 'tools/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/test/**/*.ts', 'packages/dev-tools/**/*.ts'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -457,9 +457,9 @@ export default [
   },
   {
     /**
-     * TOOLS SCRIPTS - DEVELOPMENT TOOLING
+     * DEV-TOOLS PACKAGE - DEVELOPMENT TOOLING
      *
-     * Why tools need flexibility:
+     * Why dev-tools need flexibility:
      * - Build scripts, dev utilities, pre-publish checks
      * - Execute system commands (npm, git, file operations)
      * - Process dynamic paths (generate docs, check duplication)
@@ -481,12 +481,12 @@ export default [
      * - Code quality rules (unicorn, import organization)
      *
      * Why project: false:
-     * - Tools not in tsconfig.json project references (separate from packages)
+     * - Dev-tools has its own tsconfig.json (separate from packages)
      * - Don't need type-aware linting (simple scripts)
      * - Faster linting for frequently-edited tools
      */
-    // Tools scripts - strict linting (match production standards)
-    files: ['tools/**/*.ts'],
+    // Dev-tools package - strict linting (match production standards)
+    files: ['packages/dev-tools/src/**/*.ts'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {

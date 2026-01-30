@@ -9,7 +9,7 @@
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
 const JSCPD_OUTPUT_DIR = './jscpd-report';
@@ -68,7 +68,7 @@ function runJscpd() {
 /**
  * Create clone signature for comparison
  */
-function getCloneSignature(clone) {
+function getCloneSignature(clone: any): string {
   return `${clone.format}:${clone.firstFile.name}:${clone.firstFile.startLoc.line}-${clone.firstFile.endLoc.line}:${clone.secondFile.name}:${clone.secondFile.startLoc.line}-${clone.secondFile.endLoc.line}`;
 }
 
@@ -99,7 +99,7 @@ function checkNewDuplications() {
   const baselineSignatures = new Set(baselineClones.map(getCloneSignature));
 
   // Find new clones (not in baseline)
-  const newClones = currentClones.filter(clone =>
+  const newClones = currentClones.filter((clone: any) =>
     !baselineSignatures.has(getCloneSignature(clone))
   );
 

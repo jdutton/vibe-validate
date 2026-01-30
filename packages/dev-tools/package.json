@@ -1,0 +1,21 @@
+{
+  "name": "@vibe-validate/dev-tools",
+  "version": "0.18.4",
+  "private": true,
+  "type": "module",
+  "description": "Development tools for the vibe-validate monorepo",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "semver": "^7.7.3",
+    "which": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.26",
+    "@types/semver": "^7.7.1",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.3"
+  }
+}

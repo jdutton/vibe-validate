@@ -34,7 +34,7 @@ import { log, getNpmTagVersion } from './common.js';
  * @param {string} name - Variable name
  * @param {string} value - Variable value
  */
-function setGitHubOutput(name, value) {
+function setGitHubOutput(name: string, value: string): void {
   if (process.env.GITHUB_OUTPUT) {
     // Running in GitHub Actions - append to $GITHUB_OUTPUT file
     appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
@@ -132,8 +132,9 @@ if (isStable) {
       log('  → Will update @next to this stable version', 'green');
       updateNext = true;
     }
-  } catch (error) {
-    log(`  ✗ Failed to query npm registry: ${error.message}`, 'red');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`  ✗ Failed to query npm registry: ${message}`, 'red');
     log('  → Defaulting to update @next (safer)', 'yellow');
     updateNext = true;
   }

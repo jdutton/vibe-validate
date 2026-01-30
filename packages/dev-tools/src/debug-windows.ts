@@ -11,9 +11,11 @@ import { existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecSync, normalizedTmpdir, mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
 // @ts-expect-error - which is available via @vibe-validate/git dependency
 import which from 'which';
+
+import { normalizedTmpdir, mkdirSyncReal, normalizePath } from '../../utils/dist/path-helpers.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 // ESM compatibility for __dirname and __filename
 const __filename = fileURLToPath(import.meta.url);
@@ -50,7 +52,7 @@ function error(message: string) {
   console.log(`${colors.red}✗${colors.reset} ${message}`);
 }
 
-function info(label: string, value: any) {
+function info(label: string, value: unknown): void {
   console.log(`${colors.blue}${label}:${colors.reset} ${value}`);
 }
 
@@ -363,13 +365,13 @@ if (whichPath) {
 }
 
 // Test 10: Import safe-exec and test
-section('10. Testing @vibe-validate/git safe-exec');
+section('10. Testing @vibe-validate/utils safe-exec');
 try {
   // Try to import the package
-  const safeExecModule = await import('@vibe-validate/git');
-  const { safeExecSync, safeExecResult, isToolAvailable, getToolVersion } = safeExecModule;
+  const safeExecModule = await import('../../utils/dist/safe-exec.js');
+  const { safeExecSync: safeExecSyncImported, safeExecResult, isToolAvailable, getToolVersion } = safeExecModule;
 
-  success('@vibe-validate/git imported successfully');
+  success('@vibe-validate/utils imported successfully');
 
   // Test isToolAvailable
   info('isToolAvailable("node")', isToolAvailable('node'));
@@ -380,7 +382,7 @@ try {
 
   // Test safeExecSync
   try {
-    const syncResult = safeExecSync('node', ['--version'], { encoding: 'utf-8' });
+    const syncResult = safeExecSyncImported('node', ['--version'], { encoding: 'utf-8' });
     success('safeExecSync succeeded');
     info('  Output', syncResult.toString().trim());
   } catch (err) {
@@ -461,7 +463,7 @@ try {
     }
   } else {
     warn('jscpd not found in PATH');
-    info('This is expected on fresh Windows CI - jscpd is installed as dev dependency');
+    info('This is expected on fresh Windows CI', 'jscpd is installed as dev dependency');
 
     // Try via node_modules
     const nodeModulesJscpd = join(process.cwd(), 'node_modules', '.bin', 'jscpd.cmd');
@@ -594,9 +596,9 @@ try {
 
   // Test 1: execSync with TEST_COMMAND_NODE_VERSION (same as failing tests)
   try {
-    const execSyncResult = safeExecSync(TEST_COMMAND_NODE_VERSION, { encoding: 'utf-8' });
+    const execSyncResult = safeExecSync('node', ['--version'], { encoding: 'utf-8' });
     success('execSync("node --version") succeeded');
-    info('  Output', execSyncResult.trim());
+    info('  Output', execSyncResult.toString().trim());
   } catch (err) {
     error(`execSync("node --version") failed: ${err}`);
   }
@@ -835,7 +837,7 @@ try {
         success('tmpdir() already returns normalized path');
       } else {
         warn('tmpdir() returns SHORT path, realpathSync() returns LONG path');
-        info('  This is the root cause of test failures on Windows!');
+        info('  This is the root cause', 'test failures on Windows!');
         info('  Length diff', `short: ${tempPath.length}, long: ${realTemp.length}`);
       }
     } catch (err) {

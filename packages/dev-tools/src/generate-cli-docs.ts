@@ -17,7 +17,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 import { PROJECT_ROOT, log } from './common.js';
 
@@ -40,14 +40,15 @@ try {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
   });
-} catch (err) {
+} catch (err: unknown) {
   log('❌ Failed to generate CLI help', 'red');
-  console.error(err.message);
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(message);
   process.exit(1);
 }
 
 // Use the entire help output (don't extract after separator)
-const cliContent = helpOutput.trim();
+const cliContent = helpOutput.toString().trim();
 
 // Create header
 const header = `# CLI Reference
