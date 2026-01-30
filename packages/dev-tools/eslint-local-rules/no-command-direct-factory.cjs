@@ -212,7 +212,7 @@ function createNoCommandDirectRule(config) {
       // Support multiple packages separated by |
       // Normalize path separators for cross-platform compatibility
       if (exemptPackage) {
-        const normalizedFilename = filename.replace(/\\/g, '/');
+        const normalizedFilename = filename.replaceAll('\\', '/');
         const exemptPatterns = exemptPackage.split('|');
         if (exemptPatterns.some(pattern => normalizedFilename.includes(pattern))) {
           return {};
