@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/utils",
-  "version": "0.18.4-rc.2",
+  "version": "0.18.4",
   "description": "Common utilities for vibe-validate packages (command execution, path normalization)",
   "type": "module",
   "main": "./dist/index.js",
