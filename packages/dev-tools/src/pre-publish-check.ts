@@ -540,16 +540,16 @@ if (skipGitChecks) {
   console.log('Checking CHANGELOG.md...');
 
   try {
-    // Read version from root package.json
-    const rootPkgJsonPath = join(PROJECT_ROOT, 'package.json');
-    if (!existsSync(rootPkgJsonPath)) {
-      throw new Error('Root package.json not found');
+    // Read version from core package (monorepo canonical version)
+    const corePkgJsonPath = join(packagesDir, 'core', 'package.json');
+    if (!existsSync(corePkgJsonPath)) {
+      throw new Error('Core package.json not found');
     }
 
-    const rootPkgJson = JSON.parse(readFileSync(rootPkgJsonPath, 'utf8')) as Record<string, unknown>;
-    const version = rootPkgJson['version'];
+    const corePkgJson = JSON.parse(readFileSync(corePkgJsonPath, 'utf8')) as Record<string, unknown>;
+    const version = corePkgJson['version'];
     if (typeof version !== 'string') {
-      throw new Error('Version not found in root package.json');
+      throw new Error('Version not found in core package.json');
     }
 
     // Read CHANGELOG.md
