@@ -13,6 +13,7 @@
  * 8. Workspace dependencies are correct
  * 9. All packages have proper "files" field
  * 10. All packages have required metadata (repository, author, license)
+ * 11. CHANGELOG.md has entry for current version (publish mode only)
  *
  * Usage:
  *   tsx packages/dev-tools/src/pre-publish-check.ts [--allow-branch BRANCH] [--skip-git-checks]
@@ -529,6 +530,63 @@ try {
   const message = error instanceof Error ? error.message : String(error);
   console.error(message);
   process.exit(1);
+}
+
+// Check 11: CHANGELOG.md has entry for current version (skip in development mode)
+if (skipGitChecks) {
+  log('⊘ CHANGELOG check skipped (development mode)', 'yellow');
+} else {
+  console.log('');
+  console.log('Checking CHANGELOG.md...');
+
+  try {
+    // Read version from core package (monorepo canonical version)
+    const corePkgJsonPath = join(packagesDir, 'core', 'package.json');
+    if (!existsSync(corePkgJsonPath)) {
+      throw new Error('Core package.json not found');
+    }
+
+    const corePkgJson = JSON.parse(readFileSync(corePkgJsonPath, 'utf8')) as Record<string, unknown>;
+    const version = corePkgJson['version'];
+    if (typeof version !== 'string') {
+      throw new TypeError('Version not found in core package.json');
+    }
+
+    // Read CHANGELOG.md
+    const changelogPath = join(PROJECT_ROOT, 'CHANGELOG.md');
+    if (!existsSync(changelogPath)) {
+      log('✗ CHANGELOG.md not found', 'red');
+      console.log('  Create CHANGELOG.md to document releases');
+      process.exit(1);
+    }
+
+    const changelogContent = readFileSync(changelogPath, 'utf8');
+
+    // Look for version entry: ## [X.Y.Z] - YYYY-MM-DD or ## [X.Y.Z-rc.N] - YYYY-MM-DD
+    // Escape dots in version string for regex matching
+    const escapedVersion = version.replaceAll('.', String.raw`\.`);
+    // eslint-disable-next-line security/detect-non-literal-regexp -- version from package.json is trusted
+    const versionPattern = new RegExp(String.raw`^## \[${escapedVersion}\] - \d{4}-\d{2}-\d{2}`, 'm');
+
+    if (!versionPattern.test(changelogContent)) {
+      log(`✗ CHANGELOG.md missing entry for version ${version}`, 'red');
+      console.log('');
+      console.log('  Recovery instructions:');
+      console.log(`  1. Add version entry to CHANGELOG.md:`);
+      console.log(`     ## [${version}] - ${new Date().toISOString().split('T')[0]}`);
+      console.log('  2. Document changes under the version header');
+      console.log('  3. Run pre-publish-check again');
+      console.log('');
+      process.exit(1);
+    }
+
+    log(`✓ CHANGELOG.md has entry for version ${version}`, 'green');
+  } catch (error) {
+    log('✗ Failed to check CHANGELOG.md', 'red');
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    process.exit(1);
+  }
 }
 
 // Success!
