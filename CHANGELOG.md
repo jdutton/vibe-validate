@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.4] - 2026-01-31
+
 ### Bug Fixes
 
 - **Fixed validation locking race condition in pre-commit** (Issue #110)
@@ -15,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed worktree corruption in git integration tests
 - **Windows compatibility: removed Unix-specific `find` command** (PR #108)
   - Build commands now work cross-platform
+- **Shift-left CHANGELOG validation to prevent publish failures**
+  - Added Check 11 to pre-publish-check: validates CHANGELOG.md has entry for current version
+  - Prevents npm publish success followed by GitHub Release failure
+  - Skips check in development mode (`--skip-git-checks`) for workflow flexibility
 
 ### Internal
 
@@ -24,10 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clean architecture: vibe-validate → turbo → tool
   - Error extraction works automatically through Turbo output
   - See `docs/comparisons/turborepo.md` for detailed comparison
+- **Refactored dev tools to symmetric monorepo structure** (PR #112)
+  - Moved tools/ to packages/dev-tools/ for consistency with other packages
+  - Enhanced pre-publish-check with 11 validation checks (up from 10)
+  - Added --skip-git-checks flag to prevent circular dependencies
 - Reduced code duplication by 70% (4.73% → 0.86%)
-- Enhanced pre-publish-check with package list validation, workspace dependencies check, files field validation, and metadata validation
 - Added comprehensive ESLint rules for code quality (custom rules for security and architecture enforcement)
-- Refactored dev tools to packages/dev-tools for symmetric monorepo structure
 
 ## [0.18.3] - 2026-01-05
 
