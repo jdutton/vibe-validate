@@ -540,16 +540,16 @@ if (skipGitChecks) {
   console.log('Checking CHANGELOG.md...');
 
   try {
-    // Read version from core package (monorepo canonical version)
-    const corePkgJsonPath = join(packagesDir, 'core', 'package.json');
-    if (!existsSync(corePkgJsonPath)) {
-      throw new Error('Core package.json not found');
+    // Read version from umbrella package (monorepo canonical version)
+    const umbrellaPkgJsonPath = join(packagesDir, 'vibe-validate', 'package.json');
+    if (!existsSync(umbrellaPkgJsonPath)) {
+      throw new Error('Umbrella package (vibe-validate) package.json not found');
     }
 
-    const corePkgJson = JSON.parse(readFileSync(corePkgJsonPath, 'utf8')) as Record<string, unknown>;
-    const version = corePkgJson['version'];
+    const umbrellaPkgJson = JSON.parse(readFileSync(umbrellaPkgJsonPath, 'utf8')) as Record<string, unknown>;
+    const version = umbrellaPkgJson['version'];
     if (typeof version !== 'string') {
-      throw new TypeError('Version not found in core package.json');
+      throw new TypeError('Version not found in umbrella package (vibe-validate) package.json');
     }
 
     // Read CHANGELOG.md
