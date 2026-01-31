@@ -262,9 +262,9 @@ If `cwd` is not specified, commands run from the git root:
 
 ```yaml
 steps:
-  - name: lint-root-scripts
+  - name: lint-dev-tools
     # No cwd specified - runs from git root
-    command: eslint tools/*.js
+    command: eslint packages/dev-tools/src/*.ts
 ```
 
 ### Path Normalization

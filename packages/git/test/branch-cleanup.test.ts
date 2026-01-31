@@ -90,7 +90,7 @@ function createGitHubFacts(overrides: Partial<BranchGitHubFacts> = {}): BranchGi
   };
 }
 
-function createMockPR(overrides: Partial<any> = {}): any {
+function createMockPR(overrides: Partial<BranchGitHubFacts> = {}): BranchGitHubFacts {
   return {
     number: 42,
     title: 'Test PR',
@@ -104,7 +104,7 @@ function createMockPR(overrides: Partial<any> = {}): any {
 }
 
 // Helper to setup common GitHub mocks
-function mockGitHubAvailable(mockPRs: any[]) {
+function mockGitHubAvailable(mockPRs: BranchGitHubFacts[]) {
   vi.mocked(utils.isToolAvailable).mockReturnValue(true);
   vi.mocked(ghCommands.listPullRequests).mockReturnValue(mockPRs);
 }

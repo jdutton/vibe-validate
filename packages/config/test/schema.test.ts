@@ -38,6 +38,9 @@ function createBaseConfig(overrides: Record<string, unknown> = {}) {
 function expectValidConfig(config: Record<string, unknown>) {
   const result = safeValidateConfig(config);
   expect(result.success).toBe(true);
+  if (!result.success) {
+    throw new Error('Expected valid config but got errors');
+  }
   return result;
 }
 
@@ -50,25 +53,61 @@ function expectValidConfig(config: Record<string, unknown>) {
 function expectInvalidConfig(
   config: Record<string, unknown>,
   errorCheck: string | RegExp
-) {
+): { success: false; errors: string[] } {
   const result = safeValidateConfig(config);
   expect(result.success).toBe(false);
-  expect(result.errors).toBeDefined();
+  if (result.success) {
+    throw new Error('Expected invalid config but validation succeeded');
+  }
 
   const errorCheckFn =
     typeof errorCheck === 'string'
       ? (e: string) => e.includes(errorCheck)
       : (e: string) => errorCheck.test(e);
 
-  expect(result.errors!.some(errorCheckFn)).toBe(true);
+  expect(result.errors).toBeDefined();
+  expect(result.errors.some(errorCheckFn)).toBe(true);
   return result;
 }
+
+/**
+ * Assert locking config with directory scope (default)
+ */
+function expectLockingDirectoryScope(result: ReturnType<typeof expectValidConfig>) {
+  expect(result.data?.locking?.enabled).toBe(true);
+  expect(result.data?.locking?.concurrencyScope).toBe('directory');
+}
+
+/**
+ * Assert secret scanning is enabled with optional scanCommand
+ */
+function expectSecretScanningEnabled(
+  result: ReturnType<typeof expectValidConfig>,
+  expectScanCommand: boolean
+) {
+  expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);
+  if (!expectScanCommand) {
+    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBeUndefined();
+  }
+}
+
+const TYPESCRIPT_NAME = 'TypeScript';
+const TSC_NO_EMIT = 'tsc --noEmit';
+const UNRECOGNIZED_KEY_ERROR = 'Unrecognized key';
+const UNKNOWN_PROPERTY = 'unknownProperty';
+const SHOULD_FAIL = 'should fail';
+const TRUST_FULL = 'full';
+const TRUST_SANDBOX = 'sandbox';
+const MAVEN_COMPILER = 'maven-compiler';
+const ESLINT_NAME = 'eslint';
+const OLD_PLUGIN = 'old-plugin';
+const DEPRECATED_EXTRACTOR = 'deprecated-extractor';
 
 describe('ValidationStepSchema', () => {
   it('should validate valid step', () => {
     const step = {
-      name: 'TypeScript',
-      command: 'tsc --noEmit',
+      name: TYPESCRIPT_NAME,
+      command: TSC_NO_EMIT,
     };
 
     expect(() => ValidationStepSchema.parse(step)).not.toThrow();
@@ -85,7 +124,7 @@ describe('ValidationStepSchema', () => {
 
   it('should reject empty command', () => {
     const step = {
-      name: 'TypeScript',
+      name: TYPESCRIPT_NAME,
       command: '',
     };
 
@@ -94,8 +133,8 @@ describe('ValidationStepSchema', () => {
 
   it('should accept optional fields', () => {
     const step = {
-      name: 'TypeScript',
-      command: 'tsc --noEmit',
+      name: TYPESCRIPT_NAME,
+      command: TSC_NO_EMIT,
       timeout: 60000,
       continueOnError: true,
       env: { NODE_ENV: 'test' },
@@ -108,8 +147,8 @@ describe('ValidationStepSchema', () => {
 
   it('should accept cwd field (relative to git root)', () => {
     const step = {
-      name: 'TypeScript',
-      command: 'tsc --noEmit',
+      name: TYPESCRIPT_NAME,
+      command: TSC_NO_EMIT,
       cwd: 'packages/core',
     };
 
@@ -204,7 +243,9 @@ describe('safeValidateConfig', () => {
 
     const result = safeValidateConfig(config);
     expect(result.success).toBe(true);
-    expect(result.data).toBeDefined();
+    if (result.success) {
+      expect(result.data).toBeDefined();
+    }
   });
 
   it('should return errors for invalid config', () => {
@@ -216,8 +257,10 @@ describe('safeValidateConfig', () => {
 
     const result = safeValidateConfig(config);
     expect(result.success).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.length).toBeGreaterThan(0);
+    if (!result.success) {
+      expect(result.errors).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
+    }
   });
 
   it('should format error messages', () => {
@@ -233,9 +276,12 @@ describe('safeValidateConfig', () => {
     };
 
     const result = safeValidateConfig(config);
-    expect(result.errors).toBeDefined();
-    // Should have descriptive error messages
-    expect(result.errors!.some(e => e.includes('cannot be empty'))).toBe(true);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors).toBeDefined();
+      // Should have descriptive error messages
+      expect(result.errors.some((e: string) => e.includes('cannot be empty'))).toBe(true);
+    }
   });
 });
 
@@ -255,7 +301,7 @@ describe('HooksConfigSchema', () => {
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);
+    expectSecretScanningEnabled(result, true);
     expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBe('gitleaks protect --staged --verbose');
   });
 
@@ -303,8 +349,7 @@ describe('HooksConfigSchema', () => {
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.hooks?.preCommit?.secretScanning?.enabled).toBe(true);
-    expect(result.data?.hooks?.preCommit?.secretScanning?.scanCommand).toBeUndefined();
+    expectSecretScanningEnabled(result, false);
   });
 
   it('should allow custom scan commands', () => {
@@ -366,8 +411,7 @@ describe('LockingConfigSchema', () => {
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.locking?.enabled).toBe(true);
-    expect(result.data?.locking?.concurrencyScope).toBe('directory');
+    expectLockingDirectoryScope(result);
   });
 
   it('should validate config with locking disabled', () => {
@@ -411,8 +455,7 @@ describe('LockingConfigSchema', () => {
     const config = createBaseConfig();
 
     const result = expectValidConfig(config);
-    expect(result.data?.locking?.enabled).toBe(true);
-    expect(result.data?.locking?.concurrencyScope).toBe('directory');
+    expectLockingDirectoryScope(result);
   });
 
   it('should reject invalid concurrencyScope values', () => {
@@ -444,11 +487,11 @@ describe('LockingConfigSchema', () => {
     const config = createBaseConfig({
       locking: {
         enabled: true,
-        unknownProperty: 'should fail'
+        [UNKNOWN_PROPERTY]: SHOULD_FAIL
       }
     });
 
-    expectInvalidConfig(config, 'Unrecognized key');
+    expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
   });
 });
 
@@ -459,7 +502,7 @@ describe('Strict Schema Validation', () => {
       unknownProperty: 'should be rejected'
     });
 
-    expectInvalidConfig(config, 'Unrecognized key');
+    expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
   });
 
   it('should reject unknown properties in nested objects (output)', () => {
@@ -482,20 +525,20 @@ describe('Strict Schema Validation', () => {
           steps: [{
             name: 'Test',
             command: 'npm test',
-            unknownStepProperty: 'should fail'
+            unknownStepProperty: SHOULD_FAIL
           }]
         }]
       }
     };
 
-    expectInvalidConfig(config, 'Unrecognized key');
+    expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
   });
 
   it('should reject unknown properties in git config', () => {
     const config = createBaseConfig({
       git: {
         mainBranch: 'main',
-        unknownGitProp: 'should fail'
+        unknownGitProp: SHOULD_FAIL
       }
     });
 
@@ -539,7 +582,7 @@ describe('ExtractorsConfigSchema', () => {
     const config = createBaseConfig({
       extractors: {
         builtins: {
-          trust: 'sandbox'
+          trust: TRUST_SANDBOX
         }
       }
     });
@@ -552,21 +595,21 @@ describe('ExtractorsConfigSchema', () => {
     const config = createBaseConfig({
       extractors: {
         builtins: {
-          trust: 'full',
-          disable: ['maven-compiler', 'eslint']
+          trust: TRUST_FULL,
+          disable: [MAVEN_COMPILER, ESLINT_NAME]
         }
       }
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.extractors?.builtins?.disable).toEqual(['maven-compiler', 'eslint']);
+    expect(result.data?.extractors?.builtins?.disable).toEqual([MAVEN_COMPILER, ESLINT_NAME]);
   });
 
   it('should validate config with custom local plugin trust level', () => {
     const config = createBaseConfig({
       extractors: {
         localPlugins: {
-          trust: 'full'
+          trust: TRUST_FULL
         }
       }
     });
@@ -579,14 +622,14 @@ describe('ExtractorsConfigSchema', () => {
     const config = createBaseConfig({
       extractors: {
         localPlugins: {
-          trust: 'sandbox',
-          disable: ['old-plugin', 'deprecated-extractor']
+          trust: TRUST_SANDBOX,
+          disable: [OLD_PLUGIN, DEPRECATED_EXTRACTOR]
         }
       }
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.extractors?.localPlugins?.disable).toEqual(['old-plugin', 'deprecated-extractor']);
+    expect(result.data?.extractors?.localPlugins?.disable).toEqual([OLD_PLUGIN, DEPRECATED_EXTRACTOR]);
   });
 
   it('should validate config with external npm package extractor (default trust)', () => {
@@ -602,8 +645,8 @@ describe('ExtractorsConfigSchema', () => {
 
     const result = expectValidConfig(config);
     expect(result.data?.extractors?.external).toHaveLength(1);
-    expect(result.data?.extractors?.external![0].package).toBe('@myorg/vibe-validate-plugin-gradle');
-    expect(result.data?.extractors?.external![0].trust).toBe('sandbox');
+    expect(result.data?.extractors?.external?.[0].package).toBe('@myorg/vibe-validate-plugin-gradle');
+    expect(result.data?.extractors?.external?.[0].trust).toBe('sandbox');
   });
 
   it('should validate config with external npm package extractor (explicit trust)', () => {
@@ -612,14 +655,14 @@ describe('ExtractorsConfigSchema', () => {
         external: [
           {
             package: '@myorg/internal-plugin',
-            trust: 'full'
+            trust: TRUST_FULL
           }
         ]
       }
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.extractors?.external![0].trust).toBe('full');
+    expect(result.data?.extractors?.external?.[0].trust).toBe('full');
   });
 
   it('should validate config with multiple external extractors', () => {
@@ -628,15 +671,15 @@ describe('ExtractorsConfigSchema', () => {
         external: [
           {
             package: '@myorg/plugin-gradle',
-            trust: 'sandbox'
+            trust: TRUST_SANDBOX
           },
           {
             package: '@myorg/plugin-webpack',
-            trust: 'sandbox'
+            trust: TRUST_SANDBOX
           },
           {
             package: '@myorg/internal-plugin',
-            trust: 'full'
+            trust: TRUST_FULL
           }
         ]
       }
@@ -650,17 +693,17 @@ describe('ExtractorsConfigSchema', () => {
     const config = createBaseConfig({
       extractors: {
         builtins: {
-          trust: 'full',
-          disable: ['maven-compiler']
+          trust: TRUST_FULL,
+          disable: [MAVEN_COMPILER]
         },
         localPlugins: {
-          trust: 'sandbox',
-          disable: ['old-plugin']
+          trust: TRUST_SANDBOX,
+          disable: [OLD_PLUGIN]
         },
         external: [
           {
             package: '@myorg/plugin-gradle',
-            trust: 'sandbox'
+            trust: TRUST_SANDBOX
           }
         ]
       }
@@ -668,9 +711,9 @@ describe('ExtractorsConfigSchema', () => {
 
     const result = expectValidConfig(config);
     expect(result.data?.extractors?.builtins?.trust).toBe('full');
-    expect(result.data?.extractors?.builtins?.disable).toEqual(['maven-compiler']);
+    expect(result.data?.extractors?.builtins?.disable).toEqual([MAVEN_COMPILER]);
     expect(result.data?.extractors?.localPlugins?.trust).toBe('sandbox');
-    expect(result.data?.extractors?.localPlugins?.disable).toEqual(['old-plugin']);
+    expect(result.data?.extractors?.localPlugins?.disable).toEqual([OLD_PLUGIN]);
     expect(result.data?.extractors?.external).toHaveLength(1);
   });
 
@@ -719,7 +762,7 @@ describe('ExtractorsConfigSchema', () => {
         external: [
           {
             package: '',
-            trust: 'sandbox'
+            trust: TRUST_SANDBOX
           }
         ]
       }
@@ -732,13 +775,13 @@ describe('ExtractorsConfigSchema', () => {
     const config = createBaseConfig({
       extractors: {
         builtins: {
-          trust: 'full',
-          unknownProperty: 'should fail'
+          trust: TRUST_FULL,
+          [UNKNOWN_PROPERTY]: SHOULD_FAIL
         }
       }
     });
 
-    expectInvalidConfig(config, 'Unrecognized key');
+    expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
   });
 
   it('should reject unknown properties in external extractor', () => {
@@ -747,13 +790,13 @@ describe('ExtractorsConfigSchema', () => {
         external: [
           {
             package: '@myorg/plugin',
-            trust: 'sandbox',
-            unknownField: 'should fail'
+            trust: TRUST_SANDBOX,
+            unknownField: SHOULD_FAIL
           }
         ]
       }
     });
 
-    expectInvalidConfig(config, 'Unrecognized key');
+    expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
   });
 });

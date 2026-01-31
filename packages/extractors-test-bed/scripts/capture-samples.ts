@@ -8,10 +8,12 @@
  * Cross-platform replacement for capture-samples.sh
  */
 
-import { safeExecSync } from '@vibe-validate/git';
-import { existsSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
+import { existsSync,  copyFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { safeExecSync } from '@vibe-validate/git';
+import { mkdirSyncReal } from '@vibe-validate/utils';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -58,7 +60,8 @@ function runCommand(command: string, outputFile?: string): void {
   } catch (error) {
     // Expected to fail (tests are intentional failures)
     if (outputFile && error instanceof Error && 'stdout' in error) {
-      const stdout = (error as any).stdout as string;
+      const errorWithStdout = error as Error & { stdout?: string };
+      const stdout = errorWithStdout.stdout;
       if (stdout) {
         writeFileSync(outputFile, stdout, 'utf8');
       }
@@ -74,10 +77,10 @@ async function main(): Promise<void> {
   console.log('');
 
   // Create sample directories
-  mkdirSync(join(SAMPLES_DIR, 'jest'), { recursive: true });
-  mkdirSync(join(SAMPLES_DIR, 'vitest'), { recursive: true });
-  mkdirSync(join(SAMPLES_DIR, 'mocha'), { recursive: true });
-  mkdirSync(JUNIT_DIR, { recursive: true });
+  mkdirSyncReal(join(SAMPLES_DIR, 'jest'), { recursive: true });
+  mkdirSyncReal(join(SAMPLES_DIR, 'vitest'), { recursive: true });
+  mkdirSyncReal(join(SAMPLES_DIR, 'mocha'), { recursive: true });
+  mkdirSyncReal(JUNIT_DIR, { recursive: true });
 
   // Jest - Text Output
   section('📝 Capturing Jest text output...');

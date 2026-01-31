@@ -11,7 +11,7 @@
  * - Hash format: SHA256(normalizedCommand + '__' + workdir).substring(0, 16)
  */
 
-/* eslint-disable sonarjs/assertions-in-tests */
+ 
 // Note: This rule is disabled because we use helper functions that contain assertions.
 // SonarJS cannot detect assertions inside helper functions, resulting in false positives.
 

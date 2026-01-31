@@ -6,7 +6,7 @@
  * used hardcoded existsSync() instead of findConfigPath() walk-up logic.
  */
 
-/* eslint-disable sonarjs/assertions-in-tests -- Using assertCheck() helper which wraps expect() */
+ 
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,7 +31,7 @@ vi.mock('fs', () => ({
 }));
 
 vi.mock('child_process', async () => {
-  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process');
+  const actual = await vi.importActual('node:child_process');
   return {
     ...actual,
     execSync: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('child_process', async () => {
 });
 
 vi.mock('@vibe-validate/utils', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
+  const actual = await vi.importActual('@vibe-validate/utils');
   return {
     ...actual,
     isToolAvailable: vi.fn(),
@@ -54,7 +54,7 @@ vi.mock('@vibe-validate/utils', async () => {
 });
 
 vi.mock('@vibe-validate/git', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+  const actual = await vi.importActual('@vibe-validate/git');
   return {
     ...actual,
     verifyRef: vi.fn(() => true),
@@ -104,7 +104,7 @@ async function setupConfigFoundMocks(includeFileSystem = true): Promise<void> {
   if (includeFileSystem) {
     await mockDoctorFileSystem();
   }
-  mockDoctorEnvironment();
+  await mockDoctorEnvironment();
 
   vi.mocked(findConfigPath).mockReturnValue(configPath);
   vi.mocked(loadConfig).mockResolvedValue(mockConfig);
@@ -119,8 +119,8 @@ async function setupConfigFoundMocks(includeFileSystem = true): Promise<void> {
 /**
  * Sets up config not found mocks (for negative test cases)
  */
-function setupConfigNotFoundMocks(): void {
-  mockDoctorEnvironment();
+async function setupConfigNotFoundMocks(): Promise<void> {
+  await mockDoctorEnvironment();
 
   vi.mocked(findConfigPath).mockReturnValue(null);
   vi.mocked(loadConfig).mockResolvedValue(null);
@@ -214,7 +214,7 @@ describe('doctor command from subdirectories', () => {
 
     it('should fail when run from non-project directory (no config found)', async () => {
       // ARRANGE: Simulate running from /tmp (no config anywhere)
-      setupConfigNotFoundMocks();
+      await setupConfigNotFoundMocks();
 
       // ACT: Run doctor
       const result = await runDoctorVerbose();

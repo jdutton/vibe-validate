@@ -11,6 +11,9 @@ import { findAndLoadConfig } from '@vibe-validate/config';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 
+// Constants (extracted to avoid duplication warnings)
+const CONFIG_FILENAME = 'vibe-validate.config.yaml';
+
 /**
  * Find configuration file by walking up directory tree
  *
@@ -26,7 +29,7 @@ export function findConfigUp(startDir: string): string | null {
 
   // Walk up directory tree until we find config or reach root
   while (currentDir !== root) {
-    const configPath = join(currentDir, 'vibe-validate.config.yaml');
+    const configPath = join(currentDir, CONFIG_FILENAME);
     if (existsSync(configPath)) {
       return currentDir;
     }
@@ -40,7 +43,7 @@ export function findConfigUp(startDir: string): string | null {
   }
 
   // Check root directory as final attempt
-  const rootConfigPath = join(root, 'vibe-validate.config.yaml');
+  const rootConfigPath = join(root, CONFIG_FILENAME);
   if (existsSync(rootConfigPath)) {
     return root;
   }
@@ -139,7 +142,7 @@ export function findConfigPath(cwd?: string): string | null {
     return null;
   }
 
-  return join(configDir, 'vibe-validate.config.yaml');
+  return join(configDir, CONFIG_FILENAME);
 }
 
 /**

@@ -48,12 +48,12 @@ function isValidYaml(content: string): boolean {
 /**
  * Helper: Validate config without $schema property
  */
-function validateConfigContent(content: string, filename: string): { success: boolean; errors?: any } {
+function validateConfigContent(content: string, filename: string): { success: boolean; errors?: unknown } {
   const raw = parseYaml(content);
   let config = raw;
   if (raw && typeof raw === 'object' && '$schema' in raw) {
     // eslint-disable-next-line sonarjs/no-unused-vars -- NOSONAR - Unused variable intentional, destructured only to exclude $schema
-    const { $schema: _$schema, ...rest } = raw as any;
+    const { $schema: _$schema, ...rest } = raw;
     config = rest;
   }
   const result = safeValidateConfig(config);
@@ -66,7 +66,7 @@ function validateConfigContent(content: string, filename: string): { success: bo
 /**
  * Helper: Read and parse template config
  */
-function readTemplateConfig(filename: string): any {
+function readTemplateConfig(filename: string): unknown {
   const filePath = resolve(TEMPLATES_DIR, filename);
   const content = readFileSync(filePath, 'utf-8');
   return parseYaml(content);

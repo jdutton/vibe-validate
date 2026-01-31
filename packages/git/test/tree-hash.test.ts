@@ -5,12 +5,13 @@
  * to ensure validation state caching works correctly across runs.
  */
 
-import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync, type Stats } from 'node:fs';
 
 import * as utils from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import * as gitExecutor from '../src/git-executor.js';
+import type { GitExecutionOptions } from '../src/git-executor.js';
 import { getGitTreeHash } from '../src/tree-hash.js';
 
 // Mock git-executor
@@ -63,7 +64,7 @@ function mockStandardGitCommands(writeTreeOutput = 'abc123\n') {
  * Helper to create mock file stats
  * Used for testing stale temp index cleanup
  */
-function createMockStats(mtimeMs: number) {
+function createMockStats(mtimeMs: number): Partial<Stats> {
   return { mtimeMs };
 }
 
@@ -206,7 +207,7 @@ describe('getGitTreeHash', () => {
       ([args]) => args[0] === 'write-tree'
     );
     expect(writeTreeCall?.[1]).toHaveProperty('env');
-    expect((writeTreeCall?.[1] as any).env).toHaveProperty('GIT_INDEX_FILE');
+    expect((writeTreeCall?.[1] as GitExecutionOptions).env).toHaveProperty('GIT_INDEX_FILE');
 
     // Verify temp index is cleaned up (SECURITY: fs.unlinkSync instead of rm)
     expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
@@ -339,7 +340,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-12345',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as Stats);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -354,7 +355,7 @@ describe('getGitTreeHash', () => {
     it('should skip temp index files from running processes', async () => {
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
       mockIsProcessRunning.mockReturnValue(true); // Process still running
 
       await getGitTreeHash();
@@ -372,7 +373,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-12345',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
       mockIsProcessRunning.mockReturnValue(false); // Process not running
 
       await getGitTreeHash();
@@ -388,7 +389,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-99999']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -406,7 +407,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
 
       await getGitTreeHash();
 
@@ -422,7 +423,7 @@ describe('getGitTreeHash', () => {
     it('should skip recent legacy temp index', async () => {
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
-      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as Stats);
 
       await getGitTreeHash();
 
@@ -439,7 +440,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
       mockIsProcessRunning.mockReturnValue(false);
 
       // Mock unlinkSync to fail for stale file but succeed for current process
@@ -528,7 +529,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-33333',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as any);
+      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();

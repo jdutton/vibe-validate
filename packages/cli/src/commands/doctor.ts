@@ -48,6 +48,29 @@ import { checkSync, ciConfigToWorkflowOptions } from './generate-workflow.js';
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
 
+// Check name constants (extracted to avoid duplication warnings)
+const CHECK_CLI_BUILD_STATUS = 'CLI build status';
+const CHECK_NODE_VERSION = 'Node.js version';
+const CHECK_PACKAGE_MANAGER = 'Package manager';
+const CHECK_GIT_REPOSITORY = 'Git repository';
+const CHECK_GIT_MAIN_BRANCH = 'Git main branch';
+const CHECK_GIT_REMOTE_ORIGIN = 'Git remote origin';
+const CHECK_GIT_REMOTE_MAIN_BRANCH = 'Git remote main branch';
+const CHECK_CONFIG_VALID = 'Configuration valid';
+const CHECK_GITIGNORE_STATE_FILE = 'Gitignore state file';
+const CHECK_VALIDATION_HISTORY = 'Validation history';
+const CHECK_VALIDATION_HISTORY_MIGRATION = 'Validation history migration';
+const CHECK_PRE_COMMIT_HOOK = 'Pre-commit hook';
+const CHECK_GITHUB_ACTIONS_WORKFLOW = 'GitHub Actions workflow';
+const CHECK_PRE_COMMIT_SECRET_SCANNING = 'Pre-commit secret scanning';
+const CHECK_VIBE_VALIDATE_VERSION = 'vibe-validate version';
+
+// Common message constants
+const MSG_SKIPPED_NOT_IN_GIT = 'Skipped (not in git repository)';
+const MSG_SKIPPED_NO_CONFIG = 'Skipped (no config)';
+const SUGGESTION_INSTALL_NODE_JS = 'Install Node.js: https://nodejs.org/';
+const GIT_REF_DEPRECATED_RUNS = 'refs/notes/vibe-validate/runs';
+
 /**
  * Result of a single doctor check
  */
@@ -126,9 +149,9 @@ function checkCliBuildSync(): DoctorCheckResult {
     const gitRoot = findGitRoot();
     if (!gitRoot) {
       return {
-        name: 'CLI build status',
+        name: CHECK_CLI_BUILD_STATUS,
         passed: true,
-        message: 'Skipped (not in git repository)',
+        message: MSG_SKIPPED_NOT_IN_GIT,
       };
     }
 
@@ -137,7 +160,7 @@ function checkCliBuildSync(): DoctorCheckResult {
     // Not in vibe-validate source tree
     if (!existsSync(sourcePackageJsonPath)) {
       return {
-        name: 'CLI build status',
+        name: CHECK_CLI_BUILD_STATUS,
         passed: true,
         message: 'Skipped (not in vibe-validate source tree)',
       };
@@ -155,7 +178,7 @@ function checkCliBuildSync(): DoctorCheckResult {
     // Compare versions - this is the confusing scenario that needs detection
     if (runningVersion !== sourceVersion) {
       return {
-        name: 'CLI build status',
+        name: CHECK_CLI_BUILD_STATUS,
         passed: false,
         message: `Build is stale: running v${runningVersion}, source v${sourceVersion}`,
         suggestion: 'Rebuild packages: pnpm -r build',
@@ -163,7 +186,7 @@ function checkCliBuildSync(): DoctorCheckResult {
     }
 
     return {
-      name: 'CLI build status',
+      name: CHECK_CLI_BUILD_STATUS,
       passed: true,
       message: `Build is up to date (v${runningVersion})`,
     };
@@ -171,7 +194,7 @@ function checkCliBuildSync(): DoctorCheckResult {
   } catch (_error) {
     // Any errors are non-critical - this is a development-only check
     return {
-      name: 'CLI build status',
+      name: CHECK_CLI_BUILD_STATUS,
       passed: true,
       message: 'Skipped (could not determine build status)',
     };
@@ -188,10 +211,10 @@ function checkNodeVersion(): DoctorCheckResult {
     // Validate that we got a valid version number
     if (!version) {
       return {
-        name: 'Node.js version',
+        name: CHECK_NODE_VERSION,
         passed: false,
         message: 'Failed to detect Node.js version',
-        suggestion: 'Install Node.js: https://nodejs.org/',
+        suggestion: SUGGESTION_INSTALL_NODE_JS,
       };
     }
 
@@ -199,19 +222,19 @@ function checkNodeVersion(): DoctorCheckResult {
 
     if (Number.isNaN(majorVersion) || majorVersion === 0) {
       return {
-        name: 'Node.js version',
+        name: CHECK_NODE_VERSION,
         passed: false,
         message: `Failed to parse Node.js version from output: "${version}"`,
-        suggestion: 'Install Node.js: https://nodejs.org/',
+        suggestion: SUGGESTION_INSTALL_NODE_JS,
       };
     }
 
     return majorVersion >= 20 ? {
-        name: 'Node.js version',
+        name: CHECK_NODE_VERSION,
         passed: true,
         message: `${version} (meets requirement: >=20.0.0)`,
       } : {
-        name: 'Node.js version',
+        name: CHECK_NODE_VERSION,
         passed: false,
         message: `${version} is too old. Node.js 20+ required.`,
         suggestion: 'Upgrade Node.js: https://nodejs.org/ or use nvm',
@@ -219,7 +242,7 @@ function checkNodeVersion(): DoctorCheckResult {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Node.js version',
+      name: CHECK_NODE_VERSION,
       passed: false,
       message: `Failed to detect Node.js version: ${errorMessage}`,
       suggestion: 'Install Node.js: https://nodejs.org/',
@@ -258,13 +281,13 @@ function checkGitRepository(): DoctorCheckResult {
     const isGitRepo = isGitRepository();
     if (isGitRepo) {
       return {
-        name: 'Git repository',
+        name: CHECK_GIT_REPOSITORY,
         passed: true,
         message: 'Current directory is a git repository',
       };
     } else {
       return {
-        name: 'Git repository',
+        name: CHECK_GIT_REPOSITORY,
         passed: false,
         message: 'Current directory is not a git repository',
         suggestion: 'Run: git init',
@@ -273,7 +296,7 @@ function checkGitRepository(): DoctorCheckResult {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Git repository',
+      name: CHECK_GIT_REPOSITORY,
       passed: false,
       message: `Error checking git repository: ${errorMessage}`,
       suggestion: 'Run: git init',
@@ -330,7 +353,7 @@ async function checkConfigValid(
         });
 
         return {
-          name: 'Configuration valid',
+          name: CHECK_CONFIG_VALID,
           passed: false,
           message,
           suggestion,
@@ -343,7 +366,7 @@ async function checkConfigValid(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
         const fileName = configPath.split('/').pop() || 'vibe-validate.config.yaml';
         return {
-          name: 'Configuration valid',
+          name: CHECK_CONFIG_VALID,
           passed: false,
           message: `Found ${fileName} but it contains validation errors`,
           suggestion: [
@@ -357,7 +380,7 @@ async function checkConfigValid(
         // No config file found
         const templateList = formatTemplateList();
         return {
-          name: 'Configuration valid',
+          name: CHECK_CONFIG_VALID,
           passed: false,
           message: 'No configuration file found',
           suggestion: [
@@ -379,13 +402,13 @@ async function checkConfigValid(
     }
 
     return {
-      name: 'Configuration valid',
+      name: CHECK_CONFIG_VALID,
       passed: true,
       message: `Loaded successfully (${config.validation.phases.length} phases)`,
     };
   } catch (error) {
     return {
-      name: 'Configuration valid',
+      name: CHECK_CONFIG_VALID,
       passed: false,
       message: `Invalid configuration: ${error instanceof Error ? error.message : String(error)}`,
       suggestion: 'Check syntax in vibe-validate.config.yaml',
@@ -401,9 +424,9 @@ async function checkPackageManager(config?: VibeValidateConfig | null): Promise<
     if (!config) {
       // Config check will catch this
       return {
-        name: 'Package manager',
+        name: CHECK_PACKAGE_MANAGER,
         passed: true,
-        message: 'Skipped (no config)',
+        message: MSG_SKIPPED_NO_CONFIG,
       };
     }
 
@@ -415,7 +438,7 @@ async function checkPackageManager(config?: VibeValidateConfig | null): Promise<
 
     if (version) {
       return {
-        name: 'Package manager',
+        name: CHECK_PACKAGE_MANAGER,
         passed: true,
         message: `${pm} ${version} is available`,
       };
@@ -426,7 +449,7 @@ async function checkPackageManager(config?: VibeValidateConfig | null): Promise<
     const installCmd = getGlobalInstallCommand(currentPm, pm);
 
     return {
-      name: 'Package manager',
+      name: CHECK_PACKAGE_MANAGER,
       passed: false,
       message: `${pm} not found (required by config commands)`,
       suggestion: pm === 'npm'
@@ -436,7 +459,7 @@ async function checkPackageManager(config?: VibeValidateConfig | null): Promise<
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Package manager',
+      name: CHECK_PACKAGE_MANAGER,
       passed: true,
       message: `Skipped (config check failed): ${errorMessage}`,
     };
@@ -454,9 +477,9 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
   const gitRoot = findGitRoot();
   if (!gitRoot) {
     return {
-      name: 'GitHub Actions workflow',
+      name: CHECK_GITHUB_ACTIONS_WORKFLOW,
       passed: true,
-      message: 'Skipped (not in git repository)',
+      message: MSG_SKIPPED_NOT_IN_GIT,
     };
   }
 
@@ -464,7 +487,7 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
 
   if (!existsSync(workflowPath)) {
     return {
-      name: 'GitHub Actions workflow',
+      name: CHECK_GITHUB_ACTIONS_WORKFLOW,
       passed: true,
       message: 'No workflow file (optional)',
     };
@@ -473,16 +496,16 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
   try {
     if (!config) {
       return {
-        name: 'GitHub Actions workflow',
+        name: CHECK_GITHUB_ACTIONS_WORKFLOW,
         passed: true,
-        message: 'Skipped (no config)',
+        message: MSG_SKIPPED_NO_CONFIG,
       };
     }
 
     // Check if workflow check is disabled in config
     if (config.ci?.disableWorkflowCheck === true) {
       return {
-        name: 'GitHub Actions workflow',
+        name: CHECK_GITHUB_ACTIONS_WORKFLOW,
         passed: true,
         message: 'Workflow sync check disabled (ci.disableWorkflowCheck: true)',
       };
@@ -497,11 +520,11 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
     const { inSync, diff } = checkSync(config, generateOptions, workflowPath);
 
     return inSync ? {
-        name: 'GitHub Actions workflow',
+        name: CHECK_GITHUB_ACTIONS_WORKFLOW,
         passed: true,
         message: 'Workflow is in sync with config',
       } : {
-        name: 'GitHub Actions workflow',
+        name: CHECK_GITHUB_ACTIONS_WORKFLOW,
         passed: false,
         message: `Workflow is out of sync: ${diff ?? 'differs from config'}`,
         suggestion: [
@@ -515,7 +538,7 @@ async function checkWorkflowSync(config?: VibeValidateConfig | null): Promise<Do
       };
   } catch (error) {
     return {
-      name: 'GitHub Actions workflow',
+      name: CHECK_GITHUB_ACTIONS_WORKFLOW,
       passed: false,
       message: `Failed to check workflow sync: ${error instanceof Error ? error.message : String(error)}`,
       suggestion: 'Verify workflow file syntax',
@@ -536,7 +559,7 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
   // If user explicitly disabled, acknowledge their choice
   if (!preCommitEnabled) {
     return {
-      name: 'Pre-commit hook',
+      name: CHECK_PRE_COMMIT_HOOK,
       passed: true,
       message: 'Pre-commit hook disabled in config (user preference)',
     };
@@ -546,9 +569,9 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
   const gitRoot = findGitRoot();
   if (!gitRoot) {
     return {
-      name: 'Pre-commit hook',
+      name: CHECK_PRE_COMMIT_HOOK,
       passed: true,
-      message: 'Skipped (not in git repository)',
+      message: MSG_SKIPPED_NOT_IN_GIT,
     };
   }
 
@@ -558,7 +581,7 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
   if (!existsSync(huskyPath)) {
     const cmd = getCommandName();
     return {
-      name: 'Pre-commit hook',
+      name: CHECK_PRE_COMMIT_HOOK,
       passed: false,
       message: 'Pre-commit hook not installed',
       suggestion: `Manual: npx husky init && echo "${cmd} pre-commit" > .husky/pre-commit\n   💡 Or run: ${cmd} init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config`,
@@ -576,7 +599,7 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
 
     if (hasVibeValidate) {
       return {
-        name: 'Pre-commit hook',
+        name: CHECK_PRE_COMMIT_HOOK,
         passed: true,
         message: 'Pre-commit hook installed and runs vibe-validate',
       };
@@ -585,7 +608,7 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
       const cmd = getCommandName();
       const hookPreview = hookContent.split('\n').slice(0, 3).join('; ').trim();
       return {
-        name: 'Pre-commit hook',
+        name: CHECK_PRE_COMMIT_HOOK,
         passed: false,
         message: `Custom pre-commit hook detected: "${hookPreview}..."`,
         suggestion: `Manual: Verify that .husky/pre-commit runs "${expectedCommand}"\n   💡 Or run: ${cmd} init --setup-hooks\n   💡 Or disable: set hooks.preCommit.enabled=false in config`,
@@ -594,7 +617,7 @@ async function checkPreCommitHook(config?: VibeValidateConfig | null): Promise<D
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Pre-commit hook',
+      name: CHECK_PRE_COMMIT_HOOK,
       passed: false,
       message: `Pre-commit hook exists but unreadable: ${errorMessage}`,
       suggestion: 'Fix file permissions or set hooks.preCommit.enabled=false',
@@ -659,7 +682,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
 
       if (currentVersion === latestVersion) {
         return {
-          name: 'vibe-validate version',
+          name: CHECK_VIBE_VALIDATE_VERSION,
           passed: true,
           message: `Current: ${currentVersion}${contextLabel} — up to date with npm`,
         };
@@ -667,7 +690,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
         // Only show suggestion if current version is behind npm
         const cmd = getCommandName();
         return {
-          name: 'vibe-validate version',
+          name: CHECK_VIBE_VALIDATE_VERSION,
           passed: true, // Warning only, not a failure
           message: `Current: ${currentVersion}${contextLabel}, Latest: ${latestVersion} available`,
           suggestion: `Upgrade: ${getUpgradeCommand(context)}\n   💡 After upgrade: Run '${cmd} doctor' to verify setup`,
@@ -675,7 +698,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
       } else {
         // Current version is ahead of npm (pre-release or unpublished)
         return {
-          name: 'vibe-validate version',
+          name: CHECK_VIBE_VALIDATE_VERSION,
           passed: true,
           message: `Current: ${currentVersion}${contextLabel} (ahead of npm: ${latestVersion})`,
         };
@@ -684,7 +707,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
       // npm registry unavailable - not a critical error
       const errorMessage = npmError instanceof Error ? npmError.message : String(npmError);
       return {
-        name: 'vibe-validate version',
+        name: CHECK_VIBE_VALIDATE_VERSION,
         passed: true,
         message: `Current version: ${currentVersion} (unable to check for updates: ${errorMessage})`,
       };
@@ -692,7 +715,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'vibe-validate version',
+      name: CHECK_VIBE_VALIDATE_VERSION,
       passed: true,
       message: `Unable to determine version: ${errorMessage}`,
     };
@@ -713,9 +736,9 @@ function checkGitignoreStateFile(): DoctorCheckResult {
   const gitRoot = findGitRoot();
   if (!gitRoot) {
     return {
-      name: 'Gitignore state file',
+      name: CHECK_GITIGNORE_STATE_FILE,
       passed: true,
-      message: 'Skipped (not in git repository)',
+      message: MSG_SKIPPED_NOT_IN_GIT,
     };
   }
 
@@ -724,7 +747,7 @@ function checkGitignoreStateFile(): DoctorCheckResult {
   // Check if .gitignore exists
   if (!existsSync(gitignorePath)) {
     return {
-      name: 'Gitignore state file',
+      name: CHECK_GITIGNORE_STATE_FILE,
       passed: true,
       message: '.gitignore file not found (state file deprecated - using git notes)',
     };
@@ -745,7 +768,7 @@ function checkGitignoreStateFile(): DoctorCheckResult {
       };
     } else {
       return {
-        name: 'Gitignore state file',
+        name: CHECK_GITIGNORE_STATE_FILE,
         passed: true,
         message: 'No deprecated state file entries in .gitignore',
       };
@@ -753,7 +776,7 @@ function checkGitignoreStateFile(): DoctorCheckResult {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Gitignore state file',
+      name: CHECK_GITIGNORE_STATE_FILE,
       passed: false,
       message: `.gitignore exists but is unreadable: ${errorMessage}`,
       suggestion: 'Fix file permissions: chmod 644 .gitignore',
@@ -802,16 +825,16 @@ function checkCacheMigration(): DoctorCheckResult {
     // Check if the EXACT old validation history ref exists (singular "runs", not "run/")
     // Using git for-each-ref with exact ref name to avoid matching "run/" subdirectories
     const result = executeGitCommand(
-      ['for-each-ref', '--format=%(refname)', 'refs/notes/vibe-validate/runs'],
+      ['for-each-ref', '--format=%(refname)', GIT_REF_DEPRECATED_RUNS],
       { ignoreErrors: true, suppressStderr: true }
     );
 
-    if (result.success && result.stdout.trim() === 'refs/notes/vibe-validate/runs') {
+    if (result.success && result.stdout.trim() === GIT_REF_DEPRECATED_RUNS) {
       // Old validation history namespace exists - automatically clean it up
       try {
-        executeGitCommand(['update-ref', '-d', 'refs/notes/vibe-validate/runs']);
+        executeGitCommand(['update-ref', '-d', GIT_REF_DEPRECATED_RUNS]);
         return {
-          name: 'Validation history migration',
+          name: CHECK_VALIDATION_HISTORY_MIGRATION,
           passed: true,
           message: 'Automatically removed old validation history format (pre-v0.15.0)',
         };
@@ -819,7 +842,7 @@ function checkCacheMigration(): DoctorCheckResult {
       } catch (_error) {
         // Fallback to manual suggestion if auto-cleanup fails
         return {
-          name: 'Validation history migration',
+          name: CHECK_VALIDATION_HISTORY_MIGRATION,
           passed: true, // Not a failure, just informational
           message: 'Old validation history format detected (pre-v0.15.0)',
           suggestion: `Manual cleanup:\n   git update-ref -d refs/notes/vibe-validate/runs\n   ℹ️  This removes the deprecated "runs" namespace`,
@@ -828,7 +851,7 @@ function checkCacheMigration(): DoctorCheckResult {
     }
 
     return {
-      name: 'Validation history migration',
+      name: CHECK_VALIDATION_HISTORY_MIGRATION,
       passed: true,
       message: 'Using current validation history format',
     };
@@ -836,7 +859,7 @@ function checkCacheMigration(): DoctorCheckResult {
   } catch (_error) {
     // Git command failed or no git notes - that's fine
     return {
-      name: 'Validation history migration',
+      name: CHECK_VALIDATION_HISTORY_MIGRATION,
       passed: true,
       message: 'No validation history to migrate',
     };
@@ -852,7 +875,7 @@ async function checkHistoryHealth(): Promise<DoctorCheckResult> {
 
     if (!health.shouldWarn) {
       return {
-        name: 'Validation history',
+        name: CHECK_VALIDATION_HISTORY,
         passed: true,
         message: `${health.totalNotes} tree hashes tracked, history is healthy`,
       };
@@ -861,7 +884,7 @@ async function checkHistoryHealth(): Promise<DoctorCheckResult> {
     // Has warnings - advisory only, not a critical failure
     const cmd = getCommandName();
     return {
-      name: 'Validation history',
+      name: CHECK_VALIDATION_HISTORY,
       passed: true, // Advisory: large history is a warning, not a failure
       message: `${health.totalNotes} tree hashes tracked (${health.oldNotesCount} older than 90 days)`,
       suggestion: `Prune old history: ${cmd} history prune --older-than "90 days"`,
@@ -870,7 +893,7 @@ async function checkHistoryHealth(): Promise<DoctorCheckResult> {
     // Git notes not available or other error - not critical
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Validation history',
+      name: CHECK_VALIDATION_HISTORY,
       passed: true,
       message: `History unavailable (not in git repo or no validation runs yet): ${errorMessage}`,
     };
@@ -884,9 +907,9 @@ async function checkMainBranch(config?: VibeValidateConfig | null): Promise<Doct
   try {
     if (!config) {
       return {
-        name: 'Git main branch',
+        name: CHECK_GIT_MAIN_BRANCH,
         passed: true,
-        message: 'Skipped (no config)',
+        message: MSG_SKIPPED_NO_CONFIG,
       };
     }
 
@@ -897,7 +920,7 @@ async function checkMainBranch(config?: VibeValidateConfig | null): Promise<Doct
     const localResult = verifyRef(mainBranch);
     if (localResult) {
       return {
-        name: 'Git main branch',
+        name: CHECK_GIT_MAIN_BRANCH,
         passed: true,
         message: `Branch '${mainBranch}' exists locally`,
       };
@@ -907,14 +930,14 @@ async function checkMainBranch(config?: VibeValidateConfig | null): Promise<Doct
     const remoteResult = verifyRef(`${remoteOrigin}/${mainBranch}`);
     if (remoteResult) {
       return {
-        name: 'Git main branch',
+        name: CHECK_GIT_MAIN_BRANCH,
         passed: true,
         message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}' (fetch-depth: 0 required in CI)`,
       };
     }
 
     return {
-      name: 'Git main branch',
+      name: CHECK_GIT_MAIN_BRANCH,
       passed: false,
       message: `Configured main branch '${mainBranch}' does not exist locally or on remote '${remoteOrigin}'`,
       suggestion: `Create branch: git checkout -b ${mainBranch} OR update config to use existing branch (e.g., 'master', 'develop')`,
@@ -922,7 +945,7 @@ async function checkMainBranch(config?: VibeValidateConfig | null): Promise<Doct
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Git main branch',
+      name: CHECK_GIT_MAIN_BRANCH,
       passed: true,
       message: `Skipped (config or git error): ${errorMessage}`,
     };
@@ -936,9 +959,9 @@ async function checkRemoteOrigin(config?: VibeValidateConfig | null): Promise<Do
   try {
     if (!config) {
       return {
-        name: 'Git remote origin',
+        name: CHECK_GIT_REMOTE_ORIGIN,
         passed: true,
-        message: 'Skipped (no config)',
+        message: MSG_SKIPPED_NO_CONFIG,
       };
     }
 
@@ -952,14 +975,14 @@ async function checkRemoteOrigin(config?: VibeValidateConfig | null): Promise<Do
 
       if (remotes.includes(remoteOrigin)) {
         return {
-          name: 'Git remote origin',
+          name: CHECK_GIT_REMOTE_ORIGIN,
           passed: true,
           message: `Remote '${remoteOrigin}' exists`,
         };
       } else {
         const availableRemotes = remotes.join(', ') || '(none)';
         return {
-          name: 'Git remote origin',
+          name: CHECK_GIT_REMOTE_ORIGIN,
           passed: false,
           message: `Configured remote '${remoteOrigin}' does not exist. Available: ${availableRemotes}`,
           suggestion: `Add remote: git remote add ${remoteOrigin} <url> OR update config to use existing remote (e.g., 'origin')`,
@@ -968,7 +991,7 @@ async function checkRemoteOrigin(config?: VibeValidateConfig | null): Promise<Do
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return {
-        name: 'Git remote origin',
+        name: CHECK_GIT_REMOTE_ORIGIN,
         passed: false,
         message: `Failed to list git remotes: ${errorMessage}`,
         suggestion: 'Verify git repository is initialized',
@@ -977,7 +1000,7 @@ async function checkRemoteOrigin(config?: VibeValidateConfig | null): Promise<Do
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Git remote origin',
+      name: CHECK_GIT_REMOTE_ORIGIN,
       passed: true,
       message: `Skipped (config or git error): ${errorMessage}`,
     };
@@ -991,9 +1014,9 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
   try {
     if (!config) {
       return {
-        name: 'Git remote main branch',
+        name: CHECK_GIT_REMOTE_MAIN_BRANCH,
         passed: true,
-        message: 'Skipped (no config)',
+        message: MSG_SKIPPED_NO_CONFIG,
       };
     }
 
@@ -1009,7 +1032,7 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
 
       if (!remotes.includes(remoteOrigin)) {
         return {
-          name: 'Git remote main branch',
+          name: CHECK_GIT_REMOTE_MAIN_BRANCH,
           passed: true,
           message: `Skipped (remote '${remoteOrigin}' not configured)`,
         };
@@ -1021,14 +1044,14 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
         throw new Error(`Failed to check remote branch: ${lsRemoteResult.stderr}`);
       }
       return {
-        name: 'Git remote main branch',
+        name: CHECK_GIT_REMOTE_MAIN_BRANCH,
         passed: true,
         message: `Branch '${mainBranch}' exists on remote '${remoteOrigin}'`,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return {
-        name: 'Git remote main branch',
+        name: CHECK_GIT_REMOTE_MAIN_BRANCH,
         passed: false,
         message: `Branch '${mainBranch}' does not exist on remote '${remoteOrigin}': ${errorMessage}`,
         suggestion: `Push branch: git push ${remoteOrigin} ${mainBranch} OR update config to match remote branch name`,
@@ -1037,7 +1060,7 @@ async function checkRemoteMainBranch(config?: VibeValidateConfig | null): Promis
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Git remote main branch',
+      name: CHECK_GIT_REMOTE_MAIN_BRANCH,
       passed: true,
       message: `Skipped (config or git error): ${errorMessage}`,
     };
@@ -1052,9 +1075,9 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
   try {
     if (!config) {
       return {
-        name: 'Pre-commit secret scanning',
+        name: CHECK_PRE_COMMIT_SECRET_SCANNING,
         passed: true,
-        message: 'Skipped (no config)',
+        message: MSG_SKIPPED_NO_CONFIG,
       };
     }
 
@@ -1062,7 +1085,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
 
     if (!secretScanning) {
       return {
-        name: 'Pre-commit secret scanning',
+        name: CHECK_PRE_COMMIT_SECRET_SCANNING,
         passed: true,
         message: 'Secret scanning not configured',
         suggestion: 'Recommended: Enable secret scanning to prevent credential leaks\n   • Add to config: hooks.preCommit.secretScanning.enabled=true\n   • Install gitleaks: brew install gitleaks\n   • Or add .secretlintrc.json for npm-based scanning',
@@ -1071,7 +1094,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
 
     if (secretScanning.enabled === false) {
       return {
-        name: 'Pre-commit secret scanning',
+        name: CHECK_PRE_COMMIT_SECRET_SCANNING,
         passed: true,
         message: 'Secret scanning disabled in config (user preference)',
       };
@@ -1086,7 +1109,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
       const secretlintInstall = getDevInstallCommand(pm, '@secretlint/secretlint-rule-preset-recommend secretlint');
 
       return {
-        name: 'Pre-commit secret scanning',
+        name: CHECK_PRE_COMMIT_SECRET_SCANNING,
         passed: true,
         message: 'Secret scanning enabled but no tools available',
         suggestion: `Install a secret scanning tool:\n   • gitleaks: brew install gitleaks\n   • secretlint: ${secretlintInstall}\n   • Or add config files: .gitleaks.toml or .secretlintrc.json`,
@@ -1119,7 +1142,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
     const gitleaks = availableTools.find(t => t.tool === 'gitleaks');
     if (gitleaks?.hasConfig && !gitleaks.available) {
       return {
-        name: 'Pre-commit secret scanning',
+        name: CHECK_PRE_COMMIT_SECRET_SCANNING,
         passed: true,
         message,
         suggestion: 'Install gitleaks for better performance: brew install gitleaks',
@@ -1130,7 +1153,7 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
     const hasGitleaksAvailable = availableTools.some(t => t.tool === 'gitleaks' && t.available);
     if (!hasGitleaksAvailable && toolsToRun.some(t => t.tool === 'secretlint')) {
       return {
-        name: 'Pre-commit secret scanning',
+        name: CHECK_PRE_COMMIT_SECRET_SCANNING,
         passed: true,
         message,
         suggestion: 'Consider installing gitleaks for faster scanning: brew install gitleaks',
@@ -1138,14 +1161,14 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
     }
 
     return {
-      name: 'Pre-commit secret scanning',
+      name: CHECK_PRE_COMMIT_SECRET_SCANNING,
       passed: true,
       message,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      name: 'Pre-commit secret scanning',
+      name: CHECK_PRE_COMMIT_SECRET_SCANNING,
       passed: true,
       message: `Skipped (config or execution error): ${errorMessage}`,
     };

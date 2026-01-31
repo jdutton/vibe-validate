@@ -26,6 +26,12 @@ import {
   COMMON_STACK_PATTERNS,
 } from '../../utils/parser-utils.js';
 
+// Detection reason constants
+const REASON_AVA_DETECTED = 'Ava test output detected';
+const REASON_AVA_POSSIBLE = 'Possible Ava test output';
+const REASON_NOT_AVA = 'Not Ava test output';
+const AVA_TIMEOUT_MESSAGE = 'Test timeout exceeded';
+
 /**
  * Ava-specific guidance patterns
  * Extends common patterns with Ava-specific timeout guidance
@@ -98,7 +104,7 @@ export function detectAva(output: string): DetectionResult {
     }
 
     // Low-value markers (10 points)
-    if (trimmed.includes('Test timeout exceeded')) {
+    if (trimmed.includes(AVA_TIMEOUT_MESSAGE)) {
       score += 10;
       foundPatterns.push('Ava timeout message');
     }
@@ -113,11 +119,11 @@ export function detectAva(output: string): DetectionResult {
   // Determine reason based on score
   let reason: string;
   if (score >= 50) {
-    reason = 'Ava test output detected';
+    reason = REASON_AVA_DETECTED;
   } else if (score >= 30) {
-    reason = 'Possible Ava test output';
+    reason = REASON_AVA_POSSIBLE;
   } else {
-    reason = 'Not Ava test output';
+    reason = REASON_NOT_AVA;
   }
 
   return {
@@ -135,7 +141,7 @@ export function extractAva(output: string, _command?: string): ErrorExtractorRes
 
   if (detection.confidence < 30) {
     return {
-      summary: 'Not Ava test output',
+      summary: REASON_NOT_AVA,
       totalErrors: 0,
       errors: [],
       metadata: {
@@ -444,8 +450,8 @@ function parseDetailedBlock(lines: string[], startIndex: number, failure: Failur
     }
 
     // Timeout marker
-    if (trimmed.includes('Test timeout exceeded')) {
-      failure.message ??= 'Test timeout exceeded';
+    if (trimmed.includes(AVA_TIMEOUT_MESSAGE)) {
+      failure.message ??= AVA_TIMEOUT_MESSAGE;
       failure.errorType = 'timeout';
       i++;
       continue;

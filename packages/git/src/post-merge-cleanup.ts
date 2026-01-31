@@ -22,6 +22,7 @@ const TIMEOUT = 30000; // 30 seconds timeout for git operations
  * Prevents command injection by avoiding shell interpretation
  */
 function execGitSync(args: string[]): string {
+  // eslint-disable-next-line sonarjs/no-os-command-from-path -- git is a standard system command
   const result = spawnSync('git', args, {
     encoding: 'utf8',
     timeout: TIMEOUT,

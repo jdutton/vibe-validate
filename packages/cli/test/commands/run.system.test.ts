@@ -42,7 +42,7 @@ describe('run command system tests', () => {
         });
         output = result.stdout || '';
       } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout
-        output = error.stdout || '';
+        output = error.stdout ?? '';
       }
 
       const parsed = parseRunYamlOutput(output);
@@ -90,7 +90,7 @@ describe('run command system tests', () => {
       // Debug: Show extraction results
       console.log('\nDEBUG: Vitest extraction results:');
       console.log('  Exit code:', parsed.exitCode);
-      console.log('  Errors extracted:', parsed.extraction?.errors?.length || 0);
+      console.log('  Errors extracted:', parsed.extraction?.errors?.length ?? 0);
       console.log('  Summary:', parsed.extraction?.summary);
       if (parsed.extraction?.errors?.length) {
         console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));
@@ -130,7 +130,7 @@ describe('run command system tests', () => {
       // Debug: Show extraction results
       console.log('\nDEBUG: Jest extraction results:');
       console.log('  Exit code:', parsed?.exitCode);
-      console.log('  Errors extracted:', parsed.extraction?.errors?.length || 0);
+      console.log('  Errors extracted:', parsed.extraction?.errors?.length ?? 0);
       console.log('  Summary:', parsed.extraction?.summary);
       if (parsed.extraction?.errors?.length) {
         console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));
@@ -169,7 +169,7 @@ describe('run command system tests', () => {
       // Debug: Show extraction results
       console.log('\nDEBUG: Playwright extraction results:');
       console.log('  Exit code:', parsed.exitCode);
-      console.log('  Errors extracted:', parsed.extraction?.errors?.length || 0);
+      console.log('  Errors extracted:', parsed.extraction?.errors?.length ?? 0);
       console.log('  Summary:', parsed.extraction?.summary);
       if (parsed.extraction?.errors?.length) {
         console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));
@@ -233,7 +233,7 @@ describe('run command system tests', () => {
         output = result.stdout || '';
       } catch (error: any) { // NOSONAR - execSync throws on non-zero exit, we need stdout
         // validate --check may exit with non-zero if no validation state
-        output = error.stdout || '';
+        output = error.stdout ?? '';
       }
 
       if (output.trim()) {

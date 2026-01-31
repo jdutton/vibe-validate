@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/utils",
-  "version": "0.18.4-rc.1",
+  "version": "0.18.4",
   "description": "Common utilities for vibe-validate packages (command execution, path normalization)",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./test-helpers": {
+      "types": "./dist/test-helpers.d.ts",
+      "import": "./dist/test-helpers.js"
     }
   },
   "files": [

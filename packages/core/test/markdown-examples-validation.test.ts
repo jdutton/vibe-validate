@@ -11,6 +11,7 @@
  * This ensures documentation examples stay in sync with actual schemas.
  */
 
+ 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -150,7 +151,7 @@ function extractTaggedExamples(
   for (const [i, line] of lines.entries()) {
 
     // Check for tag
-    const tagMatch = line.match(tagPattern);
+    const tagMatch = tagPattern.exec(line);
     if (tagMatch) {
       const [, category, type] = tagMatch;
       currentTag = `${category}:${type}`;
@@ -170,7 +171,7 @@ function extractTaggedExamples(
       inCodeBlock = false;
 
       // Only include examples tagged with ":example" (not ":partial")
-      if (currentTag && currentTag.endsWith(':example')) {
+      if (currentTag?.endsWith(':example')) {
         examples.push({
           tag: currentTag,
           yaml: codeBlockContent.join('\n'),
@@ -256,7 +257,10 @@ describe('Markdown Examples Validation', () => {
       if (!examplesByValidator.has(validator.name)) {
         examplesByValidator.set(validator.name, []);
       }
-      examplesByValidator.get(validator.name)!.push(example);
+      const validatorExamples = examplesByValidator.get(validator.name);
+      if (validatorExamples) {
+        validatorExamples.push(example);
+      }
     } else {
       unknownTagExamples.push(example);
     }
@@ -285,7 +289,7 @@ describe('Markdown Examples Validation', () => {
 
   // Create tests for each validator's examples
   for (const validator of VALIDATORS) {
-    const examples = examplesByValidator.get(validator.name) || [];
+    const examples = examplesByValidator.get(validator.name) ?? [];
 
     describe(`${validator.name} schema validation`, () => {
       if (examples.length === 0) {
@@ -355,7 +359,7 @@ describe('Markdown Examples Validation', () => {
     // Summary by validator
     console.log('\nExamples by schema:');
     for (const validator of VALIDATORS) {
-      const count = examplesByValidator.get(validator.name)?.length || 0;
+      const count = examplesByValidator.get(validator.name)?.length ?? 0;
       console.log(`  ${validator.name}: ${count} example${count === 1 ? '' : 's'}`);
     }
 
@@ -364,10 +368,10 @@ describe('Markdown Examples Validation', () => {
     const byFile = new Map<string, number>();
     for (const example of allExamples) {
       const relativePath = relative(projectRoot, example.file);
-      byFile.set(relativePath, (byFile.get(relativePath) || 0) + 1);
+      byFile.set(relativePath, (byFile.get(relativePath) ?? 0) + 1);
     }
 
-    for (const [file, count] of [...byFile.entries()].sort()) {
+    for (const [file, count] of [...byFile.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
       console.log(`  ${file}: ${count} example${count > 1 ? 's' : ''}`);
     }
 

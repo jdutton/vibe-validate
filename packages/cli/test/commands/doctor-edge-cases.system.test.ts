@@ -12,6 +12,7 @@
  * Uses isolated test environments in /tmp to avoid affecting the main repo.
  * Tests run in parallel for speed.
  */
+/* eslint-disable sonarjs/slow-regex -- Simple test regex patterns, not user-facing */
 
 import {  writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';

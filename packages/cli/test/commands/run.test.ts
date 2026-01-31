@@ -237,7 +237,7 @@ src/utils.ts(42,12): error TS2345: Argument of type 'number' is not assignable t
       expect(stdoutCalls).toMatch(/---\n$/); // Closing separator
 
       // Count occurrences - should have exactly 2 (opening and closing)
-      const separatorCount = (stdoutCalls.match(/^---$/gm) || []).length;
+      const separatorCount = (stdoutCalls.match(/^---$/gm) ?? []).length;
       expect(separatorCount).toBe(2);
     });
 
@@ -549,8 +549,8 @@ extraction:
       expect(stdoutCalls).toMatch(/^---\n/);
       const yamlContent = stdoutCalls.replace(/^---\n/, '').replace(/\n---\n?$/, '');
 
-      const yaml = require('yaml');
-      const parsed = yaml.parse(yamlContent);
+      const { parse } = await import('yaml');
+      const parsed = parse(yamlContent);
 
       // Command should be unwrapped (showing actual command, not wrapper)
       expect(parsed.command).toBe('npx vitest');

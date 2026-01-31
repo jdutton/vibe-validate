@@ -7,6 +7,9 @@
 
 import { basename } from 'node:path';
 
+// Constants (extracted to avoid duplication warnings)
+const COMMAND_NAME_DEFAULT = 'vibe-validate';
+
 /**
  * Get the command name that was used to invoke the CLI
  *
@@ -24,7 +27,7 @@ export function getCommandName(): string {
   // Check if the wrapper passed the command name via environment variable
   // This is set by the smart wrapper (bin/vibe-validate.ts) when it spawns bin.js
   const envCommandName = process.env.VV_COMMAND_NAME;
-  if (envCommandName === 'vv' || envCommandName === 'vibe-validate') {
+  if (envCommandName === 'vv' || envCommandName === COMMAND_NAME_DEFAULT) {
     return envCommandName;
   }
 
@@ -34,18 +37,18 @@ export function getCommandName(): string {
   const scriptPath = process.argv[1];
 
   if (!scriptPath) {
-    return 'vibe-validate'; // Fallback
+    return COMMAND_NAME_DEFAULT; // Fallback
   }
 
   // Extract basename (e.g., "vv" from "/usr/local/bin/vv")
   const commandName = basename(scriptPath);
 
   // Handle common cases: vv, vibe-validate, or .js/.ts extensions in dev mode
-  if (commandName === 'vv' || commandName === 'vibe-validate') {
+  if (commandName === 'vv' || commandName === COMMAND_NAME_DEFAULT) {
     return commandName;
   }
 
   // Dev mode: might be bin.js, bin.ts, vibe-validate.js, etc.
   // Fall back to "vibe-validate" for consistency
-  return 'vibe-validate';
+  return COMMAND_NAME_DEFAULT;
 }

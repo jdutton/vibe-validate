@@ -45,7 +45,7 @@ function runDoctorCommand(cwd: string): {
   }
 
   // Doctor returns non-zero exit code when checks fail
-  const failedChecks = (output.match(/❌ .+/g) || []).map((line: string) =>
+  const failedChecks = (output.match(/❌ .+/g) ?? []).map((line: string) =>
     line.replace(/^❌\s+/, '').split('\n')[0]
   );
 
@@ -62,7 +62,7 @@ function runDoctorCommand(cwd: string): {
  */
 function extractCheckStatuses(output: string): string[] {
   const lines = output.split('\n');
-  const checkLines = lines.filter(line => line.match(/^[✅❌]/));
+  const checkLines = lines.filter(line => /^[✅❌]/.exec(line));
   return checkLines.map(line => line.trim());
 }
 

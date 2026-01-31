@@ -8,7 +8,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 const BASELINE_FILE = '.github/.jscpd-baseline.json';
 
@@ -39,7 +39,7 @@ try {
 // Read current report
 const reportPath = './jscpd-report/jscpd-report.json';
 const currentReport = JSON.parse(readFileSync(reportPath, 'utf-8'));
-const currentClones = currentReport.duplicates || [];
+const currentClones = currentReport.duplicates ?? [];
 
 // Save as new baseline
 writeFileSync(BASELINE_FILE, JSON.stringify({ duplicates: currentClones }, null, 2));

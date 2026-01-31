@@ -33,7 +33,7 @@ import { join } from 'node:path';
 
 import semver from 'semver';
 
-import { safeExecSync, safeExecResult } from '../packages/utils/dist/safe-exec.js';
+import { safeExecSync, safeExecResult } from '../../utils/dist/safe-exec.js';
 
 import { PROJECT_ROOT, log, getNpmTagVersion } from './common.js';
 
@@ -59,7 +59,12 @@ const PACKAGES = [
 /**
  * Publishing manifest for rollback tracking
  */
-const manifest = {
+const manifest: {
+  version: string;
+  primaryTag: string;
+  publishedPackages: string[];
+  nextTagAdded: boolean;
+} = {
   version: '',
   primaryTag: '',
   publishedPackages: [],
@@ -96,7 +101,7 @@ function cleanupManifest() {
 /**
  * Publish a single package
  */
-function publishPackage(packageName, version, tag, dryRun = false) {
+function publishPackage(packageName: string, version: string, tag: string, dryRun = false) {
   const packagePath = join(PROJECT_ROOT, 'packages', packageName);
   const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
 
@@ -117,7 +122,7 @@ function publishPackage(packageName, version, tag, dryRun = false) {
 
     safeExecSync('pnpm', args, {
       cwd: packagePath,
-      stdio: 'inherit',
+      stdio: ['inherit', 'inherit', 'inherit'],
       env: {
         ...process.env,
         NODE_AUTH_TOKEN: process.env.NODE_AUTH_TOKEN,
@@ -135,7 +140,7 @@ function publishPackage(packageName, version, tag, dryRun = false) {
 /**
  * Add dist-tag to a package
  */
-function addDistTag(packageName, version, tag, dryRun = false) {
+function addDistTag(packageName: string, version: string, tag: string, dryRun = false) {
   const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
 
   log(`  Adding @${tag} tag to ${fullPackageName}@${version}...`, 'blue');
@@ -147,7 +152,7 @@ function addDistTag(packageName, version, tag, dryRun = false) {
 
   try {
     safeExecSync('npm', ['dist-tag', 'add', `${fullPackageName}@${version}`, tag], {
-      stdio: 'inherit',
+      stdio: ['inherit', 'inherit', 'inherit'],
     });
 
     log(`    ✅ @${tag} tag added`, 'green');
@@ -161,7 +166,7 @@ function addDistTag(packageName, version, tag, dryRun = false) {
 /**
  * Attempt to unpublish a package
  */
-function unpublishPackage(packageName, version, dryRun = false) {
+function unpublishPackage(packageName: string, version: string, dryRun = false) {
   const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
 
   log(`  Unpublishing ${fullPackageName}@${version}...`, 'yellow');
@@ -187,7 +192,7 @@ function unpublishPackage(packageName, version, dryRun = false) {
 /**
  * Deprecate a package (fallback when unpublish fails)
  */
-function deprecatePackage(packageName, version, dryRun = false) {
+function deprecatePackage(packageName: string, version: string, dryRun = false) {
   const fullPackageName = packageName === VIBE_VALIDATE_PKG_NAME ? VIBE_VALIDATE_PKG_NAME : `@vibe-validate/${packageName}`;
   const message = '⚠️ Incomplete publish - DO NOT USE. See https://github.com/jdutton/vibe-validate/issues';
 
@@ -199,7 +204,7 @@ function deprecatePackage(packageName, version, dryRun = false) {
   }
 
   const result = safeExecResult('npm', ['deprecate', `${fullPackageName}@${version}`, message], {
-    stdio: 'inherit',
+    stdio: ['inherit', 'inherit', 'inherit'],
   });
 
   if (result.status === 0) {

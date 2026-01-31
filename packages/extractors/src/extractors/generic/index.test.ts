@@ -101,7 +101,7 @@ FAIL example.com/project 0.123s
 
       const result = extractGenericErrors(manyErrors);
 
-      const lineCount = result.errorSummary!.split('\n').length;
+      const lineCount = (result.errorSummary ?? '').split('\n').length;
       expect(lineCount).toBeLessThanOrEqual(20);
     });
   });
@@ -117,9 +117,11 @@ FAIL example.com/project 0.123s
   describe('Plugin Samples', () => {
     it('should pass all registered samples', () => {
       for (const sample of genericExtractor.samples) {
-        const result = extractGenericErrors(sample.input!);
-        if (sample.expected!.totalErrors !== undefined) {
-          expect(result.totalErrors).toBe(sample.expected!.totalErrors);
+        expect(sample.input).toBeDefined();
+        const result = extractGenericErrors(sample.input ?? '');
+        const expected = sample.expected;
+        if (expected?.totalErrors !== undefined) {
+          expect(result.totalErrors).toBe(expected.totalErrors);
         }
       }
     });

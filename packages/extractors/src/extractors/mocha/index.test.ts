@@ -9,6 +9,8 @@ import { describe, it, expect } from 'vitest';
 import {
   expectDetection,
   expectPluginMetadata,
+  expectMultipleFailures,
+  expectPathExtraction,
 } from '../../test/helpers/extractor-test-helpers.js';
 
 import mochaPlugin from './index.js';
@@ -104,11 +106,7 @@ describe('mocha extractor plugin', () => {
 
         const result = mochaPlugin.extract(input);
 
-        expect(result.summary).toBe('3 test(s) failed');
-        expect(result.errors).toHaveLength(3);
-        expect(result.errors[0].line).toBe(10);
-        expect(result.errors[1].line).toBe(20);
-        expect(result.errors[2].line).toBe(30);
+        expectMultipleFailures(result, [10, 20, 30]);
       });
     });
 
@@ -175,10 +173,7 @@ describe('mocha extractor plugin', () => {
      Error: Test error
       at Context.<anonymous> (file:///path/to/test.js:42:15)
 `;
-
-        const result = mochaPlugin.extract(input);
-        expect(result.errors[0].file).toBe('/path/to/test.js');
-        expect(result.errors[0].line).toBe(42);
+        expectPathExtraction(mochaPlugin, input, '/path/to/test.js', 42);
       });
 
       it('should handle relative paths', () => {
@@ -189,10 +184,7 @@ describe('mocha extractor plugin', () => {
      Error: Test error
       at Context.<anonymous> (tests/unit/helpers.test.js:128:30)
 `;
-
-        const result = mochaPlugin.extract(input);
-        expect(result.errors[0].file).toBe('tests/unit/helpers.test.js');
-        expect(result.errors[0].line).toBe(128);
+        expectPathExtraction(mochaPlugin, input, 'tests/unit/helpers.test.js', 128);
       });
 
       it('should handle absolute paths without file:// prefix', () => {
@@ -336,7 +328,8 @@ describe('mocha extractor plugin', () => {
 
     it('should successfully parse all sample inputs', () => {
       for (const sample of mochaPlugin.samples) {
-        const result = mochaPlugin.extract(sample.input!);
+        expect(sample.input).toBeDefined();
+        const result = mochaPlugin.extract(sample.input ?? '');
         expect(result.errors.length).toBeGreaterThan(0);
         expect(result.errors.length).toBe(sample.expectedErrors);
       }

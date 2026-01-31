@@ -95,6 +95,7 @@ function extractFailures(output: string): TestFailureInfo[] {
           const jasminePatterns: StackLocationPattern[] = [
             // UserContext.<anonymous> pattern (Jasmine-specific)
             {
+              // eslint-disable-next-line security/detect-unsafe-regex -- Safe: only parses Jasmine test framework stack traces (controlled output), not user input
               regex: /UserContext\.<anonymous> \(([^:)]+):(\d+)(?::(\d+))?\)/,
               fileGroup: 1,
               lineGroup: 2,
@@ -102,7 +103,7 @@ function extractFailures(output: string): TestFailureInfo[] {
             },
             // Generic function call pattern (fallback)
             {
-              // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Jasmine test framework stack traces (controlled output), not user input
+              // eslint-disable-next-line sonarjs/slow-regex, security/detect-unsafe-regex -- Safe: only parses Jasmine test framework stack traces (controlled output), not user input
               regex: /\(([^:)]+):(\d+)(?::(\d+))?\)/,
               fileGroup: 1,
               lineGroup: 2,

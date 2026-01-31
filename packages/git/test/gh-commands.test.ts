@@ -33,8 +33,8 @@ vi.mock('@vibe-validate/utils', async () => {
  * Reduces duplication in test assertions
  */
 function testGhCommandWithParam(
-  fn: (..._args: any[]) => any,
-  fnArgs: any[],
+  fn: (...args: unknown[]) => unknown,
+  fnArgs: unknown[],
   expectedParam: string,
   expectedValue: string
 ) {

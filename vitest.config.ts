@@ -61,6 +61,8 @@ export default defineConfig({
         // CLI utils tested via integration (deferred per v0.15.0 RC)
         'packages/cli/src/utils/temp-files.ts',
         'packages/cli/src/utils/check-validation.ts',
+        // Private dev-tools package (never published, development scripts only)
+        'packages/dev-tools/**',
       ],
       thresholds: {
         // v0.14.2: Enforced quality gates at 80% minimum

@@ -8,7 +8,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecResult } from '../packages/utils/dist/safe-exec.js';
+import { safeExecResult } from '../../utils/dist/safe-exec.js';
 
 /**
  * Get __filename equivalent in ESM
@@ -25,9 +25,9 @@ export function getDirname(importMetaUrl: string): string {
 }
 
 /**
- * Project root directory (parent of tools/)
+ * Project root directory (3 levels up from packages/dev-tools/src/)
  */
-export const PROJECT_ROOT = join(getDirname(import.meta.url), '..');
+export const PROJECT_ROOT = join(getDirname(import.meta.url), '../../..');
 
 /**
  * ANSI color codes for terminal output
@@ -63,7 +63,8 @@ export function getNpmTagVersion(packageName: string, tag: string): string | nul
   });
 
   if (result.status === 0 && result.stdout) {
-    return result.stdout.trim();
+    // stdout is string when encoding: 'utf8' is specified
+    return result.stdout.toString().trim();
   }
 
   return null;
@@ -112,7 +113,7 @@ export function processWorkspacePackages<T extends PackageProcessResult>(
     const packages = readdirSync(packagesDir, { withFileTypes: true })
       .filter(dirent => dirent.isDirectory())
       .map(dirent => dirent.name)
-      .sort();
+      .sort((a, b) => a.localeCompare(b));
 
     for (const pkg of packages) {
       const pkgPath = join(packagesDir, pkg, 'package.json');
@@ -120,7 +121,7 @@ export function processWorkspacePackages<T extends PackageProcessResult>(
         const result = processor(pkgPath, pkg);
 
         if (result.skipped) {
-          const reasonText = formatSkipReason(result.reason || 'unknown', result.version);
+          const reasonText = formatSkipReason(result.reason ?? 'unknown', result.version);
           log(`  - ${result.name}: skipped (${reasonText})`, 'yellow');
           onSkip(result);
           skippedCount++;

@@ -7,8 +7,9 @@
  * - Git integration health
  * - CI/CD workflow sync
  */
+/* eslint-disable sonarjs/deprecation -- Tests verify deprecated state file handling */
 
-/* eslint-disable sonarjs/assertions-in-tests -- Using assertCheck() helper which wraps expect() */
+ 
 
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -36,7 +37,7 @@ vi.mock('fs', () => ({
 }));
 
 vi.mock('child_process', async () => {
-  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process');
+  const actual = await vi.importActual('node:child_process');
   return {
     ...actual,
     execSync: vi.fn(),
@@ -49,7 +50,7 @@ vi.mock('child_process', async () => {
 });
 
 vi.mock('@vibe-validate/utils', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
+  const actual = await vi.importActual('@vibe-validate/utils');
   return {
     ...actual,
     isToolAvailable: vi.fn((toolName: string) => {
@@ -78,7 +79,7 @@ vi.mock('@vibe-validate/utils', async () => {
 });
 
 vi.mock('@vibe-validate/git', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+  const actual = await vi.importActual('@vibe-validate/git');
   return {
     ...actual,
     verifyRef: vi.fn(() => true), // Default to successful verification
@@ -978,7 +979,7 @@ describe('doctor command', () => {
         expect(secretCheck.message).toContain('Secret scanning enabled');
         expect(secretCheck.message).toContain('gitleaks');
         // With explicit scanCommand but tool unavailable, still shows as configured
-        expect(secretCheck.message).toContain('configured') || expect(secretCheck.message).toContain('available');
+        expect(secretCheck.message).toContain('configured') ?? expect(secretCheck.message).toContain('available');
       } finally {
         // Restore original CI value
         if (originalCI !== undefined) {

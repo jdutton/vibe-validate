@@ -31,7 +31,7 @@ describe('All commands work from subdirectories (system tests)', () => {
         expect(output).toBeTruthy();
       } catch (error: any) {
         // Command ran but returned non-zero (not validated yet), check it produced output
-        expect(error.stdout || error.stderr).toBeTruthy();
+        expect(error.stdout ?? error.stderr).toBeTruthy();
       }
     });
 
@@ -45,7 +45,7 @@ describe('All commands work from subdirectories (system tests)', () => {
         expect(output).toBeTruthy();
       } catch (error: any) {
         // Should find config in parent directory and check validation state
-        expect(error.stdout || error.stderr).toBeTruthy();
+        expect(error.stdout ?? error.stderr).toBeTruthy();
       }
     });
 
@@ -59,7 +59,7 @@ describe('All commands work from subdirectories (system tests)', () => {
         expect(output).toBeTruthy();
       } catch (error: any) {
         // Should find config two levels up and check validation state
-        expect(error.stdout || error.stderr).toBeTruthy();
+        expect(error.stdout ?? error.stderr).toBeTruthy();
       }
     });
   });
@@ -402,7 +402,7 @@ describe('All commands work from subdirectories (system tests)', () => {
 
       // Extract tree hash from outputs (format: "treeHash: abc123...")
       const extractHash = (output: string) => {
-        const match = output.match(/treeHash:\s*([a-f0-9]+)/);
+        const match = /treeHash:\s*([a-f0-9]+)/.exec(output);
         return match ? match[1] : null;
       };
 

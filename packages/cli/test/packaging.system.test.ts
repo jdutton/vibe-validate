@@ -7,7 +7,7 @@
  * Run with: pnpm test:system
  */
 
-import { mkdtempSync, rmSync, readdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { safeExecFromString, normalizedTmpdir } from '@vibe-validate/utils';
@@ -36,7 +36,7 @@ describe('npm package tarball (system test)', () => {
     const tarballFullPath = lines.at(-1).trim();
 
     // Get just the filename
-    const tarballName = tarballFullPath.split('/').pop() || '';
+    const tarballName = tarballFullPath.split('/').pop() ?? '';
     if (!tarballName) {
       throw new Error('Failed to get tarball name from pnpm pack output');
     }
@@ -157,7 +157,7 @@ describe('npm package tarball (system test)', () => {
     });
 
     it('should have reasonable tarball size (< 5MB)', () => {
-      const { size } = require('node:fs').statSync(tarballPath);
+      const { size } = statSync(tarballPath);
       const sizeMB = size / (1024 * 1024);
       expect(sizeMB, 'Tarball should be < 5MB').toBeLessThan(5);
     });

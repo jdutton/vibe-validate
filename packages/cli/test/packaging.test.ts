@@ -7,11 +7,14 @@
  */
 
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
 import { describe, it, expect } from 'vitest';
 
 import { discoverTemplates } from '../src/utils/template-discovery.js';
+
+const require = createRequire(import.meta.url);
 
 describe('npm packaging', () => {
   describe('config-templates/', () => {

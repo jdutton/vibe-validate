@@ -71,7 +71,7 @@ describe('truncateValidationOutput', () => {
 
     // v0.15.0: Extraction already truncated by extractors (MAX_ERRORS_IN_ARRAY = 10)
     expect(truncated).toBe(result);
-    expect(truncated.phases![0].steps[0].extraction?.errors.length).toBe(1);
+    expect(truncated.phases?.[0]?.steps[0]?.extraction?.errors.length).toBe(1);
   });
 
   it('should work with minimal ValidationResult', () => {

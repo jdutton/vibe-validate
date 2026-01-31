@@ -50,7 +50,7 @@ function createMockResult(overrides: Partial<{
 function createExitSpy() {
   return vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
     throw new Error(`process.exit(${code})`);
-  }) as any;
+  });
 }
 
 /**
@@ -122,7 +122,10 @@ describe('sync-check command', () => {
     syncCheckCommand(env.program);
     const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
     expect(command).toBeDefined();
-    return command!;
+    if (!command) {
+      throw new Error('Command not found');
+    }
+    return command;
   }
 
   describe('command registration', () => {

@@ -47,7 +47,7 @@ export function normalizedTmpdir(): string {
   } catch {
     // Fallback to regular realpathSync
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: temp is from tmpdir()
+       
       return realpathSync(temp);
     } catch {
       // Last resort: return original
@@ -91,7 +91,7 @@ export function mkdirSyncReal(
   path: string,
   options?: Parameters<typeof mkdirSync>[1]
 ): string {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- This IS the mkdirSyncReal() implementation
+   
   mkdirSync(path, options);
 
   try {
@@ -100,7 +100,7 @@ export function mkdirSyncReal(
   } catch {
     // Fallback to regular realpathSync
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: path is function parameter
+       
       return realpathSync(path);
     } catch {
       // Last resort: return original
@@ -142,11 +142,34 @@ export function normalizePath(...paths: string[]): string {
   } catch {
     // Fallback to regular realpathSync
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Safe: resolved is from path.resolve
+       
       return realpathSync(resolved);
     } catch {
       // Last resort: return resolved path (better than original input)
       return resolved;
     }
   }
+}
+
+/**
+ * Convert a path to forward slashes
+ *
+ * Windows accepts both forward slashes and backslashes as path separators.
+ * This function normalizes all paths to use forward slashes for consistency.
+ * Useful for glob pattern matching, cross-platform comparisons, and string operations.
+ *
+ * @param p - Path to convert
+ * @returns Path with forward slashes
+ *
+ * @example
+ * ```typescript
+ * toForwardSlash('C:\\Users\\docs\\README.md')
+ * // Returns: 'C:/Users/docs/README.md'
+ *
+ * toForwardSlash('/project/docs/README.md')
+ * // Returns: '/project/docs/README.md' (unchanged)
+ * ```
+ */
+export function toForwardSlash(p: string): string {
+  return p.replaceAll('\\', '/');
 }

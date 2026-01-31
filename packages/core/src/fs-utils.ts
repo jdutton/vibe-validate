@@ -30,6 +30,7 @@ import { normalizedTmpdir } from '@vibe-validate/utils';
  */
 export async function ensureDir(dirPath: string): Promise<void> {
   try {
+     
     await mkdir(dirPath, { recursive: true });
   } catch (err: unknown) {
     // Ignore if directory already exists
@@ -121,6 +122,7 @@ export function createLogFileWrite(
   const file = join(outputDir, filename);
   return {
     file,
+     
     promise: writeFile(file, content, 'utf-8'),
   };
 }

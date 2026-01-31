@@ -27,6 +27,13 @@ import { PROJECT_ROOT, log, processWorkspacePackages } from './common.js';
 const PACKAGE_JSON_FILENAME = 'package.json';
 const VIBE_VALIDATE_PKG_NAME = 'vibe-validate';
 
+// Helper to log file processing errors with proper error type handling
+function logFileError(fileName: string, error: unknown): void {
+  const code = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : undefined;
+  const message = error instanceof Error ? error.message : String(error);
+  log(`  - ${fileName}: skipped (${code === 'ENOENT' ? 'not found' : message})`, 'yellow');
+}
+
 // Parse command-line arguments
 const args = process.argv.slice(2);
 
@@ -60,7 +67,7 @@ Exit codes:
 const versionArg = args[0];
 
 // Helper to increment version
-function incrementVersion(currentVersion, type) {
+function incrementVersion(currentVersion: string, type: string): string {
   const parts = currentVersion.split('.').map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) {
     throw new Error(`Invalid current version: ${currentVersion}`);
@@ -103,8 +110,9 @@ if (['patch', 'minor', 'major'].includes(versionArg)) {
     newVersion = incrementVersion(currentVersion, versionArg);
     log(`Current version: ${currentVersion}`, 'blue');
     log(`Increment type: ${versionArg}`, 'blue');
-  } catch (error) {
-    log(`✗ Failed to read current version: ${error.message}`, 'red');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`✗ Failed to read current version: ${message}`, 'red');
     process.exit(1);
   }
 } else {
@@ -112,6 +120,7 @@ if (['patch', 'minor', 'major'].includes(versionArg)) {
   newVersion = versionArg;
 
   // Validate version format (simple semver check)
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
   if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(newVersion)) {
     log(`✗ Invalid version format: ${newVersion}`, 'red');
     log('  Expected format: X.Y.Z or X.Y.Z-prerelease', 'yellow');
@@ -124,7 +133,7 @@ log(`📦 Bumping version to ${newVersion}`, 'blue');
 console.log('');
 
 // Function to update version in a package.json file
-function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
+function updatePackageVersion(filePath: string, newVersion: string, skipPrivate = true) {
   try {
     const content = readFileSync(filePath, 'utf8');
     const pkg = JSON.parse(content);
@@ -142,7 +151,7 @@ function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
     }
 
     if (oldVersion === newVersion) {
-      return { updated: false, oldVersion, newVersion, name: pkg.name };
+      return { updated: false, oldVersion, newVersion, name: pkg.name, skipped: false };
     }
 
     pkg.version = newVersion;
@@ -155,9 +164,10 @@ function updatePackageVersion(filePath, newVersion, skipPrivate = true) {
 
     writeFileSync(filePath, updatedContent, 'utf8');
 
-    return { updated: true, oldVersion, newVersion, name: pkg.name };
-  } catch (error) {
-    throw new Error(`Failed to update ${filePath}: ${error.message}`);
+    return { updated: true, oldVersion, newVersion, name: pkg.name, skipped: false };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to update ${filePath}: ${message}`);
   }
 }
 
@@ -168,14 +178,15 @@ log('Updating root package.json...', 'blue');
 try {
   const result = updatePackageVersion(rootPackagePath, newVersion);
   if (result.skipped) {
-    log(`  - ${result.name || VIBE_VALIDATE_PKG_NAME}: skipped (${result.reason})`, 'yellow');
+    log(`  - ${result.name ?? VIBE_VALIDATE_PKG_NAME}: skipped (${result.reason})`, 'yellow');
   } else if (result.updated) {
-    log(`  ✓ ${result.name || VIBE_VALIDATE_PKG_NAME}: ${result.oldVersion} → ${result.newVersion}`, 'green');
+    log(`  ✓ ${result.name ?? VIBE_VALIDATE_PKG_NAME}: ${result.oldVersion} → ${result.newVersion}`, 'green');
   } else {
-    log(`  - ${result.name || VIBE_VALIDATE_PKG_NAME}: already at ${result.newVersion}`, 'yellow');
+    log(`  - ${result.name ?? VIBE_VALIDATE_PKG_NAME}: already at ${result.newVersion}`, 'yellow');
   }
-} catch (error) {
-  log(`  ✗ ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`  ✗ ${message}`, 'red');
   process.exit(1);
 }
 
@@ -219,6 +230,7 @@ for (const testFile of testFilesWithVersions) {
     // Pattern matches:
     //   .toContain('0.17.0-rc4'); // BUMP_VERSION_UPDATE
     //   const EXPECTED_VERSION = '0.18.0'; // BUMP_VERSION_UPDATE
+    // eslint-disable-next-line security/detect-unsafe-regex -- Backreference \1 is safe for matching quotes
     const versionPattern = /(['"])\d+\.\d+\.\d+(-[\w.]+)?\1[);]*\s*\/\/\s*BUMP_VERSION_UPDATE/g;
     const matches = [...content.matchAll(versionPattern)];
 
@@ -234,12 +246,14 @@ for (const testFile of testFilesWithVersions) {
       versionPattern,
       (match) => {
         // Extract quote type and trailing characters (;, ), etc.) after version
-        const quoteMatch = match.match(/(['"])/);
+        const quotePattern = /(['"])/;
+        const quoteMatch = quotePattern.exec(match);
         const quote = quoteMatch?.[1] ?? "'";
         // Find the last occurrence of the quote to get trailing characters
         const lastQuoteIndex = match.lastIndexOf(quote);
         const afterLastQuote = match.substring(lastQuoteIndex + 1);
-        const trailingMatch = afterLastQuote.match(/^([);]*)/);
+        const trailingPattern = /^([);]*)/;
+        const trailingMatch = trailingPattern.exec(afterLastQuote);
         const trailing = trailingMatch?.[1] ?? '';
         return `${quote}${newVersion}${quote}${trailing} // BUMP_VERSION_UPDATE`;
       }
@@ -253,8 +267,8 @@ for (const testFile of testFilesWithVersions) {
       log(`  ✓ ${testFile.split('/').pop()}: updated ${matches.length} version expectation(s)`, 'green');
       testUpdatedCount++;
     }
-  } catch (error) {
-    log(`  - ${testFile.split('/').pop()}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
+  } catch (error: unknown) {
+    logFileError(testFile.split('/').pop() ?? testFile, error);
     testSkippedCount++;
   }
 }
@@ -272,8 +286,9 @@ try {
   const content = readFileSync(skillFile.path, 'utf8');
 
   // Match: version: 0.17.2 # Tracks vibe-validate package version
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
   const versionPattern = /^version:\s*(\d+\.\d+\.\d+(?:-[\w.]+)?)\s*#\s*Tracks vibe-validate package version/m;
-  const match = content.match(versionPattern);
+  const match = versionPattern.exec(content);
 
   if (match) {
     const oldVersion = match[1];
@@ -293,8 +308,8 @@ try {
     log(`  - ${skillFile.name}: skipped (version tracking comment not found)`, 'yellow');
     skillSkippedCount++;
   }
-} catch (error) {
-  log(`  - ${skillFile.name}: skipped (${error.code === 'ENOENT' ? 'not found' : error.message})`, 'yellow');
+} catch (error: unknown) {
+  logFileError(skillFile.name, error);
   skillSkippedCount++;
 }
 

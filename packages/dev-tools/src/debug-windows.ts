@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable sonarjs/os-command, sonarjs/no-os-command-from-path */
 /**
  * Windows Debugging Script
  *
@@ -11,9 +12,11 @@ import { existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecSync, normalizedTmpdir, mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
 // @ts-expect-error - which is available via @vibe-validate/git dependency
 import which from 'which';
+
+import { normalizedTmpdir, mkdirSyncReal, normalizePath } from '../../utils/dist/path-helpers.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 // ESM compatibility for __dirname and __filename
 const __filename = fileURLToPath(import.meta.url);
@@ -50,7 +53,7 @@ function error(message: string) {
   console.log(`${colors.red}✗${colors.reset} ${message}`);
 }
 
-function info(label: string, value: any) {
+function info(label: string, value: unknown): void {
   console.log(`${colors.blue}${label}:${colors.reset} ${value}`);
 }
 
@@ -197,7 +200,7 @@ if (whichPath && execPath) {
 
 // Test 6: File Extension Handling
 section('6. File Extension Handling');
-const pathext = process.env.PATHEXT || '';
+const pathext = process.env.PATHEXT ?? '';
 info('PATHEXT', pathext);
 
 if (whichPath) {
@@ -231,10 +234,11 @@ if (whichPath) {
     const result2 = spawnSync(whichPath, ['--version'], { encoding: 'utf-8' });
     if (result2.error) {
       error(`Spawn with which.sync path failed: ${result2.error.message}`);
-      info(LABEL_ERROR_CODE, (result2.error as any).code);
-      info('  Error errno', (result2.error as any).errno);
-      info('  Error syscall', (result2.error as any).syscall);
-      info('  Error path', (result2.error as any).path);
+      const errWithCode = result2.error as NodeJS.ErrnoException;
+      info(LABEL_ERROR_CODE, errWithCode.code);
+      info('  Error errno', errWithCode.errno);
+      info('  Error syscall', errWithCode.syscall);
+      info('  Error path', errWithCode.path);
     } else {
       success(`Spawn with which.sync path succeeded`);
       info('  Exit code', result2.status);
@@ -363,13 +367,13 @@ if (whichPath) {
 }
 
 // Test 10: Import safe-exec and test
-section('10. Testing @vibe-validate/git safe-exec');
+section('10. Testing @vibe-validate/utils safe-exec');
 try {
   // Try to import the package
-  const safeExecModule = await import('@vibe-validate/git');
-  const { safeExecSync, safeExecResult, isToolAvailable, getToolVersion } = safeExecModule;
+  const safeExecModule = await import('../../utils/dist/safe-exec.js');
+  const { safeExecSync: safeExecSyncImported, safeExecResult, isToolAvailable, getToolVersion } = safeExecModule;
 
-  success('@vibe-validate/git imported successfully');
+  success('@vibe-validate/utils imported successfully');
 
   // Test isToolAvailable
   info('isToolAvailable("node")', isToolAvailable('node'));
@@ -380,7 +384,7 @@ try {
 
   // Test safeExecSync
   try {
-    const syncResult = safeExecSync('node', ['--version'], { encoding: 'utf-8' });
+    const syncResult = safeExecSyncImported('node', ['--version'], { encoding: 'utf-8' });
     success('safeExecSync succeeded');
     info('  Output', syncResult.toString().trim());
   } catch (err) {
@@ -443,14 +447,17 @@ try {
       });
       if (jscpdTest.error) {
         error(`jscpd test failed: ${jscpdTest.error.message}`);
-        info(LABEL_ERROR_CODE, (jscpdTest.error as any).code);
+        const errWithCode = jscpdTest.error as NodeJS.ErrnoException;
+        info(LABEL_ERROR_CODE, errWithCode.code);
       } else {
         success('jscpd test completed');
         info('  Exit code', jscpdTest.status);
+        // eslint-disable-next-line max-depth -- Diagnostic script with deep nesting
         if (jscpdTest.stdout) {
           const outputLines = jscpdTest.stdout.toString().split('\n').length;
           info('  Output lines', outputLines);
         }
+        // eslint-disable-next-line max-depth -- Diagnostic script with deep nesting
         if (jscpdTest.stderr) {
           warn('  Stderr present');
           info('  Stderr lines', jscpdTest.stderr.toString().split('\n').length);
@@ -461,7 +468,7 @@ try {
     }
   } else {
     warn('jscpd not found in PATH');
-    info('This is expected on fresh Windows CI - jscpd is installed as dev dependency');
+    info('This is expected on fresh Windows CI', 'jscpd is installed as dev dependency');
 
     // Try via node_modules
     const nodeModulesJscpd = join(process.cwd(), 'node_modules', '.bin', 'jscpd.cmd');
@@ -474,6 +481,7 @@ try {
           encoding: 'utf-8',
           shell: true, // .cmd files need shell on Windows
         });
+        // eslint-disable-next-line max-depth -- Diagnostic script with deep nesting
         if (jscpdTest.error) {
           error(`node_modules jscpd failed: ${jscpdTest.error.message}`);
         } else {
@@ -516,7 +524,7 @@ try {
   info('With braces ${PATH}', bracesResult.stdout?.toString().trim());
 
   // Check PowerShell vs cmd behavior
-  info('Default shell on Windows', process.env.COMSPEC || 'unknown');
+  info('Default shell on Windows', process.env.COMSPEC ?? 'unknown');
   info('PowerShell available?', which.sync('pwsh', { nothrow: true }) ? 'yes' : 'no');
 
 } catch (err) {
@@ -557,7 +565,8 @@ try {
   if (failures > 0) {
     warn('Some concurrent calls failed:');
     for (const r of results.filter(r => !r.success)) {
-      info(`  [${r.index}]`, (r as any).error);
+      const errorResult = r as { success: false; error: string; index: number };
+      info(`  [${r.index}]`, errorResult.error);
     }
   }
 
@@ -594,9 +603,9 @@ try {
 
   // Test 1: execSync with TEST_COMMAND_NODE_VERSION (same as failing tests)
   try {
-    const execSyncResult = safeExecSync(TEST_COMMAND_NODE_VERSION, { encoding: 'utf-8' });
+    const execSyncResult = safeExecSync('node', ['--version'], { encoding: 'utf-8' });
     success('execSync("node --version") succeeded');
-    info('  Output', execSyncResult.trim());
+    info('  Output', execSyncResult.toString().trim());
   } catch (err) {
     error(`execSync("node --version") failed: ${err}`);
   }
@@ -610,8 +619,9 @@ try {
       });
       if (spawnResult.error) {
         error(`spawnSync(which.sync, ["--version"], {shell: false}) failed: ${spawnResult.error.message}`);
-        info(LABEL_ERROR_CODE, (spawnResult.error as any).code);
-        info('  Error path', (spawnResult.error as any).path);
+        const errWithCode = spawnResult.error as NodeJS.ErrnoException;
+        info(LABEL_ERROR_CODE, errWithCode.code);
+        info('  Error path', errWithCode.path);
       } else {
         success('spawnSync(which.sync, ["--version"], {shell: false}) succeeded');
         info('  Output', spawnResult.stdout?.toString().trim());
@@ -657,7 +667,7 @@ try {
   section('Testing Exact Failing Test Scenarios');
 
   const CLI_BIN = 'packages/cli/dist/bin.js';
-  const testCommand = whichPath || which.sync('node');
+  const testCommand = whichPath ?? which.sync('node');
 
   // Scenario A: Test with 'echo' (shell built-in) - THE ACTUAL FAILING TEST
   info('Scenario A: node bin.js run "echo test" (shell built-in)', '');
@@ -672,7 +682,8 @@ try {
 
     if (echoNoShell.error) {
       error(`  A1. shell:false + echo: FAILED - ${echoNoShell.error.message}`);
-      info('     Error code', (echoNoShell.error as any).code);
+      const errWithCode = echoNoShell.error as NodeJS.ErrnoException;
+      info('     Error code', errWithCode.code);
       info('     This matches the CI failure!', '');
     } else {
       success(`  A1. shell:false + echo: SUCCESS`);
@@ -713,7 +724,8 @@ try {
 
     if (nodeNoShell.error) {
       error(`  B1. shell:false + node: FAILED - ${nodeNoShell.error.message}`);
-      info('     Error code', (nodeNoShell.error as any).code);
+      const errWithCode = nodeNoShell.error as NodeJS.ErrnoException;
+      info('     Error code', errWithCode.code);
     } else {
       success(`  B1. shell:false + node: SUCCESS`);
       info('     Exit code', nodeNoShell.status);
@@ -785,7 +797,7 @@ try {
 
     try {
       // Test D1: Explicitly call cmd.exe /c node ...
-      const cmdPath = process.env.COMSPEC || String.raw`C:\Windows\System32\cmd.exe`;
+      const cmdPath = process.env.COMSPEC ?? String.raw`C:\Windows\System32\cmd.exe`;
       const cmdArgs = ['/c', 'node', CLI_BIN, 'run', 'echo test'];
       const cmdResult = spawnSync(cmdPath, cmdArgs, {
         encoding: 'utf-8',
@@ -835,7 +847,7 @@ try {
         success('tmpdir() already returns normalized path');
       } else {
         warn('tmpdir() returns SHORT path, realpathSync() returns LONG path');
-        info('  This is the root cause of test failures on Windows!');
+        info('  This is the root cause', 'test failures on Windows!');
         info('  Length diff', `short: ${tempPath.length}, long: ${realTemp.length}`);
       }
     } catch (err) {
@@ -912,6 +924,7 @@ try {
     if (existsSync(testPath)) {
       try {
         const real = normalizePath(testPath);
+        // eslint-disable-next-line max-depth -- Diagnostic script with deep nesting
         if (testPath === real) {
           success(`${testPath} → already normalized`);
         } else {

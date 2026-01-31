@@ -48,6 +48,7 @@ Exit codes:
 const expectedVersion = args[0];
 
 // Validate version format (semver)
+// eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
 if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(expectedVersion)) {
   log(`✗ Invalid version format: ${expectedVersion}`, 'red');
   log('  Expected format: X.Y.Z or X.Y.Z-prerelease', 'yellow');
@@ -58,8 +59,15 @@ if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(expectedVersion)) {
 log(`🔍 Validating version consistency: ${expectedVersion}`, 'blue');
 console.log('');
 
+interface VersionMismatch {
+  name: string;
+  actualVersion: string;
+  expectedVersion: string;
+  filePath: string;
+}
+
 let hasErrors = false;
-const mismatches = [];
+const mismatches: VersionMismatch[] = [];
 
 /**
  * Check version in a package.json file
@@ -68,7 +76,7 @@ const mismatches = [];
  * @param {boolean} skipPrivate - Skip private packages
  * @returns {Object} Validation result
  */
-function checkPackageVersion(filePath, expectedVersion, skipPrivate = true) {
+function checkPackageVersion(filePath: string, expectedVersion: string, skipPrivate = true) {
   try {
     const content = readFileSync(filePath, 'utf8');
     const pkg = JSON.parse(content);
@@ -93,12 +101,14 @@ function checkPackageVersion(filePath, expectedVersion, skipPrivate = true) {
         actualVersion,
         expectedVersion,
         filePath,
+        skipped: false,
       };
     }
 
-    return { valid: true, name: pkg.name, version: actualVersion };
-  } catch (error) {
-    throw new Error(`Failed to read ${filePath}: ${error.message}`);
+    return { valid: true, name: pkg.name, version: actualVersion, skipped: false };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read ${filePath}: ${message}`);
   }
 }
 
@@ -108,9 +118,10 @@ const counts = processWorkspacePackages(
   (result) => {
     if (result.valid) {
       log(`  ✓ ${result.name}: ${result.version}`, 'green');
-    } else {
-      log(`  ✗ ${result.name}: ${result.actualVersion} (expected: ${result.expectedVersion})`, 'red');
-      mismatches.push(result);
+    } else if (!result.skipped) {
+      const mismatch = result as VersionMismatch;
+      log(`  ✗ ${mismatch.name}: ${mismatch.actualVersion} (expected: ${mismatch.expectedVersion})`, 'red');
+      mismatches.push(mismatch);
       hasErrors = true;
     }
   },

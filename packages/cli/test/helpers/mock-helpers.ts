@@ -28,9 +28,9 @@ export function createMockChildProcess(
   stderrData: string,
   exitCode: number
 ): ChildProcess {
-  const mockProcess = new EventEmitter() as any;
-  mockProcess.stdout = new EventEmitter();
-  mockProcess.stderr = new EventEmitter();
+  const mockProcess = new EventEmitter() as unknown as ChildProcess;
+  mockProcess.stdout = new EventEmitter() as unknown as ChildProcess['stdout'];
+  mockProcess.stderr = new EventEmitter() as unknown as ChildProcess['stderr'];
 
   // Emit data and close events asynchronously
   process.nextTick(() => {
@@ -63,7 +63,7 @@ export function setupCommandTestMocks(): () => void {
   // Mock process.exit
   const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
     throw new Error('process.exit called');
-  }) as any);
+  }) as typeof process.exit);
 
   // Return cleanup function
   return () => {
@@ -93,9 +93,7 @@ export async function executeCommandAndCaptureOutput(
     expect(error).toBeDefined();
   }
 
-  const stdoutCalls = vi.mocked(process.stdout.write).mock.calls
+  return vi.mocked(process.stdout.write).mock.calls
     .map(call => call[0])
     .join('');
-
-  return stdoutCalls;
 }

@@ -9,16 +9,18 @@ import { describe, it, expect } from 'vitest';
 import { GIT_DEFAULTS } from '../src/constants.js';
 import { getRemoteBranch, getMainBranch, getRemoteOrigin } from '../src/git-helpers.js';
 
+const DEFAULT_REMOTE_BRANCH = 'origin/main';
+
 describe('git-helpers', () => {
   describe('getRemoteBranch', () => {
     it('should return default remote branch when no config provided', () => {
       const result = getRemoteBranch();
-      expect(result).toBe('origin/main');
+      expect(result).toBe(DEFAULT_REMOTE_BRANCH);
     });
 
     it('should return default remote branch when empty config provided', () => {
       const result = getRemoteBranch({});
-      expect(result).toBe('origin/main');
+      expect(result).toBe(DEFAULT_REMOTE_BRANCH);
     });
 
     it('should use custom mainBranch with default remoteOrigin', () => {
@@ -127,7 +129,7 @@ describe('git-helpers', () => {
       const remoteOrigin = getRemoteOrigin();
 
       expect(remoteBranch).toBe(`${remoteOrigin}/${mainBranch}`);
-      expect(remoteBranch).toBe('origin/main');
+      expect(remoteBranch).toBe(DEFAULT_REMOTE_BRANCH);
     });
   });
 });

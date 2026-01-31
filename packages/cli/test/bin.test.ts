@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/slow-regex -- Simple test regex patterns, not user-facing */
 import {  rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 

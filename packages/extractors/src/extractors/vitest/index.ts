@@ -6,6 +6,8 @@
  * @package @vibe-validate/extractors
  */
 
+import { toForwardSlash } from '@vibe-validate/utils';
+
 import { MAX_ERRORS_IN_ARRAY } from '../../result-schema.js';
 import type {
   ExtractorPlugin,
@@ -54,7 +56,7 @@ function parseFailureLine(
   // Match Format 2: × test hierarchy (without file path)
   // Skip × lines in summary section (before "Failed Tests" separator) - they lack location markers
   // Only process × lines if we're in detail section OR no FAIL lines exist
-  // eslint-disable-next-line sonarjs/slow-regex -- Safe: only parses Vitest test framework output (controlled output), limited line length
+  // eslint-disable-next-line sonarjs/slow-regex, security/detect-unsafe-regex -- Safe: only parses Vitest test framework output (controlled output), limited line length
   const format2Match = /(?:×)\s+(.+?)(?:\s+\d+ms)?$/.exec(line);
   if (format2Match && currentFile && inDetailSection) {
     return {
@@ -352,7 +354,7 @@ function extractRejectionLocation(section: string): { file: string; location: st
       const loc = `${filepath}:${locationMatch[2]}:${locationMatch[3]}`;
 
       // Prefer user code locations over node:internal
-      if (!filepath.startsWith('node:internal')) {
+      if (!toForwardSlash(filepath).startsWith('node:internal')) {
         file = filepath;
         location = loc;
         break;
@@ -392,6 +394,7 @@ function extractRuntimeErrors(output: string): TestFailure[] {
 
     // Extract error type and message (first non-empty line)
     // Match patterns like: "TypeError: message", "Error: message", "ReferenceError: message"
+    // eslint-disable-next-line security/detect-unsafe-regex -- Safe: only parses Vitest test framework output (controlled output), not user input
     const errorMatch = /^\s*((?:Type|Reference|Range|Syntax)?Error:[^\n]+(?:\n\s*[^\n❯⎯]+)?)/.exec(section);
     if (!errorMatch) {
       continue;

@@ -6,6 +6,8 @@
  * @package @vibe-validate/extractors
  */
 
+import { toForwardSlash } from '@vibe-validate/utils';
+
 import type {
   ExtractorPlugin,
   ErrorExtractorResult,
@@ -188,7 +190,7 @@ function extract(output: string): ErrorExtractorResult {
 
       // Normalize file path (remove absolute path prefix if present, keep relative paths)
       // If it's an absolute path, extract just the tests/... part or the filename
-      if (errorFile.includes('/') && !errorFile.startsWith('tests')) {
+      if (errorFile.includes('/') && !toForwardSlash(errorFile).startsWith('tests')) {
         // Absolute path - extract relative part
         const testsMatch = /(tests?\/.+\.spec\.ts)/i.exec(errorFile);
         if (testsMatch) {

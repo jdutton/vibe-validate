@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expectDetection,
   expectPluginMetadata,
+  expectSamplesParseSuccessfully,
 } from '../../test/helpers/extractor-test-helpers.js';
 
 import playwrightPlugin from './index.js';
@@ -140,7 +141,7 @@ Running 5 tests using 2 workers
         expect(result.errors).toHaveLength(0);
         expect(result.totalErrors).toBe(0);
         expect(result.summary).toBe('0 test(s) failed');
-        expect(result.metadata!.completeness).toBe(100);
+        expect(result.metadata?.completeness ?? 0).toBe(100);
       });
     });
 
@@ -272,8 +273,8 @@ Running 5 tests using 2 workers
 
         const result = playwrightPlugin.extract(output);
 
-        expect(result.metadata!.confidence).toBeGreaterThan(0);
-        expect(result.metadata!.confidence).toBeLessThanOrEqual(100);
+        expect(result.metadata?.confidence ?? 0).toBeGreaterThan(0);
+        expect(result.metadata?.confidence ?? 0).toBeLessThanOrEqual(100);
       });
 
       it('should report issues when extraction has problems', () => {
@@ -294,9 +295,9 @@ Running 5 tests using 2 workers
         // Should extract both failures
         expect(result.errors.length).toBe(2);
         // Should report issues for missing stack traces
-        expect(result.metadata!.issues).toBeDefined();
-        expect(result.metadata!.issues.length).toBe(2);
-        expect(result.metadata!.issues[0]).toContain('No stack trace');
+        expect(result.metadata?.issues).toBeDefined();
+        expect(result.metadata?.issues?.length ?? 0).toBe(2);
+        expect(result.metadata?.issues?.[0] ?? '').toContain('No stack trace');
       });
     });
   });
@@ -308,11 +309,7 @@ Running 5 tests using 2 workers
     });
 
     it('should successfully parse all sample inputs', () => {
-      for (const sample of playwrightPlugin.samples) {
-        const result = playwrightPlugin.extract(sample.input!);
-        expect(result.errors.length).toBeGreaterThan(0);
-        expect(result.errors.length).toBe(sample.expectedErrors);
-      }
+      expectSamplesParseSuccessfully(playwrightPlugin);
     });
   });
 

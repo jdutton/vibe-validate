@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecSync } from '../packages/utils/dist/safe-exec.js';
+import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,9 +29,10 @@ const ROOT = join(__dirname, '..');
  * @param {string} version - Package version (e.g., "0.17.0-rc1")
  * @returns {string} - npm dist-tag (e.g., "rc", "latest")
  */
-function determineTag(version) {
+function determineTag(version: string): string {
   // Extract prerelease identifier (e.g., "rc1", "beta.2", "alpha", etc.)
-  const prereleaseMatch = version.match(/-([a-z]+)/i);
+  const prereleasePattern = /-([a-z]+)/i;
+  const prereleaseMatch = prereleasePattern.exec(version);
 
   if (!prereleaseMatch) {
     // No prerelease identifier → stable release
@@ -41,7 +42,7 @@ function determineTag(version) {
   const prerelease = prereleaseMatch[1].toLowerCase();
 
   // Map common prerelease identifiers to dist-tags
-  const tagMap = {
+  const tagMap: Record<string, string> = {
     'rc': 'next',      // Changed from 'rc' to 'next' for consistency with automation
     'beta': 'beta',
     'alpha': 'alpha',
@@ -66,14 +67,14 @@ function getVersion() {
  * @param {string} packageName - Package directory name
  * @param {string} tag - npm dist-tag
  */
-function publishPackage(packageName, tag) {
+function publishPackage(packageName: string, tag: string): void {
   const packagePath = join(ROOT, 'packages', packageName);
   console.log(`\n📦 Publishing ${packageName}...`);
 
   try {
     safeExecSync('pnpm', ['publish', '--no-git-checks', '--tag', tag], {
       cwd: packagePath,
-      stdio: 'inherit',
+      stdio: ['inherit', 'inherit', 'inherit'],
     });
     console.log(`✅ ${packageName} published with tag: ${tag}`);
   } catch (error) {
@@ -86,13 +87,13 @@ function publishPackage(packageName, tag) {
  * Run pre-publish checks
  * @param {string[]} args - Command-line arguments to pass through
  */
-function runPrePublishChecks(args = []) {
+function runPrePublishChecks(args: string[] = []): void {
   console.log('🔍 Running pre-publish checks...\n');
 
   try {
     safeExecSync('node', ['tools/pre-publish-check.js', ...args], {
       cwd: ROOT,
-      stdio: 'inherit',
+      stdio: ['inherit', 'inherit', 'inherit'],
     });
     console.log('\n✅ Pre-publish checks passed\n');
   } catch (error) {

@@ -13,8 +13,8 @@ import {
 } from '../../src/utils/git-detection.js';
 
 // Mock @vibe-validate/utils instead of child_process
-vi.mock('@vibe-validate/git', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+vi.mock('@vibe-validate/git', async (importActual) => {
+  const actual = await importActual();
   return {
     ...actual,
     isGitRepository: vi.fn(() => true),

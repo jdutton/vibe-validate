@@ -148,7 +148,7 @@ describe('ValidationResultSchema - Strict Validation', () => {
     it('should accept minimal valid result', () => {
       const validResult = createBaseResult();
 
-      expectValidationSuccess(validResult, (data: any) => {
+      expectValidationSuccess(validResult, (data: unknown) => {
         expect(data).toMatchObject(validResult);
       });
     });
@@ -156,8 +156,8 @@ describe('ValidationResultSchema - Strict Validation', () => {
     it('should accept result with isCachedResult', () => {
       expectValidationSuccess(
         createBaseResult({ isCachedResult: true }), // ✅ Valid field (v0.15.0+)
-        (data: any) => {
-          expect(data.isCachedResult).toBe(true);
+        (data: unknown) => {
+          expect((data as Record<string, unknown>).isCachedResult).toBe(true);
         }
       );
     });
@@ -191,10 +191,11 @@ describe('ValidationResultSchema - Strict Validation', () => {
             }]
           }]
         }),
-        (data: any) => {
-          expect(data.isCachedResult).toBe(false);
-          expect(data.failedStep).toBe('TypeScript');
-          expect(data.phases).toHaveLength(1);
+        (data: unknown) => {
+          const result = data as Record<string, unknown>;
+          expect(result.isCachedResult).toBe(false);
+          expect(result.failedStep).toBe('TypeScript');
+          expect((result.phases as unknown[])).toHaveLength(1);
         }
       );
     });

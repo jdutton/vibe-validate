@@ -13,7 +13,7 @@ import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validat
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
-import { normalizePath } from '@vibe-validate/utils';
+import { normalizePath, toForwardSlash } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 import yaml from 'yaml';
@@ -246,7 +246,7 @@ function getWorkingDirectory(explicitCwd?: string): string {
       // Normalize both paths for cross-platform comparison (Windows uses backslashes, git root may use forward slashes)
       const normalizedResolved = normalizePath(resolved);
       const normalizedGitRoot = normalizePath(gitRoot);
-      if (!normalizedResolved.startsWith(normalizedGitRoot)) {
+      if (!toForwardSlash(normalizedResolved).startsWith(toForwardSlash(normalizedGitRoot))) {
         throw new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`);
       }
 
@@ -261,7 +261,7 @@ function getWorkingDirectory(explicitCwd?: string): string {
     const relativePath = relative(gitRoot, cwd);
 
     // If outside git repo or at git root, return empty string
-    if (relativePath.startsWith('..') || !relativePath) {
+    if (toForwardSlash(relativePath).startsWith('..') || !relativePath) {
       return '';
     }
 

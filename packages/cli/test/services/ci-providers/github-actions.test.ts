@@ -4,7 +4,7 @@ import { GitHubActionsProvider } from '../../../src/services/ci-providers/github
 
 // Mock @vibe-validate/utils
 vi.mock('@vibe-validate/utils', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/utils')>('@vibe-validate/utils');
+  const actual = await vi.importActual('@vibe-validate/utils');
   return {
     ...actual,
     isToolAvailable: vi.fn(() => true), // Default: gh is available
@@ -14,7 +14,7 @@ vi.mock('@vibe-validate/utils', async () => {
 
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', async () => {
-  const actual = await vi.importActual<typeof import('@vibe-validate/git')>('@vibe-validate/git');
+  const actual = await vi.importActual('@vibe-validate/git');
   return {
     ...actual,
     executeGitCommand: vi.fn(() => ({

@@ -26,6 +26,9 @@ import { syncCheckCommand } from './commands/sync-check.js';
 import { validateCommand } from './commands/validate.js';
 import { registerWatchPRCommand } from './commands/watch-pr.js';
 
+// Constants for error guidance (extracted to avoid duplication warnings)
+const RETRY_PRE_COMMIT = 'vibe-validate pre-commit  # Retry';
+
 // Read version from package.json at runtime
 // This approach works with ESM and survives TypeScript compilation
 const __filename = fileURLToPath(import.meta.url);
@@ -272,8 +275,8 @@ function showComprehensiveHelp(program: Command): void {
       },
       whenToUse: 'Run before every commit to ensure code is synced and validated',
       errorGuidance: {
-        'sync failed': ['git fetch origin', 'git merge origin/main', 'Resolve conflicts if any', 'vibe-validate pre-commit  # Retry'],
-        'validation failed': ['Fix errors shown in output', 'vibe-validate pre-commit  # Retry']
+        'sync failed': ['git fetch origin', 'git merge origin/main', 'Resolve conflicts if any', RETRY_PRE_COMMIT],
+        'validation failed': ['Fix errors shown in output', RETRY_PRE_COMMIT]
       },
       examples: [
         'vibe-validate pre-commit  # Standard pre-commit workflow',
@@ -309,7 +312,7 @@ function showComprehensiveHelp(program: Command): void {
         2: 'Git command failed'
       },
       errorGuidance: {
-        'branch behind (exit 1)': ['git fetch origin', 'git merge origin/main  # or git rebase origin/main', 'Resolve conflicts if any', 'vibe-validate pre-commit  # Retry']
+        'branch behind (exit 1)': ['git fetch origin', 'git merge origin/main  # or git rebase origin/main', 'Resolve conflicts if any', RETRY_PRE_COMMIT]
       },
       examples: [
         'vibe-validate sync-check',

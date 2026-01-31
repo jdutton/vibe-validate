@@ -34,16 +34,16 @@ const OUTPUT_PATH = join(PROJECT_ROOT, '.changelog-release.md');
  * @param {string} version - Version to extract (e.g., '0.17.5')
  * @returns {string} - Extracted content for the version
  */
-function extractVersionSection(changelogContent, version) {
+function extractVersionSection(changelogContent: string, version: string): string {
   // Escape version for regex (handles dots and dashes)
   const escapedVersion = version.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
   // Match: ## [VERSION] - YYYY-MM-DD
   // eslint-disable-next-line security/detect-non-literal-regexp -- escapedVersion is sanitized above
   const versionHeaderPattern = new RegExp(String.raw`^## \[${escapedVersion}\] - \d{4}-\d{2}-\d{2}$`, 'm');
-  const versionHeaderMatch = changelogContent.match(versionHeaderPattern);
+  const versionHeaderMatch = versionHeaderPattern.exec(changelogContent);
 
-  if (!versionHeaderMatch) {
+  if (versionHeaderMatch?.index === undefined) {
     throw new Error(`Version ${version} not found in CHANGELOG.md`);
   }
 
@@ -56,24 +56,24 @@ function extractVersionSection(changelogContent, version) {
   // Find next version header or end of file
   const nextVersionPattern = /^## \[/m;
   const remainingContent = changelogContent.slice(contentStart);
-  const nextVersionMatch = remainingContent.match(nextVersionPattern);
+  const nextVersionMatch = nextVersionPattern.exec(remainingContent);
 
   let contentEnd;
-  if (nextVersionMatch) {
-    // Next version found - content ends there
-    contentEnd = contentStart + nextVersionMatch.index;
-  } else {
+  if (nextVersionMatch?.index === undefined) {
     // No next version - check for link references section
     const linkReferencesPattern = /^\[Unreleased\]:/m;
-    const linkReferencesMatch = remainingContent.match(linkReferencesPattern);
+    const linkReferencesMatch = linkReferencesPattern.exec(remainingContent);
 
-    if (linkReferencesMatch) {
-      // Link references found - content ends there
-      contentEnd = contentStart + linkReferencesMatch.index;
-    } else {
+    if (linkReferencesMatch?.index === undefined) {
       // No link references - content goes to end of file
       contentEnd = changelogContent.length;
+    } else {
+      // Link references found - content ends there
+      contentEnd = contentStart + linkReferencesMatch.index;
     }
+  } else {
+    // Next version found - content ends there
+    contentEnd = contentStart + nextVersionMatch.index;
   }
 
   // Extract content
@@ -109,6 +109,7 @@ Exit codes:
 const version = args[0];
 
 // Validate version format (semver)
+// eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
 if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(version)) {
   log(`✗ Invalid version format: ${version}`, 'red');
   log('  Expected format: X.Y.Z or X.Y.Z-prerelease', 'yellow');
@@ -124,8 +125,9 @@ let changelogContent;
 try {
   changelogContent = readFileSync(CHANGELOG_PATH, 'utf8');
   log(`✓ Read CHANGELOG.md (${changelogContent.length} bytes)`, 'green');
-} catch (error) {
-  log(`✗ Failed to read CHANGELOG.md: ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`✗ Failed to read CHANGELOG.md: ${message}`, 'red');
   process.exit(1);
 }
 
@@ -134,8 +136,9 @@ let content;
 try {
   content = extractVersionSection(changelogContent, version);
   log(`✓ Extracted version section (${content.length} bytes)`, 'green');
-} catch (error) {
-  log(`✗ ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`✗ ${message}`, 'red');
   console.log('');
   log('Recovery instructions:', 'yellow');
   log(`  1. Update CHANGELOG.md to include version ${version}`, 'yellow');
@@ -161,8 +164,9 @@ if (content.length < 50) {
 try {
   writeFileSync(OUTPUT_PATH, content, 'utf8');
   log(`✓ Wrote release notes to ${OUTPUT_PATH}`, 'green');
-} catch (error) {
-  log(`✗ Failed to write output file: ${error.message}`, 'red');
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  log(`✗ Failed to write output file: ${message}`, 'red');
   process.exit(1);
 }
 

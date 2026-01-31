@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- **Fixed validation locking race condition in pre-commit** (Issue #110)
+  - Migrated to proper-lockfile for 99.9% reliable locking
+  - Prevents concurrent validation runs from interfering
+  - Fixed worktree corruption in git integration tests
+- **Windows compatibility: removed Unix-specific `find` command** (PR #108)
+  - Build commands now work cross-platform
+
+### Internal
+
+- **Turborepo integration for 79x faster cached builds** (PR #108)
+  - Cold build: 5.3s → Cached build: 67ms (79x speedup)
+  - Intelligent content-based caching with parallel execution
+  - Clean architecture: vibe-validate → turbo → tool
+  - Error extraction works automatically through Turbo output
+  - See `docs/comparisons/turborepo.md` for detailed comparison
+- Reduced code duplication by 70% (4.73% → 0.86%)
+- Enhanced pre-publish-check with package list validation, workspace dependencies check, files field validation, and metadata validation
+- Added comprehensive ESLint rules for code quality (custom rules for security and architecture enforcement)
+- Refactored dev tools to packages/dev-tools for symmetric monorepo structure
+
 ## [0.18.3] - 2026-01-05
 
 ### Bug Fixes

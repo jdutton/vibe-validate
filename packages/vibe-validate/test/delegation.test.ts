@@ -4,6 +4,7 @@
  * Ensures that the vibe-validate package wrappers correctly delegate to
  * @vibe-validate/cli and maintain single source of truth.
  */
+ 
 
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -25,10 +26,11 @@ function execCLI(binPath: string, args: string[], options?: { cwd?: string }): s
   try {
     // eslint-disable-next-line local/no-direct-cli-bin-execution -- Meta-package can't import CLI test helpers (circular dependency)
     return safeExecSync('node', [binPath, ...args], { encoding: 'utf-8', ...options }) as string;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // For successful non-zero exits, return output
-    if (err.stdout || err.stderr) {
-      return (err.stdout || '') + (err.stderr || '');
+    const error = err as { stdout?: string; stderr?: string };
+    if (error.stdout ?? error.stderr) {
+      return (error.stdout ?? '') + (error.stderr ?? '');
     }
     throw err;
   }

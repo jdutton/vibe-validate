@@ -1,6 +1,6 @@
 {
   "name": "@vibe-validate/extractors",
-  "version": "0.18.4-rc.1",
+  "version": "0.18.4",
   "description": "LLM-optimized error extractors for validation output",
   "type": "module",
   "main": "./dist/index.js",
@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "@vibe-validate/config": "workspace:*",
+    "@vibe-validate/utils": "workspace:*",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.25.0"
   },

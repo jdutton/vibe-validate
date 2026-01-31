@@ -99,6 +99,7 @@ function extractFailures(output: string): TestFailureInfo[] {
         // Pattern 3: "     TypeError: Cannot read..."
         if (!message) {
           // Match plain "Error" or prefixed errors like "TypeError", "AssertionError"
+          // eslint-disable-next-line security/detect-unsafe-regex -- Safe: only parses Mocha test framework output (controlled output), not user input
           const errorMatch = /^\s+([A-Za-z]*Error)(?:\s\[\w+\])?\s*:\s*(.+)/.exec(nextLine);
           if (errorMatch) {
             errorType = errorMatch[1];

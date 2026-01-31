@@ -28,6 +28,7 @@
     { "path": "./packages/extractors" },
     { "path": "./packages/core" },
     { "path": "./packages/history" },
-    { "path": "./packages/cli" }
+    { "path": "./packages/cli" },
+    { "path": "./packages/dev-tools" }
   ]
 }

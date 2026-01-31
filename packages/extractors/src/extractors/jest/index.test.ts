@@ -244,7 +244,7 @@ ${failures}
 
       // Error summary should also be truncated
       const { MAX_ERRORS_IN_ARRAY } = await import('../../result-schema.js');
-      const summaryLines = result.errorSummary!.split('\n').filter(line => line.startsWith('●'));
+      const summaryLines = (result.errorSummary ?? '').split('\n').filter(line => line.startsWith('●'));
       expect(summaryLines.length).toBeLessThanOrEqual(MAX_ERRORS_IN_ARRAY);
     });
 

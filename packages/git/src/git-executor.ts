@@ -153,6 +153,7 @@ export function executeGitCommand(
   }
 
   // Execute command
+  // eslint-disable-next-line sonarjs/no-os-command-from-path -- git is a standard system command
   const result = spawnSync('git', args, spawnOptions);
 
   const stdout = (result.stdout?.toString() || '').trim();

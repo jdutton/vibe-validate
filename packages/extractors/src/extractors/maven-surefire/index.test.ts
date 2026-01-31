@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expectDetection,
   expectPluginMetadata,
+  expectSampleValidation,
 } from '../../test/helpers/extractor-test-helpers.js';
 
 
@@ -195,34 +196,15 @@ to contain:
     });
 
     it('should validate basic-assertion-failure sample', () => {
-      const sample = mavenSurefireExtractor.samples?.find(
-        (s) => s.name === 'basic-assertion-failure'
-      );
-      expect(sample).toBeDefined();
-      if (sample && 'input' in sample && sample.input) {
-        const result = mavenSurefireExtractor.extract(sample.input);
-        expect(result.totalErrors).toBe(sample.expected!.totalErrors);
-      }
+      expectSampleValidation(mavenSurefireExtractor, 'basic-assertion-failure');
     });
 
     it('should validate null-pointer-exception sample', () => {
-      const sample = mavenSurefireExtractor.samples?.find(
-        (s) => s.name === 'null-pointer-exception'
-      );
-      expect(sample).toBeDefined();
-      if (sample && 'input' in sample && sample.input) {
-        const result = mavenSurefireExtractor.extract(sample.input);
-        expect(result.totalErrors).toBe(sample.expected!.totalErrors);
-      }
+      expectSampleValidation(mavenSurefireExtractor, 'null-pointer-exception');
     });
 
     it('should validate assertj-failure sample', () => {
-      const sample = mavenSurefireExtractor.samples?.find((s) => s.name === 'assertj-failure');
-      expect(sample).toBeDefined();
-      if (sample && 'input' in sample && sample.input) {
-        const result = mavenSurefireExtractor.extract(sample.input);
-        expect(result.totalErrors).toBe(sample.expected!.totalErrors);
-      }
+      expectSampleValidation(mavenSurefireExtractor, 'assertj-failure');
     });
   });
 });
