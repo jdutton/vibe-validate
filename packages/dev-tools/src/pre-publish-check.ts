@@ -549,7 +549,7 @@ if (skipGitChecks) {
     const corePkgJson = JSON.parse(readFileSync(corePkgJsonPath, 'utf8')) as Record<string, unknown>;
     const version = corePkgJson['version'];
     if (typeof version !== 'string') {
-      throw new Error('Version not found in core package.json');
+      throw new TypeError('Version not found in core package.json');
     }
 
     // Read CHANGELOG.md
