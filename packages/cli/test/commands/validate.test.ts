@@ -6,7 +6,7 @@ import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
 
 import { validateCommand } from '../../src/commands/validate.js';
 import * as configLoader from '../../src/utils/config-loader.js';
@@ -75,6 +75,127 @@ describe('validate command', () => {
   let testDir: string;
   let originalCwd: string;
   let env: CommanderTestEnv;
+
+  /**
+   * Create mock validation config with sensible defaults
+   * @param overrides - Partial config to override defaults
+   * @returns Complete validation config
+   */
+  function createMockConfig(overrides: Partial<VibeValidateConfig> = {}): VibeValidateConfig {
+    return {
+      validation: {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              { name: 'Test Step', command: 'echo test' }
+            ]
+          }
+        ]
+      },
+      ...overrides,
+    };
+  }
+
+  /**
+   * Setup config loader with mock config
+   * @param config - Config to return (defaults to createMockConfig())
+   */
+  function setupMockConfig(config: VibeValidateConfig = createMockConfig()): void {
+    vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: testDir });
+  }
+
+  /**
+   * Setup successful validation mock
+   * @param overrides - Partial result to override defaults
+   */
+  function setupSuccessfulValidation(overrides = {}): void {
+    vi.mocked(core.runValidation).mockResolvedValue({
+      passed: true,
+      timestamp: new Date().toISOString(),
+      treeHash: 'abc123',
+      phases: [],
+      ...overrides,
+    });
+  }
+
+  /**
+   * Setup failed validation mock
+   * @param overrides - Partial result to override defaults
+   */
+  function setupFailedValidation(overrides = {}): void {
+    vi.mocked(core.runValidation).mockResolvedValue({
+      passed: false,
+      timestamp: new Date().toISOString(),
+      treeHash: 'abc123',
+      phases: [
+        {
+          name: 'Test Phase',
+          passed: false,
+          steps: [
+            {
+              name: 'Test Step',
+              command: 'npm test',
+              passed: false,
+            }
+          ]
+        }
+      ],
+      failedStep: 'Test Step',
+      fullLogFile: join(normalizedTmpdir(), 'validation.log'),
+      ...overrides,
+    });
+  }
+
+  /**
+   * Parse command with proper error handling
+   * @param args - Command arguments
+   * @returns Exit code (0 for success, 1 for failure)
+   */
+  async function parseCommand(args: string[]): Promise<number> {
+    try {
+      await env.program.parseAsync(args, { from: 'user' });
+      return 0;
+    } catch (err: unknown) {
+      // Handle Commander exitOverride errors
+      if (err && typeof err === 'object' && 'exitCode' in err) {
+        return (err as { exitCode: number }).exitCode;
+      }
+      // Handle process.exit mock errors
+      if (err instanceof Error && err.message.startsWith('process.exit(')) {
+        const regex = /process\.exit\((\d+)\)/;
+        const match = regex.exec(err.message);
+        if (match) {
+          return Number.parseInt(match[1], 10);
+        }
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Setup stdout spy for capturing YAML output
+   * @returns Spy instance
+   */
+  function setupStdoutSpy(): MockInstance {
+    return vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
+      if (typeof encoding === 'function') {
+        encoding();
+      } else if (typeof callback === 'function') {
+        callback();
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Setup stderr spy for capturing error output
+   * @returns Spy instance
+   */
+  function setupStderrSpy(): MockInstance {
+    return vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  }
 
   beforeEach(() => {
     // Clear all mock calls from previous tests (prevents test pollution across test files)
@@ -292,127 +413,54 @@ describe('validate command', () => {
 
   describe('successful validation', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'echo test' }
-              ]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Mock successful validation
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123',
-        phases: [],
-      });
+      setupMockConfig();
+      setupSuccessfulValidation();
     });
 
     it('should exit with code 0 on successful validation', async () => {
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
-
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
 
     it('should pass force option to validation runner', async () => {
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--force'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
-      // Verify runValidation was called (force flag is processed by createRunnerConfig)
+      const exitCode = await parseCommand(['validate', '--force']);
+      expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
   });
 
   describe('failed validation', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
+      setupMockConfig(createMockConfig({
         validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'exit 1' }
-              ]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Mock failed validation (v0.15.0+: use step.command instead of rerunCommand)
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: false,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123',
-        phases: [
-          {
+          phases: [{
             name: 'Test Phase',
-            passed: false,
-            steps: [
-              {
-                name: 'Test Step',
-                command: 'npm test', // v0.15.0+: command in step
-                passed: false,
-              }
-            ]
-          }
-        ],
-        failedStep: 'Test Step',
-        fullLogFile: join(normalizedTmpdir(), 'validation.log'),
-      });
+            parallel: true,
+            steps: [{ name: 'Test Step', command: 'exit 1' }]
+          }]
+        }
+      }));
+      setupFailedValidation();
     });
 
     it('should exit with code 1 on failed validation', async () => {
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
-
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(1);
       expect(core.runValidation).toHaveBeenCalled();
     });
 
     it('should display error details on failure', async () => {
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('View error details'),
         expect.anything()
@@ -426,119 +474,51 @@ describe('validate command', () => {
 
   describe('verbosity detection', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'echo test' }
-              ]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Mock successful validation
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        timestamp: new Date().toISOString(),
-        treeHash: 'abc123',
-        phases: [],
-      });
+      setupMockConfig();
+      setupSuccessfulValidation();
     });
 
     it('should use minimal output for agents by default', async () => {
-      // Mock Claude Code environment
       process.env.CLAUDE_CODE = 'true';
-
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
-      // Verify runValidation was called (verbosity is handled by detectContext + createRunnerConfig)
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
 
       delete process.env.CLAUDE_CODE;
     });
 
     it('should use verbose output for interactive terminals by default', async () => {
-      // Ensure no agent environment variables
       delete process.env.CLAUDE_CODE;
       delete process.env.CI;
-
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
-      // Verify runValidation was called (verbosity detection is handled by detectContext + createRunnerConfig)
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
 
     it('should respect explicit --verbose flag', async () => {
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
-      // Verify runValidation was called (verbose flag is processed by createRunnerConfig)
+      const exitCode = await parseCommand(['validate', '--verbose']);
+      expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
   });
 
   describe('error handling', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'echo test' }
-              ]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+      setupMockConfig();
     });
 
     it('should handle validation runner exceptions', async () => {
-      // Mock validation throwing an error
       vi.mocked(core.runValidation).mockRejectedValue(new Error('Validation crashed'));
-
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
-
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Validation failed with error'),
         expect.any(Error)
@@ -546,35 +526,24 @@ describe('validate command', () => {
     });
 
     it('should output YAML error result when validation crashes with --yaml flag', async () => {
-      // Mock validation throwing an error
       const testError = new Error('Validation crashed: /tmp write failed');
       vi.mocked(core.runValidation).mockRejectedValue(testError);
 
-      // Spy on stdout.write to capture YAML output
-      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-
+      const stdoutSpy = setupStdoutSpy();
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      const exitCode = await parseCommand(['validate', '--yaml']);
+      expect(exitCode).toBe(1);
 
-      // Verify error logged to stderr
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Validation failed with error'),
         expect.any(Error)
       );
 
-      // Verify YAML output to stdout
       const stdoutCalls = stdoutSpy.mock.calls.map(call => call[0]).join('');
-      expect(stdoutCalls).toContain('---\n'); // YAML document separator
+      expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('passed: false');
       expect(stdoutCalls).toContain('timestamp:');
-      // Error message will be quoted in YAML output
       expect(stdoutCalls).toContain('Validation crashed: /tmp write failed');
 
       stdoutSpy.mockRestore();
@@ -583,21 +552,7 @@ describe('validate command', () => {
 
   describe('--check flag', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'echo test' }
-              ]
-            }
-          ]
-        },
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+      setupMockConfig();
     });
 
     it('should not run validation when --check flag is used', async () => {
@@ -720,33 +675,8 @@ describe('validate command', () => {
 
   describe('--yaml flag', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'echo test' }
-              ]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Spy on process.stdout.write to capture YAML output
-      // Return true to indicate write succeeded (no buffering needed)
-      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
-        // Handle different call signatures
-        if (typeof encoding === 'function') {
-          encoding(); // encoding is actually the callback
-        } else if (typeof callback === 'function') {
-          callback();
-        }
-        return true; // Indicate write succeeded
-      });
+      setupMockConfig();
+      setupStdoutSpy();
     });
 
     it('should register --yaml option', () => {
@@ -759,122 +689,49 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout on successful validation', async () => {
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        timestamp: '2025-10-22T00:00:00.000Z',
-        treeHash: 'abc123',
-        phases: [],
-      });
-
+      setupSuccessfulValidation({ timestamp: '2025-10-22T00:00:00.000Z' });
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
-      // Verify YAML separator and content were written to stdout
+      const exitCode = await parseCommand(['validate', '--yaml']);
+      expect(exitCode).toBe(0);
       expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
     });
 
     it('should output YAML to stdout on failed validation', async () => {
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: false,
-        timestamp: '2025-10-22T00:00:00.000Z',
-        treeHash: 'abc123',
-        phases: [],
-        failedStep: 'Test Step',
-      });
-
+      setupFailedValidation({ timestamp: '2025-10-22T00:00:00.000Z', phases: [], fullLogFile: undefined });
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (err: unknown) {
-        // Expected exit with code 1
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
-
-      // Verify YAML separator and content were written to stdout
+      const exitCode = await parseCommand(['validate', '--yaml']);
+      expect(exitCode).toBe(1);
       expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
     });
 
     it('should pass yaml flag to runner config', async () => {
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        timestamp: '2025-10-22T00:00:00.000Z',
-        treeHash: 'abc123',
-        phases: [],
-      });
-
+      setupSuccessfulValidation({ timestamp: '2025-10-22T00:00:00.000Z' });
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
-      // Verify runValidation was called with yaml in config
+      const exitCode = await parseCommand(['validate', '--yaml']);
+      expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalledWith(
-        expect.objectContaining({
-          yaml: true
-        })
+        expect.objectContaining({ yaml: true })
       );
     });
 
     it('should work with both --yaml and --verbose flags', async () => {
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        timestamp: '2025-10-22T00:00:00.000Z',
-        treeHash: 'abc123',
-        phases: [],
-      });
-
+      setupSuccessfulValidation({ timestamp: '2025-10-22T00:00:00.000Z' });
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--yaml', '--verbose'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit
-      }
-
-      // Verify both flags were passed to runner
+      const exitCode = await parseCommand(['validate', '--yaml', '--verbose']);
+      expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalledWith(
-        expect.objectContaining({
-          yaml: true,
-          verbose: true
-        })
+        expect.objectContaining({ yaml: true, verbose: true })
       );
     });
 
     it('should display cached validation with tree hash and phase/step counts in human-readable mode', async () => {
-      // Mock valid config (required for validation to proceed)
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [{ name: 'Test Step', command: 'echo test' }]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Mock git tree hash (override default rejection)
+      setupMockConfig();
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with passing validation (cached result with phases)
@@ -954,21 +811,15 @@ describe('validate command', () => {
     });
 
     it('should display cached failure result with tree hash and details in human-readable mode', async () => {
-      // Mock valid config (required for validation to proceed)
-      const mockConfig: VibeValidateConfig = {
+      setupMockConfig(createMockConfig({
         validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [{ name: 'Test Step', command: 'npm test' }]
-            }
-          ]
+          phases: [{
+            name: 'Test Phase',
+            parallel: true,
+            steps: [{ name: 'Test Step', command: 'npm test' }]
+          }]
         }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Mock git tree hash
+      }));
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with failing validation (cached failure)
@@ -1046,21 +897,15 @@ describe('validate command', () => {
     });
 
     it('should warn about flakiness when multiple runs have different outcomes', async () => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
+      setupMockConfig(createMockConfig({
         validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [{ name: 'Test Step', command: 'npm test' }]
-            }
-          ]
+          phases: [{
+            name: 'Test Phase',
+            parallel: true,
+            steps: [{ name: 'Test Step', command: 'npm test' }]
+          }]
         }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Mock git tree hash
+      }));
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with multiple runs - some passed, some failed (flakiness)
@@ -1144,31 +989,8 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
-      // Mock valid config (required for validation to proceed)
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [{ name: 'Test Step', command: 'echo test' }]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Spy on process.stdout.write to capture YAML output
-      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
-        if (typeof encoding === 'function') {
-          encoding();
-        } else if (typeof callback === 'function') {
-          callback();
-        }
-        return true;
-      });
-
-      // Mock git tree hash (override default rejection)
+      setupMockConfig();
+      setupStdoutSpy();
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with passing validation (cached result)
@@ -1218,31 +1040,16 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout when cached failure and --yaml flag is set', async () => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
+      setupMockConfig(createMockConfig({
         validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [{ name: 'Test Step', command: 'npm test' }]
-            }
-          ]
+          phases: [{
+            name: 'Test Phase',
+            parallel: true,
+            steps: [{ name: 'Test Step', command: 'npm test' }]
+          }]
         }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
-
-      // Spy on process.stdout.write to capture YAML output
-      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
-        if (typeof encoding === 'function') {
-          encoding();
-        } else if (typeof callback === 'function') {
-          callback();
-        }
-        return true;
-      });
-
-      // Mock git tree hash
+      }));
+      setupStdoutSpy();
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with failing validation (cached failure)
@@ -1302,72 +1109,45 @@ describe('validate command', () => {
 
   describe('auto-YAML output on failure', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
+      setupMockConfig(createMockConfig({
         validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'npm test' }
-              ]
-            }
-          ]
+          phases: [{
+            name: 'Test Phase',
+            parallel: true,
+            steps: [{ name: 'Test Step', command: 'npm test' }]
+          }]
         }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+      }));
     });
 
     it('should auto-output YAML to stderr on validation failure (without --yaml flag)', async () => {
-      // Spy on process.stderr.write to capture YAML output
-      const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-
-      // Mock failed validation
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: false,
+      const stderrSpy = setupStderrSpy();
+      setupFailedValidation({
         timestamp: '2025-11-24T00:00:00.000Z',
-        treeHash: 'abc123',
-        phases: [
-          {
-            name: 'Test Phase',
+        phases: [{
+          name: 'Test Phase',
+          passed: false,
+          steps: [{
+            name: 'Test Step',
+            command: 'npm test',
             passed: false,
-            steps: [
-              {
-                name: 'Test Step',
-                command: 'npm test',
-                passed: false,
-                errors: [
-                  {
-                    file: 'src/foo.ts',
-                    line: 42,
-                    message: "Type 'string' is not assignable to type 'number'"
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        failedStep: 'Test Step',
+            errors: [{
+              file: 'src/foo.ts',
+              line: 42,
+              message: "Type 'string' is not assignable to type 'number'"
+            }]
+          }]
+        }],
       });
-
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
-
-      // Verify human-readable summary was shown first
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('View error details'),
         expect.anything()
       );
 
-      // Verify YAML separator and content were written to stderr
       const stderrCalls = stderrSpy.mock.calls.map(call => call[0]).join('');
       expect(stderrCalls).toContain('---\n');
       expect(stderrCalls).toContain('passed: false');
@@ -1378,28 +1158,13 @@ describe('validate command', () => {
     });
 
     it('should NOT auto-output YAML on validation success (without --yaml flag)', async () => {
-      // Spy on process.stderr.write
-      const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-
-      // Mock successful validation
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        timestamp: '2025-11-24T00:00:00.000Z',
-        treeHash: 'abc123',
-        phases: [],
-      });
-
+      const stderrSpy = setupStderrSpy();
+      setupSuccessfulValidation({ timestamp: '2025-11-24T00:00:00.000Z' });
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
+      const exitCode = await parseCommand(['validate']);
+      expect(exitCode).toBe(0);
 
-      // Verify YAML was NOT output to stderr (success case)
       const stderrCalls = stderrSpy.mock.calls.map(call => call[0]).join('');
       expect(stderrCalls).not.toContain('---\n');
       expect(stderrCalls).not.toContain('passed: true');
@@ -1408,29 +1173,13 @@ describe('validate command', () => {
     });
 
     it('should still respect explicit --yaml flag (output to stdout on both success and failure)', async () => {
-      // Spy on stdout
-      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-
-      // Mock failed validation
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: false,
-        timestamp: '2025-11-24T00:00:00.000Z',
-        treeHash: 'abc123',
-        phases: [],
-        failedStep: 'Test Step',
-      });
-
+      const stdoutSpy = setupStdoutSpy();
+      setupFailedValidation({ timestamp: '2025-11-24T00:00:00.000Z', phases: [], fullLogFile: undefined });
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      const exitCode = await parseCommand(['validate', '--yaml']);
+      expect(exitCode).toBe(1);
 
-      // With --yaml flag, should output to stdout (not stderr)
       const stdoutCalls = stdoutSpy.mock.calls.map(call => call[0]).join('');
       expect(stdoutCalls).toContain('---\n');
       expect(stdoutCalls).toContain('passed: false');
@@ -1441,21 +1190,7 @@ describe('validate command', () => {
 
   describe('worktree stability', () => {
     beforeEach(() => {
-      // Mock valid config
-      const mockConfig: VibeValidateConfig = {
-        validation: {
-          phases: [
-            {
-              name: 'Test Phase',
-              parallel: true,
-              steps: [
-                { name: 'Test Step', command: 'echo test' }
-              ]
-            }
-          ]
-        }
-      };
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+      setupMockConfig();
     });
 
     it('should warn and skip history recording when worktree changes during validation', async () => {
