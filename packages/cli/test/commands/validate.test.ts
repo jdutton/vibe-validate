@@ -124,6 +124,21 @@ describe('validate command', () => {
   }
 
   /**
+   * Parse command and expect it to exit with specific code
+   * @param args - Command arguments to parse
+   * @param expectedExitCode - Expected exit code (default: 1)
+   */
+  async function parseCommandExpectingExit(args: string[], expectedExitCode = 1): Promise<void> {
+    try {
+      await env.program.parseAsync(args, { from: 'user' });
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'exitCode' in err) {
+        expect(err.exitCode).toBe(expectedExitCode);
+      }
+    }
+  }
+
+  /**
    * Create mock validation config with sensible defaults
    * @param overrides - Partial config to override defaults
    * @returns Complete validation config
@@ -391,13 +406,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      await parseCommandExpectingExit(['validate']);
 
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No configuration found'));
     });
@@ -418,13 +427,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      await parseCommandExpectingExit(['validate']);
 
       expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration is invalid'));
@@ -445,13 +448,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      await parseCommandExpectingExit(['validate']);
 
       expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No configuration found'));
@@ -634,13 +631,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--check'], { from: 'user' });
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(2);
-        }
-      }
+      await parseCommandExpectingExit(['validate', '--check'], 2);
 
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('No validation history for current working tree')
@@ -660,14 +651,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--check', '--yaml'], { from: 'user' });
-      } catch (err: unknown) {
-        // Expected exit from checkValidationStatus with code 0
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
+      await parseCommandExpectingExit(['validate', '--check', '--yaml'], 0);
 
       // Verify runValidation was NOT called (using --check flag)
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -744,46 +728,27 @@ describe('validate command', () => {
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with passing validation (cached result with phases)
-      const mockHistoryNote = {
-        treeHash: 'abc123def456',
-        runs: [
+      const mockHistoryNote = createMockHistoryNote({
+        phases: [
           {
-            id: 'run-1',
-            timestamp: '2025-10-22T00:00:00.000Z',
-            duration: 5000,
+            name: 'Pre-Qualification',
+            durationSecs: 2.5,
             passed: true,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: true,
-              timestamp: '2025-10-22T00:00:00.000Z',
-              treeHash: 'abc123def456',
-              duration: 5000,
-              branch: 'main',
-              phases: [
-                {
-                  name: 'Pre-Qualification',
-                  durationSecs: 2.5,
-                  passed: true,
-                  steps: [
-                    { name: 'TypeScript', passed: true, durationSecs: 1.2 },
-                    { name: 'ESLint', passed: true, durationSecs: 1.3 }
-                  ]
-                },
-                {
-                  name: 'Testing',
-                  durationSecs: 2.5,
-                  passed: true,
-                  steps: [
-                    { name: 'Unit Tests', passed: true, durationSecs: 2.5 }
-                  ]
-                }
-              ],
-            },
+            steps: [
+              { name: 'TypeScript', passed: true, durationSecs: 1.2 },
+              { name: 'ESLint', passed: true, durationSecs: 1.3 }
+            ]
           },
-        ],
-      };
+          {
+            name: 'Testing',
+            durationSecs: 2.5,
+            passed: true,
+            steps: [
+              { name: 'Unit Tests', passed: true, durationSecs: 2.5 }
+            ]
+          }
+        ]
+      });
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       validateCommand(env.program);
@@ -832,50 +797,25 @@ describe('validate command', () => {
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with failing validation (cached failure)
-      const mockHistoryNote = {
-        treeHash: 'abc123def456',
-        runs: [
+      const mockHistoryNote = createMockHistoryNote({
+        passed: false,
+        failedStep: 'Test Step',
+        phases: [
           {
-            id: 'run-1',
-            timestamp: '2025-10-22T00:00:00.000Z',
-            duration: 5000,
+            name: 'Test Phase',
+            durationSecs: 5,
             passed: false,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: false,
-              timestamp: '2025-10-22T00:00:00.000Z',
-              treeHash: 'abc123def456',
-              duration: 5000,
-              branch: 'main',
-              failedStep: 'Test Step',
-              phases: [
-                {
-                  name: 'Test Phase',
-                  durationSecs: 5,
-                  passed: false,
-                  steps: [
-                    { name: 'Test Step', passed: false, durationSecs: 5 }
-                  ]
-                }
-              ],
-            },
-          },
-        ],
-      };
+            steps: [
+              { name: 'Test Step', passed: false, durationSecs: 5 }
+            ]
+          }
+        ]
+      });
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        // Should exit with code 1 for cached failure
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      await parseCommandExpectingExit(['validate']);
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
@@ -1003,28 +943,7 @@ describe('validate command', () => {
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with passing validation (cached result)
-      const mockHistoryNote = {
-        treeHash: 'abc123def456',
-        runs: [
-          {
-            id: 'run-1',
-            timestamp: '2025-10-22T00:00:00.000Z',
-            duration: 5000,
-            passed: true,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: true,
-              timestamp: '2025-10-22T00:00:00.000Z',
-              treeHash: 'abc123def456',
-              duration: 5000,
-              branch: 'main',
-              phases: [],
-            },
-          },
-        ],
-      };
+      const mockHistoryNote = createMockHistoryNote();
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       validateCommand(env.program);
@@ -1062,41 +981,15 @@ describe('validate command', () => {
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with failing validation (cached failure)
-      const mockHistoryNote = {
-        treeHash: 'abc123def456',
-        runs: [
-          {
-            id: 'run-1',
-            timestamp: '2025-10-22T00:00:00.000Z',
-            duration: 5000,
-            passed: false,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: false,
-              timestamp: '2025-10-22T00:00:00.000Z',
-              treeHash: 'abc123def456',
-              duration: 5000,
-              branch: 'main',
-              failedStep: 'Test Step',
-              phases: [],
-            },
-          },
-        ],
-      };
+      const mockHistoryNote = createMockHistoryNote({
+        passed: false,
+        failedStep: 'Test Step'
+      });
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
-      } catch (err: unknown) {
-        // Should exit with code 1 for cached failure
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(1);
-        }
-      }
+      await parseCommandExpectingExit(['validate', '--yaml']);
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
@@ -1229,14 +1122,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        // Expected exit with code 0 (validation passed)
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
+      await parseCommandExpectingExit(['validate'], 0);
 
       // Verify warning was displayed
       expect(warnSpy).toHaveBeenCalledWith(
@@ -1284,14 +1170,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate'], { from: 'user' });
-      } catch (err: unknown) {
-        // Expected exit with code 0 (validation passed)
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect(err.exitCode).toBe(0);
-        }
-      }
+      await parseCommandExpectingExit(['validate'], 0);
 
       // Verify NO worktree change warning
       expect(warnSpy).not.toHaveBeenCalledWith(
