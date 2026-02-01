@@ -953,6 +953,196 @@ describe('validate command', () => {
       );
     });
 
+    it('should display cached failure result with tree hash and details in human-readable mode', async () => {
+      // Mock valid config (required for validation to proceed)
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [{ name: 'Test Step', command: 'npm test' }]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+      // Mock git notes with failing validation (cached failure)
+      const mockHistoryNote = {
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: false,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: false,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123def456',
+              duration: 5000,
+              branch: 'main',
+              failedStep: 'Test Step',
+              phases: [
+                {
+                  name: 'Test Phase',
+                  durationSecs: 5,
+                  passed: false,
+                  steps: [
+                    { name: 'Test Step', passed: false, durationSecs: 5 }
+                  ]
+                }
+              ],
+            },
+          },
+        ],
+      };
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+
+      validateCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['validate'], { from: 'user' });
+      } catch (err: unknown) {
+        // Should exit with code 1 for cached failure
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
+        }
+      }
+
+      // Verify cache check happened first
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+
+      // runValidation should NOT be called when cache hits (even for failures)
+      expect(core.runValidation).not.toHaveBeenCalled();
+
+      // Verify human-readable output shows cached failure
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Validation already failed')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Tree hash: abc123def456')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Last validated: 2025-10-22T00:00:00.000Z')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Duration: 5.0s')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Branch: main')
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Phases: 1, Steps: 1')
+      );
+    });
+
+    it('should warn about flakiness when multiple runs have different outcomes', async () => {
+      // Mock valid config
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [{ name: 'Test Step', command: 'npm test' }]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+      // Mock git notes with multiple runs - some passed, some failed (flakiness)
+      const mockHistoryNote = {
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: true,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123def456',
+              phases: [],
+            },
+          },
+          {
+            id: 'run-2',
+            timestamp: '2025-10-22T01:00:00.000Z',
+            duration: 4500,
+            passed: false,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: false,
+              timestamp: '2025-10-22T01:00:00.000Z',
+              treeHash: 'abc123def456',
+              failedStep: 'Test Step',
+              phases: [],
+            },
+          },
+          {
+            id: 'run-3',
+            timestamp: '2025-10-22T02:00:00.000Z',
+            duration: 5200,
+            passed: true,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: true,
+              timestamp: '2025-10-22T02:00:00.000Z',
+              treeHash: 'abc123def456',
+              phases: [],
+            },
+          },
+        ],
+      };
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+
+      // Spy on console.warn
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      validateCommand(env.program);
+
+      await env.program.parseAsync(['validate'], { from: 'user' });
+
+      // Verify flakiness warning was shown
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('⚠️  Flaky validation detected')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Found 3 runs with different results')
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Using most recent result')
+      );
+
+      // Should use most recent run (run-3, which passed)
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Validation already passed')
+      );
+
+      warnSpy.mockRestore();
+    });
+
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
       // Mock valid config (required for validation to proceed)
       const mockConfig: VibeValidateConfig = {
@@ -1022,6 +1212,88 @@ describe('validate command', () => {
       expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('treeHash:'));
+
+      // Verify console.log was NOT called (YAML mode should only use stdout)
+      expect(console.log).not.toHaveBeenCalled();
+    });
+
+    it('should output YAML to stdout when cached failure and --yaml flag is set', async () => {
+      // Mock valid config
+      const mockConfig: VibeValidateConfig = {
+        validation: {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [{ name: 'Test Step', command: 'npm test' }]
+            }
+          ]
+        }
+      };
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config: mockConfig, configDir: testDir });
+
+      // Spy on process.stdout.write to capture YAML output
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
+        if (typeof encoding === 'function') {
+          encoding();
+        } else if (typeof callback === 'function') {
+          callback();
+        }
+        return true;
+      });
+
+      // Mock git tree hash
+      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+
+      // Mock git notes with failing validation (cached failure)
+      const mockHistoryNote = {
+        treeHash: 'abc123def456',
+        runs: [
+          {
+            id: 'run-1',
+            timestamp: '2025-10-22T00:00:00.000Z',
+            duration: 5000,
+            passed: false,
+            branch: 'main',
+            headCommit: 'abc123',
+            uncommittedChanges: false,
+            result: {
+              passed: false,
+              timestamp: '2025-10-22T00:00:00.000Z',
+              treeHash: 'abc123def456',
+              duration: 5000,
+              branch: 'main',
+              failedStep: 'Test Step',
+              phases: [],
+            },
+          },
+        ],
+      };
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+
+      validateCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['validate', '--yaml'], { from: 'user' });
+      } catch (err: unknown) {
+        // Should exit with code 1 for cached failure
+        if (err && typeof err === 'object' && 'exitCode' in err) {
+          expect(err.exitCode).toBe(1);
+        }
+      }
+
+      // Verify cache check happened first
+      expect(git.getGitTreeHash).toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+
+      // runValidation should NOT be called when cache hits
+      expect(core.runValidation).not.toHaveBeenCalled();
+
+      // Verify YAML separator and cached failure were written to stdout
+      expect(process.stdout.write).toHaveBeenCalledWith('---\n');
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('treeHash:'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('failedStep:'));
 
       // Verify console.log was NOT called (YAML mode should only use stdout)
       expect(console.log).not.toHaveBeenCalled();
