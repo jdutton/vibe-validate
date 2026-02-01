@@ -144,7 +144,11 @@
       "Bash(pnpm jscpd-update-baseline:*)"
     ],
     "deny": [
-      "Skill(superpowers:using-git-worktrees)"
+      "Skill(superpowers:using-git-worktrees)",
+      "Bash(sed *)",
+      "Bash(sed)",
+      "Bash(awk *)",
+      "Bash(awk)"
     ]
   },
   "hooks": {
