@@ -46,26 +46,24 @@ export function expectYamlOutput(options: {
 
 /**
  * Console Output Assertions
+ *
+ * Factory pattern to reduce duplication in console assertion helpers
  */
-export function expectConsoleLog(message: string): void {
-  expect(console.log).toHaveBeenCalledWith(expect.stringContaining(message));
+
+/** Create console assertion helper */
+function createConsoleAssertion(method: 'log' | 'error' | 'warn', negate = false) {
+  return (message: string): void => {
+    const assertion = expect(console[method]);
+    const matcher = negate ? assertion.not : assertion;
+    matcher.toHaveBeenCalledWith(expect.stringContaining(message));
+  };
 }
 
-export function expectConsoleError(message: string): void {
-  expect(console.error).toHaveBeenCalledWith(expect.stringContaining(message));
-}
-
-export function expectNoConsoleError(message: string): void {
-  expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining(message));
-}
-
-export function expectConsoleWarn(message: string): void {
-  expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(message));
-}
-
-export function expectNoConsoleWarn(message: string): void {
-  expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining(message));
-}
+export const expectConsoleLog = createConsoleAssertion('log');
+export const expectConsoleError = createConsoleAssertion('error');
+export const expectNoConsoleError = createConsoleAssertion('error', true);
+export const expectConsoleWarn = createConsoleAssertion('warn');
+export const expectNoConsoleWarn = createConsoleAssertion('warn', true);
 
 /**
  * Create flaky history note with multiple runs
