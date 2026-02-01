@@ -14,6 +14,17 @@ import * as pidLock from '../../src/utils/pid-lock.js';
 import * as projectId from '../../src/utils/project-id.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
+// Helpers available for reducing test duplication - see TESTING.md
+// import {
+//   createFlakyHistoryNote,
+//   expectYamlOutput,
+//   expectConsoleLog,
+//   expectConsoleError,
+//   expectNoConsoleError,
+//   expectConsoleWarn,
+//   expectNoConsoleWarn,
+// } from './validate-test-helpers.js';
+
 
 // Mock the core validation module
 vi.mock('@vibe-validate/core', async () => {
