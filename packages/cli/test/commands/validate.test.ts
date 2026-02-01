@@ -14,16 +14,13 @@ import * as pidLock from '../../src/utils/pid-lock.js';
 import * as projectId from '../../src/utils/project-id.js';
 import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
-// Helpers available for reducing test duplication - see TESTING.md
-// import {
-//   createFlakyHistoryNote,
-//   expectYamlOutput,
-//   expectConsoleLog,
-//   expectConsoleError,
-//   expectNoConsoleError,
-//   expectConsoleWarn,
-//   expectNoConsoleWarn,
-// } from './validate-test-helpers.js';
+// Helpers for reducing test duplication - see TESTING.md
+import {
+  createFlakyHistoryNote,
+  expectConsoleLog,
+  expectConsoleError,
+  expectNoConsoleError,
+} from './validate-test-helpers.js';
 
 
 // Mock the core validation module
@@ -419,7 +416,7 @@ describe('validate command', () => {
 
       await parseCommandExpectingExit(['validate']);
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No configuration found'));
+      expectConsoleError('No configuration found');
     });
   });
 
@@ -441,8 +438,8 @@ describe('validate command', () => {
       await parseCommandExpectingExit(['validate']);
 
       expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration is invalid'));
-      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('No configuration found'));
+      expectConsoleError('Configuration is invalid');
+      expectNoConsoleError('No configuration found');
     });
 
     it('should distinguish between missing file and invalid file', async () => {
@@ -462,7 +459,7 @@ describe('validate command', () => {
       await parseCommandExpectingExit(['validate']);
 
       expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No configuration found'));
+      expectConsoleError('No configuration found');
     });
   });
 
@@ -644,9 +641,7 @@ describe('validate command', () => {
 
       await parseCommandExpectingExit(['validate', '--check'], 2);
 
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('No validation history for current working tree')
-      );
+      expectConsoleLog('No validation history for current working tree');
       expect(core.runValidation).not.toHaveBeenCalled();
     });
 
@@ -869,58 +864,7 @@ describe('validate command', () => {
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with multiple runs - some passed, some failed (flakiness)
-      const mockHistoryNote = {
-        treeHash: 'abc123def456',
-        runs: [
-          {
-            id: 'run-1',
-            timestamp: '2025-10-22T00:00:00.000Z',
-            duration: 5000,
-            passed: true,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: true,
-              timestamp: '2025-10-22T00:00:00.000Z',
-              treeHash: 'abc123def456',
-              phases: [],
-            },
-          },
-          {
-            id: 'run-2',
-            timestamp: '2025-10-22T01:00:00.000Z',
-            duration: 4500,
-            passed: false,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: false,
-              timestamp: '2025-10-22T01:00:00.000Z',
-              treeHash: 'abc123def456',
-              failedStep: 'Test Step',
-              phases: [],
-            },
-          },
-          {
-            id: 'run-3',
-            timestamp: '2025-10-22T02:00:00.000Z',
-            duration: 5200,
-            passed: true,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: true,
-              timestamp: '2025-10-22T02:00:00.000Z',
-              treeHash: 'abc123def456',
-              phases: [],
-            },
-          },
-        ],
-      };
-      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createFlakyHistoryNote());
 
       // Spy on console.warn
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -941,9 +885,7 @@ describe('validate command', () => {
       );
 
       // Should use most recent run (run-3, which passed)
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validation already passed')
-      );
+      expectConsoleLog('Validation already passed');
 
       warnSpy.mockRestore();
     });
