@@ -77,6 +77,53 @@ describe('validate command', () => {
   let env: CommanderTestEnv;
 
   /**
+   * Create mock history note with sensible defaults
+   * @param overrides - Optional overrides for the note
+   * @returns Complete history note object
+   */
+  function createMockHistoryNote(overrides: {
+    treeHash?: string;
+    passed?: boolean;
+    timestamp?: string;
+    duration?: number;
+    phases?: any[];
+    failedStep?: string;
+  } = {}) {
+    const {
+      treeHash = 'abc123def456',
+      passed = true,
+      timestamp = '2025-10-22T00:00:00.000Z',
+      duration = 5000,
+      phases = [],
+      failedStep,
+    } = overrides;
+
+    return {
+      treeHash,
+      runs: [
+        {
+          id: 'run-1',
+          timestamp,
+          duration,
+          passed,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed,
+            timestamp,
+            treeHash,
+            duration,
+            branch: 'main',
+            phases,
+            ...(failedStep && { failedStep }),
+          },
+        },
+      ],
+    };
+  }
+
+  /**
    * Create mock validation config with sensible defaults
    * @param overrides - Partial config to override defaults
    * @returns Complete validation config
@@ -560,26 +607,9 @@ describe('validate command', () => {
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with passing validation
-      vi.mocked(history.readHistoryNote).mockResolvedValue({
-        treeHash: 'abc123def456',
-        runs: [
-          {
-            id: 'run-1',
-            timestamp: new Date().toISOString(),
-            duration: 1000,
-            passed: true,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: true,
-              timestamp: new Date().toISOString(),
-              treeHash: 'abc123def456',
-              phases: [],
-            },
-          },
-        ],
-      });
+      vi.mocked(history.readHistoryNote).mockResolvedValue(
+        createMockHistoryNote({ timestamp: new Date().toISOString(), duration: 1000 })
+      );
 
       validateCommand(env.program);
 
@@ -623,28 +653,7 @@ describe('validate command', () => {
       vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
 
       // Mock git notes with passing validation
-      vi.mocked(history.readHistoryNote).mockResolvedValue({
-        treeHash: 'abc123def456',
-        runs: [
-          {
-            id: 'run-1',
-            timestamp: '2025-10-22T00:00:00.000Z',
-            duration: 5000,
-            passed: true,
-            branch: 'main',
-            headCommit: 'abc123',
-            uncommittedChanges: false,
-            result: {
-              passed: true,
-              timestamp: '2025-10-22T00:00:00.000Z',
-              treeHash: 'abc123def456',
-              duration: 5000,
-              branch: 'main',
-              phases: [],
-            },
-          },
-        ],
-      });
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createMockHistoryNote());
 
       // Spy on process.stdout.write to capture YAML output
       vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
