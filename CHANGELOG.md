@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **⚡ Faster agent feedback loops: `vv validate` now returns cached failures instantly**
+  - **Stop hooks and pre-commit checks are now instant on cached results** (whether passed or failed)
+  - **Previously**: Cache hits only returned passing results; failed results triggered re-runs
+  - **Now**: Most recent cached result returned by default (pass or fail), speeding up agent debugging cycles
+  - **Force re-run**: Use `vv validate --force` to bypass cache and run fresh validation
+  - **Cache invalidation unchanged**: Tree hash changes still trigger automatic re-validation
+
+- **Flakiness detection**: Warns when the same tree hash has multiple runs with different outcomes (pass/fail), helping identify non-deterministic validation issues
+
+### Breaking Change
+
+`vv validate` now returns the last cached result for the current tree hash, even if it failed. This dramatically improves agent feedback loops by avoiding redundant test re-runs. Use `--force` to bypass cache when needed.
+
 ## [0.18.4] - 2026-01-31
 
 ### Bug Fixes

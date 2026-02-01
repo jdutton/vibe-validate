@@ -34,7 +34,11 @@ export interface ValidateWorkflowOptions {
 
 
 /**
- * Check cache for passing validation run
+ * Check cache for validation run (pass or fail)
+ *
+ * Returns the most recent validation result for the current tree hash,
+ * whether it passed or failed. This enables fast feedback loops without
+ * re-running expensive validation steps.
  *
  * @param treeHash - Git tree hash to check
  * @param yaml - Whether YAML output mode is enabled
@@ -49,24 +53,35 @@ async function checkCache(
     const historyNote = await readHistoryNote(treeHash);
 
     if (historyNote && historyNote.runs.length > 0) {
-      // Find most recent passing run
-      const passingRun = [...historyNote.runs]
-        .reverse()
-        .find(run => run.passed);
-
-      if (passingRun) {
-        // Mark result as from cache (v0.15.0+ schema field)
-        const result = passingRun.result as ValidationResult;
-        result.isCachedResult = true;
-
-        if (yaml) {
-          await outputYamlResult(result);
-        } else {
-          displayCachedResult(passingRun, treeHash);
-        }
-
-        return result;
+      // Get most recent run (pass OR fail)
+      const mostRecentRun = historyNote.runs.at(-1);
+      if (!mostRecentRun) {
+        return null; // Safety check (should never happen)
       }
+
+      // Check for flakiness: multiple runs with different results
+      if (historyNote.runs.length > 1) {
+        const hasPass = historyNote.runs.some(run => run.passed);
+        const hasFail = historyNote.runs.some(run => !run.passed);
+
+        if (hasPass && hasFail) {
+          console.warn(chalk.yellow('⚠️  Flaky validation detected for this tree hash'));
+          console.warn(chalk.yellow(`   Found ${historyNote.runs.length} runs with different results`));
+          console.warn(chalk.yellow('   Using most recent result'));
+        }
+      }
+
+      // Mark result as from cache (v0.15.0+ schema field)
+      const result = mostRecentRun.result as ValidationResult;
+      result.isCachedResult = true;
+
+      if (yaml) {
+        await outputYamlResult(result);
+      } else {
+        displayCachedResult(mostRecentRun, treeHash);
+      }
+
+      return result;
     }
   } catch {
     // Cache check failed - proceed with validation
