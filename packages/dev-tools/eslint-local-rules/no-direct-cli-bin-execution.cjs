@@ -14,10 +14,12 @@
  * - safeExecSync('node', [CLI_BIN, ...])
  * - safeExecResult('node', [CLI_BIN, ...])
  * - spawn('node', [cliPath, ...]) where cliPath looks like a CLI binary
+ * - spawnSync('node', [cliPath, ...]) where cliPath looks like a CLI binary
  *
  * Use instead:
- * - executeVvCommand(args, options) from cli-execution-helpers.ts
- * - executeVibeValidateCommand(args, options) from cli-execution-helpers.ts
+ * - executeWrapperSync(args, options) from test-command-runner.ts
+ * - executeWrapperCommand(args, options) from test-command-runner.ts
+ * - executeCommand(command, options) from test-command-runner.ts
  *
  * NO AUTO-FIX: Manual refactoring required to use shared helpers.
  */
@@ -100,7 +102,7 @@ module.exports = {
     fixable: null, // No auto-fix - requires manual refactoring
     schema: [],
     messages: {
-      noDirectCliBin: 'Use executeVvCommand() or executeVibeValidateCommand() from cli-execution-helpers.ts instead of directly executing node + CLI_BIN. This ensures Windows compatibility and maintains a single source of truth for CLI execution.',
+      noDirectCliBin: 'Use executeWrapperSync() or executeCommand() from test-command-runner.ts instead of directly calling spawn/spawnSync with node. This ensures Windows compatibility, security, and maintains a single source of truth for CLI execution.',
     },
   },
 
@@ -130,8 +132,8 @@ module.exports = {
           });
         }
 
-        // Check for spawn('node', [cliPath, ...])
-        if (matchesNodeCliPattern(node, ['spawn'])) {
+        // Check for spawn('node', [cliPath, ...]) or spawnSync('node', [cliPath, ...])
+        if (matchesNodeCliPattern(node, ['spawn', 'spawnSync'])) {
           context.report({
             node,
             messageId: 'noDirectCliBin',
