@@ -14,6 +14,7 @@ import {
   checkWorktreeStability,
   checkHistoryHealth,
   readHistoryNote,
+  type ValidationRun,
 } from '@vibe-validate/history';
 import chalk from 'chalk';
 import { stringify as yamlStringify } from 'yaml';
@@ -34,39 +35,49 @@ export interface ValidateWorkflowOptions {
 
 
 /**
- * Check cache for passing validation run
+ * Check cache for validation run (pass or fail)
+ *
+ * Returns the most recent validation result for the current tree hash,
+ * whether it passed or failed. This enables fast feedback loops without
+ * re-running expensive validation steps.
+ *
+ * Note: This function only returns the cached result without displaying it.
+ * Display logic is handled by the caller to avoid duplication.
  *
  * @param treeHash - Git tree hash to check
- * @param yaml - Whether YAML output mode is enabled
- * @returns Cached result if found, null otherwise
+ * @returns Cached result with metadata if found, null otherwise
  * @internal
  */
 async function checkCache(
-  treeHash: string,
-  yaml: boolean
-): Promise<ValidationResult | null> {
+  treeHash: string
+): Promise<{ result: ValidationResult; run: ValidationRun } | null> {
   try {
     const historyNote = await readHistoryNote(treeHash);
 
     if (historyNote && historyNote.runs.length > 0) {
-      // Find most recent passing run
-      const passingRun = [...historyNote.runs]
-        .reverse()
-        .find(run => run.passed);
-
-      if (passingRun) {
-        // Mark result as from cache (v0.15.0+ schema field)
-        const result = passingRun.result as ValidationResult;
-        result.isCachedResult = true;
-
-        if (yaml) {
-          await outputYamlResult(result);
-        } else {
-          displayCachedResult(passingRun, treeHash);
-        }
-
-        return result;
+      // Get most recent run (pass OR fail)
+      const mostRecentRun = historyNote.runs.at(-1);
+      if (!mostRecentRun) {
+        return null; // Safety check (should never happen)
       }
+
+      // Check for flakiness: multiple runs with different results
+      if (historyNote.runs.length > 1) {
+        const hasPass = historyNote.runs.some(run => run.passed);
+        const hasFail = historyNote.runs.some(run => !run.passed);
+
+        if (hasPass && hasFail) {
+          console.warn(chalk.yellow('⚠️  Flaky validation detected for this tree hash'));
+          console.warn(chalk.yellow(`   Found ${historyNote.runs.length} runs with different results`));
+          console.warn(chalk.yellow('   Using most recent result'));
+        }
+      }
+
+      // Mark result as from cache (v0.15.0+ schema field)
+      const result = mostRecentRun.result as ValidationResult;
+      result.isCachedResult = true;
+
+      return { result, run: mostRecentRun };
     }
   } catch {
     // Cache check failed - proceed with validation
@@ -213,33 +224,39 @@ export async function runValidateWorkflow(
     // Check cache: if validation already passed for this tree hash, skip re-running
     // Skip cache if --force flag is set OR VV_FORCE_EXECUTION env var is set
     const forceExecution = (options.force ?? false) || process.env.VV_FORCE_EXECUTION === '1';
+    let result: ValidationResult | undefined;
+    let cachedRun: ValidationRun | null = null;
+
     if (treeHashBefore && !forceExecution) {
-      const cachedResult = await checkCache(treeHashBefore, yaml);
-      if (cachedResult) {
-        return cachedResult;
+      const cached = await checkCache(treeHashBefore);
+      if (cached) {
+        result = cached.result;
+        cachedRun = cached.run;
       }
     }
 
-    // Display tree hash before running validation
-    if (treeHashBefore) {
-      console.error(chalk.gray(`🌳 Working tree: ${treeHashBefore.slice(0, 12)}...`));
-      if (!yaml) {
-        console.log(''); // Blank line for readability (human mode only)
+    if (!result) {
+      // Display tree hash before running validation
+      if (treeHashBefore) {
+        console.error(chalk.gray(`🌳 Working tree: ${treeHashBefore.slice(0, 12)}...`));
+        if (!yaml) {
+          console.log(''); // Blank line for readability (human mode only)
+        }
       }
-    }
 
-    // Set VV_FORCE_EXECUTION environment variable when --force flag is present
-    // This propagates the force flag to nested vv run commands naturally
-    if (options.force) {
-      process.env.VV_FORCE_EXECUTION = '1';
-    }
+      // Set VV_FORCE_EXECUTION environment variable when --force flag is present
+      // This propagates the force flag to nested vv run commands naturally
+      if (options.force) {
+        process.env.VV_FORCE_EXECUTION = '1';
+      }
 
-    // Run validation
-    const result = await runValidation(runnerConfig);
+      // Run validation
+      result = await runValidation(runnerConfig);
 
-    // Record validation history (if in git repo)
-    if (treeHashBefore) {
-      await recordHistory(treeHashBefore, result, verbose);
+      // Record validation history (if in git repo)
+      if (treeHashBefore) {
+        await recordHistory(treeHashBefore, result, verbose);
+      }
     }
 
     // Proactive health check (non-blocking)
@@ -253,13 +270,24 @@ export async function runValidateWorkflow(
       // Silent failure - don't block validation
     }
 
-    // If validation failed, show agent-friendly error details
-    if (!result.passed) {
-      displayFailureInfo(result, config);
+    // Display result (cached or fresh)
+    if (yaml) {
+      // YAML mode: output structured result to stdout
+      await outputYamlResult(result);
+    } else {
+      // Human-readable mode
+      if (cachedRun && treeHashBefore) {
+        // Show cached result message
+        displayCachedResult(cachedRun, treeHashBefore);
+      } else if (!result.passed) {
+        // Show failure info for fresh failures
+        displayFailureInfo(result, config);
+      }
 
-      // Auto-output YAML on failure (to stderr) unless --yaml flag is set (which outputs to stdout)
-      if (!yaml) {
-        // Small delay to ensure stderr error messages are flushed first
+      // Auto-output YAML on failure (cached or fresh) to stderr
+      // This ensures agents see error details immediately
+      if (!result.passed) {
+        // Small delay to ensure human-readable message is flushed first
         await new Promise(resolve => setTimeout(resolve, 10));
 
         // Output YAML document with separators to stderr
@@ -272,11 +300,6 @@ export async function runValidateWorkflow(
         }
         process.stderr.write('---\n');
       }
-    }
-
-    // Output YAML validation result if --yaml flag is set (to stdout)
-    if (yaml) {
-      await outputYamlResult(result);
     }
 
     return result;
