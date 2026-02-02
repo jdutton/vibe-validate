@@ -137,11 +137,21 @@ Updates all package.json files + Claude Code plugin manifest.
 
 **Automated via GitHub Actions**. DO NOT use `pnpm publish:all` manually unless automation fails.
 
-1. Update CHANGELOG.md
-2. `pnpm bump-version <version>`
-3. `git commit -m "chore: Release vX.Y.Z"`
-4. `git tag vX.Y.Z && git push origin main vX.Y.Z`
+### Full Release (e.g., v0.19.0)
+1. Update CHANGELOG.md: Change `[Unreleased]` → `[0.19.0] - YYYY-MM-DD`
+2. `pnpm bump-version 0.19.0`
+3. `git commit -m "chore: Release v0.19.0"`
+4. `git tag v0.19.0 && git push origin main v0.19.0`
 5. Monitor: https://github.com/jdutton/vibe-validate/actions
+
+### Pre-Release (e.g., v0.19.0-rc.2)
+1. **DO NOT update CHANGELOG.md** - keep changes under `[Unreleased]`
+2. `pnpm bump-version 0.19.0-rc.2`
+3. `git commit -m "chore: Prepare v0.19.0-rc.2"`
+4. `git tag v0.19.0-rc.2 && git push origin main v0.19.0-rc.2`
+5. Monitor: https://github.com/jdutton/vibe-validate/actions
+
+**IMPORTANT**: CHANGELOG `[Unreleased]` → `[X.Y.Z]` updates are ONLY for full releases, NEVER for pre-releases (rc, beta, alpha).
 
 See `docs/automated-publishing.md` for RC vs stable behavior, troubleshooting.
 
@@ -228,7 +238,9 @@ git commit -m "type: description
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-**Step 3: Update CHANGELOG.md (for releases)**
+**Step 3: Update CHANGELOG.md (for full releases only)**
+- **Pre-releases (rc, beta, alpha)**: Keep changes under `[Unreleased]`, do NOT create version section
+- **Full releases only**: Change `[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`
 - Write for users, not developers
 - Focus on user impact, not implementation details
 
