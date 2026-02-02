@@ -168,12 +168,14 @@ function attemptAtomicMerge(
   // Step 1: Get current notes ref commit SHA (snapshot for compare-and-swap)
   const currentCommitSha = getNotesRefSha(notesRef);
   if (!currentCommitSha) {
+    console.error(`[vibe-validate] Atomic merge failed: notes ref ${notesRef} not found`);
     return false; // Ref disappeared
   }
 
   // Step 2: Read existing note and merge
   const existingNote = readNote(notesRef, object);
   if (existingNote === null) {
+    console.error(`[vibe-validate] Atomic merge failed: note for ${object.slice(0, 12)} disappeared`);
     return false; // Note disappeared
   }
 
@@ -213,8 +215,14 @@ function attemptAtomicMerge(
     );
 
     // Step 4: Atomically update ref (compare-and-swap)
-    return atomicUpdateRef(fullRef, commitSha, currentCommitSha);
-  } catch {
+    const success = atomicUpdateRef(fullRef, commitSha, currentCommitSha);
+    if (!success) {
+      console.error(`[vibe-validate] Atomic merge failed: ref ${fullRef} changed during update (concurrent modification)`);
+    }
+    return success;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[vibe-validate] Atomic merge failed: git plumbing error - ${errorMessage}`);
     return false; // Git plumbing operation failed
   }
 }
@@ -320,16 +328,21 @@ export function addNote(
 
   if (!isConflict) {
     // Not a conflict - real error, return failure
+    console.error(`[vibe-validate] addNote failed (not a conflict): ${addResult.stderr.trim()}`);
     return false;
   }
+
+  console.error(`[vibe-validate] Note conflict detected for ${object.slice(0, 12)}, entering atomic merge...`);
 
   // Conflict detected - enter atomic merge path with retry
   const maxRetries = 3;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.error(`[vibe-validate] Atomic merge attempt ${attempt}/${maxRetries}`);
     const success = attemptAtomicMerge(notesRef, fullRef, object, content);
 
     if (success) {
+      console.error(`[vibe-validate] Atomic merge succeeded on attempt ${attempt}`);
       return true; // Success! Atomic merge succeeded
     }
 
