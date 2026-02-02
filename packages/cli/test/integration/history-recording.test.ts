@@ -21,23 +21,28 @@ import { join } from 'node:path';
 import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
+import { executeWrapperSync } from '../helpers/test-command-runner.js';
+
 describe('History Recording - Git Notes Merge Bug', () => {
   let testDir: string;
-  let vvBin: string;
 
   /**
    * Helper: Run validation and return result
+   * Uses executeWrapperSync for secure, cross-platform execution
    */
-  function runValidation(expectedResult: 'pass' | 'fail'): ReturnType<typeof spawnSync> {
-    return spawnSync(
-      'node',
-      [vvBin, 'validate', '--force'],
-      {
-        cwd: testDir,
-        env: { ...process.env, VV_TEST_RESULT: expectedResult },
-        encoding: 'utf-8',
-      }
-    );
+  function runValidation(expectedResult: 'pass' | 'fail') {
+    return executeWrapperSync(['validate', '--force'], {
+      cwd: testDir,
+      env: { VV_TEST_RESULT: expectedResult },
+    });
+  }
+
+  /**
+   * Helper: Get validation state
+   * Uses executeWrapperSync for secure, cross-platform execution
+   */
+  function getState() {
+    return executeWrapperSync(['state'], { cwd: testDir });
   }
 
   beforeEach(() => {
@@ -49,15 +54,22 @@ describe('History Recording - Git Notes Merge Bug', () => {
     spawnSync('git', ['config', 'user.email', 'test@example.com'], { cwd: testDir });
     spawnSync('git', ['config', 'user.name', 'Test User'], { cwd: testDir });
 
-    // Create vibe-validate config that uses a fast, controllable command
-    // Use environment variable to control pass/fail without changing tree hash
+    // Create a cross-platform test script that checks environment variable
+    // This is more reliable than shell-specific commands
+    const testScript = `#!/usr/bin/env node
+// Cross-platform test script for validation testing
+process.exit(process.env.VV_TEST_RESULT === 'fail' ? 1 : 0);
+`;
+    writeFileSync(join(testDir, 'test.js'), testScript);
+
+    // Create vibe-validate config that uses the test script
     const config = `
 validation:
   phases:
     - name: Test Phase
       steps:
         - name: Controlled Test
-          command: test "\${VV_TEST_RESULT:-pass}" = "pass"
+          command: node test.js
 `;
     writeFileSync(join(testDir, 'vibe-validate.config.yaml'), config);
 
@@ -67,9 +79,6 @@ validation:
     // Commit to get a stable tree
     spawnSync('git', ['add', '.'], { cwd: testDir });
     spawnSync('git', ['commit', '-m', 'Initial commit'], { cwd: testDir });
-
-    // Path to vibe-validate binary
-    vvBin = join(process.cwd(), 'packages/cli/dist/bin/vv');
   });
 
   afterEach(() => {
@@ -156,10 +165,7 @@ validation:
     expect(run1.status).toBe(1);
 
     // Check state - should show failed
-    const state1 = spawnSync('node', [vvBin, 'state'], {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const state1 = getState();
     expect(state1.stdout).toContain('passed: false');
 
     // Run 2: Pass (same tree hash)
@@ -167,10 +173,7 @@ validation:
     expect(run2.status).toBe(0);
 
     // Check state - should show passed (most recent)
-    const state2 = spawnSync('node', [vvBin, 'state'], {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const state2 = getState();
     expect(state2.stdout).toContain('passed: true');
 
     // Run 3: Fail again
@@ -178,10 +181,7 @@ validation:
     expect(run3.status).toBe(1);
 
     // Check state - should show failed (most recent)
-    const state3 = spawnSync('node', [vvBin, 'state'], {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const state3 = getState();
     expect(state3.stdout).toContain('passed: false');
   });
 
@@ -197,10 +197,7 @@ validation:
     // Check for flakiness warning in output
     // (This test documents expected behavior, implementation may vary)
     // Future enhancement: Could query state and check for flakiness indicators
-    // const stateResult = spawnSync('node', [vvBin, 'state'], {
-    //   cwd: testDir,
-    //   encoding: 'utf-8',
-    // });
+    // const stateResult = getState();
     // const output = stateResult.stdout + stateResult.stderr;
     // expect(output).toMatch(/flak|inconsistent|unstable/i);
   });
