@@ -33,7 +33,12 @@ import { join } from 'node:path';
 
 import semver from 'semver';
 
-import { safeExecSync, safeExecResult } from '../../utils/dist/safe-exec.js';
+import {
+  executePnpmCommand,
+  addDistTag as addDistTagToNpm,
+  unpublishPackage as unpublishPackageFromNpm,
+  deprecatePackage as deprecatePackageOnNpm,
+} from '../../utils/dist/package-manager.js';
 
 import { PROJECT_ROOT, log, getNpmTagVersion } from './common.js';
 
@@ -120,7 +125,7 @@ function publishPackage(packageName: string, version: string, tag: string, dryRu
       args.push('--provenance');
     }
 
-    safeExecSync('pnpm', args, {
+    executePnpmCommand(args, {
       cwd: packagePath,
       stdio: ['inherit', 'inherit', 'inherit'],
       env: {
@@ -151,9 +156,7 @@ function addDistTag(packageName: string, version: string, tag: string, dryRun = 
   }
 
   try {
-    safeExecSync('npm', ['dist-tag', 'add', `${fullPackageName}@${version}`, tag], {
-      stdio: ['inherit', 'inherit', 'inherit'],
-    });
+    addDistTagToNpm(fullPackageName, version, tag);
 
     log(`    ✅ @${tag} tag added`, 'green');
     return { success: true };
@@ -176,11 +179,9 @@ function unpublishPackage(packageName: string, version: string, dryRun = false) 
     return { success: true, dryRun: true };
   }
 
-  const result = safeExecResult('npm', ['unpublish', `${fullPackageName}@${version}`, '--force'], {
-    stdio: 'pipe',
-  });
+  const success = unpublishPackageFromNpm(fullPackageName, version);
 
-  if (result.status === 0) {
+  if (success) {
     log(`    ✅ Unpublished successfully`, 'green');
     return { success: true };
   }
@@ -203,11 +204,9 @@ function deprecatePackage(packageName: string, version: string, dryRun = false) 
     return { success: true, dryRun: true };
   }
 
-  const result = safeExecResult('npm', ['deprecate', `${fullPackageName}@${version}`, message], {
-    stdio: ['inherit', 'inherit', 'inherit'],
-  });
+  const success = deprecatePackageOnNpm(fullPackageName, version, message);
 
-  if (result.status === 0) {
+  if (success) {
     log(`    ✅ Deprecated with warning`, 'green');
     return { success: true };
   }

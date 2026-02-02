@@ -21,7 +21,7 @@ import {
   verifyRef
 } from '@vibe-validate/git';
 import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
-import { getToolVersion, safeExecSync } from '@vibe-validate/utils';
+import { getLatestVersion, getToolVersion } from '@vibe-validate/utils';
 import { type Command } from 'commander';
 import * as semver from 'semver';
 import { stringify as stringifyYaml } from 'yaml';
@@ -648,11 +648,7 @@ function getUpgradeCommand(context: string): string {
  */
 const defaultVersionChecker: VersionChecker = {
   async fetchLatestVersion(): Promise<string> {
-    const version = safeExecSync('npm', ['view', 'vibe-validate', 'version'], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    return (version as string).trim();
+    return getLatestVersion('vibe-validate');
   },
 };
 

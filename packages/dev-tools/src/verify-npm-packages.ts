@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecSync } from '../../utils/dist/safe-exec.js';
+import { packageExists } from '../../utils/dist/package-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,17 +42,14 @@ const results = [];
 
 for (const packageName of publishablePackages) {
   try {
-    const npmVersion = safeExecSync('npm', ['view', `${packageName}@${expectedVersion}`, 'version'], {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).toString().trim();
+    const exists = packageExists(packageName, expectedVersion);
 
-    if (npmVersion === expectedVersion) {
-      results.push({ package: packageName, status: 'ok', version: npmVersion });
+    if (exists) {
+      results.push({ package: packageName, status: 'ok', version: expectedVersion });
       console.log(`✅ ${packageName}@${expectedVersion}`);
     } else {
-      results.push({ package: packageName, status: 'mismatch', expected: expectedVersion, actual: npmVersion });
-      console.log(`❌ ${packageName}: expected ${expectedVersion}, found ${npmVersion}`);
+      results.push({ package: packageName, status: 'missing', expected: expectedVersion });
+      console.log(`❌ ${packageName}@${expectedVersion} not found on npm`);
       allPublished = false;
     }
   } catch (error) {
@@ -86,8 +83,8 @@ if (allPublished) {
   }
 
   if (mismatched.length > 0) {
-    console.log(`Version mismatches (${mismatched.length}):`);
-    for (const r of mismatched) console.log(`  - ${r.package}: expected ${r.expected}, found ${r.actual}`);
+    console.log(`Missing packages (${mismatched.length}):`);
+    for (const r of mismatched) console.log(`  - ${r.package}@${r.expected} not published to npm`);
     console.log('');
   }
 

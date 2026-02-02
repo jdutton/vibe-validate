@@ -86,6 +86,52 @@ const tmpDir = '/tmp/test';
 
 ## Available Test Helpers
 
+### CLI Execution Helpers (`helpers/test-command-runner.ts`) **[MANDATORY]**
+
+**CRITICAL: Always use these helpers instead of raw spawn/spawnSync calls**
+
+ESLint will enforce this (`local/no-direct-cli-bin-execution`).
+
+**For executing vv commands:**
+```typescript
+import { executeWrapperSync, executeWrapperCommand } from '../helpers/test-command-runner.js';
+
+// ✅ Synchronous execution
+const result = executeWrapperSync(['validate', '--force'], {
+  cwd: testDir,
+  env: { VV_TEST_RESULT: 'pass' },
+});
+expect(result.status).toBe(0);
+expect(result.stdout).toContain('PASSED');
+
+// ✅ Async with separate stdout/stderr
+const result = await executeWrapperCommand(['watch-pr', '123'], {
+  cwd: testDir,
+  timeout: 30000,
+});
+expect(result.exitCode).toBe(0);
+
+// ❌ NEVER do this (ESLint will catch it)
+const result = spawnSync('node', [vvBin, 'validate'], { cwd: testDir });
+```
+
+**For executing arbitrary commands:**
+```typescript
+import { executeCommand } from '../helpers/test-command-runner.js';
+
+// ✅ Good - uses safeExecSync internally
+const result = executeCommand('npx vitest test.test.ts', {
+  cwd: testDir,
+  timeout: 30000,
+});
+```
+
+**Why mandatory:**
+- ✅ **Windows compatibility**: Uses spawn pattern that works cross-platform
+- ✅ **Security**: Uses safeExecSync (no shell injection)
+- ✅ **DRY**: Single source of truth for CLI execution
+- ✅ **Consistent**: Same environment handling everywhere
+
 ### Validate Command Helpers (`commands/validate-test-helpers.ts`)
 
 **When to Use:**

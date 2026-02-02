@@ -111,8 +111,10 @@ async function recordHistory(
         if (verbose) {
           console.log(chalk.gray(`\n📝 History recorded (tree: ${treeHashBefore.slice(0, 12)})`));
         }
-      } else if (verbose) {
-        console.warn(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason}`));
+      } else {
+        // Always warn on stderr when history recording fails (not just in verbose mode)
+        console.error(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason}`));
+        console.error(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}`));
       }
     } else {
       console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));

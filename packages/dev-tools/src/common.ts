@@ -8,7 +8,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { safeExecResult } from '../../utils/dist/safe-exec.js';
+import { getPackageVersion } from '../../utils/dist/package-manager.js';
 
 /**
  * Get __filename equivalent in ESM
@@ -57,17 +57,7 @@ export function log(message: string, color: Color = 'reset'): void {
  * @returns Version string or null if not found
  */
 export function getNpmTagVersion(packageName: string, tag: string): string | null {
-  const result = safeExecResult('npm', ['view', `${packageName}@${tag}`, 'version'], {
-    encoding: 'utf8',
-    stdio: 'pipe',
-  });
-
-  if (result.status === 0 && result.stdout) {
-    // stdout is string when encoding: 'utf8' is specified
-    return result.stdout.toString().trim();
-  }
-
-  return null;
+  return getPackageVersion(packageName, tag);
 }
 
 /**

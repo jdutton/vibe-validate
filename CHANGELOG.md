@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Flakiness detection**: Warns when the same tree hash has multiple runs with different outcomes (pass/fail), helping identify non-deterministic validation issues
 
+### Bug Fixes
+
+- **Fixed validation history not recording for subsequent runs on same tree hash** (PR #116)
+  - **Root cause**: Conflict detection relied on parsing stderr for `"already exists"`, but git returns `"Found existing notes for object..."` - string matching failed across git versions
+  - **Solution**: Always attempt atomic merge when fast-path add fails (simpler, more robust, works universally)
+  - **Impact**: History recording now works correctly when running `vv validate --force` multiple times
+  - **Since**: Bug introduced in v0.18.2 (Dec 2025, PR #105) but became more apparent with improved caching in v0.19.0-rc.1
+
 ### Breaking Change
 
 `vv validate` now returns the last cached result for the current tree hash, even if it failed. This dramatically improves agent feedback loops by avoiding redundant test re-runs. Use `--force` to bypass cache when needed.

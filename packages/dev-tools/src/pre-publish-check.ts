@@ -31,7 +31,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { executeGitCommand } from '../../git/dist/git-executor.js';
-import { safeExecSync } from '../../utils/dist/safe-exec.js';
+import { executePnpmCommand } from '../../utils/dist/package-manager.js';
 
 
 import { PROJECT_ROOT, log } from './common.js';
@@ -271,7 +271,7 @@ if (skipGitChecks) {
   console.log('Running validation checks...');
 
   try {
-    safeExecSync('pnpm', ['validate'], { stdio: ['inherit', 'inherit', 'inherit'], cwd: PROJECT_ROOT });
+    executePnpmCommand(['validate'], { stdio: ['inherit', 'inherit', 'inherit'], cwd: PROJECT_ROOT });
     log('✓ All validation checks passed', 'green');
   } catch (error) {
     console.log('');

@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { publishPackage as publishPackageToNpm } from '../../utils/dist/package-manager.js';
 import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -72,8 +73,9 @@ function publishPackage(packageName: string, tag: string): void {
   console.log(`\n📦 Publishing ${packageName}...`);
 
   try {
-    safeExecSync('pnpm', ['publish', '--no-git-checks', '--tag', tag], {
+    publishPackageToNpm({
       cwd: packagePath,
+      tag,
       stdio: ['inherit', 'inherit', 'inherit'],
     });
     console.log(`✅ ${packageName} published with tag: ${tag}`);

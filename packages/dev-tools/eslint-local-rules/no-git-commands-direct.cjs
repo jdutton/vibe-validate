@@ -5,13 +5,17 @@
  * Enforces using centralized functions from @vibe-validate/git instead.
  *
  * Why:
+ * - Security: Single auditable location for git command execution
  * - Architectural consistency (all git commands in one place)
  * - Easy mocking in tests (mock @vibe-validate/git instead of utils)
  * - Better error handling and validation
  *
  * Exemptions:
  * - @vibe-validate/git package itself (where centralization happens)
- * - Test files for environment bootstrap (git init, git config)
+ *
+ * Test files MUST use test helpers from @vibe-validate/git:
+ * - initTestRepo(), configTestUser(), stageTestFiles(), commitTestChanges()
+ * - getTestTreeHash(), readTestNote(), setupTestRepoWithCommit()
  *
  * NO AUTO-FIX: Manual refactoring required to use appropriate @vibe-validate/git function.
  */
@@ -28,6 +32,14 @@ module.exports = factory({
     'listNotesRefs()',
     'getCurrentBranch()',
     'getDiffStats()',
+    // Test helpers
+    'initTestRepo()',
+    'configTestUser()',
+    'stageTestFiles()',
+    'commitTestChanges()',
+    'getTestTreeHash()',
+    'readTestNote()',
+    'setupTestRepoWithCommit()',
   ],
-  exemptPackage: 'packages/git/',
+  exemptPackage: 'packages/git/src',
 });

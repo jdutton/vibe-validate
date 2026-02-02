@@ -32,3 +32,17 @@ export {
 export {
   isProcessRunning
 } from './process-check.js';
+
+// Package management (npm/pnpm commands)
+export {
+  getPackageVersion,
+  getLatestVersion,
+  packageExists,
+  publishPackage,
+  addDistTag,
+  unpublishPackage,
+  deprecatePackage,
+  installPackage,
+  executePnpmCommand,
+  type PackageManagerOptions
+} from './package-manager.js';

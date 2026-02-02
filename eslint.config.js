@@ -77,6 +77,7 @@ export default [
       'local/no-path-startswith': 'error',
       'local/no-git-commands-direct': 'error',
       'local/no-gh-commands-direct': 'error',
+      'local/no-npm-pnpm-direct': 'error',
       'local/no-direct-cli-bin-execution': 'error',
 
       // TypeScript
