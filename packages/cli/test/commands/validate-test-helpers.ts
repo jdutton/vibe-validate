@@ -1,6 +1,8 @@
 /**
  * Shared helpers for validate command tests
  * Reduces duplication and improves maintainability
+ *
+ * For usage guidance, see ../CLAUDE.md
  */
 
 import { expect } from 'vitest';
