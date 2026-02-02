@@ -10,14 +10,17 @@
  * produces different results for the same code).
  */
 
-/* eslint-disable local/no-git-commands-direct */
-// This integration test directly uses git commands for test setup
-// and verification - this is the exception mentioned in CLAUDE.md
-
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
+import {
+  initTestRepo,
+  configTestUser,
+  stageTestFiles,
+  commitTestChanges,
+  getTestTreeHash,
+  readTestNote,
+} from '@vibe-validate/git';
 import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -49,10 +52,9 @@ describe('History Recording - Git Notes Merge Bug', () => {
     // Create temporary test directory
     testDir = mkdtempSync(join(normalizedTmpdir(), 'vv-test-'));
 
-    // Initialize git repo
-    spawnSync('git', ['init'], { cwd: testDir });
-    spawnSync('git', ['config', 'user.email', 'test@example.com'], { cwd: testDir });
-    spawnSync('git', ['config', 'user.name', 'Test User'], { cwd: testDir });
+    // Initialize git repo with user config
+    initTestRepo(testDir);
+    configTestUser(testDir);
 
     // Create a cross-platform test script that checks environment variable
     // This is more reliable than shell-specific commands
@@ -77,8 +79,8 @@ validation:
     writeFileSync(join(testDir, 'test.txt'), 'initial content\n');
 
     // Commit to get a stable tree
-    spawnSync('git', ['add', '.'], { cwd: testDir });
-    spawnSync('git', ['commit', '-m', 'Initial commit'], { cwd: testDir });
+    stageTestFiles(testDir);
+    commitTestChanges(testDir, 'Initial commit');
   });
 
   afterEach(() => {
@@ -94,28 +96,16 @@ validation:
     expect(run1.status).toBe(0);
 
     // Get tree hash
-    const treeHashResult = spawnSync('git', ['rev-parse', 'HEAD:'], {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
-    const treeHash = treeHashResult.stdout.trim();
+    const treeHash = getTestTreeHash(testDir);
 
     // Verify first run is recorded
-    const note1Result = spawnSync(
-      'git',
-      ['notes', '--ref=refs/notes/vibe-validate/validate', 'show', treeHash],
-      {
-        cwd: testDir,
-        encoding: 'utf-8',
-      }
-    );
-    expect(note1Result.status).toBe(0);
-    const note1Content = note1Result.stdout;
+    const note1Content = readTestNote(testDir, 'refs/notes/vibe-validate/validate', treeHash);
+    expect(note1Content).not.toBeNull();
     expect(note1Content).toContain('runs:');
     expect(note1Content).toContain('- id:');
 
     // Count runs in first note (should be 1)
-    const runs1 = note1Content.match(/^ {2}- id:/gm) ?? [];
+    const runs1 = note1Content!.match(/^ {2}- id:/gm) ?? [];
     expect(runs1.length).toBe(1);
 
     // Run 2: Fail validation (SAME tree hash, different result)
@@ -123,19 +113,11 @@ validation:
     expect(run2.status).toBe(1);
 
     // Verify second run is recorded (THIS WILL FAIL WITH THE BUG)
-    const note2Result = spawnSync(
-      'git',
-      ['notes', '--ref=refs/notes/vibe-validate/validate', 'show', treeHash],
-      {
-        cwd: testDir,
-        encoding: 'utf-8',
-      }
-    );
-    expect(note2Result.status).toBe(0);
-    const note2Content = note2Result.stdout;
+    const note2Content = readTestNote(testDir, 'refs/notes/vibe-validate/validate', treeHash);
+    expect(note2Content).not.toBeNull();
 
     // Count runs in second note (should be 2)
-    const runs2 = note2Content.match(/^ {2}- id:/gm) ?? [];
+    const runs2 = note2Content!.match(/^ {2}- id:/gm) ?? [];
     expect(runs2.length).toBe(2); // ← FAILS: Bug causes only 1 run to be recorded
 
     // Run 3: Pass again (verify third run also records)
@@ -143,19 +125,11 @@ validation:
     expect(run3.status).toBe(0);
 
     // Verify third run is recorded
-    const note3Result = spawnSync(
-      'git',
-      ['notes', '--ref=refs/notes/vibe-validate/validate', 'show', treeHash],
-      {
-        cwd: testDir,
-        encoding: 'utf-8',
-      }
-    );
-    expect(note3Result.status).toBe(0);
-    const note3Content = note3Result.stdout;
+    const note3Content = readTestNote(testDir, 'refs/notes/vibe-validate/validate', treeHash);
+    expect(note3Content).not.toBeNull();
 
     // Count runs in third note (should be 3)
-    const runs3 = note3Content.match(/^ {2}- id:/gm) ?? [];
+    const runs3 = note3Content!.match(/^ {2}- id:/gm) ?? [];
     expect(runs3.length).toBe(3); // ← FAILS: Bug causes only 1 run to be recorded
   });
 

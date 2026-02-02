@@ -136,3 +136,14 @@ export {
 
 // Re-export CleanupResult from new branch-cleanup as BranchCleanupResult to avoid conflict
 export type { CleanupResult as BranchCleanupResult } from './branch-cleanup.js';
+
+// Test helpers (centralized git operations for test setup and verification)
+export {
+  initTestRepo,
+  configTestUser,
+  stageTestFiles,
+  commitTestChanges,
+  getTestTreeHash,
+  readTestNote,
+  setupTestRepoWithCommit
+} from './test-helpers.js';
