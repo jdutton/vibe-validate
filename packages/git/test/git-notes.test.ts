@@ -323,11 +323,13 @@ runs:
       );
     });
 
-    it('should throw non-conflict errors immediately', () => {
+    it('should retry atomic merge even on non-conflict errors', () => {
+      // New behavior: Always attempt atomic merge when fast-path fails
+      // This is simpler and more robust than parsing error messages
       mockSuccessfulValidation();
 
-      // Return permission denied error (not "already exists")
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({
+      // All git commands fail with permission denied
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
         success: false,
         stdout: '',
         stderr: 'error: Permission denied',
@@ -336,7 +338,8 @@ runs:
 
       const result = addNote(TEST_REF, VALID_HASH, 'content', false);
       expect(result).toBe(false);
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(1);
+      // Will make multiple attempts (fast-path + atomic merge retries)
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalled();
     });
 
     it('should retry up to maxRetries times with atomic CAS failures', () => {

@@ -168,15 +168,13 @@ function attemptAtomicMerge(
   // Step 1: Get current notes ref commit SHA (snapshot for compare-and-swap)
   const currentCommitSha = getNotesRefSha(notesRef);
   if (!currentCommitSha) {
-    console.error(`[vibe-validate] Atomic merge failed: notes ref ${notesRef} not found`);
-    return false; // Ref disappeared
+    return false; // Ref disappeared (benign race condition)
   }
 
   // Step 2: Read existing note and merge
   const existingNote = readNote(notesRef, object);
   if (existingNote === null) {
-    console.error(`[vibe-validate] Atomic merge failed: note for ${object.slice(0, 12)} disappeared`);
-    return false; // Note disappeared
+    return false; // Note disappeared (benign race condition)
   }
 
   const merged = mergeNotes(existingNote, content);
@@ -215,15 +213,9 @@ function attemptAtomicMerge(
     );
 
     // Step 4: Atomically update ref (compare-and-swap)
-    const success = atomicUpdateRef(fullRef, commitSha, currentCommitSha);
-    if (!success) {
-      console.error(`[vibe-validate] Atomic merge failed: ref ${fullRef} changed during update (concurrent modification)`);
-    }
-    return success;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[vibe-validate] Atomic merge failed: git plumbing error - ${errorMessage}`);
-    return false; // Git plumbing operation failed
+    return atomicUpdateRef(fullRef, commitSha, currentCommitSha);
+  } catch {
+    return false; // Git plumbing operation failed (will retry)
   }
 }
 
@@ -323,31 +315,28 @@ export function addNote(
     return true; // Success! Note didn't exist, added cleanly
   }
 
-  // Check if this is a conflict (note already exists)
-  const isConflict = addResult.stderr.includes('already exists');
+  // Fast path failed - assume conflict and try atomic merge
+  // No need to parse stderr strings (fragile, locale-dependent, breaks across git versions)
+  // The atomic merge will fail safely if it's not actually a conflict
 
-  if (!isConflict) {
-    // Not a conflict - real error, return failure
-    console.error(`[vibe-validate] addNote failed (not a conflict): ${addResult.stderr.trim()}`);
-    return false;
-  }
-
-  console.error(`[vibe-validate] Note conflict detected for ${object.slice(0, 12)}, entering atomic merge...`);
-
-  // Conflict detected - enter atomic merge path with retry
+  // Try atomic merge path with retry
   const maxRetries = 3;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    console.error(`[vibe-validate] Atomic merge attempt ${attempt}/${maxRetries}`);
     const success = attemptAtomicMerge(notesRef, fullRef, object, content);
 
     if (success) {
-      console.error(`[vibe-validate] Atomic merge succeeded on attempt ${attempt}`);
-      return true; // Success! Atomic merge succeeded
+      // Success! Log for debugging if we had to retry (indicates concurrent writes)
+      if (attempt > 1) {
+        console.error(`[vibe-validate] Atomic merge succeeded on attempt ${attempt}/${maxRetries}`);
+      }
+      return true;
     }
 
     // Failed - retry if not last attempt
     if (attempt === maxRetries) {
+      // All retries exhausted - log for debugging
+      console.error(`[vibe-validate] Atomic merge failed after ${maxRetries} attempts for ${object.slice(0, 12)}`);
       return false;
     }
   }
