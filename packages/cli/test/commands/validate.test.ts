@@ -20,6 +20,8 @@ import {
   expectConsoleLog,
   expectConsoleError,
   expectNoConsoleError,
+  expectValidateOption,
+  getValidateCommand,
 } from './validate-test-helpers.js';
 
 
@@ -365,8 +367,7 @@ describe('validate command', () => {
     it('should register validate command with correct name', () => {
       validateCommand(env.program);
 
-      const commands = env.program.commands;
-      const validateCmd = commands.find(cmd => cmd.name() === 'validate');
+      const validateCmd = getValidateCommand(env);
 
       expect(validateCmd).toBeDefined();
       expect(validateCmd?.description()).toBe('Run validation with git tree hash caching');
@@ -374,29 +375,17 @@ describe('validate command', () => {
 
     it('should register --force option', () => {
       validateCommand(env.program);
-
-      const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
-      const options = validateCmd?.options;
-
-      expect(options?.some(opt => opt.flags === '-f, --force')).toBe(true);
+      expectValidateOption(env, '-f, --force');
     });
 
     it('should register --verbose option', () => {
       validateCommand(env.program);
-
-      const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
-      const options = validateCmd?.options;
-
-      expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
+      expectValidateOption(env, '-v, --verbose');
     });
 
     it('should register --check option', () => {
       validateCommand(env.program);
-
-      const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
-      const options = validateCmd?.options;
-
-      expect(options?.some(opt => opt.flags === '-c, --check')).toBe(true);
+      expectValidateOption(env, '-c, --check');
     });
   });
 

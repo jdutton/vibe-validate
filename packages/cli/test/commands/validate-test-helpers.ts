@@ -5,6 +5,8 @@
 
 import { expect } from 'vitest';
 
+import type { CommanderTestEnv } from '../helpers/commander-test-setup.js';
+
 /**
  * YAML Output Assertions
  */
@@ -64,6 +66,23 @@ export const expectConsoleError = createConsoleAssertion('error');
 export const expectNoConsoleError = createConsoleAssertion('error', true);
 export const expectConsoleWarn = createConsoleAssertion('warn');
 export const expectNoConsoleWarn = createConsoleAssertion('warn', true);
+
+/**
+ * Command Registration Assertions
+ */
+
+/** Check if validate command has specific option flag */
+export function expectValidateOption(env: CommanderTestEnv, flags: string): void {
+  const validateCmd = env.program.commands.find(cmd => cmd.name() === 'validate');
+  const options = validateCmd?.options;
+  expect(options?.some(opt => opt.flags === flags)).toBe(true);
+}
+
+/** Get validate command from program */
+export function getValidateCommand(env: CommanderTestEnv): any {
+  const commands = env.program.commands;
+  return commands.find(cmd => cmd.name() === 'validate');
+}
 
 /**
  * Create flaky history note with multiple runs
