@@ -103,26 +103,27 @@ export function createSandboxedExtractor(
 
       // Check if sandbox execution succeeded
       if (!sandboxResult.success) {
+        const errorMsg = sandboxResult.error ?? 'Unknown error';
         console.error(
-          `[vibe-validate] Sandbox execution failed for extractor "${plugin.metadata.name}": ${sandboxResult.error}`
+          `[vibe-validate] Sandbox execution failed for extractor "${plugin.metadata.name}": ${errorMsg}`
         );
 
         // Return empty result with error metadata
         return {
           errors: [],
           totalErrors: 0,
-          summary: `Sandbox execution failed: ${sandboxResult.error}`,
+          summary: `Sandbox execution failed: ${errorMsg}`,
           guidance: 'Check extractor code for syntax errors or unsafe operations',
           metadata: {
             detection: {
               extractor: plugin.metadata.name,
               confidence: 0,
               patterns: [],
-              reason: `Sandbox execution error: ${sandboxResult.error}`,
+              reason: `Sandbox execution error: ${errorMsg}`,
             },
             confidence: 0,
             completeness: 0,
-            issues: [`Sandbox execution failed: ${sandboxResult.error}`],
+            issues: [`Sandbox execution failed: ${errorMsg}`],
           },
         };
       }

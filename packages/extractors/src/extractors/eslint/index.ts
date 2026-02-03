@@ -33,7 +33,7 @@ function deduplicateESLintErrors(errors: FormattedError[]): FormattedError[] {
   const errorMap = new Map<string, FormattedError[]>();
 
   for (const error of errors) {
-    const key = `${error.file}:${error.line}:${error.column}`;
+    const key = `${error.file ?? 'unknown'}:${error.line ?? 0}:${error.column ?? 0}`;
     if (!errorMap.has(key)) {
       errorMap.set(key, []);
     }
@@ -157,7 +157,7 @@ function extract(output: string): ErrorExtractorResult {
   // Build clean output (limit to MAX_ERRORS_IN_ARRAY for token efficiency)
   const errorSummary = deduplicatedErrors
     .slice(0, MAX_ERRORS_IN_ARRAY)
-    .map(e => `${e.file}:${e.line}:${e.column} - ${e.message} [${e.code}]`)
+    .map(e => `${e.file ?? 'unknown'}:${e.line ?? 0}:${e.column ?? 0} - ${e.message} [${e.code ?? 'unknown'}]`)
     .join('\n');
 
   return {

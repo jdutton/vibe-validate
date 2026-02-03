@@ -197,7 +197,7 @@ export function computeQualityScore(
   } else {
     fieldScores.tool = 0;
     issues.push(
-      `Tool mismatch: detected '${actual.detectedTool}' but expected '${expected.detectedTool}'`
+      `Tool mismatch: detected '${actual.detectedTool ?? 'unknown'}' but expected '${expected.detectedTool ?? 'unknown'}'`
     );
   }
 

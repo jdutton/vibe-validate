@@ -228,7 +228,7 @@ describe('isToolAvailable', () => {
       chmodSync(scriptPath, 0o755);
 
       // Add to PATH temporarily
-      const originalPath = process.env.PATH;
+      const originalPath = process.env.PATH ?? '';
       process.env.PATH = `${tempDir}:${originalPath}`;
 
       expect(isToolAvailable('bad-tool.sh')).toBe(false);
@@ -291,7 +291,7 @@ describe('getToolVersion', () => {
       chmodSync(scriptPath, 0o755);
 
       // Add to PATH temporarily
-      const originalPath = process.env.PATH;
+      const originalPath = process.env.PATH ?? '';
       process.env.PATH = `${tempDir}:${originalPath}`;
 
       const version = getToolVersion('bad-version-tool.sh');
@@ -323,7 +323,7 @@ describe('getToolVersion', () => {
 describe('Security - Command Injection Prevention', () => {
   it('should prevent PATH manipulation attacks', () => {
     // Even if PATH is manipulated, we use which.sync which resolves at call time
-    const originalPath = process.env.PATH;
+    const originalPath = process.env.PATH ?? '';
     const tempDir = mkdtempSync(join(normalizedTmpdir(), 'safe-exec-test-'));
 
     try {

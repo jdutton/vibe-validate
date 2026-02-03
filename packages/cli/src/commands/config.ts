@@ -144,7 +144,7 @@ function displayYamlConfig(config: VibeValidateConfig): void {
     console.log('  phases:');
     for (const phase of config.validation.phases) {
       console.log(`    - name: ${phase.name}`);
-      console.log(`      parallel: ${phase.parallel}`);
+      console.log(`      parallel: ${phase.parallel ?? false}`);
       console.log(`      steps: ${phase.steps?.length ?? 0}`);
     }
   }

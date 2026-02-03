@@ -49,7 +49,7 @@ function createMockResult(overrides: Partial<{
  */
 function createExitSpy() {
   return vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-    throw new Error(`process.exit(${code})`);
+    throw new Error(`process.exit(${code ?? 0})`);
   });
 }
 

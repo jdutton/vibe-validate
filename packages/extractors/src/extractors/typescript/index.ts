@@ -92,7 +92,7 @@ function extract(output: string): ErrorExtractorResult {
   // Build error summary (limit to MAX_ERRORS_IN_ARRAY for token efficiency)
   const errorSummary = errors
     .slice(0, MAX_ERRORS_IN_ARRAY)
-    .map((e) => `${e.file}:${e.line}:${e.column} - ${e.code}: ${e.message}`)
+    .map((e) => `${e.file ?? 'unknown'}:${e.line ?? 0}:${e.column ?? 0} - ${e.code ?? 'unknown'}: ${e.message}`)
     .join('\n');
 
   return {

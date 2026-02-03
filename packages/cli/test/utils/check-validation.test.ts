@@ -41,7 +41,7 @@ describe('checkValidationStatus', () => {
 
     // Mock process.exit to prevent actual exit
     processExitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number | string) => {
-      throw new Error(`process.exit(${code})`);
+      throw new Error(`process.exit(${code ?? 0})`);
     });
 
     // Reset mocks

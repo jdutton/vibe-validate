@@ -66,7 +66,7 @@ export function setupCommanderTest(): CommanderTestEnv {
 
   // Mock process.exit to prevent it from actually exiting during tests
   vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-    throw new Error(`process.exit(${code})`);
+    throw new Error(`process.exit(${code ?? 0})`);
   }) as any;
 
   return {
@@ -144,7 +144,7 @@ export function setupCommanderTestWithCapture(): CommanderTestEnvWithCapture {
 
   // Mock process.exit
   vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
-    throw new Error(`process.exit(${code})`);
+    throw new Error(`process.exit(${code ?? 0})`);
   }) as any;
 
   return {

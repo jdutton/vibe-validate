@@ -134,7 +134,7 @@ export function createSingleErrorFromOutputPlugin(): ExtractorPlugin {
  */
 export function createCommandPrefixErrorPlugin(): ExtractorPlugin {
   return createMockPlugin((output, command) => ({
-    errors: [{ file: 'test.ts', line: 1, message: `${command}: ${output}` }],
+    errors: [{ file: 'test.ts', line: 1, message: `${command ?? 'unknown'}: ${output}` }],
     totalErrors: 1,
     summary: '1 error',
     guidance: 'Fix it',

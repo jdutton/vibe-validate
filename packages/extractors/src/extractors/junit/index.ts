@@ -203,7 +203,7 @@ function extract(output: string): ErrorExtractorResult {
 
   // Build error summary
   const errorSummary = limitedErrors
-    .map((e) => `${e.file}:${e.line ?? 0} - ${e.message}`)
+    .map((e) => `${e.file ?? 'unknown'}:${e.line ?? 0} - ${e.message}`)
     .join('\n');
 
   return {

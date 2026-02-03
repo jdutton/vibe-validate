@@ -670,7 +670,7 @@ export function generateDeletedRemoteAssessment(
   let text = 'Remote deleted by GitHub\n';
 
   if (githubFacts?.prNumber) {
-    text += `PR #${githubFacts.prNumber} ${githubFacts.prState} ${gitFacts.daysSinceActivity} days ago`;
+    text += `PR #${githubFacts.prNumber} ${githubFacts.prState ?? 'unknown'} ${gitFacts.daysSinceActivity} days ago`;
     if (githubFacts.mergedBy) {
       text += ` by ${githubFacts.mergedBy}`;
     }
@@ -728,7 +728,7 @@ export function categorizeBranches(
         branchesNeedingReview.push({
           name: gitFacts.name,
           verification: { ...gitFacts, ...githubFacts },
-          assessment: `Failed to delete: ${result.error}`,
+          assessment: `Failed to delete: ${result.error ?? 'Unknown error'}`,
           deleteCommand: assessment.deleteCommand,
           recoveryCommand: assessment.recoveryCommand,
         });
