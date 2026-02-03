@@ -187,7 +187,7 @@ describe('run command integration', () => {
 
       // CRITICAL: Verify git notes ref was actually created
       // Use getNotesRefs from @vibe-validate/git (architectural compliance)
-      const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
+      const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${String(treeHash)}`);
       expect(notesRefs).not.toBe(''); // Cache was written!
       expect(notesRefs).toContain('refs/notes/vibe-validate/run/');
 
@@ -446,7 +446,7 @@ describe('run command integration', () => {
 
         // Verify cache was written
         // Use getNotesRefs from @vibe-validate/git (architectural compliance)
-        const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${treeHash}`);
+        const notesRefs = getNotesRefs(`refs/notes/vibe-validate/run/${String(treeHash)}`);
         expect(notesRefs).not.toBe(''); // Cache exists (may include entries from other tests)
 
         // Second run: direct command (should hit cache)

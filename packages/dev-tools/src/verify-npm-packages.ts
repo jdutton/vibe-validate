@@ -35,7 +35,7 @@ const publishablePackages = [
   'vibe-validate'
 ];
 
-console.log(`🔍 Verifying npm packages for version ${expectedVersion}...\n`);
+console.log(`🔍 Verifying npm packages for version ${String(expectedVersion)}...\n`);
 
 let allPublished = true;
 const results = [];
@@ -46,17 +46,17 @@ for (const packageName of publishablePackages) {
 
     if (exists) {
       results.push({ package: packageName, status: 'ok', version: expectedVersion });
-      console.log(`✅ ${packageName}@${expectedVersion}`);
+      console.log(`✅ ${packageName}@${String(expectedVersion)}`);
     } else {
       results.push({ package: packageName, status: 'missing', expected: expectedVersion });
-      console.log(`❌ ${packageName}@${expectedVersion} not found on npm`);
+      console.log(`❌ ${packageName}@${String(expectedVersion)} not found on npm`);
       allPublished = false;
     }
   } catch (error) {
     // Expected failure: package not published or version not found on npm
     // This is the primary check - if npm view fails, package is missing
     results.push({ package: packageName, status: 'missing', expected: expectedVersion });
-    console.log(`❌ ${packageName}@${expectedVersion} - NOT PUBLISHED`);
+    console.log(`❌ ${packageName}@${String(expectedVersion)} - NOT PUBLISHED`);
     allPublished = false;
     // Log unexpected errors for debugging
     if (error instanceof Error && error.message.includes('ENOENT')) {
@@ -68,7 +68,7 @@ for (const packageName of publishablePackages) {
 console.log('');
 
 if (allPublished) {
-  console.log(`✅ All ${publishablePackages.length} packages verified on npm\n`);
+  console.log(`✅ All ${String(publishablePackages.length)} packages verified on npm\n`);
   process.exit(0);
 } else {
   const missing = results.filter(r => r.status === 'missing');
@@ -77,14 +77,14 @@ if (allPublished) {
   console.log('❌ Verification failed!\n');
 
   if (missing.length > 0) {
-    console.log(`Missing packages (${missing.length}):`);
-    for (const r of missing) console.log(`  - ${r.package}@${r.expected}`);
+    console.log(`Missing packages (${String(missing.length)}):`);
+    for (const r of missing) console.log(`  - ${r.package}@${String(r.expected)}`);
     console.log('');
   }
 
   if (mismatched.length > 0) {
-    console.log(`Missing packages (${mismatched.length}):`);
-    for (const r of mismatched) console.log(`  - ${r.package}@${r.expected} not published to npm`);
+    console.log(`Missing packages (${String(mismatched.length)}):`);
+    for (const r of mismatched) console.log(`  - ${r.package}@${String(r.expected)} not published to npm`);
     console.log('');
   }
 

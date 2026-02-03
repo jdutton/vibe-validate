@@ -12,7 +12,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
 import {
@@ -180,7 +180,7 @@ function checkCliBuildSync(): DoctorCheckResult {
       return {
         name: CHECK_CLI_BUILD_STATUS,
         passed: false,
-        message: `Build is stale: running v${runningVersion}, source v${sourceVersion}`,
+        message: `Build is stale: running v${String(runningVersion)}, source v${String(sourceVersion)}`,
         suggestion: 'Rebuild packages: pnpm -r build',
       };
     }
@@ -188,7 +188,7 @@ function checkCliBuildSync(): DoctorCheckResult {
     return {
       name: CHECK_CLI_BUILD_STATUS,
       passed: true,
-      message: `Build is up to date (v${runningVersion})`,
+      message: `Build is up to date (v${String(runningVersion)})`,
     };
   // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Non-critical dev-only check, errors safely ignored
   } catch (_error) {
@@ -345,8 +345,7 @@ async function checkConfigValid(
     if (!config) {
       // Check if we have detailed error information
       if (configWithErrors?.errors && configWithErrors.filePath) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-        const fileName = configWithErrors.filePath.split('/').pop() || 'vibe-validate.config.yaml';
+        const fileName = basename(configWithErrors.filePath) || 'vibe-validate.config.yaml';
         const { message, suggestion } = formatDoctorConfigError({
           fileName,
           errors: configWithErrors.errors
@@ -363,8 +362,7 @@ async function checkConfigValid(
       // Fallback: try to find config file path
       const configPath = findConfigPath();
       if (configPath) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-        const fileName = configPath.split('/').pop() || 'vibe-validate.config.yaml';
+        const fileName = basename(configPath) || 'vibe-validate.config.yaml';
         return {
           name: CHECK_CONFIG_VALID,
           passed: false,
@@ -680,7 +678,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
         return {
           name: CHECK_VIBE_VALIDATE_VERSION,
           passed: true,
-          message: `Current: ${currentVersion}${contextLabel} — up to date with npm`,
+          message: `Current: ${String(currentVersion)}${contextLabel} — up to date with npm`,
         };
       } else if (isOutdated) {
         // Only show suggestion if current version is behind npm
@@ -688,7 +686,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
         return {
           name: CHECK_VIBE_VALIDATE_VERSION,
           passed: true, // Warning only, not a failure
-          message: `Current: ${currentVersion}${contextLabel}, Latest: ${latestVersion} available`,
+          message: `Current: ${String(currentVersion)}${contextLabel}, Latest: ${String(latestVersion)} available`,
           suggestion: `Upgrade: ${getUpgradeCommand(context)}\n   💡 After upgrade: Run '${cmd} doctor' to verify setup`,
         };
       } else {
@@ -696,7 +694,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
         return {
           name: CHECK_VIBE_VALIDATE_VERSION,
           passed: true,
-          message: `Current: ${currentVersion}${contextLabel} (ahead of npm: ${latestVersion})`,
+          message: `Current: ${String(currentVersion)}${contextLabel} (ahead of npm: ${String(latestVersion)})`,
         };
       }
     } catch (npmError) {
@@ -705,7 +703,7 @@ async function checkVersion(versionChecker: VersionChecker = defaultVersionCheck
       return {
         name: CHECK_VIBE_VALIDATE_VERSION,
         passed: true,
-        message: `Current version: ${currentVersion} (unable to check for updates: ${errorMessage})`,
+        message: `Current version: ${String(currentVersion)} (unable to check for updates: ${errorMessage})`,
       };
     }
   } catch (error) {

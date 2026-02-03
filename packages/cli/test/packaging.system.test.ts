@@ -8,7 +8,7 @@
  */
 
 import { mkdtempSync, rmSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { safeExecFromString, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -36,7 +36,7 @@ describe('npm package tarball (system test)', () => {
     const tarballFullPath = lines.at(-1).trim();
 
     // Get just the filename
-    const tarballName = tarballFullPath.split('/').pop() ?? '';
+    const tarballName = basename(tarballFullPath);
     if (!tarballName) {
       throw new Error('Failed to get tarball name from pnpm pack output');
     }

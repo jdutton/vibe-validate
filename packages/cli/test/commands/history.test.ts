@@ -558,7 +558,7 @@ describe('history command', () => {
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-        throw new Error(`process.exit(${code})`);
+        throw new Error(`process.exit(${String(code)})`);
       }) as any;
 
       historyCommand(env.program);
@@ -950,7 +950,7 @@ describe('history command', () => {
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-        throw new Error(`process.exit(${code})`);
+        throw new Error(`process.exit(${String(code)})`);
       }) as any;
 
       historyCommand(env.program);
@@ -974,7 +974,7 @@ describe('history command', () => {
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-        throw new Error(`process.exit(${code})`);
+        throw new Error(`process.exit(${String(code)})`);
       }) as any;
 
       historyCommand(env.program);
@@ -998,7 +998,7 @@ describe('history command', () => {
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-        throw new Error(`process.exit(${code})`);
+        throw new Error(`process.exit(${String(code)})`);
       }) as any;
 
       historyCommand(env.program);
@@ -1022,7 +1022,7 @@ describe('history command', () => {
 
       // Mock process.exit to track exit code
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: ProcessExitCode) => {
-        throw new Error(`process.exit(${code})`);
+        throw new Error(`process.exit(${String(code)})`);
       }) as any;
 
       historyCommand(env.program);

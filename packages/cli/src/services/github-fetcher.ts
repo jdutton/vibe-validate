@@ -421,6 +421,7 @@ export class GitHubFetcher {
    */
   private extractWorkflowName(checkName: string): string {
     // Extract workflow name before first /
+    // eslint-disable-next-line local/no-hardcoded-path-split -- GitHub check name format (workflow/job), not a file path
     const parts = checkName.split('/');
     return parts[0].trim();
   }

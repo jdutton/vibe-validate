@@ -361,6 +361,7 @@ function detectOwnerRepo(): { owner: string; repo: string } {
  * @returns Owner and repo
  */
 function parseRepoFlag(repoFlag: string): { owner: string; repo: string } {
+  // eslint-disable-next-line local/no-hardcoded-path-split -- GitHub repo format (owner/repo), not a file path
   const parts = repoFlag.split('/');
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
     throw new Error(

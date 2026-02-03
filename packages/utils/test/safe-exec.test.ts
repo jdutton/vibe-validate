@@ -1,5 +1,5 @@
 import { mkdtempSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
@@ -53,7 +53,7 @@ describe('safeExecSync', () => {
       const actualPath = result.trim();
       const expectedPath = tempDir;
       // Compare resolved paths to handle symlinks
-      expect(actualPath.endsWith(expectedPath.split('/').pop() ?? '')).toBe(true);
+      expect(actualPath.endsWith(basename(expectedPath))).toBe(true);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

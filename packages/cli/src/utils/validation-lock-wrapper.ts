@@ -6,6 +6,8 @@
  * lock management across commands (validate, pre-commit, etc.).
  */
 
+import { basename } from 'node:path';
+
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import { getGitTreeHash } from '@vibe-validate/git';
 import chalk from 'chalk';
@@ -142,7 +144,7 @@ export async function withValidationLock<T>(
 
       if (configWithErrors.errors && configWithErrors.filePath) {
         // Config file exists but has validation errors
-        const fileName = configWithErrors.filePath.split('/').pop() ?? 'vibe-validate.config.yaml';
+        const fileName = basename(configWithErrors.filePath);
         displayConfigErrors({
           fileName,
           errors: configWithErrors.errors

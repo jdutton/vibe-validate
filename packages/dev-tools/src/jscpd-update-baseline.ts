@@ -45,9 +45,9 @@ const currentClones = currentReport.duplicates ?? [];
 writeFileSync(BASELINE_FILE, JSON.stringify({ duplicates: currentClones }, null, 2));
 
 console.log('✅ Baseline updated!');
-console.log(`   Clones: ${currentClones.length}`);
-console.log(`   Duplication: ${currentReport.statistics.total.percentage.toFixed(2)}%`);
-console.log(`   Lines: ${currentReport.statistics.total.duplicatedLines} / ${currentReport.statistics.total.totalLines}\n`);
+console.log(`   Clones: ${String(currentClones.length)}`);
+console.log(`   Duplication: ${String(currentReport.statistics.total.percentage.toFixed(2))}%`);
+console.log(`   Lines: ${String(currentReport.statistics.total.duplicatedLines)} / ${String(currentReport.statistics.total.totalLines)}\n`);
 
 console.log(`📝 Baseline saved to: ${BASELINE_FILE}`);
 console.log(`   Commit this file to version control.\n`);

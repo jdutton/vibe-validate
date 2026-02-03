@@ -434,6 +434,7 @@ export async function fetchPRDataForBranches(
 
   try {
     // Parse repository
+    // eslint-disable-next-line local/no-hardcoded-path-split -- GitHub repo format (owner/repo), not a file path
     const [owner, repo] = repository.split('/');
     if (!owner || !repo) {
       throw new Error(`Invalid repository format: ${repository}. Expected: owner/repo`);
