@@ -200,7 +200,7 @@ export function extractMavenCompiler(
   // Create error summary
   const errorSummary = errors.length > 0
     ? errors.map((e, i) => {
-        const location = e.column ? `${e.file}:${e.line}:${e.column}` : `${e.file}:${e.line}`;
+        const location = e.column ? `${e.file ?? 'unknown'}:${e.line ?? 0}:${e.column}` : `${e.file ?? 'unknown'}:${e.line ?? 0}`;
         return `[Error ${i + 1}/${errors.length}] ${location}\n${e.message}`;
       }).join('\n\n')
     : undefined;
@@ -224,7 +224,7 @@ function deduplicateErrors(errors: CompilationError[]): CompilationError[] {
   const unique: CompilationError[] = [];
 
   for (const e of errors) {
-    const key = `${e.file}:${e.line}:${e.column}:${e.message.split('\n')[0]}`;
+    const key = `${e.file ?? 'unknown'}:${e.line ?? 0}:${e.column ?? 0}:${e.message.split('\n')[0]}`;
     if (!seen.has(key)) {
       seen.add(key);
       unique.push(e);

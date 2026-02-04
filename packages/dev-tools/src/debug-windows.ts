@@ -54,11 +54,15 @@ function error(message: string) {
 }
 
 function info(label: string, value: unknown): void {
-  console.log(`${colors.blue}${label}:${colors.reset} ${value}`);
+  console.log(`${colors.blue}${label}:${colors.reset} ${String(value)}`);
 }
 
 function warn(message: string) {
   console.log(`${colors.yellow}⚠${colors.reset} ${message}`);
+}
+
+function formatError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 // Test 1: Platform Detection
@@ -108,7 +112,7 @@ if (existsSync(execPath)) {
     info('  Is file?', stats.isFile());
     info('  Is executable?', !!(stats.mode & 0o111));
   } catch (err) {
-    error(`Cannot stat: ${err}`);
+    error(`Cannot stat: ${formatError(err)}`);
   }
 
   // Check parent directory
@@ -121,7 +125,7 @@ if (existsSync(execPath)) {
       const files = readdirSync(parentDir);
       info('Files in parent', files.join(', '));
     } catch (err) {
-      error(`Cannot read parent dir: ${err}`);
+      error(`Cannot read parent dir: ${formatError(err)}`);
     }
   }
 } else {
@@ -143,13 +147,13 @@ try {
       success('File accessible via which');
       info('  Size', `${stats.size} bytes`);
     } catch (err) {
-      error(`Cannot stat which path: ${err}`);
+      error(`Cannot stat which path: ${formatError(err)}`);
     }
   } else {
     error('which.sync returned path that does not exist!');
   }
 } catch (err) {
-  error(`which.sync("node") threw: ${err}`);
+  error(`which.sync("node") threw: ${formatError(err)}`);
 }
 
 // Test with nothrow
@@ -169,7 +173,7 @@ try {
     }
   }
 } catch (err) {
-  error(`which.sync with all:true threw: ${err}`);
+  error(`which.sync with all:true threw: ${formatError(err)}`);
 }
 
 // Test 5: Path Comparison
@@ -184,14 +188,14 @@ if (whichPath && execPath) {
   // Character-by-character comparison
   if (whichPath.toLowerCase() !== execPath.toLowerCase()) {
     warn('Paths differ!');
-    info('  Length diff', `which: ${whichPath.length}, exec: ${execPath.length}`);
+    info('  Length diff', `which: ${String(whichPath.length)}, exec: ${String(execPath.length)}`);
 
     const maxLen = Math.max(whichPath.length, execPath.length);
     for (let i = 0; i < maxLen; i++) {
       if (whichPath[i] !== execPath[i]) {
         info(`  First diff at position ${i}`,
-          `which: "${whichPath[i]}" (${whichPath.codePointAt(i)}), ` +
-          `exec: "${execPath[i]}" (${execPath.codePointAt(i)})`);
+          `which: "${String(whichPath[i])}" (${String(whichPath.codePointAt(i))}), ` +
+          `exec: "${String(execPath[i])}" (${String(execPath.codePointAt(i))})`);
         break;
       }
     }
@@ -225,7 +229,7 @@ try {
     info('  Output', result1.stdout?.toString().trim());
   }
 } catch (err) {
-  error(`Exception spawning with process.execPath: ${err}`);
+  error(`Exception spawning with process.execPath: ${formatError(err)}`);
 }
 
 // Test B: Spawn with which.sync path
@@ -245,7 +249,7 @@ if (whichPath) {
       info('  Output', result2.stdout?.toString().trim());
     }
   } catch (err) {
-    error(`Exception spawning with which.sync path: ${err}`);
+    error(`Exception spawning with which.sync path: ${formatError(err)}`);
   }
 }
 
@@ -260,7 +264,7 @@ try {
     info('  Output', result3.stdout?.toString().trim());
   }
 } catch (err) {
-  error(`Exception spawning 'node' without shell: ${err}`);
+  error(`Exception spawning 'node' without shell: ${formatError(err)}`);
 }
 
 // Test D: Spawn with just 'node' (shell: true)
@@ -274,7 +278,7 @@ try {
     info('  Output', result4.stdout?.toString().trim());
   }
 } catch (err) {
-  error(`Exception spawning 'node' with shell: ${err}`);
+  error(`Exception spawning 'node' with shell: ${formatError(err)}`);
 }
 
 // Test 8: npm and .cmd File Handling
@@ -310,7 +314,7 @@ try {
       info('  Output', npmNoShell.stdout?.toString().trim());
     }
   } catch (err) {
-    error(`Exception with npm no shell: ${err}`);
+    error(`Exception with npm no shell: ${formatError(err)}`);
   }
 
   // With shell
@@ -323,7 +327,7 @@ try {
       info('  Output', npmShell.stdout?.toString().trim());
     }
   } catch (err) {
-    error(`Exception with npm with shell: ${err}`);
+    error(`Exception with npm with shell: ${formatError(err)}`);
   }
 
   // Check pnpm (our actual package manager)
@@ -344,12 +348,12 @@ try {
         info('  Output', pnpmVersion.stdout?.toString().trim());
       }
     } catch (err) {
-      error(`Exception with pnpm: ${err}`);
+      error(`Exception with pnpm: ${formatError(err)}`);
     }
   }
 
 } catch (err) {
-  error(`Failed npm/cmd testing: ${err}`);
+  error(`Failed npm/cmd testing: ${formatError(err)}`);
 }
 
 // Test 9: Case Sensitivity Tests
@@ -388,7 +392,7 @@ try {
     success('safeExecSync succeeded');
     info('  Output', syncResult.toString().trim());
   } catch (err) {
-    error(`safeExecSync failed: ${err}`);
+    error(`safeExecSync failed: ${formatError(err)}`);
     if (err instanceof Error) {
       info('  Error name', err.name);
       info('  Error message', err.message);
@@ -411,7 +415,7 @@ try {
     }
   }
 } catch (err) {
-  error(`Failed to import or test @vibe-validate/git: ${err}`);
+  error(`Failed to import or test @vibe-validate/git: ${formatError(err)}`);
 }
 
 // Test 11: jscpd (Code Duplication Checker)
@@ -435,7 +439,7 @@ try {
         info('  Output', jscpdVersion.stdout?.toString().trim());
       }
     } catch (err) {
-      error(`Exception running jscpd: ${err}`);
+      error(`Exception running jscpd: ${formatError(err)}`);
     }
 
     // Test with a simple directory
@@ -464,7 +468,7 @@ try {
         }
       }
     } catch (err) {
-      error(`Exception testing jscpd: ${err}`);
+      error(`Exception testing jscpd: ${formatError(err)}`);
     }
   } else {
     warn('jscpd not found in PATH');
@@ -489,12 +493,12 @@ try {
           info('  Output', jscpdTest.stdout?.toString().trim());
         }
       } catch (err) {
-        error(`Exception with node_modules jscpd: ${err}`);
+        error(`Exception with node_modules jscpd: ${formatError(err)}`);
       }
     }
   }
 } catch (err) {
-  error(`Failed to test jscpd: ${err}`);
+  error(`Failed to test jscpd: ${formatError(err)}`);
 }
 
 // Test 12: Shell and Environment Variable Behavior
@@ -528,7 +532,7 @@ try {
   info('PowerShell available?', which.sync('pwsh', { nothrow: true }) ? 'yes' : 'no');
 
 } catch (err) {
-  error(`Failed environment variable tests: ${err}`);
+  error(`Failed environment variable tests: ${formatError(err)}`);
 }
 
 // Test 13: Concurrent Execution
@@ -593,7 +597,7 @@ try {
   info('Synchronous failures', syncFailures);
 
 } catch (err) {
-  error(`Failed concurrent execution tests: ${err}`);
+  error(`Failed concurrent execution tests: ${formatError(err)}`);
 }
 
 // Test 14: execSync vs spawnSync Comparison
@@ -607,7 +611,7 @@ try {
     success('execSync("node --version") succeeded');
     info('  Output', execSyncResult.toString().trim());
   } catch (err) {
-    error(`execSync("node --version") failed: ${err}`);
+    error(`execSync("node --version") failed: ${formatError(err)}`);
   }
 
   // Test 2: spawnSync with which.sync path
@@ -627,7 +631,7 @@ try {
         info('  Output', spawnResult.stdout?.toString().trim());
       }
     } catch (err) {
-      error(`spawnSync exception: ${err}`);
+      error(`spawnSync exception: ${formatError(err)}`);
     }
   }
 
@@ -644,7 +648,7 @@ try {
       info('  Output', spawnExecResult.stdout?.toString().trim());
     }
   } catch (err) {
-    error(`spawnSync(process.execPath) exception: ${err}`);
+    error(`spawnSync(process.execPath) exception: ${formatError(err)}`);
   }
 
   // Test 4: spawnSync with 'node' and shell: true
@@ -660,7 +664,7 @@ try {
       info('  Output', spawnShellResult.stdout?.toString().trim());
     }
   } catch (err) {
-    error(`spawnSync shell:true exception: ${err}`);
+    error(`spawnSync shell:true exception: ${formatError(err)}`);
   }
 
   // Test 5: Test the exact command from failing CLI integration tests
@@ -690,7 +694,7 @@ try {
       info('     Exit code', echoNoShell.status);
     }
   } catch (err) {
-    error(`  A1 exception: ${err}`);
+    error(`  A1 exception: ${formatError(err)}`);
   }
 
   try {
@@ -708,7 +712,7 @@ try {
       info('     Exit code', echoWithShell.status);
     }
   } catch (err) {
-    error(`  A2 exception: ${err}`);
+    error(`  A2 exception: ${formatError(err)}`);
   }
 
   // Scenario B: Test with TEST_COMMAND_NODE_VERSION (NOT a shell built-in)
@@ -731,7 +735,7 @@ try {
       info('     Exit code', nodeNoShell.status);
     }
   } catch (err) {
-    error(`  B1 exception: ${err}`);
+    error(`  B1 exception: ${formatError(err)}`);
   }
 
   try {
@@ -749,7 +753,7 @@ try {
       info('     Exit code', nodeWithShell.status);
     }
   } catch (err) {
-    error(`  B2 exception: ${err}`);
+    error(`  B2 exception: ${formatError(err)}`);
   }
 
   // Scenario C: Test with 'node -e' (JavaScript execution)
@@ -770,7 +774,7 @@ try {
       info('     Exit code', jsNoShell.status);
     }
   } catch (err) {
-    error(`  C1 exception: ${err}`);
+    error(`  C1 exception: ${formatError(err)}`);
   }
 
   try {
@@ -788,7 +792,7 @@ try {
       info('     Exit code', jsWithShell.status);
     }
   } catch (err) {
-    error(`  C2 exception: ${err}`);
+    error(`  C2 exception: ${formatError(err)}`);
   }
 
   // Scenario D: Explicit cmd.exe invocation (Windows-specific)
@@ -811,12 +815,12 @@ try {
         info('     Exit code', cmdResult.status);
       }
     } catch (err) {
-      error(`  D1 exception: ${err}`);
+      error(`  D1 exception: ${formatError(err)}`);
     }
   }
 
 } catch (err) {
-  error(`Failed execSync vs spawnSync comparison: ${err}`);
+  error(`Failed execSync vs spawnSync comparison: ${formatError(err)}`);
 }
 
 // Test 15: tmpdir() and Path Normalization (Windows 8.3 Short Names)
@@ -851,7 +855,7 @@ try {
         info('  Length diff', `short: ${tempPath.length}, long: ${realTemp.length}`);
       }
     } catch (err) {
-      error(`realpathSync failed: ${err}`);
+      error(`realpathSync failed: ${formatError(err)}`);
     }
   } else {
     error('tmpdir() path does not exist!');
@@ -907,7 +911,7 @@ try {
     rmSync(testDirShort, { recursive: true, force: true });
     success('Cleaned up test directory');
   } catch (err) {
-    error(`Test directory operations failed: ${err}`);
+    error(`Test directory operations failed: ${formatError(err)}`);
   }
 
   // Test common path operations
@@ -931,7 +935,7 @@ try {
           warn(`${testPath} → ${real}`);
         }
       } catch (err) {
-        error(`realpathSync(${testPath}) failed: ${err}`);
+        error(`realpathSync(${testPath}) failed: ${formatError(err)}`);
       }
     } else {
       info(`${testPath}`, 'does not exist (skipped)');
@@ -951,7 +955,7 @@ try {
   info('  BETTER:', 'mkdirSync(testDir); testDir = realpathSync(testDir);');
 
 } catch (err) {
-  error(`Failed tmpdir/path normalization tests: ${err}`);
+  error(`Failed tmpdir/path normalization tests: ${formatError(err)}`);
 }
 
 // Test 16: Summary
@@ -978,7 +982,7 @@ if (whichPath && execPath && whichPath.toLowerCase() !== execPath.toLowerCase())
 const whichExt = whichPath?.slice(whichPath.lastIndexOf('.')).toUpperCase();
 const execExt = execPath.slice(execPath.lastIndexOf('.')).toUpperCase();
 if (whichExt && execExt && whichExt !== execExt) {
-  issues.push(`File extension mismatch: which uses ${whichExt}, exec uses ${execExt}`);
+  issues.push(`File extension mismatch: which uses ${String(whichExt)}, exec uses ${String(execExt)}`);
   recommendations.push('Normalize file extensions when comparing paths');
 }
 

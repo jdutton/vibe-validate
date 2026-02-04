@@ -113,7 +113,7 @@ async function recordHistory(
         }
       } else {
         // Always warn on stderr when history recording fails (not just in verbose mode)
-        console.error(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason}`));
+        console.error(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason ?? 'Unknown reason'}`));
         console.error(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}`));
       }
     } else {

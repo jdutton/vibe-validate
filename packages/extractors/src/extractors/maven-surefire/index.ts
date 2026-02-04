@@ -262,7 +262,7 @@ export function extractMavenSurefire(
 
   // Create error summary
   const errorSummary = errors.length > 0
-    ? errors.map((e, i) => `[Test ${i + 1}/${errors.length}] ${e.file}:${e.line ?? '?'}\n${e.message}`).join('\n\n')
+    ? errors.map((e, i) => `[Test ${i + 1}/${errors.length}] ${e.file ?? 'unknown'}:${e.line ?? 0}\n${e.message}`).join('\n\n')
     : undefined;
 
   return {

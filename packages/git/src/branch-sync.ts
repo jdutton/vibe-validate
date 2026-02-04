@@ -134,6 +134,7 @@ export class BranchSyncChecker {
 
   private async fetchRemote(): Promise<void> {
     try {
+      // eslint-disable-next-line local/no-hardcoded-path-split -- Git remote/branch format, not a file path
       const [remote, branch] = this.remoteBranch.split('/');
       await this.gitExecutor(['fetch', '--quiet', remote, branch]);
     } catch (error) {

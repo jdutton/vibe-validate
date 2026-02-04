@@ -173,7 +173,7 @@ export function extractMavenCheckstyle(
 
   // Create error summary
   const errorSummary = errors.length > 0
-    ? errors.map((e, i) => `[Error ${i + 1}/${errors.length}] ${e.file}:${e.line}\n${e.message}`).join('\n\n')
+    ? errors.map((e, i) => `[Error ${i + 1}/${errors.length}] ${e.file ?? 'unknown'}:${e.line ?? 0}\n${e.message}`).join('\n\n')
     : undefined;
 
   return createMavenResult(
@@ -195,7 +195,7 @@ function deduplicateViolations(violations: CheckstyleViolation[]): CheckstyleVio
   const unique: CheckstyleViolation[] = [];
 
   for (const v of violations) {
-    const key = `${v.file}:${v.line}:${v.column}:${v.rule}`;
+    const key = `${v.file ?? 'unknown'}:${v.line ?? 0}:${v.column ?? 0}:${v.rule ?? 'unknown'}`;
     if (!seen.has(key)) {
       seen.add(key);
       unique.push(v);

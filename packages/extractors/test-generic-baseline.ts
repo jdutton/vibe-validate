@@ -37,14 +37,14 @@ for (const category of categories) {
 
     const result = extractGenericErrors(rawOutput, category);
 
-    console.log(`\n  📄 ${file}`);
-    console.log(`     Summary: ${result.summary}`);
-    console.log(`     Errors found: ${result.errors.length}`);
-    console.log(`     Total count: ${result.totalCount}`);
-    console.log(`     Clean output length: ${result.errorSummary.length} chars`);
+    console.log(`\n  📄 ${String(file)}`);
+    console.log(`     Summary: ${String(result.summary)}`);
+    console.log(`     Errors found: ${String(result.errors.length)}`);
+    console.log(`     Total count: ${String(result.totalCount)}`);
+    console.log(`     Clean output length: ${String(result.errorSummary.length)} chars`);
     console.log(`     First 300 chars of clean output:`);
     const preview = result.errorSummary.substring(0, 300).replaceAll('\n', '\n     ');
-    console.log(`     ${preview}${result.errorSummary.length > 300 ? '...' : ''}`);
+    console.log(`     ${String(preview)}${result.errorSummary.length > 300 ? '...' : ''}`);
   }
 }
 

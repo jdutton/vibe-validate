@@ -10,6 +10,7 @@
  * - no-manual-path-normalize: Enforce toForwardSlash() instead of manual .split(path.sep).join('/') patterns (auto-fixable)
  * - no-path-sep-in-strings: Prevent path.sep in string operations (split, includes, etc.)
  * - no-path-operations-in-comparisons: Require normalizing path operations before string comparisons
+ * - no-hardcoded-path-split: Prevent .split('/') or .split('\\') on paths without normalization
  *
  * Security and Architecture Rules:
  * - no-child-process-execSync: Enforce safeExecSync() instead of execSync() (security + cross-platform)
@@ -34,6 +35,7 @@ export default {
     'no-path-sep-in-strings': require('./no-path-sep-in-strings.cjs'),
     'no-path-operations-in-comparisons': require('./no-path-operations-in-comparisons.cjs'),
     'no-path-startswith': require('./no-path-startswith.cjs'),
+    'no-hardcoded-path-split': require('./no-hardcoded-path-split.cjs'),
 
     // Security and architecture rules
     'no-child-process-execSync': require('./no-child-process-execSync.cjs'),

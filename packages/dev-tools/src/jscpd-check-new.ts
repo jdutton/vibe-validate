@@ -99,8 +99,8 @@ function checkNewDuplications() {
     console.log('📝 No baseline found. Creating baseline from current state...');
     writeFileSync(BASELINE_FILE, JSON.stringify({ duplicates: currentClones }, null, 2));
     console.log(`✅ Baseline saved to ${BASELINE_FILE}`);
-    console.log(`   Current duplication: ${currentReport.statistics.total.percentage.toFixed(2)}%`);
-    console.log(`   (${currentClones.length} clones)\n`);
+    console.log(`   Current duplication: ${String(currentReport.statistics.total.percentage.toFixed(2))}%`);
+    console.log(`   (${String(currentClones.length)} clones)\n`);
     process.exit(0);
   }
 
@@ -118,24 +118,24 @@ function checkNewDuplications() {
   // Report results
   if (newClones.length === 0) {
     console.log('✅ No new code duplication detected!');
-    console.log(`   Current: ${currentClones.length} clones (${currentReport.statistics.total.percentage.toFixed(2)}%)`);
-    console.log(`   Baseline: ${baselineClones.length} clones\n`);
+    console.log(`   Current: ${String(currentClones.length)} clones (${String(currentReport.statistics.total.percentage.toFixed(2))}%)`);
+    console.log(`   Baseline: ${String(baselineClones.length)} clones\n`);
     process.exit(0);
   }
 
   // New duplications found - FAIL
-  console.log(`❌ NEW code duplication detected! (${newClones.length} new clones)\n`);
+  console.log(`❌ NEW code duplication detected! (${String(newClones.length)} new clones)\n`);
 
   for (const clone of newClones) {
     const fileA = clone.firstFile.name;
     const fileB = clone.secondFile.name;
-    const linesA = `${clone.firstFile.startLoc.line}-${clone.firstFile.endLoc.line}`;
-    const linesB = `${clone.secondFile.startLoc.line}-${clone.secondFile.endLoc.line}`;
+    const linesA = `${String(clone.firstFile.startLoc.line)}-${String(clone.firstFile.endLoc.line)}`;
+    const linesB = `${String(clone.secondFile.startLoc.line)}-${String(clone.secondFile.endLoc.line)}`;
     const lines = clone.firstFile.endLoc.line - clone.firstFile.startLoc.line + 1;
 
-    console.log(`  📁 ${fileA}:${linesA}`);
-    console.log(`     ↔ ${fileB}:${linesB}`);
-    console.log(`     (${lines} lines duplicated)\n`);
+    console.log(`  📁 ${String(fileA)}:${linesA}`);
+    console.log(`     ↔ ${String(fileB)}:${linesB}`);
+    console.log(`     (${String(lines)} lines duplicated)\n`);
   }
 
   console.log('💡 To fix:');

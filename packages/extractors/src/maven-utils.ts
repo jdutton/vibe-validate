@@ -6,6 +6,8 @@
  * @package @vibe-validate/extractors
  */
 
+import { toForwardSlash } from '@vibe-validate/utils';
+
 /**
  * Extract relative path from absolute path
  *
@@ -33,6 +35,8 @@ export function extractRelativePath(absolutePath: string): string {
   }
 
   // Fallback: return last few path segments (enough to identify the file)
-  const segments = absolutePath.split('/');
+  // Normalize to forward slashes first (Maven/Java convention)
+  const normalized = toForwardSlash(absolutePath);
+  const segments = normalized.split('/');
   return segments.slice(-3).join('/');
 }

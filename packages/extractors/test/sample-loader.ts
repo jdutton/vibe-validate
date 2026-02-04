@@ -38,10 +38,10 @@ export function loadSample(filePath: string): Sample {
   const valid = validateSchema(sample);
   if (!valid) {
     const errors = validateSchema.errors
-      ?.map((err) => `  - ${err.instancePath ?? '/'}: ${err.message}`)
+      ?.map((err) => `  - ${String(err.instancePath ?? '/')}: ${String(err.message)}`)
       .join('\n');
     throw new Error(
-      `Sample ${filePath} failed schema validation:\n${errors}\n\nPlease fix the sample or update the schema at ${SCHEMA_PATH}`
+      `Sample ${filePath} failed schema validation:\n${String(errors)}\n\nPlease fix the sample or update the schema at ${SCHEMA_PATH}`
     );
   }
 
@@ -197,7 +197,7 @@ export function computeQualityScore(
   } else {
     fieldScores.tool = 0;
     issues.push(
-      `Tool mismatch: detected '${actual.detectedTool}' but expected '${expected.detectedTool}'`
+      `Tool mismatch: detected '${actual.detectedTool ?? 'unknown'}' but expected '${expected.detectedTool ?? 'unknown'}'`
     );
   }
 

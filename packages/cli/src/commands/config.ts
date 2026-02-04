@@ -4,6 +4,8 @@
  * Show or validate vibe-validate configuration.
  */
 
+import { basename } from 'node:path';
+
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 import type { Command } from 'commander';
@@ -31,8 +33,7 @@ async function loadAndValidateConfig(): Promise<{ configPath: string; config: Vi
 
   // Show detailed validation errors if config is invalid
   if (!result.config && result.errors) {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to filter empty strings, not just null/undefined
-    const fileName = result.filePath?.split('/').pop() || 'vibe-validate.config.yaml';
+    const fileName = result.filePath ? basename(result.filePath) : 'vibe-validate.config.yaml';
     displayConfigErrors({ fileName, errors: result.errors });
     process.exit(1);
   }
@@ -143,7 +144,7 @@ function displayYamlConfig(config: VibeValidateConfig): void {
     console.log('  phases:');
     for (const phase of config.validation.phases) {
       console.log(`    - name: ${phase.name}`);
-      console.log(`      parallel: ${phase.parallel}`);
+      console.log(`      parallel: ${phase.parallel ?? false}`);
       console.log(`      steps: ${phase.steps?.length ?? 0}`);
     }
   }

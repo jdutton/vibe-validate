@@ -531,7 +531,7 @@ async function showHistory(
     } else {
       // Pretty print
       if (note) {
-        console.log(`\nValidation History for Tree Hash: ${note.treeHash}`);
+        console.log(`\nValidation History for Tree Hash: ${note.treeHash ?? 'unknown'}`);
         console.log(`Total Runs: ${note.runs.length}\n`);
 
         for (let i = 0; i < note.runs.length; i++) {

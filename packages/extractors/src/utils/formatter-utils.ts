@@ -34,7 +34,7 @@ export function formatCleanOutput(errors: FormattedError[]): string {
 
   return errors
     .map((error) => {
-      const location = error.line ? `${error.file}:${error.line}` : error.file;
+      const location = error.line ? `${error.file ?? 'unknown'}:${error.line}` : (error.file ?? 'unknown');
       const contextStr = error.context ? ` (${error.context})` : '';
       return `${location}: ${error.message}${contextStr}`;
     })

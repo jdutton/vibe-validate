@@ -1,5 +1,5 @@
 import { mkdtempSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
@@ -53,7 +53,7 @@ describe('safeExecSync', () => {
       const actualPath = result.trim();
       const expectedPath = tempDir;
       // Compare resolved paths to handle symlinks
-      expect(actualPath.endsWith(expectedPath.split('/').pop() ?? '')).toBe(true);
+      expect(actualPath.endsWith(basename(expectedPath))).toBe(true);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -228,7 +228,7 @@ describe('isToolAvailable', () => {
       chmodSync(scriptPath, 0o755);
 
       // Add to PATH temporarily
-      const originalPath = process.env.PATH;
+      const originalPath = process.env.PATH ?? '';
       process.env.PATH = `${tempDir}:${originalPath}`;
 
       expect(isToolAvailable('bad-tool.sh')).toBe(false);
@@ -291,7 +291,7 @@ describe('getToolVersion', () => {
       chmodSync(scriptPath, 0o755);
 
       // Add to PATH temporarily
-      const originalPath = process.env.PATH;
+      const originalPath = process.env.PATH ?? '';
       process.env.PATH = `${tempDir}:${originalPath}`;
 
       const version = getToolVersion('bad-version-tool.sh');
@@ -323,7 +323,7 @@ describe('getToolVersion', () => {
 describe('Security - Command Injection Prevention', () => {
   it('should prevent PATH manipulation attacks', () => {
     // Even if PATH is manipulated, we use which.sync which resolves at call time
-    const originalPath = process.env.PATH;
+    const originalPath = process.env.PATH ?? '';
     const tempDir = mkdtempSync(join(normalizedTmpdir(), 'safe-exec-test-'));
 
     try {

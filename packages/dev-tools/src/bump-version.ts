@@ -19,7 +19,7 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { PROJECT_ROOT, log, processWorkspacePackages } from './common.js';
 
@@ -108,7 +108,7 @@ if (['patch', 'minor', 'major'].includes(versionArg)) {
     }
 
     newVersion = incrementVersion(currentVersion, versionArg);
-    log(`Current version: ${currentVersion}`, 'blue');
+    log(`Current version: ${String(currentVersion)}`, 'blue');
     log(`Increment type: ${versionArg}`, 'blue');
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -178,11 +178,11 @@ log('Updating root package.json...', 'blue');
 try {
   const result = updatePackageVersion(rootPackagePath, newVersion);
   if (result.skipped) {
-    log(`  - ${result.name ?? VIBE_VALIDATE_PKG_NAME}: skipped (${result.reason})`, 'yellow');
+    log(`  - ${String(result.name ?? VIBE_VALIDATE_PKG_NAME)}: skipped (${String(result.reason)})`, 'yellow');
   } else if (result.updated) {
-    log(`  ✓ ${result.name ?? VIBE_VALIDATE_PKG_NAME}: ${result.oldVersion} → ${result.newVersion}`, 'green');
+    log(`  ✓ ${String(result.name ?? VIBE_VALIDATE_PKG_NAME)}: ${String(result.oldVersion)} → ${String(result.newVersion)}`, 'green');
   } else {
-    log(`  - ${result.name ?? VIBE_VALIDATE_PKG_NAME}: already at ${result.newVersion}`, 'yellow');
+    log(`  - ${String(result.name ?? VIBE_VALIDATE_PKG_NAME)}: already at ${String(result.newVersion)}`, 'yellow');
   }
 } catch (error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -198,9 +198,9 @@ const counts = processWorkspacePackages(
   (pkgPath) => updatePackageVersion(pkgPath, newVersion),
   (result) => {
     if (result.updated) {
-      log(`  ✓ ${result.name}: ${result.oldVersion} → ${result.newVersion}`, 'green');
+      log(`  ✓ ${String(result.name)}: ${String(result.oldVersion)} → ${String(result.newVersion)}`, 'green');
     } else {
-      log(`  - ${result.name}: already at ${result.newVersion}`, 'yellow');
+      log(`  - ${String(result.name)}: already at ${String(result.newVersion)}`, 'yellow');
     }
   },
   () => {
@@ -235,7 +235,7 @@ for (const testFile of testFilesWithVersions) {
     const matches = [...content.matchAll(versionPattern)];
 
     if (matches.length === 0) {
-      log(`  - ${testFile.split('/').pop()}: no version markers found`, 'yellow');
+      log(`  - ${basename(testFile)}: no version markers found`, 'yellow');
       testSkippedCount++;
       continue;
     }
@@ -260,15 +260,15 @@ for (const testFile of testFilesWithVersions) {
     );
 
     if (updatedContent === content) {
-      log(`  - ${testFile.split('/').pop()}: already at ${newVersion}`, 'yellow');
+      log(`  - ${basename(testFile)}: already at ${newVersion}`, 'yellow');
       testSkippedCount++;
     } else {
       writeFileSync(testFile, updatedContent, 'utf8');
-      log(`  ✓ ${testFile.split('/').pop()}: updated ${matches.length} version expectation(s)`, 'green');
+      log(`  ✓ ${basename(testFile)}: updated ${matches.length} version expectation(s)`, 'green');
       testUpdatedCount++;
     }
   } catch (error: unknown) {
-    logFileError(testFile.split('/').pop() ?? testFile, error);
+    logFileError(basename(testFile), error);
     testSkippedCount++;
   }
 }

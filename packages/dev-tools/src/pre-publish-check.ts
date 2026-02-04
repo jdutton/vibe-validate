@@ -431,7 +431,7 @@ try {
         });
 
         if (!isCovered && !files.includes('bin')) {
-          missingFiles.push(`${pkg} (bin "${binPath}" not covered by files array)`);
+          missingFiles.push(`${pkg} (bin "${String(binPath)}" not covered by files array)`);
           break; // Only report once per package
         }
       }

@@ -75,6 +75,7 @@ export default [
       'local/no-path-sep-in-strings': 'error',
       'local/no-path-operations-in-comparisons': 'error',
       'local/no-path-startswith': 'error',
+      'local/no-hardcoded-path-split': 'error',
       'local/no-git-commands-direct': 'error',
       'local/no-gh-commands-direct': 'error',
       'local/no-npm-pnpm-direct': 'error',
@@ -106,6 +107,17 @@ export default [
       '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/prefer-string-starts-ends-with': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+
+      // Stricter type safety - catch SonarQube-style issues early
+      '@typescript-eslint/no-base-to-string': 'error', // Prevent [object Object] in strings
+      '@typescript-eslint/restrict-template-expressions': ['error', {
+        allowNumber: true,
+        allowBoolean: true,
+        allowAny: false,
+        allowNullish: false, // Strict: prevents "undefined"/"null" appearing in strings
+      }],
+      // Note: no-unsafe-member-access and no-unsafe-assignment are too noisy (hundreds of warnings)
+      // They're valuable for new code but too much to fix in existing codebase
 
       // General
       'no-console': 'off',

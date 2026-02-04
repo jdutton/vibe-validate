@@ -117,7 +117,7 @@ export class PostPRMergeCleanup {
     try {
       return execGitSync(['branch', '--show-current']).trim();
     } catch (error) {
-      throw new Error(`Failed to get current branch: ${error}`);
+      throw new Error(`Failed to get current branch: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -128,7 +128,7 @@ export class PostPRMergeCleanup {
     try {
       execGitSync(['checkout', this.mainBranch]);
     } catch (error) {
-      throw new Error(`Failed to switch to ${this.mainBranch} branch: ${error}`);
+      throw new Error(`Failed to switch to ${this.mainBranch} branch: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -144,7 +144,7 @@ export class PostPRMergeCleanup {
       execGitSync(['merge', `${this.remoteName}/${this.mainBranch}`, '--ff-only']);
 
     } catch (error) {
-      throw new Error(`Failed to sync ${this.mainBranch} branch: ${error}`);
+      throw new Error(`Failed to sync ${this.mainBranch} branch: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -155,7 +155,7 @@ export class PostPRMergeCleanup {
     try {
       execGitSync(['fetch', this.remoteName, '--prune']);
     } catch (error) {
-      throw new Error(`Failed to fetch remote info: ${error}`);
+      throw new Error(`Failed to fetch remote info: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

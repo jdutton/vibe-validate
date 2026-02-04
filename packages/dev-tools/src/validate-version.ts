@@ -117,10 +117,10 @@ const counts = processWorkspacePackages(
   (pkgPath) => checkPackageVersion(pkgPath, expectedVersion),
   (result) => {
     if (result.valid) {
-      log(`  ✓ ${result.name}: ${result.version}`, 'green');
+      log(`  ✓ ${String(result.name)}: ${String(result.version)}`, 'green');
     } else if (!result.skipped) {
       const mismatch = result as VersionMismatch;
-      log(`  ✗ ${mismatch.name}: ${mismatch.actualVersion} (expected: ${mismatch.expectedVersion})`, 'red');
+      log(`  ✗ ${String(mismatch.name)}: ${String(mismatch.actualVersion)} (expected: ${String(mismatch.expectedVersion)})`, 'red');
       mismatches.push(mismatch);
       hasErrors = true;
     }

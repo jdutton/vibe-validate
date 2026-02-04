@@ -112,8 +112,8 @@ function main() {
   const tag = determineTag(version);
 
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`📦 Publishing vibe-validate v${version}`);
-  console.log(`🏷️  npm dist-tag: ${tag}`);
+  console.log(`📦 Publishing vibe-validate v${String(version)}`);
+  console.log(`🏷️  npm dist-tag: ${String(tag)}`);
   console.log(`${'='.repeat(60)}\n`);
 
   // Pass through command-line arguments to pre-publish-check
@@ -138,14 +138,14 @@ function main() {
 
   console.log(`\n${'='.repeat(60)}`);
   console.log(`✅ All packages published successfully!`);
-  console.log(`📦 Version: ${version}`);
-  console.log(`🏷️  Tag: ${tag}`);
+  console.log(`📦 Version: ${String(version)}`);
+  console.log(`🏷️  Tag: ${String(tag)}`);
   console.log(`${'='.repeat(60)}\n`);
 
   if (tag !== 'latest') {
     console.log(`\n💡 Users can install with:`);
-    console.log(`   npm install -g vibe-validate@${tag}`);
-    console.log(`   npm install -g vibe-validate@${version}\n`);
+    console.log(`   npm install -g vibe-validate@${String(tag)}`);
+    console.log(`   npm install -g vibe-validate@${String(version)}\n`);
   }
 }
 
