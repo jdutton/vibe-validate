@@ -978,8 +978,10 @@ describe('doctor command', () => {
         expect(secretCheck.passed).toBe(true); // Advisory only, always passes
         expect(secretCheck.message).toContain('Secret scanning enabled');
         expect(secretCheck.message).toContain('gitleaks');
-        // With explicit scanCommand but tool unavailable, still shows as configured
-        expect(secretCheck.message).toContain('configured') ?? expect(secretCheck.message).toContain('available');
+        // With explicit scanCommand but tool unavailable, still shows as configured or available
+        expect(
+          secretCheck.message.includes('configured') || secretCheck.message.includes('available')
+        ).toBe(true);
       } finally {
         // Restore original CI value
         if (originalCI !== undefined) {

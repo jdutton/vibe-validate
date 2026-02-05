@@ -716,7 +716,7 @@ export async function runStepsInParallel(
         proc.on('close', exitCode => {
           // Wrap in async IIFE to handle file creation
           // eslint-disable-next-line sonarjs/no-nested-functions, sonarjs/cognitive-complexity -- IIFE required for async/await in sync close handler; inherits complexity from step completion logic
-          void (async () => {
+          (async () => {
             const durationMs = Date.now() - startTime;
             const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
             const stdout = stdoutAccumulator.value;
@@ -882,7 +882,16 @@ export async function runStepsInParallel(
               error.durationSecs = durationSecs;
               reject(error);
             }
-          })(); // Close async IIFE
+            // eslint-disable-next-line sonarjs/no-nested-functions -- Error handler required for async IIFE
+          })().catch((error) => {
+            // Handle errors in async close handler
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            if (verbose) {
+              log(`      ⚠️  Error in close handler: ${errorMsg}`);
+            }
+            // Reject with error to fail validation
+            reject(new Error(`Close handler error: ${errorMsg}`));
+          }); // Close async IIFE
         });
       })
     )
@@ -1134,9 +1143,15 @@ export function setupSignalHandlers(activeProcesses: Set<ChildProcess>): void {
   };
 
   process.on('SIGTERM', () => {
-    void cleanup('SIGTERM');
+    cleanup('SIGTERM').catch((error) => {
+      console.error('Error during SIGTERM cleanup:', error);
+      process.exit(1);
+    });
   });
   process.on('SIGINT', () => {
-    void cleanup('SIGINT');
+    cleanup('SIGINT').catch((error) => {
+      console.error('Error during SIGINT cleanup:', error);
+      process.exit(1);
+    });
   });
 }

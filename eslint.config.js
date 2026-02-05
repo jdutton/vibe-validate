@@ -131,6 +131,14 @@ export default [
       'no-negated-condition': 'error',
       'no-inner-declarations': ['error', 'functions'],
 
+      // Code quality - align with SonarQube
+      'no-void': 'error', // SonarQube: "confusing, type-dependent" - use explicit patterns
+      'no-unused-expressions': ['error', {
+        allowShortCircuit: false,
+        allowTernary: false,
+        allowTaggedTemplates: false,
+      }],
+
       // Security
       'security/detect-object-injection': 'off',
       // CLI tools legitimately use dynamic paths from config/env/project structure

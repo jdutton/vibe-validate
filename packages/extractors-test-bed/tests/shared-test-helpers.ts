@@ -162,6 +162,7 @@ export function registerExtractorIntegrationTests(
       };
 
       // Don't await or catch - will cause unhandled rejection
+      // eslint-disable-next-line no-void -- Intentionally testing unhandled rejection
       void asyncValidation();
 
       // This assertion will run before the rejection happens
