@@ -9,7 +9,7 @@ import { writeFile, readFile } from 'node:fs/promises';
 import { join, resolve, relative } from 'node:path';
 
 import type { OutputLine } from '@vibe-validate/core';
-import { spawnCommand, parseVibeValidateOutput, getGitRoot } from '@vibe-validate/core';
+import { spawnCommand, parseVibeValidateOutput, getGitRoot, getTempFilename } from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
@@ -544,27 +544,32 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
       getGitTreeHash()
         .then(async treeHash => {
           // Write output files to organized temp directory
-          const outputDir = getRunOutputDir(treeHash);
+          const outputDir = getRunOutputDir();
           await ensureDir(outputDir);
 
           const writePromises: Promise<void>[] = [];
 
+          // Generate unique filenames with tree hash and timestamp
+          const stdoutFilename = getTempFilename(treeHash, 'log', 'stdout');
+          const stderrFilename = getTempFilename(treeHash, 'log', 'stderr');
+          const combinedFilename = getTempFilename(treeHash, 'jsonl', 'combined');
+
           // Write stdout.log (only if non-empty)
           let stdoutFile: string | undefined;
           if (stdout.trim()) {
-            stdoutFile = join(outputDir, 'stdout.log');
+            stdoutFile = join(outputDir, stdoutFilename);
             writePromises.push(writeFile(stdoutFile, stdout, 'utf-8'));
           }
 
           // Write stderr.log (only if non-empty)
           let stderrFile: string | undefined;
           if (stderr.trim()) {
-            stderrFile = join(outputDir, 'stderr.log');
+            stderrFile = join(outputDir, stderrFilename);
             writePromises.push(writeFile(stderrFile, stderr, 'utf-8'));
           }
 
           // Write combined.jsonl (always)
-          const combinedFile = join(outputDir, 'combined.jsonl');
+          const combinedFile = join(outputDir, combinedFilename);
           const combinedContent = combinedLines
             // eslint-disable-next-line sonarjs/no-nested-functions -- Array.map callback is standard functional programming pattern
             .map(line => JSON.stringify(line))
@@ -596,27 +601,32 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
           const fallbackHash = `nogit-${Date.now()}`;
 
           // Write output files even without git
-          const outputDir = getRunOutputDir(fallbackHash);
+          const outputDir = getRunOutputDir();
           await ensureDir(outputDir);
 
           const writePromises: Promise<void>[] = [];
 
+          // Generate unique filenames with fallback hash and timestamp
+          const stdoutFilename = getTempFilename(fallbackHash, 'log', 'stdout');
+          const stderrFilename = getTempFilename(fallbackHash, 'log', 'stderr');
+          const combinedFilename = getTempFilename(fallbackHash, 'jsonl', 'combined');
+
           // Write stdout.log (only if non-empty)
           let stdoutFile: string | undefined;
           if (stdout.trim()) {
-            stdoutFile = join(outputDir, 'stdout.log');
+            stdoutFile = join(outputDir, stdoutFilename);
             writePromises.push(writeFile(stdoutFile, stdout, 'utf-8'));
           }
 
           // Write stderr.log (only if non-empty)
           let stderrFile: string | undefined;
           if (stderr.trim()) {
-            stderrFile = join(outputDir, 'stderr.log');
+            stderrFile = join(outputDir, stderrFilename);
             writePromises.push(writeFile(stderrFile, stderr, 'utf-8'));
           }
 
           // Write combined.jsonl (always)
-          const combinedFile = join(outputDir, 'combined.jsonl');
+          const combinedFile = join(outputDir, combinedFilename);
           const combinedContent = combinedLines
             // eslint-disable-next-line sonarjs/no-nested-functions -- Array.map callback is standard functional programming pattern
             .map(line => JSON.stringify(line))

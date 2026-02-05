@@ -25,6 +25,7 @@ import stripAnsi from 'strip-ansi';
 import {
   ensureDir,
   getTempDir,
+  getTempFilename,
   createLogFileWrite,
   createCombinedJsonl,
 } from './fs-utils.js';
@@ -361,12 +362,17 @@ async function createStepOutputFiles(
 ): Promise<{ stdout?: string; stderr?: string; combined?: string } | undefined> {
   try {
     const treeHash = await getGitTreeHash();
-    const outputDir = getTempDir('steps', treeHash, stepName);
+    const outputDir = getTempDir('steps');
     await ensureDir(outputDir);
 
-    const stdoutPath = join(outputDir, 'stdout.txt');
-    const stderrPath = join(outputDir, 'stderr.txt');
-    const combinedPath = join(outputDir, 'combined.jsonl');
+    // Generate unique filenames with tree hash and timestamp
+    const stdoutFilename = getTempFilename(treeHash, 'txt', `${stepName}-stdout`);
+    const stderrFilename = getTempFilename(treeHash, 'txt', `${stepName}-stderr`);
+    const combinedFilename = getTempFilename(treeHash, 'jsonl', `${stepName}-combined`);
+
+    const stdoutPath = join(outputDir, stdoutFilename);
+    const stderrPath = join(outputDir, stderrFilename);
+    const combinedPath = join(outputDir, combinedFilename);
 
     await Promise.all([
       writeFile(stdoutPath, stdout || ''),
@@ -800,23 +806,28 @@ export async function runStepsInParallel(
               // Only create files if not already provided by nested vibe-validate command
               try {
                 const treeHash = await getGitTreeHash();
-                const outputDir = getTempDir('steps', treeHash, step.name);
+                const outputDir = getTempDir('steps');
                 await ensureDir(outputDir);
 
                 const writePromises: Promise<void>[] = [];
 
+                // Generate unique filenames with tree hash and timestamp
+                const stdoutFilename = getTempFilename(treeHash, 'log', `${step.name}-stdout`);
+                const stderrFilename = getTempFilename(treeHash, 'log', `${step.name}-stderr`);
+                const combinedFilename = getTempFilename(treeHash, 'jsonl', `${step.name}-combined`);
+
                 // Write stdout.log (only if non-empty) using shared utility
                 const { file: stdoutFile, promise: stdoutPromise } =
-                  createLogFileWrite(stdout, outputDir, 'stdout.log');
+                  createLogFileWrite(stdout, outputDir, stdoutFilename);
                 if (stdoutPromise) writePromises.push(stdoutPromise);
 
                 // Write stderr.log (only if non-empty) using shared utility
                 const { file: stderrFile, promise: stderrPromise } =
-                  createLogFileWrite(stderr, outputDir, 'stderr.log');
+                  createLogFileWrite(stderr, outputDir, stderrFilename);
                 if (stderrPromise) writePromises.push(stderrPromise);
 
                 // Write combined.jsonl (always - timestamped interleaved output)
-                const combinedFile = join(outputDir, 'combined.jsonl');
+                const combinedFile = join(outputDir, combinedFilename);
                 const combinedContent = createCombinedJsonl(combinedLines);
                 writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
 

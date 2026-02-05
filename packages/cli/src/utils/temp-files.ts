@@ -22,12 +22,11 @@ export function getVibeValidateTempDir(): string {
 }
 
 /**
- * Get the organized output directory for a specific run
- * @param treeHash - Git tree hash or identifier
- * @returns Path like /tmp/vibe-validate/runs/2025-11-05/abc123-17-30-45/
+ * Get the daily output directory for runs
+ * @returns Path like /tmp/vibe-validate/runs/2026-02-05/
  */
-export function getRunOutputDir(treeHash: string): string {
-  return getTempDir('runs', treeHash);
+export function getRunOutputDir(): string {
+  return getTempDir('runs');
 }
 
 /**

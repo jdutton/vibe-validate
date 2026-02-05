@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`VV_TEMP_DIR` environment variable for customizable temp directory**
+  - Allows overriding default OS temp directory (`/tmp` on Unix, `%TEMP%` on Windows)
+  - Useful for project-local temp storage, CI/CD builds, or network storage
+  - Example: `export VV_TEMP_DIR="$HOME/.vibe-validate/temp"`
+
 ### Changed
+
+- **⚡ Flattened temp directory structure to minimize AI assistant permission prompts**
+  - **Previously**: `/tmp/vibe-validate/runs/2026-02-05/abc123-14-31-10/stdout.log` (new directory per run → new prompt)
+  - **Now**: `/tmp/vibe-validate/runs/2026-02-05/abc123-14-31-10-stdout.log` (flat structure → one approval per day)
+  - **Impact**: Dramatically reduces permission prompts in Claude Code, Cursor, and similar AI coding assistants
+  - **Filename format**: `{treeHash}-{HH-mm-ss}-{suffix}.{ext}` ensures uniqueness without nested directories
 
 - **⚡ Faster agent feedback loops: `vv validate` now returns cached failures instantly**
   - **Stop hooks and pre-commit checks are now instant on cached results** (whether passed or failed)
