@@ -28,45 +28,52 @@ vi.mock('@vibe-validate/git', () => ({
   getStagedFiles: vi.fn(() => []),
 }));
 
+// Test helpers - module scope (SonarQube requirement)
+async function mockToolAvailable(available: boolean): Promise<void> {
+  const { isToolAvailable } = await import('@vibe-validate/utils');
+  vi.mocked(isToolAvailable).mockReturnValue(available);
+}
+
+function mockGitleaksConfigExists(): void {
+  vi.mocked(existsSync).mockImplementation((path) => {
+    return path.toString().includes('gitleaks');
+  });
+}
+
+function mockSecretlintConfigExists(): void {
+  vi.mocked(existsSync).mockImplementation((path) => {
+    return path.toString().includes('secretlint');
+  });
+}
+
+function expectWarningsToContain(spy: ReturnType<typeof vi.spyOn>, ...texts: string[]): void {
+  expect(spy).toHaveBeenCalled();
+  const allWarnings = spy.mock.calls.map(call => call[0]).join('\n');
+  for (const text of texts) {
+    expect(allWarnings).toContain(text);
+  }
+}
+
+function expectWarningsNotToContain(spy: ReturnType<typeof vi.spyOn>, ...texts: string[]): void {
+  expect(spy).toHaveBeenCalled();
+  const allWarnings = spy.mock.calls.map(call => call[0]).join('\n');
+  for (const text of texts) {
+    expect(allWarnings).not.toContain(text);
+  }
+}
+
+async function mockStagedFiles(files: string[]): Promise<void> {
+  const { getStagedFiles } = await import('@vibe-validate/git');
+  vi.mocked(getStagedFiles).mockReturnValue(files);
+}
+
+function getSecretlintCommand(): string {
+  const tools = detectSecretScanningTools('/test');
+  const secretlint = tools.find(t => t.tool === 'secretlint');
+  return secretlint?.defaultCommand ?? '';
+}
+
 describe('secret-scanning', () => {
-  // Helper to mock isToolAvailable
-  async function mockToolAvailable(available: boolean): Promise<void> {
-    const { isToolAvailable } = await import('@vibe-validate/utils');
-    vi.mocked(isToolAvailable).mockReturnValue(available);
-  }
-
-  // Helper to mock gitleaks config exists
-  function mockGitleaksConfigExists(): void {
-    vi.mocked(existsSync).mockImplementation((path) => {
-      return path.toString().includes('gitleaks');
-    });
-  }
-
-  // Helper to mock secretlint config exists
-  function mockSecretlintConfigExists(): void {
-    vi.mocked(existsSync).mockImplementation((path) => {
-      return path.toString().includes('secretlint');
-    });
-  }
-
-  // Helper to assert console warnings contain expected text
-  function expectWarningsToContain(spy: ReturnType<typeof vi.spyOn>, ...texts: string[]): void {
-    expect(spy).toHaveBeenCalled();
-    const allWarnings = spy.mock.calls.map(call => call[0]).join('\n');
-    for (const text of texts) {
-      expect(allWarnings).toContain(text);
-    }
-  }
-
-  // Helper to assert console warnings do NOT contain text
-  function expectWarningsNotToContain(spy: ReturnType<typeof vi.spyOn>, ...texts: string[]): void {
-    expect(spy).toHaveBeenCalled();
-    const allWarnings = spy.mock.calls.map(call => call[0]).join('\n');
-    for (const text of texts) {
-      expect(allWarnings).not.toContain(text);
-    }
-  }
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -422,19 +429,6 @@ describe('secret-scanning', () => {
   });
 
   describe('detectSecretScanningTools - staged file optimization', () => {
-    // Helper to set up staged files mock
-    async function mockStagedFiles(files: string[]): Promise<void> {
-      const { getStagedFiles } = await import('@vibe-validate/git');
-      vi.mocked(getStagedFiles).mockReturnValue(files);
-    }
-
-    // Helper to get secretlint command from detection
-    function getSecretlintCommand(): string {
-      const tools = detectSecretScanningTools('/test');
-      const secretlint = tools.find(t => t.tool === 'secretlint');
-      return secretlint?.defaultCommand ?? '';
-    }
-
     beforeEach(async () => {
       // Reset mocks
       const { getStagedFiles } = await import('@vibe-validate/git');

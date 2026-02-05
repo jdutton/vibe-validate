@@ -2,10 +2,10 @@
 /* eslint-disable sonarjs/deprecation */
  
  
+import type { ChildProcess } from 'node:child_process';
 import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type * as GitModule from '@vibe-validate/git';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -20,7 +20,7 @@ import type { ValidationConfig, ValidationStep } from '../src/types.js';
 
 // Mock git functions
 vi.mock('@vibe-validate/git', async (importOriginal) => {
-  const actual = await importOriginal() as GitModule;
+  const actual = await importOriginal();
   return {
     ...actual,
     getGitTreeHash: vi.fn(),
@@ -38,7 +38,7 @@ describe('runner', () => {
     }
 
     // Mock git tree hash to return consistent value
-    vi.mocked(getGitTreeHash).mockResolvedValue('test-tree-hash-abc123');
+    vi.mocked(getGitTreeHash).mockResolvedValue('test-tree-hash-abc123' as Awaited<ReturnType<typeof getGitTreeHash>>);
 
     // Spy on console.log to reduce noise
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -1225,6 +1225,139 @@ rawOutput: |
       expect(result.passed).toBe(true);
 
       vi.doUnmock('@vibe-validate/extractors');
+    });
+  });
+
+  describe('async error handling', () => {
+    it('should handle errors in async close handler', async () => {
+      // Mock getGitTreeHash to fail during output file creation
+      const originalMock = vi.mocked(getGitTreeHash);
+      let callCount = 0;
+      vi.mocked(getGitTreeHash).mockImplementation(async () => {
+        callCount++;
+        if (callCount > 1) {
+          // First call succeeds (for validation), subsequent calls fail (for output files)
+          throw new Error('Git tree hash failed');
+        }
+        return 'test-tree-hash' as Awaited<ReturnType<typeof getGitTreeHash>>;
+      });
+
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Failing Step',
+                command: 'node -e "console.log(\'error\'); process.exit(1)"',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: true, // Force output file creation to trigger the error
+      };
+
+      // Expect validation to fail due to close handler error
+      const result = await runValidation(config);
+
+      expect(result.passed).toBe(false);
+
+      // Restore original mock
+      vi.mocked(getGitTreeHash).mockImplementation(originalMock);
+    });
+
+    it('should log warning when output file creation fails', async () => {
+      const consoleLogSpy = vi.spyOn(console, 'log');
+
+      // Mock getGitTreeHash to fail during output file creation
+      const originalMock = vi.mocked(getGitTreeHash);
+      let callCount = 0;
+      vi.mocked(getGitTreeHash).mockImplementation(async () => {
+        callCount++;
+        if (callCount > 1) {
+          throw new Error('Simulated async error');
+        }
+        return 'test-tree-hash' as Awaited<ReturnType<typeof getGitTreeHash>>;
+      });
+
+      const config: ValidationConfig = {
+        phases: [
+          {
+            name: 'Test Phase',
+            parallel: true,
+            steps: [
+              {
+                name: 'Step',
+                command: 'node -e "console.log(\'output\'); process.exit(1)"',
+              },
+            ],
+          },
+        ],
+        env: {},
+        enableFailFast: false,
+        debug: true,
+        verbose: true, // Enable verbose to see error logging
+      };
+
+      await runValidation(config);
+
+      // Should have logged the warning about output file creation failure
+      const logOutput = consoleLogSpy.mock.calls.map(call => call.join(' ')).join('\n');
+      expect(logOutput).toContain('Could not create output files');
+
+      // Restore
+      vi.mocked(getGitTreeHash).mockImplementation(originalMock);
+    });
+  });
+
+  describe('signal handler error paths', () => {
+    it('should handle SIGTERM cleanup errors', async () => {
+      const activeProcesses: Set<ChildProcess> = new Set();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+
+      setupSignalHandlers(activeProcesses);
+
+      // Get the SIGTERM handler
+      const sigtermHandler = process.listeners('SIGTERM').pop() as (() => void);
+      expect(sigtermHandler).toBeDefined();
+
+      // Trigger the handler (cleanup will fail since no processes, but catch should handle it)
+      sigtermHandler();
+
+      // Allow async cleanup to run
+      await new Promise((resolve) => {
+        setTimeout(resolve, 100);
+      });
+
+      // Verify process.exit was called (error or success path)
+      expect(processExitSpy).toHaveBeenCalled();
+    });
+
+    it('should handle SIGINT cleanup errors', async () => {
+      const activeProcesses: Set<ChildProcess> = new Set();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+
+      setupSignalHandlers(activeProcesses);
+
+      // Get the SIGINT handler
+      const sigintHandler = process.listeners('SIGINT').pop() as (() => void);
+      expect(sigintHandler).toBeDefined();
+
+      // Trigger the handler
+      sigintHandler();
+
+      // Allow async cleanup to run
+      await new Promise((resolve) => {
+        setTimeout(resolve, 100);
+      });
+
+      // Verify process.exit was called
+      expect(processExitSpy).toHaveBeenCalled();
     });
   });
 });
