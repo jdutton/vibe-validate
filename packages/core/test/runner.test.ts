@@ -2,10 +2,10 @@
 /* eslint-disable sonarjs/deprecation */
  
  
+import type { ChildProcess } from 'node:child_process';
 import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type * as GitModule from '@vibe-validate/git';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -20,12 +20,78 @@ import type { ValidationConfig, ValidationStep } from '../src/types.js';
 
 // Mock git functions
 vi.mock('@vibe-validate/git', async (importOriginal) => {
-  const actual = await importOriginal() as GitModule;
+  const actual = await importOriginal();
   return {
     ...actual,
     getGitTreeHash: vi.fn(),
   };
 });
+
+/**
+ * Helper to mock getGitTreeHash that fails on subsequent calls
+ */
+function mockFailingGitTreeHash(errorMessage: string): () => void {
+  const originalMock = vi.mocked(getGitTreeHash);
+  let callCount = 0;
+  vi.mocked(getGitTreeHash).mockImplementation(async () => {
+    callCount++;
+    if (callCount > 1) {
+      throw new Error(errorMessage);
+    }
+    return 'test-tree-hash' as Awaited<ReturnType<typeof getGitTreeHash>>;
+  });
+  return () => vi.mocked(getGitTreeHash).mockImplementation(originalMock);
+}
+
+/**
+ * Helper to create validation config for async error tests
+ */
+function createAsyncErrorConfig(options: { verbose?: boolean } = {}): ValidationConfig {
+  return {
+    phases: [
+      {
+        name: 'Test Phase',
+        parallel: true,
+        steps: [
+          {
+            name: 'Failing Step',
+            command: 'node -e "console.log(\'error\'); process.exit(1)"',
+          },
+        ],
+      },
+    ],
+    env: {},
+    enableFailFast: false,
+    debug: true,
+    verbose: options.verbose,
+  };
+}
+
+/**
+ * Helper to test signal handler cleanup behavior
+ */
+async function testSignalHandler(signalName: 'SIGTERM' | 'SIGINT'): Promise<void> {
+  const activeProcesses: Set<ChildProcess> = new Set();
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+
+  setupSignalHandlers(activeProcesses);
+
+  // Get the signal handler
+  const handler = process.listeners(signalName).pop() as (() => void);
+  expect(handler).toBeDefined();
+
+  // Trigger the handler
+  handler();
+
+  // Allow async cleanup to run
+  await new Promise((resolve) => {
+    setTimeout(resolve, 100);
+  });
+
+  // Verify process.exit was called
+  expect(processExitSpy).toHaveBeenCalled();
+}
 
 describe('runner', () => {
   let testDir: string;
@@ -38,7 +104,7 @@ describe('runner', () => {
     }
 
     // Mock git tree hash to return consistent value
-    vi.mocked(getGitTreeHash).mockResolvedValue('test-tree-hash-abc123');
+    vi.mocked(getGitTreeHash).mockResolvedValue('test-tree-hash-abc123' as Awaited<ReturnType<typeof getGitTreeHash>>);
 
     // Spy on console.log to reduce noise
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -1225,6 +1291,38 @@ rawOutput: |
       expect(result.passed).toBe(true);
 
       vi.doUnmock('@vibe-validate/extractors');
+    });
+  });
+
+  describe('async error handling', () => {
+    it('should handle errors in async close handler', async () => {
+      const restore = mockFailingGitTreeHash('Git tree hash failed');
+
+      const result = await runValidation(createAsyncErrorConfig());
+
+      expect(result.passed).toBe(false);
+      restore();
+    });
+
+    it('should log warning when output file creation fails', async () => {
+      const consoleLogSpy = vi.spyOn(console, 'log');
+      const restore = mockFailingGitTreeHash('Simulated async error');
+
+      await runValidation(createAsyncErrorConfig({ verbose: true }));
+
+      const logOutput = consoleLogSpy.mock.calls.map(call => call.join(' ')).join('\n');
+      expect(logOutput).toContain('Could not create output files');
+      restore();
+    });
+  });
+
+  describe('signal handler error paths', () => {
+    it('should handle SIGTERM cleanup errors', async () => {
+      await testSignalHandler('SIGTERM');
+    });
+
+    it('should handle SIGINT cleanup errors', async () => {
+      await testSignalHandler('SIGINT');
     });
   });
 });

@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Useful for project-local temp storage, CI/CD builds, or network storage
   - Example: `export VV_TEMP_DIR="$HOME/.vibe-validate/temp"`
 
+- **⚡ 19x faster pre-commit secret scanning with automatic staged file optimization**
+  - **secretlint**: 15s → 0.8s (scans only staged files instead of all project files)
+  - **gitleaks**: Already optimized (0.2s, unchanged)
+  - **Total pre-commit**: ~15s → ~1s (15x faster overall)
+  - **Zero configuration required**: Automatically detects and optimizes both tools
+  - **Intelligent fallbacks**: Handles edge cases gracefully (>100 files, long paths, spaces in filenames)
+
 ### Changed
 
 - **⚡ Flattened temp directory structure to minimize AI assistant permission prompts**

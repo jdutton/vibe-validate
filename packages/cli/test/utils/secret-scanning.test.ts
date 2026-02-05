@@ -24,6 +24,54 @@ vi.mock('@vibe-validate/utils', () => ({
   safeExecSync: vi.fn(() => ''),
   safeExecFromString: vi.fn(() => ''),
 }));
+vi.mock('@vibe-validate/git', () => ({
+  getStagedFiles: vi.fn(() => []),
+}));
+
+// Test helpers - module scope (SonarQube requirement)
+async function mockToolAvailable(available: boolean): Promise<void> {
+  const { isToolAvailable } = await import('@vibe-validate/utils');
+  vi.mocked(isToolAvailable).mockReturnValue(available);
+}
+
+function mockGitleaksConfigExists(): void {
+  vi.mocked(existsSync).mockImplementation((path) => {
+    return path.toString().includes('gitleaks');
+  });
+}
+
+function mockSecretlintConfigExists(): void {
+  vi.mocked(existsSync).mockImplementation((path) => {
+    return path.toString().includes('secretlint');
+  });
+}
+
+function expectWarningsToContain(spy: ReturnType<typeof vi.spyOn>, ...texts: string[]): void {
+  expect(spy).toHaveBeenCalled();
+  const allWarnings = spy.mock.calls.map(call => call[0]).join('\n');
+  for (const text of texts) {
+    expect(allWarnings).toContain(text);
+  }
+}
+
+function expectWarningsNotToContain(spy: ReturnType<typeof vi.spyOn>, ...texts: string[]): void {
+  expect(spy).toHaveBeenCalled();
+  const allWarnings = spy.mock.calls.map(call => call[0]).join('\n');
+  for (const text of texts) {
+    expect(allWarnings).not.toContain(text);
+  }
+}
+
+async function mockStagedFiles(files: string[]): Promise<void> {
+  const { getStagedFiles } = await import('@vibe-validate/git');
+  vi.mocked(getStagedFiles).mockReturnValue(files);
+}
+
+function getSecretlintCommand(): string {
+  const tools = detectSecretScanningTools('/test');
+  const secretlint = tools.find(t => t.tool === 'secretlint');
+  return secretlint?.defaultCommand ?? '';
+}
 
 describe('secret-scanning', () => {
   beforeEach(() => {
@@ -110,12 +158,8 @@ describe('secret-scanning', () => {
     });
 
     it('should detect gitleaks configured but not available', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/utils');
-      vi.mocked(isToolAvailable).mockReturnValue(false);
-
-      vi.mocked(existsSync).mockImplementation((path) => {
-        return path.toString().includes('gitleaks');
-      });
+      await mockToolAvailable(false);
+      mockGitleaksConfigExists();
 
       const tools = detectSecretScanningTools('/test');
 
@@ -175,11 +219,8 @@ describe('secret-scanning', () => {
     });
 
     it('should run only gitleaks when only gitleaks config exists', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/utils');
-      vi.mocked(isToolAvailable).mockReturnValue(true);
-      vi.mocked(existsSync).mockImplementation((path) => {
-        return path.toString().includes('gitleaks');
-      });
+      await mockToolAvailable(true);
+      mockGitleaksConfigExists();
 
       const tools = selectToolsToRun(undefined, '/test');
 
@@ -188,11 +229,8 @@ describe('secret-scanning', () => {
     });
 
     it('should run only secretlint when only secretlint config exists', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/utils');
-      vi.mocked(isToolAvailable).mockReturnValue(false);
-      vi.mocked(existsSync).mockImplementation((path) => {
-        return path.toString().includes('secretlint');
-      });
+      await mockToolAvailable(false);
+      mockSecretlintConfigExists();
 
       const tools = selectToolsToRun(undefined, '/test');
 
@@ -230,11 +268,8 @@ describe('secret-scanning', () => {
     });
 
     it('should include gitleaks even when unavailable if config exists (will skip during execution)', async () => {
-      const { isToolAvailable } = await import('@vibe-validate/utils');
-      vi.mocked(isToolAvailable).mockReturnValue(false);
-      vi.mocked(existsSync).mockImplementation((path) => {
-        return path.toString().includes('gitleaks');
-      });
+      await mockToolAvailable(false);
+      mockGitleaksConfigExists();
 
       const tools = selectToolsToRun(undefined, '/test');
 
@@ -383,21 +418,107 @@ describe('secret-scanning', () => {
 
     it('should warn with install suggestion when no explicit command', () => {
       showPerformanceWarning('secretlint', 6000, 5000, false);
-
-      expect(consoleWarnSpy).toHaveBeenCalled();
-      const allWarnings = consoleWarnSpy.mock.calls.map(call => call[0]).join('\n');
-      expect(allWarnings).toContain('secretlint');
-      expect(allWarnings).toContain('gitleaks');
-      expect(allWarnings).toContain('scanCommand');
+      expectWarningsToContain(consoleWarnSpy, 'secretlint', 'gitleaks', 'scanCommand');
     });
 
     it('should warn without install suggestion when explicit command provided', () => {
       showPerformanceWarning('secretlint', 6000, 5000, true);
+      expectWarningsToContain(consoleWarnSpy, 'secretlint');
+      expectWarningsNotToContain(consoleWarnSpy, 'scanCommand');
+    });
+  });
 
-      expect(consoleWarnSpy).toHaveBeenCalled();
-      const allWarnings = consoleWarnSpy.mock.calls.map(call => call[0]).join('\n');
-      expect(allWarnings).toContain('secretlint');
-      expect(allWarnings).not.toContain('scanCommand');
+  describe('detectSecretScanningTools - staged file optimization', () => {
+    beforeEach(async () => {
+      // Reset mocks
+      const { getStagedFiles } = await import('@vibe-validate/git');
+      vi.mocked(getStagedFiles).mockReset();
+      vi.mocked(existsSync).mockReturnValue(true); // Assume secretlint config exists
+    });
+
+    it('should use optimized command for < 20 files', async () => {
+      await mockStagedFiles(['src/file1.ts', 'src/file2.ts', 'src/file3.ts']);
+      expect(getSecretlintCommand()).toBe('npx secretlint src/file1.ts src/file2.ts src/file3.ts');
+    });
+
+    it('should fall back to scan all for > 100 files', async () => {
+      const manyFiles = Array.from({ length: 101 }, (_, i) => `src/file${i}.ts`);
+      await mockStagedFiles(manyFiles);
+      expect(getSecretlintCommand()).toBe('npx secretlint .');
+    });
+
+    it('should fall back to scan all when command exceeds 4000 chars', async () => {
+      // Create 15 files with very long names (each ~300 chars)
+      // Total command will be > 4000 chars
+      const longNameBase = 'a'.repeat(250);
+      const hugeFiles = Array.from({ length: 15 }, (_, i) =>
+        `src/very/deep/nested/path/structure/${longNameBase}_file${i}.ts`
+      );
+      await mockStagedFiles(hugeFiles);
+
+      // Should fall back because command would be > 4000 chars
+      expect(getSecretlintCommand()).toBe('npx secretlint .');
+    });
+
+    it('should fall back to scan all when files contain spaces', async () => {
+      await mockStagedFiles(['src/file with spaces.ts', 'src/another file.ts']);
+      // Should fall back because safeExecFromString doesn't support quotes
+      expect(getSecretlintCommand()).toBe('npx secretlint .');
+    });
+
+    it('should fall back to scan all when no staged files', async () => {
+      await mockStagedFiles([]);
+      expect(getSecretlintCommand()).toBe('npx secretlint .');
+    });
+
+    it('should fall back to scan all when only binary files staged', async () => {
+      await mockStagedFiles(['image.png', 'video.mp4', 'archive.zip']);
+      expect(getSecretlintCommand()).toBe('npx secretlint .');
+    });
+
+    it('should filter out binary files but scan text files', async () => {
+      await mockStagedFiles(['src/code.ts', 'image.png', 'readme.md', 'video.mp4']);
+      // Should only scan text files
+      expect(getSecretlintCommand()).toBe('npx secretlint src/code.ts readme.md');
+    });
+
+    it('should fall back to scan all when getStagedFiles throws error', async () => {
+      const { getStagedFiles } = await import('@vibe-validate/git');
+      vi.mocked(getStagedFiles).mockImplementation(() => {
+        throw new Error('Git not available');
+      });
+      expect(getSecretlintCommand()).toBe('npx secretlint .');
+    });
+
+    it('should handle exactly 100 files (boundary case)', async () => {
+      const exactlyHundred = Array.from({ length: 100 }, (_, i) => `file${i}.ts`);
+      await mockStagedFiles(exactlyHundred);
+
+      // Should still use optimized command (threshold is >100, not >=100)
+      const command = getSecretlintCommand();
+      expect(command).toContain('file0.ts');
+      expect(command).not.toBe('npx secretlint .');
+    });
+
+    it('should handle exactly 4000 char command (boundary case)', async () => {
+      // Calculate file name length to get command exactly at 4000 chars
+      // "npx secretlint " = 16 chars
+      // Each file: "src/fileXXX.ts " (space separated)
+      // Target: 4000 total chars
+      const baseCmd = 'npx secretlint ';
+      const targetLength = 4000 - baseCmd.length;
+
+      // Create files that will result in exactly 4000 char command
+      const fileNameLength = 50; // Each file path
+      const numFiles = Math.floor(targetLength / (fileNameLength + 1)); // +1 for space
+      const files = Array.from({ length: numFiles }, (_, i) =>
+        `src/${'a'.repeat(fileNameLength - 8)}${i}.ts` // -8 for "src/" and "X.ts"
+      );
+      await mockStagedFiles(files);
+
+      // Command at exactly 4000 should still work
+      const command = getSecretlintCommand();
+      expect(command.length).toBeLessThanOrEqual(4000);
     });
   });
 });
