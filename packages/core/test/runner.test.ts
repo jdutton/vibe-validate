@@ -27,6 +27,72 @@ vi.mock('@vibe-validate/git', async (importOriginal) => {
   };
 });
 
+/**
+ * Helper to mock getGitTreeHash that fails on subsequent calls
+ */
+function mockFailingGitTreeHash(errorMessage: string): () => void {
+  const originalMock = vi.mocked(getGitTreeHash);
+  let callCount = 0;
+  vi.mocked(getGitTreeHash).mockImplementation(async () => {
+    callCount++;
+    if (callCount > 1) {
+      throw new Error(errorMessage);
+    }
+    return 'test-tree-hash' as Awaited<ReturnType<typeof getGitTreeHash>>;
+  });
+  return () => vi.mocked(getGitTreeHash).mockImplementation(originalMock);
+}
+
+/**
+ * Helper to create validation config for async error tests
+ */
+function createAsyncErrorConfig(options: { verbose?: boolean } = {}): ValidationConfig {
+  return {
+    phases: [
+      {
+        name: 'Test Phase',
+        parallel: true,
+        steps: [
+          {
+            name: 'Failing Step',
+            command: 'node -e "console.log(\'error\'); process.exit(1)"',
+          },
+        ],
+      },
+    ],
+    env: {},
+    enableFailFast: false,
+    debug: true,
+    verbose: options.verbose,
+  };
+}
+
+/**
+ * Helper to test signal handler cleanup behavior
+ */
+async function testSignalHandler(signalName: 'SIGTERM' | 'SIGINT'): Promise<void> {
+  const activeProcesses: Set<ChildProcess> = new Set();
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+
+  setupSignalHandlers(activeProcesses);
+
+  // Get the signal handler
+  const handler = process.listeners(signalName).pop() as (() => void);
+  expect(handler).toBeDefined();
+
+  // Trigger the handler
+  handler();
+
+  // Allow async cleanup to run
+  await new Promise((resolve) => {
+    setTimeout(resolve, 100);
+  });
+
+  // Verify process.exit was called
+  expect(processExitSpy).toHaveBeenCalled();
+}
+
 describe('runner', () => {
   let testDir: string;
 
@@ -1229,46 +1295,6 @@ rawOutput: |
   });
 
   describe('async error handling', () => {
-    /**
-     * Helper to mock getGitTreeHash that fails on subsequent calls
-     */
-    function mockFailingGitTreeHash(errorMessage: string): () => void {
-      const originalMock = vi.mocked(getGitTreeHash);
-      let callCount = 0;
-      vi.mocked(getGitTreeHash).mockImplementation(async () => {
-        callCount++;
-        if (callCount > 1) {
-          throw new Error(errorMessage);
-        }
-        return 'test-tree-hash' as Awaited<ReturnType<typeof getGitTreeHash>>;
-      });
-      return () => vi.mocked(getGitTreeHash).mockImplementation(originalMock);
-    }
-
-    /**
-     * Helper to create validation config for async error tests
-     */
-    function createAsyncErrorConfig(options: { verbose?: boolean } = {}): ValidationConfig {
-      return {
-        phases: [
-          {
-            name: 'Test Phase',
-            parallel: true,
-            steps: [
-              {
-                name: 'Failing Step',
-                command: 'node -e "console.log(\'error\'); process.exit(1)"',
-              },
-            ],
-          },
-        ],
-        env: {},
-        enableFailFast: false,
-        debug: true,
-        verbose: options.verbose,
-      };
-    }
-
     it('should handle errors in async close handler', async () => {
       const restore = mockFailingGitTreeHash('Git tree hash failed');
 
@@ -1291,32 +1317,6 @@ rawOutput: |
   });
 
   describe('signal handler error paths', () => {
-    /**
-     * Helper to test signal handler cleanup behavior
-     */
-    async function testSignalHandler(signalName: 'SIGTERM' | 'SIGINT'): Promise<void> {
-      const activeProcesses: Set<ChildProcess> = new Set();
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-      const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
-
-      setupSignalHandlers(activeProcesses);
-
-      // Get the signal handler
-      const handler = process.listeners(signalName).pop() as (() => void);
-      expect(handler).toBeDefined();
-
-      // Trigger the handler
-      handler();
-
-      // Allow async cleanup to run
-      await new Promise((resolve) => {
-        setTimeout(resolve, 100);
-      });
-
-      // Verify process.exit was called
-      expect(processExitSpy).toHaveBeenCalled();
-    }
-
     it('should handle SIGTERM cleanup errors', async () => {
       await testSignalHandler('SIGTERM');
     });
