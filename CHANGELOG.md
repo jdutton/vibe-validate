@@ -20,15 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Total pre-commit**: ~15s → ~1s (15x faster overall)
   - **Zero configuration required**: Automatically detects and optimizes both tools
   - **Intelligent fallbacks**: Handles edge cases gracefully (>100 files, long paths, spaces in filenames)
-  - **Cross-platform**: Works on macOS, Linux, and Windows
 
 ### Changed
-
-- **Shift-left code quality: Added ESLint rules to catch SonarQube issues at development time**
-  - `no-void`: Prevents confusing void operator usage
-  - `no-unused-expressions`: Catches bare expressions with no effect
-  - Improved error handling in async operations (replaces fire-and-forget patterns with proper `.catch()` handlers)
-  - **Impact**: Prevents 6+ SonarQube issues (5 Critical, 1 Major) from reaching CI/CD
 
 - **⚡ Flattened temp directory structure to minimize AI assistant permission prompts**
   - **Previously**: `/tmp/vibe-validate/runs/2026-02-05/abc123-14-31-10/stdout.log` (new directory per run → new prompt)
