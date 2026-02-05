@@ -86,6 +86,7 @@ export {
 export {
   ensureDir,
   getTempDir,
+  getTempFilename,
   createLogFileWrite,
   createCombinedJsonl,
 } from './fs-utils.js';
