@@ -88,6 +88,7 @@ export {
 
 // Git staging detection (prevent partially staged files in pre-commit)
 export {
+  getStagedFiles,
   getPartiallyStagedFiles
 } from './staging.js';
 

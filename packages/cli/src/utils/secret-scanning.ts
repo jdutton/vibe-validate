@@ -9,6 +9,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { getStagedFiles } from '@vibe-validate/git';
 import { isToolAvailable, safeExecFromString } from '@vibe-validate/utils';
 import chalk from 'chalk';
 
@@ -44,6 +45,109 @@ export function hasSecretlintConfig(cwd: string = process.cwd()): boolean {
   return existsSync(resolve(cwd, '.secretlintrc.json'));
 }
 
+// Default secretlint command for scanning all files
+const DEFAULT_SECRETLINT_COMMAND = 'npx secretlint .';
+
+// Command line length limits (Windows is most restrictive at ~8191 chars)
+// Use 4000 as safe threshold to leave margin for environment variables
+const MAX_COMMAND_LENGTH = 4000;
+
+// Maximum number of files to scan individually (performance threshold)
+// Above this, scanning all files may be faster than individual file checks
+const MAX_FILE_COUNT = 100;
+
+/**
+ * Get optimal secretlint command that scans only staged files (pre-commit context).
+ * Falls back to scanning all files if:
+ * - No git context or no staged files
+ * - Too many files (>100)
+ * - Command would be too long (>4000 chars for Windows compatibility)
+ * - Files contain spaces (safeExecFromString limitation)
+ */
+function getSecretlintCommandForStaged(cwd: string = process.cwd()): string {
+  try {
+    // Get staged files using existing git utilities
+    const stagedFiles = getStagedFiles(cwd);
+
+    if (stagedFiles.length === 0) {
+      // No staged files - fall back to scanning all
+      return DEFAULT_SECRETLINT_COMMAND;
+    }
+
+    // Filter to text files (skip binaries, images, etc.)
+    const textFiles = stagedFiles.filter((file: string) => {
+      const ext = file.toLowerCase().split('.').pop() ?? '';
+      const binaryExtensions = [
+        'png',
+        'jpg',
+        'jpeg',
+        'gif',
+        'bmp',
+        'ico',
+        'svg',
+        'pdf',
+        'zip',
+        'tar',
+        'gz',
+        'bz2',
+        '7z',
+        'rar',
+        'exe',
+        'dll',
+        'so',
+        'dylib',
+        'bin',
+        'woff',
+        'woff2',
+        'ttf',
+        'eot',
+        'otf',
+        'mp3',
+        'mp4',
+        'avi',
+        'mov',
+        'wmv',
+      ];
+      return !binaryExtensions.includes(ext);
+    });
+
+    if (textFiles.length === 0) {
+      // Only binary files staged - scan all (secretlint will skip binaries anyway)
+      return DEFAULT_SECRETLINT_COMMAND;
+    }
+
+    // Check file count threshold (>100 files = fall back to scan all)
+    if (textFiles.length > MAX_FILE_COUNT) {
+      return DEFAULT_SECRETLINT_COMMAND;
+    }
+
+    // Check if any files have spaces (safeExecFromString limitation)
+    // If so, fall back to scanning all files
+    const hasSpaces = textFiles.some((f: string) => f.includes(' '));
+    if (hasSpaces) {
+      // Fall back to scanning all - rare case (spaces in source file names)
+      return DEFAULT_SECRETLINT_COMMAND;
+    }
+
+    // Build command with file paths as arguments (safe - no shell execution)
+    // No quotes needed since we verified no spaces above
+    const files = textFiles.join(' ');
+    const command = `npx secretlint ${files}`;
+
+    // Check command length (Windows has ~8191 char limit, use 4000 for safety)
+    if (command.length > MAX_COMMAND_LENGTH) {
+      // Command too long - fall back to scanning all
+      return DEFAULT_SECRETLINT_COMMAND;
+    }
+
+    return command;
+  } catch {
+    // Git not available or error getting staged files
+    // Fall back to scanning all files
+    return DEFAULT_SECRETLINT_COMMAND;
+  }
+}
+
 /**
  * Detect available secret scanning tools and their configurations
  */
@@ -51,6 +155,9 @@ export function detectSecretScanningTools(cwd: string = process.cwd()): ToolDete
   const gitleaksAvailable = isToolAvailable('gitleaks');
   const gitleaksConfigured = hasGitleaksConfig(cwd);
   const secretlintConfigured = hasSecretlintConfig(cwd);
+
+  // Get optimal secretlint command (staged files if available)
+  const secretlintCommand = getSecretlintCommandForStaged(cwd);
 
   return [
     {
@@ -63,7 +170,7 @@ export function detectSecretScanningTools(cwd: string = process.cwd()): ToolDete
       tool: 'secretlint',
       available: true, // Always available via npx
       hasConfig: secretlintConfigured,
-      defaultCommand: 'npx secretlint .', // No glob patterns - safeExecFromString rejects them
+      defaultCommand: secretlintCommand, // Now optimized for staged files!
     },
   ];
 }
