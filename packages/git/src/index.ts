@@ -8,7 +8,7 @@
  */
 
 // Branded types for git objects (compile-time safety)
-export type { TreeHash, CommitSha, NotesRef } from './types.js';
+export type { TreeHash, CommitSha, NotesRef, TreeHashResult } from './types.js';
 
 // Tree hash calculation (deterministic, content-based)
 export {
