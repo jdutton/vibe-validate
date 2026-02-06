@@ -8,7 +8,7 @@
  */
 
 // Branded types for git objects (compile-time safety)
-export type { TreeHash, CommitSha, NotesRef } from './types.js';
+export type { TreeHash, CommitSha, NotesRef, TreeHashResult } from './types.js';
 
 // Tree hash calculation (deterministic, content-based)
 export {
@@ -142,9 +142,14 @@ export type { CleanupResult as BranchCleanupResult } from './branch-cleanup.js';
 export {
   initTestRepo,
   configTestUser,
+  configTestSubmoduleProtocol,
   stageTestFiles,
   commitTestChanges,
   getTestTreeHash,
+  getTestCommitHash,
   readTestNote,
-  setupTestRepoWithCommit
+  setupTestRepoWithCommit,
+  registerTestSubmodule,
+  initTestSubmodules,
+  addTestSubmodule
 } from './test-helpers.js';

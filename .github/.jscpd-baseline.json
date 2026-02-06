@@ -444,12 +444,12 @@
         "startLoc": {
           "line": 137,
           "column": 2,
-          "position": 749
+          "position": 753
         },
         "endLoc": {
           "line": 160,
           "column": 4,
-          "position": 855
+          "position": 859
         }
       },
       "secondFile": {
@@ -542,181 +542,37 @@
     },
     {
       "format": "typescript",
-      "lines": 8,
-      "fragment": ", async () => {\n      const { isToolAvailable } = await import('@vibe-validate/utils');\n      vi.mocked(isToolAvailable).mockReturnValue(false);\n      vi.mocked(existsSync).mockImplementation((path) => {\n        return path.toString().includes('gitleaks');\n      });\n\n      const tools = selectToolsToRun",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/secret-scanning.test.ts",
-        "start": 232,
-        "end": 239,
-        "startLoc": {
-          "line": 232,
-          "column": 94,
-          "position": 2020
-        },
-        "endLoc": {
-          "line": 239,
-          "column": 17,
-          "position": 2110
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/secret-scanning.test.ts",
-        "start": 112,
-        "end": 120,
-        "startLoc": {
-          "line": 112,
-          "column": 54,
-          "position": 898
-        },
-        "endLoc": {
-          "line": 120,
-          "column": 26,
-          "position": 989
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ");\n      vi.mocked(existsSync).mockImplementation((path) => {\n        return path.toString().includes('gitleaks');\n      });\n\n      const tools = selectToolsToRun(undefined, '/test');\n\n      expect(tools).toHaveLength(1);\n      expect(tools[0].tool).toBe('gitleaks');\n    });\n\n    it('should treat \"autodetect\" keyword as undefined'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/secret-scanning.test.ts",
-        "start": 234,
-        "end": 245,
-        "startLoc": {
-          "line": 234,
-          "column": 6,
-          "position": 2061
-        },
-        "endLoc": {
-          "line": 245,
-          "column": 49,
-          "position": 2158
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/secret-scanning.test.ts",
-        "start": 179,
-        "end": 190,
-        "startLoc": {
-          "line": 179,
-          "column": 5,
-          "position": 1520
-        },
-        "endLoc": {
-          "line": 190,
-          "column": 64,
-          "position": 1617
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": ");\n\n      expect(consoleWarnSpy).toHaveBeenCalled();\n      const allWarnings = consoleWarnSpy.mock.calls.map(call => call[0]).join('\\n');\n      expect(allWarnings).toContain('secretlint');\n      expect(allWarnings).not",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/secret-scanning.test.ts",
-        "start": 395,
-        "end": 400,
-        "startLoc": {
-          "line": 395,
-          "column": 5,
-          "position": 3642
-        },
-        "endLoc": {
-          "line": 400,
-          "column": 4,
-          "position": 3706
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/secret-scanning.test.ts",
-        "start": 385,
-        "end": 390,
-        "startLoc": {
-          "line": 385,
-          "column": 6,
-          "position": 3528
-        },
-        "endLoc": {
-          "line": 390,
-          "column": 10,
-          "position": 3592
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": "const failedNote = createHistoryNote([\n        createValidationRun({ passed: false })\n      ]);\n\n      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');\n      vi.mocked(history.readHistoryNote).mockResolvedValue(failedNote);\n\n      await expect(checkValidationStatus(mockConfig,",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 195,
-        "end": 202,
-        "startLoc": {
-          "line": 195,
-          "column": 7,
-          "position": 1610
-        },
-        "endLoc": {
-          "line": 202,
-          "column": 2,
-          "position": 1680
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 104,
-        "end": 111,
-        "startLoc": {
-          "line": 104,
-          "column": 7,
-          "position": 858
-        },
-        "endLoc": {
-          "line": 111,
-          "column": 2,
-          "position": 928
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 13,
       "fragment": ",\n          phases: [\n            createPhaseResult({\n              name: 'Pre-Qualification',\n              passed: true,\n              steps: [\n                { name: 'TypeScript', passed: true, durationSecs: 1.2 },\n                { name: 'ESLint', passed: true, durationSecs: 1.3 }\n              ]\n            }),\n            createPhaseResult({\n              name: 'Testing',\n              passed: true",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 272,
-        "end": 284,
+        "start": 282,
+        "end": 294,
         "startLoc": {
-          "line": 272,
+          "line": 282,
           "column": 5,
-          "position": 2168
+          "position": 2162
         },
         "endLoc": {
-          "line": 284,
+          "line": 294,
           "column": 5,
-          "position": 2270
+          "position": 2264
         }
       },
       "secondFile": {
         "name": "packages/cli/test/utils/check-validation.test.ts",
-        "start": 153,
-        "end": 165,
+        "start": 163,
+        "end": 175,
         "startLoc": {
-          "line": 153,
+          "line": 163,
           "column": 6,
-          "position": 1215
+          "position": 1249
         },
         "endLoc": {
-          "line": 165,
+          "line": 175,
           "column": 6,
-          "position": 1317
+          "position": 1351
         }
       }
     },
@@ -1051,32 +907,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/state.test.ts",
-        "start": 223,
-        "end": 236,
+        "start": 227,
+        "end": 240,
         "startLoc": {
-          "line": 223,
+          "line": 227,
           "column": 24,
-          "position": 1838
+          "position": 1879
         },
         "endLoc": {
-          "line": 236,
+          "line": 240,
           "column": 47,
-          "position": 1926
+          "position": 1967
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/state.test.ts",
-        "start": 192,
-        "end": 205,
+        "start": 196,
+        "end": 209,
         "startLoc": {
-          "line": 192,
+          "line": 196,
           "column": 13,
-          "position": 1556
+          "position": 1597
         },
         "endLoc": {
-          "line": 205,
+          "line": 209,
           "column": 47,
-          "position": 1644
+          "position": 1685
         }
       }
     },
@@ -1123,32 +979,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 143,
-        "end": 150,
+        "start": 147,
+        "end": 154,
         "startLoc": {
-          "line": 143,
+          "line": 147,
           "column": 6,
-          "position": 1485
+          "position": 1526
         },
         "endLoc": {
-          "line": 150,
+          "line": 154,
           "column": 9,
-          "position": 1562
+          "position": 1603
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 130,
-        "end": 137,
+        "start": 134,
+        "end": 141,
         "startLoc": {
-          "line": 130,
+          "line": 134,
           "column": 5,
-          "position": 1323
+          "position": 1364
         },
         "endLoc": {
-          "line": 137,
+          "line": 141,
           "column": 9,
-          "position": 1400
+          "position": 1441
         }
       }
     },
@@ -1159,32 +1015,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 195,
-        "end": 205,
+        "start": 199,
+        "end": 209,
         "startLoc": {
-          "line": 195,
+          "line": 199,
           "column": 25,
-          "position": 2085
+          "position": 2126
         },
         "endLoc": {
-          "line": 205,
+          "line": 209,
           "column": 2,
-          "position": 2163
+          "position": 2204
         }
       },
       "secondFile": {
         "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 182,
-        "end": 193,
+        "start": 186,
+        "end": 197,
         "startLoc": {
-          "line": 182,
+          "line": 186,
           "column": 23,
-          "position": 1963
+          "position": 2004
         },
         "endLoc": {
-          "line": 193,
+          "line": 197,
           "column": 3,
-          "position": 2042
+          "position": 2083
         }
       }
     },
@@ -1354,17 +1210,17 @@
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 407,
-        "end": 418,
+        "start": 420,
+        "end": 431,
         "startLoc": {
-          "line": 407,
+          "line": 420,
           "column": 32,
-          "position": 2809
+          "position": 2993
         },
         "endLoc": {
-          "line": 418,
+          "line": 431,
           "column": 5,
-          "position": 2889
+          "position": 3073
         }
       }
     },
@@ -1390,17 +1246,17 @@
       },
       "secondFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 437,
-        "end": 457,
+        "start": 453,
+        "end": 473,
         "startLoc": {
-          "line": 437,
+          "line": 453,
           "column": 3,
-          "position": 3164
+          "position": 3392
         },
         "endLoc": {
-          "line": 457,
+          "line": 473,
           "column": 43,
-          "position": 3278
+          "position": 3506
         }
       }
     },
@@ -1591,32 +1447,68 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/history/test/integration.test.ts",
-        "start": 31,
-        "end": 41,
+        "start": 35,
+        "end": 45,
         "startLoc": {
-          "line": 31,
+          "line": 35,
           "column": 2,
-          "position": 283
+          "position": 340
         },
         "endLoc": {
-          "line": 41,
+          "line": 45,
           "column": 22,
-          "position": 373
+          "position": 430
         }
       },
       "secondFile": {
         "name": "packages/history/test/recorder.test.ts",
-        "start": 20,
-        "end": 30,
+        "start": 21,
+        "end": 31,
         "startLoc": {
-          "line": 20,
+          "line": 21,
           "column": 2,
-          "position": 185
+          "position": 203
         },
         "endLoc": {
-          "line": 30,
+          "line": 31,
           "column": 2,
-          "position": 274
+          "position": 292
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 11,
+      "fragment": ", async () => {\n    const { getGitTreeHash } = await import('@vibe-validate/git');\n    const treeHash = 'abc123def456' as TreeHash;\n    const treeHashResult: TreeHashResult = {\n      hash: treeHash,\n      components: [{ path: '.', treeHash }]\n    };\n\n    vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResult);\n\n    // 1. Get tree hash before validation",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/history/test/integration.test.ts",
+        "start": 55,
+        "end": 65,
+        "startLoc": {
+          "line": 55,
+          "column": 53,
+          "position": 543
+        },
+        "endLoc": {
+          "line": 65,
+          "column": 38,
+          "position": 645
+        }
+      },
+      "secondFile": {
+        "name": "packages/history/test/recorder.test.ts",
+        "start": 216,
+        "end": 226,
+        "startLoc": {
+          "line": 216,
+          "column": 32,
+          "position": 1786
+        },
+        "endLoc": {
+          "line": 226,
+          "column": 6,
+          "position": 1888
         }
       }
     },

@@ -302,7 +302,10 @@ describe('validate command', () => {
     vi.mocked(projectId.detectProjectId).mockReset();
 
     // Default getGitTreeHash to return a hash
-    vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+    vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
     // Default lock mocks - lock acquired successfully
     vi.mocked(pidLock.acquireLock).mockResolvedValue({
@@ -598,7 +601,10 @@ describe('validate command', () => {
 
     it('should not run validation when --check flag is used', async () => {
       // Mock git tree hash
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with passing validation
       vi.mocked(history.readHistoryNote).mockResolvedValue(
@@ -621,7 +627,10 @@ describe('validate command', () => {
 
     it('should exit with code 2 when no validation history exists', async () => {
       // Mock git tree hash
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with no history
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
@@ -636,7 +645,10 @@ describe('validate command', () => {
 
     it('should output YAML when --check and --yaml flags are used together', async () => {
       // Mock git tree hash
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with passing validation
       vi.mocked(history.readHistoryNote).mockResolvedValue(createMockHistoryNote());
@@ -720,7 +732,10 @@ describe('validate command', () => {
 
     it('should display cached validation with tree hash and phase/step counts in human-readable mode', async () => {
       setupMockConfig();
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with passing validation (cached result with phases)
       const mockHistoryNote = createMockHistoryNote({
@@ -789,7 +804,10 @@ describe('validate command', () => {
           }]
         }
       }));
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with failing validation (cached failure)
       const mockHistoryNote = createMockHistoryNote({
@@ -850,7 +868,10 @@ describe('validate command', () => {
           }]
         }
       }));
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with multiple runs - some passed, some failed (flakiness)
       vi.mocked(history.readHistoryNote).mockResolvedValue(createFlakyHistoryNote());
@@ -882,7 +903,10 @@ describe('validate command', () => {
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
       setupMockConfig();
       setupStdoutSpy();
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with passing validation (cached result)
       const mockHistoryNote = createMockHistoryNote();
@@ -920,7 +944,10 @@ describe('validate command', () => {
         }
       }));
       setupStdoutSpy();
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456',
+      components: [{ path: '.', treeHash: 'abc123def456' }]
+    });
 
       // Mock git notes with failing validation (cached failure)
       const mockHistoryNote = createMockHistoryNote({

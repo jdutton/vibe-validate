@@ -275,7 +275,9 @@ export function validateNotesRef(notesRef: string): void {
 /**
  * Validate that a string is safe to use as a tree hash
  *
- * Tree hashes must be valid git object IDs (40-char hex or abbreviated).
+ * Tree hashes can be:
+ * - Git native: 40-char SHA-1 hex (or abbreviated 4-39 chars)
+ * - Composite: 64-char SHA-256 hex (for repos with submodules)
  *
  * @param treeHash - The tree hash to validate
  * @throws Error if tree hash is invalid
@@ -294,10 +296,12 @@ export function validateTreeHash(treeHash: string): void {
     );
   }
 
-  // Must be reasonable length (4-40 chars for abbreviated or full hash)
-  if (treeHash.length < 4 || treeHash.length > 40) {
+  // Must be reasonable length:
+  // - 4-40 chars: Git native hash (abbreviated or full SHA-1)
+  // - 64 chars: Composite hash (SHA-256 for repos with submodules)
+  if (treeHash.length < 4 || (treeHash.length > 40 && treeHash.length !== 64)) {
     throw new Error(
-      `Invalid tree hash: invalid length (must be 4-40 chars), got: ${treeHash.length} chars\n` +
+      `Invalid tree hash: invalid length (must be 4-40 or 64 chars), got: ${treeHash.length} chars\n` +
       `Received: "${treeHash}"`
     );
   }

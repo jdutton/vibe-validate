@@ -110,7 +110,8 @@ export function preCommitCommand(program: Command): void {
         let treeHash: string | null = null;
 
         try {
-          treeHash = await getGitTreeHash();
+          const treeHashResult = await getGitTreeHash();
+          treeHash = treeHashResult.hash;
           console.log(chalk.gray(`   Snapshot: ${treeHash.slice(0, 12)}...`));
         } catch (error) {
           console.warn(chalk.yellow('⚠️  Could not create snapshot'));

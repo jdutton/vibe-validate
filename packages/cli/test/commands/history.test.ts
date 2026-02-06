@@ -57,7 +57,7 @@ describe('history command', () => {
 
     // Set default mock return values
     vi.mocked(configLoader.findConfigPath).mockReturnValue('/path/to/config.yaml');
-    vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+    vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: 'abc123', hasSubmodules: false });
     vi.mocked(history.getAllRunCacheForTree).mockResolvedValue([]);
   });
 
@@ -600,7 +600,7 @@ describe('history command', () => {
         ],
       };
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: 'abc123', hasSubmodules: false });
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockNote);
 
       historyCommand(env.program);
@@ -643,7 +643,7 @@ describe('history command', () => {
       ];
 
       vi.mocked(configLoader.findConfigPath).mockReturnValue(null); // No config file
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: 'abc123', hasSubmodules: false });
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
       vi.mocked(history.getAllRunCacheForTree).mockResolvedValue(mockRunCacheEntries);
 
@@ -690,7 +690,7 @@ describe('history command', () => {
       ];
 
       vi.mocked(configLoader.findConfigPath).mockReturnValue(null); // No config file
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: 'abc123', hasSubmodules: false });
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
       vi.mocked(history.getAllRunCacheForTree).mockResolvedValue(mockRunCacheEntries);
 
@@ -756,7 +756,7 @@ describe('history command', () => {
         },
       ];
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123');
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: 'abc123', hasSubmodules: false });
       vi.mocked(history.readHistoryNote).mockResolvedValue(mockNote);
       vi.mocked(history.getAllRunCacheForTree).mockResolvedValue(mockRunCacheEntries);
 

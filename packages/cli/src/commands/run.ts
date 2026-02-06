@@ -289,7 +289,8 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     }
 
     // Get tree hash
-    const treeHash = await getGitTreeHash();
+    const treeHashResult = await getGitTreeHash();
+    const treeHash = treeHashResult.hash;
 
     // Skip caching if not in git repository
     if (treeHash === 'unknown') {
@@ -371,7 +372,8 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
     }
 
     // Get tree hash
-    const treeHash = await getGitTreeHash();
+    const treeHashResult = await getGitTreeHash();
+    const treeHash = treeHashResult.hash;
 
     // Skip caching if not in git repository
     if (treeHash === 'unknown') {
@@ -542,7 +544,8 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
 
       // Get tree hash for result (async operation needs to be awaited)
       getGitTreeHash()
-        .then(async treeHash => {
+        .then(async treeHashResult => {
+          const treeHash = treeHashResult.hash;
           // Write output files to organized temp directory
           const outputDir = getRunOutputDir();
           await ensureDir(outputDir);

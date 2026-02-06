@@ -144,3 +144,93 @@ export function setupTestRepoWithCommit(
   stageTestFiles(repoPath);
   commitTestChanges(repoPath, 'Initial commit');
 }
+
+/**
+ * Configure git submodule protocol settings for local file URLs
+ *
+ * Required for testing submodules with file:// URLs
+ *
+ * @param repoPath - Path to git repository
+ *
+ * @example
+ * configTestSubmoduleProtocol(testDir);
+ */
+export function configTestSubmoduleProtocol(repoPath: string): void {
+  safeExecSync('git', ['config', 'protocol.file.allow', 'always'], { cwd: repoPath, stdio: 'pipe' });
+}
+
+/**
+ * Get current HEAD commit hash
+ *
+ * @param repoPath - Path to git repository
+ * @returns Commit SHA
+ *
+ * @example
+ * const commitHash = getTestCommitHash(testDir);
+ */
+export function getTestCommitHash(repoPath: string): string {
+  const result = safeExecSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repoPath,
+    encoding: 'utf-8',
+    stdio: 'pipe',
+  });
+  return (result as string).trim();
+}
+
+/**
+ * Register a submodule in git index
+ *
+ * Low-level operation to add submodule entry without cloning
+ *
+ * @param repoPath - Path to git repository
+ * @param commitHash - Submodule commit hash
+ * @param submodulePath - Relative path for submodule
+ *
+ * @example
+ * registerTestSubmodule(testDir, 'abc123...', 'libs/auth');
+ */
+export function registerTestSubmodule(
+  repoPath: string,
+  commitHash: string,
+  submodulePath: string
+): void {
+  safeExecSync(
+    'git',
+    ['update-index', '--add', '--cacheinfo', `160000,${commitHash},${submodulePath}`],
+    { cwd: repoPath, stdio: 'pipe' }
+  );
+}
+
+/**
+ * Initialize git submodules (register in .git/config)
+ *
+ * @param repoPath - Path to git repository
+ *
+ * @example
+ * initTestSubmodules(testDir);
+ */
+export function initTestSubmodules(repoPath: string): void {
+  safeExecSync('git', ['submodule', 'init'], { cwd: repoPath, stdio: 'pipe' });
+}
+
+/**
+ * Add a submodule to the repository
+ *
+ * @param repoPath - Path to git repository
+ * @param submoduleUrl - URL of submodule repository
+ * @param submodulePath - Relative path where submodule should be placed
+ *
+ * @example
+ * addTestSubmodule(testDir, '/tmp/sub-repo', 'libs/auth');
+ */
+export function addTestSubmodule(
+  repoPath: string,
+  submoduleUrl: string,
+  submodulePath: string
+): void {
+  safeExecSync(
+    'git',
+    ['-c', 'protocol.file.allow=always', 'submodule', 'add', submoduleUrl, submodulePath],
+    { cwd: repoPath, stdio: 'pipe' }
+  );
+}

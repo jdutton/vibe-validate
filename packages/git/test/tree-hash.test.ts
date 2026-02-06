@@ -5,33 +5,60 @@
  * to ensure validation state caching works correctly across runs.
  */
 
-import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync, type Stats } from 'node:fs';
+import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync, type Stats, writeFileSync, rmSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 
 import * as utils from '@vibe-validate/utils';
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import * as gitExecutor from '../src/git-executor.js';
 import type { GitExecutionOptions } from '../src/git-executor.js';
+import {
+  addTestSubmodule,
+  commitTestChanges,
+  configTestUser,
+  initTestRepo,
+  stageTestFiles,
+} from '../src/test-helpers.js';
 import { getGitTreeHash } from '../src/tree-hash.js';
 
-// Mock git-executor
-vi.mock('../src/git-executor.js', () => ({
-  executeGitCommand: vi.fn(),
-}));
+// Mock git-executor (use importOriginal for integration tests to call through)
+vi.mock('../src/git-executor.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof gitExecutor>();
+  return {
+    ...actual,
+    executeGitCommand: vi.fn(),
+  };
+});
 
 // Mock fs operations (SECURITY: We use fs instead of shell commands)
-vi.mock('fs', () => ({
-  copyFileSync: vi.fn(),
-  existsSync: vi.fn(),
-  unlinkSync: vi.fn(),
-  readdirSync: vi.fn(),
-  statSync: vi.fn(),
-}));
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<{
+    copyFileSync: typeof copyFileSync;
+    existsSync: typeof existsSync;
+    unlinkSync: typeof unlinkSync;
+    readdirSync: typeof readdirSync;
+    statSync: typeof statSync;
+  }>();
+  return {
+    ...actual,
+    copyFileSync: vi.fn(),
+    existsSync: vi.fn(),
+    unlinkSync: vi.fn(),
+    readdirSync: vi.fn(),
+    statSync: vi.fn(),
+  };
+});
 
 // Mock @vibe-validate/utils
-vi.mock('@vibe-validate/utils', () => ({
-  isProcessRunning: vi.fn(),
-}));
+vi.mock('@vibe-validate/utils', async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    isProcessRunning: vi.fn(),
+  };
+});
 
 const mockCopyFileSync = copyFileSync as ReturnType<typeof vi.fn>;
 const mockExistsSync = existsSync as ReturnType<typeof vi.fn>;
@@ -57,7 +84,8 @@ function mockInitialGitCommands() {
  */
 function mockStandardGitCommands(writeTreeOutput = 'abc123\n') {
   mockInitialGitCommands()
-    .mockReturnValueOnce({ success: true, stdout: writeTreeOutput, stderr: '', exitCode: 0 });  // git write-tree
+    .mockReturnValueOnce({ success: true, stdout: writeTreeOutput, stderr: '', exitCode: 0 })  // git write-tree
+    .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status (no submodules)
 }
 
 /**
@@ -73,6 +101,8 @@ describe('getGitTreeHash', () => {
     vi.clearAllMocks();
     // Default: .git/index exists (most common case)
     mockExistsSync.mockReturnValue(true);
+    // Default: no stale temp index files to clean up
+    mockReaddirSync.mockReturnValue([]);
   });
 
   afterEach(() => {
@@ -105,14 +135,23 @@ describe('getGitTreeHash', () => {
         stdout: 'abc123def456\n',
         stderr: '',
         exitCode: 0,
-      });  // git write-tree (with temp index)
+      })  // git write-tree (with temp index)
+      .mockReturnValueOnce({
+        success: false,
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });  // git submodule status (no submodules)
 
-    const hash = await getGitTreeHash();
+    const result = await getGitTreeHash();
 
-    expect(hash).toBe('abc123def456');
+    expect(result.hash).toBe('abc123def456');
+    expect(result.components).toEqual([
+      { path: '.', treeHash: 'abc123def456' }
+    ]);
 
-    // Verify correct git commands were called (4 times, not 6 - fs operations not via executeGitCommand)
-    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(4);
+    // Verify correct git commands were called (5 times: is-inside-work-tree, git-dir, add, write-tree, submodule status)
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(5);
 
     // Verify fs.copyFileSync was called (SECURITY: replaces cp shell command)
     expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
@@ -165,17 +204,19 @@ describe('getGitTreeHash', () => {
       .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir (1st run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (1st run)
       .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (1st run)
+      .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 })  // git submodule status (1st run, no submodules)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (2nd run)
       .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir (2nd run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (2nd run)
-      .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 });  // git write-tree (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (2nd run)
+      .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status (2nd run, no submodules)
 
-    const hash1 = await getGitTreeHash();
-    const hash2 = await getGitTreeHash();
+    const result1 = await getGitTreeHash();
+    const result2 = await getGitTreeHash();
 
-    expect(hash1).toBe('sameHash123');
-    expect(hash2).toBe('sameHash123');
-    expect(hash1).toBe(hash2);
+    expect(result1.hash).toBe('sameHash123');
+    expect(result2.hash).toBe('sameHash123');
+    expect(result1.hash).toBe(result2.hash);
 
     // Verify fs operations were called twice (once per run)
     expect(mockCopyFileSync).toHaveBeenCalledTimes(2);
@@ -219,9 +260,9 @@ describe('getGitTreeHash', () => {
   it('should trim whitespace from hash', async () => {
     mockStandardGitCommands('  abc123  \n\n');
 
-    const hash = await getGitTreeHash();
+    const result = await getGitTreeHash();
 
-    expect(hash).toBe('abc123');
+    expect(result.hash).toBe('abc123');
   });
 
   it('should handle git errors gracefully', async () => {
@@ -235,9 +276,9 @@ describe('getGitTreeHash', () => {
   it('should handle empty repository', async () => {
     mockStandardGitCommands('4b825dc642cb6eb9a060e54bf8d69288fbee4904\n');
 
-    const hash = await getGitTreeHash();
+    const result = await getGitTreeHash();
 
-    expect(hash).toBe('4b825dc642cb6eb9a060e54bf8d69288fbee4904');
+    expect(result.hash).toBe('4b825dc642cb6eb9a060e54bf8d69288fbee4904');
   });
 
   it('should not include timestamps in hash', async () => {
@@ -563,5 +604,164 @@ describe('getGitTreeHash', () => {
       expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
       expect(mockStatSync).not.toHaveBeenCalled();
     });
+  });
+});
+
+/**
+ * Integration tests for composite hash with submodules
+ *
+ * These tests use real git commands (not mocked) to verify submodule detection and hashing.
+ *
+ * NOTE: These tests are placed after unit tests and use vi.doMock/doUnmock to
+ * temporarily restore real implementations.
+ */
+/**
+ * Helper: Create a submodule repository outside the main test directory
+ * @returns The submodule directory path
+ */
+function setupExternalSubmodule(testDir: string, submoduleName: string, content = 'sub'): string {
+  const subDir = join(dirname(testDir), submoduleName);
+  try {
+    rmSync(subDir, { recursive: true, force: true });
+  } catch {
+    // Ignore if directory doesn't exist
+  }
+  mkdirSyncReal(subDir, { recursive: true });
+  initTestRepo(subDir);
+  configTestUser(subDir);
+  writeFileSync(join(subDir, 'sub.txt'), content);
+  stageTestFiles(subDir);
+  commitTestChanges(subDir, 'init');
+  return subDir;
+}
+
+/**
+ * Helper: Create main repo with a submodule
+ * @returns The submodule directory path (for cleanup)
+ */
+function setupMainRepoWithSubmodule(testDir: string, submoduleName: string, submoduleContent = 'sub'): string {
+  // Create main repo
+  writeFileSync('main.txt', 'main');
+  stageTestFiles(process.cwd());
+  commitTestChanges(process.cwd(), 'init');
+
+  // Create external submodule and add to main repo
+  const subDir = setupExternalSubmodule(testDir, submoduleName, submoduleContent);
+  addTestSubmodule(process.cwd(), subDir, 'libs/auth');
+  stageTestFiles(process.cwd());
+  commitTestChanges(process.cwd(), 'add submodule');
+
+  return subDir;
+}
+
+describe('getGitTreeHash with submodules (integration)', () => {
+  const testDir = join(process.cwd(), 'test-fixtures', 'composite-hash-test');
+  let originalCwd: string;
+
+  beforeEach(async () => {
+    // Save original cwd BEFORE any operations
+    originalCwd = process.cwd();
+
+    // For integration tests, restore real git execution and fs operations
+    const actualExecutor = await vi.importActual('../src/git-executor.js');
+    const actualFs = await vi.importActual('node:fs');
+
+    vi.mocked(gitExecutor.executeGitCommand).mockImplementation(actualExecutor.executeGitCommand);
+    mockReaddirSync.mockImplementation(actualFs.readdirSync as any);
+    mockExistsSync.mockImplementation(actualFs.existsSync);
+    mockCopyFileSync.mockImplementation(actualFs.copyFileSync);
+    mockUnlinkSync.mockImplementation(actualFs.unlinkSync);
+    mockStatSync.mockImplementation(actualFs.statSync as any);
+
+    // Import real modules
+    const fs = await import('node:fs');
+
+    // Make sure we're in original directory before cleanup
+    try {
+      process.chdir(originalCwd);
+    } catch {
+      // Ignore if already in the directory or directory doesn't exist
+    }
+
+    try {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore if directory doesn't exist
+    }
+
+    mkdirSyncReal(testDir, { recursive: true });
+    process.chdir(testDir);
+
+    initTestRepo(testDir);
+    configTestUser(testDir);
+  });
+
+  afterEach(async () => {
+    const fs = await import('node:fs');
+    process.chdir(originalCwd);
+    try {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore if directory doesn't exist
+    }
+
+    // Clear mocks for next test
+    vi.clearAllMocks();
+  });
+
+  it('should return TreeHashResult with single component for repo without submodules', async () => {
+    const fs = await import('node:fs');
+    const { getGitTreeHash: realGetGitTreeHash } = await vi.importActual('../src/tree-hash.js');
+
+    fs.writeFileSync('file.txt', 'content');
+    stageTestFiles(process.cwd());
+    commitTestChanges(process.cwd(), 'init');
+
+    const result = await realGetGitTreeHash();
+
+    expect(result.components).toHaveLength(1);
+    expect(result.components[0].path).toBe('.');
+    // For single repo, composite hash should equal main hash
+    expect(result.hash).toBe(result.components[0].treeHash);
+  });
+
+  it('should include submodule hashes in composite', async () => {
+    const { getGitTreeHash: realGetGitTreeHash } = await vi.importActual('../src/tree-hash.js');
+
+    const subDir = setupMainRepoWithSubmodule(testDir, 'sub-repo-temp', 'sub');
+    const result = await realGetGitTreeHash();
+
+    // Cleanup submodule temp dir
+    try {
+      rmSync(subDir, { recursive: true, force: true });
+    } catch {
+      // Ignore if directory doesn't exist or already deleted
+    }
+
+    expect(result.components.length).toBeGreaterThan(1);
+    expect(result.components[0].path).toBe('.');
+    expect(result.components.some((c: { path: string }) => c.path === 'libs/auth')).toBe(true);
+  });
+
+  it('should produce different hash when submodule content changes', async () => {
+    const { getGitTreeHash: realGetGitTreeHash } = await vi.importActual('../src/tree-hash.js');
+
+    const subDir = setupMainRepoWithSubmodule(testDir, 'sub-repo-temp2', 'original');
+    const hash1 = await realGetGitTreeHash();
+
+    // Modify submodule working tree
+    writeFileSync('libs/auth/sub.txt', 'modified');
+
+    const hash2 = await realGetGitTreeHash();
+
+    // Cleanup submodule temp dir
+    try {
+      rmSync(subDir, { recursive: true, force: true });
+    } catch {
+      // Ignore if directory doesn't exist or already deleted
+    }
+
+    // Hashes should differ (cache invalidation works!)
+    expect(hash1.hash).not.toBe(hash2.hash);
   });
 });

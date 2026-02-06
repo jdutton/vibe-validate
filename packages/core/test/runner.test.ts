@@ -38,7 +38,7 @@ function mockFailingGitTreeHash(errorMessage: string): () => void {
     if (callCount > 1) {
       throw new Error(errorMessage);
     }
-    return 'test-tree-hash' as Awaited<ReturnType<typeof getGitTreeHash>>;
+    return { hash: 'test-tree-hash', components: [{ path: '.', treeHash: 'test-tree-hash' }] };
   });
   return () => vi.mocked(getGitTreeHash).mockImplementation(originalMock);
 }
@@ -104,7 +104,10 @@ describe('runner', () => {
     }
 
     // Mock git tree hash to return consistent value
-    vi.mocked(getGitTreeHash).mockResolvedValue('test-tree-hash-abc123' as Awaited<ReturnType<typeof getGitTreeHash>>);
+    vi.mocked(getGitTreeHash).mockResolvedValue({
+      hash: 'test-tree-hash-abc123',
+      components: [{ path: '.', treeHash: 'test-tree-hash-abc123' }]
+    });
 
     // Spy on console.log to reduce noise
     vi.spyOn(console, 'log').mockImplementation(() => {});

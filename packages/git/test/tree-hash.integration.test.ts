@@ -116,14 +116,14 @@ describe('getGitTreeHash - integration tests', () => {
     // Modify and stage
     writeFileSync(join(testRepoPath, 'test.txt'), 'modified content');
     executeGitCommand(['add', 'test.txt'], { suppressStderr: true });
-    const hashStaged = await getGitTreeHash();
+    const resultStaged = await getGitTreeHash();
 
     // Unstage (but keep working directory change)
     executeGitCommand(['reset', 'HEAD', 'test.txt'], { suppressStderr: true });
-    const hashUnstaged = await getGitTreeHash();
+    const resultUnstaged = await getGitTreeHash();
 
     // Hash should be SAME because working directory content is identical
-    expect(hashUnstaged).toBe(hashStaged);
+    expect(resultUnstaged.hash).toBe(resultStaged.hash);
   });
 
   it('should produce deterministic hash for same content', async () => {
@@ -133,11 +133,11 @@ describe('getGitTreeHash - integration tests', () => {
     writeFileSync(join(testRepoPath, 'test.txt'), 'deterministic content');
 
     // Get hash twice
-    const hash1 = await getGitTreeHash();
-    const hash2 = await getGitTreeHash();
+    const result1 = await getGitTreeHash();
+    const result2 = await getGitTreeHash();
 
     // Should be identical (deterministic)
-    expect(hash1).toBe(hash2);
+    expect(result1.hash).toBe(result2.hash);
   });
 
   it('should handle empty repository', async () => {
@@ -146,10 +146,10 @@ describe('getGitTreeHash - integration tests', () => {
     // Delete all files to make working tree "empty"
     rmSync(join(testRepoPath, 'initial.txt'));
 
-    const hash = await getGitTreeHash();
+    const result = await getGitTreeHash();
 
     // Should return valid hash
-    expect(hash).toMatch(/^[0-9a-f]{40}$/);
+    expect(result.hash).toMatch(/^[0-9a-f]{40}$/);
   });
 
   it('should handle fresh repository with no commits (no .git/index)', async () => {
@@ -165,14 +165,14 @@ describe('getGitTreeHash - integration tests', () => {
     writeFileSync(join(testRepoPath, 'test.txt'), 'content');
 
     // This should work without crashing (currently fails with ENOENT)
-    const hash = await getGitTreeHash();
+    const result = await getGitTreeHash();
 
     // Should return valid hash (empty tree hash since nothing is committed)
-    expect(hash).toMatch(/^[0-9a-f]{40}$/);
+    expect(result.hash).toMatch(/^[0-9a-f]{40}$/);
 
     // The hash should be different from empty tree if file is tracked
     // But since no git add yet, it might be the empty tree hash
-    expect(hash).toBeDefined();
+    expect(result.hash).toBeDefined();
   });
 
   it('should return "unknown" for non-git directory', async () => {
@@ -188,10 +188,10 @@ describe('getGitTreeHash - integration tests', () => {
       expect(existsSync(join(nonGitPath, '.git'))).toBe(false);
 
       // Should return 'unknown' (not throw)
-      const hash = await getGitTreeHash();
+      const result = await getGitTreeHash();
 
       // CRITICAL: Must return 'unknown' so caller can skip caching
-      expect(hash).toBe('unknown');
+      expect(result.hash).toBe('unknown');
     } finally {
       // Restore to test repo
       process.chdir(testRepoPath);
@@ -209,15 +209,15 @@ describe('getGitTreeHash - integration tests', () => {
     executeGitCommand(['add', 'delete-me.txt'], { suppressStderr: true });
     executeGitCommand(['commit', '-m', 'add file'], { suppressStderr: true });
 
-    const hashBefore = await getGitTreeHash();
+    const resultBefore = await getGitTreeHash();
 
     // Delete file (unstaged)
     rmSync(join(testRepoPath, 'delete-me.txt'));
 
-    const hashAfter = await getGitTreeHash();
+    const resultAfter = await getGitTreeHash();
 
     // Hash should change because file is deleted
-    expect(hashAfter).not.toBe(hashBefore);
+    expect(resultAfter.hash).not.toBe(resultBefore.hash);
   });
 
   it('should NOT include .gitignore files (security)', async () => {
@@ -232,7 +232,7 @@ describe('getGitTreeHash - integration tests', () => {
     executeGitCommand(['commit', '-m', 'add gitignore'], { suppressStderr: true });
 
     // Get hash WITHOUT secrets
-    const hashWithoutSecrets = await getGitTreeHash();
+    const resultWithoutSecrets = await getGitTreeHash();
 
     // Add ignored files (secrets, env, etc.)
     writeFileSync(join(testRepoPath, 'secrets.txt'), 'API_KEY=secret123');
@@ -240,14 +240,14 @@ describe('getGitTreeHash - integration tests', () => {
     writeFileSync(join(testRepoPath, '.env'), 'PASSWORD=admin');
 
     // Get hash WITH secrets (but they should be ignored)
-    const hashWithSecrets = await getGitTreeHash();
+    const resultWithSecrets = await getGitTreeHash();
 
     // CRITICAL: Hash should be SAME because ignored files are NOT included
     // This ensures:
     // 1. No security risk (secrets not checksummed)
     // 2. Deterministic hashing (different devs have different secrets)
     // 3. Cache sharing works (same code = same hash)
-    expect(hashWithSecrets).toBe(hashWithoutSecrets);
+    expect(resultWithSecrets.hash).toBe(resultWithoutSecrets.hash);
   });
 
   it('should produce same hash across developers with same .gitignore', async () => {
@@ -261,20 +261,20 @@ describe('getGitTreeHash - integration tests', () => {
     // Developer 1 has personal log file (ignored)
     writeFileSync(join(testRepoPath, 'debug.log'), 'dev1 debug logs');
 
-    const hashDev1 = await getGitTreeHash();
+    const resultDev1 = await getGitTreeHash();
 
     // Simulate Developer 2's repository (same tracked files, different ignored files)
     // Remove dev1's log file, add dev2's log file
     rmSync(join(testRepoPath, 'debug.log'));
     writeFileSync(join(testRepoPath, 'error.log'), 'dev2 error logs');
 
-    const hashDev2 = await getGitTreeHash();
+    const resultDev2 = await getGitTreeHash();
 
     // CRITICAL: Hash should be SAME because:
     // 1. Same tracked files (app.js, .gitignore)
     // 2. Different ignored files (debug.log vs error.log) should NOT affect hash
     // 3. This enables cache sharing across developers
-    expect(hashDev2).toBe(hashDev1);
+    expect(resultDev2.hash).toBe(resultDev1.hash);
   });
 
   it('should produce same hash before and after staging (user bug report)', async () => {
@@ -291,16 +291,16 @@ describe('getGitTreeHash - integration tests', () => {
     writeFileSync(join(testRepoPath, 'file3.ts'), 'new file');
 
     // Get hash BEFORE staging
-    const hashBeforeStaging = await getGitTreeHash();
+    const resultBeforeStaging = await getGitTreeHash();
 
     // Stage all changes (like user did)
     executeGitCommand(['add', '--all'], { suppressStderr: true });
 
     // Get hash AFTER staging
-    const hashAfterStaging = await getGitTreeHash();
+    const resultAfterStaging = await getGitTreeHash();
 
     // CRITICAL: Hash should be SAME because working directory didn't change
     // This is the bug the user reported - hash changes when it shouldn't
-    expect(hashAfterStaging).toBe(hashBeforeStaging);
+    expect(resultAfterStaging.hash).toBe(resultBeforeStaging.hash);
   });
 });

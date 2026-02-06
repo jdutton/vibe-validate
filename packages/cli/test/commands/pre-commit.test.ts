@@ -164,12 +164,14 @@ function createBranchSyncResult(overrides: Partial<{
  * Factory: Create successful validation result
  */
 function createValidationResult(overrides: Partial<{
+  timestamp: string;
   passed: boolean;
   phasesRun: number;
   stepsRun: number;
   duration: number;
 }> = {}) {
   return {
+    timestamp: '2025-10-23T20:00:00Z',
     passed: true,
     phasesRun: 0,
     stepsRun: 0,
@@ -239,7 +241,10 @@ function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
  * Setup: Configure mocks for branch behind scenario
  */
 function setupBranchBehind(behindBy: number, hasTracking = true) {
-  vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+  vi.mocked(git.getGitTreeHash).mockResolvedValue({
+    hash: 'abc123def456' as git.TreeHash,
+    components: [{ path: '.', treeHash: 'abc123def456' as git.TreeHash }],
+  });
   vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
   vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(hasTracking ? behindBy : null);
   vi.mocked(git.checkBranchSync).mockResolvedValue(
@@ -251,7 +256,10 @@ function setupBranchBehind(behindBy: number, hasTracking = true) {
  * Setup: Configure mocks for cache hit scenario
  */
 function setupCacheHit(treeHash: string) {
-  vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHash);
+  vi.mocked(git.getGitTreeHash).mockResolvedValue({
+    hash: treeHash as git.TreeHash,
+    components: [{ path: '.', treeHash: treeHash as git.TreeHash }]
+  });
   vi.mocked(history.readHistoryNote).mockResolvedValue(createHistoryNote(treeHash, true));
 }
 
@@ -259,15 +267,20 @@ function setupCacheHit(treeHash: string) {
  * Setup: Configure mocks for cache miss scenario
  */
 function setupCacheMiss(treeHash: string) {
-  vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHash);
+  const treeHashResult: git.TreeHashResult = {
+    hash: treeHash as git.TreeHash,
+    components: [{ path: '.', treeHash: treeHash as git.TreeHash }]
+  };
+  vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHashResult);
   vi.mocked(history.readHistoryNote).mockResolvedValue(null);
   vi.mocked(history.checkWorktreeStability).mockResolvedValue({
     stable: true,
-    treeHashBefore: treeHash,
-    treeHashAfter: treeHash,
+    treeHashBefore: treeHash as git.TreeHash,
+    treeHashAfter: treeHash as git.TreeHash,
   });
   vi.mocked(history.recordValidationHistory).mockResolvedValue({
     recorded: true,
+    treeHash: treeHash as git.TreeHash,
   });
 }
 
@@ -427,7 +440,10 @@ describe('pre-commit command', () => {
     vi.mocked(configLoader.loadConfig).mockReset();
 
     // Set default mock values (tests can override)
-    vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+    vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: 'abc123def456' as git.TreeHash,
+      components: [{ path: '.', treeHash: 'abc123def456' as git.TreeHash }],
+    });
     vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
     vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
@@ -672,7 +688,10 @@ describe('pre-commit command', () => {
       // Mock snapshot failure on first call, but succeed on subsequent calls (for locking)
       vi.mocked(git.getGitTreeHash)
         .mockRejectedValueOnce(new Error('Git tree hash failed'))
-        .mockResolvedValue('abc123def456');
+        .mockResolvedValue({
+          hash: 'abc123def456' as git.TreeHash,
+          components: [{ path: '.', treeHash: 'abc123def456' as git.TreeHash }],
+        });
 
       setupCacheMiss('abc123def456');
 

@@ -52,7 +52,8 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
   // Get current tree hash
   let currentTreeHash: string;
   try {
-    currentTreeHash = await getGitTreeHash();
+    const treeHashResult = await getGitTreeHash();
+    currentTreeHash = treeHashResult.hash;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (yaml) {
