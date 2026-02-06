@@ -394,7 +394,7 @@ function expectValidationNotRan() {
  */
 function expectCacheHitMessage() {
   expect(console.log).toHaveBeenCalledWith(
-    expect.stringContaining('Validation already passed for current working tree')
+    expect.stringContaining('Validation passed for this code')
   );
 }
 

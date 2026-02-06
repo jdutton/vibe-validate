@@ -132,10 +132,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
       await outputYamlResult(mostRecent.result);
     } else {
       // Human-readable mode: Display failure details
-      console.log(chalk.red('❌ Last validation failed for current working tree'));
-      console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
-      console.log(chalk.gray(`   Last validated: ${mostRecent.timestamp}`));
-      console.log(chalk.gray(`   Branch: ${mostRecent.branch}`));
+      displayCachedResult(mostRecent, currentTreeHash);
 
       // Show which phase/step failed (actionable info)
       displayFailedPhaseInfo(mostRecent.result?.phases);

@@ -34,6 +34,30 @@ function mockTreeHash(hash = 'abc123def456'): void {
   });
 }
 
+/**
+ * Helper: Create common two-phase test structure (Pre-Qualification + Testing)
+ * with flexible pass/fail settings for each step
+ */
+function createTwoPhaseStructure(testingPassed: boolean) {
+  return [
+    createPhaseResult({
+      name: 'Pre-Qualification',
+      passed: true,
+      steps: [
+        { name: 'TypeScript', passed: true, durationSecs: 1.2 },
+        { name: 'ESLint', passed: true, durationSecs: 1.3 }
+      ]
+    }),
+    createPhaseResult({
+      name: 'Testing',
+      passed: testingPassed,
+      steps: [
+        { name: 'Unit Tests', passed: testingPassed, durationSecs: 2.5 }
+      ]
+    })
+  ];
+}
+
 describe('checkValidationStatus', () => {
   let mockConfig: VibeValidateConfig;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -121,10 +145,9 @@ describe('checkValidationStatus', () => {
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
 
       expectConsoleOutput(consoleLogSpy, [
-        'Last validation failed',
+        'Validation failed for this code',
         'Tree hash: abc123def456',
-        'Last validated: 2025-10-21T10:00:00Z',
-        'Branch: main'
+        'Validated: 2025-10-21T10:00:00Z on branch main'
       ]);
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
@@ -152,8 +175,7 @@ describe('checkValidationStatus', () => {
 
       // Should show most recent run (run-2)
       expectConsoleOutput(consoleLogSpy, [
-        'Last validated: 2025-10-21T10:00:00Z',
-        'Branch: feature-branch'
+        'Validated: 2025-10-21T10:00:00Z on branch feature-branch'
       ]);
     });
 
@@ -161,23 +183,7 @@ describe('checkValidationStatus', () => {
       const failedNoteWithDetails = createHistoryNote([
         createValidationRun({
           passed: false,
-          phases: [
-            createPhaseResult({
-              name: 'Pre-Qualification',
-              passed: true,
-              steps: [
-                { name: 'TypeScript', passed: true, durationSecs: 1.2 },
-                { name: 'ESLint', passed: true, durationSecs: 1.3 }
-              ]
-            }),
-            createPhaseResult({
-              name: 'Testing',
-              passed: false,
-              steps: [
-                { name: 'Unit Tests', passed: false, durationSecs: 2.5 }
-              ]
-            })
-          ]
+          phases: createTwoPhaseStructure(false)
         })
       ]);
 
@@ -233,11 +239,11 @@ describe('checkValidationStatus', () => {
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
 
       expectConsoleOutput(consoleLogSpy, [
-        'Validation already passed',
+        'Validation passed for this code',
         'Tree hash: abc123def456',
-        'Last validated: 2025-10-21T10:00:00Z',
+        'Validated: 2025-10-21T10:00:00Z',
         'Duration: 5.0s',
-        'Branch: main'
+        'on branch main'
       ]);
       expect(processExitSpy).toHaveBeenCalledWith(0);
     });
@@ -271,7 +277,7 @@ describe('checkValidationStatus', () => {
 
       // Should show most recent passing run (run-3)
       expectConsoleOutput(consoleLogSpy, [
-        'Last validated: 2025-10-21T11:00:00Z',
+        'Validated: 2025-10-21T11:00:00Z',
         'Duration: 3.5s'
       ]);
     });
@@ -280,23 +286,7 @@ describe('checkValidationStatus', () => {
       const passedNoteWithPhases = createHistoryNote([
         createValidationRun({
           passed: true,
-          phases: [
-            createPhaseResult({
-              name: 'Pre-Qualification',
-              passed: true,
-              steps: [
-                { name: 'TypeScript', passed: true, durationSecs: 1.2 },
-                { name: 'ESLint', passed: true, durationSecs: 1.3 }
-              ]
-            }),
-            createPhaseResult({
-              name: 'Testing',
-              passed: true,
-              steps: [
-                { name: 'Unit Tests', passed: true, durationSecs: 2.5 }
-              ]
-            })
-          ]
+          phases: createTwoPhaseStructure(true)
         })
       ]);
 
@@ -318,7 +308,7 @@ describe('checkValidationStatus', () => {
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
 
       // Should not throw, just not show phases/steps line
-      expectConsoleOutput(consoleLogSpy, ['Validation already passed']);
+      expectConsoleOutput(consoleLogSpy, ['Validation passed for this code']);
     });
   });
 

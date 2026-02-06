@@ -67,7 +67,7 @@ export function createValidationRun(options: CreateRunOptions): ValidationRun {
       passed: options.passed,
       timestamp,
       treeHash,
-      phases: options.phases ?? [],
+      phases: options.phases,
     },
   };
 }
@@ -124,7 +124,7 @@ export function createHistoryNote(runs: ValidationRun[], treeHash = 'abc123def45
  *
  * @example
  * expectConsoleOutput(consoleLogSpy, [
- *   'Validation already passed',
+ *   'Validation passed for this code',
  *   'Tree hash: abc123def456'
  * ]);
  */

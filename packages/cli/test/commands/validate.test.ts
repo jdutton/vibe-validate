@@ -775,22 +775,16 @@ describe('validate command', () => {
 
       // Verify human-readable output includes all required fields
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validation already passed')
+        expect.stringContaining('Validation passed for this code')
       );
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Tree hash: abc123def456')
       );
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Last validated: 2025-10-22T00:00:00.000Z')
+        expect.stringContaining('Validated: 2025-10-22T00:00:00.000Z on branch main')
       );
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Duration: 5.0s')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Branch: main')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Phases: 2, Steps: 3')
+        expect.stringContaining('Phases: 2, Steps: 3 (5.0s)')
       );
     });
 
@@ -839,22 +833,16 @@ describe('validate command', () => {
 
       // Verify human-readable output shows cached failure
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validation already failed')
+        expect.stringContaining('Validation failed for this code')
       );
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Tree hash: abc123def456')
       );
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Last validated: 2025-10-22T00:00:00.000Z')
+        expect.stringContaining('Validated: 2025-10-22T00:00:00.000Z on branch main')
       );
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Duration: 5.0s')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Branch: main')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Phases: 1, Steps: 1')
+        expect.stringContaining('Phases: 1, Steps: 1 (5.0s)')
       );
     });
 
@@ -876,28 +864,22 @@ describe('validate command', () => {
       // Mock git notes with multiple runs - some passed, some failed (flakiness)
       vi.mocked(history.readHistoryNote).mockResolvedValue(createFlakyHistoryNote());
 
-      // Spy on console.warn
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      // Spy on console.log (flakiness note is now logged, not warned)
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       validateCommand(env.program);
 
       await env.program.parseAsync(['validate'], { from: 'user' });
 
-      // Verify flakiness warning was shown
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('⚠️  Flaky validation detected')
-      );
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Found 3 runs with different results')
-      );
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Using most recent result')
+      // Verify flakiness note was shown (now a single gray note, not a warning)
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Note: 3 validation runs exist for this code')
       );
 
       // Should use most recent run (run-3, which passed)
-      expectConsoleLog('Validation already passed');
+      expectConsoleLog('Validation passed for this code');
 
-      warnSpy.mockRestore();
+      logSpy.mockRestore();
     });
 
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {

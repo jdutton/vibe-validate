@@ -473,8 +473,7 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
     const combinedLines: OutputLine[] = [];
 
     // Capture stdout (spawnCommand always sets stdio: ['ignore', 'pipe', 'pipe'], so stdout/stderr are guaranteed non-null)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-    child.stdout!.on('data', (data: Buffer) => {
+    child.stdout.on('data', (data: Buffer) => {
       const chunk = data.toString();
       stdout += chunk;
 
@@ -492,8 +491,7 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
     });
 
     // Capture stderr
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-    child.stderr!.on('data', (data: Buffer) => {
+    child.stderr.on('data', (data: Buffer) => {
       const chunk = data.toString();
       stderr += chunk;
 

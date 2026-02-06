@@ -20,21 +20,20 @@ export function displayCachedResult(cachedRun: ValidationRun, treeHash: string):
   const durationSecs = (cachedRun.duration / 1000).toFixed(1);
   const truncatedHash = treeHash.substring(0, 12);
 
-  if (cachedRun.passed) {
-    console.log(chalk.green('✅ Validation passed for this code'));
-    console.log(chalk.gray(`   Tree hash: ${truncatedHash}...`));
-    console.log(chalk.gray(`   Validated: ${cachedRun.timestamp} on branch ${cachedRun.branch}`));
-    if (cachedRun.result?.phases) {
-      const totalSteps = cachedRun.result.phases.reduce((sum: number, phase: PhaseResult) => sum + (phase.steps?.length ?? 0), 0);
-      console.log(chalk.gray(`   Phases: ${cachedRun.result.phases.length}, Steps: ${totalSteps} (${durationSecs}s)`));
-    }
+  // Display status line (color and message vary by pass/fail)
+  const statusLine = cachedRun.passed
+    ? chalk.green('✅ Validation passed for this code')
+    : chalk.red('❌ Validation failed for this code');
+  console.log(statusLine);
+
+  // Display metadata (same format for both pass and fail)
+  console.log(chalk.gray(`   Tree hash: ${truncatedHash}...`));
+  console.log(chalk.gray(`   Validated: ${cachedRun.timestamp} on branch ${cachedRun.branch}`));
+
+  if (cachedRun.result?.phases) {
+    const totalSteps = cachedRun.result.phases.reduce((sum: number, phase: PhaseResult) => sum + (phase.steps?.length ?? 0), 0);
+    console.log(chalk.gray(`   Phases: ${cachedRun.result.phases.length}, Steps: ${totalSteps} (${durationSecs}s)`));
   } else {
-    console.log(chalk.red('❌ Validation failed for this code'));
-    console.log(chalk.gray(`   Tree hash: ${truncatedHash}...`));
-    console.log(chalk.gray(`   Validated: ${cachedRun.timestamp} on branch ${cachedRun.branch}`));
-    if (cachedRun.result?.phases) {
-      const totalSteps = cachedRun.result.phases.reduce((sum: number, phase: PhaseResult) => sum + (phase.steps?.length ?? 0), 0);
-      console.log(chalk.gray(`   Phases: ${cachedRun.result.phases.length}, Steps: ${totalSteps} (${durationSecs}s)`));
-    }
+    console.log(chalk.gray(`   Duration: ${durationSecs}s`));
   }
 }
