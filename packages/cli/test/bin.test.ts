@@ -689,7 +689,7 @@ git:
         logCommandFailure(['validate'], cachedRun, 0, 'Cache bypass test - cached run');
       }
       expect(cachedRun.code).toBe(0);
-      expect(cachedRun.stdout).toContain('already passed');
+      expect(cachedRun.stdout).toContain('passed for this code');
       expect(cachedRun.stdout).not.toContain('phase_start'); // Should NOT run phases
 
       // 3. Third run with --force - should bypass cache and run validation
@@ -699,7 +699,7 @@ git:
       }
       expect(forcedRun.code).toBe(0);
       expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run phases again
-      expect(forcedRun.stdout).not.toContain('already passed'); // Should NOT show cache message
+      expect(forcedRun.stdout).not.toContain('passed for this code'); // Should NOT show cache message
     }, 30000); // Increase timeout for full workflow
 
     it('should set VV_FORCE_EXECUTION=1 when validate --force is used', async () => {
@@ -758,14 +758,14 @@ git:
       // 2. Second run without force - should use cache
       const cachedRun = await executeCLI(['validate']);
       expect(cachedRun.code).toBe(0);
-      expect(cachedRun.stdout).toContain('already passed');
+      expect(cachedRun.stdout).toContain('passed for this code');
       expect(cachedRun.stdout).not.toContain('phase_start');
 
       // 3. Third run with VV_FORCE_EXECUTION=1 env var - should bypass cache
       const forceRun = await executeCLI(['validate'], 10000, { VV_FORCE_EXECUTION: '1' });
       expect(forceRun.code).toBe(0);
       expect(forceRun.stdout + forceRun.stderr).toContain('phase_start: Test Phase'); // Should run phases again
-      expect(forceRun.stdout + forceRun.stderr).not.toContain('already passed'); // Should NOT show cache message
+      expect(forceRun.stdout + forceRun.stderr).not.toContain('passed for this code'); // Should NOT show cache message
     }, 30000);
 
     it('should propagate VV_FORCE_EXECUTION to nested vv run commands in validation', async () => {
@@ -795,7 +795,7 @@ git:
       // Second run without force - nested command should hit cache
       const cachedRun = await executeCLI(['validate']);
       expect(cachedRun.code).toBe(0);
-      expect(cachedRun.stdout).toContain('already passed'); // Outer validation cached
+      expect(cachedRun.stdout).toContain('passed for this code'); // Outer validation cached
 
       // Third run with --force - should propagate to nested vv run
       const forcedRun = await executeCLI(['validate', '--force']);

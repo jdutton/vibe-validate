@@ -473,27 +473,28 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
     const combinedLines: OutputLine[] = [];
 
     // Capture stdout (spawnCommand always sets stdio: ['ignore', 'pipe', 'pipe'], so stdout/stderr are guaranteed non-null)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-    child.stdout!.on('data', (data: Buffer) => {
-      const chunk = data.toString();
-      stdout += chunk;
+    if (child.stdout) {
+      child.stdout.on('data', (data: Buffer) => {
+        const chunk = data.toString();
+        stdout += chunk;
 
-      // Add to combined output (ANSI-stripped)
-      const lines = chunk.split('\n');
-      for (const line of lines) {
-        if (line) {
-          combinedLines.push({
-            ts: new Date().toISOString(),
-            stream: 'stdout',
-            line: stripAnsiCodes(line),
-          });
+        // Add to combined output (ANSI-stripped)
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line) {
+            combinedLines.push({
+              ts: new Date().toISOString(),
+              stream: 'stdout',
+              line: stripAnsiCodes(line),
+            });
+          }
         }
-      }
-    });
+      });
+    }
 
     // Capture stderr
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-    child.stderr!.on('data', (data: Buffer) => {
+    if (child.stderr) {
+      child.stderr.on('data', (data: Buffer) => {
       const chunk = data.toString();
       stderr += chunk;
 
@@ -508,7 +509,8 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
           });
         }
       }
-    });
+      });
+    }
 
     // Handle process exit
     child.on('close', (exitCode: number = 1) => {
