@@ -61,15 +61,14 @@ async function checkCache(
         return null; // Safety check (should never happen)
       }
 
-      // Check for flakiness: multiple runs with different results
+      // Check for multiple runs: provide context only in verbose scenarios
       if (historyNote.runs.length > 1) {
         const hasPass = historyNote.runs.some(run => run.passed);
         const hasFail = historyNote.runs.some(run => !run.passed);
 
         if (hasPass && hasFail) {
-          console.warn(chalk.yellow('⚠️  Flaky validation detected for this tree hash'));
-          console.warn(chalk.yellow(`   Found ${historyNote.runs.length} runs with different results`));
-          console.warn(chalk.yellow('   Using most recent result'));
+          // Don't make a big deal - just note it happened (most recent result is what matters)
+          console.log(chalk.gray(`   Note: ${historyNote.runs.length} validation runs exist for this code (showing most recent)`));
         }
       }
 
