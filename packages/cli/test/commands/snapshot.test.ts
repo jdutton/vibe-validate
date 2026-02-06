@@ -43,8 +43,7 @@ describe('snapshot command', () => {
   let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456789012345678901234567890abcd';
   const mockTreeHashResult = {
-    hash: mockTreeHash,
-    components: [{ path: '.', treeHash: mockTreeHash }]
+    hash: mockTreeHash
   };
 
   // Helper to run snapshot command and extract exit code

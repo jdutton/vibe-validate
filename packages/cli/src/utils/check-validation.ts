@@ -7,7 +7,7 @@
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import { getGitTreeHash } from '@vibe-validate/git';
-import { readHistoryNote } from '@vibe-validate/history';
+import { findCachedValidation } from '@vibe-validate/history';
 import chalk from 'chalk';
 
 import { displayCachedResult } from './display-cached-result.js';
@@ -50,10 +50,9 @@ function displayFailedPhaseInfo(phases: Array<{ name: string; passed: boolean; s
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 36 acceptable for validation state checking (handles multiple output formats, git state retrieval, and comprehensive error scenarios)
 export async function checkValidationStatus(_config: VibeValidateConfig, yaml = false): Promise<void> {
   // Get current tree hash
-  let currentTreeHash: string;
+  let treeHashResult;
   try {
-    const treeHashResult = await getGitTreeHash();
-    currentTreeHash = treeHashResult.hash;
+    treeHashResult = await getGitTreeHash();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (yaml) {
@@ -72,17 +71,17 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
     process.exit(2);
   }
 
-  // Check git notes for validation history
-  let historyNote;
+  // Check for cached validation using submodule-aware lookup
+  let cachedRun;
   try {
-    historyNote = await readHistoryNote(currentTreeHash);
+    cachedRun = await findCachedValidation(treeHashResult);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (yaml) {
       // YAML mode: Output structured error
       const errorOutput = {
         exists: false,
-        treeHash: currentTreeHash,
+        treeHash: treeHashResult.hash,
         error: `Failed to read validation history: ${errorMessage}`,
       };
       await outputYamlResult(errorOutput);
@@ -95,47 +94,35 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
   }
 
   // Check if history exists
-  if (!historyNote || historyNote.runs.length === 0) {
+  if (!cachedRun) {
     if (yaml) {
       // YAML mode: Output structured no-history response
       const noHistoryOutput = {
         exists: false,
-        treeHash: currentTreeHash,
+        treeHash: treeHashResult.hash,
       };
       await outputYamlResult(noHistoryOutput);
     } else {
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  No validation history for current working tree'));
-      console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
+      console.log(chalk.gray(`   Tree hash: ${treeHashResult.hash.substring(0, 12)}...`));
       console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
     }
     process.exit(2);
   }
 
-  // Find most recent passing run
-  const passingRun = [...historyNote.runs].reverse().find(run => run.passed);
-
-  if (!passingRun) {
+  // Check if validation passed or failed
+  if (!cachedRun.passed) {
     // Last validation failed - show error details (same as fresh failure)
-    const mostRecent = historyNote.runs.at(-1);
-
-    // This should never happen (we already checked runs.length > 0), but TypeScript needs the check
-    if (!mostRecent) {
-      console.log(chalk.yellow('⚠️  No validation history for current working tree'));
-      console.log(chalk.gray(`   Tree hash: ${currentTreeHash.substring(0, 12)}...`));
-      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
-      process.exit(2);
-    }
-
     if (yaml) {
       // YAML mode: Output failed result as YAML to stdout
-      await outputYamlResult(mostRecent.result);
+      await outputYamlResult(cachedRun.result);
     } else {
       // Human-readable mode: Display failure details
-      displayCachedResult(mostRecent, currentTreeHash);
+      displayCachedResult(cachedRun, treeHashResult.hash);
 
       // Show which phase/step failed (actionable info)
-      displayFailedPhaseInfo(mostRecent.result?.phases);
+      displayFailedPhaseInfo(cachedRun.result?.phases);
 
       console.log(chalk.blue('\n📋 View full error details:'), chalk.white('vibe-validate state'));
       console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white('npx vibe-validate validate'));
@@ -147,10 +134,10 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
   // Validation passed!
   if (yaml) {
     // YAML mode: Output validation result as YAML to stdout
-    await outputYamlResult(passingRun.result);
+    await outputYamlResult(cachedRun.result);
   } else {
     // Human-readable mode: Display status message
-    displayCachedResult(passingRun, currentTreeHash);
+    displayCachedResult(cachedRun, treeHashResult.hash);
   }
 
   process.exit(0);

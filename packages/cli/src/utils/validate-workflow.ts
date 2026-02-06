@@ -13,7 +13,7 @@ import {
   recordValidationHistory,
   checkWorktreeStability,
   checkHistoryHealth,
-  readHistoryNote,
+  findCachedValidation,
   type ValidationRun,
 } from '@vibe-validate/history';
 import chalk from 'chalk';
@@ -21,6 +21,7 @@ import { stringify as yamlStringify } from 'yaml';
 
 import type { AgentContext } from './context-detector.js';
 import { displayCachedResult } from './display-cached-result.js';
+import { formatWorktreeDisplay } from './format-worktree.js';
 import { createRunnerConfig } from './runner-adapter.js';
 import { outputYamlResult } from './yaml-output.js';
 
@@ -49,34 +50,17 @@ export interface ValidateWorkflowOptions {
  * @internal
  */
 async function checkCache(
-  treeHash: string
+  treeHashResult: TreeHashResult
 ): Promise<{ result: ValidationResult; run: ValidationRun } | null> {
   try {
-    const historyNote = await readHistoryNote(treeHash);
+    const cachedRun = await findCachedValidation(treeHashResult);
 
-    if (historyNote && historyNote.runs.length > 0) {
-      // Get most recent run (pass OR fail)
-      const mostRecentRun = historyNote.runs.at(-1);
-      if (!mostRecentRun) {
-        return null; // Safety check (should never happen)
-      }
-
-      // Check for multiple runs: provide context only in verbose scenarios
-      if (historyNote.runs.length > 1) {
-        const hasPass = historyNote.runs.some(run => run.passed);
-        const hasFail = historyNote.runs.some(run => !run.passed);
-
-        if (hasPass && hasFail) {
-          // Don't make a big deal - just note it happened (most recent result is what matters)
-          console.log(chalk.gray(`   Note: ${historyNote.runs.length} validation runs exist for this code (showing most recent)`));
-        }
-      }
-
+    if (cachedRun) {
       // Mark result as from cache (v0.15.0+ schema field)
-      const result = mostRecentRun.result as ValidationResult;
+      const result = cachedRun.result as ValidationResult;
       result.isCachedResult = true;
 
-      return { result, run: mostRecentRun };
+      return { result, run: cachedRun };
     }
   } catch {
     // Cache check failed - proceed with validation
@@ -230,8 +214,8 @@ export async function runValidateWorkflow(
     let result: ValidationResult | undefined;
     let cachedRun: ValidationRun | null = null;
 
-    if (treeHashBefore && !forceExecution) {
-      const cached = await checkCache(treeHashBefore);
+    if (treeHashResultBefore && !forceExecution) {
+      const cached = await checkCache(treeHashResultBefore);
       if (cached) {
         result = cached.result;
         cachedRun = cached.run;
@@ -240,8 +224,8 @@ export async function runValidateWorkflow(
 
     if (!result) {
       // Display tree hash before running validation
-      if (treeHashBefore) {
-        console.error(chalk.gray(`🌳 Working tree: ${treeHashBefore.slice(0, 12)}...`));
+      if (treeHashResultBefore) {
+        console.error(formatWorktreeDisplay(treeHashResultBefore));
         if (!yaml) {
           console.log(''); // Blank line for readability (human mode only)
         }

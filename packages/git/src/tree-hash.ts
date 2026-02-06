@@ -11,7 +11,6 @@
  * git write-tree produces content-based hashes only (no timestamps).
  */
 
-import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -138,7 +137,7 @@ function cleanupStaleIndexes(gitDir: string): void {
  * 3. Mark untracked files with --intent-to-add in temp index
  * 4. Calculate tree hash with git write-tree using temp index
  * 5. Detect and process git submodules (recursive)
- * 6. Compute composite hash from main repo + submodule hashes
+ * 6. Return parent hash + optional submodule hashes
  * 7. Clean up temp index file
  *
  * Why this is better than git stash create:
@@ -148,29 +147,39 @@ function cleanupStaleIndexes(gitDir: string): void {
  * Submodule Support (Issue #120):
  * - Detects submodules via `git submodule status`
  * - Recursively calculates tree hash for each submodule
- * - Combines all hashes into composite SHA-256 hash
+ * - Returns TreeHashResult with parent hash + submodule hashes
  * - Working tree changes in submodules invalidate cache
+ * - Git notes store full result for state reconstruction
+ *
+ * IMPORTANT: This function returns a structured result object, NOT a composite hash.
+ * Git notes store the TreeHashResult as-is. The hash field is the parent repo's
+ * standard Git SHA-1 hash (40 hex characters). The optional submoduleHashes field
+ * records each submodule's tree hash separately.
+ *
+ * Cache key format in git notes (v0.19.0+):
+ * - Parent-only repos: Use parent hash directly (backward compatible)
+ * - Repos with submodules: Use parent hash + submodule metadata
+ * - Result structure stored in git notes for state reconstruction
  *
  * CRITICAL: Uses GIT_INDEX_FILE to avoid corrupting real index during git commit hooks
  *
  * @returns TreeHashResult containing:
- *   - hash: Composite SHA-256 hash (or single repo hash if no submodules)
- *   - components: Array of { path, treeHash } for main repo and each submodule
+ *   - hash: Parent repository tree hash (Git SHA-1, 40 hex chars)
+ *   - submoduleHashes: Optional record of submodule paths to tree hashes
  *
  * @example
- * // Repository without submodules
+ * // Repository without submodules (0.18.x compatible)
  * const result = await getGitTreeHash();
- * // { hash: 'abc123...', components: [{ path: '.', treeHash: 'abc123...' }] }
+ * // { hash: 'abc123...' }
  *
  * @example
- * // Repository with submodules
+ * // Repository with submodules (v0.19.0+)
  * const result = await getGitTreeHash();
  * // {
- * //   hash: 'def456...',  // Composite SHA-256
- * //   components: [
- * //     { path: '.', treeHash: 'abc123...' },
- * //     { path: 'libs/auth', treeHash: 'xyz789...' }
- * //   ]
+ * //   hash: 'abc123...',  // Parent repo hash
+ * //   submoduleHashes: {
+ * //     'libs/auth': 'xyz789...'
+ * //   }
  * // }
  *
  * @throws Error if not in a git repository or git command fails
@@ -238,15 +247,18 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
       }).stdout.trim();
 
       // Calculate main repo tree hash
-      const mainTreeHash = treeHash as TreeHash;
+      const parentHash = treeHash as TreeHash;
 
       // Detect submodules
       const submodules = getSubmodules();
 
-      // Build components array
-      const components: Array<{ path: string; treeHash: TreeHash }> = [
-        { path: '.', treeHash: mainTreeHash }
-      ];
+      // No submodules - simple case (0.18.x compatible)
+      if (submodules.length === 0) {
+        return { hash: parentHash };
+      }
+
+      // Build submodule hashes record
+      const submoduleHashes: Record<string, TreeHash> = {};
 
       // Add submodule hashes (sorted by path for determinism)
       const sortedSubmodules = submodules.toSorted((a, b) => a.path.localeCompare(b.path));
@@ -258,8 +270,8 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
 
         try {
           const subResult = await getSubmoduleTreeHash(sub.path);
-          // Use the submodule's composite hash (handles nested submodules)
-          components.push({ path: sub.path, treeHash: subResult.hash });
+          // Store the submodule's hash in the record
+          submoduleHashes[sub.path] = subResult.hash;
         } catch (error) {
           // Log warning but continue with other submodules
           const errorMsg = error instanceof Error ? error.message : String(error);
@@ -267,20 +279,9 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
         }
       }
 
-      // If no submodules, return main hash directly (optimization)
-      if (components.length === 1) {
-        return {
-          hash: mainTreeHash,
-          components
-        };
-      }
-
-      // Compute composite hash from all components
-      const compositeHash = computeCompositeHash(components);
-
       return {
-        hash: compositeHash,
-        components
+        hash: parentHash,
+        submoduleHashes,
       };
 
     } finally {
@@ -302,8 +303,7 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
     if (errorMessage.includes('not a git repository')) {
       // Not in git repo - return "unknown" (caller should skip caching)
       return {
-        hash: 'unknown' as TreeHash,
-        components: [{ path: '.', treeHash: 'unknown' as TreeHash }]
+        hash: 'unknown' as TreeHash
       };
     }
 
@@ -432,45 +432,3 @@ export async function getSubmoduleTreeHash(submodulePath: string): Promise<TreeH
   }
 }
 
-/**
- * Compute composite hash from multiple tree hash components
- *
- * Creates deterministic SHA-256 hash by:
- * 1. Sorting components by path (lexicographic order)
- * 2. Building string: "path:hash+path:hash+..."
- * 3. Hashing with SHA-256
- *
- * This ensures same content always produces same hash regardless of input order.
- *
- * @param components - Array of path and tree hash pairs
- * @returns Composite SHA-256 hash (64 hex characters)
- *
- * @example
- * const components = [
- *   { path: '.', treeHash: 'abc123' },
- *   { path: 'libs/auth', treeHash: 'def456' }
- * ];
- * const composite = computeCompositeHash(components);
- * // Returns SHA-256('.:abc123+libs/auth:def456')
- *
- * @internal Exported for testing
- */
-export function computeCompositeHash(
-  components: Array<{ path: string; treeHash: TreeHash }>
-): TreeHash {
-  // Sort by path for deterministic ordering
-  const sorted = [...components].sort((a, b) =>
-    a.path.localeCompare(b.path)
-  );
-
-  // Build deterministic string: "path:hash+path:hash+..."
-  const parts = sorted.map(c => `${c.path}:${c.treeHash}`);
-  const combined = parts.join('+');
-
-  // SHA-256 hash for consistent length (64 hex chars)
-  const hash = createHash('sha256')
-    .update(combined)
-    .digest('hex');
-
-  return hash as TreeHash;
-}

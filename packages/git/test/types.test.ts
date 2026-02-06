@@ -10,29 +10,28 @@ describe('TreeHashResult', () => {
     expect(typeCheck).toBeDefined();
   });
 
-  it('should have hash property of type TreeHash and components array', () => {
+  it('should have hash property of type TreeHash', () => {
     const result: TreeHashResult = {
-      hash: 'abc123' as TreeHash,
-      components: [
-        { path: '.', treeHash: 'abc123' as TreeHash }
-      ]
+      hash: 'abc123' as TreeHash
     };
 
     expect(result.hash).toBe('abc123');
-    expect(result.components).toHaveLength(1);
-    expect(result.components[0].path).toBe('.');
+    expect(result.submoduleHashes).toBeUndefined();
   });
 
-  it('should support composite tree hashes with multiple component paths', () => {
+  it('should support submoduleHashes with multiple submodule paths', () => {
     const result: TreeHashResult = {
-      hash: 'composite' as TreeHash,
-      components: [
-        { path: '.', treeHash: 'main' as TreeHash },
-        { path: 'libs/auth', treeHash: 'sub1' as TreeHash },
-        { path: 'vendor/foo', treeHash: 'sub2' as TreeHash }
-      ]
+      hash: 'mainHash' as TreeHash,
+      submoduleHashes: {
+        'libs/auth': 'sub1' as TreeHash,
+        'vendor/foo': 'sub2' as TreeHash
+      }
     };
 
-    expect(result.components).toHaveLength(3);
+    expect(result.hash).toBe('mainHash');
+    expect(result.submoduleHashes).toBeDefined();
+    expect(Object.keys(result.submoduleHashes!)).toHaveLength(2);
+    expect(result.submoduleHashes!['libs/auth']).toBe('sub1');
+    expect(result.submoduleHashes!['vendor/foo']).toBe('sub2');
   });
 });

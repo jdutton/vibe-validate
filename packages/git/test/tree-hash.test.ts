@@ -146,9 +146,7 @@ describe('getGitTreeHash', () => {
     const result = await getGitTreeHash();
 
     expect(result.hash).toBe('abc123def456');
-    expect(result.components).toEqual([
-      { path: '.', treeHash: 'abc123def456' }
-    ]);
+    expect(result.submoduleHashes).toBeUndefined();
 
     // Verify correct git commands were called (5 times: is-inside-work-tree, git-dir, add, write-tree, submodule status)
     expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(5);
@@ -709,7 +707,7 @@ describe('getGitTreeHash with submodules (integration)', () => {
     vi.clearAllMocks();
   });
 
-  it('should return TreeHashResult with single component for repo without submodules', async () => {
+  it('should return TreeHashResult without submoduleHashes for repo without submodules', async () => {
     const fs = await import('node:fs');
     const { getGitTreeHash: realGetGitTreeHash } = await vi.importActual('../src/tree-hash.js');
 
@@ -719,13 +717,11 @@ describe('getGitTreeHash with submodules (integration)', () => {
 
     const result = await realGetGitTreeHash();
 
-    expect(result.components).toHaveLength(1);
-    expect(result.components[0].path).toBe('.');
-    // For single repo, composite hash should equal main hash
-    expect(result.hash).toBe(result.components[0].treeHash);
+    expect(result.hash).toMatch(/^[0-9a-f]{40}$/);
+    expect(result.submoduleHashes).toBeUndefined();
   });
 
-  it('should include submodule hashes in composite', async () => {
+  it('should include submodule hashes when submodules exist', async () => {
     const { getGitTreeHash: realGetGitTreeHash } = await vi.importActual('../src/tree-hash.js');
 
     const subDir = setupMainRepoWithSubmodule(testDir, 'sub-repo-temp', 'sub');
@@ -738,21 +734,21 @@ describe('getGitTreeHash with submodules (integration)', () => {
       // Ignore if directory doesn't exist or already deleted
     }
 
-    expect(result.components.length).toBeGreaterThan(1);
-    expect(result.components[0].path).toBe('.');
-    expect(result.components.some((c: { path: string }) => c.path === 'libs/auth')).toBe(true);
+    expect(result.hash).toMatch(/^[0-9a-f]{40}$/);
+    expect(result.submoduleHashes).toBeDefined();
+    expect(result.submoduleHashes?.['libs/auth']).toMatch(/^[0-9a-f]{40}$/);
   });
 
-  it('should produce different hash when submodule content changes', async () => {
+  it('should produce different submodule hash when submodule content changes', async () => {
     const { getGitTreeHash: realGetGitTreeHash } = await vi.importActual('../src/tree-hash.js');
 
     const subDir = setupMainRepoWithSubmodule(testDir, 'sub-repo-temp2', 'original');
-    const hash1 = await realGetGitTreeHash();
+    const result1 = await realGetGitTreeHash();
 
     // Modify submodule working tree
     writeFileSync('libs/auth/sub.txt', 'modified');
 
-    const hash2 = await realGetGitTreeHash();
+    const result2 = await realGetGitTreeHash();
 
     // Cleanup submodule temp dir
     try {
@@ -761,7 +757,12 @@ describe('getGitTreeHash with submodules (integration)', () => {
       // Ignore if directory doesn't exist or already deleted
     }
 
-    // Hashes should differ (cache invalidation works!)
-    expect(hash1.hash).not.toBe(hash2.hash);
+    // Parent hash should stay the same (parent content unchanged)
+    expect(result1.hash).toBe(result2.hash);
+
+    // But submodule hash should differ (cache invalidation works!)
+    expect(result1.submoduleHashes?.['libs/auth']).toBeDefined();
+    expect(result2.submoduleHashes?.['libs/auth']).toBeDefined();
+    expect(result1.submoduleHashes?.['libs/auth']).not.toBe(result2.submoduleHashes?.['libs/auth']);
   });
 });

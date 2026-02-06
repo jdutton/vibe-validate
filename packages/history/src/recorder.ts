@@ -81,12 +81,6 @@ export async function recordValidationHistory(
   const notesRef = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as NotesRef;
   const maxOutputBytes = (mergedConfig.gitNotes.maxOutputBytes ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxOutputBytes);
 
-  // Build repoTreeHashes map from components
-  const repoTreeHashes: Record<string, string> = {};
-  for (const component of treeHashResult.components) {
-    repoTreeHashes[component.path] = component.treeHash;
-  }
-
   try {
     // 1. Create new run entry
     const newRun: ValidationRun = {
@@ -98,6 +92,7 @@ export async function recordValidationHistory(
       headCommit: await getHeadCommit(),
       uncommittedChanges: await hasWorkingTreeChanges(),
       result: truncateValidationOutput(result, maxOutputBytes),
+      submoduleHashes: treeHashResult.submoduleHashes,
     };
 
     // Calculate duration from result phases if available (convert to milliseconds)
@@ -112,7 +107,6 @@ export async function recordValidationHistory(
     // The addNote function will handle merging with existing runs atomically
     const note: HistoryNote = {
       treeHash: treeHashResult.hash,
-      repoTreeHashes,
       runs: [newRun],
     };
 
