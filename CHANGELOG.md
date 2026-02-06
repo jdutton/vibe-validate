@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- **Fixed git submodule working tree changes not reflected in cache key** (Issue #120, PR #121)
+  - **Root cause**: Tree hash calculation only considered main repository's tree, ignoring submodule working tree state
+  - **Solution**: Implemented composite tree hashing that recursively includes all submodule tree hashes
+  - **Impact**: Cache invalidation now works correctly when any submodule content changes
+  - **Technical**: Composite hashes use SHA-256 (64 chars) vs standard Git SHA-1 (40 chars) to accommodate submodule metadata
+
 - **Fixed validation history not recording for subsequent runs on same tree hash** (PR #116)
   - **Root cause**: Conflict detection relied on parsing stderr for `"already exists"`, but git returns `"Found existing notes for object..."` - string matching failed across git versions
   - **Solution**: Always attempt atomic merge when fast-path add fails (simpler, more robust, works universally)
