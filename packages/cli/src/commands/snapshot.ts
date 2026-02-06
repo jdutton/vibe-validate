@@ -64,7 +64,8 @@ async function executeSnapshotCommand(options: { verbose?: boolean }, programNam
   console.log(chalk.blue('📸 Current Worktree Snapshot\n'));
 
   // Get current snapshot
-  const treeHash = await getGitTreeHash();
+  const treeHashResult = await getGitTreeHash();
+  const treeHash = treeHashResult.hash;
   console.log(chalk.green(`✓ Snapshot: ${treeHash}`));
 
   // Check if snapshot has validation history

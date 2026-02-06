@@ -100,6 +100,31 @@ export const HistoryNoteSchema = z.object({
   /** Tree hash this note is attached to (optional - inferred from ref path if omitted) */
   treeHash: z.string().min(1).optional(),
 
+  /**
+   * Map of repository paths to their individual tree hashes
+   *
+   * Used for composite tree hashes with submodules. Maps repository path
+   * to its individual git tree hash for debugging and git operations.
+   *
+   * Format: { ".": "main-hash", "libs/auth": "sub-hash", ... }
+   *
+   * @example
+   * // Single repo (backward compatible - field omitted)
+   * { treeHash: "abc123", runs: [...] }
+   *
+   * @example
+   * // Repo with submodules
+   * {
+   *   treeHash: "composite-xyz",
+   *   repoTreeHashes: {
+   *     ".": "abc123",
+   *     "libs/auth": "def456"
+   *   },
+   *   runs: [...]
+   * }
+   */
+  repoTreeHashes: z.record(z.string(), z.string()).optional(),
+
   /** Array of validation runs for this tree */
   runs: z.array(ValidationRunSchema),
 });

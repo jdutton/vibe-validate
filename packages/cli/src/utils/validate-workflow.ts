@@ -8,7 +8,7 @@
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationResult } from '@vibe-validate/core';
 import { runValidation } from '@vibe-validate/core';
-import { getGitTreeHash } from '@vibe-validate/git';
+import { getGitTreeHash, type TreeHashResult } from '@vibe-validate/git';
 import {
   recordValidationHistory,
   checkWorktreeStability,
@@ -89,32 +89,32 @@ async function checkCache(
 /**
  * Record validation history with stability check
  *
- * @param treeHashBefore - Tree hash before validation
+ * @param treeHashResultBefore - Tree hash result before validation
  * @param result - Validation result to record
  * @param verbose - Whether verbose output is enabled
  * @internal
  */
 async function recordHistory(
-  treeHashBefore: string,
+  treeHashResultBefore: TreeHashResult,
   result: ValidationResult,
   verbose: boolean
 ): Promise<void> {
   try {
     // Check if worktree changed during validation
-    const stability = await checkWorktreeStability(treeHashBefore);
+    const stability = await checkWorktreeStability(treeHashResultBefore.hash);
 
     if (stability.stable) {
       // Record to git notes
-      const recordResult = await recordValidationHistory(treeHashBefore, result);
+      const recordResult = await recordValidationHistory(treeHashResultBefore, result);
 
       if (recordResult.recorded) {
         if (verbose) {
-          console.log(chalk.gray(`\n📝 History recorded (tree: ${treeHashBefore.slice(0, 12)})`));
+          console.log(chalk.gray(`\n📝 History recorded (tree: ${treeHashResultBefore.hash.slice(0, 12)})`));
         }
       } else {
         // Always warn on stderr when history recording fails (not just in verbose mode)
         console.error(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason ?? 'Unknown reason'}`));
-        console.error(chalk.gray(`   Tree hash: ${treeHashBefore.slice(0, 12)}`));
+        console.error(chalk.gray(`   Tree hash: ${treeHashResultBefore.hash.slice(0, 12)}`));
       }
     } else {
       console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));
@@ -213,9 +213,11 @@ export async function runValidateWorkflow(
     });
 
     // Get tree hash BEFORE validation (for caching and stability check)
+    let treeHashResultBefore: TreeHashResult | null = null;
     let treeHashBefore: string | null = null;
     try {
-      treeHashBefore = await getGitTreeHash();
+      treeHashResultBefore = await getGitTreeHash();
+      treeHashBefore = treeHashResultBefore.hash;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       if (verbose) {
@@ -256,8 +258,8 @@ export async function runValidateWorkflow(
       result = await runValidation(runnerConfig);
 
       // Record validation history (if in git repo)
-      if (treeHashBefore) {
-        await recordHistory(treeHashBefore, result, verbose);
+      if (treeHashResultBefore) {
+        await recordHistory(treeHashResultBefore, result, verbose);
       }
     }
 

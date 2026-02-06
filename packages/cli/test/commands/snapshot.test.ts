@@ -42,6 +42,10 @@ function createMockHistory(passed: boolean): HistoryNote {
 describe('snapshot command', () => {
   let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456789012345678901234567890abcd';
+  const mockTreeHashResult = {
+    hash: mockTreeHash,
+    components: [{ path: '.', treeHash: mockTreeHash }]
+  };
 
   // Helper to run snapshot command and extract exit code
   async function runSnapshotCommand(args: string[] = ['snapshot']): Promise<number> {
@@ -65,7 +69,7 @@ describe('snapshot command', () => {
     env = setupCommanderTest();
 
     // Default mock implementations
-    vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHash);
+    vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHashResult);
     vi.mocked(hasHistoryForTree).mockResolvedValue(false);
     vi.mocked(readHistoryNote).mockResolvedValue(null);
   });

@@ -4,6 +4,7 @@
  */
 
 import type { ValidationResult } from '@vibe-validate/core';
+import type { TreeHash, TreeHashResult } from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import {
@@ -15,7 +16,10 @@ import {
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
-  getGitTreeHash: vi.fn(() => Promise.resolve('abc123def456')),
+  getGitTreeHash: vi.fn(() => Promise.resolve({
+    hash: 'abc123def456' as TreeHash,
+    components: [{ path: '.', treeHash: 'abc123def456' as TreeHash }]
+  })),
   hasWorkingTreeChanges: vi.fn(() => Promise.resolve(false)),
   getCurrentBranch: vi.fn(() => 'main'),
   getHeadCommitSha: vi.fn(() => '9abc3c4'),
@@ -50,13 +54,17 @@ describe('History Integration', () => {
 
   it('should complete full validation recording workflow', async () => {
     const { getGitTreeHash } = await import('@vibe-validate/git');
-    const treeHash = 'abc123def456';
+    const treeHash = 'abc123def456' as TreeHash;
+    const treeHashResult: TreeHashResult = {
+      hash: treeHash,
+      components: [{ path: '.', treeHash }]
+    };
 
-    vi.mocked(getGitTreeHash).mockResolvedValue(treeHash);
+    vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResult);
 
     // 1. Get tree hash before validation
     const treeHashBefore = await getGitTreeHash();
-    expect(treeHashBefore).toBe(treeHash);
+    expect(treeHashBefore.hash).toBe(treeHash);
 
     // 2. Simulate validation
     const result: ValidationResult = {
@@ -74,7 +82,7 @@ describe('History Integration', () => {
     };
 
     // 3. Check stability
-    const stability = await checkWorktreeStability(treeHashBefore);
+    const stability = await checkWorktreeStability(treeHashBefore.hash);
     expect(stability.stable).toBe(true);
 
     // 4. Record if stable
@@ -86,13 +94,21 @@ describe('History Integration', () => {
 
   it('should skip recording when worktree changes during validation', async () => {
     const { getGitTreeHash } = await import('@vibe-validate/git');
-    const treeHashBefore = 'abc123def456';
-    const treeHashAfter = 'def456abc123';
+    const treeHashBefore = 'abc123def456' as TreeHash;
+    const treeHashAfter = 'def456abc123' as TreeHash;
+    const treeHashResultBefore: TreeHashResult = {
+      hash: treeHashBefore,
+      components: [{ path: '.', treeHash: treeHashBefore }]
+    };
+    const treeHashResultAfter: TreeHashResult = {
+      hash: treeHashAfter,
+      components: [{ path: '.', treeHash: treeHashAfter }]
+    };
 
     // Mock tree hash changing
     vi.mocked(getGitTreeHash)
-      .mockResolvedValueOnce(treeHashBefore)
-      .mockResolvedValueOnce(treeHashAfter);
+      .mockResolvedValueOnce(treeHashResultBefore)
+      .mockResolvedValueOnce(treeHashResultAfter);
 
     // 1. Get tree hash before
     const before = await getGitTreeHash();
@@ -101,11 +117,11 @@ describe('History Integration', () => {
     // const result: ValidationResult = {
     //   passed: true,
     //   timestamp: new Date().toISOString(),
-    //   treeHash: before,
+    //   treeHash: before.hash,
     // };
 
     // 3. Check stability (should detect change)
-    const stability = await checkWorktreeStability(before);
+    const stability = await checkWorktreeStability(before.hash);
     expect(stability.stable).toBe(false);
 
     // 4. Should NOT record

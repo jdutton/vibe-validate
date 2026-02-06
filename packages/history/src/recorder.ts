@@ -10,7 +10,7 @@ import {
   getHeadCommitSha,
   addNote,
   type NotesRef,
-  type TreeHash,
+  type TreeHashResult,
 } from '@vibe-validate/git';
 import { stringify as stringifyYaml } from 'yaml';
 
@@ -54,13 +54,13 @@ async function getHeadCommit(): Promise<string> {
 /**
  * Record validation result to git notes
  *
- * @param treeHash - Git tree hash
+ * @param treeHashResult - Git tree hash result with components
  * @param result - Validation result
  * @param config - History configuration
  * @returns Record result
  */
 export async function recordValidationHistory(
-  treeHash: string,
+  treeHashResult: TreeHashResult,
   result: ValidationResult,
   config: HistoryConfig = {}
 ): Promise<RecordResult> {
@@ -80,6 +80,12 @@ export async function recordValidationHistory(
   // Type assertions safe: DEFAULT_HISTORY_CONFIG is Required<HistoryConfig>
   const notesRef = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as NotesRef;
   const maxOutputBytes = (mergedConfig.gitNotes.maxOutputBytes ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxOutputBytes);
+
+  // Build repoTreeHashes map from components
+  const repoTreeHashes: Record<string, string> = {};
+  for (const component of treeHashResult.components) {
+    repoTreeHashes[component.path] = component.treeHash;
+  }
 
   try {
     // 1. Create new run entry
@@ -105,33 +111,34 @@ export async function recordValidationHistory(
     // 2. Create note with ONLY the new run
     // The addNote function will handle merging with existing runs atomically
     const note: HistoryNote = {
-      treeHash,
+      treeHash: treeHashResult.hash,
+      repoTreeHashes,
       runs: [newRun],
     };
 
     // 3. Add note to git using optimistic locking (prevents data loss in concurrent writes)
     // addNote will merge this with existing runs and handle pruning atomically
     const noteContent = stringifyYaml(note);
-    const success = addNote(notesRef, treeHash as TreeHash, noteContent, false);
+    const success = addNote(notesRef, treeHashResult.hash, noteContent, false);
 
     if (!success) {
       return {
         recorded: false,
         reason: 'Failed to add git note',
-        treeHash,
+        treeHash: treeHashResult.hash,
       };
     }
 
     return {
       recorded: true,
-      treeHash,
+      treeHash: treeHashResult.hash,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       recorded: false,
       reason: errorMessage,
-      treeHash,
+      treeHash: treeHashResult.hash,
     };
   }
 }
@@ -145,7 +152,8 @@ export async function recordValidationHistory(
 export async function checkWorktreeStability(
   treeHashBefore: string
 ): Promise<StabilityCheck> {
-  const treeHashAfter = await getGitTreeHash();
+  const treeHashResult = await getGitTreeHash();
+  const treeHashAfter = treeHashResult.hash;
 
   return {
     stable: treeHashBefore === treeHashAfter,

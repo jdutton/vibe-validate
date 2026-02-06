@@ -24,6 +24,16 @@ import {
 vi.mock('@vibe-validate/git');
 vi.mock('@vibe-validate/history');
 
+/**
+ * Helper: Mock getGitTreeHash with TreeHashResult
+ */
+function mockTreeHash(hash = 'abc123def456'): void {
+  vi.mocked(git.getGitTreeHash).mockResolvedValue({
+    hash: hash as git.TreeHash,
+    components: [{ path: '.', treeHash: hash as git.TreeHash }]
+  });
+}
+
 describe('checkValidationStatus', () => {
   let mockConfig: VibeValidateConfig;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -62,7 +72,7 @@ describe('checkValidationStatus', () => {
 
   describe('when git notes cannot be read', () => {
     it('should exit with code 2 and show error', async () => {
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockRejectedValue(new Error('Git notes error'));
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
@@ -74,7 +84,7 @@ describe('checkValidationStatus', () => {
 
   describe('when no validation history exists', () => {
     it('should exit with code 2 when history note is null', async () => {
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
@@ -87,7 +97,7 @@ describe('checkValidationStatus', () => {
     });
 
     it('should exit with code 2 when runs array is empty', async () => {
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(
         createHistoryNote([])
       );
@@ -105,7 +115,7 @@ describe('checkValidationStatus', () => {
         createValidationRun({ passed: false })
       ]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(failedNote);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
@@ -135,7 +145,7 @@ describe('checkValidationStatus', () => {
         })
       ]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(multiRunNote);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
@@ -171,7 +181,7 @@ describe('checkValidationStatus', () => {
         })
       ]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(failedNoteWithDetails);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
@@ -196,7 +206,7 @@ describe('checkValidationStatus', () => {
         createValidationRun({ passed: false })
       ]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(failedNote);
 
       await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(1));
@@ -217,7 +227,7 @@ describe('checkValidationStatus', () => {
         createValidationRun({ passed: true })
       ]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(passedNote);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
@@ -254,7 +264,7 @@ describe('checkValidationStatus', () => {
         })
       ]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(mixedNote);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
@@ -290,7 +300,7 @@ describe('checkValidationStatus', () => {
         })
       ]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(passedNoteWithPhases);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
@@ -302,7 +312,7 @@ describe('checkValidationStatus', () => {
       const run = createValidationRun({ passed: true, phases: undefined });
       const passedNoteNoPhases = createHistoryNote([run]);
 
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(passedNoteNoPhases);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
@@ -315,7 +325,7 @@ describe('checkValidationStatus', () => {
   describe('edge cases', () => {
     it('should handle truncated tree hash display', async () => {
       const longHash = 'abcdef123456789012345678901234567890';
-      vi.mocked(git.getGitTreeHash).mockResolvedValue(longHash);
+      mockTreeHash(longHash);
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
@@ -326,7 +336,7 @@ describe('checkValidationStatus', () => {
 
     it('should handle short tree hash', async () => {
       const shortHash = 'abc123';
-      vi.mocked(git.getGitTreeHash).mockResolvedValue(shortHash);
+      mockTreeHash(shortHash);
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
       await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
@@ -363,7 +373,7 @@ describe('checkValidationStatus', () => {
     });
 
     it('should output YAML when failed to read history with --yaml flag', async () => {
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockRejectedValue(new Error('Git notes error'));
 
       await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(2));
@@ -380,7 +390,7 @@ describe('checkValidationStatus', () => {
     });
 
     it('should output YAML when no validation history with --yaml flag', async () => {
-      vi.mocked(git.getGitTreeHash).mockResolvedValue('abc123def456');
+      mockTreeHash();
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
       await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(2));

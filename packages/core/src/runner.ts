@@ -361,7 +361,8 @@ async function createStepOutputFiles(
   log: (_msg: string) => void
 ): Promise<{ stdout?: string; stderr?: string; combined?: string } | undefined> {
   try {
-    const treeHash = await getGitTreeHash();
+    const treeHashResult = await getGitTreeHash();
+    const treeHash = treeHashResult.hash;
     const outputDir = getTempDir('steps');
     await ensureDir(outputDir);
 
@@ -805,7 +806,8 @@ export async function runStepsInParallel(
             if (shouldCreateFiles && !outputFiles) {
               // Only create files if not already provided by nested vibe-validate command
               try {
-                const treeHash = await getGitTreeHash();
+                const treeHashResult = await getGitTreeHash();
+                const treeHash = treeHashResult.hash;
                 const outputDir = getTempDir('steps');
                 await ensureDir(outputDir);
 
@@ -1003,7 +1005,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   } = config;
 
   // Get current working tree hash (deterministic, content-based)
-  const currentTreeHash = await getGitTreeHash();
+  const treeHashResult = await getGitTreeHash();
+  const currentTreeHash = treeHashResult.hash;
 
   // Note: Caching is now handled at the CLI layer via git notes
   // (see packages/cli/src/commands/validate.ts and @vibe-validate/history)

@@ -118,12 +118,16 @@ function expectConsoleLogNotContains(...unexpectedStrings: string[]): void {
 describe('state command', () => {
   let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456';
+  const mockTreeHashResult = {
+    hash: mockTreeHash,
+    components: [{ path: '.', treeHash: mockTreeHash }]
+  };
 
   beforeEach(() => {
     env = setupCommanderTest();
 
     // Default mock implementations
-    vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHash);
+    vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHashResult);
     vi.mocked(hasHistoryForTree).mockResolvedValue(false);
     vi.mocked(readHistoryNote).mockResolvedValue(null);
     vi.mocked(getAllRunCacheForTree).mockResolvedValue([]);

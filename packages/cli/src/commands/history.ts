@@ -430,7 +430,10 @@ async function showHistory(
 ): Promise<void> {
   try {
     // If no tree hash specified, use current tree hash
-    treeHash ??= await getGitTreeHash();
+    if (!treeHash) {
+      const treeHashResult = await getGitTreeHash();
+      treeHash = treeHashResult.hash;
+    }
 
     const note = await readHistoryNote(treeHash);
     let runCacheEntries: RunCacheNote[] = [];

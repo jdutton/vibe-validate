@@ -221,7 +221,8 @@ export async function withValidationLock<T>(
     // Handle lock mode (single-instance execution)
     if (shouldLock) {
       // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
-      const treeHash = await getGitTreeHash();
+      const treeHashResult = await getGitTreeHash();
+      const treeHash = treeHashResult.hash;
 
       const lockResult = await acquireLock(configDir, treeHash, lockOptions);
 

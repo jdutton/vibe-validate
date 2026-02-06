@@ -35,7 +35,8 @@ export function stateCommand(program: Command): void {
  * Execute the state command logic
  */
 async function executeStateCommand(options: { verbose?: boolean; runs?: boolean; all?: boolean }): Promise<void> {
-  const treeHash = await getGitTreeHash();
+  const treeHashResult = await getGitTreeHash();
+  const treeHash = treeHashResult.hash;
   const hasConfig = findConfigPath() !== null;
   const showRunsOnly = options.runs === true;
   const showAll = options.all === true;

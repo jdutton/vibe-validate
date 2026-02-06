@@ -11,13 +11,14 @@
  * git write-tree produces content-based hashes only (no timestamps).
  */
 
+import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { isProcessRunning } from '@vibe-validate/utils';
 
 import { executeGitCommand } from './git-executor.js';
-import type { TreeHash } from './types.js';
+import type { TreeHash, TreeHashResult } from './types.js';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
@@ -144,10 +145,11 @@ function cleanupStaleIndexes(gitDir: string): void {
  *
  * CRITICAL: Uses GIT_INDEX_FILE to avoid corrupting real index during git commit hooks
  *
- * @returns Git tree SHA-1 hash (40 hex characters) as branded TreeHash type
+ * @returns Tree hash result with composite hash and components
  * @throws Error if not in a git repository or git command fails
  */
-export async function getGitTreeHash(): Promise<TreeHash> {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 18 acceptable for main orchestration function (git operations + submodule handling + cleanup + error handling)
+export async function getGitTreeHash(): Promise<TreeHashResult> {
   try {
     // Check if we're in a git repository
     executeGitCommand(['rev-parse', '--is-inside-work-tree'], { timeout: GIT_TIMEOUT });
@@ -208,7 +210,51 @@ export async function getGitTreeHash(): Promise<TreeHash> {
         env: tempIndexEnv
       }).stdout.trim();
 
-      return treeHash as TreeHash;
+      // Calculate main repo tree hash
+      const mainTreeHash = treeHash as TreeHash;
+
+      // Detect submodules
+      const submodules = getSubmodules();
+
+      // Build components array
+      const components: Array<{ path: string; treeHash: TreeHash }> = [
+        { path: '.', treeHash: mainTreeHash }
+      ];
+
+      // Add submodule hashes (sorted by path for determinism)
+      const sortedSubmodules = submodules.toSorted((a, b) => a.path.localeCompare(b.path));
+      for (const sub of sortedSubmodules) {
+        // Skip uninitialized submodules (status '-')
+        if (sub.status === '-') {
+          continue;
+        }
+
+        try {
+          const subResult = await getSubmoduleTreeHash(sub.path);
+          // Use the submodule's composite hash (handles nested submodules)
+          components.push({ path: sub.path, treeHash: subResult.hash });
+        } catch (error) {
+          // Log warning but continue with other submodules
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.warn(`⚠️  Failed to hash submodule ${sub.path}: ${errorMsg}`);
+        }
+      }
+
+      // If no submodules, return main hash directly (optimization)
+      if (components.length === 1) {
+        return {
+          hash: mainTreeHash,
+          components
+        };
+      }
+
+      // Compute composite hash from all components
+      const compositeHash = computeCompositeHash(components);
+
+      return {
+        hash: compositeHash,
+        components
+      };
 
     } finally {
       // Step 5: Always clean up temp index file
@@ -228,7 +274,10 @@ export async function getGitTreeHash(): Promise<TreeHash> {
 
     if (errorMessage.includes('not a git repository')) {
       // Not in git repo - return "unknown" (caller should skip caching)
-      return 'unknown' as TreeHash;
+      return {
+        hash: 'unknown' as TreeHash,
+        components: [{ path: '.', treeHash: 'unknown' as TreeHash }]
+      };
     }
 
     // Other git errors
@@ -265,9 +314,136 @@ export async function hasWorkingTreeChanges(): Promise<boolean> {
   try {
     const workingTreeHash = await getGitTreeHash();
     const headTreeHash = await getHeadTreeHash();
-    return workingTreeHash !== headTreeHash;
+    return workingTreeHash.hash !== headTreeHash;
   } catch {
     // If we can't determine, assume there are changes (safe default)
     return true;
   }
+}
+
+/**
+ * Submodule information from git submodule status
+ * @internal Exported for testing
+ */
+export interface SubmoduleInfo {
+  /** Submodule path relative to repo root */
+  path: string;
+  /** Status character (' '=clean, '+'=modified, '-'=uninitialized, 'U'=conflict) */
+  status: string;
+}
+
+/**
+ * Get list of git submodules in current repository
+ *
+ * Parses output of `git submodule status` to detect submodules.
+ * Returns empty array if no submodules or command fails.
+ *
+ * Output format: " abc123 libs/auth (heads/main)"
+ *                 ^^^^^^  ^^^^^^^^^ (description)
+ *                 hash    path
+ *
+ * @returns Array of submodule information
+ *
+ * @example
+ * const submodules = getSubmodules();
+ * // [{ path: 'libs/auth', status: ' ' }, { path: 'vendor/foo', status: '+' }]
+ *
+ * @internal Exported for testing
+ */
+export function getSubmodules(): SubmoduleInfo[] {
+  const result = executeGitCommand(['submodule', 'status'], {
+    ignoreErrors: true,
+    timeout: GIT_TIMEOUT
+  });
+
+  if (!result.success) {
+    return []; // No submodules or error
+  }
+
+  const submodules: SubmoduleInfo[] = [];
+
+  for (const line of result.stdout.split('\n')) {
+    if (!line.trim()) continue;
+
+    // Parse: " abc123 libs/auth (heads/main)"
+    // Group 1: commit hash, Group 2: path
+    const match = /^\s*[+-]?([a-f0-9]+)\s+(\S+)/.exec(line);
+    if (!match) continue;
+
+    submodules.push({
+      path: match[2],
+      status: line[0] || ' ' // First char is status
+    });
+  }
+
+  return submodules;
+}
+
+/**
+ * Calculate tree hash for a git submodule (recursive)
+ *
+ * Changes to submodule directory, calculates tree hash, then returns to original directory.
+ * This is recursive - if the submodule has its own submodules, they will be included.
+ *
+ * @param submodulePath - Path to submodule relative to current directory
+ * @returns Tree hash result for the submodule
+ *
+ * @example
+ * const result = await getSubmoduleTreeHash('libs/auth');
+ * // Returns TreeHashResult for libs/auth submodule
+ *
+ * @internal Exported for testing
+ */
+export async function getSubmoduleTreeHash(submodulePath: string): Promise<TreeHashResult> {
+  const originalCwd = process.cwd();
+  try {
+    process.chdir(submodulePath);
+    // Recursive! If submodule has submodules, they'll be included
+    return await getGitTreeHash();
+  } finally {
+    process.chdir(originalCwd);
+  }
+}
+
+/**
+ * Compute composite hash from multiple tree hash components
+ *
+ * Creates deterministic SHA-256 hash by:
+ * 1. Sorting components by path (lexicographic order)
+ * 2. Building string: "path:hash+path:hash+..."
+ * 3. Hashing with SHA-256
+ *
+ * This ensures same content always produces same hash regardless of input order.
+ *
+ * @param components - Array of path and tree hash pairs
+ * @returns Composite SHA-256 hash (64 hex characters)
+ *
+ * @example
+ * const components = [
+ *   { path: '.', treeHash: 'abc123' },
+ *   { path: 'libs/auth', treeHash: 'def456' }
+ * ];
+ * const composite = computeCompositeHash(components);
+ * // Returns SHA-256('.:abc123+libs/auth:def456')
+ *
+ * @internal Exported for testing
+ */
+export function computeCompositeHash(
+  components: Array<{ path: string; treeHash: TreeHash }>
+): TreeHash {
+  // Sort by path for deterministic ordering
+  const sorted = [...components].sort((a, b) =>
+    a.path.localeCompare(b.path)
+  );
+
+  // Build deterministic string: "path:hash+path:hash+..."
+  const parts = sorted.map(c => `${c.path}:${c.treeHash}`);
+  const combined = parts.join('+');
+
+  // SHA-256 hash for consistent length (64 hex chars)
+  const hash = createHash('sha256')
+    .update(combined)
+    .digest('hex');
+
+  return hash as TreeHash;
 }
