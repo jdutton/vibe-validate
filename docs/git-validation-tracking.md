@@ -82,6 +82,93 @@ echo "Tree hash: $TREE_HASH"
 
 ---
 
+### 1.5. Composite Tree Hashes for Submodules
+
+**Challenge**: Git submodule changes in working tree don't invalidate parent repo tree hash
+
+**Problem scenario**:
+```bash
+# Parent repo has submodule at libs/auth
+tree_hash = "abc123..."  # Parent repo working tree hash
+
+# Modify file in submodule (working tree change, not committed)
+echo "modified" >> libs/auth/src/file.ts
+
+tree_hash = "abc123..."  # SAME HASH! (Bug - should invalidate cache)
+```
+
+**Root cause**: `git write-tree` only hashes the parent repo's tracked files. It sees submodules as a single commit reference, not the working tree content inside them.
+
+**Solution**: Composite tree hashes (Issue #120)
+
+**Implementation**:
+1. Calculate tree hash for main repository (as before)
+2. Detect git submodules via `git submodule status`
+3. Recursively calculate tree hash for each submodule
+4. Combine all hashes into composite SHA-256 hash
+
+```typescript
+// Example: Repository with submodule
+components = [
+  { path: ".", treeHash: "abc123..." },        // Main repo
+  { path: "libs/auth", treeHash: "def456..." }  // Submodule
+];
+
+// Build deterministic string (sorted by path)
+combined = ".:abc123...+libs/auth:def456...";
+
+// SHA-256 hash for consistent length
+compositeHash = SHA256(combined);
+// Result: "789xyz..." (64 hex characters)
+```
+
+**Cache invalidation behavior**:
+```bash
+# Initial state
+main_hash = "abc123..."
+sub_hash = "def456..."
+composite = SHA256(".:abc123+libs/auth:def456") → "789xyz..."
+✓ Validation cached with composite: 789xyz
+
+# Modify submodule working tree
+echo "change" >> libs/auth/file.ts
+
+main_hash = "abc123..."  # Unchanged
+sub_hash = "999aaa..."   # CHANGED!
+composite = SHA256(".:abc123+libs/auth:999aaa") → "111bbb..."
+✗ Cache miss → re-run validation
+```
+
+**Benefits**:
+- ✅ Submodule working tree changes invalidate cache (fixes Issue #120)
+- ✅ Deterministic (same content = same composite hash)
+- ✅ Recursive (nested submodules supported)
+- ✅ No false positives (changing submodule always triggers re-run)
+- ✅ Backward compatible (single-repo projects work as before)
+
+**Implementation details** (vibe-validate):
+- `getSubmodules()`: Parses `git submodule status` output
+- `getSubmoduleTreeHash(path)`: Recursively calculates submodule tree hash
+- `computeCompositeHash(components)`: Deterministic SHA-256 combination
+- `TreeHashResult`: Returns `{ hash, components }` instead of raw string
+
+**Storage format**:
+```yaml
+# Git note format (backward compatible)
+treeHash: "789xyz..."  # Composite hash (or single repo hash if no submodules)
+repoTreeHashes:        # Optional - only present with submodules
+  ".": "abc123..."
+  "libs/auth": "def456..."
+runs:
+  - id: "run-1"
+    timestamp: "2025-10-21T14:30:15Z"
+    # ...
+```
+
+The `repoTreeHashes` field enables debugging (which component changed?) and future optimizations (partial re-validation).
+
+---
+
 ### 2. Validation Result Storage
 
 **Storage mechanism**: Git notes (native git metadata)

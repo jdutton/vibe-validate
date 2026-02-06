@@ -137,15 +137,42 @@ function cleanupStaleIndexes(gitDir: string): void {
  * 2. Copy current index to temporary index
  * 3. Mark untracked files with --intent-to-add in temp index
  * 4. Calculate tree hash with git write-tree using temp index
- * 5. Clean up temp index file
+ * 5. Detect and process git submodules (recursive)
+ * 6. Compute composite hash from main repo + submodule hashes
+ * 7. Clean up temp index file
  *
  * Why this is better than git stash create:
  * - git stash create: includes timestamps in commit → different hash each time
  * - git write-tree: content-based only → same content = same hash (deterministic)
  *
+ * Submodule Support (Issue #120):
+ * - Detects submodules via `git submodule status`
+ * - Recursively calculates tree hash for each submodule
+ * - Combines all hashes into composite SHA-256 hash
+ * - Working tree changes in submodules invalidate cache
+ *
  * CRITICAL: Uses GIT_INDEX_FILE to avoid corrupting real index during git commit hooks
  *
- * @returns Tree hash result with composite hash and components
+ * @returns TreeHashResult containing:
+ *   - hash: Composite SHA-256 hash (or single repo hash if no submodules)
+ *   - components: Array of { path, treeHash } for main repo and each submodule
+ *
+ * @example
+ * // Repository without submodules
+ * const result = await getGitTreeHash();
+ * // { hash: 'abc123...', components: [{ path: '.', treeHash: 'abc123...' }] }
+ *
+ * @example
+ * // Repository with submodules
+ * const result = await getGitTreeHash();
+ * // {
+ * //   hash: 'def456...',  // Composite SHA-256
+ * //   components: [
+ * //     { path: '.', treeHash: 'abc123...' },
+ * //     { path: 'libs/auth', treeHash: 'xyz789...' }
+ * //   ]
+ * // }
+ *
  * @throws Error if not in a git repository or git command fails
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 18 acceptable for main orchestration function (git operations + submodule handling + cleanup + error handling)
