@@ -32,6 +32,9 @@ export {
   hasHistoryForTree,
 } from './reader.js';
 
+// Cache lookup
+export { findCachedValidation } from './lookup.js';
+
 // Run cache reader
 export {
   listRunCacheEntries,

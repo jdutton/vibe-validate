@@ -119,8 +119,7 @@ describe('state command', () => {
   let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456';
   const mockTreeHashResult = {
-    hash: mockTreeHash,
-    components: [{ path: '.', treeHash: mockTreeHash }]
+    hash: mockTreeHash
   };
 
   beforeEach(() => {

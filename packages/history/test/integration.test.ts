@@ -18,7 +18,6 @@ import {
 vi.mock('@vibe-validate/git', () => ({
   getGitTreeHash: vi.fn(() => Promise.resolve({
     hash: 'abc123def456' as TreeHash,
-    components: [{ path: '.', treeHash: 'abc123def456' as TreeHash }]
   })),
   hasWorkingTreeChanges: vi.fn(() => Promise.resolve(false)),
   getCurrentBranch: vi.fn(() => 'main'),
@@ -57,7 +56,6 @@ describe('History Integration', () => {
     const treeHash = 'abc123def456' as TreeHash;
     const treeHashResult: TreeHashResult = {
       hash: treeHash,
-      components: [{ path: '.', treeHash }]
     };
 
     vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResult);
@@ -98,11 +96,9 @@ describe('History Integration', () => {
     const treeHashAfter = 'def456abc123' as TreeHash;
     const treeHashResultBefore: TreeHashResult = {
       hash: treeHashBefore,
-      components: [{ path: '.', treeHash: treeHashBefore }]
     };
     const treeHashResultAfter: TreeHashResult = {
       hash: treeHashAfter,
-      components: [{ path: '.', treeHash: treeHashAfter }]
     };
 
     // Mock tree hash changing

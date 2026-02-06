@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Fixed git notes with submodules to use structured TreeHashResult instead of composite hashes** (Issue #120, PR #121)
+  - **Problem**: Git notes operations failed when trying to store/retrieve composite SHA-256 hashes (64 chars) as git object references
+  - **Root cause**: Git expects object references to be valid SHA-1 hashes (40 hex chars), but composite hashes used SHA-256
+  - **Solution**: Store TreeHashResult structure in git notes instead of computing composite hash
+  - **Impact**: Git notes now work correctly with submodules - cache invalidation functions as designed
+  - **Storage**: Git notes contain both parent hash and submodule hashes as separate fields (not combined)
+
+### Changed
+
+- **BREAKING: TreeHashResult structure change** (v0.19.0+)
+  - **Before**: `{ hash: string, components: Array<{path, treeHash}> }`
+  - **After**: `{ hash: TreeHash, submoduleHashes?: Record<string, TreeHash> }`
+  - **Migration**: No action required - backward compatible (projects without submodules work unchanged)
+  - **Why**: Simpler structure aligns with git notes requirements (valid Git SHA-1 hashes only)
+
+### Migration Guide
+
+**For projects WITH submodules:**
+- Cache entries created with v0.18.x will not match v0.19.0+ entries (different structure)
+- First validation after upgrade will be a cache miss (fresh run)
+- Subsequent validations will use new cache format
+
+**For projects WITHOUT submodules:**
+- Fully backward compatible
+- Cache continues to work across upgrade
+- No action required
+
 ### Added
 
 - **`VV_TEMP_DIR` environment variable for customizable temp directory**

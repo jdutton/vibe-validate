@@ -42,8 +42,7 @@ describe('recordValidationHistory', () => {
   it('should record validation result to git notes', async () => {
     const treeHash = 'abc123def456' as TreeHash;
     const treeHashResult: TreeHashResult = {
-      hash: treeHash,
-      components: [{ path: '.', treeHash }]
+      hash: treeHash
     };
 
     const result: ValidationResult = {
@@ -79,8 +78,7 @@ describe('recordValidationHistory', () => {
     const { readHistoryNote } = await import('../src/reader.js');
     const treeHash = 'abc123def456' as TreeHash;
     const treeHashResult: TreeHashResult = {
-      hash: treeHash,
-      components: [{ path: '.', treeHash }]
+      hash: treeHash
     };
 
     // Mock existing note
@@ -119,8 +117,7 @@ describe('recordValidationHistory', () => {
     const { readHistoryNote } = await import('../src/reader.js');
     const treeHash = 'abc123def456' as TreeHash;
     const treeHashResult: TreeHashResult = {
-      hash: treeHash,
-      components: [{ path: '.', treeHash }]
+      hash: treeHash
     };
 
     // Mock existing note with 10 runs
@@ -162,8 +159,7 @@ describe('recordValidationHistory', () => {
     const { addNote } = await import('@vibe-validate/git');
     const treeHash = 'abc123def456' as TreeHash;
     const treeHashResult: TreeHashResult = {
-      hash: treeHash,
-      components: [{ path: '.', treeHash }]
+      hash: treeHash
     };
 
     vi.mocked(addNote).mockReturnValue(false);
@@ -180,14 +176,13 @@ describe('recordValidationHistory', () => {
     expect(recordResult.reason).toContain('Failed to add git note');
   });
 
-  it('should record repoTreeHashes when provided', async () => {
+  it('should record submodule hashes when provided', async () => {
     const { addNote } = await import('@vibe-validate/git');
     const treeHashResult: TreeHashResult = {
       hash: 'composite-abc123' as TreeHash,
-      components: [
-        { path: '.', treeHash: 'main-hash-abc' as TreeHash },
-        { path: 'libs/auth', treeHash: 'sub-hash-def' as TreeHash }
-      ]
+      submoduleHashes: {
+        'libs/auth': 'sub-hash-def' as TreeHash
+      }
     };
 
     const result: ValidationResult = {
@@ -200,15 +195,13 @@ describe('recordValidationHistory', () => {
 
     await recordValidationHistory(treeHashResult, result);
 
-    // Verify addNote was called with YAML containing repoTreeHashes
+    // Verify addNote was called with treeHash
     expect(addNote).toHaveBeenCalled();
     const callArgs = vi.mocked(addNote).mock.calls[0];
     const yamlContent = callArgs[2];
 
-    // Parse YAML to verify repoTreeHashes is present
-    expect(yamlContent).toContain('repoTreeHashes:');
-    expect(yamlContent).toContain('.: main-hash-abc');
-    expect(yamlContent).toContain('libs/auth: sub-hash-def');
+    // Parse YAML to verify treeHash is present
+    expect(yamlContent).toContain('treeHash: composite-abc123');
   });
 });
 
@@ -217,8 +210,7 @@ describe('checkWorktreeStability', () => {
     const { getGitTreeHash } = await import('@vibe-validate/git');
     const treeHash = 'abc123def456' as TreeHash;
     const treeHashResult: TreeHashResult = {
-      hash: treeHash,
-      components: [{ path: '.', treeHash }]
+      hash: treeHash
     };
 
     vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResult);
@@ -235,8 +227,7 @@ describe('checkWorktreeStability', () => {
     const treeHashBefore = 'abc123def456' as TreeHash;
     const treeHashAfter = 'def456abc123' as TreeHash;
     const treeHashResultAfter: TreeHashResult = {
-      hash: treeHashAfter,
-      components: [{ path: '.', treeHash: treeHashAfter }]
+      hash: treeHashAfter
     };
 
     vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResultAfter);
