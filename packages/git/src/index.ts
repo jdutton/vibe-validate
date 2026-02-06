@@ -142,9 +142,14 @@ export type { CleanupResult as BranchCleanupResult } from './branch-cleanup.js';
 export {
   initTestRepo,
   configTestUser,
+  configTestSubmoduleProtocol,
   stageTestFiles,
   commitTestChanges,
   getTestTreeHash,
+  getTestCommitHash,
   readTestNote,
-  setupTestRepoWithCommit
+  setupTestRepoWithCommit,
+  registerTestSubmodule,
+  initTestSubmodules,
+  addTestSubmodule
 } from './test-helpers.js';

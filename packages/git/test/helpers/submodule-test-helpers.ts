@@ -1,44 +1,53 @@
 // packages/git/test/helpers/submodule-test-helpers.ts
-/* eslint-disable local/no-child-process-execSync, local/no-fs-mkdirSync, local/no-git-commands-direct -- Test setup requires direct git commands and fs operations */
-import { execSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { mkdirSyncReal } from '@vibe-validate/utils';
+
+import {
+  commitTestChanges,
+  configTestSubmoduleProtocol,
+  configTestUser,
+  getTestCommitHash,
+  initTestRepo,
+  initTestSubmodules,
+  registerTestSubmodule,
+  stageTestFiles,
+} from '../../src/test-helpers.js';
 
 /**
  * Creates a git repository with initial commit
  */
 export function createGitRepo(repoPath: string): void {
-  mkdirSync(repoPath, { recursive: true });
-  execSync('git init', { cwd: repoPath, stdio: 'ignore' });
-  execSync('git config user.email "test@example.com"', { cwd: repoPath, stdio: 'ignore' });
-  execSync('git config user.name "Test"', { cwd: repoPath, stdio: 'ignore' });
-  execSync('git config protocol.file.allow always', { cwd: repoPath, stdio: 'ignore' });
+  mkdirSyncReal(repoPath, { recursive: true });
+  initTestRepo(repoPath);
+  configTestUser(repoPath, 'test@example.com', 'Test');
+  configTestSubmoduleProtocol(repoPath);
   writeFileSync(join(repoPath, 'README.md'), '# Test');
-  execSync('git add .', { cwd: repoPath, stdio: 'ignore' });
-  execSync('git commit -m "initial commit"', { cwd: repoPath, stdio: 'ignore' });
+  stageTestFiles(repoPath);
+  commitTestChanges(repoPath, 'initial commit');
 }
 
 /**
  * Creates a submodule git repository
  */
 export function createSubmoduleRepo(submodulePath: string, content = 'content'): string {
-  mkdirSync(submodulePath, { recursive: true });
-  execSync('git init', { cwd: submodulePath, stdio: 'ignore' });
-  execSync('git config user.email "test@example.com"', { cwd: submodulePath, stdio: 'ignore' });
-  execSync('git config user.name "Test"', { cwd: submodulePath, stdio: 'ignore' });
+  mkdirSyncReal(submodulePath, { recursive: true });
+  initTestRepo(submodulePath);
+  configTestUser(submodulePath, 'test@example.com', 'Test');
   writeFileSync(join(submodulePath, 'file.txt'), content);
-  execSync('git add .', { cwd: submodulePath, stdio: 'ignore' });
-  execSync('git commit -m "init"', { cwd: submodulePath, stdio: 'ignore' });
+  stageTestFiles(submodulePath);
+  commitTestChanges(submodulePath, 'init');
 
   // Return commit hash
-  return execSync('git rev-parse HEAD', { cwd: submodulePath, encoding: 'utf-8' }).trim();
+  return getTestCommitHash(submodulePath);
 }
 
 /**
  * Registers a submodule in git index
  */
 export function registerSubmodule(commitHash: string, path: string): void {
-  execSync(`git update-index --add --cacheinfo 160000,${commitHash},${path}`, { stdio: 'ignore' });
+  registerTestSubmodule(process.cwd(), commitHash, path);
 }
 
 /**
@@ -55,7 +64,7 @@ export function createGitmodulesFile(repoPath: string, submodules: Array<{ path:
  * Initializes git submodules (registers in .git/config)
  */
 export function initSubmodules(): void {
-  execSync('git submodule init', { stdio: 'ignore' });
+  initTestSubmodules(process.cwd());
 }
 
 /**

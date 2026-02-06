@@ -5,7 +5,6 @@
  * to ensure validation state caching works correctly across runs.
  */
 
-import { execSync } from 'node:child_process';
 import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync, type Stats, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
@@ -15,6 +14,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import * as gitExecutor from '../src/git-executor.js';
 import type { GitExecutionOptions } from '../src/git-executor.js';
+import {
+  addTestSubmodule,
+  commitTestChanges,
+  configTestUser,
+  initTestRepo,
+  stageTestFiles,
+} from '../src/test-helpers.js';
 import { getGitTreeHash } from '../src/tree-hash.js';
 
 // Mock git-executor (use importOriginal for integration tests to call through)
@@ -609,8 +615,6 @@ describe('getGitTreeHash', () => {
  * NOTE: These tests are placed after unit tests and use vi.doMock/doUnmock to
  * temporarily restore real implementations.
  */
-/* eslint-disable local/no-child-process-execSync, local/no-git-commands-direct -- Integration tests need real git commands for test setup */
-
 /**
  * Helper: Create a submodule repository outside the main test directory
  * @returns The submodule directory path
@@ -623,12 +627,11 @@ function setupExternalSubmodule(testDir: string, submoduleName: string, content 
     // Ignore if directory doesn't exist
   }
   mkdirSyncReal(subDir, { recursive: true });
-  execSync('git init', { cwd: subDir, stdio: 'ignore' });
-  execSync('git config user.email "test@example.com"', { cwd: subDir, stdio: 'ignore' });
-  execSync('git config user.name "Test"', { cwd: subDir, stdio: 'ignore' });
+  initTestRepo(subDir);
+  configTestUser(subDir);
   writeFileSync(join(subDir, 'sub.txt'), content);
-  execSync('git add .', { cwd: subDir, stdio: 'ignore' });
-  execSync('git commit -m "init"', { cwd: subDir, stdio: 'ignore' });
+  stageTestFiles(subDir);
+  commitTestChanges(subDir, 'init');
   return subDir;
 }
 
@@ -639,14 +642,14 @@ function setupExternalSubmodule(testDir: string, submoduleName: string, content 
 function setupMainRepoWithSubmodule(testDir: string, submoduleName: string, submoduleContent = 'sub'): string {
   // Create main repo
   writeFileSync('main.txt', 'main');
-  execSync('git add .', { stdio: 'ignore' });
-  execSync('git commit -m "init"', { stdio: 'ignore' });
+  stageTestFiles(process.cwd());
+  commitTestChanges(process.cwd(), 'init');
 
   // Create external submodule and add to main repo
   const subDir = setupExternalSubmodule(testDir, submoduleName, submoduleContent);
-  execSync(`git -c protocol.file.allow=always submodule add "${subDir}" libs/auth`, { stdio: 'ignore' });
-  execSync('git add .', { stdio: 'ignore' });
-  execSync('git commit -m "add submodule"', { stdio: 'ignore' });
+  addTestSubmodule(process.cwd(), subDir, 'libs/auth');
+  stageTestFiles(process.cwd());
+  commitTestChanges(process.cwd(), 'add submodule');
 
   return subDir;
 }
@@ -689,9 +692,8 @@ describe('getGitTreeHash with submodules (integration)', () => {
     mkdirSyncReal(testDir, { recursive: true });
     process.chdir(testDir);
 
-    execSync('git init', { stdio: 'ignore' });
-    execSync('git config user.email "test@example.com"', { stdio: 'ignore' });
-    execSync('git config user.name "Test"', { stdio: 'ignore' });
+    initTestRepo(testDir);
+    configTestUser(testDir);
   });
 
   afterEach(async () => {
@@ -712,8 +714,8 @@ describe('getGitTreeHash with submodules (integration)', () => {
     const { getGitTreeHash: realGetGitTreeHash } = await vi.importActual('../src/tree-hash.js');
 
     fs.writeFileSync('file.txt', 'content');
-    execSync('git add .', { stdio: 'ignore' });
-    execSync('git commit -m "init"', { stdio: 'ignore' });
+    stageTestFiles(process.cwd());
+    commitTestChanges(process.cwd(), 'init');
 
     const result = await realGetGitTreeHash();
 
@@ -763,4 +765,3 @@ describe('getGitTreeHash with submodules (integration)', () => {
     expect(hash1.hash).not.toBe(hash2.hash);
   });
 });
-/* eslint-enable local/no-child-process-execSync, local/no-git-commands-direct */
