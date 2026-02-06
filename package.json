@@ -43,7 +43,7 @@
     "test:system": "turbo run test -- --config vitest.config.system.ts",
     "test:system:watch": "vitest --config vitest.config.system.ts",
     "run": "node packages/cli/dist/bin/vv run",
-    "lint": "eslint --max-warnings=0 \"packages/**/*.ts\"",
+    "lint": "eslint --cache --max-warnings=0 \"packages/**/*.ts\"",
     "typecheck": "turbo run typecheck",
     "duplication-check": "tsx packages/dev-tools/src/duplication-check.ts",
     "jscpd-update-baseline": "tsx packages/dev-tools/src/jscpd-update-baseline.ts",
