@@ -62,6 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Zero configuration required**: Automatically detects and optimizes both tools
   - **Intelligent fallbacks**: Handles edge cases gracefully (>100 files, long paths, spaces in filenames)
 
+- **⚡ 10x faster ESLint with caching enabled** (Performance)
+  - Added `--cache` flag to ESLint command
+  - Cold run: ~18s (unchanged)
+  - Cached run: ~1.8s (10x faster)
+  - Validation workflow: ESLint completes in ~2.5s vs ~18s
+  - `.eslintcache` automatically managed and gitignored
+
 ### Changed
 
 - **watch-pr: Default timeout increased from 30 min to 10 min** (Breaking Change)
@@ -73,6 +80,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Stripped extractor metadata (patterns, detection reasons)
   - Saves ~30-50 tokens per failed check
   - Keeps metadata.confidence, metadata.completeness, metadata.issues for extraction confidence
+
+- **Improved cache messaging to prevent LLM suspicion** (UX Fix, Issue #122)
+  - **Problem**: Since v0.19.0-rc.1, users (especially LLMs) reported "cache is wrong" due to defensive/suspicious messaging
+  - **Cached results now displayed authoritatively**: "❌ Validation failed for this code" (not "❌ Cached result: ...")
+  - **Removed defensive language**: No more "Cached result:", "(unchanged since validation)", or suggestions to use `--force`
+  - **Flakiness detection toned down**: Changed from "⚠️ Flaky validation detected" to neutral "Note: 2 validation runs exist..."
+  - **Impact**: LLMs stop doubting cache validity, users trust results, cache becomes invisible implementation detail
+  - Cache mechanism works correctly - only messaging changed to prevent misunderstanding
 
 - **⚡ Flattened temp directory structure to minimize AI assistant permission prompts**
   - **Previously**: `/tmp/vibe-validate/runs/2026-02-05/abc123-14-31-10/stdout.log` (new directory per run → new prompt)
