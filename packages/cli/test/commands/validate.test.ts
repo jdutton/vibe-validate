@@ -50,7 +50,7 @@ vi.mock('@vibe-validate/history', async () => {
   const actual = await vi.importActual<typeof history>('@vibe-validate/history');
   return {
     ...actual,
-    readHistoryNote: vi.fn(),
+    findCachedValidation: vi.fn(),
     checkWorktreeStability: vi.fn(),
     recordValidationHistory: vi.fn(),
     checkHistoryHealth: vi.fn(),
@@ -291,7 +291,7 @@ describe('validate command', () => {
     vi.mocked(configLoader.loadConfig).mockReset();
     vi.mocked(configLoader.loadConfigWithDir).mockReset();
     vi.mocked(git.getGitTreeHash).mockReset();
-    vi.mocked(history.readHistoryNote).mockReset();
+    vi.mocked(history.findCachedValidation).mockReset();
     vi.mocked(history.checkWorktreeStability).mockReset();
     vi.mocked(history.recordValidationHistory).mockReset();
     vi.mocked(history.checkHistoryHealth).mockReset();
@@ -303,8 +303,7 @@ describe('validate command', () => {
 
     // Default getGitTreeHash to return a hash
     vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
+      hash: 'abc123def456'
     });
 
     // Default lock mocks - lock acquired successfully
@@ -602,14 +601,12 @@ describe('validate command', () => {
     it('should not run validation when --check flag is used', async () => {
       // Mock git tree hash
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with passing validation
-      vi.mocked(history.readHistoryNote).mockResolvedValue(
-        createMockHistoryNote({ timestamp: new Date().toISOString(), duration: 1000 })
-      );
+      // Mock findCachedValidation with passing validation
+      const mockRun = createMockHistoryNote({ timestamp: new Date().toISOString(), duration: 1000 }).runs[0];
+      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
 
       validateCommand(env.program);
 
@@ -628,12 +625,11 @@ describe('validate command', () => {
     it('should exit with code 2 when no validation history exists', async () => {
       // Mock git tree hash
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with no history
-      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+      // Mock findCachedValidation with no history
+      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
 
       validateCommand(env.program);
 
@@ -646,12 +642,12 @@ describe('validate command', () => {
     it('should output YAML when --check and --yaml flags are used together', async () => {
       // Mock git tree hash
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with passing validation
-      vi.mocked(history.readHistoryNote).mockResolvedValue(createMockHistoryNote());
+      // Mock findCachedValidation with passing validation
+      const mockRun = createMockHistoryNote().runs[0];
+      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
 
       // Spy on process.stdout.write to capture YAML output
       vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -733,12 +729,11 @@ describe('validate command', () => {
     it('should display cached validation with tree hash and phase/step counts in human-readable mode', async () => {
       setupMockConfig();
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with passing validation (cached result with phases)
-      const mockHistoryNote = createMockHistoryNote({
+      // Mock findCachedValidation with passing validation (cached result with phases)
+      const mockRun = createMockHistoryNote({
         phases: [
           {
             name: 'Pre-Qualification',
@@ -758,8 +753,8 @@ describe('validate command', () => {
             ]
           }
         ]
-      });
-      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+      }).runs[0];
+      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
 
       validateCommand(env.program);
 
@@ -768,7 +763,7 @@ describe('validate command', () => {
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+      expect(history.findCachedValidation).toHaveBeenCalled();
 
       // Main assertion: runValidation should NOT be called when cache hits
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -799,12 +794,11 @@ describe('validate command', () => {
         }
       }));
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with failing validation (cached failure)
-      const mockHistoryNote = createMockHistoryNote({
+      // Mock findCachedValidation with failing validation (cached failure)
+      const mockRun = createMockHistoryNote({
         passed: false,
         failedStep: 'Test Step',
         phases: [
@@ -817,8 +811,8 @@ describe('validate command', () => {
             ]
           }
         ]
-      });
-      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+      }).runs[0];
+      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
 
       validateCommand(env.program);
 
@@ -826,7 +820,7 @@ describe('validate command', () => {
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+      expect(history.findCachedValidation).toHaveBeenCalled();
 
       // runValidation should NOT be called when cache hits (even for failures)
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -846,7 +840,7 @@ describe('validate command', () => {
       );
     });
 
-    it('should warn about flakiness when multiple runs have different outcomes', async () => {
+    it('should display cached validation result', async () => {
       setupMockConfig(createMockConfig({
         validation: {
           phases: [{
@@ -857,26 +851,21 @@ describe('validate command', () => {
         }
       }));
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with multiple runs - some passed, some failed (flakiness)
-      vi.mocked(history.readHistoryNote).mockResolvedValue(createFlakyHistoryNote());
+      // Mock findCachedValidation with passing run
+      const passedRun = createFlakyHistoryNote().runs[2]; // Most recent run (run-3, passed)
+      vi.mocked(history.findCachedValidation).mockResolvedValue(passedRun);
 
-      // Spy on console.log (flakiness note is now logged, not warned)
+      // Spy on console.log
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       validateCommand(env.program);
 
       await env.program.parseAsync(['validate'], { from: 'user' });
 
-      // Verify flakiness note was shown (now a single gray note, not a warning)
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Note: 3 validation runs exist for this code')
-      );
-
-      // Should use most recent run (run-3, which passed)
+      // Should display passed validation
       expectConsoleLog('Validation passed for this code');
 
       logSpy.mockRestore();
@@ -886,13 +875,12 @@ describe('validate command', () => {
       setupMockConfig();
       setupStdoutSpy();
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with passing validation (cached result)
-      const mockHistoryNote = createMockHistoryNote();
-      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+      // Mock findCachedValidation with passing validation (cached result)
+      const mockRun = createMockHistoryNote().runs[0];
+      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
 
       validateCommand(env.program);
 
@@ -901,7 +889,7 @@ describe('validate command', () => {
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+      expect(history.findCachedValidation).toHaveBeenCalled();
 
       // Main assertion: runValidation should NOT be called when cache hits
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -927,16 +915,15 @@ describe('validate command', () => {
       }));
       setupStdoutSpy();
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456',
-      components: [{ path: '.', treeHash: 'abc123def456' }]
-    });
+        hash: 'abc123def456'
+      });
 
-      // Mock git notes with failing validation (cached failure)
-      const mockHistoryNote = createMockHistoryNote({
+      // Mock findCachedValidation with failing validation (cached failure)
+      const mockRun = createMockHistoryNote({
         passed: false,
         failedStep: 'Test Step'
-      });
-      vi.mocked(history.readHistoryNote).mockResolvedValue(mockHistoryNote);
+      }).runs[0];
+      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
 
       validateCommand(env.program);
 
@@ -944,7 +931,7 @@ describe('validate command', () => {
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
+      expect(history.findCachedValidation).toHaveBeenCalled();
 
       // runValidation should NOT be called when cache hits
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -1051,7 +1038,9 @@ describe('validate command', () => {
       const treeHashAfter = 'def456abc123';
 
       // Mock git tree hash
-      vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHashBefore);
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+        hash: treeHashBefore,
+      });
 
       // Mock worktree stability - unstable (changed during validation)
       vi.mocked(history.checkWorktreeStability).mockResolvedValue({
@@ -1099,7 +1088,9 @@ describe('validate command', () => {
       const treeHash = 'abc123def456';
 
       // Mock git tree hash
-      vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHash);
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+        hash: treeHash,
+      });
 
       // Mock worktree stability - stable (unchanged during validation)
       vi.mocked(history.checkWorktreeStability).mockResolvedValue({

@@ -56,7 +56,7 @@ pnpm test:coverage      # vitest run --coverage (root-level)
 pnpm test:watch         # vitest (interactive watch mode)
 
 # Code quality
-pnpm lint               # eslint (monorepo-wide)
+pnpm lint               # eslint (monorepo-wide, cached ~1.8s, cold ~18s)
 pnpm typecheck          # turbo run typecheck (per-package, parallel)
 
 # Development
@@ -84,7 +84,7 @@ This project uses **Turborepo v2.7.3** for **79x faster cached builds** (5.3s �
 - `pnpm dev` → `turbo run dev` (persistent)
 
 **Direct commands** (not through Turbo):
-- `pnpm lint` → `eslint` (monorepo-wide command)
+- `pnpm lint` → `eslint` (monorepo-wide command, uses ESLint's `--cache` for 10x speedup)
 - `pnpm test:coverage` → `vitest run --coverage` (root-level)
 - All `vv` commands (validate, state, history, etc.)
 

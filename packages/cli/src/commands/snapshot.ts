@@ -68,6 +68,15 @@ async function executeSnapshotCommand(options: { verbose?: boolean }, programNam
   const treeHash = treeHashResult.hash;
   console.log(chalk.green(`✓ Snapshot: ${treeHash}`));
 
+  // Show submodule states if present
+  if (treeHashResult.submoduleHashes) {
+    const submoduleCount = Object.keys(treeHashResult.submoduleHashes).length;
+    console.log(chalk.gray(`  Submodules tracked: ${submoduleCount}`));
+    for (const [path, hash] of Object.entries(treeHashResult.submoduleHashes)) {
+      console.log(chalk.gray(`  └─ ${path}: ${hash.slice(0, 12)}...`));
+    }
+  }
+
   // Check if snapshot has validation history
   await displayValidationHistory(treeHash, programName);
 

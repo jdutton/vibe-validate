@@ -10,6 +10,9 @@ build/
 # Turborepo cache
 .turbo/
 
+# ESLint cache
+.eslintcache
+
 # Testing
 coverage/
 .vitest/
