@@ -598,7 +598,7 @@ function hasCheckChanged(
   prev: { status: string; conclusion?: string } | undefined,
   current: { status: string; conclusion?: string | null }
 ): boolean {
-  return !prev || prev.status !== current.status || prev.conclusion !== current.conclusion;
+  return prev?.status !== current.status || prev?.conclusion !== current.conclusion;
 }
 
 /**
