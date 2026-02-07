@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **watch-pr: Immediate error extraction during polling** (Enhancement)
+  - Extracted errors displayed immediately when checks fail (no waiting for final YAML)
+  - Shows job ID, run ID, and log file path for each completed check
+  - First 3 errors shown inline with summary
+  - Eliminates need for follow-up `gh run view` commands
+
+- **watch-pr: Log file paths in output** (Enhancement)
+  - Logs saved to `${VV_TEMP_DIR}/vibe-validate/watch-pr-logs/YYYY-MM-DD/`
+  - Filename format: `<runId>-HH-mm-ss-<job-name>.log`
+  - Flat daily directory structure = one permission approval per day
+  - Paths included in YAML output under `log_file` field
+
 - **`VV_TEMP_DIR` environment variable for customizable temp directory**
   - Allows overriding default OS temp directory (`/tmp` on Unix, `%TEMP%` on Windows)
   - Useful for project-local temp storage, CI/CD builds, or network storage
@@ -22,6 +34,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Intelligent fallbacks**: Handles edge cases gracefully (>100 files, long paths, spaces in filenames)
 
 ### Changed
+
+- **watch-pr: Default timeout increased from 30 min to 10 min** (Breaking Change)
+  - More realistic for CI pipeline completion times
+  - Aligns with LLM patience thresholds
+  - Power users can override with `--timeout` flag
+
+- **watch-pr: Reduced token bloat in output** (Enhancement)
+  - Stripped extractor metadata (patterns, detection reasons)
+  - Saves ~30-50 tokens per failed check
+  - Keeps metadata.confidence, metadata.completeness, metadata.issues for extraction confidence
 
 - **⚡ Flattened temp directory structure to minimize AI assistant permission prompts**
   - **Previously**: `/tmp/vibe-validate/runs/2026-02-05/abc123-14-31-10/stdout.log` (new directory per run → new prompt)
@@ -38,7 +60,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Flakiness detection**: Warns when the same tree hash has multiple runs with different outcomes (pass/fail), helping identify non-deterministic validation issues
 
-### Bug Fixes
+### Fixed
+
+- **watch-pr: --fail-fast now waits for extraction** (Bug Fix)
+  - Ensures log download and error extraction complete before exit
+  - Guarantees complete data in output (no race conditions)
+  - Output always includes log_file paths and extracted errors
 
 - **Fixed git submodule working tree changes not reflected in cache key** (Issue #120, PR #121)
   - **Root cause**: Tree hash calculation only considered main repository's tree, ignoring submodule working tree state

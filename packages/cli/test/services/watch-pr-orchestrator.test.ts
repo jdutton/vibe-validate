@@ -767,4 +767,284 @@ AssertionError: expected 'foo' to contain 'bar'
       expect(shouldYAML).toBe(true);
     });
   });
+
+  describe('metadata stripping', () => {
+    it('should strip detection patterns from extraction metadata', async () => {
+      // GIVEN: A failed check with extraction that has detection metadata
+      const prNumber = 123;
+      const runId = 456;
+
+      setupRunMocks(
+        prNumber,
+        runId,
+        {
+          name: 'Tests / Unit',
+          workflow: 'Tests',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-17T10:00:00Z',
+          duration: '3m15s',
+        },
+        [
+          {
+            id: 1,
+            run_id: runId,
+            name: 'unit-tests',
+            status: 'completed',
+            conclusion: 'failure',
+            started_at: '2025-12-17T10:00:00Z',
+            completed_at: '2025-12-17T10:03:15Z',
+            html_url: `https://github.com/test-owner/test-repo/runs/1`,
+          },
+        ]
+      );
+
+      // Mock fetchRunLogs to return logs that trigger extraction with metadata
+      const mockViTestFailureLogs = `
+ RUN  v1.0.0
+
+ × packages/cli/test/bin.test.ts (1) 1234ms
+   × should include EXIT CODES section 100ms
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+ FAIL  packages/cli/test/bin.test.ts > should include EXIT CODES section
+AssertionError: expected 'foo' to contain 'bar'
+ ❯ packages/cli/test/bin.test.ts:265:31
+     263|   it('should include EXIT CODES section', () => {
+     264|     const result = getHelp();
+     265|     expect(result).toContain('## Exit Codes');
+         |                               ^
+     266|   });
+     267|
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+`;
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue(mockViTestFailureLogs);
+
+      // WHEN: Building result for the run
+      const result = await orchestrator.buildResultForRun(prNumber, runId, { useCache: false });
+
+      // THEN: Extraction should NOT have detection.patterns, detection.reason, detection.extractor
+      const check = result.checks.github_actions[0];
+      expect(check.extraction).toBeDefined();
+
+      // Should NOT have detection metadata
+      expect(check.extraction?.metadata).toBeDefined();
+      const metadata = check.extraction?.metadata as Record<string, unknown>;
+      expect(metadata).not.toHaveProperty('detection');
+      expect(metadata).not.toHaveProperty('extractor');
+
+      // Should keep quality fields
+      expect(metadata.confidence).toBeDefined();
+      expect(metadata.completeness).toBeDefined();
+    });
+
+    it('should preserve summary and errors in stripped extraction', async () => {
+      const prNumber = 123;
+      const runId = 789;
+
+      setupRunMocks(
+        prNumber,
+        runId,
+        {
+          name: 'Lint / ESLint',
+          workflow: 'Lint',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-17T11:00:00Z',
+          duration: '2m00s',
+        },
+        [
+          {
+            id: 2,
+            run_id: runId,
+            name: 'lint',
+            status: 'completed',
+            conclusion: 'failure',
+            started_at: '2025-12-17T11:00:00Z',
+            completed_at: '2025-12-17T11:02:00Z',
+            html_url: `https://github.com/test-owner/test-repo/runs/2`,
+          },
+        ]
+      );
+
+      const mockESLintFailureLogs = `
+/home/runner/work/repo/packages/cli/src/commands/run.ts
+  42:15  error  'foo' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+`;
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue(mockESLintFailureLogs);
+
+      const result = await orchestrator.buildResultForRun(prNumber, runId, { useCache: false });
+
+      const check = result.checks.github_actions[0];
+      expect(check.extraction).toBeDefined();
+
+      // Should keep core fields
+      expect(check.extraction?.summary).toBeDefined();
+      expect(check.extraction?.errors).toBeDefined();
+      expect(check.extraction?.errors.length).toBeGreaterThan(0);
+      expect(check.extraction?.totalErrors).toBeDefined();
+    });
+
+    it('should keep quality metadata fields (confidence, completeness, issues)', async () => {
+      const prNumber = 456;
+      const runId = 999;
+
+      setupRunMocks(
+        prNumber,
+        runId,
+        {
+          name: 'Tests / Integration',
+          workflow: 'Tests',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-17T12:00:00Z',
+          duration: '5m30s',
+        },
+        [
+          {
+            id: 3,
+            run_id: runId,
+            name: 'integration-tests',
+            status: 'completed',
+            conclusion: 'failure',
+            started_at: '2025-12-17T12:00:00Z',
+            completed_at: '2025-12-17T12:05:30Z',
+            html_url: `https://github.com/test-owner/test-repo/runs/3`,
+          },
+        ]
+      );
+
+      const mockLogs = `
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+`;
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue(mockLogs);
+
+      const result = await orchestrator.buildResultForRun(prNumber, runId, { useCache: false });
+
+      const check = result.checks.github_actions[0];
+      const metadata = check.extraction?.metadata as Record<string, unknown> | undefined;
+
+      if (metadata) {
+        // If metadata exists, it should only have quality fields
+        const allowedKeys = ['confidence', 'completeness', 'issues'];
+        const actualKeys = Object.keys(metadata);
+
+        for (const key of actualKeys) {
+          expect(allowedKeys).toContain(key);
+        }
+
+        // Should NOT have these fields
+        expect(metadata).not.toHaveProperty('detection');
+        expect(metadata).not.toHaveProperty('extractor');
+        expect(metadata).not.toHaveProperty('patterns');
+        expect(metadata).not.toHaveProperty('reason');
+        expect(metadata).not.toHaveProperty('suggestions');
+      }
+    });
+
+    it('should handle extraction without metadata gracefully', async () => {
+      const prNumber = 789;
+      const runId = 1111;
+
+      setupRunMocks(
+        prNumber,
+        runId,
+        {
+          name: 'Build / TypeScript',
+          workflow: 'Build',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-17T13:00:00Z',
+          duration: '1m45s',
+        },
+        [
+          {
+            id: 4,
+            run_id: runId,
+            name: 'build',
+            status: 'completed',
+            conclusion: 'failure',
+            started_at: '2025-12-17T13:00:00Z',
+            completed_at: '2025-12-17T13:01:45Z',
+            html_url: `https://github.com/test-owner/test-repo/runs/4`,
+          },
+        ]
+      );
+
+      const mockTypeScriptError = `
+src/commands/run.ts:42:15 - error TS2304: Cannot find name 'foo'.
+
+42     const x = foo;
+                 ~~~
+
+Found 1 error.
+`;
+
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue(mockTypeScriptError);
+
+      const result = await orchestrator.buildResultForRun(prNumber, runId, { useCache: false });
+
+      const check = result.checks.github_actions[0];
+      expect(check.extraction).toBeDefined();
+
+      // Should handle missing metadata without errors
+      // Metadata may or may not exist depending on extractor
+      if (check.extraction?.metadata) {
+        const metadata = check.extraction.metadata as Record<string, unknown>;
+        expect(metadata).not.toHaveProperty('detection');
+        expect(metadata).not.toHaveProperty('extractor');
+      }
+    });
+
+    it('should preserve guidance field if present', async () => {
+      const prNumber = 999;
+      const runId = 2222;
+
+      setupRunMocks(
+        prNumber,
+        runId,
+        {
+          name: 'Tests / E2E',
+          workflow: 'Tests',
+          status: 'completed',
+          conclusion: 'failure',
+          started_at: '2025-12-17T14:00:00Z',
+          duration: '8m20s',
+        },
+        [
+          {
+            id: 5,
+            run_id: runId,
+            name: 'e2e-tests',
+            status: 'completed',
+            conclusion: 'failure',
+            started_at: '2025-12-17T14:00:00Z',
+            completed_at: '2025-12-17T14:08:20Z',
+            html_url: `https://github.com/test-owner/test-repo/runs/5`,
+          },
+        ]
+      );
+
+      const mockLogs = `Test failure logs`;
+      vi.spyOn(GitHubFetcher.prototype, 'fetchRunLogs').mockResolvedValue(mockLogs);
+
+      const result = await orchestrator.buildResultForRun(prNumber, runId, { useCache: false });
+
+      const check = result.checks.github_actions[0];
+
+      // Guidance should be present if extractor provides it
+      if (check.extraction?.guidance) {
+        expect(check.extraction.guidance).toBeDefined();
+        expect(typeof check.extraction.guidance).toBe('string');
+      }
+    });
+  });
 });

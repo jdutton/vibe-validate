@@ -24,6 +24,7 @@ import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
+import { ensureDir, getTempDir, getTempFilename } from '@vibe-validate/core';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import { normalizedTmpdir } from '@vibe-validate/utils';
 
@@ -132,13 +133,28 @@ export class CacheManager {
   /**
    * Save log file (immutable)
    *
+   * Saves to both cache directory (for backward compatibility) and VV_TEMP_DIR (new location).
+   *
    * @param runId - GitHub run ID
    * @param logs - Log content
-   * @returns Path to saved log file
+   * @param jobName - Optional job name for VV_TEMP_DIR filename
+   * @returns Path to saved log file (VV_TEMP_DIR if jobName provided, otherwise cache)
    */
-  async saveLog(runId: number, logs: string): Promise<string> {
+  async saveLog(runId: number, logs: string, jobName?: string): Promise<string> {
+    // Save to cache directory (old location, for backward compatibility)
     const logPath = path.join(this.logsDir, `${runId}.log`);
     await this.atomicWrite(logPath, logs);
+
+    // Also save to VV_TEMP_DIR if jobName provided (new location)
+    if (jobName) {
+      const tempDir = getTempDir('watch-pr-logs');
+      await ensureDir(tempDir);
+      const tempFilename = getTempFilename(String(runId), 'log', jobName);
+      const tempPath = path.join(tempDir, tempFilename);
+      await this.atomicWrite(tempPath, logs);
+      return tempPath;
+    }
+
     return logPath;
   }
 

@@ -1,3 +1,4 @@
+import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import { getCurrentBranch, getCurrentPR, getRemoteUrl, listPullRequests } from '@vibe-validate/git';
 import type { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
@@ -27,9 +28,9 @@ export function registerWatchPRCommand(program: Command): void {
     .option('--repo <owner/repo>', 'Repository (default: auto-detect from git remote)')
     .option('--history', 'Show historical runs for the PR with pass/fail summary')
     .option('--run-id <id>', 'Watch specific run ID instead of latest (useful for testing failed runs)')
-    .option('--timeout <seconds>', 'Maximum polling time in seconds (default: 1800 = 30 min)', '1800')
+    .option('--timeout <seconds>', 'Maximum polling time in seconds (default: 600 = 10 min)', '600')
     .option('--poll-interval <seconds>', 'Polling frequency in seconds (default: 10)', '10')
-    .option('--fail-fast', 'Exit immediately on first check failure (no polling)')
+    .option('--fail-fast', 'Exit immediately on first check failure after extraction (no polling)')
     .action(async (prNumber: string | undefined, options: WatchPROptions) => {
       try {
         const exitCode = await watchPRCommand(prNumber, options);
@@ -195,7 +196,7 @@ async function pollUntilComplete(
   prNumber: number,
   options: WatchPROptions
 ): Promise<number> {
-  const timeoutMs = Number.parseInt(options.timeout ?? '1800', 10) * 1000;
+  const timeoutMs = Number.parseInt(options.timeout ?? '600', 10) * 1000;
   const pollIntervalMs = Number.parseInt(options.pollInterval ?? '10', 10) * 1000;
   const startTime = Date.now();
 
@@ -439,7 +440,7 @@ function displayHumanResult(result: WatchPRResult): void {
   // Display checks
   const allChecks = [...result.checks.github_actions, ...result.checks.external_checks];
   for (const check of allChecks) {
-    const icon = getCheckIcon(check.conclusion);
+    const icon = getCheckIcon(check.conclusion ?? undefined);
     const statusStr = check.conclusion ?? check.status;
     console.log(`${icon} ${check.name.padEnd(40)} ${statusStr}`);
   }
@@ -506,7 +507,11 @@ interface CheckChange {
   name: string;
   previousStatus: string | null;
   newStatus: string;
-  conclusion?: string;
+  conclusion: string | null | undefined;
+  job_id?: number;
+  run_id?: number;
+  log_file?: string;
+  extraction?: ErrorExtractorResult;
 }
 
 /**
@@ -525,6 +530,10 @@ function detectChanges(previous: WatchPRResult | null, current: WatchPRResult): 
         previousStatus: null,
         newStatus: c.status,
         conclusion: c.conclusion,
+        job_id: c.job_id,
+        run_id: c.run_id,
+        log_file: c.log_file,
+        extraction: c.extraction,
       })),
       ...current.checks.external_checks.map((c) => ({
         name: c.name,
@@ -537,16 +546,35 @@ function detectChanges(previous: WatchPRResult | null, current: WatchPRResult): 
 
   const changes: CheckChange[] = [];
 
-  // Build map of previous checks
+  // Build map of previous checks (keyed by name+run_id for GitHub Actions uniqueness)
   const previousChecks = new Map<string, { status: string; conclusion?: string }>();
   for (const check of [...previous.checks.github_actions, ...previous.checks.external_checks]) {
-    previousChecks.set(check.name, { status: check.status, conclusion: check.conclusion });
+    const key = 'run_id' in check ? `${check.name}:${check.run_id}` : check.name;
+    previousChecks.set(key, { status: check.status, conclusion: check.conclusion });
   }
 
-  // Compare current checks to previous
-  for (const check of [...current.checks.github_actions, ...current.checks.external_checks]) {
+  // Compare current GitHub Actions checks to previous
+  for (const check of current.checks.github_actions) {
+    const key = `${check.name}:${check.run_id}`;
+    const prev = previousChecks.get(key);
+    if (hasCheckChanged(prev, check)) {
+      changes.push({
+        name: check.name,
+        previousStatus: prev?.status ?? null,
+        newStatus: check.status,
+        conclusion: check.conclusion,
+        job_id: check.job_id,
+        run_id: check.run_id,
+        log_file: check.log_file,
+        extraction: check.extraction,
+      });
+    }
+  }
+
+  // Compare current external checks to previous
+  for (const check of current.checks.external_checks) {
     const prev = previousChecks.get(check.name);
-    if (!prev || prev.status !== check.status || prev.conclusion !== check.conclusion) {
+    if (hasCheckChanged(prev, check)) {
       changes.push({
         name: check.name,
         previousStatus: prev?.status ?? null,
@@ -557,6 +585,53 @@ function detectChanges(previous: WatchPRResult | null, current: WatchPRResult): 
   }
 
   return changes;
+}
+
+/**
+ * Helper to check if status or conclusion has changed
+ *
+ * @param prev - Previous check state
+ * @param current - Current check state
+ * @returns True if changed
+ */
+function hasCheckChanged(
+  prev: { status: string; conclusion?: string } | undefined,
+  current: { status: string; conclusion?: string | null }
+): boolean {
+  return !prev || prev.status !== current.status || prev.conclusion !== current.conclusion;
+}
+
+/**
+ * Display extracted errors for a failed check
+ *
+ * @param change - Check change with extraction data
+ */
+function displayCheckErrors(change: CheckChange): void {
+  if (change.conclusion !== 'failure' || !change.extraction) {
+    return;
+  }
+
+  const { extraction } = change;
+
+  // Summary line
+  if (extraction.summary) {
+    process.stdout.write(`   📊 ${extraction.summary}\n`);
+  }
+
+  // Show first 3 errors
+  if (extraction.errors && extraction.errors.length > 0) {
+    const errorsToShow = extraction.errors.slice(0, 3);
+    for (const error of errorsToShow) {
+      const location = error.line ? `${error.file ?? ''}:${error.line}` : error.file ?? '';
+      process.stdout.write(`   ❌ ${location}: ${error.message ?? ''}\n`);
+    }
+
+    // Indicate if there are more errors
+    if (extraction.errors.length > 3) {
+      const remaining = extraction.errors.length - 3;
+      process.stdout.write(`   ... and ${remaining} more error(s)\n`);
+    }
+  }
 }
 
 /**
@@ -575,7 +650,7 @@ function displayChanges(changes: CheckChange[], result: WatchPRResult, isFirstIt
 
   // Display each change
   for (const change of changes) {
-    const icon = getCheckIcon(change.conclusion);
+    const icon = getCheckIcon(change.conclusion ?? undefined);
     const statusStr = change.conclusion ?? change.newStatus;
 
     if (change.previousStatus === null) {
@@ -588,6 +663,17 @@ function displayChanges(changes: CheckChange[], result: WatchPRResult, isFirstIt
       // Status changed
       process.stdout.write(`${icon} ${change.name} - ${change.previousStatus} → ${statusStr}\n`);
     }
+
+    // Display job details for completed checks
+    if (change.newStatus === 'completed' && change.job_id && change.run_id) {
+      process.stdout.write(`   🔗 job_id=${change.job_id}, run_id=${change.run_id}\n`);
+      if (change.log_file) {
+        process.stdout.write(`   📄 log_file=${change.log_file}\n`);
+      }
+    }
+
+    // Display extracted errors for failed checks
+    displayCheckErrors(change);
   }
 
   // Show progress summary

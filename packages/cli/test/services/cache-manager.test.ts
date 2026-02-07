@@ -167,6 +167,107 @@ describe('CacheManager', () => {
       const retrieved = await fs.readFile(logPath, 'utf8');
       expect(retrieved.length).toBe(largeLogs.length);
     });
+
+    it('should save to VV_TEMP_DIR when jobName is provided', async () => {
+      const runId = 12345;
+      const logs = 'Job-specific logs\nLine 2';
+      const jobName = 'integration-tests';
+
+      const logPath = await cacheManager.saveLog(runId, logs, jobName);
+
+      // Should return VV_TEMP_DIR path, not cache path
+      expect(logPath).toContain('watch-pr-logs');
+      expect(logPath).toContain(`${runId}`);
+      expect(logPath).toContain(jobName);
+      expect(logPath).toContain('.log');
+
+      // Verify file exists and has correct content
+      const retrieved = await fs.readFile(logPath, 'utf8');
+      expect(retrieved).toBe(logs);
+    });
+
+    it('should include timestamp in VV_TEMP_DIR filename', async () => {
+      const runId = 67890;
+      const logs = 'Test logs';
+      const jobName = 'unit-tests';
+
+      const logPath = await cacheManager.saveLog(runId, logs, jobName);
+
+      // Filename format: <runId>-HH-mm-ss-<jobName>.log
+      const filename = path.basename(logPath);
+      expect(filename).toMatch(/^\d+-\d{2}-\d{2}-\d{2}-unit-tests\.log$/);
+    });
+
+    it('should still save to cache directory when jobName is provided', async () => {
+      const runId = 11111;
+      const logs = 'Dual-saved logs';
+      const jobName = 'build';
+
+      // Save with jobName (returns VV_TEMP_DIR path)
+      await cacheManager.saveLog(runId, logs, jobName);
+
+      // Verify cache directory also has the log (backward compatibility)
+      const cachePath = path.join(tmpDir, 'vibe-validate', 'watch-pr-cache', repoName, String(prNumber), 'logs', `${runId}.log`);
+      const cacheExists = await fs
+        .stat(cachePath)
+        .then(() => true)
+        .catch(() => false);
+      expect(cacheExists).toBe(true);
+
+      const cacheContent = await fs.readFile(cachePath, 'utf8');
+      expect(cacheContent).toBe(logs);
+    });
+
+    it('should respect VV_TEMP_DIR environment variable', async () => {
+      const runId = 22222;
+      const logs = 'Custom temp dir logs';
+      const jobName = 'e2e-tests';
+      const customTempDir = await fs.mkdtemp(path.join(normalizedTmpdir(), 'custom-vv-temp-'));
+
+      // Set environment variable
+      const originalEnv = process.env.VV_TEMP_DIR;
+      process.env.VV_TEMP_DIR = customTempDir;
+
+      try {
+        const logPath = await cacheManager.saveLog(runId, logs, jobName);
+
+        // Should use custom temp dir
+        expect(logPath).toContain(customTempDir);
+        expect(logPath).toContain('watch-pr-logs');
+
+        // Verify file exists
+        const fileExists = await fs
+          .stat(logPath)
+          .then(() => true)
+          .catch(() => false);
+        expect(fileExists).toBe(true);
+      } finally {
+        // Restore original environment
+        if (originalEnv === undefined) {
+          delete process.env.VV_TEMP_DIR;
+        } else {
+          process.env.VV_TEMP_DIR = originalEnv;
+        }
+
+        // Clean up custom temp dir
+        await fs.rm(customTempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should sanitize jobName for filename', async () => {
+      const runId = 33333;
+      const logs = 'Test logs';
+      const jobName = 'build (ubuntu-latest, 22)'; // Contains special chars
+
+      const logPath = await cacheManager.saveLog(runId, logs, jobName);
+
+      // Filename should have sanitized jobName
+      const filename = path.basename(logPath);
+      // Spaces and parens should be replaced
+      expect(filename).toContain('build');
+      expect(filename).not.toContain('(');
+      expect(filename).not.toContain(')');
+    });
   });
 
   describe('saveExtraction & getExtraction', () => {
