@@ -405,9 +405,9 @@ Monitor PR checks with auto-polling, error extraction, and flaky test detection 
 - `--repo <owner/repo>` - Repository (default: auto-detect from git remote)
 - `--history` - Show historical runs for the PR with pass/fail summary
 - `--run-id <id>` - Watch specific run ID instead of latest (useful for testing failed runs)
-- `--timeout <seconds>` - Maximum polling time in seconds (default: 1800 = 30 min)
+- `--timeout <seconds>` - Maximum polling time in seconds (default: 600 = 10 min)
 - `--poll-interval <seconds>` - Polling frequency in seconds (default: 10)
-- `--fail-fast` - Exit immediately on first check failure (no polling)
+- `--fail-fast` - Exit immediately on first check failure after extraction (no polling)
 
 **Error recovery:**
 

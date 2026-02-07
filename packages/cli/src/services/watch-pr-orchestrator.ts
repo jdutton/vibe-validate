@@ -13,6 +13,8 @@
  * @packageDocumentation
  */
 
+import type { ErrorExtractorResult } from '@vibe-validate/extractors';
+
 import type {
   CheckConclusion,
   CheckStatus,
@@ -232,7 +234,7 @@ export class WatchPROrchestrator {
 
     // Extract errors from failed jobs
     if (job.status === 'completed' && job.conclusion === 'failure') {
-      await this.extractErrorsForCheck(actionCheck, runId, job.id);
+      await this.processFailedCheck(actionCheck, runId, job.id);
     }
 
     return actionCheck;
@@ -257,12 +259,14 @@ export class WatchPROrchestrator {
 
     const extraction = await this.extractionDetector.detectAndExtract(check, logs);
     if (extraction) {
-      check.extraction = extraction;
+      // Strip metadata before storing
+      check.extraction = this.stripExtractorMetadata(extraction);
     }
 
-    // Save logs to cache
+    // Save logs to cache (with job name for VV_TEMP_DIR storage)
     if (this.cacheManager) {
-      await this.cacheManager.saveLog(runId, logs);
+      const logFile = await this.cacheManager.saveLog(runId, logs, check.name);
+      check.log_file = logFile;
       if (extraction) {
         await this.cacheManager.saveExtraction(runId, extraction);
       }
@@ -270,24 +274,36 @@ export class WatchPROrchestrator {
   }
 
   /**
-   * Extract errors for a check from run logs
+   * Strip extractor metadata to reduce token bloat
+   *
+   * Removes implementation details that don't help LLMs:
+   * - metadata.detector (can be inferred from error format)
+   * - metadata.detection.patterns (implementation detail)
+   * - metadata.detection.reason (debugging noise)
+   *
+   * Keeps metadata.quality if present (indicates extraction confidence)
    */
-  private async extractErrorsForCheck(check: GitHubActionCheck, runId: number, jobId?: number): Promise<void> {
-    const logs = await this.fetchLogsWithRetry(runId, jobId);
-    if (!logs) return;
+  private stripExtractorMetadata(extraction: ErrorExtractorResult): ErrorExtractorResult {
+    const { summary, errors, metadata, totalErrors, guidance, errorSummary } = extraction;
 
-    const extraction = await this.extractionDetector.detectAndExtract(check, logs);
-    if (extraction) {
-      check.extraction = extraction;
-    }
+    // Keep only quality fields from metadata (confidence, completeness, issues)
+    // Strip detection details (extractor, patterns, reason, suggestions)
+    const strippedMetadata = metadata
+      ? {
+          confidence: metadata.confidence,
+          completeness: metadata.completeness,
+          issues: metadata.issues,
+        }
+      : undefined;
 
-    // Save to cache
-    if (this.cacheManager) {
-      await this.cacheManager.saveLog(runId, logs);
-      if (extraction) {
-        await this.cacheManager.saveExtraction(runId, extraction);
-      }
-    }
+    return {
+      summary,
+      totalErrors,
+      errors,
+      ...(guidance && { guidance }),
+      ...(errorSummary && { errorSummary }),
+      ...(strippedMetadata && { metadata: strippedMetadata }),
+    };
   }
 
   /**

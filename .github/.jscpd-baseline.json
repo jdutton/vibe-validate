@@ -727,17 +727,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/schemas/watch-pr-result.test.ts",
-        "start": 590,
-        "end": 608,
+        "start": 674,
+        "end": 692,
         "startLoc": {
-          "line": 590,
+          "line": 674,
           "column": 2,
-          "position": 4526
+          "position": 5133
         },
         "endLoc": {
-          "line": 608,
+          "line": 692,
           "column": 2,
-          "position": 4643
+          "position": 5250
         }
       },
       "secondFile": {
@@ -763,17 +763,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/schemas/watch-pr-result.test.ts",
-        "start": 621,
-        "end": 641,
+        "start": 705,
+        "end": 725,
         "startLoc": {
-          "line": 621,
+          "line": 705,
           "column": 13,
-          "position": 4724
+          "position": 5331
         },
         "endLoc": {
-          "line": 641,
+          "line": 725,
           "column": 2,
-          "position": 4846
+          "position": 5453
         }
       },
       "secondFile": {
@@ -799,32 +799,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/schemas/watch-pr-result.test.ts",
-        "start": 740,
-        "end": 753,
+        "start": 824,
+        "end": 837,
         "startLoc": {
-          "line": 740,
+          "line": 824,
           "column": 2,
-          "position": 5489
+          "position": 6096
         },
         "endLoc": {
-          "line": 753,
+          "line": 837,
           "column": 9,
-          "position": 5578
+          "position": 6185
         }
       },
       "secondFile": {
         "name": "packages/cli/test/schemas/watch-pr-result.test.ts",
-        "start": 696,
-        "end": 709,
+        "start": 780,
+        "end": 793,
         "startLoc": {
-          "line": 696,
+          "line": 780,
           "column": 2,
-          "position": 5177
+          "position": 5784
         },
         "endLoc": {
-          "line": 709,
+          "line": 793,
           "column": 10,
-          "position": 5266
+          "position": 5873
         }
       }
     },

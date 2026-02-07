@@ -240,6 +240,90 @@ describe('Watch PR Result Schemas', () => {
 
       expect(() => GitHubActionCheckSchema.parse(invalidCheck)).toThrow();
     });
+
+    it('should accept check with log_file field', () => {
+      const checkWithLogFile = {
+        name: 'Tests',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 123,
+        workflow: 'CI',
+        started_at: '2025-12-16T16:43:17Z',
+        duration: '2m15s',
+        log_command: 'gh run view 123 --log',
+        // eslint-disable-next-line sonarjs/publicly-writable-directories -- test fixture path
+        log_file: '/tmp/vibe-validate/watch-pr-logs/123-14-30-45-integration-tests.log',
+      };
+
+      expect(() => GitHubActionCheckSchema.parse(checkWithLogFile)).not.toThrow();
+    });
+
+    it('should accept check without log_file field', () => {
+      const checkWithoutLogFile = {
+        name: 'Tests',
+        status: 'completed',
+        conclusion: 'success',
+        run_id: 456,
+        workflow: 'CI',
+        started_at: '2025-12-16T16:43:17Z',
+        duration: '3m00s',
+        log_command: 'gh run view 456 --log',
+      };
+
+      expect(() => GitHubActionCheckSchema.parse(checkWithoutLogFile)).not.toThrow();
+    });
+
+    it('should accept log_file with VV_TEMP_DIR format', () => {
+      const checkWithVVTempDir = {
+        name: 'Build (ubuntu-latest, 22)',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 789,
+        job_id: 101112,
+        workflow: 'CI',
+        started_at: '2025-12-16T16:43:17Z',
+        duration: '5m30s',
+        log_command: 'gh run view 789 --log-failed',
+        // eslint-disable-next-line sonarjs/publicly-writable-directories -- test fixture path
+        log_file: '/tmp/vibe-validate/watch-pr-logs/789-09-15-30-build-ubuntu-latest-22.log',
+      };
+
+      expect(() => GitHubActionCheckSchema.parse(checkWithVVTempDir)).not.toThrow();
+    });
+
+    it('should accept empty log_file string (schema allows it)', () => {
+      const checkWithEmptyLogFile = {
+        name: 'Tests',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 999,
+        workflow: 'CI',
+        started_at: '2025-12-16T16:43:17Z',
+        duration: '1m00s',
+        log_command: 'gh run view 999 --log',
+        log_file: '',
+      };
+
+      // Current schema accepts empty strings (could be tightened in future)
+      expect(() => GitHubActionCheckSchema.parse(checkWithEmptyLogFile)).not.toThrow();
+    });
+
+    it('should accept log_file with timestamped filename format', () => {
+      const checkWithTimestampedLog = {
+        name: 'Tests',
+        status: 'completed',
+        conclusion: 'failure',
+        run_id: 12345,
+        workflow: 'CI',
+        started_at: '2025-12-16T16:43:17Z',
+        duration: '2m00s',
+        log_command: 'gh run view 12345 --log',
+        // eslint-disable-next-line sonarjs/publicly-writable-directories -- test fixture path
+        log_file: '/tmp/vibe-validate/watch-pr-logs/12345-14-30-45-integration-tests.log',
+      };
+
+      expect(() => GitHubActionCheckSchema.parse(checkWithTimestampedLog)).not.toThrow();
+    });
   });
 
   describe('ExternalCheckDetailsSchema', () => {
