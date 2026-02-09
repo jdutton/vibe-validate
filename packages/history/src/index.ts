@@ -53,3 +53,6 @@ export { checkHistoryHealth } from './health-check.js';
 
 // Truncate
 export { truncateValidationOutput } from './truncate.js';
+
+// Utils
+export { getMostRecentRun } from './utils.js';

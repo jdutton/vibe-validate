@@ -3,14 +3,14 @@ validation:
     - name: Pre-Qualification
       parallel: false
       steps:
+        - name: Build All Packages (TypeScript)
+          command: pnpm exec turbo run build
         - name: TypeScript Type Check
           command: pnpm exec turbo run typecheck
         - name: ESLint Code Quality
           command: pnpm lint
         - name: Code Duplication Check
           command: pnpm duplication-check
-        - name: Build All Packages (TypeScript)
-          command: pnpm exec turbo run build
     - name: Testing
       steps:
         - name: Unit Tests with Coverage

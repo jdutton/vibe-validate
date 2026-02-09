@@ -1,17 +1,13 @@
-import { rmSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
 import * as utils from '@vibe-validate/utils';
-import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { preCommitCommand } from '../../src/commands/pre-commit.js';
 import * as configLoader from '../../src/utils/config-loader.js';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+import { setupCommanderTest, setupTempDirTest, type CommanderTestEnv, type TempDirTestEnv } from '../helpers/commander-test-setup.js';
 
 // Mock the core validation module
 vi.mock('@vibe-validate/core', async () => {
@@ -406,21 +402,15 @@ function expectSnapshotBeforeSync() {
 }
 
 describe('pre-commit command', () => {
-  let testDir: string;
-  let originalCwd: string;
+  let tempEnv: TempDirTestEnv;
   let env: CommanderTestEnv;
 
   beforeEach(() => {
     // Clear all mock calls from previous tests (prevents test pollution across test files)
     vi.clearAllMocks();
 
-    // Create temp directory for test files (Windows-safe: no 8.3 short names)
-    const targetDir = join(normalizedTmpdir(), `vibe-validate-pre-commit-test-${Date.now()}`);
-    testDir = mkdirSyncReal(targetDir, { recursive: true });
-
-    // Save original cwd and change to test directory
-    originalCwd = process.cwd();
-    process.chdir(testDir);
+    // Setup temp directory
+    tempEnv = setupTempDirTest('vibe-validate-pre-commit-test');
 
     // Setup Commander test environment
     env = setupCommanderTest();
@@ -451,19 +441,7 @@ describe('pre-commit command', () => {
 
   afterEach(() => {
     env.cleanup();
-
-    // Restore cwd
-    process.chdir(originalCwd);
-
-    // Clean up test files
-    if (existsSync(testDir)) {
-      try {
-        rmSync(testDir, { recursive: true, force: true });
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-
+    tempEnv.cleanup();
     vi.restoreAllMocks();
   });
 

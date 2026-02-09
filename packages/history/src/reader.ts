@@ -33,9 +33,8 @@ export async function readHistoryNote(
 
     const parsed = parseYaml(yaml);
 
-    // Validate as HistoryNote structure
+    // Validate as HistoryNote structure (silently ignore old format notes)
     if (!parsed || typeof parsed !== 'object' || !('runs' in parsed) || !Array.isArray(parsed.runs)) {
-      console.warn(`Invalid history note structure for ${treeHash} - missing runs array`);
       return null;
     }
 

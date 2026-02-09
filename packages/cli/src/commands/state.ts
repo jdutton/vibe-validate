@@ -6,7 +6,13 @@
 
 import type { ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
-import { readHistoryNote, hasHistoryForTree, getAllRunCacheForTree, type RunCacheNote } from '@vibe-validate/history';
+import {
+  readHistoryNote,
+  hasHistoryForTree,
+  getAllRunCacheForTree,
+  getMostRecentRun,
+  type RunCacheNote,
+} from '@vibe-validate/history';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
@@ -76,7 +82,7 @@ async function loadValidationHistory(treeHash: string): Promise<ValidationResult
   const historyNote = await readHistoryNote(treeHash);
   if (!historyNote || historyNote.runs.length === 0) return null;
 
-  const mostRecentRun = historyNote.runs.at(-1);
+  const mostRecentRun = getMostRecentRun(historyNote.runs);
   if (!mostRecentRun) return null; // Should never happen due to length check above
 
   return {

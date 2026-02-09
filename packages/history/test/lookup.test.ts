@@ -146,4 +146,46 @@ describe('findCachedValidation', () => {
 
     expect(result).toBe(mockRun2); // Should find second run
   });
+
+  it('should return newest run when multiple runs match same submodule state', async () => {
+    // Regression test for PR #123 bug: findCachedValidation was iterating
+    // forward and returning the FIRST (oldest) matching run instead of the
+    // LAST (newest) matching run.
+    //
+    // This simulates re-running validation on the same code (same tree hash
+    // + same submodule state). Common scenario: run validation (fails),
+    // fix code, run validation again (passes) → both runs have same submodule
+    // state but different pass/fail status.
+
+    const sameSubmoduleState = { 'libs/auth': 'def456' as TreeHash };
+
+    const oldRun = createMockRun({
+      id: 'run-1',
+      timestamp: '2025-01-01T00:00:00Z',
+      passed: false, // Old validation failed
+      submoduleHashes: { 'libs/auth': 'def456' }, // State A
+    });
+
+    const newRun = createMockRun({
+      id: 'run-2',
+      timestamp: '2025-01-02T00:00:00Z', // One day later (newer)
+      passed: true, // New validation passed
+      submoduleHashes: { 'libs/auth': 'def456' }, // SAME State A
+    });
+
+    // Runs are stored oldest-first, newest-last (git-notes.ts mergeNotes appends)
+    mockNoteWithRuns([oldRun, newRun]);
+
+    const treeHashResult: TreeHashResult = {
+      hash: 'abc123' as TreeHash,
+      submoduleHashes: sameSubmoduleState,
+    };
+
+    const result = await findCachedValidation(treeHashResult);
+
+    // CRITICAL: Should return the NEWEST run (run-2), not the oldest (run-1)
+    expect(result).toBe(newRun);
+    expect(result?.id).toBe('run-2');
+    expect(result?.passed).toBe(true);
+  });
 });
