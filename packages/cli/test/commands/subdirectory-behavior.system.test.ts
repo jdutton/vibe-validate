@@ -31,8 +31,8 @@ describe('All commands work from subdirectories (system tests)', () => {
         stdio: 'pipe',
       });
 
-      // Should show exists: false or true, and treeHash
-      expect(output).toMatch(/exists:/);
+      // Should show state (exists: false OR passed: true/false) and treeHash
+      expect(output).toMatch(/(exists|passed):/);
       expect(output).toMatch(/treeHash:/);
     });
 
@@ -44,7 +44,7 @@ describe('All commands work from subdirectories (system tests)', () => {
       });
 
       // Git operations are repo-wide, should show same state
-      expect(output).toMatch(/exists:/);
+      expect(output).toMatch(/(exists|passed):/);
       expect(output).toMatch(/treeHash:/);
     });
 
@@ -55,7 +55,7 @@ describe('All commands work from subdirectories (system tests)', () => {
         stdio: 'pipe',
       });
 
-      expect(output).toMatch(/exists:/);
+      expect(output).toMatch(/(exists|passed):/);
       expect(output).toMatch(/treeHash:/);
     });
   });
