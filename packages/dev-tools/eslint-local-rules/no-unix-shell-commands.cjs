@@ -107,13 +107,6 @@ module.exports = {
   },
 
   create(context) {
-    const filename = context.getFilename();
-
-    // Exempt test files that specifically test Unix command detection
-    if (filename.includes('.test.ts') || filename.includes('.test.js')) {
-      return {};
-    }
-
     const factory = require('./no-command-direct-factory.cjs');
     const { createCommandChecker } = factory;
 

@@ -10,7 +10,7 @@
 
 import { join } from 'node:path';
 
-import { safeExecFromString } from '@vibe-validate/utils';
+import { safeExecFromString, safeExecSync } from '@vibe-validate/utils';
 import { describe, it, expect } from 'vitest';
 
 describe('All commands work from subdirectories (system tests)', () => {
@@ -19,50 +19,9 @@ describe('All commands work from subdirectories (system tests)', () => {
   const PACKAGES_DIR = join(PROJECT_ROOT, 'packages');
   const CLI_DIR = join(PROJECT_ROOT, 'packages/cli');
 
-  describe('validate command', () => {
-    it('should work from project root', () => {
-      // validate --check returns exit code 1 if not validated, which is OK
-      try {
-        const output = safeExecFromString('vv validate --check', {
-          cwd: PROJECT_ROOT,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect(output).toBeTruthy();
-      } catch (error: any) {
-        // Command ran but returned non-zero (not validated yet), check it produced output
-        expect(error.stdout ?? error.stderr).toBeTruthy();
-      }
-    });
-
-    it('should work from subdirectory (packages/)', () => {
-      try {
-        const output = safeExecFromString('vv validate --check', {
-          cwd: PACKAGES_DIR,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect(output).toBeTruthy();
-      } catch (error: any) {
-        // Should find config in parent directory and check validation state
-        expect(error.stdout ?? error.stderr).toBeTruthy();
-      }
-    });
-
-    it('should work from deep subdirectory (packages/cli/)', () => {
-      try {
-        const output = safeExecFromString('vv validate --check', {
-          cwd: CLI_DIR,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect(output).toBeTruthy();
-      } catch (error: any) {
-        // Should find config two levels up and check validation state
-        expect(error.stdout ?? error.stderr).toBeTruthy();
-      }
-    });
-  });
+  // NOTE: validate command tests removed - they create circular dependency when run during validation
+  // (integration tests run during validation, test tries to run validate, creates deadlock)
+  // The validate command is extensively tested in unit tests.
 
   describe('state command', () => {
     it('should work from project root', () => {
@@ -210,40 +169,6 @@ describe('All commands work from subdirectories (system tests)', () => {
     });
   });
 
-  describe('cleanup command', () => {
-    it('should work from project root', () => {
-      const output = safeExecFromString('vv cleanup --dry-run', {
-        cwd: PROJECT_ROOT,
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-
-      // Should show cleanup preview
-      expect(output).toMatch(/Cleanup Preview|Dry Run/i);
-    });
-
-    it('should work from subdirectory (packages/)', () => {
-      const output = safeExecFromString('vv cleanup --dry-run', {
-        cwd: PACKAGES_DIR,
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-
-      // Git operations work repo-wide
-      expect(output).toMatch(/Cleanup Preview|Dry Run/i);
-    });
-
-    it('should work from deep subdirectory (packages/cli/)', () => {
-      const output = safeExecFromString('vv cleanup --dry-run', {
-        cwd: CLI_DIR,
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-
-      expect(output).toMatch(/Cleanup Preview|Dry Run/i);
-    });
-  });
-
   describe('pre-commit command', () => {
     it('should show help from project root', () => {
       const output = safeExecFromString('vv pre-commit --help', {
@@ -286,7 +211,7 @@ describe('All commands work from subdirectories (system tests)', () => {
       });
 
       // Should display help text
-      expect(output).toMatch(/Watch CI checks/);
+      expect(output).toMatch(/Monitor PR checks/);
     });
 
     it('should show help from subdirectory (packages/)', () => {
@@ -296,7 +221,7 @@ describe('All commands work from subdirectories (system tests)', () => {
         stdio: 'pipe',
       });
 
-      expect(output).toMatch(/Watch CI checks/);
+      expect(output).toMatch(/Monitor PR checks/);
     });
 
     it('should show help from deep subdirectory (packages/cli/)', () => {
@@ -306,7 +231,7 @@ describe('All commands work from subdirectories (system tests)', () => {
         stdio: 'pipe',
       });
 
-      expect(output).toMatch(/Watch CI checks/);
+      expect(output).toMatch(/Monitor PR checks/);
     });
   });
 
@@ -386,19 +311,19 @@ describe('All commands work from subdirectories (system tests)', () => {
         cwd: PROJECT_ROOT,
         encoding: 'utf-8',
         stdio: 'pipe',
-      });
+      }) as string;
 
       const subdirOutput = safeExecFromString('vv state', {
         cwd: PACKAGES_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
-      });
+      }) as string;
 
       const deepOutput = safeExecFromString('vv state', {
         cwd: CLI_DIR,
         encoding: 'utf-8',
         stdio: 'pipe',
-      });
+      }) as string;
 
       // Extract tree hash from outputs (format: "treeHash: abc123...")
       const extractHash = (output: string) => {

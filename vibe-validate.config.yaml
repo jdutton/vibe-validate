@@ -12,9 +12,12 @@ validation:
         - name: Code Duplication Check
           command: pnpm duplication-check
     - name: Testing
+      parallel: false
       steps:
         - name: Unit Tests with Coverage
           command: pnpm test:coverage
+        - name: Integration Tests
+          command: pnpm test:integration
 git:
   mainBranch: main
 hooks:
