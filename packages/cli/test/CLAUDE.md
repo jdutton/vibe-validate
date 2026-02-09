@@ -4,11 +4,12 @@ This guide provides context-specific testing patterns for the vibe-validate CLI 
 
 ## Testing Philosophy
 
-**Test Clarity > DRY Principle**
-- Tests are documentation - each should tell a complete story
-- Prefer inline setup over excessive abstraction
-- Use helpers for **egregious** duplication only
-- ~12% structural duplication in tests is acceptable and healthy
+**DRY Enforcement in Tests**
+- Tests must follow the same < 3% duplication limit as production code
+- Extract duplicated patterns into helper functions at module scope
+- Test duplication is NOT acceptable unless it is unavoidable
+- Tests are documentation - helpers should have clear, descriptive names
+- Each helper should handle a single concern (setup, assertion, execution)
 
 **Test Independence**
 - Each test should run in isolation
@@ -389,10 +390,10 @@ pnpm test validate.test.ts --watch  # Auto-rerun on changes
 
 ## Key Takeaways
 
-1. **Clarity over DRY** - Tests are documentation
-2. **Use helpers for egregious duplication** - Not every repeated line
+1. **DRY enforcement** - Tests follow < 3% duplication limit, create helpers at module scope
+2. **Clear helper names** - Each helper should have a descriptive name and handle a single concern
 3. **Cross-platform by default** - Windows is not an afterthought
 4. **Test behavior, not implementation** - Mock at boundaries
-5. **Each test tells a story** - Should be understandable in isolation
+5. **Each test tells a story** - Should be understandable in isolation with helper names as documentation
 
 When in doubt, look at existing tests in `validate.test.ts` for patterns.

@@ -28,8 +28,10 @@ export async function findCachedValidation(
     return null;
   }
 
-  // Find run with matching submodule state
-  for (const run of note.runs) {
+  // Find MOST RECENT run with matching submodule state
+  // Iterate backwards since new runs are appended to the end (git-notes.ts mergeNotes)
+  for (let i = note.runs.length - 1; i >= 0; i--) {
+    const run = note.runs[i];
     if (submoduleHashesMatch(run.submoduleHashes, treeHashResult.submoduleHashes)) {
       return run;
     }

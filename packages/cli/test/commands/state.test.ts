@@ -1,12 +1,12 @@
 import type { ValidationResult } from '@vibe-validate/core';
-import { getGitTreeHash } from '@vibe-validate/git';
+import { getGitTreeHash, type TreeHash } from '@vibe-validate/git';
 import type { HistoryNote } from '@vibe-validate/history';
 import { hasHistoryForTree, readHistoryNote, getAllRunCacheForTree } from '@vibe-validate/history';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { stateCommand } from '../../src/commands/state.js';
 import * as configLoader from '../../src/utils/config-loader.js';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+import { setupCommanderTest, executeCommandAndGetExitCode, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
 
 
 // Mock dependencies
@@ -14,11 +14,15 @@ vi.mock('@vibe-validate/git', () => ({
   getGitTreeHash: vi.fn(),
 }));
 
-vi.mock('@vibe-validate/history', () => ({
-  hasHistoryForTree: vi.fn(),
-  readHistoryNote: vi.fn(),
-  getAllRunCacheForTree: vi.fn(),
-}));
+vi.mock('@vibe-validate/history', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    hasHistoryForTree: vi.fn(),
+    readHistoryNote: vi.fn(),
+    getAllRunCacheForTree: vi.fn(),
+    getMostRecentRun: actual.getMostRecentRun, // Use actual implementation
+  };
+});
 
 vi.mock('../../src/utils/config-loader.js', () => ({
   findConfigPath: vi.fn(),
@@ -64,36 +68,6 @@ function createMockHistoryNote(
 }
 
 /**
- * Executes state command and captures exit behavior
- * @param env - Commander test environment
- * @param args - Command arguments (e.g., ['state'], ['state', '--verbose'])
- * @returns Exit code (0 for success, 1 for failure)
- */
-async function executeStateCommand(env: CommanderTestEnv, args: string[]): Promise<number> {
-  try {
-    await env.program.parseAsync(args, { from: 'user' });
-    return 0;
-  } catch (err: unknown) {
-    // Commander exitOverride throws CommanderError with exitCode
-    if (err && typeof err === 'object' && 'exitCode' in err) {
-      return (err as { exitCode: number }).exitCode;
-    }
-    // process.exit throws Error with message "process.exit(code)"
-    if (err instanceof Error && err.message.startsWith('process.exit(')) {
-      // Match numeric exit code
-      const match = /process\.exit\((\d+)\)/.exec(err.message);
-      if (match) {
-        return Number.parseInt(match[1], 10);
-      }
-      // Handle process.exit(undefined), process.exit(null), etc. - default to 0
-      return 0;
-    }
-    // Unexpected error
-    return 1;
-  }
-}
-
-/**
  * Asserts that console.log output contains expected strings
  * @param expectedStrings - Array of strings that should appear in console.log calls
  */
@@ -115,9 +89,35 @@ function expectConsoleLogNotContains(...unexpectedStrings: string[]): void {
   }
 }
 
+/**
+ * Setup mock validation state for testing
+ * @param passed - Whether validation passed
+ * @param timestamp - ISO timestamp string
+ * @param treeHash - Git tree hash
+ * @param failedStep - Optional failed step name (for failed validations)
+ */
+function setupMockValidationState(
+  passed: boolean,
+  timestamp: string,
+  treeHash: string,
+  failedStep?: string
+): void {
+  const mockResult = createMockValidationResult(passed, timestamp, treeHash, failedStep);
+  const mockHistoryNote = createMockHistoryNote(treeHash, [
+    {
+      branch: 'main',
+      timestamp,
+      result: mockResult,
+    },
+  ]);
+
+  vi.mocked(hasHistoryForTree).mockResolvedValue(true);
+  vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
+}
+
 describe('state command', () => {
   let env: CommanderTestEnv;
-  const mockTreeHash = 'abc123def456';
+  const mockTreeHash = 'abc123def456' as TreeHash;
   const mockTreeHashResult = {
     hash: mockTreeHash
   };
@@ -164,7 +164,7 @@ describe('state command', () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(false);
 
       stateCommand(env.program);
-      await executeStateCommand(env, ['state']);
+      await executeCommandAndGetExitCode(env.program,['state']);
 
       expectConsoleLogContains('exists: false', `treeHash: ${mockTreeHash}`);
     });
@@ -173,7 +173,7 @@ describe('state command', () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(false);
 
       stateCommand(env.program);
-      await executeStateCommand(env, ['state', '--verbose']);
+      await executeCommandAndGetExitCode(env.program,['state', '--verbose']);
 
       expectConsoleLogContains('exists: false', `treeHash: ${mockTreeHash}`, 'No validation or run cache found');
     });
@@ -184,7 +184,7 @@ describe('state command', () => {
       vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       stateCommand(env.program);
-      await executeStateCommand(env, ['state']);
+      await executeCommandAndGetExitCode(env.program,['state']);
 
       expectConsoleLogContains('exists: false', `treeHash: ${mockTreeHash}`);
     });
@@ -192,29 +192,19 @@ describe('state command', () => {
 
   describe('passed validation state', () => {
     beforeEach(() => {
-      const mockResult = createMockValidationResult(true, '2025-10-16T12:00:00.000Z', mockTreeHash);
-      const mockHistoryNote = createMockHistoryNote(mockTreeHash, [
-        {
-          branch: 'main',
-          timestamp: '2025-10-16T12:00:00.000Z',
-          result: mockResult,
-        },
-      ]);
-
-      vi.mocked(hasHistoryForTree).mockResolvedValue(true);
-      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
+      setupMockValidationState(true, '2025-10-16T12:00:00.000Z', mockTreeHash);
     });
 
     it('should display passed state (minimal output)', async () => {
       stateCommand(env.program);
-      await executeStateCommand(env, ['state']);
+      await executeCommandAndGetExitCode(env.program,['state']);
 
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
     });
 
     it('should display passed state (verbose output)', async () => {
       stateCommand(env.program);
-      await executeStateCommand(env, ['state', '--verbose']);
+      await executeCommandAndGetExitCode(env.program,['state', '--verbose']);
 
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('PASSED'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Safe to commit'));
@@ -223,22 +213,12 @@ describe('state command', () => {
 
   describe('failed validation state', () => {
     beforeEach(() => {
-      const mockResult = createMockValidationResult(false, '2025-10-16T12:00:00.000Z', mockTreeHash, 'TypeScript Type Check');
-      const mockHistoryNote = createMockHistoryNote(mockTreeHash, [
-        {
-          branch: 'main',
-          timestamp: '2025-10-16T12:00:00.000Z',
-          result: mockResult,
-        },
-      ]);
-
-      vi.mocked(hasHistoryForTree).mockResolvedValue(true);
-      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
+      setupMockValidationState(false, '2025-10-16T12:00:00.000Z', mockTreeHash, 'TypeScript Type Check');
     });
 
     it('should display failed state (minimal output)', async () => {
       stateCommand(env.program);
-      await executeStateCommand(env, ['state']);
+      await executeCommandAndGetExitCode(env.program,['state']);
 
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('TypeScript Type Check'));
@@ -246,7 +226,7 @@ describe('state command', () => {
 
     it('should display failed state (verbose output)', async () => {
       stateCommand(env.program);
-      await executeStateCommand(env, ['state', '--verbose']);
+      await executeCommandAndGetExitCode(env.program,['state', '--verbose']);
 
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('FAILED'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('TypeScript Type Check'));
@@ -266,7 +246,7 @@ describe('state command', () => {
       vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       stateCommand(env.program);
-      await executeStateCommand(env, ['state', '--verbose']);
+      await executeCommandAndGetExitCode(env.program,['state', '--verbose']);
 
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('FAILED'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Build'));
@@ -278,7 +258,7 @@ describe('state command', () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
 
       stateCommand(env.program);
-      const exitCode = await executeStateCommand(env, ['state']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['state']);
 
       expect(exitCode).toBe(0);
       expectConsoleLogContains('exists: false', 'error: Not in git repository');
@@ -288,7 +268,7 @@ describe('state command', () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
 
       stateCommand(env.program);
-      const exitCode = await executeStateCommand(env, ['state', '--verbose']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['state', '--verbose']);
 
       expect(exitCode).toBe(0);
       expectConsoleLogContains('exists: false', 'error: Not in git repository', 'Not in a git repository');
@@ -298,7 +278,7 @@ describe('state command', () => {
       vi.mocked(getGitTreeHash).mockRejectedValue(new Error('some git error'));
 
       stateCommand(env.program);
-      const exitCode = await executeStateCommand(env, ['state']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['state']);
 
       expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
@@ -330,7 +310,7 @@ describe('state command', () => {
       vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);
 
       stateCommand(env.program);
-      await executeStateCommand(env, ['state']);
+      await executeCommandAndGetExitCode(env.program,['state']);
 
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
       expectConsoleLogNotContains('Old failure');

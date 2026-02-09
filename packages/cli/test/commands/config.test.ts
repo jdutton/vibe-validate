@@ -1,13 +1,18 @@
-import { rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
-import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { configCommand } from '../../src/commands/config.js';
 import * as configLoader from '../../src/utils/config-loader.js';
-import { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+import {
+  setupCommanderTest,
+  setupTempDirTest,
+  executeCommandAndGetExitCode,
+  hasOption,
+  type CommanderTestEnv,
+  type TempDirTestEnv,
+} from '../helpers/commander-test-setup.js';
 
 // Mock the config loader
 vi.mock('../../src/utils/config-loader.js', async () => {
@@ -49,7 +54,7 @@ function createTestConfig(overrides?: Partial<VibeValidateConfig>): VibeValidate
 /**
  * Mocks config loader to return a valid config
  * @param config - Config object to return
- * @param configPath - Path to config file (defaults to testDir/vibe-validate.config.js)
+ * @param configPath - Path to config file (defaults to tempEnv.testDir/vibe-validate.config.js)
  */
 function mockValidConfig(config: VibeValidateConfig, configPath: string): void {
   vi.mocked(configLoader.findConfigPath).mockReturnValue(configPath);
@@ -84,35 +89,6 @@ function mockInvalidConfig(errors: string[], configPath: string): void {
 }
 
 /**
- * Executes a config command and returns the exit code
- * @param program - Commander program instance
- * @param args - Command arguments
- * @returns Exit code (0 for success, 1+ for error)
- */
-async function executeConfigCommand(program: CommanderTestEnv['program'], args: string[]): Promise<number> {
-  try {
-    await program.parseAsync(args, { from: 'user' });
-    return 0;
-  } catch (err: unknown) {
-    // Commander exitOverride throws CommanderError with exitCode
-    if (err && typeof err === 'object' && 'exitCode' in err) {
-      return (err as { exitCode: number }).exitCode;
-    }
-    // process.exit throws Error with message "process.exit(code)"
-    if (err instanceof Error && err.message.startsWith('process.exit(')) {
-      const match = /process\.exit\((\d+)\)/.exec(err.message);
-      if (match) {
-        return Number.parseInt(match[1], 10);
-      }
-      // Handle process.exit(undefined), process.exit(null), etc. - default to 0
-      return 0;
-    }
-    // Unexpected error
-    return 1;
-  }
-}
-
-/**
  * Asserts that console.error was called with a message containing the given text
  * @param expectedText - Text that should be in the error message
  */
@@ -129,18 +105,12 @@ function expectLogMessage(expectedText: string): void {
 }
 
 describe('config command', () => {
-  let testDir: string;
-  let originalCwd: string;
+  let tempEnv: TempDirTestEnv;
   let env: CommanderTestEnv;
 
   beforeEach(() => {
-    // Create temp directory for test files (Windows-safe: no 8.3 short names)
-    const targetDir = join(normalizedTmpdir(), `vibe-validate-config-test-${Date.now()}`);
-    testDir = mkdirSyncReal(targetDir, { recursive: true });
-
-    // Save original cwd and change to test directory
-    originalCwd = process.cwd();
-    process.chdir(testDir);
+    // Setup temp directory
+    tempEnv = setupTempDirTest('vibe-validate-config-test');
 
     // Setup Commander test environment
     env = setupCommanderTest();
@@ -153,19 +123,7 @@ describe('config command', () => {
 
   afterEach(() => {
     env.cleanup();
-
-    // Restore cwd
-    process.chdir(originalCwd);
-
-    // Clean up test files
-    if (existsSync(testDir)) {
-      try {
-        rmSync(testDir, { recursive: true, force: true });
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-
+    tempEnv.cleanup();
     vi.restoreAllMocks();
   });
 
@@ -182,20 +140,12 @@ describe('config command', () => {
 
     it('should register --validate option', () => {
       configCommand(env.program);
-
-      const configCmd = env.program.commands.find(cmd => cmd.name() === 'config');
-      const options = configCmd?.options;
-
-      expect(options?.some(opt => opt.flags === '--validate')).toBe(true);
+      expect(hasOption(env.program, 'config', '--validate')).toBe(true);
     });
 
     it('should register --verbose option', () => {
       configCommand(env.program);
-
-      const configCmd = env.program.commands.find(cmd => cmd.name() === 'config');
-      const options = configCmd?.options;
-
-      expect(options?.some(opt => opt.flags === '-v, --verbose')).toBe(true);
+      expect(hasOption(env.program, 'config', '-v, --verbose')).toBe(true);
     });
   });
 
@@ -204,7 +154,7 @@ describe('config command', () => {
       mockNoConfig();
       configCommand(env.program);
 
-      const exitCode = await executeConfigCommand(env.program, ['config']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['config']);
 
       expect(exitCode).toBe(1);
       expectErrorMessage('No configuration file found');
@@ -216,13 +166,13 @@ describe('config command', () => {
   describe('valid config file', () => {
     beforeEach(() => {
       const mockConfig = createTestConfig();
-      mockValidConfig(mockConfig, join(testDir, 'vibe-validate.config.js'));
+      mockValidConfig(mockConfig, join(tempEnv.testDir, 'vibe-validate.config.js'));
     });
 
     it('should validate config successfully with --validate flag', async () => {
       configCommand(env.program);
 
-      const exitCode = await executeConfigCommand(env.program, ['config', '--validate']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['config', '--validate']);
 
       expect(exitCode).toBe(0);
       expectLogMessage('Configuration is valid');
@@ -231,14 +181,14 @@ describe('config command', () => {
 
   describe('invalid config file', () => {
     beforeEach(() => {
-      const configPath = join(testDir, 'vibe-validate.config.js');
+      const configPath = join(tempEnv.testDir, 'vibe-validate.config.js');
       mockInvalidConfig(['validation.phases: Required'], configPath);
     });
 
     it('should exit with error for invalid config', async () => {
       configCommand(env.program);
 
-      const exitCode = await executeConfigCommand(env.program, ['config']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['config']);
 
       expect(exitCode).toBe(1);
       expectErrorMessage('Configuration is invalid');
@@ -253,13 +203,13 @@ describe('config command', () => {
           autoSync: false
         }
       });
-      mockValidConfig(mockConfig, join(testDir, 'vibe-validate.config.yaml'));
+      mockValidConfig(mockConfig, join(tempEnv.testDir, 'vibe-validate.config.yaml'));
     });
 
     it('should display config in minimal YAML format by default', async () => {
       configCommand(env.program);
 
-      const exitCode = await executeConfigCommand(env.program, ['config']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['config']);
 
       expect(exitCode).toBe(0);
       expectLogMessage('validation:');
@@ -268,7 +218,7 @@ describe('config command', () => {
     it('should display config in verbose format when requested', async () => {
       configCommand(env.program);
 
-      const exitCode = await executeConfigCommand(env.program, ['config', '--verbose']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['config', '--verbose']);
 
       expect(exitCode).toBe(0);
       expectLogMessage('validation:');
@@ -278,12 +228,12 @@ describe('config command', () => {
 
   describe('error handling', () => {
     it('should handle config loading errors gracefully', async () => {
-      vi.mocked(configLoader.findConfigPath).mockReturnValue(join(testDir, 'vibe-validate.config.js'));
+      vi.mocked(configLoader.findConfigPath).mockReturnValue(join(tempEnv.testDir, 'vibe-validate.config.js'));
       vi.mocked(configLoader.loadConfig).mockRejectedValue(new Error('Config parse error'));
 
       configCommand(env.program);
 
-      const exitCode = await executeConfigCommand(env.program, ['config']);
+      const exitCode = await executeCommandAndGetExitCode(env.program,['config']);
 
       expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(

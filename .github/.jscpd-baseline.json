@@ -866,78 +866,6 @@
     },
     {
       "format": "typescript",
-      "lines": 14,
-      "fragment": ");\n      const mockHistoryNote = createMockHistoryNote(mockTreeHash, [\n        {\n          branch: 'main',\n          timestamp: '2025-10-16T12:00:00.000Z',\n          result: mockResult,\n        },\n      ]);\n\n      vi.mocked(hasHistoryForTree).mockResolvedValue(true);\n      vi.mocked(readHistoryNote).mockResolvedValue(mockHistoryNote);\n    });\n\n    it('should display failed state (minimal output)'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 226,
-        "end": 239,
-        "startLoc": {
-          "line": 226,
-          "column": 24,
-          "position": 1857
-        },
-        "endLoc": {
-          "line": 239,
-          "column": 47,
-          "position": 1945
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 195,
-        "end": 208,
-        "startLoc": {
-          "line": 195,
-          "column": 13,
-          "position": 1575
-        },
-        "endLoc": {
-          "line": 208,
-          "column": 47,
-          "position": 1663
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ";\nimport { setupCommanderTest, type CommanderTestEnv } from '../helpers/commander-test-setup.js';\n\n\n// Mock dependencies\nvi.mock('@vibe-validate/git', () => ({\n  getGitTreeHash: vi.fn(),\n}));\n\nvi.mock('@vibe-validate/history', () => ({\n  hasHistoryForTree: vi.fn(),\n  readHistoryNote: vi.fn(),\n}",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 6,
-        "end": 18,
-        "startLoc": {
-          "line": 6,
-          "column": 33,
-          "position": 84
-        },
-        "endLoc": {
-          "line": 18,
-          "column": 2,
-          "position": 177
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 8,
-        "end": 20,
-        "startLoc": {
-          "line": 8,
-          "column": 35,
-          "position": 115
-        },
-        "endLoc": {
-          "line": 20,
-          "column": 22,
-          "position": 209
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 8,
       "fragment": "));\n\n      snapshotCommand(env.program);\n      const exitCode = await runSnapshotCommand();\n      expect(exitCode).toBe(0);\n\n      const output = getLogOutput();\n      expect(output.some(call => call.includes('Validation Status:') && call.includes('Failed'",
       "tokens": 0,
@@ -1087,17 +1015,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 57,
-        "end": 67,
+        "start": 53,
+        "end": 63,
         "startLoc": {
-          "line": 57,
+          "line": 53,
           "column": 19,
-          "position": 554
+          "position": 516
         },
         "endLoc": {
-          "line": 67,
+          "line": 63,
           "column": 18,
-          "position": 634
+          "position": 596
         }
       },
       "secondFile": {
@@ -1113,150 +1041,6 @@
           "line": 23,
           "column": 2,
           "position": 219
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": "program.parseAsync(args, { from: 'user' });\n    return 0;\n  } catch (err: unknown) {\n    // Commander exitOverride throws CommanderError with exitCode\n    if (err && typeof err === 'object' && 'exitCode' in err) {\n      return (err as { exitCode: number }).exitCode;\n    }\n    // process.exit throws Error with message \"process.exit(code)\"\n    if (err instanceof Error && err.message.startsWith('process.exit(')) {\n      const",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 94,
-        "end": 103,
-        "startLoc": {
-          "line": 94,
-          "column": 2,
-          "position": 595
-        },
-        "endLoc": {
-          "line": 103,
-          "column": 6,
-          "position": 715
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/state.test.ts",
-        "start": 74,
-        "end": 83,
-        "startLoc": {
-          "line": 74,
-          "column": 2,
-          "position": 455
-        },
-        "endLoc": {
-          "line": 83,
-          "column": 27,
-          "position": 575
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "${Date.now()}`);\n    testDir = mkdirSyncReal(targetDir, { recursive: true });\n\n    // Save original cwd and change to test directory\n    originalCwd = process.cwd();\n    process.chdir(testDir);\n\n    // Setup Commander test environment\n    env = setupCommanderTest();\n\n    // Reset mocks\n    vi.mocked(configLoader",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 138,
-        "end": 149,
-        "startLoc": {
-          "line": 138,
-          "column": 28,
-          "position": 933
-        },
-        "endLoc": {
-          "line": 149,
-          "column": 13,
-          "position": 1013
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 418,
-        "end": 429,
-        "startLoc": {
-          "line": 418,
-          "column": 32,
-          "position": 2926
-        },
-        "endLoc": {
-          "line": 429,
-          "column": 5,
-          "position": 3006
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 21,
-      "fragment": "});\n\n  afterEach(() => {\n    env.cleanup();\n\n    // Restore cwd\n    process.chdir(originalCwd);\n\n    // Clean up test files\n    if (existsSync(testDir)) {\n      try {\n        rmSync(testDir, { recursive: true, force: true });\n      } catch {\n        // Ignore cleanup errors\n      }\n    }\n\n    vi.restoreAllMocks();\n  });\n\n  describe('command registration'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 152,
-        "end": 172,
-        "startLoc": {
-          "line": 152,
-          "column": 3,
-          "position": 1054
-        },
-        "endLoc": {
-          "line": 172,
-          "column": 23,
-          "position": 1168
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 450,
-        "end": 470,
-        "startLoc": {
-          "line": 450,
-          "column": 3,
-          "position": 3297
-        },
-        "endLoc": {
-          "line": 470,
-          "column": 43,
-          "position": 3411
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": ", () => {\n      configCommand(env.program);\n\n      const configCmd = env.program.commands.find(cmd => cmd.name() === 'config');\n      const options = configCmd?.options;\n\n      expect(options?.some(opt => opt.flags === '-v, --verbose'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 192,
-        "end": 198,
-        "startLoc": {
-          "line": 192,
-          "column": 35,
-          "position": 1383
-        },
-        "endLoc": {
-          "line": 198,
-          "column": 16,
-          "position": 1465
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/config.test.ts",
-        "start": 183,
-        "end": 189,
-        "startLoc": {
-          "line": 183,
-          "column": 36,
-          "position": 1281
-        },
-        "endLoc": {
-          "line": 189,
-          "column": 13,
-          "position": 1363
         }
       }
     },

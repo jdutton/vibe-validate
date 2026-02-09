@@ -185,6 +185,25 @@ runs:
       // Silent skip - no warnings logged, no user notification needed
       // After upgrade, users should run 'vv doctor' to check for issues
     });
+
+    it('should silently ignore old format notes without runs array (pre-0.19.0)', async () => {
+      // Simulate legacy history from before PR #123 (composite hash format)
+      const oldFormatYaml = `
+treeHash: 98c9247ff1446b44d2fb80ac05ce09c11bb3d3eb
+timestamp: '2025-10-21T09:00:00Z'
+passed: true
+duration: 5000
+`;
+
+      vi.mocked(readNote).mockReturnValue(oldFormatYaml);
+
+      const result = await readHistoryNote('98c9247ff1446b44d2fb80ac05ce09c11bb3d3eb');
+
+      // Should return null for old format notes (missing 'runs' array)
+      expect(result).toBeNull();
+      // No warnings should be logged - this is expected during version upgrades
+      // New validations will create properly formatted notes
+    });
   });
 
   describe('listHistoryTreeHashes', () => {

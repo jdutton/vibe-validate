@@ -141,7 +141,8 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(git commit:*)",
-      "Bash(pnpm jscpd-update-baseline:*)"
+      "Bash(pnpm jscpd-update-baseline:*)",
+      "Bash(node tools/jscpd-update-baseline.js *)"
     ],
     "deny": [
       "Skill(superpowers:using-git-worktrees)",
