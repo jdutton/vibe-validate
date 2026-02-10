@@ -51,7 +51,7 @@ describe('npm package tarball (system test)', () => {
 
     // npm installs to node_modules/@vibe-validate/cli
     extractDir = join(tempDir, 'node_modules', '@vibe-validate', 'cli');
-  });
+  }, 60000); // 60s timeout for pnpm pack + npm install (can be slow in CI)
 
   afterAll(() => {
     // Cleanup temp directory

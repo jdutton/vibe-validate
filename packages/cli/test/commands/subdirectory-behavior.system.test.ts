@@ -124,8 +124,8 @@ describe('All commands work from subdirectories (system tests)', () => {
         cwd: PROJECT_ROOT,
       });
 
-      // Should show history header (even if empty)
-      expect(result.stdout).toMatch(/Validation History|Total validation runs/);
+      // Should show history header (or "no history" message if empty)
+      expect(result.stdout).toMatch(/Validation History|Total validation runs|No validation history found/);
     });
 
     it('should work from subdirectory (packages/)', () => {
@@ -134,7 +134,7 @@ describe('All commands work from subdirectories (system tests)', () => {
       });
 
       // Git notes operations are repo-wide
-      expect(result.stdout).toMatch(/Validation History|Total validation runs/);
+      expect(result.stdout).toMatch(/Validation History|Total validation runs|No validation history found/);
     });
 
     it('should work from deep subdirectory (packages/cli/)', () => {
@@ -142,7 +142,7 @@ describe('All commands work from subdirectories (system tests)', () => {
         cwd: CLI_DIR,
       });
 
-      expect(result.stdout).toMatch(/Validation History|Total validation runs/);
+      expect(result.stdout).toMatch(/Validation History|Total validation runs|No validation history found/);
     });
   });
 
