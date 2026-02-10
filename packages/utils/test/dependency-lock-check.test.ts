@@ -477,7 +477,8 @@ describe('runDependencyCheck', () => {
   it('should pass when lock file is in sync (npm)', async () => {
     createPackageJson(tempDir, {
       dependencies: {
-        vitest: '^2.0.0',
+        // Use tiny package for fast test execution (especially on Windows CI)
+        'ms': '^2.1.3',
       },
     });
     createLockFile(tempDir, 'npm');
