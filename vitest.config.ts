@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
+// Platform-aware test configuration
+// Windows has slower process spawning (CreateProcess vs fork) and git operations (NTFS vs ext4)
+const isWindows = process.platform === 'win32';
+
 export default defineConfig({
   test: {
     globals: true,
@@ -12,23 +16,29 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      '**/*.system.test.ts', // System tests run separately with pnpm test:system
+      '**/*.system.test.ts', // System tests run separately in vitest.config.integration.ts
+      '**/*.integration.test.ts', // Integration tests run separately in vitest.config.integration.ts
+      '**/test/integration/**', // Integration test directories
       // Windows exclusions removed - all tests now work cross-platform (v0.18.0)
       // Fixed by using resolve() for absolute paths and mkdirSyncReal() return value
     ],
-    // Prevent Vitest worker timeouts by limiting concurrency
-    // Reduced from 5 to 3 to prevent resource exhaustion with coverage (v0.15.0)
-    // Further reduced to 1 to prevent onTaskUpdate timeouts (v0.17.1)
-    maxConcurrency: 1,
-    fileParallelism: false,
-    // Increased from 10000 to 30000 for tests that spawn processes (v0.15.0)
-    testTimeout: 30000,
-    // Pool options to prevent worker exhaustion
+    // Platform-specific concurrency settings
+    // Windows: maxConcurrency 1 (process spawning overhead + NTFS slower than Unix filesystems)
+    // Unix: maxConcurrency 3 (better parallelism with fork/exec + ext4/APFS performance)
+    maxConcurrency: isWindows ? 1 : 3,
+    fileParallelism: !isWindows, // Enable file parallelism on Unix for better throughput
+    // Platform-specific timeouts for tests that spawn processes
+    // Windows: 60s (CreateProcess overhead + slower git operations + security scanning)
+    // Unix: 30s (faster fork/exec + faster filesystem operations)
+    testTimeout: isWindows ? 60000 : 30000,
+    // Pool options - platform-aware fork limits
+    // Windows: 1 fork (minimize CreateProcess overhead)
+    // Unix: 3 forks (leverage faster fork/exec)
     pool: 'forks',
     poolOptions: {
       forks: {
         singleFork: false,
-        maxForks: 1,
+        maxForks: isWindows ? 1 : 3,
       },
     },
     coverage: {
