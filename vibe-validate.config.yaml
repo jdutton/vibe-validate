@@ -30,5 +30,5 @@ ci:
     - ubuntu-latest
     - windows-latest
   dependencyLockCheck:
-    runOn: pre-commit
+    runOn: validate
 developerFeedback: true

@@ -1247,9 +1247,12 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     configWithErrors = { config: null, errors: null, filePath: null };
   }
 
-  // Run all checks
+  // Start version check in parallel (slow - hits npm registry)
+  // Run other checks while waiting for network response
+  const versionCheckPromise = checkVersion(versionChecker);
+
+  // Run all fast checks (no network calls)
   allChecks.push(
-    await checkVersion(versionChecker),
     checkCliBuildSync(),
     checkNodeVersion(),
     checkGitInstalled(),
@@ -1269,6 +1272,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     checkCacheMigration(),
     await checkHistoryHealth()
   );
+
+  // Wait for version check to complete (network call finishes while other checks ran)
+  allChecks.unshift(await versionCheckPromise); // Add to front to maintain display order
 
   // Collect suggestions from failed checks
   const suggestions: string[] = allChecks
