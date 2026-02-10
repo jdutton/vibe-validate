@@ -181,7 +181,7 @@ describe('npm package tarball (system test)', () => {
         cwd: installDir,
         stdio: 'ignore',
       });
-    });
+    }, 60000); // 60s timeout for npm init + npm install (can be slow in CI)
 
     afterAll(() => {
       // Cleanup install directory
