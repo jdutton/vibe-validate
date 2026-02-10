@@ -21,8 +21,8 @@ import { defineConfig } from 'vitest/config';
  *
  * All tests must be cross-platform (Windows + Unix).
  *
- * INCLUDED TESTS (103 total):
- * - packaging.system.test.ts: npm package integrity (14 tests)
+ * INCLUDED TESTS (89 total):
+ * - packaging.system.test.ts: npm package integrity (14 tests, ALL SKIPPED - see test file for reason)
  * - subdirectory-behavior.system.test.ts: CLI from subdirectories (26 tests)
  * - tree-hash.integration.test.ts: git tree hash with real repos (11 tests)
  * - history-recording.test.ts: git notes history tracking (3 tests)
