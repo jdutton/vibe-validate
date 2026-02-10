@@ -258,7 +258,10 @@ export function preCommitCommand(program: Command): void {
               verbose,
               yaml: false, // Pre-commit uses human-readable output
               check: false,
-              context,
+              context: {
+                ...context,
+                isPreCommit: true, // Signal this is pre-commit workflow
+              },
             });
           }
         );

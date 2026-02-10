@@ -8,7 +8,7 @@
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationResult } from '@vibe-validate/core';
 import { runValidation } from '@vibe-validate/core';
-import { getGitTreeHash, type TreeHashResult } from '@vibe-validate/git';
+import { getGitTreeHash, getRepositoryRoot, type TreeHashResult } from '@vibe-validate/git';
 import {
   recordValidationHistory,
   checkWorktreeStability,
@@ -16,6 +16,7 @@ import {
   findCachedValidation,
   type ValidationRun,
 } from '@vibe-validate/history';
+import { runDependencyCheck } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import { stringify as yamlStringify } from 'yaml';
 
@@ -34,6 +35,128 @@ export interface ValidateWorkflowOptions {
   context: AgentContext;
 }
 
+/**
+ * Determine if dependency check should run based on configuration and context
+ *
+ * @param config - Dependency lock check configuration
+ * @param isPreCommit - Whether running in pre-commit context
+ * @returns True if dependency check should run
+ * @internal
+ */
+function shouldRunDependencyCheck(
+  config: NonNullable<VibeValidateConfig['ci']>['dependencyLockCheck'] | undefined,
+  isPreCommit: boolean
+): boolean {
+  if (!config) {
+    // Undefined config = implicit 'pre-commit' behavior
+    return isPreCommit;
+  }
+
+  if (!config.runOn) {
+    // Undefined runOn = implicit 'pre-commit' behavior
+    return isPreCommit;
+  }
+
+  switch (config.runOn) {
+    case 'validate':
+      return true; // Always run
+    case 'pre-commit':
+      return isPreCommit; // Only when pre-commit invoked
+    case 'disabled':
+      return false; // Never run
+  }
+}
+
+/**
+ * Display dependency check skip reason
+ *
+ * @param linkedPackages - List of linked packages (if npm link detected)
+ * @internal
+ */
+function displayNpmLinkSkipMessage(linkedPackages: string[]): void {
+  console.log(chalk.yellow('⚠️  Dependency lock check skipped (npm link detected)'));
+  if (linkedPackages.length > 0) {
+    console.log(chalk.gray('   Linked packages:'));
+    for (const pkg of linkedPackages) {
+      console.log(chalk.gray(`   - ${pkg}`));
+    }
+    console.log(chalk.gray('   To restore normal mode: npm unlink <package> && npm install'));
+  }
+}
+
+/**
+ * Display dependency check failure error
+ *
+ * @param error - Error message from dependency check
+ * @param command - Command that was run
+ * @internal
+ */
+function displayDependencyCheckFailure(error: string | undefined, command: string | undefined): void {
+  console.error(chalk.red('❌ Dependency lock check failed'));
+  if (error) {
+    console.error(chalk.yellow(error));
+  }
+  console.error(chalk.yellow('\n💡 To fix:'));
+  console.error(chalk.gray(`   1. Run: ${command ?? 'npm install'}`));
+  console.error(chalk.gray('   2. Commit the updated lock file'));
+  console.error(chalk.gray('   3. Try again'));
+  console.error(chalk.yellow('\n⚠️  To skip temporarily: VV_SKIP_DEPENDENCY_CHECK=1'));
+}
+
+/**
+ * Run dependency lock file check before validation
+ *
+ * @param config - Vibe validate configuration
+ * @param verbose - Whether verbose output is enabled
+ * @returns Validation result if check failed, null if passed/skipped
+ * @internal
+ */
+async function runDependencyLockCheck(
+  config: VibeValidateConfig,
+  verbose: boolean
+): Promise<ValidationResult | null> {
+  let gitRoot: string;
+  try {
+    gitRoot = getRepositoryRoot();
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (verbose) {
+      console.warn(chalk.yellow(`⚠️  Could not get repository root - dependency check skipped: ${errorMsg}`));
+    }
+    return null;
+  }
+
+  const depCheckConfig = config.ci?.dependencyLockCheck;
+  const depCheckResult = await runDependencyCheck(
+    gitRoot,
+    {
+      packageManager: depCheckConfig?.packageManager ?? config.ci?.packageManager,
+      command: depCheckConfig?.command,
+    },
+    verbose
+  );
+
+  // Handle failure
+  if (!depCheckResult.passed && !depCheckResult.skipped) {
+    displayDependencyCheckFailure(depCheckResult.error, depCheckResult.command);
+    return {
+      passed: false,
+      timestamp: new Date().toISOString(),
+      failedStep: 'Dependency Lock Check',
+      summary: 'Dependency lock check failed',
+      phases: [],
+    };
+  }
+
+  // Handle skip
+  if (depCheckResult.skipped && depCheckResult.skipReason === 'npm-link') {
+    displayNpmLinkSkipMessage(depCheckResult.linkedPackages ?? []);
+  } else if (depCheckResult.skipped && depCheckResult.skipReason === 'env-var') {
+    console.log(chalk.yellow('⚠️  Dependency lock check skipped (VV_SKIP_DEPENDENCY_CHECK set)'));
+  }
+
+  return null;
+}
 
 /**
  * Check cache for validation run (pass or fail)
@@ -228,6 +351,18 @@ export async function runValidateWorkflow(
         console.error(formatWorktreeDisplay(treeHashResultBefore));
         if (!yaml) {
           console.log(''); // Blank line for readability (human mode only)
+        }
+      }
+
+      // Run dependency check if configured (cache miss only)
+      const depCheckConfig = config.ci?.dependencyLockCheck;
+      const isPreCommit = options.context.isPreCommit ?? false;
+
+      if (shouldRunDependencyCheck(depCheckConfig, isPreCommit)) {
+        const depCheckFailure = await runDependencyLockCheck(config, verbose);
+        if (depCheckFailure) {
+          // Dependency check failed - return failure result
+          return depCheckFailure;
         }
       }
 

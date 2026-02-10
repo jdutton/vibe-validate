@@ -164,6 +164,11 @@ git:
   remoteOrigin: origin
   autoSync: false  # Never auto-merge - safety first
 
+# CI/CD configuration
+ci:
+  dependencyLockCheck:
+    runOn: pre-commit  # Verify lock files before commit
+
 # Validation configuration
 validation:
   phases:
@@ -368,6 +373,7 @@ vv cleanup
 - **Customize configuration**: See [Configuration Reference](./skill/resources/configuration-reference.md)
 - **Learn CLI commands**: See [CLI Reference](./skill/resources/cli-reference.md)
 - **Use config templates**: See [Config Templates Guide](../packages/cli/config-templates/README.md)
+- **Set up dependency lock check**: See [Dependency Lock Check](./dependency-lock-check.md)
 - **Integrate with AI assistants**: See [Agent Integration Guide](./agent-integration-guide.md)
 - **Understand error extractors**: See [Error Extractors Guide](./skill/resources/error-extractors-guide.md)
 

@@ -10,6 +10,7 @@ export interface AgentContext {
   agentName?: string;
   isCI: boolean;
   isInteractive: boolean;
+  isPreCommit?: boolean;
 }
 
 /**

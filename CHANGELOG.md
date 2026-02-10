@@ -38,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Dependency lock check**: Prevents cache poisoning by verifying lock files are in sync before validation runs
+  - Auto-detects package manager (npm, pnpm, yarn, bun)
+  - Automatically skips when npm link detected (preserves local dev workflow)
+  - Configurable via `ci.dependencyLockCheck.runOn` (validate, pre-commit, or disabled)
+  - Respects `VV_SKIP_DEPENDENCY_CHECK=1` environment variable
+  - `vv doctor` warns if not configured
+
 - **watch-pr: Immediate error extraction during polling** (Enhancement)
   - Extracted errors displayed immediately when checks fail (no waiting for final YAML)
   - Shows job ID, run ID, and log file path for each completed check

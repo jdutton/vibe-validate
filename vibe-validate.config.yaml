@@ -29,4 +29,6 @@ ci:
   os:
     - ubuntu-latest
     - windows-latest
+  dependencyLockCheck:
+    runOn: pre-commit
 developerFeedback: true
