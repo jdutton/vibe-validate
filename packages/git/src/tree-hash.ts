@@ -190,11 +190,17 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
     // Check if we're in a git repository
     executeGitCommand(['rev-parse', '--is-inside-work-tree'], { timeout: GIT_TIMEOUT });
 
-    // Get git directory and create temp index path
+    // Get git directory and repository root
     // CRITICAL: Use --absolute-git-dir instead of --git-dir for cross-platform consistency
     // --git-dir returns relative paths (.git vs ../.git) on Windows depending on cwd
     // --absolute-git-dir ensures same path regardless of subdirectory (Issue #127)
     const gitDir = executeGitCommand(['rev-parse', '--absolute-git-dir'], { timeout: GIT_TIMEOUT }).stdout.trim();
+
+    // Get repository root (working tree top level)
+    // CRITICAL: git add --all must run from repo root, not subdirectory
+    // Running from subdirectory only stages files in that subdirectory (Issue #127)
+    const repoRoot = executeGitCommand(['rev-parse', '--show-toplevel'], { timeout: GIT_TIMEOUT }).stdout.trim();
+
     cleanupStaleIndexes(gitDir);
     const tempIndexFile = `${gitDir}/vibe-validate-temp-index-${process.pid}`;
 
@@ -230,10 +236,13 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
       //   - Non-deterministic: different devs have different ignored files
       //   - Breaks cache sharing: same code produces different hashes
       //
+      // CRITICAL: Run from repo root, not subdirectory (Issue #127)
+      // Running from subdirectory only stages files in that subdirectory on Windows
       // We need actual content staged so git write-tree includes working directory changes
       const addResult = executeGitCommand(['add', '--all'], {
         timeout: GIT_TIMEOUT,
         env: tempIndexEnv,
+        cwd: repoRoot,
         ignoreErrors: true
       });
 
@@ -244,9 +253,11 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
       }
 
       // Step 4: Get tree hash using temp index (content-based, no timestamps)
+      // Run from repo root for consistency with git add --all
       const treeHash = executeGitCommand(['write-tree'], {
         timeout: GIT_TIMEOUT,
-        env: tempIndexEnv
+        env: tempIndexEnv,
+        cwd: repoRoot
       }).stdout.trim();
 
       // Calculate main repo tree hash

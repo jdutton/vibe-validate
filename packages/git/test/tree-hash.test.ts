@@ -74,7 +74,8 @@ const mockIsProcessRunning = utils.isProcessRunning as ReturnType<typeof vi.fn>;
 function mockInitialGitCommands() {
   return vi.mocked(gitExecutor.executeGitCommand)
     .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree
-    .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir
+    .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --absolute-git-dir
+    .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel
     .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 });  // git add
 }
 
@@ -123,7 +124,13 @@ describe('getGitTreeHash', () => {
         stdout: '.git',
         stderr: '',
         exitCode: 0,
-      })  // git rev-parse --git-dir
+      })  // git rev-parse --absolute-git-dir
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '/repo/root',
+        stderr: '',
+        exitCode: 0,
+      })  // git rev-parse --show-toplevel
       .mockReturnValueOnce({
         success: true,
         stdout: '',
@@ -148,8 +155,8 @@ describe('getGitTreeHash', () => {
     expect(result.hash).toBe('abc123def456');
     expect(result.submoduleHashes).toBeUndefined();
 
-    // Verify correct git commands were called (5 times: is-inside-work-tree, git-dir, add, write-tree, submodule status)
-    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(5);
+    // Verify correct git commands were called (6 times: is-inside-work-tree, absolute-git-dir, show-toplevel, add, write-tree, submodule status)
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(6);
 
     // Verify fs.copyFileSync was called (SECURITY: replaces cp shell command)
     expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
@@ -171,20 +178,27 @@ describe('getGitTreeHash', () => {
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       3,
+      ['rev-parse', '--show-toplevel'],
+      expect.any(Object)
+    );
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
+      4,
       ['add', '--all'],
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_INDEX_FILE: expect.stringContaining('vibe-validate-temp-index')
-        })
+        }),
+        cwd: expect.any(String)
       })
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
-      4,
+      5,
       ['write-tree'],
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_INDEX_FILE: expect.stringContaining('vibe-validate-temp-index')
-        })
+        }),
+        cwd: expect.any(String)
       })
     );
 
@@ -199,12 +213,14 @@ describe('getGitTreeHash', () => {
     // Simulate running twice with same content
     vi.mocked(gitExecutor.executeGitCommand)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (1st run)
-      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir (1st run)
+      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --absolute-git-dir (1st run)
+      .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (1st run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (1st run)
       .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (1st run)
       .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 })  // git submodule status (1st run, no submodules)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (2nd run)
-      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --git-dir (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --absolute-git-dir (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (2nd run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (2nd run)
       .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (2nd run)
       .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status (2nd run, no submodules)
@@ -284,7 +300,8 @@ describe('getGitTreeHash', () => {
     // We verify this by checking that git write-tree is used (not git stash create)
     vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({ success: true, stdout: 'abc123\n', stderr: '', exitCode: 0 });
     vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 });  // git rev-parse --is-inside-work-tree
-    vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 });  // git rev-parse --git-dir
+    vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 });  // git rev-parse --absolute-git-dir
+    vi.mocked(gitExecutor.executeGitCommand).mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 });  // git rev-parse --show-toplevel
 
     await getGitTreeHash();
 
