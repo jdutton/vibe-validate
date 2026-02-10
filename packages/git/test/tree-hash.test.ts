@@ -166,7 +166,7 @@ describe('getGitTreeHash', () => {
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       2,
-      ['rev-parse', '--git-dir'],
+      ['rev-parse', '--absolute-git-dir'],
       expect.any(Object)
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(

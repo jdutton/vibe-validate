@@ -191,7 +191,10 @@ export async function getGitTreeHash(): Promise<TreeHashResult> {
     executeGitCommand(['rev-parse', '--is-inside-work-tree'], { timeout: GIT_TIMEOUT });
 
     // Get git directory and create temp index path
-    const gitDir = executeGitCommand(['rev-parse', '--git-dir'], { timeout: GIT_TIMEOUT }).stdout.trim();
+    // CRITICAL: Use --absolute-git-dir instead of --git-dir for cross-platform consistency
+    // --git-dir returns relative paths (.git vs ../.git) on Windows depending on cwd
+    // --absolute-git-dir ensures same path regardless of subdirectory (Issue #127)
+    const gitDir = executeGitCommand(['rev-parse', '--absolute-git-dir'], { timeout: GIT_TIMEOUT }).stdout.trim();
     cleanupStaleIndexes(gitDir);
     const tempIndexFile = `${gitDir}/vibe-validate-temp-index-${process.pid}`;
 
