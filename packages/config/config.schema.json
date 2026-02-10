@@ -150,6 +150,32 @@
             "disableWorkflowCheck": {
               "type": "boolean",
               "default": false
+            },
+            "dependencyLockCheck": {
+              "type": "object",
+              "properties": {
+                "runOn": {
+                  "type": "string",
+                  "enum": [
+                    "validate",
+                    "pre-commit",
+                    "disabled"
+                  ]
+                },
+                "packageManager": {
+                  "type": "string",
+                  "enum": [
+                    "npm",
+                    "pnpm",
+                    "yarn",
+                    "bun"
+                  ]
+                },
+                "command": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

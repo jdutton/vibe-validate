@@ -1015,17 +1015,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 53,
-        "end": 63,
+        "start": 55,
+        "end": 65,
         "startLoc": {
-          "line": 53,
+          "line": 55,
           "column": 19,
-          "position": 516
+          "position": 538
         },
         "endLoc": {
-          "line": 63,
+          "line": 65,
           "column": 18,
-          "position": 596
+          "position": 618
         }
       },
       "secondFile": {

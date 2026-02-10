@@ -64,6 +64,7 @@ const CHECK_PRE_COMMIT_HOOK = 'Pre-commit hook';
 const CHECK_GITHUB_ACTIONS_WORKFLOW = 'GitHub Actions workflow';
 const CHECK_PRE_COMMIT_SECRET_SCANNING = 'Pre-commit secret scanning';
 const CHECK_VIBE_VALIDATE_VERSION = 'vibe-validate version';
+const CHECK_DEPENDENCY_LOCK_CHECK = 'Dependency lock check configuration';
 
 // Common message constants
 const MSG_SKIPPED_NOT_IN_GIT = 'Skipped (not in git repository)';
@@ -1170,6 +1171,52 @@ async function checkSecretScanning(config?: VibeValidateConfig | null): Promise<
 }
 
 /**
+ * Check if dependency lock check is configured
+ */
+async function checkDependencyLockCheck(config?: VibeValidateConfig | null): Promise<DoctorCheckResult> {
+  try {
+    if (!config) {
+      return {
+        name: CHECK_DEPENDENCY_LOCK_CHECK,
+        passed: true,
+        message: MSG_SKIPPED_NO_CONFIG,
+      };
+    }
+
+    const depCheckConfig = config.ci?.dependencyLockCheck;
+
+    if (depCheckConfig?.runOn === undefined) {
+      return {
+        name: CHECK_DEPENDENCY_LOCK_CHECK,
+        passed: false,
+        message: 'Dependency lock check not configured',
+        suggestion: [
+          `Set ci.dependencyLockCheck.runOn to 'validate' or 'pre-commit' in vibe-validate.config.yaml`,
+          '',
+          'This check prevents cache poisoning from stale dependencies',
+          'Recommended: runOn: pre-commit (checks before commit)',
+          'Alternative: runOn: validate (checks before every validation)',
+          'To disable: runOn: disabled',
+        ].join('\n   '),
+      };
+    }
+
+    return {
+      name: CHECK_DEPENDENCY_LOCK_CHECK,
+      passed: true,
+      message: 'Dependency lock check configured (runOn: ' + depCheckConfig.runOn + ')',
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      name: CHECK_DEPENDENCY_LOCK_CHECK,
+      passed: true,
+      message: `Skipped (config or execution error): ${errorMessage}`,
+    };
+  }
+}
+
+/**
  * Run all doctor checks
  */
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
@@ -1200,9 +1247,12 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     configWithErrors = { config: null, errors: null, filePath: null };
   }
 
-  // Run all checks
+  // Start version check in parallel (slow - hits npm registry)
+  // Run other checks while waiting for network response
+  const versionCheckPromise = checkVersion(versionChecker);
+
+  // Run all fast checks (no network calls)
   allChecks.push(
-    await checkVersion(versionChecker),
     checkCliBuildSync(),
     checkNodeVersion(),
     checkGitInstalled(),
@@ -1216,11 +1266,15 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     await checkWorkflowSync(config),
     await checkPreCommitHook(config),
     await checkSecretScanning(config),
+    await checkDependencyLockCheck(config),
     checkGitignoreStateFile(),
     checkValidationState(),
     checkCacheMigration(),
     await checkHistoryHealth()
   );
+
+  // Wait for version check to complete (network call finishes while other checks ran)
+  allChecks.unshift(await versionCheckPromise); // Add to front to maintain display order
 
   // Collect suggestions from failed checks
   const suggestions: string[] = allChecks

@@ -100,6 +100,44 @@ export const GitConfigSchema = z.object({
 export type GitConfig = z.infer<typeof GitConfigSchema>;
 
 /**
+ * Dependency Lock Check Configuration Schema
+ *
+ * Controls when and how lock file verification runs to prevent cache poisoning.
+ */
+export const DependencyLockCheckSchema = z.object({
+  /**
+   * When to run lock file verification (default: validate)
+   * - 'validate': Run during validation workflow
+   * - 'pre-commit': Run during pre-commit hook
+   * - 'disabled': Skip lock file verification
+   */
+  runOn: z.enum(['validate', 'pre-commit', 'disabled']).optional(),
+
+  /**
+   * Package manager to verify lock file for (default: auto-detect from ci.packageManager)
+   * Auto-detection priority:
+   * 1. ci.packageManager field
+   * 2. package.json packageManager field
+   * 3. Lock file detection (bun.lockb, yarn.lock, package-lock.json, pnpm-lock.yaml)
+   *
+   * Explicit configuration overrides auto-detection.
+   */
+  packageManager: z.enum(['npm', 'pnpm', 'yarn', 'bun']).optional(),
+
+  /**
+   * Custom command to verify lock file (optional)
+   * If not specified, uses package manager's built-in check:
+   * - npm: npm ci --dry-run
+   * - pnpm: pnpm install --frozen-lockfile
+   * - yarn: yarn install --frozen-lockfile
+   * - bun: bun install --frozen-lockfile
+   */
+  command: z.string().optional(),
+}).strict();
+
+export type DependencyLockCheckConfig = z.infer<typeof DependencyLockCheckSchema>;
+
+/**
  * CI/CD Configuration Schema
  */
 export const CIConfigSchema = z.object({
@@ -137,6 +175,14 @@ export const CIConfigSchema = z.object({
    * When enabled, `vibe-validate doctor` will skip workflow sync validation.
    */
   disableWorkflowCheck: z.boolean().optional().default(false),
+
+  /**
+   * Dependency lock file verification configuration (optional)
+   *
+   * Prevents cache poisoning by verifying lock files are in sync with package.json
+   * before validation runs. Recommended for all Node.js projects.
+   */
+  dependencyLockCheck: DependencyLockCheckSchema.optional(),
 }).strict();
 
 export type CIConfig = z.infer<typeof CIConfigSchema>;

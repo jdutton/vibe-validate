@@ -46,3 +46,13 @@ export {
   executePnpmCommand,
   type PackageManagerOptions
 } from './package-manager.js';
+
+// Dependency lock file verification
+export {
+  detectPackageManager,
+  detectLinkedPackages,
+  buildInstallCommand,
+  runDependencyCheck,
+  type PackageManager,
+  type DependencyCheckResult
+} from './dependency-lock-check.js';

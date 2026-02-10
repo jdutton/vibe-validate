@@ -148,13 +148,23 @@ describe('doctor command', () => {
       await mockDoctorFileSystem();
       await mockDoctorGit();
       await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      // Configure with dependency check to make all checks pass
+      const configWithDepCheck = {
+        ...mockConfig,
+        ci: {
+          dependencyLockCheck: {
+            runOn: 'pre-commit' as const,
+          },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValue(configWithDepCheck);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(18);
+      expect(result.checks).toHaveLength(19);
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -285,7 +295,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verify that all 16 checks ran (not just the config check)
-      expect(result.checks).toHaveLength(18);
+      expect(result.checks).toHaveLength(19);
 
       // Config check should fail
       assertCheck(result, 'Configuration valid', {
@@ -299,10 +309,10 @@ describe('doctor command', () => {
       assertCheck(result, 'Git installed', { passed: true });
       assertCheck(result, 'Git repository', { passed: true });
 
-      // Summary should show 17/18 passed (only config check fails)
+      // Summary should show 18/19 passed (only config check fails)
       expect(result.allPassed).toBe(false);
-      expect(result.totalChecks).toBe(18);
-      expect(result.passedChecks).toBe(17);
+      expect(result.totalChecks).toBe(19);
+      expect(result.passedChecks).toBe(18);
     });
 
     it('should detect not in git repository', async () => {
@@ -430,14 +440,24 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true });
 
-      expect(result.checks).toHaveLength(18);
+      expect(result.checks).toHaveLength(19);
       expect(result.verboseMode).toBe(true);
     });
 
     it('should show only summary in non-verbose mode when all pass', async () => {
       await mockDoctorFileSystem();
       await mockDoctorEnvironment();
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      // Configure with dependency check to make all checks pass
+      const configWithDepCheck = {
+        ...mockConfig,
+        ci: {
+          dependencyLockCheck: {
+            runOn: 'pre-commit' as const,
+          },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValue(configWithDepCheck);
       vi.mocked(checkSync).mockReturnValue({ inSync: true });
 
       const result = await runDoctor({ verbose: false });
@@ -480,7 +500,7 @@ describe('doctor command', () => {
 
       // Verbose mode should show ALL 16 checks (including passing ones)
       expect(result.verboseMode).toBe(true);
-      expect(result.checks).toHaveLength(18); // All checks
+      expect(result.checks).toHaveLength(19); // All checks
       expect(result.allPassed).toBe(false); // Has failures
 
       const failedChecks = result.checks.filter(c => !c.passed);
@@ -515,6 +535,11 @@ describe('doctor command', () => {
         hooks: {
           preCommit: {
             enabled: false,
+          },
+        },
+        ci: {
+          dependencyLockCheck: {
+            runOn: 'pre-commit' as const,
           },
         },
       };
@@ -567,7 +592,17 @@ describe('doctor command', () => {
         path.toString() !== DEPRECATED_STATE_FILE
       );
       vi.mocked(findConfigPath).mockReturnValue('vibe-validate.config.yaml');
-      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      // Configure with dependency check to make all checks pass
+      const configWithDepCheck = {
+        ...mockConfig,
+        ci: {
+          dependencyLockCheck: {
+            runOn: 'pre-commit' as const,
+          },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValue(configWithDepCheck);
 
       const result = await runDoctor({ verbose: true });
 
@@ -1190,7 +1225,7 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
 
-      expect(result.checks).toHaveLength(18);
+      expect(result.checks).toHaveLength(19);
       assertCheck(result, 'vibe-validate version', { passed: true });
     });
 
@@ -1212,7 +1247,7 @@ describe('doctor command', () => {
 
       expect(duration).toBeLessThan(5000); // Should be fast (<5s without network)
       assertCheck(result, 'vibe-validate version', { passed: true });
-      expect(result.checks).toHaveLength(18);
+      expect(result.checks).toHaveLength(19);
     });
   });
 
@@ -1676,6 +1711,129 @@ describe('doctor command', () => {
       assertCheck(result, 'Pre-commit secret scanning', {
         passed: true,
         suggestionContains: 'Install gitleaks'
+      });
+    });
+  });
+
+  // ==========================================================================
+  // DEPENDENCY LOCK CHECK CONFIGURATION
+  // ==========================================================================
+
+  describe('checkDependencyLockCheck() - Configuration warnings', () => {
+    it('should warn when dependencyLockCheck config is missing', async () => {
+      const configWithoutDepCheck: VibeValidateConfig = {
+        ...mockConfig,
+        ci: {
+          // No dependencyLockCheck config
+        },
+      };
+
+      await mockDoctorDefaults();
+      vi.mocked(loadConfig).mockResolvedValue(configWithoutDepCheck);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Dependency lock check configuration', {
+        passed: false,
+        messageContains: 'Dependency lock check not configured',
+        suggestionContains: ['Set ci.dependencyLockCheck.runOn', 'validate', 'pre-commit', 'vibe-validate.config.yaml']
+      });
+    });
+
+    it('should warn when runOn is undefined', async () => {
+      const configWithUndefinedRunOn: VibeValidateConfig = {
+        ...mockConfig,
+        ci: {
+          dependencyLockCheck: {
+            // runOn is undefined
+          },
+        },
+      };
+
+      await mockDoctorDefaults();
+      vi.mocked(loadConfig).mockResolvedValue(configWithUndefinedRunOn);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Dependency lock check configuration', {
+        passed: false,
+        messageContains: 'Dependency lock check not configured',
+        suggestionContains: ['Set ci.dependencyLockCheck.runOn']
+      });
+    });
+
+    it('should pass when runOn is set to validate', async () => {
+      const configWithValidate: VibeValidateConfig = {
+        ...mockConfig,
+        ci: {
+          dependencyLockCheck: {
+            runOn: 'validate',
+          },
+        },
+      };
+
+      await mockDoctorDefaults();
+      vi.mocked(loadConfig).mockResolvedValue(configWithValidate);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Dependency lock check configuration', {
+        passed: true,
+        messageContains: 'Dependency lock check configured'
+      });
+    });
+
+    it('should pass when runOn is set to pre-commit', async () => {
+      const configWithPreCommit: VibeValidateConfig = {
+        ...mockConfig,
+        ci: {
+          dependencyLockCheck: {
+            runOn: 'pre-commit',
+          },
+        },
+      };
+
+      await mockDoctorDefaults();
+      vi.mocked(loadConfig).mockResolvedValue(configWithPreCommit);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Dependency lock check configuration', {
+        passed: true,
+        messageContains: 'Dependency lock check configured'
+      });
+    });
+
+    it('should pass when runOn is set to disabled', async () => {
+      const configWithDisabled: VibeValidateConfig = {
+        ...mockConfig,
+        ci: {
+          dependencyLockCheck: {
+            runOn: 'disabled',
+          },
+        },
+      };
+
+      await mockDoctorDefaults();
+      vi.mocked(loadConfig).mockResolvedValue(configWithDisabled);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Dependency lock check configuration', {
+        passed: true,
+        messageContains: 'Dependency lock check configured'
+      });
+    });
+
+    it('should skip check when no config is loaded', async () => {
+      await mockDoctorDefaults();
+      vi.mocked(loadConfig).mockResolvedValue(null);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Dependency lock check configuration', {
+        passed: true,
+        messageContains: 'Skipped (no config)'
       });
     });
   });

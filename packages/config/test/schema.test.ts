@@ -566,6 +566,116 @@ describe('Strict Schema Validation', () => {
   });
 });
 
+describe('DependencyLockCheckSchema', () => {
+  it('should validate config with all fields', () => {
+    const config = createBaseConfig({
+      ci: {
+        dependencyLockCheck: {
+          runOn: 'validate',
+          packageManager: 'pnpm',
+          command: 'pnpm install --frozen-lockfile'
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.dependencyLockCheck?.runOn).toBe('validate');
+    expect(result.data?.ci?.dependencyLockCheck?.packageManager).toBe('pnpm');
+    expect(result.data?.ci?.dependencyLockCheck?.command).toBe('pnpm install --frozen-lockfile');
+  });
+
+  it('should validate config with only runOn', () => {
+    const config = createBaseConfig({
+      ci: {
+        dependencyLockCheck: {
+          runOn: 'pre-commit'
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.dependencyLockCheck?.runOn).toBe('pre-commit');
+    expect(result.data?.ci?.dependencyLockCheck?.packageManager).toBeUndefined();
+    expect(result.data?.ci?.dependencyLockCheck?.command).toBeUndefined();
+  });
+
+  it('should validate config with custom command', () => {
+    const config = createBaseConfig({
+      ci: {
+        dependencyLockCheck: {
+          runOn: 'validate',
+          command: 'custom-lock-check.sh'
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.dependencyLockCheck?.command).toBe('custom-lock-check.sh');
+  });
+
+  it('should validate config with disabled lock check', () => {
+    const config = createBaseConfig({
+      ci: {
+        dependencyLockCheck: {
+          runOn: 'disabled'
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.dependencyLockCheck?.runOn).toBe('disabled');
+  });
+
+  it('should reject invalid runOn value', () => {
+    const config = createBaseConfig({
+      ci: {
+        dependencyLockCheck: {
+          runOn: 'invalid-value'
+        }
+      }
+    });
+
+    expectInvalidConfig(config, /Invalid enum|runOn/);
+  });
+
+  it('should reject invalid packageManager', () => {
+    const config = createBaseConfig({
+      ci: {
+        dependencyLockCheck: {
+          runOn: 'validate',
+          packageManager: 'invalid-pm'
+        }
+      }
+    });
+
+    expectInvalidConfig(config, /Invalid enum|packageManager/);
+  });
+
+  it('should reject extra fields (strict mode)', () => {
+    const config = createBaseConfig({
+      ci: {
+        dependencyLockCheck: {
+          runOn: 'validate',
+          extraField: 'should-fail'
+        }
+      }
+    });
+
+    expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
+  });
+
+  it('should accept undefined dependencyLockCheck (optional)', () => {
+    const config = createBaseConfig({
+      ci: {
+        packageManager: 'npm'
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.dependencyLockCheck).toBeUndefined();
+  });
+});
+
 describe('ExtractorsConfigSchema', () => {
   it('should apply default values when extractors not specified', () => {
     const config = createBaseConfig();

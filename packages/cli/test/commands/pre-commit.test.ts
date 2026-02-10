@@ -26,6 +26,7 @@ vi.mock('@vibe-validate/utils', async () => {
     safeExecSync: vi.fn(),
     safeExecFromString: vi.fn(),
     isToolAvailable: vi.fn(),
+    runDependencyCheck: vi.fn(),
   };
 });
 
@@ -36,6 +37,7 @@ vi.mock('@vibe-validate/git', async () => {
     ...actual,
     checkBranchSync: vi.fn(),
     getGitTreeHash: vi.fn(),
+    getRepositoryRoot: vi.fn(),
     isCurrentBranchBehindTracking: vi.fn(),
     getPartiallyStagedFiles: vi.fn().mockReturnValue([]),
     isMergeInProgress: vi.fn(),
@@ -75,7 +77,6 @@ vi.mock('../../src/utils/config-loader.js', async () => {
  */
 function createConfig(overrides: Partial<VibeValidateConfig> = {}): VibeValidateConfig {
   return {
-    version: '1.0',
     validation: {
       phases: [],
     },
@@ -181,6 +182,7 @@ function createValidationResult(overrides: Partial<{
  */
 function createHistoryNote(treeHash: string, passed: boolean = true) {
   return {
+    id: treeHash,
     treeHash,
     runs: [
       {
@@ -228,7 +230,6 @@ function createCommandError(stdout = '', stderr = ''): Error & { stdout: string;
 function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
   vi.mocked(configLoader.loadConfig).mockResolvedValue(config);
   vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: '/test/project' });
-  vi.mocked(configLoader.loadConfigWithErrors).mockResolvedValue({ config, configDir: '/test/project', filePath: '/test/project/vibe-validate.config.yaml', errors: null });
   vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
   vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 }
@@ -300,6 +301,38 @@ function setupMergeTest(isMerging: boolean) {
 function setupSecretScanningFailure(stdout = '', stderr = 'Secrets detected') {
   vi.mocked(utils.safeExecFromString).mockImplementation(() => {
     throw createCommandError(stdout, stderr);
+  });
+}
+
+/**
+ * Setup: Configure mocks for dependency check test with specific runOn setting
+ *
+ * @param runOn - The runOn setting ('pre-commit', 'validate', 'disabled', or undefined for implicit)
+ */
+function setupDependencyCheckTest(runOn?: 'pre-commit' | 'validate' | 'disabled') {
+  const config = createConfig({
+    ci: {
+      dependencyLockCheck: runOn === undefined ? {
+        // No runOn specified - defaults to 'pre-commit'
+      } : { runOn },
+    },
+    validation: {
+      phases: [
+        {
+          name: 'Test',
+          steps: [{ name: 'Test Step', command: 'echo test' }],
+        },
+      ],
+    },
+  });
+  setupSuccessfulPreCommit(config);
+  setupCacheMiss('abc123def456');
+
+  // Mock runDependencyCheck to return success
+  vi.mocked(utils.runDependencyCheck).mockResolvedValue({
+    passed: true,
+    skipped: false,
+    duration: 100,
   });
 }
 
@@ -419,24 +452,28 @@ describe('pre-commit command', () => {
     vi.mocked(core.runValidation).mockReset();
     vi.mocked(git.checkBranchSync).mockReset();
     vi.mocked(git.getGitTreeHash).mockReset();
+    vi.mocked(git.getRepositoryRoot).mockReset();
     vi.mocked(git.isCurrentBranchBehindTracking).mockReset();
     vi.mocked(git.getPartiallyStagedFiles).mockReset();
     vi.mocked(git.isMergeInProgress).mockReset();
     vi.mocked(utils.safeExecSync).mockReset();
     vi.mocked(utils.safeExecFromString).mockReset();
     vi.mocked(utils.isToolAvailable).mockReset();
+    vi.mocked(utils.runDependencyCheck).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
 
     // Set default mock values (tests can override)
     vi.mocked(git.getGitTreeHash).mockResolvedValue({
       hash: 'abc123def456' as git.TreeHash,
       });
+    vi.mocked(git.getRepositoryRoot).mockReturnValue('/test/repo'); // Default git repo path
     vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
     vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
     vi.mocked(utils.safeExecSync).mockReturnValue(''); // Default empty output
     vi.mocked(utils.safeExecFromString).mockReturnValue(''); // Default empty output
     vi.mocked(utils.isToolAvailable).mockReturnValue(false); // No tools available by default
+    vi.mocked(utils.runDependencyCheck).mockResolvedValue({ passed: true, skipped: true, duration: 0 }); // Skip by default
   });
 
   afterEach(() => {
@@ -618,6 +655,44 @@ describe('pre-commit command', () => {
 
       expect(git.isMergeInProgress).toHaveBeenCalled();
       expect(git.checkBranchSync).toHaveBeenCalled();
+    });
+  });
+
+  describe('dependency lock check integration', () => {
+    it('should run dependency check with runOn: pre-commit during pre-commit', async () => {
+      setupDependencyCheckTest('pre-commit');
+
+      await runPreCommit(env, 0);
+
+      // Verify dependency check was called
+      expect(utils.runDependencyCheck).toHaveBeenCalled();
+    });
+
+    it('should run dependency check with runOn: validate during pre-commit', async () => {
+      setupDependencyCheckTest('validate');
+
+      await runPreCommit(env, 0);
+
+      // Verify dependency check was called (runOn: validate always runs)
+      expect(utils.runDependencyCheck).toHaveBeenCalled();
+    });
+
+    it('should skip dependency check with runOn: disabled during pre-commit', async () => {
+      setupDependencyCheckTest('disabled');
+
+      await runPreCommit(env, 0);
+
+      // Verify dependency check was NOT called (runOn: disabled)
+      expect(utils.runDependencyCheck).not.toHaveBeenCalled();
+    });
+
+    it('should run dependency check with implicit runOn: pre-commit', async () => {
+      setupDependencyCheckTest(); // No runOn = implicit 'pre-commit'
+
+      await runPreCommit(env, 0);
+
+      // Verify dependency check was called (implicit pre-commit mode)
+      expect(utils.runDependencyCheck).toHaveBeenCalled();
     });
   });
 
