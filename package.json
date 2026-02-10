@@ -42,8 +42,6 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.config.integration.ts",
     "test:integration:watch": "vitest --config vitest.config.integration.ts",
-    "test:system": "vitest run --config vitest.config.system.ts",
-    "test:system:watch": "vitest --config vitest.config.system.ts",
     "run": "node packages/cli/dist/bin/vv run",
     "lint": "eslint --cache --max-warnings=0 \"packages/**/*.ts\"",
     "typecheck": "turbo run typecheck",

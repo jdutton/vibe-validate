@@ -1,49 +1,57 @@
 import { defineConfig } from 'vitest/config';
 
 /**
- * Vitest configuration for INTEGRATION TESTS
+ * Vitest configuration for INTEGRATION & SYSTEM TESTS
  *
- * Integration tests verify component integration:
+ * This config runs both integration and system tests together in a single
+ * Vitest process for optimal performance (shared parallelization, single
+ * startup overhead).
+ *
+ * INTEGRATION TESTS - Component integration:
  * - Git integration (tree hashing, history tracking)
  * - Cache operations (filesystem caching)
  * - Extractor quality (error extraction from real output)
  * - Run command with real extractors
- * - Must be cross-platform (Windows + Unix)
+ *
+ * SYSTEM TESTS - End-to-end CLI:
+ * - CLI commands work from any directory
+ * - npm package integrity (CRITICAL for releases)
  *
  * Run with: pnpm test:integration
  *
- * These tests run IN PARALLEL with system tests and unit tests in the
- * validation pipeline for fast feedback.
+ * All tests must be cross-platform (Windows + Unix).
  *
- * INCLUDED TESTS:
- * - tree-hash.integration.test.ts: git tree hash with real repos
- * - history-recording.test.ts: git notes history tracking
- * - cache-manager.integration.test.ts: real filesystem cache operations
- * - watch-pr-extraction.integration.test.ts: extractor quality validation
- * - run.integration.test.ts: run command with real extractors
+ * INCLUDED TESTS (103 total):
+ * - packaging.system.test.ts: npm package integrity (14 tests)
+ * - subdirectory-behavior.system.test.ts: CLI from subdirectories (26 tests)
+ * - tree-hash.integration.test.ts: git tree hash with real repos (11 tests)
+ * - history-recording.test.ts: git notes history tracking (3 tests)
+ * - cache-manager.integration.test.ts: real filesystem cache operations (9 tests)
+ * - watch-pr-extraction.integration.test.ts: extractor quality validation (6 tests)
+ * - run.integration.test.ts: run command with real extractors (34 tests)
  */
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
     include: [
-      // Git integration
+      // System tests (end-to-end CLI)
+      'packages/cli/test/packaging.system.test.ts',
+      'packages/cli/test/commands/subdirectory-behavior.system.test.ts',
+
+      // Integration tests (component integration)
       'packages/git/test/tree-hash.integration.test.ts',
       'packages/cli/test/integration/history-recording.test.ts',
-
-      // Cache and extractors
       'packages/cli/test/integration/cache-manager.integration.test.ts',
       'packages/cli/test/integration/watch-pr-extraction.integration.test.ts',
-
-      // Command integration
       'packages/cli/test/commands/run.integration.test.ts',
     ],
     testTimeout: 30000, // 30 seconds per test
-    hookTimeout: 10000, // 10 seconds for setup/teardown
+    hookTimeout: 60000, // 60 seconds for setup/teardown (pnpm pack + npm install in system tests)
     fileParallelism: true,
     maxConcurrency: 4, // Balance speed vs resource usage
     coverage: {
-      enabled: false, // Integration tests don't contribute to unit test coverage metrics
+      enabled: false, // Integration/system tests don't contribute to unit test coverage metrics
     },
   },
 });
