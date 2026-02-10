@@ -21,7 +21,7 @@ describe('Doctor Command Integration', () => {
   async function expectDoctorSuccess(args: string[] = []): Promise<string> {
     const result = await executeVibeValidateWithError(['doctor', ...args], {
       cwd: projectRoot,
-      timeout: 15000, // 15s timeout - prevents hung processes
+      timeout: 30000, // 30s timeout - prevents hung processes (real npm registry can be slow)
     });
 
     // Debug output if test fails
@@ -49,5 +49,5 @@ describe('Doctor Command Integration', () => {
 
     // Verify it actually checked npm version (proves it's not mocked)
     expect(stdout).toContain('vibe-validate version');
-  }, 15000); // 15s timeout - includes network call to npm registry (~7s)
+  }, 30000); // 30s timeout - includes network call to npm registry (~7s, slower under load)
 });
