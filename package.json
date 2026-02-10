@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.19.0-rc.6",
+  "version": "0.19.0-rc.7",
   "type": "module",
   "private": true,
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development)",
@@ -40,8 +40,8 @@
     "test": "turbo run test",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:system": "turbo run test -- --config vitest.config.system.ts",
-    "test:system:watch": "vitest --config vitest.config.system.ts",
+    "test:integration": "vitest run --config vitest.config.integration.ts",
+    "test:integration:watch": "vitest --config vitest.config.integration.ts",
     "run": "node packages/cli/dist/bin/vv run",
     "lint": "eslint --cache --max-warnings=0 \"packages/**/*.ts\"",
     "typecheck": "turbo run typecheck",

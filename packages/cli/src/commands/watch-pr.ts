@@ -154,6 +154,30 @@ function checkTimeout(startTime: number, timeoutMs: number, previousResult: Watc
 }
 
 /**
+ * Check if all failed checks have extraction or log_file
+ *
+ * When checks fail, we want to wait for log extraction to complete before
+ * exiting polling. This handles the GitHub API race condition where logs
+ * aren't immediately available when a check completes.
+ *
+ * @param result - Current result
+ * @returns True if all failed checks have extraction or log_file
+ */
+function allFailedChecksHaveExtraction(result: WatchPRResult): boolean {
+  const failedActions = result.checks.github_actions.filter(c => c.conclusion === 'failure');
+  const failedExternal = result.checks.external_checks.filter(c => c.conclusion === 'failure');
+
+  // All failed GitHub Actions must have extraction OR log_file
+  // Use Boolean() to satisfy eslint prefer-nullish-coalescing rule
+  const actionsComplete = failedActions.every(c => Boolean(c.extraction) || Boolean(c.log_file));
+
+  // External checks don't have log extraction, so just check they're complete
+  const externalComplete = failedExternal.every(c => c.status === 'completed');
+
+  return actionsComplete && externalComplete;
+}
+
+/**
  * Check exit conditions (fail-fast or completion)
  *
  * @param result - Current result
@@ -166,8 +190,12 @@ function checkExitConditions(
   orchestrator: WatchPROrchestrator,
   options: WatchPROptions
 ): number | null {
-  // Check if should fail fast
+  // Check if should fail fast (but only if extraction is complete)
   if (options.failFast && result.status === 'failed') {
+    // Wait for first failure to have extraction before exiting
+    if (!allFailedChecksHaveExtraction(result)) {
+      return null; // Continue polling to get extraction
+    }
     process.stdout.write('\n⚡ Failing fast (--fail-fast enabled)\n\n');
     process.stdout.write('---\n');
     process.stdout.write(stringifyYaml(result));
@@ -176,6 +204,12 @@ function checkExitConditions(
 
   // Check if all checks are complete
   if (result.status !== 'pending') {
+    // If checks failed, wait for all extractions to complete
+    if (result.status === 'failed' && !allFailedChecksHaveExtraction(result)) {
+      return null; // Continue polling to get extractions
+    }
+
+    // All checks complete and extractions done (or all passed)
     process.stdout.write('\n');
     return displayFinalResult(result, orchestrator, options.yaml ?? false);
   }

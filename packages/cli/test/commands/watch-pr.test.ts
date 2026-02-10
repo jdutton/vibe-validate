@@ -345,7 +345,7 @@ describe('watch-pr command', () => {
       expect(result.stderr).not.toContain('Invalid run ID');
       // Will show API/timeout error (expected - gh command fails in test environment)
       // Test passes if run ID validation succeeded (no "Invalid run ID" message)
-    });
+    }, 60000); // 60s: Makes actual GitHub API call (slow on Windows CI)
   });
 
   describe('--history flag', () => {

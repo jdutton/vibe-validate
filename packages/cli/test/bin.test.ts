@@ -802,7 +802,7 @@ git:
       expect(forcedRun.code).toBe(0);
       expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run validation
       // The nested vv run should also bypass cache due to VV_FORCE_EXECUTION propagation
-    }, 30000);
+    }, 90000); // 90s: Spawns 3 validation cycles with nested vv run commands (slow on Windows)
   });
 
   describe('process lifecycle', () => {
