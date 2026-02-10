@@ -11,11 +11,14 @@ validation:
           command: pnpm lint
         - name: Code Duplication Check
           command: pnpm duplication-check
-    - name: Testing
-      parallel: true
+    - name: Unit Testing
+      parallel: false
       steps:
         - name: Unit Tests with Coverage
           command: pnpm test:coverage
+    - name: Integration & System Testing
+      parallel: true
+      steps:
         - name: Integration Tests
           command: pnpm test:integration
         - name: System Tests
