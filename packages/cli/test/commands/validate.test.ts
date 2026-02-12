@@ -1214,5 +1214,137 @@ describe('validate command', () => {
       // even though we invoked the command from a subdirectory
       expect(capturedCwd).toBe(configDir);
     });
+
+    it('should restore original directory after validation completes', async () => {
+      const configDir = join(testDir, 'project-root');
+      const subdir = join(configDir, 'packages', 'foo');
+
+      mkdirSyncReal(configDir, { recursive: true });
+      mkdirSyncReal(subdir, { recursive: true });
+
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+        config: {
+          validation: {
+            phases: [
+              {
+                name: 'Test',
+                failFast: true,
+                steps: [{ name: 'Test Step', command: 'echo test' }],
+              },
+            ],
+          },
+        },
+        configDir,
+      });
+
+      const treeHash = 'test-tree-hash-restore';
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+        hash: treeHash,
+        includedFiles: 10,
+        excludedFiles: 0,
+      });
+      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: true,
+        treeHashBefore: treeHash,
+        treeHashAfter: treeHash,
+      });
+      vi.mocked(history.recordValidationHistory).mockResolvedValue({
+        recorded: true,
+      });
+      vi.mocked(history.checkHistoryHealth).mockResolvedValue({
+        shouldWarn: false,
+        warningMessage: '',
+      });
+      vi.mocked(pidLock.checkLock).mockResolvedValue(null);
+      vi.mocked(pidLock.acquireLock).mockResolvedValue({
+        acquired: true,
+        release: vi.fn(),
+      });
+
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: true,
+        timestamp: '2025-10-23T00:00:00.000Z',
+        treeHash,
+        phases: [],
+      });
+
+      // Change to subdirectory before validation
+      process.chdir(subdir);
+      const originalCwd = process.cwd();
+
+      validateCommand(env.program);
+      await parseCommandExpectingExit(['validate'], 0);
+
+      // CRITICAL: After validation completes, we should be back in the subdirectory
+      expect(process.cwd()).toBe(originalCwd);
+    });
+
+    it('should restore original directory even when validation fails', async () => {
+      const configDir = join(testDir, 'project-root');
+      const subdir = join(configDir, 'packages', 'foo');
+
+      mkdirSyncReal(configDir, { recursive: true });
+      mkdirSyncReal(subdir, { recursive: true });
+
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+        config: {
+          validation: {
+            phases: [
+              {
+                name: 'Test',
+                failFast: true,
+                steps: [{ name: 'Failing Step', command: 'exit 1' }],
+              },
+            ],
+          },
+        },
+        configDir,
+      });
+
+      const treeHash = 'test-tree-hash-error';
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+        hash: treeHash,
+        includedFiles: 10,
+        excludedFiles: 0,
+      });
+      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: true,
+        treeHashBefore: treeHash,
+        treeHashAfter: treeHash,
+      });
+      vi.mocked(history.recordValidationHistory).mockResolvedValue({
+        recorded: true,
+      });
+      vi.mocked(history.checkHistoryHealth).mockResolvedValue({
+        shouldWarn: false,
+        warningMessage: '',
+      });
+      vi.mocked(pidLock.checkLock).mockResolvedValue(null);
+      vi.mocked(pidLock.acquireLock).mockResolvedValue({
+        acquired: true,
+        release: vi.fn(),
+      });
+
+      // Mock validation failure
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: false,
+        timestamp: '2025-10-23T00:00:00.000Z',
+        treeHash,
+        phases: [],
+        failedStep: 'Failing Step',
+      });
+
+      // Change to subdirectory before validation
+      process.chdir(subdir);
+      const originalCwd = process.cwd();
+
+      validateCommand(env.program);
+      await parseCommandExpectingExit(['validate'], 1); // Expect exit code 1 for failure
+
+      // CRITICAL: Even on failure, we should be back in the subdirectory
+      expect(process.cwd()).toBe(originalCwd);
+    });
   });
 });
