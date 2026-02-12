@@ -251,7 +251,7 @@ describe('validate command', () => {
    * @returns Spy instance
    */
   function setupStdoutSpy(): MockInstance {
-    return vi.spyOn(process.stdout, 'write').mockImplementation((chunk: any, encoding?: any, callback?: any) => {
+    return vi.spyOn(process.stdout, 'write').mockImplementation((_chunk: any, encoding?: any, callback?: any) => {
       if (typeof encoding === 'function') {
         encoding();
       } else if (typeof callback === 'function') {
@@ -267,6 +267,120 @@ describe('validate command', () => {
    */
   function setupStderrSpy(): MockInstance {
     return vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  }
+
+  /**
+   * Setup all mocks needed for working directory behavior tests (Issue #129)
+   * @param configDir - Project root directory (where config lives)
+   * @param treeHash - Git tree hash to use
+   * @param validationPassed - Whether validation should pass
+   */
+  function setupWorkingDirectoryMocks(
+    configDir: string,
+    treeHash: string,
+    validationPassed: boolean
+  ): void {
+    // Mock config loader to return config from project root
+    vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+      config: {
+        validation: {
+          phases: [
+            {
+              name: 'Test',
+              failFast: true,
+              steps: [
+                {
+                  name: validationPassed ? 'Test Step' : 'Failing Step',
+                  command: validationPassed ? 'echo test' : 'exit 1',
+                },
+              ],
+            },
+          ],
+        },
+      },
+      configDir,
+    });
+
+    // Mock git tree hash
+    vi.mocked(git.getGitTreeHash).mockResolvedValue({
+      hash: treeHash as any,
+      includedFiles: 10,
+      excludedFiles: 0,
+    });
+
+    // Mock no cached result
+    vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+
+    // Mock history recording
+    vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+      stable: true,
+      treeHashBefore: treeHash as any,
+      treeHashAfter: treeHash as any,
+    });
+    vi.mocked(history.recordValidationHistory).mockResolvedValue({
+      recorded: true,
+      treeHash: treeHash as any,
+    });
+    vi.mocked(history.checkHistoryHealth).mockResolvedValue({
+      shouldWarn: false,
+      warningMessage: '',
+      totalNotes: 0,
+      oldNotesCount: 0,
+    });
+
+    // Mock lock functions
+    vi.mocked(pidLock.checkLock).mockResolvedValue(null);
+    vi.mocked(pidLock.acquireLock).mockResolvedValue({
+      acquired: true,
+      release: vi.fn(),
+      lockFile: join(normalizedTmpdir(), 'test.lock'),
+    });
+
+    // Mock runValidation
+    vi.mocked(core.runValidation).mockResolvedValue({
+      passed: validationPassed,
+      timestamp: '2025-10-23T00:00:00.000Z',
+      treeHash: treeHash as any,
+      phases: [],
+      ...(validationPassed ? {} : { failedStep: 'Failing Step' }),
+    });
+  }
+
+  /**
+   * Execute validate command and assert that validation ran in the specified directory
+   * @param subdir - Subdirectory where command is invoked from
+   * @param expectedCwd - Expected cwd during validation (usually configDir)
+   * @param expectedExitCode - Expected exit code
+   * @returns The captured cwd during validation
+   */
+  async function executeAndCaptureCwd(
+    subdir: string,
+    expectedCwd: string,
+    expectedExitCode: number
+  ): Promise<string> {
+    let capturedCwd: string | null = null;
+
+    // Replace mock to capture cwd
+    vi.mocked(core.runValidation).mockImplementation(async () => {
+      capturedCwd = process.cwd();
+      // Return result based on expected exit code
+      return {
+        passed: expectedExitCode === 0,
+        timestamp: '2025-10-23T00:00:00.000Z',
+        treeHash: 'test-tree-hash' as any,
+        phases: [],
+        ...(expectedExitCode === 0 ? {} : { failedStep: 'Failing Step' }),
+      };
+    });
+
+    // Change to subdirectory
+    process.chdir(subdir);
+
+    validateCommand(env.program);
+    await parseCommandExpectingExit(['validate'], expectedExitCode);
+
+    expect(capturedCwd).toBe(expectedCwd);
+    return capturedCwd!;
   }
 
   beforeEach(() => {
@@ -303,7 +417,7 @@ describe('validate command', () => {
 
     // Default getGitTreeHash to return a hash
     vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: 'abc123def456'
+      hash: 'abc123def456' as any
     });
 
     // Default lock mocks - lock acquired successfully
@@ -314,9 +428,7 @@ describe('validate command', () => {
     vi.mocked(pidLock.releaseLock).mockResolvedValue();
     vi.mocked(pidLock.checkLock).mockResolvedValue(null);
     vi.mocked(pidLock.waitForLock).mockResolvedValue({
-      released: true,
       timedOut: false,
-      finalLock: null,
     });
 
     // Default project ID detection
@@ -325,16 +437,16 @@ describe('validate command', () => {
     // Default history mocks to no-op
     vi.mocked(history.checkWorktreeStability).mockResolvedValue({
       stable: true,
-      treeHashBefore: 'default',
-      treeHashAfter: 'default',
+      treeHashBefore: 'default' as any,
+      treeHashAfter: 'default' as any,
     });
     vi.mocked(history.recordValidationHistory).mockResolvedValue({
       recorded: true,
+      treeHash: 'default' as any,
     });
     vi.mocked(history.checkHistoryHealth).mockResolvedValue({
-      healthy: true,
       totalNotes: 0,
-      totalSize: 0,
+      oldNotesCount: 0,
       shouldWarn: false,
       warningMessage: '',
     });
@@ -601,7 +713,7 @@ describe('validate command', () => {
     it('should not run validation when --check flag is used', async () => {
       // Mock git tree hash
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with passing validation
@@ -625,7 +737,7 @@ describe('validate command', () => {
     it('should exit with code 2 when no validation history exists', async () => {
       // Mock git tree hash
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with no history
@@ -642,7 +754,7 @@ describe('validate command', () => {
     it('should output YAML when --check and --yaml flags are used together', async () => {
       // Mock git tree hash
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with passing validation
@@ -729,7 +841,7 @@ describe('validate command', () => {
     it('should display cached validation with tree hash and phase/step counts in human-readable mode', async () => {
       setupMockConfig();
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with passing validation (cached result with phases)
@@ -794,7 +906,7 @@ describe('validate command', () => {
         }
       }));
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with failing validation (cached failure)
@@ -851,7 +963,7 @@ describe('validate command', () => {
         }
       }));
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with passing run
@@ -875,7 +987,7 @@ describe('validate command', () => {
       setupMockConfig();
       setupStdoutSpy();
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with passing validation (cached result)
@@ -915,7 +1027,7 @@ describe('validate command', () => {
       }));
       setupStdoutSpy();
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456'
+        hash: 'abc123def456' as any
       });
 
       // Mock findCachedValidation with failing validation (cached failure)
@@ -1138,81 +1250,11 @@ describe('validate command', () => {
       mkdirSyncReal(configDir, { recursive: true });
       mkdirSyncReal(subdir, { recursive: true });
 
-      // Mock config loader to return config from project root
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
-        config: {
-          validation: {
-            phases: [
-              {
-                name: 'Test',
-                failFast: true,
-                steps: [
-                  {
-                    name: 'Check Directory',
-                    command: 'pwd', // This will output the cwd where it runs
-                  },
-                ],
-              },
-            ],
-          },
-        },
-        configDir, // Config found in project root
-      });
+      // Setup all mocks for working directory test
+      setupWorkingDirectoryMocks(configDir, 'test-tree-hash-129', true);
 
-      // Mock git tree hash
-      const treeHash = 'test-tree-hash-129';
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: treeHash,
-        includedFiles: 10,
-        excludedFiles: 0,
-      });
-
-      // Mock no cached result
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
-
-      // Mock history recording
-      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
-        stable: true,
-        treeHashBefore: treeHash,
-        treeHashAfter: treeHash,
-      });
-      vi.mocked(history.recordValidationHistory).mockResolvedValue({
-        recorded: true,
-      });
-      vi.mocked(history.checkHistoryHealth).mockResolvedValue({
-        shouldWarn: false,
-        warningMessage: '',
-      });
-
-      // Mock lock functions
-      vi.mocked(pidLock.checkLock).mockResolvedValue(null);
-      vi.mocked(pidLock.acquireLock).mockResolvedValue({
-        acquired: true,
-        release: vi.fn(),
-      });
-
-      // Track what process.cwd() was when runValidation was called
-      let capturedCwd: string | null = null;
-      vi.mocked(core.runValidation).mockImplementation(async () => {
-        capturedCwd = process.cwd();
-        return {
-          passed: true,
-          timestamp: '2025-10-23T00:00:00.000Z',
-          treeHash,
-          phases: [],
-        };
-      });
-
-      // Change to subdirectory (simulating user being in packages/foo)
-      process.chdir(subdir);
-
-      validateCommand(env.program);
-
-      await parseCommandExpectingExit(['validate'], 0);
-
-      // CRITICAL ASSERTION: process.cwd() should be configDir (project root) during validation,
-      // even though we invoked the command from a subdirectory
-      expect(capturedCwd).toBe(configDir);
+      // Execute command and verify cwd was changed to configDir during validation
+      await executeAndCaptureCwd(subdir, configDir, 0);
     });
 
     it('should restore original directory after validation completes', async () => {
@@ -1222,52 +1264,7 @@ describe('validate command', () => {
       mkdirSyncReal(configDir, { recursive: true });
       mkdirSyncReal(subdir, { recursive: true });
 
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
-        config: {
-          validation: {
-            phases: [
-              {
-                name: 'Test',
-                failFast: true,
-                steps: [{ name: 'Test Step', command: 'echo test' }],
-              },
-            ],
-          },
-        },
-        configDir,
-      });
-
-      const treeHash = 'test-tree-hash-restore';
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: treeHash,
-        includedFiles: 10,
-        excludedFiles: 0,
-      });
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
-      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
-        stable: true,
-        treeHashBefore: treeHash,
-        treeHashAfter: treeHash,
-      });
-      vi.mocked(history.recordValidationHistory).mockResolvedValue({
-        recorded: true,
-      });
-      vi.mocked(history.checkHistoryHealth).mockResolvedValue({
-        shouldWarn: false,
-        warningMessage: '',
-      });
-      vi.mocked(pidLock.checkLock).mockResolvedValue(null);
-      vi.mocked(pidLock.acquireLock).mockResolvedValue({
-        acquired: true,
-        release: vi.fn(),
-      });
-
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: true,
-        timestamp: '2025-10-23T00:00:00.000Z',
-        treeHash,
-        phases: [],
-      });
+      setupWorkingDirectoryMocks(configDir, 'test-tree-hash-restore', true);
 
       // Change to subdirectory before validation
       process.chdir(subdir);
@@ -1287,54 +1284,7 @@ describe('validate command', () => {
       mkdirSyncReal(configDir, { recursive: true });
       mkdirSyncReal(subdir, { recursive: true });
 
-      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
-        config: {
-          validation: {
-            phases: [
-              {
-                name: 'Test',
-                failFast: true,
-                steps: [{ name: 'Failing Step', command: 'exit 1' }],
-              },
-            ],
-          },
-        },
-        configDir,
-      });
-
-      const treeHash = 'test-tree-hash-error';
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: treeHash,
-        includedFiles: 10,
-        excludedFiles: 0,
-      });
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
-      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
-        stable: true,
-        treeHashBefore: treeHash,
-        treeHashAfter: treeHash,
-      });
-      vi.mocked(history.recordValidationHistory).mockResolvedValue({
-        recorded: true,
-      });
-      vi.mocked(history.checkHistoryHealth).mockResolvedValue({
-        shouldWarn: false,
-        warningMessage: '',
-      });
-      vi.mocked(pidLock.checkLock).mockResolvedValue(null);
-      vi.mocked(pidLock.acquireLock).mockResolvedValue({
-        acquired: true,
-        release: vi.fn(),
-      });
-
-      // Mock validation failure
-      vi.mocked(core.runValidation).mockResolvedValue({
-        passed: false,
-        timestamp: '2025-10-23T00:00:00.000Z',
-        treeHash,
-        phases: [],
-        failedStep: 'Failing Step',
-      });
+      setupWorkingDirectoryMocks(configDir, 'test-tree-hash-error', false);
 
       // Change to subdirectory before validation
       process.chdir(subdir);
