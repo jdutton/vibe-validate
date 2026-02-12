@@ -41,6 +41,38 @@ function testAllPackageManagers(
   }
 }
 
+/**
+ * Test package manager detection from packageManager field
+ */
+function testPackageManagerField(testDir: string, pm: PackageManager, version: string) {
+  writeFileSync(
+    join(testDir, 'package.json'),
+    JSON.stringify({ packageManager: `${pm}@${version}` })
+  );
+  expect(detectPackageManager(testDir)).toBe(pm);
+}
+
+/**
+ * Test package manager detection from lockfile
+ */
+function testLockfileDetection(testDir: string, pm: PackageManager, lockfile: string, content = '') {
+  writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
+  writeFileSync(join(testDir, lockfile), content);
+  expect(detectPackageManager(testDir)).toBe(pm);
+}
+
+/**
+ * Test package manager priority when multiple lockfiles exist
+ */
+function testLockfilePriority(testDir: string, lockfiles: string[], expected: PackageManager) {
+  writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
+  for (const lockfile of lockfiles) {
+    const content = lockfile.endsWith('.json') ? '{}' : '';
+    writeFileSync(join(testDir, lockfile), content);
+  }
+  expect(detectPackageManager(testDir)).toBe(expected);
+}
+
 describe('package-manager-commands', () => {
   describe('getInstallCommand', () => {
     it('should return frozen lockfile commands for CI', () => {
@@ -230,80 +262,49 @@ describe('package-manager-commands', () => {
       }
     });
 
-    /**
-     * Test package manager detection from packageManager field
-     */
-    function testPackageManagerField(pm: PackageManager, version: string) {
-      writeFileSync(
-        join(testDir, 'package.json'),
-        JSON.stringify({ packageManager: `${pm}@${version}` })
-      );
-      expect(detectPackageManager(testDir)).toBe(pm);
-    }
-
-    /**
-     * Test package manager detection from lockfile
-     */
-    function testLockfileDetection(pm: PackageManager, lockfile: string, content = '') {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      writeFileSync(join(testDir, lockfile), content);
-      expect(detectPackageManager(testDir)).toBe(pm);
-    }
-
-    /**
-     * Test package manager priority when multiple lockfiles exist
-     */
-    function testLockfilePriority(lockfiles: string[], expected: PackageManager) {
-      writeFileSync(join(testDir, 'package.json'), JSON.stringify({}));
-      for (const lockfile of lockfiles) {
-        const content = lockfile.endsWith('.json') ? '{}' : '';
-        writeFileSync(join(testDir, lockfile), content);
-      }
-      expect(detectPackageManager(testDir)).toBe(expected);
-    }
-
     it('should detect from package.json packageManager field (highest priority)', () => {
-      testPackageManagerField('pnpm', '9.0.0');
+      testPackageManagerField(testDir, 'pnpm', '9.0.0');
     });
 
     it('should detect bun from packageManager field', () => {
-      testPackageManagerField('bun', '1.0.0');
+      testPackageManagerField(testDir, 'bun', '1.0.0');
     });
 
     it('should detect yarn from packageManager field', () => {
-      testPackageManagerField('yarn', '4.0.0');
+      testPackageManagerField(testDir, 'yarn', '4.0.0');
     });
 
     it('should detect npm from packageManager field', () => {
-      testPackageManagerField('npm', '10.0.0');
+      testPackageManagerField(testDir, 'npm', '10.0.0');
     });
 
     it('should detect from bun.lockb when no packageManager field (binary format)', () => {
-      testLockfileDetection('bun', 'bun.lockb');
+      testLockfileDetection(testDir, 'bun', 'bun.lockb');
     });
 
     it('should detect from bun.lock when no packageManager field (text format)', () => {
-      testLockfileDetection('bun', 'bun.lock');
+      testLockfileDetection(testDir, 'bun', 'bun.lock');
     });
 
     it('should detect from yarn.lock when no packageManager field', () => {
-      testLockfileDetection('yarn', 'yarn.lock');
+      testLockfileDetection(testDir, 'yarn', 'yarn.lock');
     });
 
     it('should detect from package-lock.json when no packageManager field', () => {
-      testLockfileDetection('npm', 'package-lock.json', '{}');
+      testLockfileDetection(testDir, 'npm', 'package-lock.json', '{}');
     });
 
     it('should detect from pnpm-lock.yaml when no packageManager field', () => {
-      testLockfileDetection('pnpm', 'pnpm-lock.yaml');
+      testLockfileDetection(testDir, 'pnpm', 'pnpm-lock.yaml');
     });
 
     it('should prefer npm over pnpm when both lockfiles exist (conservative)', () => {
-      testLockfilePriority(['package-lock.json', 'pnpm-lock.yaml'], 'npm');
+      testLockfilePriority(testDir, ['package-lock.json', 'pnpm-lock.yaml'], 'npm');
     });
 
     it('should prefer bun over all other lockfiles (binary format)', () => {
       testLockfilePriority(
+        testDir,
         ['bun.lockb', 'yarn.lock', 'package-lock.json', 'pnpm-lock.yaml'],
         'bun'
       );
@@ -311,17 +312,18 @@ describe('package-manager-commands', () => {
 
     it('should prefer bun over all other lockfiles (text format)', () => {
       testLockfilePriority(
+        testDir,
         ['bun.lock', 'yarn.lock', 'package-lock.json', 'pnpm-lock.yaml'],
         'bun'
       );
     });
 
     it('should detect bun when both lockfile formats exist', () => {
-      testLockfilePriority(['bun.lockb', 'bun.lock'], 'bun');
+      testLockfilePriority(testDir, ['bun.lockb', 'bun.lock'], 'bun');
     });
 
     it('should prefer yarn over npm', () => {
-      testLockfilePriority(['yarn.lock', 'package-lock.json'], 'yarn');
+      testLockfilePriority(testDir, ['yarn.lock', 'package-lock.json'], 'yarn');
     });
 
     it('should default to npm when no lockfiles exist', () => {

@@ -1,8 +1,11 @@
+import { join } from 'node:path';
+
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
 import * as utils from '@vibe-validate/utils';
+import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { preCommitCommand } from '../../src/commands/pre-commit.js';
@@ -229,7 +232,8 @@ function createCommandError(stdout = '', stderr = ''): Error & { stdout: string;
  */
 function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
   vi.mocked(configLoader.loadConfig).mockResolvedValue(config);
-  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: '/test/project' });
+  // Use current directory as configDir (safe since we're already in test directory)
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: process.cwd() });
   vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
   vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 }
@@ -751,6 +755,63 @@ describe('pre-commit command', () => {
 
       // But validation should still run (fail-safe)
       expectValidationRan();
+    });
+  });
+
+  describe('working directory behavior (Issue #129)', () => {
+    it('should execute validation steps in project root when invoked from subdirectory', async () => {
+      // Issue #129: pre-commit should also run in project root, not process.cwd()
+
+      const configDir = tempEnv.testDir;
+      const subdir = join(configDir, 'packages', 'foo');
+      mkdirSyncReal(subdir, { recursive: true });
+
+      // Setup all necessary mocks for pre-commit to reach validation
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+        config: createConfig(),
+        configDir,
+      });
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+      vi.mocked(utils.isToolAvailable).mockReturnValue(false); // No secret scanning tools
+
+      // Track what process.cwd() was when runValidation was called
+      let capturedCwd: string | null = null;
+      vi.mocked(core.runValidation).mockImplementation(async () => {
+        capturedCwd = process.cwd();
+        return createValidationResult();
+      });
+
+      // Change to subdirectory before running pre-commit
+      process.chdir(subdir);
+
+      await runPreCommit(env, 0);
+
+      // CRITICAL: process.cwd() should be configDir during validation
+      expect(capturedCwd).toBe(configDir);
+    });
+
+    it('should restore original directory after pre-commit completes', async () => {
+      const configDir = tempEnv.testDir;
+      const subdir = join(configDir, 'packages', 'bar');
+      mkdirSyncReal(subdir, { recursive: true });
+
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+        config: createConfig(),
+        configDir,
+      });
+
+      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
+      vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
+
+      // Change to subdirectory
+      process.chdir(subdir);
+      const originalCwd = process.cwd();
+
+      await runPreCommit(env, 0);
+
+      // CRITICAL: Should be back in subdirectory after pre-commit completes
+      expect(process.cwd()).toBe(originalCwd);
     });
   });
 });

@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { stateCommand } from '../../src/commands/state.js';
 import * as configLoader from '../../src/utils/config-loader.js';
 import { setupCommanderTest, executeCommandAndGetExitCode, type CommanderTestEnv } from '../helpers/commander-test-setup.js';
+import { setupHistoryMocks } from '../helpers/mock-helpers.js';
 
 
 // Mock dependencies
@@ -118,17 +119,10 @@ function setupMockValidationState(
 describe('state command', () => {
   let env: CommanderTestEnv;
   const mockTreeHash = 'abc123def456' as TreeHash;
-  const mockTreeHashResult = {
-    hash: mockTreeHash
-  };
 
   beforeEach(() => {
     env = setupCommanderTest();
-
-    // Default mock implementations
-    vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHashResult);
-    vi.mocked(hasHistoryForTree).mockResolvedValue(false);
-    vi.mocked(readHistoryNote).mockResolvedValue(null);
+    setupHistoryMocks(mockTreeHash);
     vi.mocked(getAllRunCacheForTree).mockResolvedValue([]);
     vi.mocked(configLoader.findConfigPath).mockReturnValue(null);
   });

@@ -23,6 +23,9 @@ describe('All commands work from subdirectories (system tests)', () => {
   // NOTE: validate command tests removed - they create circular dependency when run during validation
   // (integration tests run during validation, test tries to run validate, creates deadlock)
   // The validate command is extensively tested in unit tests.
+  //
+  // Issue #129 testing: validate/pre-commit directory behavior is covered by unit tests
+  // in validate.test.ts and pre-commit.test.ts (no circular dependency)
 
   describe('state command', () => {
     it('should work from project root', () => {
@@ -255,6 +258,35 @@ describe('All commands work from subdirectories (system tests)', () => {
 
       expect(result.stdout).toMatch(/command:/);
       expect(result.stdout).toMatch(/exitCode:/);
+    });
+  });
+
+  describe('Issue #129: vv run preserves process.cwd() for ad-hoc commands', () => {
+    // NOTE: This is CORRECT behavior for vv run (not a bug)
+    // vv run is for ad-hoc commands where the user's location is intentional
+
+    it('should execute vv run commands in process.cwd() (current directory)', () => {
+      // vv run from CLI_DIR should run in CLI_DIR, not project root
+      // This is intentional - user wants to run command in their current directory
+      const result = executeWrapperSync(['run', 'test', '-f', 'package.json'], {
+        cwd: CLI_DIR, // Run from packages/cli directory
+      });
+
+      // Should succeed because package.json exists in packages/cli (where we are)
+      expect(result.stdout).toMatch(/exitCode:\s*0/);
+    });
+
+    it('should use --cwd option to override directory', () => {
+      // When --cwd is specified, commands should run in that directory (relative to git root)
+      const result = executeWrapperSync(
+        ['run', '--cwd', 'packages/core', 'test', '-f', 'package.json'],
+        {
+          cwd: PROJECT_ROOT, // Run from root but specify different directory
+        }
+      );
+
+      // Should succeed because package.json exists in packages/core
+      expect(result.stdout).toMatch(/exitCode:\s*0/);
     });
   });
 

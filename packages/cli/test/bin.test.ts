@@ -16,6 +16,61 @@ function sendSigintAfterDelay(child: { kill: (_signal: string) => void }, delayM
   setTimeout(() => child.kill('SIGINT'), delayMs);
 }
 
+/**
+ * Helper to initialize git repo and create initial commit
+ */
+function setupGitRepo(testDir: string, configContent: string): void {
+  writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
+  initializeGitRepo(testDir);
+  executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
+  executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
+}
+
+/**
+ * Helper to log detailed diagnostics when a CLI command fails unexpectedly
+ */
+function logCommandFailure(
+  testDir: string,
+  args: string[],
+  result: { code: number; stdout: string; stderr: string },
+  expectedCode: number,
+  context?: string
+): void {
+  const prefix = context ? `${context}: ` : '';
+  console.error(`${prefix}Command failed unexpectedly`);
+  console.error('Command:', args.join(' '));
+  console.error('Expected exit code:', expectedCode);
+  console.error('Actual exit code:', result.code);
+  console.error('Stdout:', result.stdout.substring(0, 500));
+  console.error('Stderr:', result.stderr.substring(0, 500));
+  console.error('Test directory:', testDir);
+  if (existsSync(join(testDir, 'vibe-validate.config.js'))) {
+    console.error('Config file exists: true');
+  }
+  if (existsSync(join(testDir, '.vibe-validate-state.yaml'))) {
+    console.error('State file exists: true');
+  }
+}
+
+/**
+ * Helper function to execute CLI and capture output
+ * Uses shared test-command-runner helper for cross-platform compatibility
+ */
+async function executeCLI(
+  binPath: string,
+  testDir: string,
+  args: string[],
+  timeoutMs: number = 10000,
+  customEnv?: Record<string, string>
+): Promise<{ code: number; stdout: string; stderr: string }> {
+  const result = await executeCommandWithSeparateStreams(binPath, args, {
+    cwd: testDir,
+    timeout: timeoutMs,
+    env: { NO_COLOR: '1', ...customEnv },
+  });
+  return { code: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+}
+
 describe('bin.ts - CLI entry point', () => {
   let testDir: string;
   let originalCwd: string;
@@ -48,75 +103,23 @@ describe('bin.ts - CLI entry point', () => {
     vi.restoreAllMocks();
   });
 
-  /**
-   * Helper to initialize git repo and create initial commit
-   */
-  function setupGitRepo(configContent: string): void {
-    writeFileSync(join(testDir, 'vibe-validate.config.yaml'), configContent);
-    initializeGitRepo(testDir);
-    executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
-    executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
-  }
-
-  /**
-   * Helper to log detailed diagnostics when a CLI command fails unexpectedly
-   */
-  function logCommandFailure(
-    args: string[],
-    result: { code: number; stdout: string; stderr: string },
-    expectedCode: number,
-    context?: string
-  ): void {
-    const prefix = context ? `${context}: ` : '';
-    console.error(`${prefix}Command failed unexpectedly`);
-    console.error('Command:', args.join(' '));
-    console.error('Expected exit code:', expectedCode);
-    console.error('Actual exit code:', result.code);
-    console.error('Stdout:', result.stdout.substring(0, 500));
-    console.error('Stderr:', result.stderr.substring(0, 500));
-    console.error('Test directory:', testDir);
-    if (existsSync(join(testDir, 'vibe-validate.config.js'))) {
-      console.error('Config file exists: true');
-    }
-    if (existsSync(join(testDir, '.vibe-validate-state.yaml'))) {
-      console.error('State file exists: true');
-    }
-  }
-
-  /**
-   * Helper function to execute CLI and capture output
-   * Uses shared test-command-runner helper for cross-platform compatibility
-   */
-  async function executeCLI(
-    args: string[],
-    timeoutMs: number = 10000,
-    customEnv?: Record<string, string>
-  ): Promise<{ code: number; stdout: string; stderr: string }> {
-    const result = await executeCommandWithSeparateStreams(binPath, args, {
-      cwd: testDir,
-      timeout: timeoutMs,
-      env: { NO_COLOR: '1', ...customEnv },
-    });
-    return { code: result.exitCode, stdout: result.stdout, stderr: result.stderr };
-  }
-
   describe('version display', () => {
     it('should display version with --version flag', async () => {
-      const result = await executeCLI(['--version']);
+      const result = await executeCLI(binPath, testDir, ['--version']);
 
       expect(result.code).toBe(0);
       expect(result.stdout).toMatch(/\d+\.\d+\.\d+/); // Matches semantic version
     });
 
     it('should display version with -V flag', async () => {
-      const result = await executeCLI(['-V']);
+      const result = await executeCLI(binPath, testDir, ['-V']);
 
       expect(result.code).toBe(0);
       expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
     });
 
     it('should not show fallback version warning in production', async () => {
-      const result = await executeCLI(['--version']);
+      const result = await executeCLI(binPath, testDir, ['--version']);
 
       expect(result.stderr).not.toContain('Could not read package.json version');
     });
@@ -124,7 +127,7 @@ describe('bin.ts - CLI entry point', () => {
 
   describe('help display', () => {
     it('should display help with --help flag', async () => {
-      const result = await executeCLI(['--help']);
+      const result = await executeCLI(binPath, testDir, ['--help']);
 
       expect(result.code).toBe(0);
       expect(result.stdout).toContain('vibe-validate');
@@ -132,14 +135,14 @@ describe('bin.ts - CLI entry point', () => {
     });
 
     it('should display help with -h flag', async () => {
-      const result = await executeCLI(['-h']);
+      const result = await executeCLI(binPath, testDir, ['-h']);
 
       expect(result.code).toBe(0);
       expect(result.stdout).toContain('vibe-validate');
     });
 
     it('should list all available commands in help', async () => {
-      const result = await executeCLI(['--help']);
+      const result = await executeCLI(binPath, testDir, ['--help']);
 
       expect(result.stdout).toContain('validate');
       expect(result.stdout).toContain('init');
@@ -152,7 +155,7 @@ describe('bin.ts - CLI entry point', () => {
 
     describe('comprehensive help (--help --verbose)', () => {
       it('should display comprehensive help with --help --verbose (Markdown format)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# vibe-validate CLI Reference');
@@ -162,7 +165,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include exit codes for all commands (Markdown format)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         // Check validate command exit codes (Markdown format with backticks)
         expect(result.stdout).toContain('**Exit codes:**');
@@ -179,7 +182,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include "What it does" sections for commands', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         // Check validate command
         expect(result.stdout).toContain('What it does:');
@@ -195,7 +198,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include file locations created/modified', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('Creates/modifies:');
         expect(result.stdout).toContain('Git notes under refs/notes/vibe-validate/validate');
@@ -205,7 +208,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include examples for commands', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('Examples:');
         expect(result.stdout).toContain('vibe-validate validate              # Use cache if available');
@@ -215,7 +218,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include error recovery guidance (Markdown format)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('**Error recovery:**');
         expect(result.stdout).toContain('If **sync failed**:');
@@ -226,7 +229,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include "When to use" guidance', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('When to use:');
         expect(result.stdout).toContain('Run before every commit to ensure code is synced and validated');
@@ -235,7 +238,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include FILES section (Markdown format)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('## Files');
         expect(result.stdout).toContain('vibe-validate.config.yaml');
@@ -245,7 +248,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include COMMON WORKFLOWS section (Markdown format)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('## Common Workflows');
         expect(result.stdout).toContain('### First-time setup');
@@ -261,7 +264,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include EXIT CODES section (Markdown format)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('## Exit Codes');
         expect(result.stdout).toContain('| `0` | Success |');
@@ -270,7 +273,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include CACHING section (Markdown format)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('## Caching');
         expect(result.stdout).toContain('**Cache key**: Git tree hash of working directory (includes untracked files)');
@@ -280,15 +283,15 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should include repository link', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.stdout).toContain('For more details: https://github.com/jdutton/vibe-validate');
       });
 
       it('should be significantly longer than regular help', async () => {
         const { splitLines } = await import('../src/utils/normalize-line-endings.js');
-        const regularHelp = await executeCLI(['--help']);
-        const verboseHelp = await executeCLI(['--help', '--verbose']);
+        const regularHelp = await executeCLI(binPath, testDir, ['--help']);
+        const verboseHelp = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         const regularLines = splitLines(regularHelp.stdout).length;
         const verboseLines = splitLines(verboseHelp.stdout).length;
@@ -302,7 +305,7 @@ describe('bin.ts - CLI entry point', () => {
         const { join } = await import('node:path');
         const { normalizeLineEndings, splitLines } = await import('../src/utils/normalize-line-endings.js');
 
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
         const docsPath = join(__dirname, '../../../docs/skill/resources/cli-reference.md');
 
         if (!existsSync(docsPath)) {
@@ -369,7 +372,7 @@ describe('bin.ts - CLI entry point', () => {
 
     describe('subcommand verbose help', () => {
       it('should show detailed Markdown documentation for "history --help --verbose"', async () => {
-        const result = await executeCLI(['history', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['history', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
 
@@ -393,7 +396,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "validate --help --verbose"', async () => {
-        const result = await executeCLI(['validate', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['validate', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# validate Command Reference');
@@ -407,7 +410,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "init --help --verbose"', async () => {
-        const result = await executeCLI(['init', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['init', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# init Command Reference');
@@ -418,7 +421,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "state --help --verbose"', async () => {
-        const result = await executeCLI(['state', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['state', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# state Command Reference');
@@ -429,7 +432,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "config --help --verbose"', async () => {
-        const result = await executeCLI(['config', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['config', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# config Command Reference');
@@ -438,7 +441,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "pre-commit --help --verbose"', async () => {
-        const result = await executeCLI(['pre-commit', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['pre-commit', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# pre-commit Command Reference');
@@ -448,7 +451,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "sync-check --help --verbose"', async () => {
-        const result = await executeCLI(['sync-check', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['sync-check', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# sync-check Command Reference');
@@ -457,7 +460,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "cleanup --help --verbose"', async () => {
-        const result = await executeCLI(['cleanup', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['cleanup', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# cleanup Command Reference');
@@ -466,7 +469,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "doctor --help --verbose"', async () => {
-        const result = await executeCLI(['doctor', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['doctor', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# doctor Command Reference');
@@ -476,7 +479,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "generate-workflow --help --verbose"', async () => {
-        const result = await executeCLI(['generate-workflow', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['generate-workflow', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# generate-workflow Command Reference');
@@ -485,7 +488,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show detailed Markdown documentation for "watch-pr --help --verbose"', async () => {
-        const result = await executeCLI(['watch-pr', '--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['watch-pr', '--help', '--verbose']);
 
         expect(result.code).toBe(0);
         expect(result.stdout).toContain('# watch-pr Command Reference');
@@ -495,7 +498,7 @@ describe('bin.ts - CLI entry point', () => {
       });
 
       it('should show comprehensive help only for root "--help --verbose" (no subcommand)', async () => {
-        const result = await executeCLI(['--help', '--verbose']);
+        const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
 
         expect(result.code).toBe(0);
 
@@ -510,7 +513,7 @@ describe('bin.ts - CLI entry point', () => {
   describe('command registration', () => {
     it('should execute validate command', async () => {
       // This will fail due to no config, but proves the command is registered
-      const result = await executeCLI(['validate']);
+      const result = await executeCLI(binPath, testDir, ['validate']);
 
       // Should fail with "No configuration found"
       expect(result.code).toBe(1);
@@ -519,7 +522,7 @@ describe('bin.ts - CLI entry point', () => {
 
     it('should execute state command', async () => {
       // Should succeed even with no state file (minimal YAML output)
-      const result = await executeCLI(['state']);
+      const result = await executeCLI(binPath, testDir, ['state']);
 
       expect(result.code).toBe(0);
       expect(result.stdout).toContain('exists: false');
@@ -527,7 +530,7 @@ describe('bin.ts - CLI entry point', () => {
 
     it('should execute config command', async () => {
       // Should fail with "No configuration file found"
-      const result = await executeCLI(['config']);
+      const result = await executeCLI(binPath, testDir, ['config']);
 
       expect(result.code).toBe(1);
       expect(result.stderr).toContain('No configuration file found');
@@ -537,7 +540,7 @@ describe('bin.ts - CLI entry point', () => {
       // Initialize a git repo first (required for sync-check)
       initializeGitRepo(testDir);
 
-      const result = await executeCLI(['sync-check']);
+      const result = await executeCLI(binPath, testDir, ['sync-check']);
 
       // Should succeed (no remote, so always "up to date")
       expect(result.code).toBe(0);
@@ -546,14 +549,14 @@ describe('bin.ts - CLI entry point', () => {
 
   describe('error handling', () => {
     it('should exit with error for unknown command', async () => {
-      const result = await executeCLI(['unknown-command']);
+      const result = await executeCLI(binPath, testDir, ['unknown-command']);
 
       expect(result.code).toBe(1);
       expect(result.stderr).toContain('unknown command');
     });
 
     it('should exit with error for invalid option', async () => {
-      const result = await executeCLI(['validate', '--invalid-option']);
+      const result = await executeCLI(binPath, testDir, ['validate', '--invalid-option']);
 
       expect(result.code).toBe(1);
       expect(result.stderr).toContain('unknown option');
@@ -562,7 +565,7 @@ describe('bin.ts - CLI entry point', () => {
 
   describe('command options', () => {
     it('should pass --force option to validate command', async () => {
-      const result = await executeCLI(['validate', '--force']);
+      const result = await executeCLI(binPath, testDir, ['validate', '--force']);
 
       // Should fail due to no config, but proves option was parsed
       expect(result.code).toBe(1);
@@ -570,14 +573,14 @@ describe('bin.ts - CLI entry point', () => {
     });
 
     it('should pass --verbose option to state command', async () => {
-      const result = await executeCLI(['state', '--verbose']);
+      const result = await executeCLI(binPath, testDir, ['state', '--verbose']);
 
       expect(result.code).toBe(0);
       expect(result.stdout).toContain('exists: false');
     });
 
     it('should pass --validate option to config command', async () => {
-      const result = await executeCLI(['config', '--validate']);
+      const result = await executeCLI(binPath, testDir, ['config', '--validate']);
 
       // Should fail due to no config
       expect(result.code).toBe(1);
@@ -606,19 +609,19 @@ git:
       executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
 
       // 1. Verify config is valid
-      const configResult = await executeCLI(['config', '--validate']);
+      const configResult = await executeCLI(binPath, testDir, ['config', '--validate']);
       if (configResult.code !== 0) {
-        logCommandFailure(['config', '--validate'], configResult, 0, 'Config validation');
+        logCommandFailure(testDir, ['config', '--validate'], configResult, 0, 'Config validation');
       }
       expect(configResult.code).toBe(0);
       expect(configResult.stdout).toContain('Configuration is valid');
 
       // 2. Run validation (should create state file)
-      const validateResult = await executeCLI(['validate']);
+      const validateResult = await executeCLI(binPath, testDir, ['validate']);
       expect(validateResult.code).toBe(0);
 
       // 3. Check state (should show passed) - use --verbose for status text
-      const stateResult = await executeCLI(['state', '--verbose']);
+      const stateResult = await executeCLI(binPath, testDir, ['state', '--verbose']);
       expect(stateResult.code).toBe(0);
       expect(stateResult.stdout).toContain('passed: true');
     }, 30000); // Increase timeout for full workflow
@@ -635,19 +638,19 @@ git:
 git:
   mainBranch: main
 `;
-      setupGitRepo(configContent);
+      setupGitRepo(testDir, configContent);
 
       // Run validation (should fail)
-      const validateResult = await executeCLI(['validate']);
+      const validateResult = await executeCLI(binPath, testDir, ['validate']);
       if (validateResult.code !== 1) {
-        logCommandFailure(['validate'], validateResult, 1, 'Validation failure workflow');
+        logCommandFailure(testDir, ['validate'], validateResult, 1, 'Validation failure workflow');
       }
       expect(validateResult.code).toBe(1);
 
       // Check state (should show failed) - use --verbose for status text
-      const stateResult = await executeCLI(['state', '--verbose']);
+      const stateResult = await executeCLI(binPath, testDir, ['state', '--verbose']);
       if (stateResult.code !== 0) {
-        logCommandFailure(['state', '--verbose'], stateResult, 0, 'State check after validation failure');
+        logCommandFailure(testDir, ['state', '--verbose'], stateResult, 0, 'State check after validation failure');
       }
       expect(stateResult.code).toBe(0);
       expect(stateResult.stdout).toContain('passed: false');
@@ -676,26 +679,26 @@ git:
       executeGitCommand(['-C', testDir, 'commit', '-m', 'Initial commit'], { suppressStderr: true });
 
       // 1. First run - should execute validation (minimal output: phase_start)
-      const firstRun = await executeCLI(['validate']);
+      const firstRun = await executeCLI(binPath, testDir, ['validate']);
       if (firstRun.code !== 0) {
-        logCommandFailure(['validate'], firstRun, 0, 'Cache bypass test - first run');
+        logCommandFailure(testDir, ['validate'], firstRun, 0, 'Cache bypass test - first run');
       }
       expect(firstRun.code).toBe(0);
       expect(firstRun.stdout).toContain('phase_start: Test Phase');
 
       // 2. Second run without --force - should use cache
-      const cachedRun = await executeCLI(['validate']);
+      const cachedRun = await executeCLI(binPath, testDir, ['validate']);
       if (cachedRun.code !== 0) {
-        logCommandFailure(['validate'], cachedRun, 0, 'Cache bypass test - cached run');
+        logCommandFailure(testDir, ['validate'], cachedRun, 0, 'Cache bypass test - cached run');
       }
       expect(cachedRun.code).toBe(0);
       expect(cachedRun.stdout).toContain('passed for this code');
       expect(cachedRun.stdout).not.toContain('phase_start'); // Should NOT run phases
 
       // 3. Third run with --force - should bypass cache and run validation
-      const forcedRun = await executeCLI(['validate', '--force']);
+      const forcedRun = await executeCLI(binPath, testDir, ['validate', '--force']);
       if (forcedRun.code !== 0) {
-        logCommandFailure(['validate', '--force'], forcedRun, 0, 'Cache bypass test - forced run');
+        logCommandFailure(testDir, ['validate', '--force'], forcedRun, 0, 'Cache bypass test - forced run');
       }
       expect(forcedRun.code).toBe(0);
       expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run phases again
@@ -715,10 +718,10 @@ git:
 git:
   mainBranch: main
 `;
-      setupGitRepo(configContent);
+      setupGitRepo(testDir, configContent);
 
       // Run validate with --force
-      const forcedRun = await executeCLI(['validate', '--force']);
+      const forcedRun = await executeCLI(binPath, testDir, ['validate', '--force']);
 
       expect(forcedRun.code).toBe(0);
 
@@ -751,18 +754,18 @@ git:
       execSyncImport('git commit -m "Initial commit"', { cwd: testDir });
 
       // 1. First run - should execute validation
-      const firstRun = await executeCLI(['validate']);
+      const firstRun = await executeCLI(binPath, testDir, ['validate']);
       expect(firstRun.code).toBe(0);
       expect(firstRun.stdout).toContain('phase_start: Test Phase');
 
       // 2. Second run without force - should use cache
-      const cachedRun = await executeCLI(['validate']);
+      const cachedRun = await executeCLI(binPath, testDir, ['validate']);
       expect(cachedRun.code).toBe(0);
       expect(cachedRun.stdout).toContain('passed for this code');
       expect(cachedRun.stdout).not.toContain('phase_start');
 
       // 3. Third run with VV_FORCE_EXECUTION=1 env var - should bypass cache
-      const forceRun = await executeCLI(['validate'], 10000, { VV_FORCE_EXECUTION: '1' });
+      const forceRun = await executeCLI(binPath, testDir, ['validate'], 10000, { VV_FORCE_EXECUTION: '1' });
       expect(forceRun.code).toBe(0);
       expect(forceRun.stdout + forceRun.stderr).toContain('phase_start: Test Phase'); // Should run phases again
       expect(forceRun.stdout + forceRun.stderr).not.toContain('passed for this code'); // Should NOT show cache message
@@ -789,16 +792,16 @@ git:
       execSyncImport('git commit -m "Initial commit"', { cwd: testDir });
 
       // First run - cache the nested vv run command
-      const firstRun = await executeCLI(['validate']);
+      const firstRun = await executeCLI(binPath, testDir, ['validate']);
       expect(firstRun.code).toBe(0);
 
       // Second run without force - nested command should hit cache
-      const cachedRun = await executeCLI(['validate']);
+      const cachedRun = await executeCLI(binPath, testDir, ['validate']);
       expect(cachedRun.code).toBe(0);
       expect(cachedRun.stdout).toContain('passed for this code'); // Outer validation cached
 
       // Third run with --force - should propagate to nested vv run
-      const forcedRun = await executeCLI(['validate', '--force']);
+      const forcedRun = await executeCLI(binPath, testDir, ['validate', '--force']);
       expect(forcedRun.code).toBe(0);
       expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run validation
       // The nested vv run should also bypass cache due to VV_FORCE_EXECUTION propagation
@@ -807,13 +810,13 @@ git:
 
   describe('process lifecycle', () => {
     it('should exit cleanly on successful command', async () => {
-      const result = await executeCLI(['state']);
+      const result = await executeCLI(binPath, testDir, ['state']);
 
       expect(result.code).toBe(0);
     });
 
     it('should exit cleanly on failed command', async () => {
-      const result = await executeCLI(['config']);
+      const result = await executeCLI(binPath, testDir, ['config']);
 
       expect(result.code).toBe(1);
     });

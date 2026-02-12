@@ -938,94 +938,22 @@
     },
     {
       "format": "typescript",
-      "lines": 6,
-      "fragment": ".exitCode);\n      console.log('  Errors extracted:', parsed.extraction?.errors?.length ?? 0);\n      console.log('  Summary:', parsed.extraction?.summary);\n      if (parsed.extraction?.errors?.length) {\n        console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));\n      } else",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/run.system.test.ts",
-        "start": 132,
-        "end": 137,
-        "startLoc": {
-          "line": 132,
-          "column": 2,
-          "position": 949
-        },
-        "endLoc": {
-          "line": 137,
-          "column": 5,
-          "position": 1046
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/run.system.test.ts",
-        "start": 92,
-        "end": 98,
-        "startLoc": {
-          "line": 92,
-          "column": 7,
-          "position": 617
-        },
-        "endLoc": {
-          "line": 98,
-          "column": 8,
-          "position": 715
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": ");\n      console.log('  Exit code:', parsed.exitCode);\n      console.log('  Errors extracted:', parsed.extraction?.errors?.length ?? 0);\n      console.log('  Summary:', parsed.extraction?.summary);\n      if (parsed.extraction?.errors?.length) {\n        console.log('  First error:', JSON.stringify(parsed.extraction.errors[0], null, 2));\n      } else {\n        console.log('  Raw output (first 800 chars):', parsed.rawOutput?.substring(0, 800));\n      }\n\n      // Should detect Playwright and extract errors",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/run.system.test.ts",
-        "start": 170,
-        "end": 180,
-        "startLoc": {
-          "line": 170,
-          "column": 42,
-          "position": 1271
-        },
-        "endLoc": {
-          "line": 180,
-          "column": 47,
-          "position": 1412
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/run.system.test.ts",
-        "start": 91,
-        "end": 141,
-        "startLoc": {
-          "line": 91,
-          "column": 38,
-          "position": 605
-        },
-        "endLoc": {
-          "line": 141,
-          "column": 41,
-          "position": 1078
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 11,
       "fragment": ": vi.fn(),\n  };\n});\n\n// Mock the config loader\nvi.mock('../../src/utils/config-loader.js', async () => {\n  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');\n  return {\n    ...actual,\n    loadConfig: vi.fn(),\n    loadConfigWithDir",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 55,
-        "end": 65,
+        "start": 58,
+        "end": 68,
         "startLoc": {
-          "line": 55,
+          "line": 58,
           "column": 19,
-          "position": 538
+          "position": 565
         },
         "endLoc": {
-          "line": 65,
+          "line": 68,
           "column": 18,
-          "position": 618
+          "position": 645
         }
       },
       "secondFile": {
