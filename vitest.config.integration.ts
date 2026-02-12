@@ -30,6 +30,8 @@ import { defineConfig } from 'vitest/config';
  * - watch-pr-extraction.integration.test.ts: extractor quality validation (6 tests)
  * - run.integration.test.ts: run command with real extractors (34 tests)
  */
+const isWindows = process.platform === 'win32';
+
 export default defineConfig({
   test: {
     globals: true,
@@ -46,10 +48,23 @@ export default defineConfig({
       'packages/cli/test/integration/watch-pr-extraction.integration.test.ts',
       'packages/cli/test/commands/run.integration.test.ts',
     ],
-    testTimeout: 30000, // 30 seconds per test
-    hookTimeout: 60000, // 60 seconds for setup/teardown (pnpm pack + npm install in system tests)
+    testTimeout: 60000, // 60 seconds per test (increased for Windows CI resource constraints)
+    hookTimeout: 90000, // 90 seconds for setup/teardown (increased for Windows)
     fileParallelism: true,
-    maxConcurrency: 4, // Balance speed vs resource usage
+    // Windows CI has resource constraints - reduce concurrency to prevent worker timeouts
+    maxConcurrency: isWindows ? 1 : 4,
+    poolOptions: {
+      threads: {
+        // Reduce worker count on Windows to prevent communication timeouts
+        maxThreads: isWindows ? 1 : undefined,
+        minThreads: isWindows ? 1 : undefined,
+      },
+      forks: {
+        // Apply same limits if using forks pool
+        maxForks: isWindows ? 1 : undefined,
+        minForks: isWindows ? 1 : undefined,
+      },
+    },
     coverage: {
       enabled: false, // Integration/system tests don't contribute to unit test coverage metrics
     },
