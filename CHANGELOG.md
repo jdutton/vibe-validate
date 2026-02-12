@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fixed validation steps not executing from project root when invoked from subdirectory** (Issue #129, PR #131)
+  - **Problem**: When running `vv validate` from a subdirectory, validation steps would execute in that subdirectory rather than the project root
+  - **Root cause**: `pre-commit.ts` and `validate.ts` were using `process.cwd()` instead of the git root directory
+  - **Solution**: Both commands now consistently use git root as the working directory for all validation steps
+  - **Impact**: Validation behavior is now consistent regardless of where the command is invoked from
+  - **Testing**: Added comprehensive system test `subdirectory-behavior.system.test.ts` to prevent regression
+
 - **Fixed git notes with submodules to use structured TreeHashResult instead of composite hashes** (Issue #120, PR #121)
   - **Problem**: Git notes operations failed when trying to store/retrieve composite SHA-256 hashes (64 chars) as git object references
   - **Root cause**: Git expects object references to be valid SHA-1 hashes (40 hex chars), but composite hashes used SHA-256
