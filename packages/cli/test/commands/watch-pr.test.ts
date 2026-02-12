@@ -350,141 +350,58 @@ describe('watch-pr command', () => {
 
   describe('--history flag', () => {
     it('should display historical runs in human-friendly table format', async () => {
-      // This test runs against real API (vibe-validate repo PR #90)
-      // PR #90 is known to have multiple runs
-      const result = await executeVv(['watch-pr', '90', '--history']);
+      setupHistoryMocks(HISTORY_TEST_RUNS);
+      const { exitCode, output } = await runHistoryCommand('90', { history: true });
 
-      if (result.exitCode === 0) {
-        // Should show table header
-        expect(result.stdout).toContain('📋 Workflow Runs for PR #90');
-        expect(result.stdout).toContain('RUN ID');
-        expect(result.stdout).toContain('CONCLUSION');
-        expect(result.stdout).toContain('DURATION');
-        expect(result.stdout).toContain('WORKFLOW');
-        expect(result.stdout).toContain('STARTED');
-
-        // Should show at least one run with icon
-        expect(result.stdout).toMatch(/[✅❌⏳]/); // Success/failure/pending icon
-
-        // Should show tip about --run-id
-        expect(result.stdout).toContain('💡 Tip: Use --run-id');
-        expect(result.stdout).toContain('Example: vv watch-pr 90 --run-id'); // Uses "vv" since that's how we invoked
-
-        // Should exit successfully
-        expect(result.exitCode).toBe(0);
-      }
-      // If PR has no runs, that's ok too (test passes either way)
+      expect(exitCode).toBe(0);
+      // Should show table header
+      expect(output).toContain('📋 Workflow Runs for PR #90');
+      expect(output).toContain('RUN ID');
+      expect(output).toContain('CONCLUSION');
+      expect(output).toContain('DURATION');
+      expect(output).toContain('WORKFLOW');
+      expect(output).toContain('STARTED');
+      // Should show run icons (success + failure)
+      expect(output).toContain('✅');
+      expect(output).toContain('❌');
+      // Should show tip about --run-id
+      expect(output).toContain('💡 Tip: Use --run-id');
     });
 
     it('should output YAML format when --history and --yaml flags combined', async () => {
-      const result = await executeVv(['watch-pr', '90', '--history', '--yaml']);
+      setupHistoryMocks(HISTORY_TEST_RUNS);
+      const { exitCode, output } = await runHistoryCommand('90', { history: true, yaml: true });
 
-      if (result.exitCode === 0) {
-        // Should output YAML format
-        expect(result.stdout).toContain('---'); // YAML document separator
-        expect(result.stdout).toContain('runs:');
-
-        // Should NOT show human-friendly table
-        expect(result.stdout).not.toContain('📋 Workflow Runs');
-
-        // Should exit successfully
-        expect(result.exitCode).toBe(0);
-      }
+      expect(exitCode).toBe(0);
+      // Should output YAML format
+      expect(output).toContain('---'); // YAML document separator
+      expect(output).toContain('runs:');
+      // Should NOT show human-friendly table
+      expect(output).not.toContain('📋 Workflow Runs');
     });
 
     it('should exit with code 0 after displaying history', async () => {
-      // --history should be informational only, always exit 0
-      // Mock git package function
-      vi.spyOn(gitPackage, 'getRemoteUrl').mockReturnValue('https://github.com/test/repo.git');
+      setupHistoryMocks(HISTORY_TEST_RUNS);
+      const { exitCode } = await runHistoryCommand('90', { history: true });
 
-      // Mock fetchPRDetails to return basic PR info
-      vi.mocked(fetchPRDetails).mockReturnValue({
-        number: 90,
-        title: 'Test PR',
-        url: 'https://github.com/test/repo/pull/90',
-        headRefName: 'feature/test',
-        baseRefName: 'main',
-        author: { login: 'testuser' },
-        isDraft: false,
-        mergeable: 'MERGEABLE',
-        mergeStateStatus: 'CLEAN',
-        labels: [],
-        closingIssuesReferences: { nodes: [] },
-      });
-
-      // Mock listWorkflowRuns to return test runs
-      vi.mocked(listWorkflowRuns).mockReturnValue([
-        {
-          databaseId: 123,
-          name: 'Validation Pipeline',
-          status: 'completed',
-          conclusion: 'success',
-          workflowName: 'Validate',
-          createdAt: '2025-12-18T00:00:00Z',
-          updatedAt: '2025-12-18T00:05:00Z',
-          url: 'https://github.com/test/repo/actions/runs/123',
-        },
-        {
-          databaseId: 124,
-          name: 'Validation Pipeline',
-          status: 'completed',
-          conclusion: 'failure',
-          workflowName: 'Validate',
-          createdAt: '2025-12-17T00:00:00Z',
-          updatedAt: '2025-12-17T00:05:00Z',
-          url: 'https://github.com/test/repo/actions/runs/124',
-        },
-      ]);
-
-      // Import and call watchPRCommand directly
-      const { watchPRCommand } = await import('../../src/commands/watch-pr.js');
-
-      // Suppress console output for cleaner test output
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const consoleTableSpy = vi.spyOn(console, 'table').mockImplementation(() => {});
-
-      let exitCode: number;
-      try {
-        exitCode = await watchPRCommand('90', { history: true });
-      } finally {
-        consoleLogSpy.mockRestore();
-        consoleTableSpy.mockRestore();
-      }
-
-      // Should exit with 0 (even if some runs failed)
-      // This is the key behavior: --history is informational and should never cause failure
+      // --history is informational only, always exit 0 (even if some runs failed)
       expect(exitCode).toBe(0);
     });
 
     it('should work with --repo flag to check other repositories', async () => {
-      // Test cross-repo support with --history
-      const result = await executeVv([
-        'watch-pr',
-        '104',
-        '--repo',
-        'jdutton/mcp-typescript-simple',
-        '--history',
-      ]);
+      setupHistoryMocks(HISTORY_TEST_RUNS);
+      const { exitCode, output } = await runHistoryCommand('90', { history: true, repo: 'other/repo' });
 
-      // Should attempt to fetch from specified repo (may fail if PR doesn't exist, that's ok)
-      if (result.exitCode === 0) {
-        expect(result.stdout).toContain('📋 Workflow Runs for PR #104');
-      } else {
-        // If it fails, should be API error, not argument validation error
-        expect(result.stderr).not.toContain('Invalid --repo format');
-      }
+      expect(exitCode).toBe(0);
+      expect(output).toContain('📋 Workflow Runs for PR #90');
     });
 
     it('should handle PR with no runs gracefully', async () => {
-      // Use a very high PR number that likely doesn't exist or has no runs
-      const result = await executeVv(['watch-pr', '999999', '--history']);
+      setupHistoryMocks([]);
+      const { exitCode, output } = await runHistoryCommand('999999', { history: true });
 
-      // Should either show "No workflow runs found" or fail with API error
-      // Either way, should not crash
-      expect(result.exitCode).toBeGreaterThanOrEqual(0);
-      if (result.stdout.includes('No workflow runs found')) {
-        expect(result.exitCode).toBe(0);
-      }
+      expect(exitCode).toBe(0);
+      expect(output).toContain('No workflow runs found');
     });
   });
 
@@ -675,6 +592,96 @@ describe('watch-pr command', () => {
     });
   });
 });
+
+/**
+ * Sets up mocks for watchPRCommand --history tests.
+ * Mocks git remote detection, PR details, and workflow runs.
+ * @param runs - Workflow runs to return (empty array = no runs)
+ */
+function setupHistoryMocks(runs: Array<{
+  databaseId: number;
+  name: string;
+  status: string;
+  conclusion: string;
+  workflowName: string;
+  createdAt: string;
+  updatedAt: string;
+  url: string;
+}>) {
+  vi.spyOn(gitPackage, 'getRemoteUrl').mockReturnValue('https://github.com/test/repo.git');
+  vi.mocked(fetchPRDetails).mockReturnValue({
+    number: 90,
+    title: 'Test PR',
+    url: 'https://github.com/test/repo/pull/90',
+    headRefName: 'feature/test',
+    baseRefName: 'main',
+    author: { login: 'testuser' },
+    isDraft: false,
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'CLEAN',
+    labels: [],
+    closingIssuesReferences: [],
+  });
+  vi.mocked(listWorkflowRuns).mockReturnValue(runs);
+}
+
+/** Standard test workflow runs: one success, one failure */
+const HISTORY_TEST_RUNS = [
+  {
+    databaseId: 123,
+    name: 'Validation Pipeline',
+    status: 'completed',
+    conclusion: 'success',
+    workflowName: 'Validate',
+    createdAt: '2025-12-18T00:00:00Z',
+    updatedAt: '2025-12-18T00:05:00Z',
+    url: 'https://github.com/test/repo/actions/runs/123',
+  },
+  {
+    databaseId: 124,
+    name: 'Validation Pipeline',
+    status: 'completed',
+    conclusion: 'failure',
+    workflowName: 'Validate',
+    createdAt: '2025-12-17T00:00:00Z',
+    updatedAt: '2025-12-17T00:05:00Z',
+    url: 'https://github.com/test/repo/actions/runs/124',
+  },
+];
+
+/**
+ * Calls watchPRCommand directly (in-process) with console output captured.
+ * Returns exit code and captured console.log + stdout.write output.
+ */
+async function runHistoryCommand(
+  prNumber: string,
+  options: { history: boolean; yaml?: boolean; repo?: string }
+): Promise<{ exitCode: number; output: string }> {
+  const { watchPRCommand } = await import('../../src/commands/watch-pr.js');
+  const logCalls: string[] = [];
+  const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+    logCalls.push(args.map(String).join(' '));
+  });
+  const consoleTableSpy = vi.spyOn(console, 'table').mockImplementation(() => {});
+
+  // Capture process.stdout.write for YAML output
+  const stdoutCalls: string[] = [];
+  const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {
+    stdoutCalls.push(String(chunk));
+    return true;
+  });
+
+  let exitCode: number;
+  try {
+    exitCode = await watchPRCommand(prNumber, options);
+  } finally {
+    consoleLogSpy.mockRestore();
+    consoleTableSpy.mockRestore();
+    stdoutSpy.mockRestore();
+  }
+
+  return { exitCode, output: logCalls.join('\n') + stdoutCalls.join('') };
+}
 
 /**
  * Execute vv CLI command and capture output

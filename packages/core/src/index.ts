@@ -99,6 +99,9 @@ export {
   CommandExecutionSchema,
   OperationMetadataSchema,
   OutputFilesSchema,
+  ValidationResultStrictSchema,
+  StepResultStrictSchema,
+  PhaseResultStrictSchema,
   safeValidateResult,
   validateResult,
 } from './result-schema.js';

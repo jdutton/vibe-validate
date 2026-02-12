@@ -18,6 +18,14 @@ import {
   createRunResultWithOutputFiles,
 } from '../fixtures/run-result-fixtures.js';
 
+/** Verifies keys appear in expectedOrder (skipping missing keys) */
+function expectFieldOrder(keys: string[], expectedOrder: string[]) {
+  const positions = expectedOrder.map(k => keys.indexOf(k)).filter(i => i !== -1);
+  for (let i = 1; i < positions.length; i++) {
+    expect(positions[i]).toBeGreaterThan(positions[i - 1]);
+  }
+}
+
 describe('RunResult Schema', () => {
   describe('schema structure', () => {
     it('should allow treeHash to be optional', () => {
@@ -74,15 +82,7 @@ describe('RunResult Schema', () => {
         'isCachedResult', // From .extend() (optional)
       ];
 
-      // Check that expected fields appear in order
-      let lastIndex = -1;
-      for (const expectedKey of expectedOrder) {
-        const currentIndex = keys.indexOf(expectedKey);
-        if (currentIndex !== -1) {
-          expect(currentIndex).toBeGreaterThan(lastIndex);
-          lastIndex = currentIndex;
-        }
-      }
+      expectFieldOrder(keys, expectedOrder);
     });
   });
 
