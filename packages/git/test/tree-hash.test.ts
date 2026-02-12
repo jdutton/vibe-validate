@@ -21,7 +21,7 @@ import {
   initTestRepo,
   stageTestFiles,
 } from '../src/test-helpers.js';
-import { getGitTreeHash } from '../src/tree-hash.js';
+import { getGitTreeHash, getSubmodules } from '../src/tree-hash.js';
 
 // Mock git-executor (use importOriginal for integration tests to call through)
 vi.mock('../src/git-executor.js', async (importOriginal) => {
@@ -86,6 +86,7 @@ function mockInitialGitCommands() {
 function mockStandardGitCommands(writeTreeOutput = 'abc123\n') {
   mockInitialGitCommands()
     .mockReturnValueOnce({ success: true, stdout: writeTreeOutput, stderr: '', exitCode: 0 })  // git write-tree
+    .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (getSubmodules fast-path)
     .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status (no submodules)
 }
 
@@ -144,6 +145,12 @@ describe('getGitTreeHash', () => {
         exitCode: 0,
       })  // git write-tree (with temp index)
       .mockReturnValueOnce({
+        success: true,
+        stdout: '/repo/root',
+        stderr: '',
+        exitCode: 0,
+      })  // git rev-parse --show-toplevel (getSubmodules fast-path)
+      .mockReturnValueOnce({
         success: false,
         stdout: '',
         stderr: '',
@@ -155,8 +162,8 @@ describe('getGitTreeHash', () => {
     expect(result.hash).toBe('abc123def456');
     expect(result.submoduleHashes).toBeUndefined();
 
-    // Verify correct git commands were called (6 times: is-inside-work-tree, absolute-git-dir, show-toplevel, add, write-tree, submodule status)
-    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(6);
+    // Verify correct git commands were called (7 times: is-inside-work-tree, absolute-git-dir, show-toplevel, add, write-tree, show-toplevel (getSubmodules), submodule status)
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(7);
 
     // Verify fs.copyFileSync was called (SECURITY: replaces cp shell command)
     expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
@@ -217,12 +224,14 @@ describe('getGitTreeHash', () => {
       .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (1st run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (1st run)
       .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (1st run)
+      .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (getSubmodules, 1st run)
       .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 })  // git submodule status (1st run, no submodules)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (2nd run)
       .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --absolute-git-dir (2nd run)
       .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (2nd run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (2nd run)
       .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (getSubmodules, 2nd run)
       .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status (2nd run, no submodules)
 
     const result1 = await getGitTreeHash();
@@ -781,5 +790,65 @@ describe('getGitTreeHash with submodules (integration)', () => {
     expect(result1.submoduleHashes?.['libs/auth']).toBeDefined();
     expect(result2.submoduleHashes?.['libs/auth']).toBeDefined();
     expect(result1.submoduleHashes?.['libs/auth']).not.toBe(result2.submoduleHashes?.['libs/auth']);
+  });
+});
+
+describe('getSubmodules', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return empty array when .gitmodules does not exist (fast path)', () => {
+    // Mock rev-parse to succeed but .gitmodules doesn't exist
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '/test/repo',
+        stderr: '',
+        exitCode: 0,
+      });
+
+    const result = getSubmodules();
+
+    expect(result).toEqual([]);
+    // Should only call rev-parse, not submodule status
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(1);
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
+      ['rev-parse', '--show-toplevel'],
+      expect.any(Object)
+    );
+  });
+
+  it('should fall back to git submodule status when fast path check fails', () => {
+    // Mock rev-parse to fail
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({
+        success: false,
+        stdout: '',
+        stderr: 'not a git repository',
+        exitCode: 128,
+      })
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+    const result = getSubmodules();
+
+    expect(result).toEqual([]);
+    // Should call both rev-parse AND submodule status
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(2);
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
+      1,
+      ['rev-parse', '--show-toplevel'],
+      expect.any(Object)
+    );
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
+      2,
+      ['submodule', 'status'],
+      expect.any(Object)
+    );
   });
 });

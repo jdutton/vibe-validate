@@ -23,6 +23,7 @@ import { stringify as yamlStringify } from 'yaml';
 import type { AgentContext } from './context-detector.js';
 import { displayCachedResult } from './display-cached-result.js';
 import { formatWorktreeDisplay } from './format-worktree.js';
+import { createPerfTimer } from './logger.js';
 import { createRunnerConfig } from './runner-adapter.js';
 import { outputYamlResult } from './yaml-output.js';
 
@@ -33,6 +34,8 @@ export interface ValidateWorkflowOptions {
   check?: boolean;
   debug?: boolean;
   context: AgentContext;
+  /** Pre-computed tree hash from lock wrapper (avoids redundant computation) */
+  treeHashResult?: TreeHashResult;
 }
 
 /**
@@ -64,23 +67,6 @@ function shouldRunDependencyCheck(
       return isPreCommit; // Only when pre-commit invoked
     case 'disabled':
       return false; // Never run
-  }
-}
-
-/**
- * Display dependency check skip reason
- *
- * @param linkedPackages - List of linked packages (if npm link detected)
- * @internal
- */
-function displayNpmLinkSkipMessage(linkedPackages: string[]): void {
-  console.log(chalk.yellow('⚠️  Dependency lock check skipped (npm link detected)'));
-  if (linkedPackages.length > 0) {
-    console.log(chalk.gray('   Linked packages:'));
-    for (const pkg of linkedPackages) {
-      console.log(chalk.gray(`   - ${pkg}`));
-    }
-    console.log(chalk.gray('   To restore normal mode: npm unlink <package> && npm install'));
   }
 }
 
@@ -149,9 +135,7 @@ async function runDependencyLockCheck(
   }
 
   // Handle skip
-  if (depCheckResult.skipped && depCheckResult.skipReason === 'npm-link') {
-    displayNpmLinkSkipMessage(depCheckResult.linkedPackages ?? []);
-  } else if (depCheckResult.skipped && depCheckResult.skipReason === 'env-var') {
+  if (depCheckResult.skipped && depCheckResult.skipReason === 'env-var') {
     console.log(chalk.yellow('⚠️  Dependency lock check skipped (VV_SKIP_DEPENDENCY_CHECK set)'));
   }
 
@@ -296,6 +280,7 @@ export async function runValidateWorkflow(
   config: VibeValidateConfig,
   options: ValidateWorkflowOptions
 ): Promise<ValidationResult> {
+  const timer = createPerfTimer('runValidateWorkflow');
   try {
     // If --check flag is used, only check validation state without running
     if (options.check) {
@@ -322,7 +307,7 @@ export async function runValidateWorkflow(
     let treeHashResultBefore: TreeHashResult | null = null;
     let treeHashBefore: string | null = null;
     try {
-      treeHashResultBefore = await getGitTreeHash();
+      treeHashResultBefore = options.treeHashResult ?? await getGitTreeHash();
       treeHashBefore = treeHashResultBefore.hash;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -330,6 +315,7 @@ export async function runValidateWorkflow(
         console.warn(chalk.yellow(`⚠️  Could not get git tree hash - history recording disabled: ${errorMsg}`));
       }
     }
+    timer.markWithThreshold('getGitTreeHash', 2000);
 
     // Check cache: if validation already passed for this tree hash, skip re-running
     // Skip cache if --force flag is set OR VV_FORCE_EXECUTION env var is set
@@ -344,6 +330,7 @@ export async function runValidateWorkflow(
         cachedRun = cached.run;
       }
     }
+    timer.mark('cache check');
 
     if (!result) {
       // Display tree hash before running validation
@@ -381,9 +368,11 @@ export async function runValidateWorkflow(
       }
     }
 
-    // Proactive health check (non-blocking)
+    // Proactive health check (now O(1) — 2 git spawns max)
+    timer.mark('validation done');
     try {
       const health = await checkHistoryHealth();
+      timer.markWithThreshold('checkHistoryHealth', 500);
       if (health.shouldWarn) {
         console.log('');
         console.log(chalk.blue(health.warningMessage));
@@ -424,6 +413,7 @@ export async function runValidateWorkflow(
       }
     }
 
+    timer.done();
     return result;
   } catch (error) {
     console.error(chalk.red('❌ Validation failed with error:'), error);

@@ -252,7 +252,7 @@ export function preCommitCommand(program: Command): void {
             waitTimeout: 30,    // Shorter timeout than validate command (30s vs 300s)
             yaml: false         // Pre-commit uses human-readable output
           },
-          async ({ config, configDir, context }) => {
+          async ({ config, configDir, context, treeHashResult: lockTreeHashResult }) => {
             // CRITICAL (Issue #129): Change to project root directory
             // This ensures validation steps run in the project root (where config lives),
             // not in process.cwd() where the user happens to be
@@ -272,6 +272,7 @@ export function preCommitCommand(program: Command): void {
                   ...context,
                   isPreCommit: true, // Signal this is pre-commit workflow
                 },
+                treeHashResult: lockTreeHashResult,
               });
             } finally {
               // Always restore original directory, even on error

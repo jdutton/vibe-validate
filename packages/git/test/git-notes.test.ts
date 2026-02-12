@@ -5,8 +5,8 @@ import {
   addNote,
   readNote,
   removeNote,
-  listNotes,
   hasNote,
+  listNoteObjects,
   listNotesRefs,
   removeNotesRefs,
   hasNotesRef,
@@ -537,41 +537,47 @@ runs:
     });
   });
 
-  describe('listNotes', () => {
+  describe('listNoteObjects', () => {
     it('should return empty array when no notes exist', () => {
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      mockFailedCommand();
+      mockSuccessfulValidation();
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+        success: false,
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
 
-      const result = listNotes(TEST_REF);
+      const result = listNoteObjects(TEST_REF);
       expect(result).toEqual([]);
     });
 
-    it('should parse note list correctly', () => {
+    it('should return array of tree hashes that have notes', () => {
       mockSuccessfulValidation();
-      vi.mocked(gitExecutor.executeGitCommand)
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'note1sha abc123\nnote2sha def456',
-          stderr: '',
-          exitCode: 0,
-        })
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'content1',
-          stderr: '',
-          exitCode: 0,
-        })
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'content2',
-          stderr: '',
-          exitCode: 0,
-        });
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+        success: true,
+        stdout: 'note_sha1 abc123def456789012345678901234567890abcd\nnote_sha2 def456789012345678901234567890abcdef12',
+        stderr: '',
+        exitCode: 0,
+      });
 
-      const result = listNotes(TEST_REF);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual(['abc123', 'content1']);
-      expect(result[1]).toEqual(['def456', 'content2']);
+      const result = listNoteObjects(TEST_REF);
+      expect(result).toEqual([
+        'abc123def456789012345678901234567890abcd',
+        'def456789012345678901234567890abcdef12',
+      ]);
+    });
+
+    it('should skip lines without object SHA', () => {
+      mockSuccessfulValidation();
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+        success: true,
+        stdout: 'note_sha1 abc123def456789012345678901234567890abcd\n\ninvalid_line',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const result = listNoteObjects(TEST_REF);
+      expect(result).toEqual(['abc123def456789012345678901234567890abcd']);
     });
   });
 

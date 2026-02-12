@@ -29,7 +29,6 @@ interface TestFailure {
  *
  * @param line - Current line being parsed
  * @param currentFile - File path from Format 2 header
- * @param hasFormat2 - Whether Format 2 has been detected
  * @returns Partial failure object or null if no match
  *
  * @internal
@@ -37,7 +36,6 @@ interface TestFailure {
 function parseFailureLine(
   line: string,
   currentFile: string,
-  hasFormat2: boolean,
   inDetailSection: boolean
 ): Partial<TestFailure> | null {
   // Match Format 1: FAIL/❌/× file.test.ts > test hierarchy
@@ -498,7 +496,6 @@ function extract(output: string): ErrorExtractorResult {
   const failures: TestFailure[] = [];
   let currentFailure: Partial<TestFailure> | null = null;
   let currentFile = ''; // Track file from ❯ lines for Format 2
-  let hasFormat2 = false; // Track if we found Format 2 file headers
   let inDetailSection = false; // Track if we're past summary section (after "Failed Tests" separator)
 
   // First, check for runtime errors (Unhandled Rejection, ENOENT, etc.)
@@ -533,12 +530,11 @@ function extract(output: string): ErrorExtractorResult {
     const fileHeaderMatch = /❯\s+([^\s]+\.test\.ts)\s+\(/.exec(line);
     if (fileHeaderMatch) {
       currentFile = fileHeaderMatch[1];
-      hasFormat2 = true;
       continue;
     }
 
     // Try to parse as failure line (Format 1 or Format 2)
-    const parsedFailure = parseFailureLine(line, currentFile, hasFormat2, inDetailSection);
+    const parsedFailure = parseFailureLine(line, currentFile, inDetailSection);
     if (parsedFailure) {
       if (currentFailure?.file) {
         failures.push(currentFailure as TestFailure);

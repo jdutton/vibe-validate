@@ -328,13 +328,13 @@ importers:
       '@vibe-validate/cli':
         specifier: workspace:*
         version: link:../cli
+      '@vibe-validate/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/node':
         specifier: ^20.19.26
         version: 20.19.26
-      '@vibe-validate/utils':
-        specifier: workspace:*
-        version: link:../utils
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

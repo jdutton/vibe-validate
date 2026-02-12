@@ -1,20 +1,19 @@
 /**
  * Tests for dependency lock file check
  *
- * Verifies package manager detection, npm link detection, and lock file verification.
+ * Verifies package manager detection and lock file verification.
  * Uses real file system operations in temp directories for accurate cross-platform testing.
  */
 
-import { mkdtempSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import {
   type PackageManager,
   detectPackageManager,
-  detectLinkedPackages,
   buildInstallCommand,
   runDependencyCheck,
 } from '../src/dependency-lock-check.js';
@@ -51,68 +50,6 @@ function createLockFile(dir: string, packageManager: PackageManager): void {
 
   const lockFile = join(dir, lockFiles[packageManager]);
   writeFileSync(lockFile, packageManager === 'bun' ? Buffer.from([0x00]) : '# Lock file content');
-}
-
-/**
- * Create node_modules directory with entries
- */
-function createNodeModules(dir: string): string {
-  const nodeModulesPath = join(dir, 'node_modules');
-  mkdirSyncReal(nodeModulesPath, { recursive: true });
-  return nodeModulesPath;
-}
-
-/**
- * Create symlink (cross-platform)
- */
-function createSymlink(target: string, link: string): void {
-  try {
-    symlinkSync(target, link, 'junction'); // Use junction on Windows for better compatibility
-  } catch {
-    // If junction fails, try regular symlink (Unix)
-    symlinkSync(target, link);
-  }
-}
-
-/**
- * Setup test suite with two temporary directories
- *
- * Configures beforeEach/afterEach hooks to create and cleanup two temp directories.
- * Returns getter functions to access the directories within tests.
- *
- * @returns Object with getTempDir and getTargetDir getter functions
- *
- * @example
- * describe('my tests', () => {
- *   const { getTempDir, getTargetDir } = setupTwoTempDirsSuite();
- *
- *   it('should work', () => {
- *     const dir = getTempDir();
- *     // Use dir in test
- *   });
- * });
- */
-function setupTwoTempDirsSuite(): {
-  getTempDir: () => string;
-  getTargetDir: () => string;
-} {
-  let tempDir: string;
-  let targetDir: string;
-
-  beforeEach(() => {
-    tempDir = createTempDir();
-    targetDir = createTempDir();
-  });
-
-  afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
-    rmSync(targetDir, { recursive: true, force: true });
-  });
-
-  return {
-    getTempDir: () => tempDir,
-    getTargetDir: () => targetDir,
-  };
 }
 
 describe('detectPackageManager', () => {
@@ -225,131 +162,6 @@ describe('detectPackageManager', () => {
   });
 });
 
-describe('detectLinkedPackages', () => {
-  const { getTempDir, getTargetDir } = setupTwoTempDirsSuite();
-
-  it('should return empty array when no node_modules', () => {
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toEqual([]);
-  });
-
-  it('should return empty array when node_modules is empty', () => {
-    createNodeModules(getTempDir());
-
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toEqual([]);
-  });
-
-  it('should detect top-level linked package (cross-platform)', () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Create real target directory
-    const packageTarget = join(getTargetDir(), 'my-package');
-    mkdirSyncReal(packageTarget, { recursive: true });
-    writeFileSync(join(packageTarget, 'index.js'), 'module.exports = {}');
-
-    // Create symlink
-    const linkPath = join(nodeModules, 'my-package');
-    createSymlink(packageTarget, linkPath);
-
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toContain('my-package');
-  });
-
-  it('should detect multiple top-level linked packages', () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Create targets
-    const pkg1Target = join(getTargetDir(), 'package-1');
-    const pkg2Target = join(getTargetDir(), 'package-2');
-    mkdirSyncReal(pkg1Target, { recursive: true });
-    mkdirSyncReal(pkg2Target, { recursive: true });
-
-    // Create symlinks
-    createSymlink(pkg1Target, join(nodeModules, 'package-1'));
-    createSymlink(pkg2Target, join(nodeModules, 'package-2'));
-
-    // Add regular package (not a link)
-    const regularPkg = join(nodeModules, 'regular-package');
-    mkdirSyncReal(regularPkg, { recursive: true });
-
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toHaveLength(2);
-    expect(result).toContain('package-1');
-    expect(result).toContain('package-2');
-    expect(result).not.toContain('regular-package');
-  });
-
-  it('should detect scoped linked packages (@org/package)', () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Create scoped directory
-    const scopeDir = join(nodeModules, '@myorg');
-    mkdirSyncReal(scopeDir, { recursive: true });
-
-    // Create target
-    const packageTarget = join(getTargetDir(), 'scoped-package');
-    mkdirSyncReal(packageTarget, { recursive: true });
-
-    // Create symlink
-    const linkPath = join(scopeDir, 'scoped-package');
-    createSymlink(packageTarget, linkPath);
-
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toContain('@myorg/scoped-package');
-  });
-
-  it('should detect mix of top-level and scoped linked packages', () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Top-level link
-    const topTarget = join(getTargetDir(), 'top-package');
-    mkdirSyncReal(topTarget, { recursive: true });
-    createSymlink(topTarget, join(nodeModules, 'top-package'));
-
-    // Scoped link
-    const scopeDir = join(nodeModules, '@org');
-    mkdirSyncReal(scopeDir, { recursive: true });
-    const scopedTarget = join(getTargetDir(), 'scoped');
-    mkdirSyncReal(scopedTarget, { recursive: true });
-    createSymlink(scopedTarget, join(scopeDir, 'scoped'));
-
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toHaveLength(2);
-    expect(result).toContain('top-package');
-    expect(result).toContain('@org/scoped');
-  });
-
-  it('should not detect regular scoped packages as linked', () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Create scoped directory with regular package (not a link)
-    const scopeDir = join(nodeModules, '@myorg');
-    mkdirSyncReal(scopeDir, { recursive: true });
-    const regularPkg = join(scopeDir, 'regular-package');
-    mkdirSyncReal(regularPkg, { recursive: true });
-    writeFileSync(join(regularPkg, 'package.json'), '{}');
-
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toEqual([]);
-  });
-
-  it('should handle scoped directory that is itself a symlink', () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Create target scoped directory
-    const scopeTarget = join(getTargetDir(), 'org-dir');
-    mkdirSyncReal(scopeTarget, { recursive: true });
-
-    // Create symlink for entire scope
-    const scopeLink = join(nodeModules, '@myorg');
-    createSymlink(scopeTarget, scopeLink);
-
-    const result = detectLinkedPackages(getTempDir());
-    expect(result).toContain('@myorg');
-  });
-});
-
 describe('buildInstallCommand', () => {
   it('should build npm ci command', () => {
     const cmd = buildInstallCommand('npm');
@@ -422,29 +234,6 @@ describe('runDependencyCheck', () => {
       skipReason: 'env-var',
     });
     expect(result.duration).toBeGreaterThanOrEqual(0);
-  });
-
-  it('should skip check when npm link detected', async () => {
-    const nodeModules = createNodeModules(tempDir);
-    const targetDir = createTempDir();
-
-    try {
-      // Create linked package
-      const packageTarget = join(targetDir, 'linked-package');
-      mkdirSyncReal(packageTarget, { recursive: true });
-      createSymlink(packageTarget, join(nodeModules, 'linked-package'));
-
-      const result = await runDependencyCheck(tempDir, {}, false);
-
-      expect(result).toMatchObject({
-        passed: true,
-        skipped: true,
-        skipReason: 'npm-link',
-      });
-      expect(result.linkedPackages).toContain('linked-package');
-    } finally {
-      rmSync(targetDir, { recursive: true, force: true });
-    }
   });
 
   it('should fail when no package manager detected', async () => {
@@ -552,55 +341,6 @@ describe('runDependencyCheck', () => {
 
     expect(result.duration).toBeGreaterThanOrEqual(0);
     expect(typeof result.duration).toBe('number');
-  });
-});
-
-describe('runDependencyCheck - cross-platform symlink detection', () => {
-  const { getTempDir, getTargetDir } = setupTwoTempDirsSuite();
-
-  it('should detect Windows junction symlinks', async () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Create target
-    const packageTarget = join(getTargetDir(), 'win-linked');
-    mkdirSyncReal(packageTarget, { recursive: true });
-
-    // Create symlink (junction on Windows, symlink on Unix)
-    createSymlink(packageTarget, join(nodeModules, 'win-linked'));
-
-    const result = await runDependencyCheck(getTempDir(), {}, false);
-
-    expect(result).toMatchObject({
-      passed: true,
-      skipped: true,
-      skipReason: 'npm-link',
-    });
-    expect(result.linkedPackages).toContain('win-linked');
-  });
-
-  it('should detect Unix symlinks', async () => {
-    const nodeModules = createNodeModules(getTempDir());
-
-    // Create target
-    const packageTarget = join(getTargetDir(), 'unix-linked');
-    mkdirSyncReal(packageTarget, { recursive: true });
-
-    // Create symlink
-    try {
-      symlinkSync(packageTarget, join(nodeModules, 'unix-linked'), 'dir');
-    } catch {
-      // Fallback to junction if symlink fails
-      createSymlink(packageTarget, join(nodeModules, 'unix-linked'));
-    }
-
-    const result = await runDependencyCheck(getTempDir(), {}, false);
-
-    expect(result).toMatchObject({
-      passed: true,
-      skipped: true,
-      skipReason: 'npm-link',
-    });
-    expect(result.linkedPackages).toContain('unix-linked');
   });
 });
 

@@ -303,47 +303,6 @@ describe('runDependencyLockCheck integration', () => {
     });
   });
 
-  describe('npm-link skip scenario', () => {
-    it('should display npm-link skip message with linked packages', async () => {
-      await runWorkflow(
-        createMockDependencyCheckResult({
-          passed: true,
-          skipped: true,
-          skipReason: 'npm-link',
-          linkedPackages: ['@vibe-validate/core', '@vibe-validate/utils'],
-        })
-      );
-
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Dependency lock check skipped (npm link detected)')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Linked packages:')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('@vibe-validate/core')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('@vibe-validate/utils')
-      );
-    });
-
-    it('should handle npm-link skip with empty linked packages list', async () => {
-      await runWorkflow(
-        createMockDependencyCheckResult({
-          passed: true,
-          skipped: true,
-          skipReason: 'npm-link',
-          linkedPackages: [],
-        })
-      );
-
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Dependency lock check skipped (npm link detected)')
-      );
-    });
-  });
-
   describe('env-var skip scenario', () => {
     it('should display env-var skip message', async () => {
       await runWorkflow(

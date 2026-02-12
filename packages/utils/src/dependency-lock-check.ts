@@ -5,7 +5,7 @@
  * Supports npm, pnpm, yarn, and bun package managers with auto-detection.
  */
 
-import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { safeExecResult } from './safe-exec.js';
@@ -18,7 +18,7 @@ export type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun';
 /**
  * Skip reasons for dependency check
  */
-export type SkipReason = 'npm-link' | 'env-var' | 'no-lock-file';
+export type SkipReason = 'env-var' | 'no-lock-file';
 
 /**
  * Result of dependency lock file check
@@ -30,8 +30,6 @@ export interface DependencyCheckResult {
   skipped: boolean;
   /** Reason for skipping the check */
   skipReason?: SkipReason;
-  /** List of linked packages (if npm link detected) */
-  linkedPackages?: string[];
   /** Error message if check failed */
   error?: string;
   /** Package manager used for check */
@@ -116,84 +114,6 @@ export function detectPackageManager(
 }
 
 /**
- * Check if path is a symlink (safe, ignores errors)
- */
-function isSymlink(path: string): boolean {
-  try {
-    return lstatSync(path).isSymbolicLink();
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Find linked packages in scoped directory (@org/*)
- */
-function findScopedLinkedPackages(scopePath: string, scopeName: string): string[] {
-  const linked: string[] = [];
-
-  try {
-    const scopedEntries = readdirSync(scopePath, { withFileTypes: true });
-    for (const scopedEntry of scopedEntries) {
-      const scopedPath = join(scopePath, scopedEntry.name);
-      if (isSymlink(scopedPath)) {
-        linked.push(`${scopeName}/${scopedEntry.name}`);
-      }
-    }
-  } catch {
-    // Ignore readdir errors for scoped directory
-  }
-
-  return linked;
-}
-
-/**
- * Detect linked packages (npm link) in node_modules
- *
- * Uses lstatSync to check for symlinks (cross-platform, works on Windows).
- * Checks both top-level entries and scoped packages (@org/package).
- *
- * @param gitRoot - Git repository root path
- * @returns Array of linked package names
- *
- * @example
- * const linked = detectLinkedPackages('/path/to/repo');
- * console.log(linked); // ['my-package', '@org/other-package']
- */
-export function detectLinkedPackages(gitRoot: string): string[] {
-  const nodeModulesPath = join(gitRoot, 'node_modules');
-  if (!existsSync(nodeModulesPath)) {
-    return [];
-  }
-
-  const linkedPackages: string[] = [];
-
-  try {
-    const entries = readdirSync(nodeModulesPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const entryPath = join(nodeModulesPath, entry.name);
-
-      // Check if top-level entry is a symlink
-      if (isSymlink(entryPath)) {
-        linkedPackages.push(entry.name);
-        continue;
-      }
-
-      // Check scoped packages (@org/package)
-      if (entry.name.startsWith('@') && entry.isDirectory()) {
-        const scopedLinked = findScopedLinkedPackages(entryPath, entry.name);
-        linkedPackages.push(...scopedLinked);
-      }
-    }
-  } catch {
-    // Ignore readdir errors for node_modules
-  }
-
-  return linkedPackages;
-}
-
-/**
  * Build install command for package manager
  *
  * If custom command provided, parses into array format.
@@ -245,7 +165,6 @@ export function buildInstallCommand(
  *
  * Skip conditions:
  * - VV_SKIP_DEPENDENCY_CHECK env var is set
- * - npm link detected (linked packages present)
  *
  * @param gitRoot - Git repository root path
  * @param config - Configuration object
@@ -283,22 +202,6 @@ export async function runDependencyCheck(
       passed: true,
       skipped: true,
       skipReason: 'env-var',
-      duration: Date.now() - startTime,
-    };
-  }
-
-  // Detect linked packages
-  const linkedPackages = detectLinkedPackages(gitRoot);
-  if (linkedPackages.length > 0) {
-    if (verbose) {
-      console.warn(`⚠️  npm link detected (${linkedPackages.length} packages), skipping lock file check`);
-      console.warn(`   Linked: ${linkedPackages.join(', ')}`);
-    }
-    return {
-      passed: true,
-      skipped: true,
-      skipReason: 'npm-link',
-      linkedPackages,
       duration: Date.now() - startTime,
     };
   }

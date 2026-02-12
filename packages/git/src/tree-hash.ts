@@ -392,6 +392,27 @@ export interface SubmoduleInfo {
  * @internal Exported for testing
  */
 export function getSubmodules(): SubmoduleInfo[] {
+  // Fast path: if .gitmodules doesn't exist, there are no submodules
+  // Avoids 684ms git submodule status call in repos without submodules
+  try {
+    const repoRoot = executeGitCommand(['rev-parse', '--show-toplevel'], {
+      timeout: 5000,
+      ignoreErrors: true,
+    });
+    if (repoRoot.success) {
+      const gitmodulesPath = join(repoRoot.stdout.trim(), '.gitmodules');
+      if (!existsSync(gitmodulesPath)) {
+        return [];
+      }
+    }
+  } catch (error) {
+    // Fall through to git submodule status
+    // Only log in debug mode to avoid noise
+    if (process.env.VV_DEBUG === '1') {
+      console.error('[vv debug] .gitmodules fast-path check failed:', error instanceof Error ? error.message : String(error));
+    }
+  }
+
   const result = executeGitCommand(['submodule', 'status'], {
     ignoreErrors: true,
     timeout: GIT_TIMEOUT

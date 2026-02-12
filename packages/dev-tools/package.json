@@ -5,8 +5,7 @@
   "type": "module",
   "description": "Development tools for the vibe-validate monorepo",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "clean": "rimraf dist *.tsbuildinfo"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "semver": "^7.7.3",

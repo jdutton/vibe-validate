@@ -47,7 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Dependency lock check**: Prevents cache poisoning by verifying lock files are in sync before validation runs
   - Auto-detects package manager (npm, pnpm, yarn, bun)
-  - Automatically skips when npm link detected (preserves local dev workflow)
   - Configurable via `ci.dependencyLockCheck.runOn` (validate, pre-commit, or disabled)
   - Respects `VV_SKIP_DEPENDENCY_CHECK=1` environment variable
   - `vv doctor` warns if not configured
@@ -82,6 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cached run: ~1.8s (10x faster)
   - Validation workflow: ESLint completes in ~2.5s vs ~18s
   - `.eslintcache` automatically managed and gitignored
+
+- **⚡ Eliminated performance bombs for instant cached validation** (Performance)
+  - **History health checks now O(1)**: checkHistoryHealth() optimized from 438 subprocess calls to a single batch read (63s → sub-second)
+  - **Git notes listing now O(1)**: listNotesRefs() uses single git-for-each-ref instead of per-ref subprocess calls
+  - **Repository structure validator**: 17 deterministic rules across 5 categories (build system, package.json, source conventions, security, turbo alignment) run in Pre-Qualification phase to catch drift before it accumulates
+  - **VV_ROOT_DIR support**: Umbrella package now supports cross-repo usage for monorepo workflows
 
 ### Changed
 

@@ -3,7 +3,7 @@
  */
 
 import { safeValidateResult } from '@vibe-validate/core';
-import { listNotes, readNote, type TreeHash, type NotesRef } from '@vibe-validate/git';
+import { listNoteObjects, readNote, type TreeHash, type NotesRef } from '@vibe-validate/git';
 import { parse as parseYaml } from 'yaml';
 
 import type { HistoryNote } from './types.js';
@@ -79,15 +79,8 @@ export async function listHistoryTreeHashes(
   notesRef: string = DEFAULT_NOTES_REF
 ): Promise<string[]> {
   try {
-    // Use secure listNotes function (no command injection risk)
-    const notes = listNotes(notesRef as NotesRef);
-
-    if (notes.length === 0) {
-      return [];
-    }
-
-    // Extract tree hashes from [treeHash, content] pairs
-    return notes.map(([treeHash]) => treeHash);
+    // Use listNoteObjects for O(1) single-spawn listing (no content reading)
+    return listNoteObjects(notesRef as NotesRef);
   } catch {
     // No notes exist yet - expected for new repos
     return [];

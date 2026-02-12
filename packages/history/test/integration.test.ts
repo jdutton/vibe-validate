@@ -23,6 +23,8 @@ vi.mock('@vibe-validate/git', () => ({
   getCurrentBranch: vi.fn(() => 'main'),
   getHeadCommitSha: vi.fn(() => '9abc3c4'),
   addNote: vi.fn(() => true),
+  listNoteObjects: vi.fn(() => []),
+  executeGitCommand: vi.fn(() => ({ success: false, stdout: '', stderr: '', exitCode: 1 })),
 }));
 
 vi.mock('child_process', () => ({
@@ -34,10 +36,8 @@ vi.mock('child_process', () => ({
   }),
 }));
 
-vi.mock('fs', () => ({
-  writeFileSync: vi.fn(),
-  unlinkSync: vi.fn(),
-}));
+// Integration test fs/reader mocks - broader scope than recorder (includes all reader exports)
+vi.mock('fs', () => ({ writeFileSync: vi.fn(), unlinkSync: vi.fn(), existsSync: vi.fn(() => false) }));
 
 vi.mock('../src/reader.js', () => ({
   readHistoryNote: vi.fn(() => Promise.resolve(null)),

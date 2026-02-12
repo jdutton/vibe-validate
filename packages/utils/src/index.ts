@@ -50,7 +50,6 @@ export {
 // Dependency lock file verification
 export {
   detectPackageManager,
-  detectLinkedPackages,
   buildInstallCommand,
   runDependencyCheck,
   type PackageManager,

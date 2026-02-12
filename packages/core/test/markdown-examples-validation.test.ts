@@ -12,6 +12,7 @@
  */
 
  
+import type { Stats } from 'node:fs';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -91,12 +92,29 @@ function findMarkdownFiles(dir: string, files: string[] = []): string[] {
   const entries = readdirSync(dir);
 
   for (const entry of entries) {
-    const fullPath = join(dir, entry);
-    const stat = statSync(fullPath);
-
-    // Skip node_modules, dist, coverage, .git
-    if (entry === 'node_modules' || entry === 'dist' || entry === 'coverage' || entry === '.git') {
+    // Skip node_modules, dist, coverage, .git, and test temp directories
+    if (
+      entry === 'node_modules' ||
+      entry === 'dist' ||
+      entry === 'coverage' ||
+      entry === '.git' ||
+      entry.startsWith('test-temp-')
+    ) {
       continue;
+    }
+
+    const fullPath = join(dir, entry);
+
+    // Handle race condition: concurrent tests may create/delete files
+    let stat: Stats;
+    try {
+      stat = statSync(fullPath);
+    } catch (err) {
+      // Skip if file disappeared (ENOENT) or inaccessible (EPERM)
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT' || (err as NodeJS.ErrnoException).code === 'EPERM') {
+        continue;
+      }
+      throw err;
     }
 
     // Skip symlinks to avoid following them and creating duplicate paths

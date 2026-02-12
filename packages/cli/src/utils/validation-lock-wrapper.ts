@@ -9,13 +9,14 @@
 import { basename } from 'node:path';
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
-import { getGitTreeHash } from '@vibe-validate/git';
+import { getGitTreeHash, type TreeHashResult } from '@vibe-validate/git';
 import chalk from 'chalk';
 
 import { displayConfigErrors } from './config-error-reporter.js';
 import { loadConfigWithErrors, loadConfigWithDir } from './config-loader.js';
 import type { AgentContext } from './context-detector.js';
 import { detectContext } from './context-detector.js';
+import { createPerfTimer } from './logger.js';
 import {
   acquireLock,
   checkLock,
@@ -48,6 +49,8 @@ export interface ValidationLockContext {
   configDir: string;
   /** Agent context (Claude Code, CI, etc.) */
   context: AgentContext;
+  /** Pre-computed tree hash (avoids redundant computation in workflow) */
+  treeHashResult?: TreeHashResult;
 }
 
 /**
@@ -133,11 +136,13 @@ export async function withValidationLock<T>(
   callback: (_ctx: ValidationLockContext) => Promise<T>
 ): Promise<T> {
   let lockRelease: (() => Promise<void>) | null = null;
+  const timer = createPerfTimer('withValidationLock');
 
   try {
     // Load configuration first (needed for lock config)
     // Use loadConfigWithDir to get config directory for locking
     const configResult = await loadConfigWithDir();
+    timer.mark('config loaded');
     if (!configResult) {
       // Get detailed error information to distinguish between missing file and validation errors
       const configWithErrors = await loadConfigWithErrors();
@@ -161,6 +166,7 @@ export async function withValidationLock<T>(
 
     // Detect context (Claude Code, CI, etc.)
     const context = detectContext();
+    timer.mark('context detected');
 
     // Determine lock options from config
     const lockConfig = config.locking ?? { enabled: true, concurrencyScope: 'directory' };
@@ -192,7 +198,10 @@ export async function withValidationLock<T>(
     }
 
     // Default behavior: wait is enabled (wait for running validation)
-    // Users can opt out with waitEnabled: false for background hooks
+    // Users can opt out with waitEnabled: false (--no-wait) for background hooks
+    // Waiting is independent of locking:
+    // - You can wait for a running validation without acquiring a lock yourself (e.g., --check)
+    // - You can skip waiting even if you would acquire a lock (e.g., --no-wait for hooks)
     const shouldWait = options.waitEnabled !== false;
     const yamlMode = options.yaml ?? false;
 
@@ -212,6 +221,7 @@ export async function withValidationLock<T>(
         }
 
         const waitResult = await waitForLock(configDir, waitTimeout, 1000, lockOptions);
+        timer.markWithThreshold('waitForLock', 5000);
 
         displayWaitResult(waitResult.timedOut, yamlMode);
       }
@@ -219,12 +229,15 @@ export async function withValidationLock<T>(
     }
 
     // Handle lock mode (single-instance execution)
+    let treeHashResult: TreeHashResult | undefined;
     if (shouldLock) {
       // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
-      const treeHashResult = await getGitTreeHash();
+      treeHashResult = await getGitTreeHash();
+      timer.markWithThreshold('getGitTreeHash (lock)', 2000);
       const treeHash = treeHashResult.hash;
 
       const lockResult = await acquireLock(configDir, treeHash, lockOptions);
+      timer.mark('acquireLock');
 
       if (!lockResult.acquired && lockResult.existingLock) {
         // Another validation is already running
@@ -243,12 +256,15 @@ export async function withValidationLock<T>(
       }
     }
 
-    // Execute callback with context
-    return await callback({ config, configDir, context });
+    // Execute callback with context (pass pre-computed tree hash to avoid redundant computation)
+    const result = await callback({ config, configDir, context, treeHashResult });
+    timer.mark('callback done');
+    return result;
   } finally {
     // Always release lock when done
     if (lockRelease) {
       await lockRelease();
     }
+    timer.done();
   }
 }
