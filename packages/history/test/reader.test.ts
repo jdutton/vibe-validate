@@ -186,6 +186,49 @@ runs:
       // After upgrade, users should run 'vv doctor' to check for issues
     });
 
+    it('should accept results with unknown fields (forward compatibility)', async () => {
+      // When a newer version of vibe-validate writes extra fields,
+      // older readers should still accept the result (strip unknowns, not reject)
+      const mockYaml = `
+treeHash: abc123def456
+runs:
+  - id: run-1
+    timestamp: '2025-10-21T10:00:00Z'
+    duration: 5000
+    passed: true
+    branch: main
+    headCommit: commit123
+    uncommittedChanges: false
+    result:
+      passed: true
+      timestamp: '2025-10-21T10:00:00Z'
+      treeHash: abc123def456
+      futureField: some-new-data
+      phases:
+        - name: Testing
+          passed: true
+          durationSecs: 5
+          newPhaseMetric: 42
+          steps:
+            - name: Unit Tests
+              command: npm test
+              exitCode: 0
+              durationSecs: 5
+              passed: true
+              newStepFeature: enabled
+`;
+
+      vi.mocked(readNote).mockReturnValue(mockYaml);
+
+      const result = await readHistoryNote('abc123def456');
+
+      // Should NOT silently reject the run - unknown fields should be stripped, not rejected
+      expect(result).toBeDefined();
+      expect(result?.runs).toHaveLength(1);
+      expect(result?.runs[0].id).toBe('run-1');
+      expect(result?.runs[0].passed).toBe(true);
+    });
+
     it('should silently ignore old format notes without runs array (pre-0.19.0)', async () => {
       // Simulate legacy history from before PR #123 (composite hash format)
       const oldFormatYaml = `

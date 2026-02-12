@@ -213,11 +213,9 @@ async function recordHistory(
       console.warn(chalk.yellow('   Results valid but history not recorded (unstable state)'));
     }
   } catch (error) {
-    // Silent failure - don't block validation
-    if (verbose) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.warn(chalk.yellow(`⚠️  History recording error: ${errorMessage}`));
-    }
+    // Don't block validation, but always log the error so failures are visible
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(chalk.yellow(`⚠️  History recording error: ${errorMessage}`));
   }
 }
 

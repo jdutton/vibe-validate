@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
-import { safeValidateResult } from '../src/result-schema.js';
+import {
+  safeValidateResult,
+  ValidationResultStrictSchema,
+  StepResultStrictSchema,
+  PhaseResultStrictSchema,
+} from '../src/result-schema.js';
 
 // ==================== Test Helper Functions ====================
 
@@ -50,7 +55,9 @@ function createPhase(overrides: Record<string, unknown> = {}) {
 }
 
 /**
- * Validates a result and expects it to fail with specific error content
+ * Validates a result using the strict schema and expects it to fail with specific error content.
+ * Uses ValidationResultStrictSchema (not safeValidateResult) because strict rejection
+ * is a write-time concern - the permissive base schema is for reading stored results.
  * @param resultData - The result object to validate
  * @param expectedErrorContent - String(s) expected in error messages
  */
@@ -58,7 +65,7 @@ function expectValidationFailure(
   resultData: Record<string, unknown>,
   expectedErrorContent: string | string[]
 ) {
-  const result = safeValidateResult(resultData);
+  const result = ValidationResultStrictSchema.safeParse(resultData);
   expect(result.success).toBe(false);
 
   if (!result.success) {
@@ -66,8 +73,9 @@ function expectValidationFailure(
       ? expectedErrorContent
       : [expectedErrorContent];
 
+    const errors = result.error.errors.map(e => e.message);
     const hasExpectedError = errorStrings.some(errorStr =>
-      result.errors.some(e =>
+      errors.some(e =>
         e.includes('Unrecognized key') || e.includes(errorStr)
       )
     );
@@ -198,6 +206,55 @@ describe('ValidationResultSchema - Strict Validation', () => {
           expect((result.phases as unknown[])).toHaveLength(1);
         }
       );
+    });
+  });
+
+  describe('permissive read (safeValidateResult) vs strict write', () => {
+    it('safeValidateResult should accept unknown fields at root level (forward compatibility)', () => {
+      const resultWithUnknown = createBaseResult({ futureField: 'some-new-data' });
+      const result = safeValidateResult(resultWithUnknown);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // Unknown field should be stripped, not cause rejection
+        expect((result.data as Record<string, unknown>).futureField).toBeUndefined();
+        expect(result.data.passed).toBe(true);
+      }
+    });
+
+    it('safeValidateResult should accept unknown fields in phases', () => {
+      const resultWithUnknown = createBaseResult({
+        phases: [createPhase({ newPhaseMetric: 42 })],
+      });
+      const result = safeValidateResult(resultWithUnknown);
+      expect(result.success).toBe(true);
+    });
+
+    it('safeValidateResult should accept unknown fields in steps', () => {
+      const resultWithUnknown = createBaseResult({
+        phases: [createPhase({
+          steps: [createStep({ newStepFeature: 'enabled' })],
+        })],
+      });
+      const result = safeValidateResult(resultWithUnknown);
+      expect(result.success).toBe(true);
+    });
+
+    it('ValidationResultStrictSchema should reject unknown fields at root level', () => {
+      const resultWithUnknown = createBaseResult({ _fromCache: true });
+      const result = ValidationResultStrictSchema.safeParse(resultWithUnknown);
+      expect(result.success).toBe(false);
+    });
+
+    it('PhaseResultStrictSchema should reject unknown fields', () => {
+      const phase = createPhase({ unknownField: 'bad' });
+      const result = PhaseResultStrictSchema.safeParse(phase);
+      expect(result.success).toBe(false);
+    });
+
+    it('StepResultStrictSchema should reject unknown fields', () => {
+      const step = createStep({ _internalFlag: true });
+      const result = StepResultStrictSchema.safeParse(step);
+      expect(result.success).toBe(false);
     });
   });
 

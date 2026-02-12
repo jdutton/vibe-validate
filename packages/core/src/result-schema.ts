@@ -100,7 +100,7 @@ export const StepResultSchema = CommandExecutionSchema.extend({
 
   /** Output files from step execution (v0.15.1+) */
   outputFiles: OutputFilesSchema.optional(),
-}).strict();
+});
 
 /**
  * Validation Phase Result Schema
@@ -123,7 +123,7 @@ export const PhaseResultSchema = z.object({
 
   /** Results from individual steps */
   steps: z.array(StepResultSchema),
-}).strict();
+});
 
 /**
  * Validation Result Schema
@@ -144,8 +144,10 @@ export const PhaseResultSchema = z.object({
  * - Removed rerunCommand (use phases[].steps[].command instead)
  * - Removed failedStepOutput (use phases[].steps[].extraction instead)
  * - Removed fullLogFile (use phases[].steps[].outputFiles instead)
- * - Added .strict() to reject unknown properties (prevents internal fields
- *   like _fromCache from leaking into public API)
+ *
+ * Note: Base schemas are permissive (strip unknown fields) for forward/backward
+ * compatibility when reading from git notes. Use strict variants for validation
+ * of freshly-produced results (prevents internal fields from leaking into public API).
  */
 export const ValidationResultSchema = OperationMetadataSchema.extend({
   /** Did validation pass? */
@@ -165,7 +167,25 @@ export const ValidationResultSchema = OperationMetadataSchema.extend({
 
   /** Output files from validation run (only with --debug flag) */
   outputFiles: OutputFilesSchema.optional(),
-}).strict();
+});
+
+/**
+ * Strict Schema Variants
+ *
+ * These reject unknown properties and are used for validating freshly-produced
+ * results (e.g., from the runner). This prevents internal fields like _fromCache
+ * from leaking into the public API.
+ *
+ * The base schemas above are permissive (strip unknown fields) for reading
+ * stored results from git notes, ensuring forward/backward compatibility.
+ */
+export const StepResultStrictSchema = StepResultSchema.strict();
+export const PhaseResultStrictSchema = PhaseResultSchema
+  .extend({ steps: z.array(StepResultStrictSchema) })
+  .strict();
+export const ValidationResultStrictSchema = ValidationResultSchema
+  .extend({ phases: z.array(PhaseResultStrictSchema).optional() })
+  .strict();
 
 /**
  * Inferred TypeScript types from Zod schemas
@@ -181,6 +201,6 @@ export type ValidationResult = z.infer<typeof ValidationResultSchema>;
 export const safeValidateResult = createSafeValidator(ValidationResultSchema);
 
 /**
- * Strict validation function (uses shared utility)
+ * Strict validation function (uses strict schema to reject unknown fields)
  */
-export const validateResult = createStrictValidator(ValidationResultSchema);
+export const validateResult = createStrictValidator(ValidationResultStrictSchema);
