@@ -187,9 +187,15 @@ vibe-validate validate --wait-timeout 60  # Wait max 60 seconds
 
 ## Flag Interactions
 
-- `--check` → automatically disables `--lock` (no validation runs)
-- `--no-lock` → ignores wait settings (no lock to wait for)
+- `--check` → automatically disables `--lock` (checking state doesn't need a lock)
+- `--no-lock` → allows concurrent validation runs (but still waits for running validations by default)
+- `--no-wait` → exits immediately if validation is running (use for background hooks)
 - `locking.enabled: false` in config → overrides `--lock` flag
+
+**Key insight:** Locking and waiting are independent:
+- Lock = whether to prevent concurrent runs (acquisition)
+- Wait = whether to wait for existing runs (coordination)
+- Use `--no-lock` for CI/parallel runs, use `--no-wait` for non-blocking hooks
 
 ## Use Cases & Examples
 

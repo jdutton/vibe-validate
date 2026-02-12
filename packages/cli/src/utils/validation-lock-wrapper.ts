@@ -198,10 +198,11 @@ export async function withValidationLock<T>(
     }
 
     // Default behavior: wait is enabled (wait for running validation)
-    // Users can opt out with waitEnabled: false for background hooks
-    // If locking is disabled (--no-lock), also skip waiting for locks
-    // Users passing --no-lock expect to bypass all locking behavior
-    const shouldWait = shouldLock && options.waitEnabled !== false;
+    // Users can opt out with waitEnabled: false (--no-wait) for background hooks
+    // Waiting is independent of locking:
+    // - You can wait for a running validation without acquiring a lock yourself (e.g., --check)
+    // - You can skip waiting even if you would acquire a lock (e.g., --no-wait for hooks)
+    const shouldWait = options.waitEnabled !== false;
     const yamlMode = options.yaml ?? false;
 
     // Handle wait mode (default: wait for running validation to complete)
