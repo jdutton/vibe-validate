@@ -229,7 +229,8 @@ function createCommandError(stdout = '', stderr = ''): Error & { stdout: string;
  */
 function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
   vi.mocked(configLoader.loadConfig).mockResolvedValue(config);
-  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: '/test/project' });
+  // Use current directory as configDir (safe since we're already in test directory)
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: process.cwd() });
   vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
   vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 }

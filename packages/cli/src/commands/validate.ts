@@ -46,16 +46,32 @@ export function validateCommand(program: Command): void {
             waitTimeout: Number.parseInt(options.waitTimeout, 10) || 300,
             yaml: options.yaml
           },
-          async ({ config, context }) => {
-            // Run shared validation workflow
-            return await runValidateWorkflow(config, {
-              force: options.force,
-              verbose: options.verbose,
-              yaml: options.yaml,
-              check: options.check,
-              debug: options.debug,
-              context,
-            });
+          async ({ config, configDir, context }) => {
+            // CRITICAL (Issue #129): Change to project root directory
+            // This ensures validation steps run in the project root (where config lives),
+            // not in process.cwd() where the user happens to be
+            const originalCwd = process.cwd();
+            try {
+              // Only chdir if configDir is different from current directory
+              if (configDir !== originalCwd) {
+                process.chdir(configDir);
+              }
+
+              // Run shared validation workflow
+              return await runValidateWorkflow(config, {
+                force: options.force,
+                verbose: options.verbose,
+                yaml: options.yaml,
+                check: options.check,
+                debug: options.debug,
+                context,
+              });
+            } finally {
+              // Always restore original directory, even on error
+              if (configDir !== originalCwd) {
+                process.chdir(originalCwd);
+              }
+            }
           }
         );
 

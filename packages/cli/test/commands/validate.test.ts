@@ -1125,4 +1125,94 @@ describe('validate command', () => {
       warnSpy.mockRestore();
     });
   });
+
+  describe('working directory behavior (Issue #129)', () => {
+    it('should execute validation steps in project root when invoked from subdirectory', async () => {
+      // Issue #129: Commands should run in project root (where config lives),
+      // not in process.cwd() where the user happens to be
+
+      const configDir = join(testDir, 'project-root');
+      const subdir = join(configDir, 'packages', 'foo');
+
+      // Create directory structure
+      mkdirSyncReal(configDir, { recursive: true });
+      mkdirSyncReal(subdir, { recursive: true });
+
+      // Mock config loader to return config from project root
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+        config: {
+          validation: {
+            phases: [
+              {
+                name: 'Test',
+                failFast: true,
+                steps: [
+                  {
+                    name: 'Check Directory',
+                    command: 'pwd', // This will output the cwd where it runs
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        configDir, // Config found in project root
+      });
+
+      // Mock git tree hash
+      const treeHash = 'test-tree-hash-129';
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+        hash: treeHash,
+        includedFiles: 10,
+        excludedFiles: 0,
+      });
+
+      // Mock no cached result
+      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+
+      // Mock history recording
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: true,
+        treeHashBefore: treeHash,
+        treeHashAfter: treeHash,
+      });
+      vi.mocked(history.recordValidationHistory).mockResolvedValue({
+        recorded: true,
+      });
+      vi.mocked(history.checkHistoryHealth).mockResolvedValue({
+        shouldWarn: false,
+        warningMessage: '',
+      });
+
+      // Mock lock functions
+      vi.mocked(pidLock.checkLock).mockResolvedValue(null);
+      vi.mocked(pidLock.acquireLock).mockResolvedValue({
+        acquired: true,
+        release: vi.fn(),
+      });
+
+      // Track what process.cwd() was when runValidation was called
+      let capturedCwd: string | null = null;
+      vi.mocked(core.runValidation).mockImplementation(async () => {
+        capturedCwd = process.cwd();
+        return {
+          passed: true,
+          timestamp: '2025-10-23T00:00:00.000Z',
+          treeHash,
+          phases: [],
+        };
+      });
+
+      // Change to subdirectory (simulating user being in packages/foo)
+      process.chdir(subdir);
+
+      validateCommand(env.program);
+
+      await parseCommandExpectingExit(['validate'], 0);
+
+      // CRITICAL ASSERTION: process.cwd() should be configDir (project root) during validation,
+      // even though we invoked the command from a subdirectory
+      expect(capturedCwd).toBe(configDir);
+    });
+  });
 });
