@@ -71,23 +71,6 @@ function shouldRunDependencyCheck(
 }
 
 /**
- * Display dependency check skip reason
- *
- * @param linkedPackages - List of linked packages (if npm link detected)
- * @internal
- */
-function displayNpmLinkSkipMessage(linkedPackages: string[]): void {
-  console.log(chalk.yellow('⚠️  Dependency lock check skipped (npm link detected)'));
-  if (linkedPackages.length > 0) {
-    console.log(chalk.gray('   Linked packages:'));
-    for (const pkg of linkedPackages) {
-      console.log(chalk.gray(`   - ${pkg}`));
-    }
-    console.log(chalk.gray('   To restore normal mode: npm unlink <package> && npm install'));
-  }
-}
-
-/**
  * Display dependency check failure error
  *
  * @param error - Error message from dependency check
@@ -152,9 +135,7 @@ async function runDependencyLockCheck(
   }
 
   // Handle skip
-  if (depCheckResult.skipped && depCheckResult.skipReason === 'npm-link') {
-    displayNpmLinkSkipMessage(depCheckResult.linkedPackages ?? []);
-  } else if (depCheckResult.skipped && depCheckResult.skipReason === 'env-var') {
+  if (depCheckResult.skipped && depCheckResult.skipReason === 'env-var') {
     console.log(chalk.yellow('⚠️  Dependency lock check skipped (VV_SKIP_DEPENDENCY_CHECK set)'));
   }
 
