@@ -120,6 +120,46 @@ function readVersion(packageJsonPath: string): string | null {
 
 
 /**
+ * Resolve binary path using priority chain
+ *
+ * Priority order:
+ * 0. VV_ROOT_DIR env override (developer testing dev build against other projects)
+ * 1. Developer mode (inside vibe-validate repo itself)
+ * 2. Local install (node_modules)
+ * 3. Global install (this script's own location)
+ */
+function resolveBinary(projectRoot: string, debug: boolean): { binPath: string; context: string; binDir: string } {
+  // Priority 0: VV_ROOT_DIR override (developer testing against other projects)
+  // Usage: VV_ROOT_DIR=~/Workspaces/vibe-validate vv validate
+  const vvRootDir = process.env.VV_ROOT_DIR;
+  if (vvRootDir) {
+    const overrideBin = join(vvRootDir, 'packages/cli/dist/bin.js');
+    if (existsSync(overrideBin)) {
+      if (debug) {
+        console.error(`[vv debug] VV_ROOT_DIR override: ${vvRootDir}`);
+      }
+      return { binPath: overrideBin, context: 'dev-override', binDir: dirname(dirname(overrideBin)) };
+    }
+    console.error(`[vv warn] VV_ROOT_DIR=${vvRootDir} but ${overrideBin} not found — falling back`);
+  }
+
+  // Priority 1: Developer mode (inside vibe-validate repo)
+  const devBin = getDevModeBinary(projectRoot);
+  if (devBin) {
+    return { binPath: devBin, context: 'dev', binDir: dirname(dirname(devBin)) };
+  }
+
+  // Priority 2: Local install (node_modules)
+  const localBin = findLocalInstall(projectRoot);
+  if (localBin) {
+    return { binPath: localBin, context: 'local', binDir: dirname(dirname(localBin)) };
+  }
+
+  // Priority 3: Global install (this script's location)
+  return { binPath: join(__dirname, '../bin.js'), context: 'global', binDir: dirname(__dirname) };
+}
+
+/**
  * Main entry point - detects context and executes appropriate binary
  */
 function main(): void {
@@ -130,32 +170,7 @@ function main(): void {
   // Find project root (where .git is, or cwd if no git)
   const projectRoot = findProjectRoot(cwd);
 
-  let binPath: string;
-  let context: 'dev' | 'local' | 'global';
-  let binDir: string;
-
-  // Priority 1: Check for developer mode (inside vibe-validate repo)
-  const devBin = getDevModeBinary(projectRoot);
-  if (devBin) {
-    binPath = devBin;
-    context = 'dev';
-    binDir = dirname(dirname(devBin)); // packages/cli/dist -> packages/cli
-  }
-  // Priority 2: Check for local install (node_modules)
-  else {
-    const localBin = findLocalInstall(projectRoot);
-    if (localBin) {
-      binPath = localBin;
-      context = 'local';
-      binDir = dirname(dirname(localBin)); // node_modules/@vibe-validate/cli/dist -> node_modules/@vibe-validate/cli
-    }
-    // Priority 3: Use global install (this script's location)
-    else {
-      binPath = join(__dirname, '../bin.js');
-      context = 'global';
-      binDir = dirname(__dirname); // dist -> cli root
-    }
-  }
+  const { binPath, context, binDir } = resolveBinary(projectRoot, debug);
 
   // Read versions for comparison
   // __dirname = dist/bin, so go up twice to reach package.json at cli root

@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.19.0-rc.9",
+  "version": "0.19.0-rc.10",
   "type": "module",
   "private": true,
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development)",
@@ -36,7 +36,6 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "build:clean": "turbo run clean && pnpm build",
     "test": "turbo run test",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -47,7 +46,8 @@
     "typecheck": "turbo run typecheck",
     "duplication-check": "tsx packages/dev-tools/src/duplication-check.ts",
     "jscpd-update-baseline": "tsx packages/dev-tools/src/jscpd-update-baseline.ts",
-    "clean": "turbo run clean && rm -rf node_modules",
+    "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo packages/*/*.schema.json node_modules",
+    "validate-structure": "tsx packages/dev-tools/src/validate-repo-structure.ts",
     "dev": "turbo run dev",
     "validate": "node packages/cli/dist/bin/vv validate",
     "pre-commit": "node packages/cli/dist/bin/vv pre-commit",

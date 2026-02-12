@@ -28,9 +28,6 @@
       "cache": true,
       "inputs": ["src/**/*.ts", "test/**/*.ts", "*.ts", "eslint.config.js", "tsconfig.json"]
     },
-    "clean": {
-      "cache": false
-    },
     "dev": {
       "cache": false,
       "persistent": true

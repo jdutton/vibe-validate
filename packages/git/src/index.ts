@@ -79,7 +79,7 @@ export {
   addNote,
   readNote,
   removeNote,
-  listNotes,
+  listNoteObjects,
   hasNote,
   listNotesRefs,
   removeNotesRefs,

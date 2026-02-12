@@ -396,23 +396,23 @@ export function removeNote(notesRef: NotesRef, object: TreeHash): boolean {
 }
 
 /**
- * List all notes in a notes reference
+ * List all note object hashes in a notes reference (O(1) - single git spawn)
+ *
+ * Returns only the object hashes that have notes attached, without reading
+ * any note content. Use readNote() to read individual note content when needed.
  *
  * @param notesRef - The notes reference
- * @returns Array of [object, content] pairs, or empty array if no notes
+ * @returns Array of tree hashes that have notes, or empty array if no notes
  *
  * @example
  * ```typescript
- * const notes = listNotes('vibe-validate/validate');
- * for (const [treeHash, content] of notes) {
- *   console.log(`${treeHash}: ${content}`);
- * }
+ * const hashes = listNoteObjects('vibe-validate/validate');
+ * console.log(`${hashes.length} notes exist`);
  * ```
  */
-export function listNotes(notesRef: NotesRef): Array<[TreeHash, string]> {
+export function listNoteObjects(notesRef: NotesRef): TreeHash[] {
   validateNotesRef(notesRef);
 
-  // Get list of objects that have notes
   const objectsResult = executeGitCommand(['notes', `--ref=${notesRef}`, 'list'], {
     ignoreErrors: true,
     suppressStderr: true,
@@ -422,21 +422,15 @@ export function listNotes(notesRef: NotesRef): Array<[TreeHash, string]> {
     return [];
   }
 
-  const notes: Array<[TreeHash, string]> = [];
+  const objects: TreeHash[] = [];
 
-  // Parse "note_sha object_sha" pairs
   for (const line of objectsResult.stdout.split('\n')) {
     const [, objectSha] = line.split(/\s+/);
     if (!objectSha) continue;
-
-    // Read the note content
-    const content = readNote(notesRef, objectSha as TreeHash);
-    if (content !== null) {
-      notes.push([objectSha as TreeHash, content]);
-    }
+    objects.push(objectSha as TreeHash);
   }
 
-  return notes;
+  return objects;
 }
 
 /**

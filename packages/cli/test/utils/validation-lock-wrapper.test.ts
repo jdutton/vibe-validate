@@ -271,10 +271,10 @@ validation:
 
     it('should timeout when wait exceeds waitTimeout', async () => {
       // Create existing lock that won't be released
-      const { acquireLock, releaseLock } = await import('../../src/utils/pid-lock.js');
+      const { acquireLock } = await import('../../src/utils/pid-lock.js');
       const { getGitTreeHash } = await import('@vibe-validate/git');
       const treeHash = await getGitTreeHash();
-      const lockResult = await acquireLock(fixtureDir, treeHash);
+      const lockResult = await acquireLock(fixtureDir, treeHash.hash);
 
       try {
         // Should timeout and continue (not throw)
@@ -285,8 +285,8 @@ validation:
         // If we get here, the timeout worked correctly
         expect(true).toBe(true);
       } finally {
-        // Cleanup lock
-        await releaseLock(lockResult.lockFile);
+        // Cleanup lock — must pass release function to stop proper-lockfile's background interval
+        await lockResult.release?.();
       }
     });
 

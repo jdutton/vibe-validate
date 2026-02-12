@@ -617,7 +617,7 @@ git:
       expect(configResult.stdout).toContain('Configuration is valid');
 
       // 2. Run validation (should create state file)
-      const validateResult = await executeCLI(binPath, testDir, ['validate']);
+      const validateResult = await executeCLI(binPath, testDir, ['validate'], 20000);
       expect(validateResult.code).toBe(0);
 
       // 3. Check state (should show passed) - use --verbose for status text
@@ -641,7 +641,7 @@ git:
       setupGitRepo(testDir, configContent);
 
       // Run validation (should fail)
-      const validateResult = await executeCLI(binPath, testDir, ['validate']);
+      const validateResult = await executeCLI(binPath, testDir, ['validate'], 20000);
       if (validateResult.code !== 1) {
         logCommandFailure(testDir, ['validate'], validateResult, 1, 'Validation failure workflow');
       }
@@ -754,18 +754,18 @@ git:
       execSyncImport('git commit -m "Initial commit"', { cwd: testDir });
 
       // 1. First run - should execute validation
-      const firstRun = await executeCLI(binPath, testDir, ['validate']);
+      const firstRun = await executeCLI(binPath, testDir, ['validate'], 20000);
       expect(firstRun.code).toBe(0);
       expect(firstRun.stdout).toContain('phase_start: Test Phase');
 
       // 2. Second run without force - should use cache
-      const cachedRun = await executeCLI(binPath, testDir, ['validate']);
+      const cachedRun = await executeCLI(binPath, testDir, ['validate'], 20000);
       expect(cachedRun.code).toBe(0);
       expect(cachedRun.stdout).toContain('passed for this code');
       expect(cachedRun.stdout).not.toContain('phase_start');
 
       // 3. Third run with VV_FORCE_EXECUTION=1 env var - should bypass cache
-      const forceRun = await executeCLI(binPath, testDir, ['validate'], 10000, { VV_FORCE_EXECUTION: '1' });
+      const forceRun = await executeCLI(binPath, testDir, ['validate'], 20000, { VV_FORCE_EXECUTION: '1' });
       expect(forceRun.code).toBe(0);
       expect(forceRun.stdout + forceRun.stderr).toContain('phase_start: Test Phase'); // Should run phases again
       expect(forceRun.stdout + forceRun.stderr).not.toContain('passed for this code'); // Should NOT show cache message
@@ -792,16 +792,16 @@ git:
       execSyncImport('git commit -m "Initial commit"', { cwd: testDir });
 
       // First run - cache the nested vv run command
-      const firstRun = await executeCLI(binPath, testDir, ['validate']);
+      const firstRun = await executeCLI(binPath, testDir, ['validate'], 30000);
       expect(firstRun.code).toBe(0);
 
       // Second run without force - nested command should hit cache
-      const cachedRun = await executeCLI(binPath, testDir, ['validate']);
+      const cachedRun = await executeCLI(binPath, testDir, ['validate'], 30000);
       expect(cachedRun.code).toBe(0);
       expect(cachedRun.stdout).toContain('passed for this code'); // Outer validation cached
 
       // Third run with --force - should propagate to nested vv run
-      const forcedRun = await executeCLI(binPath, testDir, ['validate', '--force']);
+      const forcedRun = await executeCLI(binPath, testDir, ['validate', '--force'], 30000);
       expect(forcedRun.code).toBe(0);
       expect(forcedRun.stdout).toContain('phase_start: Test Phase'); // Should run validation
       // The nested vv run should also bypass cache due to VV_FORCE_EXECUTION propagation

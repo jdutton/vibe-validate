@@ -16,6 +16,7 @@ build/
 # Testing
 coverage/
 .vitest/
+test-fixtures/
 packages/extractors-test-bed/junit-output/
 packages/extractors/test/quality-report.json
 jscpd-report/

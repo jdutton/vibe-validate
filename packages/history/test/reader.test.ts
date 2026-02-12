@@ -2,7 +2,7 @@
  * Tests for git notes reader
  */
 
-import { readNote, listNotes } from '@vibe-validate/git';
+import { readNote, listNoteObjects } from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import {
@@ -15,7 +15,7 @@ import {
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', () => ({
   readNote: vi.fn(),
-  listNotes: vi.fn(),
+  listNoteObjects: vi.fn(),
 }));
 
 describe('reader', () => {
@@ -208,13 +208,11 @@ duration: 5000
 
   describe('listHistoryTreeHashes', () => {
     it('should list all tree hashes with notes', async () => {
-      const mockNotes: Array<[string, string]> = [
-        ['abc123def456', 'note content 1'],
-        ['789012abc345', 'note content 2'],
-        ['fedcba987654', 'note content 3'],
-      ];
-
-      vi.mocked(listNotes).mockReturnValue(mockNotes);
+      vi.mocked(listNoteObjects).mockReturnValue([
+        'abc123def456' as any,
+        '789012abc345' as any,
+        'fedcba987654' as any,
+      ]);
 
       const result = await listHistoryTreeHashes();
 
@@ -224,20 +222,19 @@ duration: 5000
         'fedcba987654',
       ]);
 
-      expect(listNotes).toHaveBeenCalledWith('vibe-validate/validate');
+      expect(listNoteObjects).toHaveBeenCalledWith('vibe-validate/validate');
     });
 
     it('should use custom notes ref when provided', async () => {
-      const mockNotes: Array<[string, string]> = [['abc123def456', 'note content']];
-      vi.mocked(listNotes).mockReturnValue(mockNotes);
+      vi.mocked(listNoteObjects).mockReturnValue(['abc123def456' as any]);
 
       await listHistoryTreeHashes('custom/notes/ref');
 
-      expect(listNotes).toHaveBeenCalledWith('custom/notes/ref');
+      expect(listNoteObjects).toHaveBeenCalledWith('custom/notes/ref');
     });
 
     it('should return empty array when no notes exist', async () => {
-      vi.mocked(listNotes).mockReturnValue([]);
+      vi.mocked(listNoteObjects).mockReturnValue([]);
 
       const result = await listHistoryTreeHashes();
 
@@ -245,7 +242,7 @@ duration: 5000
     });
 
     it('should return empty array on error', async () => {
-      vi.mocked(listNotes).mockImplementation(() => {
+      vi.mocked(listNoteObjects).mockImplementation(() => {
         throw new Error('Git command failed');
       });
 
@@ -254,26 +251,8 @@ duration: 5000
       expect(result).toEqual([]);
     });
 
-    it('should filter out empty lines', async () => {
-      // listNotes already filters empty lines, but test the behavior
-      const mockNotes: Array<[string, string]> = [
-        ['abc123def456', 'note content 1'],
-        ['789012abc345', 'note content 2'],
-      ];
-
-      vi.mocked(listNotes).mockReturnValue(mockNotes);
-
-      const result = await listHistoryTreeHashes();
-
-      expect(result).toEqual([
-        'abc123def456',
-        '789012abc345',
-      ]);
-    });
-
     it('should handle single tree hash', async () => {
-      const mockNotes: Array<[string, string]> = [['abc123def456', 'note content']];
-      vi.mocked(listNotes).mockReturnValue(mockNotes);
+      vi.mocked(listNoteObjects).mockReturnValue(['abc123def456' as any]);
 
       const result = await listHistoryTreeHashes();
 
@@ -283,15 +262,13 @@ duration: 5000
 
   describe('getAllHistoryNotes', () => {
     it('should get all notes for all tree hashes', async () => {
-      // Mock listNotes
-      const mockNotes: Array<[string, string]> = [
-        ['abc123', 'note content 1'],
-        ['def456', 'note content 2'],
-      ];
+      vi.mocked(listNoteObjects).mockReturnValue([
+        'abc123' as any,
+        'def456' as any,
+      ]);
       const mockNote1 = 'treeHash: abc123\nruns: []';
       const mockNote2 = 'treeHash: def456\nruns: []';
 
-      vi.mocked(listNotes).mockReturnValue(mockNotes);
       vi.mocked(readNote)
         .mockReturnValueOnce(mockNote1) // first read call
         .mockReturnValueOnce(mockNote2); // second read call
@@ -302,26 +279,25 @@ duration: 5000
       expect(result[0].treeHash).toBe('abc123');
       expect(result[1].treeHash).toBe('def456');
 
-      // Should call listNotes once and readNote twice
-      expect(listNotes).toHaveBeenCalledTimes(1);
+      // Should call listNoteObjects once and readNote twice
+      expect(listNoteObjects).toHaveBeenCalledTimes(1);
       expect(readNote).toHaveBeenCalledTimes(2);
     });
 
     it('should use custom notes ref', async () => {
-      const mockNotes: Array<[string, string]> = [['abc123', 'note content']];
+      vi.mocked(listNoteObjects).mockReturnValue(['abc123' as any]);
       const mockNote = 'treeHash: abc123\nruns: []';
 
-      vi.mocked(listNotes).mockReturnValue(mockNotes);
       vi.mocked(readNote).mockReturnValue(mockNote);
 
       await getAllHistoryNotes('custom/notes/ref');
 
-      expect(listNotes).toHaveBeenCalledWith('custom/notes/ref');
+      expect(listNoteObjects).toHaveBeenCalledWith('custom/notes/ref');
       expect(readNote).toHaveBeenCalledWith('custom/notes/ref', 'abc123');
     });
 
     it('should return empty array when no tree hashes exist', async () => {
-      vi.mocked(listNotes).mockReturnValue([]);
+      vi.mocked(listNoteObjects).mockReturnValue([]);
 
       const result = await getAllHistoryNotes();
 
@@ -329,15 +305,14 @@ duration: 5000
     });
 
     it('should skip notes that fail to read', async () => {
-      const mockNotes: Array<[string, string]> = [
-        ['abc123', 'note content 1'],
-        ['def456', 'note content 2'],
-        ['ghi789', 'note content 3'],
-      ];
+      vi.mocked(listNoteObjects).mockReturnValue([
+        'abc123' as any,
+        'def456' as any,
+        'ghi789' as any,
+      ]);
       const mockNote1 = 'treeHash: abc123\nruns: []';
       const mockNote3 = 'treeHash: ghi789\nruns: []';
 
-      vi.mocked(listNotes).mockReturnValue(mockNotes);
       vi.mocked(readNote)
         .mockReturnValueOnce(mockNote1)
         .mockReturnValueOnce(null) // Failed to read def456
@@ -352,12 +327,12 @@ duration: 5000
     });
 
     it('should handle no notes gracefully', async () => {
-      vi.mocked(listNotes).mockReturnValue([]);
+      vi.mocked(listNoteObjects).mockReturnValue([]);
 
       const result = await getAllHistoryNotes();
 
       expect(result).toEqual([]);
-      expect(listNotes).toHaveBeenCalledTimes(1); // Only list call
+      expect(listNoteObjects).toHaveBeenCalledTimes(1);
     });
   });
 

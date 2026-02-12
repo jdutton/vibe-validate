@@ -5,7 +5,6 @@ import {
   addNote,
   readNote,
   removeNote,
-  listNotes,
   hasNote,
   listNotesRefs,
   removeNotesRefs,
@@ -534,44 +533,6 @@ runs:
 
       const result = hasNote(TEST_REF, VALID_HASH);
       expect(result).toBe(false);
-    });
-  });
-
-  describe('listNotes', () => {
-    it('should return empty array when no notes exist', () => {
-      vi.mocked(gitExecutor.validateNotesRef).mockImplementation(() => {});
-      mockFailedCommand();
-
-      const result = listNotes(TEST_REF);
-      expect(result).toEqual([]);
-    });
-
-    it('should parse note list correctly', () => {
-      mockSuccessfulValidation();
-      vi.mocked(gitExecutor.executeGitCommand)
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'note1sha abc123\nnote2sha def456',
-          stderr: '',
-          exitCode: 0,
-        })
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'content1',
-          stderr: '',
-          exitCode: 0,
-        })
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'content2',
-          stderr: '',
-          exitCode: 0,
-        });
-
-      const result = listNotes(TEST_REF);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual(['abc123', 'content1']);
-      expect(result[1]).toEqual(['def456', 'content2']);
     });
   });
 

@@ -20,15 +20,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "files": [],
-  "references": [
-    { "path": "./packages/utils" },
-    { "path": "./packages/config" },
-    { "path": "./packages/git" },
-    { "path": "./packages/extractors" },
-    { "path": "./packages/core" },
-    { "path": "./packages/history" },
-    { "path": "./packages/cli" },
-    { "path": "./packages/dev-tools" }
-  ]
+  "files": []
 }
