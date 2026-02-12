@@ -113,13 +113,23 @@ describe('run command integration', () => {
   // Clean up git notes once before all tests in this file
   // This handles notes created by previous test files (e.g., history-recording.test.ts)
   // Use a longer timeout since accumulated notes may take time to clean
-  beforeAll(() => {
+  beforeAll(async () => {
     try {
-      removeNotesRefs('refs/notes/vibe-validate/run');
-    } catch {
-      // Ignore errors - notes may not exist
+      // Add timeout to prevent test suite hangs if cleanup takes too long
+      await Promise.race([
+        Promise.resolve(removeNotesRefs('refs/notes/vibe-validate/run')),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('cleanup timeout')), 60000)
+        )
+      ]);
+    } catch (error) {
+      // Log warning but don't fail - tests can proceed even if cleanup times out
+      if (error instanceof Error && error.message === 'cleanup timeout') {
+        console.warn('[test] beforeAll cleanup timed out after 60s, proceeding anyway');
+      }
+      // Ignore other errors - notes may not exist
     }
-  }, 120000); // 2 minute timeout for cleanup
+  }, 120000); // 2 minute timeout for cleanup (vitest timeout, our internal is 60s)
 
   // Clean up after each test to prevent state leakage within this file
   afterEach(() => {

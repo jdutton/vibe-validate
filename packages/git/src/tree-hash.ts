@@ -405,8 +405,12 @@ export function getSubmodules(): SubmoduleInfo[] {
         return [];
       }
     }
-  } catch {
+  } catch (error) {
     // Fall through to git submodule status
+    // Only log in debug mode to avoid noise
+    if (process.env.VV_DEBUG === '1') {
+      console.error('[vv debug] .gitmodules fast-path check failed:', error instanceof Error ? error.message : String(error));
+    }
   }
 
   const result = executeGitCommand(['submodule', 'status'], {

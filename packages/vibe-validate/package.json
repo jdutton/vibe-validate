@@ -50,11 +50,11 @@
     "access": "public"
   },
   "dependencies": {
-    "@vibe-validate/cli": "workspace:*"
+    "@vibe-validate/cli": "workspace:*",
+    "@vibe-validate/utils": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.19.26",
-    "@vibe-validate/utils": "workspace:*",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9"
   },

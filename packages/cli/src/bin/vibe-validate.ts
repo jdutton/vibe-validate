@@ -3,6 +3,7 @@
  * Smart vibe-validate wrapper with context-aware execution
  *
  * Automatically detects execution context and delegates to appropriate binary:
+ * - VV_ROOT_DIR override: Use developer's local build for testing
  * - Developer mode: Inside vibe-validate repo → packages/cli/dist/bin.js (unpackaged dev build)
  * - Local install: Project has vibe-validate → node_modules version (packaged)
  * - Global install: Fallback → globally installed version (packaged)
@@ -120,43 +121,60 @@ function readVersion(packageJsonPath: string): string | null {
 
 
 /**
+ * Resolution strategies for finding the binary
+ * Each returns { binPath, context, binDir } or null if not applicable
+ */
+type BinaryLocation = { binPath: string; context: string; binDir: string };
+
+function tryVvRootDirOverride(debug: boolean): BinaryLocation | null {
+  const vvRootDir = process.env.VV_ROOT_DIR;
+  if (!vvRootDir) return null;
+
+  const overrideBin = join(vvRootDir, 'packages/cli/dist/bin.js');
+  if (!existsSync(overrideBin)) {
+    if (debug) {
+      console.error(`[vv debug] VV_ROOT_DIR set but ${overrideBin} not found — ignoring`);
+    }
+    return null;
+  }
+
+  console.error(`[vv] Using VV_ROOT_DIR: ${vvRootDir}`);
+  return { binPath: overrideBin, context: 'dev-override', binDir: dirname(dirname(overrideBin)) };
+}
+
+function tryDevMode(projectRoot: string): BinaryLocation | null {
+  const devBin = getDevModeBinary(projectRoot);
+  if (!devBin) return null;
+  return { binPath: devBin, context: 'dev', binDir: dirname(dirname(devBin)) };
+}
+
+function tryLocalInstall(projectRoot: string): BinaryLocation | null {
+  const localBin = findLocalInstall(projectRoot);
+  if (!localBin) return null;
+  return { binPath: localBin, context: 'local', binDir: dirname(dirname(localBin)) };
+}
+
+function useGlobalInstall(): BinaryLocation {
+  return { binPath: join(__dirname, '../bin.js'), context: 'global', binDir: dirname(__dirname) };
+}
+
+/**
  * Resolve binary path using priority chain
  *
  * Priority order:
- * 0. VV_ROOT_DIR env override (developer testing dev build against other projects)
+ * 0. VV_ROOT_DIR env override (developer testing dev build against other projects - security validated)
  * 1. Developer mode (inside vibe-validate repo itself)
  * 2. Local install (node_modules)
  * 3. Global install (this script's own location)
  */
-function resolveBinary(projectRoot: string, debug: boolean): { binPath: string; context: string; binDir: string } {
-  // Priority 0: VV_ROOT_DIR override (developer testing against other projects)
-  // Usage: VV_ROOT_DIR=~/Workspaces/vibe-validate vv validate
-  const vvRootDir = process.env.VV_ROOT_DIR;
-  if (vvRootDir) {
-    const overrideBin = join(vvRootDir, 'packages/cli/dist/bin.js');
-    if (existsSync(overrideBin)) {
-      if (debug) {
-        console.error(`[vv debug] VV_ROOT_DIR override: ${vvRootDir}`);
-      }
-      return { binPath: overrideBin, context: 'dev-override', binDir: dirname(dirname(overrideBin)) };
-    }
-    console.error(`[vv warn] VV_ROOT_DIR=${vvRootDir} but ${overrideBin} not found — falling back`);
-  }
-
-  // Priority 1: Developer mode (inside vibe-validate repo)
-  const devBin = getDevModeBinary(projectRoot);
-  if (devBin) {
-    return { binPath: devBin, context: 'dev', binDir: dirname(dirname(devBin)) };
-  }
-
-  // Priority 2: Local install (node_modules)
-  const localBin = findLocalInstall(projectRoot);
-  if (localBin) {
-    return { binPath: localBin, context: 'local', binDir: dirname(dirname(localBin)) };
-  }
-
-  // Priority 3: Global install (this script's location)
-  return { binPath: join(__dirname, '../bin.js'), context: 'global', binDir: dirname(__dirname) };
+function resolveBinary(projectRoot: string, debug: boolean): BinaryLocation {
+  // Try each resolution strategy in priority order
+  return (
+    tryVvRootDirOverride(debug) ??
+    tryDevMode(projectRoot) ??
+    tryLocalInstall(projectRoot) ??
+    useGlobalInstall()
+  );
 }
 
 /**

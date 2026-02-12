@@ -4,7 +4,7 @@
  * This ensures single source of truth for all wrapper logic.
  *
  * Supports VV_ROOT_DIR override for developer testing:
- *   VV_ROOT_DIR=~/Workspaces/vibe-validate vv validate
+ *   VV_ROOT_DIR=~/Workspaces/vibe-validate vibe-validate validate
  */
 import { existsSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -20,9 +20,10 @@ let cliWrapperPath;
 if (vvRootDir) {
   const devWrapper = join(vvRootDir, 'packages/cli/dist/bin/vibe-validate.js');
   if (existsSync(devWrapper)) {
+    console.error(`[vv] Using VV_ROOT_DIR: ${vvRootDir}`);
     cliWrapperPath = devWrapper;
   } else {
-    console.error(`[vv warn] VV_ROOT_DIR=${vvRootDir} but ${devWrapper} not found — falling back`);
+    console.error(`[vv] VV_ROOT_DIR set but ${devWrapper} not found — ignoring`);
     cliWrapperPath = join(__dirname, '../node_modules/@vibe-validate/cli/dist/bin/vibe-validate.js');
   }
 } else {
