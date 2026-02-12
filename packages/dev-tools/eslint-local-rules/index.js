@@ -18,6 +18,9 @@
  * - no-gh-commands-direct: Enforce @vibe-validate/git functions instead of direct gh commands
  * - no-npm-pnpm-direct: Enforce @vibe-validate/utils package manager functions instead of direct npm/pnpm commands
  * - no-direct-cli-bin-execution: Enforce shared CLI execution helpers instead of direct node + bin.js
+ *
+ * Test Quality Rules:
+ * - no-test-scoped-functions: Prevent function declarations inside test blocks (SonarQube S1515 code smell)
  */
 
 import { createRequire } from 'node:module';
@@ -43,5 +46,8 @@ export default {
     'no-gh-commands-direct': require('./no-gh-commands-direct.cjs'),
     'no-npm-pnpm-direct': require('./no-npm-pnpm-direct.cjs'),
     'no-direct-cli-bin-execution': require('./no-direct-cli-bin-execution.cjs'),
+
+    // Test quality rules
+    'no-test-scoped-functions': require('./no-test-scoped-functions.cjs'),
   },
 };

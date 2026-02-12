@@ -81,307 +81,316 @@ vi.mock('../../src/utils/project-id.js', () => ({
   getProjectIdFromPackageJson: vi.fn(),
 }));
 
+/**
+ * Create mock history note with sensible defaults
+ * @param overrides - Optional overrides for the note
+ * @returns Complete history note object
+ */
+function createMockHistoryNote(overrides: {
+  treeHash?: string;
+  passed?: boolean;
+  timestamp?: string;
+  duration?: number;
+  phases?: any[];
+  failedStep?: string;
+} = {}) {
+  const {
+    treeHash = 'abc123def456',
+    passed = true,
+    timestamp = '2025-10-22T00:00:00.000Z',
+    duration = 5000,
+    phases = [],
+    failedStep,
+  } = overrides;
+
+  return {
+    treeHash,
+    runs: [
+      {
+        id: 'run-1',
+        timestamp,
+        duration,
+        passed,
+        branch: 'main',
+        headCommit: 'abc123',
+        uncommittedChanges: false,
+        result: {
+          passed,
+          timestamp,
+          treeHash,
+          duration,
+          branch: 'main',
+          phases,
+          ...(failedStep && { failedStep }),
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Create mock validation config with sensible defaults
+ * @param overrides - Partial config to override defaults
+ * @returns Complete validation config
+ */
+function createMockConfig(overrides: Partial<VibeValidateConfig> = {}): VibeValidateConfig {
+  return {
+    validation: {
+      phases: [
+        {
+          name: 'Test Phase',
+          parallel: true,
+          steps: [
+            { name: 'Test Step', command: 'echo test' }
+          ]
+        }
+      ]
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Setup successful validation mock
+ * @param overrides - Partial result to override defaults
+ */
+function setupSuccessfulValidation(overrides = {}): void {
+  vi.mocked(core.runValidation).mockResolvedValue({
+    passed: true,
+    timestamp: new Date().toISOString(),
+    treeHash: 'abc123',
+    phases: [],
+    ...overrides,
+  });
+}
+
+/**
+ * Setup failed validation mock
+ * @param overrides - Partial result to override defaults
+ */
+function setupFailedValidation(overrides = {}): void {
+  vi.mocked(core.runValidation).mockResolvedValue({
+    passed: false,
+    timestamp: new Date().toISOString(),
+    treeHash: 'abc123',
+    phases: [
+      {
+        name: 'Test Phase',
+        passed: false,
+        steps: [
+          {
+            name: 'Test Step',
+            command: 'npm test',
+            passed: false,
+          }
+        ]
+      }
+    ],
+    failedStep: 'Test Step',
+    fullLogFile: join(normalizedTmpdir(), 'validation.log'),
+    ...overrides,
+  });
+}
+
+/**
+ * Setup stdout spy for capturing YAML output
+ * @returns Spy instance
+ */
+function setupStdoutSpy(): MockInstance {
+  return vi.spyOn(process.stdout, 'write').mockImplementation((_chunk: any, encoding?: any, callback?: any) => {
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  });
+}
+
+/**
+ * Setup stderr spy for capturing error output
+ * @returns Spy instance
+ */
+function setupStderrSpy(): MockInstance {
+  return vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+}
+
+/**
+ * Setup all mocks needed for working directory behavior tests (Issue #129)
+ * @param configDir - Project root directory (where config lives)
+ * @param treeHash - Git tree hash to use
+ * @param validationPassed - Whether validation should pass
+ */
+function setupWorkingDirectoryMocks(
+  configDir: string,
+  treeHash: string,
+  validationPassed: boolean
+): void {
+  // Mock config loader to return config from project root
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+    config: {
+      validation: {
+        phases: [
+          {
+            name: 'Test',
+            failFast: true,
+            steps: [
+              {
+                name: validationPassed ? 'Test Step' : 'Failing Step',
+                command: validationPassed ? 'echo test' : 'exit 1',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    configDir,
+  });
+
+  // Mock git tree hash
+  vi.mocked(git.getGitTreeHash).mockResolvedValue({
+    hash: treeHash as any,
+    includedFiles: 10,
+    excludedFiles: 0,
+  });
+
+  // Mock no cached result
+  vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+
+  // Mock history recording
+  vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+    stable: true,
+    treeHashBefore: treeHash as any,
+    treeHashAfter: treeHash as any,
+  });
+  vi.mocked(history.recordValidationHistory).mockResolvedValue({
+    recorded: true,
+    treeHash: treeHash as any,
+  });
+  vi.mocked(history.checkHistoryHealth).mockResolvedValue({
+    shouldWarn: false,
+    warningMessage: '',
+    totalNotes: 0,
+    oldNotesCount: 0,
+  });
+
+  // Mock lock functions
+  vi.mocked(pidLock.checkLock).mockResolvedValue(null);
+  vi.mocked(pidLock.acquireLock).mockResolvedValue({
+    acquired: true,
+    release: vi.fn(),
+    lockFile: join(normalizedTmpdir(), 'test.lock'),
+  });
+
+  // Mock runValidation
+  vi.mocked(core.runValidation).mockResolvedValue({
+    passed: validationPassed,
+    timestamp: '2025-10-23T00:00:00.000Z',
+    treeHash: treeHash as any,
+    phases: [],
+    ...(validationPassed ? {} : { failedStep: 'Failing Step' }),
+  });
+}
+
+/**
+ * Parse command and expect it to exit with specific code
+ * @param env - Commander test environment
+ * @param args - Command arguments to parse
+ * @param expectedExitCode - Expected exit code (default: 1)
+ */
+async function parseCommandExpectingExit(
+  env: CommanderTestEnv,
+  args: string[],
+  expectedExitCode = 1
+): Promise<void> {
+  try {
+    await env.program.parseAsync(args, { from: 'user' });
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'exitCode' in err) {
+      expect(err.exitCode).toBe(expectedExitCode);
+    }
+  }
+}
+
+/**
+ * Setup config loader with mock config
+ * @param testDir - Test directory path
+ * @param config - Config to return (defaults to createMockConfig())
+ */
+function setupMockConfig(testDir: string, config: VibeValidateConfig = createMockConfig()): void {
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: testDir });
+}
+
+/**
+ * Parse command with proper error handling
+ * @param env - Commander test environment
+ * @param args - Command arguments
+ * @returns Exit code (0 for success, 1 for failure)
+ */
+async function parseCommand(env: CommanderTestEnv, args: string[]): Promise<number> {
+  try {
+    await env.program.parseAsync(args, { from: 'user' });
+    return 0;
+  } catch (err: unknown) {
+    // Handle Commander exitOverride errors
+    if (err && typeof err === 'object' && 'exitCode' in err) {
+      return (err as { exitCode: number }).exitCode;
+    }
+    // Handle process.exit mock errors
+    if (err instanceof Error && err.message.startsWith('process.exit(')) {
+      const regex = /process\.exit\((\d+)\)/;
+      const match = regex.exec(err.message);
+      if (match) {
+        return Number.parseInt(match[1], 10);
+      }
+    }
+    throw err;
+  }
+}
+
+/**
+ * Execute validate command and assert that validation ran in the specified directory
+ * @param env - Commander test environment
+ * @param subdir - Subdirectory where command is invoked from
+ * @param expectedCwd - Expected cwd during validation (usually configDir)
+ * @param expectedExitCode - Expected exit code
+ * @returns The captured cwd during validation
+ */
+async function executeAndCaptureCwd(
+  env: CommanderTestEnv,
+  subdir: string,
+  expectedCwd: string,
+  expectedExitCode: number
+): Promise<string> {
+  let capturedCwd: string | null = null;
+
+  // Replace mock to capture cwd
+  vi.mocked(core.runValidation).mockImplementation(async () => {
+    capturedCwd = process.cwd();
+    // Return result based on expected exit code
+    return {
+      passed: expectedExitCode === 0,
+      timestamp: '2025-10-23T00:00:00.000Z',
+      treeHash: 'test-tree-hash' as any,
+      phases: [],
+      ...(expectedExitCode === 0 ? {} : { failedStep: 'Failing Step' }),
+    };
+  });
+
+  // Change to subdirectory
+  process.chdir(subdir);
+
+  validateCommand(env.program);
+  await parseCommandExpectingExit(env, ['validate'], expectedExitCode);
+
+  expect(capturedCwd).toBe(expectedCwd);
+  return capturedCwd!;
+}
+
 describe('validate command', () => {
   let testDir: string;
   let originalCwd: string;
   let env: CommanderTestEnv;
-
-  /**
-   * Create mock history note with sensible defaults
-   * @param overrides - Optional overrides for the note
-   * @returns Complete history note object
-   */
-  function createMockHistoryNote(overrides: {
-    treeHash?: string;
-    passed?: boolean;
-    timestamp?: string;
-    duration?: number;
-    phases?: any[];
-    failedStep?: string;
-  } = {}) {
-    const {
-      treeHash = 'abc123def456',
-      passed = true,
-      timestamp = '2025-10-22T00:00:00.000Z',
-      duration = 5000,
-      phases = [],
-      failedStep,
-    } = overrides;
-
-    return {
-      treeHash,
-      runs: [
-        {
-          id: 'run-1',
-          timestamp,
-          duration,
-          passed,
-          branch: 'main',
-          headCommit: 'abc123',
-          uncommittedChanges: false,
-          result: {
-            passed,
-            timestamp,
-            treeHash,
-            duration,
-            branch: 'main',
-            phases,
-            ...(failedStep && { failedStep }),
-          },
-        },
-      ],
-    };
-  }
-
-  /**
-   * Parse command and expect it to exit with specific code
-   * @param args - Command arguments to parse
-   * @param expectedExitCode - Expected exit code (default: 1)
-   */
-  async function parseCommandExpectingExit(args: string[], expectedExitCode = 1): Promise<void> {
-    try {
-      await env.program.parseAsync(args, { from: 'user' });
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'exitCode' in err) {
-        expect(err.exitCode).toBe(expectedExitCode);
-      }
-    }
-  }
-
-  /**
-   * Create mock validation config with sensible defaults
-   * @param overrides - Partial config to override defaults
-   * @returns Complete validation config
-   */
-  function createMockConfig(overrides: Partial<VibeValidateConfig> = {}): VibeValidateConfig {
-    return {
-      validation: {
-        phases: [
-          {
-            name: 'Test Phase',
-            parallel: true,
-            steps: [
-              { name: 'Test Step', command: 'echo test' }
-            ]
-          }
-        ]
-      },
-      ...overrides,
-    };
-  }
-
-  /**
-   * Setup config loader with mock config
-   * @param config - Config to return (defaults to createMockConfig())
-   */
-  function setupMockConfig(config: VibeValidateConfig = createMockConfig()): void {
-    vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: testDir });
-  }
-
-  /**
-   * Setup successful validation mock
-   * @param overrides - Partial result to override defaults
-   */
-  function setupSuccessfulValidation(overrides = {}): void {
-    vi.mocked(core.runValidation).mockResolvedValue({
-      passed: true,
-      timestamp: new Date().toISOString(),
-      treeHash: 'abc123',
-      phases: [],
-      ...overrides,
-    });
-  }
-
-  /**
-   * Setup failed validation mock
-   * @param overrides - Partial result to override defaults
-   */
-  function setupFailedValidation(overrides = {}): void {
-    vi.mocked(core.runValidation).mockResolvedValue({
-      passed: false,
-      timestamp: new Date().toISOString(),
-      treeHash: 'abc123',
-      phases: [
-        {
-          name: 'Test Phase',
-          passed: false,
-          steps: [
-            {
-              name: 'Test Step',
-              command: 'npm test',
-              passed: false,
-            }
-          ]
-        }
-      ],
-      failedStep: 'Test Step',
-      fullLogFile: join(normalizedTmpdir(), 'validation.log'),
-      ...overrides,
-    });
-  }
-
-  /**
-   * Parse command with proper error handling
-   * @param args - Command arguments
-   * @returns Exit code (0 for success, 1 for failure)
-   */
-  async function parseCommand(args: string[]): Promise<number> {
-    try {
-      await env.program.parseAsync(args, { from: 'user' });
-      return 0;
-    } catch (err: unknown) {
-      // Handle Commander exitOverride errors
-      if (err && typeof err === 'object' && 'exitCode' in err) {
-        return (err as { exitCode: number }).exitCode;
-      }
-      // Handle process.exit mock errors
-      if (err instanceof Error && err.message.startsWith('process.exit(')) {
-        const regex = /process\.exit\((\d+)\)/;
-        const match = regex.exec(err.message);
-        if (match) {
-          return Number.parseInt(match[1], 10);
-        }
-      }
-      throw err;
-    }
-  }
-
-  /**
-   * Setup stdout spy for capturing YAML output
-   * @returns Spy instance
-   */
-  function setupStdoutSpy(): MockInstance {
-    return vi.spyOn(process.stdout, 'write').mockImplementation((_chunk: any, encoding?: any, callback?: any) => {
-      if (typeof encoding === 'function') {
-        encoding();
-      } else if (typeof callback === 'function') {
-        callback();
-      }
-      return true;
-    });
-  }
-
-  /**
-   * Setup stderr spy for capturing error output
-   * @returns Spy instance
-   */
-  function setupStderrSpy(): MockInstance {
-    return vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-  }
-
-  /**
-   * Setup all mocks needed for working directory behavior tests (Issue #129)
-   * @param configDir - Project root directory (where config lives)
-   * @param treeHash - Git tree hash to use
-   * @param validationPassed - Whether validation should pass
-   */
-  function setupWorkingDirectoryMocks(
-    configDir: string,
-    treeHash: string,
-    validationPassed: boolean
-  ): void {
-    // Mock config loader to return config from project root
-    vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
-      config: {
-        validation: {
-          phases: [
-            {
-              name: 'Test',
-              failFast: true,
-              steps: [
-                {
-                  name: validationPassed ? 'Test Step' : 'Failing Step',
-                  command: validationPassed ? 'echo test' : 'exit 1',
-                },
-              ],
-            },
-          ],
-        },
-      },
-      configDir,
-    });
-
-    // Mock git tree hash
-    vi.mocked(git.getGitTreeHash).mockResolvedValue({
-      hash: treeHash as any,
-      includedFiles: 10,
-      excludedFiles: 0,
-    });
-
-    // Mock no cached result
-    vi.mocked(history.findCachedValidation).mockResolvedValue(null);
-
-    // Mock history recording
-    vi.mocked(history.checkWorktreeStability).mockResolvedValue({
-      stable: true,
-      treeHashBefore: treeHash as any,
-      treeHashAfter: treeHash as any,
-    });
-    vi.mocked(history.recordValidationHistory).mockResolvedValue({
-      recorded: true,
-      treeHash: treeHash as any,
-    });
-    vi.mocked(history.checkHistoryHealth).mockResolvedValue({
-      shouldWarn: false,
-      warningMessage: '',
-      totalNotes: 0,
-      oldNotesCount: 0,
-    });
-
-    // Mock lock functions
-    vi.mocked(pidLock.checkLock).mockResolvedValue(null);
-    vi.mocked(pidLock.acquireLock).mockResolvedValue({
-      acquired: true,
-      release: vi.fn(),
-      lockFile: join(normalizedTmpdir(), 'test.lock'),
-    });
-
-    // Mock runValidation
-    vi.mocked(core.runValidation).mockResolvedValue({
-      passed: validationPassed,
-      timestamp: '2025-10-23T00:00:00.000Z',
-      treeHash: treeHash as any,
-      phases: [],
-      ...(validationPassed ? {} : { failedStep: 'Failing Step' }),
-    });
-  }
-
-  /**
-   * Execute validate command and assert that validation ran in the specified directory
-   * @param subdir - Subdirectory where command is invoked from
-   * @param expectedCwd - Expected cwd during validation (usually configDir)
-   * @param expectedExitCode - Expected exit code
-   * @returns The captured cwd during validation
-   */
-  async function executeAndCaptureCwd(
-    subdir: string,
-    expectedCwd: string,
-    expectedExitCode: number
-  ): Promise<string> {
-    let capturedCwd: string | null = null;
-
-    // Replace mock to capture cwd
-    vi.mocked(core.runValidation).mockImplementation(async () => {
-      capturedCwd = process.cwd();
-      // Return result based on expected exit code
-      return {
-        passed: expectedExitCode === 0,
-        timestamp: '2025-10-23T00:00:00.000Z',
-        treeHash: 'test-tree-hash' as any,
-        phases: [],
-        ...(expectedExitCode === 0 ? {} : { failedStep: 'Failing Step' }),
-      };
-    });
-
-    // Change to subdirectory
-    process.chdir(subdir);
-
-    validateCommand(env.program);
-    await parseCommandExpectingExit(['validate'], expectedExitCode);
-
-    expect(capturedCwd).toBe(expectedCwd);
-    return capturedCwd!;
-  }
 
   beforeEach(() => {
     // Clear all mock calls from previous tests (prevents test pollution across test files)
@@ -517,7 +526,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate']);
+      await parseCommandExpectingExit(env, ['validate']);
 
       expectConsoleError('No configuration found');
     });
@@ -538,7 +547,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate']);
+      await parseCommandExpectingExit(env, ['validate']);
 
       expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
       expectConsoleError('Configuration is invalid');
@@ -559,7 +568,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate']);
+      await parseCommandExpectingExit(env, ['validate']);
 
       expect(loadConfigWithErrorsSpy).toHaveBeenCalled();
       expectConsoleError('No configuration found');
@@ -568,14 +577,14 @@ describe('validate command', () => {
 
   describe('successful validation', () => {
     beforeEach(() => {
-      setupMockConfig();
+      setupMockConfig(testDir);
       setupSuccessfulValidation();
     });
 
     it('should exit with code 0 on successful validation', async () => {
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
@@ -583,7 +592,7 @@ describe('validate command', () => {
     it('should pass force option to validation runner', async () => {
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--force']);
+      const exitCode = await parseCommand(env, ['validate', '--force']);
       expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
@@ -591,7 +600,7 @@ describe('validate command', () => {
 
   describe('failed validation', () => {
     beforeEach(() => {
-      setupMockConfig(createMockConfig({
+      setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
             name: 'Test Phase',
@@ -606,7 +615,7 @@ describe('validate command', () => {
     it('should exit with code 1 on failed validation', async () => {
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(1);
       expect(core.runValidation).toHaveBeenCalled();
     });
@@ -614,7 +623,7 @@ describe('validate command', () => {
     it('should display error details on failure', async () => {
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('View error details'),
@@ -629,7 +638,7 @@ describe('validate command', () => {
 
   describe('verbosity detection', () => {
     beforeEach(() => {
-      setupMockConfig();
+      setupMockConfig(testDir);
       setupSuccessfulValidation();
     });
 
@@ -637,7 +646,7 @@ describe('validate command', () => {
       process.env.CLAUDE_CODE = 'true';
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
 
@@ -649,7 +658,7 @@ describe('validate command', () => {
       delete process.env.CI;
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
@@ -657,7 +666,7 @@ describe('validate command', () => {
     it('should respect explicit --verbose flag', async () => {
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--verbose']);
+      const exitCode = await parseCommand(env, ['validate', '--verbose']);
       expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalled();
     });
@@ -665,14 +674,14 @@ describe('validate command', () => {
 
   describe('error handling', () => {
     beforeEach(() => {
-      setupMockConfig();
+      setupMockConfig(testDir);
     });
 
     it('should handle validation runner exceptions', async () => {
       vi.mocked(core.runValidation).mockRejectedValue(new Error('Validation crashed'));
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Validation failed with error'),
@@ -687,7 +696,7 @@ describe('validate command', () => {
       const stdoutSpy = setupStdoutSpy();
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--yaml']);
+      const exitCode = await parseCommand(env, ['validate', '--yaml']);
       expect(exitCode).toBe(1);
 
       expect(console.error).toHaveBeenCalledWith(
@@ -707,7 +716,7 @@ describe('validate command', () => {
 
   describe('--check flag', () => {
     beforeEach(() => {
-      setupMockConfig();
+      setupMockConfig(testDir);
     });
 
     it('should not run validation when --check flag is used', async () => {
@@ -745,7 +754,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate', '--check'], 2);
+      await parseCommandExpectingExit(env, ['validate', '--check'], 2);
 
       expectConsoleLog('No validation history for current working tree');
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -766,7 +775,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate', '--check', '--yaml'], 0);
+      await parseCommandExpectingExit(env, ['validate', '--check', '--yaml'], 0);
 
       // Verify runValidation was NOT called (using --check flag)
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -783,7 +792,7 @@ describe('validate command', () => {
 
   describe('--yaml flag', () => {
     beforeEach(() => {
-      setupMockConfig();
+      setupMockConfig(testDir);
       setupStdoutSpy();
     });
 
@@ -800,7 +809,7 @@ describe('validate command', () => {
       setupSuccessfulValidation({ timestamp: '2025-10-22T00:00:00.000Z' });
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--yaml']);
+      const exitCode = await parseCommand(env, ['validate', '--yaml']);
       expect(exitCode).toBe(0);
       expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
@@ -810,7 +819,7 @@ describe('validate command', () => {
       setupFailedValidation({ timestamp: '2025-10-22T00:00:00.000Z', phases: [], fullLogFile: undefined });
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--yaml']);
+      const exitCode = await parseCommand(env, ['validate', '--yaml']);
       expect(exitCode).toBe(1);
       expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
@@ -820,7 +829,7 @@ describe('validate command', () => {
       setupSuccessfulValidation({ timestamp: '2025-10-22T00:00:00.000Z' });
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--yaml']);
+      const exitCode = await parseCommand(env, ['validate', '--yaml']);
       expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalledWith(
         expect.objectContaining({ yaml: true })
@@ -831,7 +840,7 @@ describe('validate command', () => {
       setupSuccessfulValidation({ timestamp: '2025-10-22T00:00:00.000Z' });
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--yaml', '--verbose']);
+      const exitCode = await parseCommand(env, ['validate', '--yaml', '--verbose']);
       expect(exitCode).toBe(0);
       expect(core.runValidation).toHaveBeenCalledWith(
         expect.objectContaining({ yaml: true, verbose: true })
@@ -839,7 +848,7 @@ describe('validate command', () => {
     });
 
     it('should display cached validation with tree hash and phase/step counts in human-readable mode', async () => {
-      setupMockConfig();
+      setupMockConfig(testDir);
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
         hash: 'abc123def456' as any
       });
@@ -896,7 +905,7 @@ describe('validate command', () => {
     });
 
     it('should display cached failure result with tree hash and details in human-readable mode', async () => {
-      setupMockConfig(createMockConfig({
+      setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
             name: 'Test Phase',
@@ -928,7 +937,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate']);
+      await parseCommandExpectingExit(env, ['validate']);
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
@@ -953,7 +962,7 @@ describe('validate command', () => {
     });
 
     it('should display cached validation result', async () => {
-      setupMockConfig(createMockConfig({
+      setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
             name: 'Test Phase',
@@ -984,7 +993,7 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
-      setupMockConfig();
+      setupMockConfig(testDir);
       setupStdoutSpy();
       vi.mocked(git.getGitTreeHash).mockResolvedValue({
         hash: 'abc123def456' as any
@@ -1016,7 +1025,7 @@ describe('validate command', () => {
     });
 
     it('should output YAML to stdout when cached failure and --yaml flag is set', async () => {
-      setupMockConfig(createMockConfig({
+      setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
             name: 'Test Phase',
@@ -1039,7 +1048,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate', '--yaml']);
+      await parseCommandExpectingExit(env, ['validate', '--yaml']);
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
@@ -1061,7 +1070,7 @@ describe('validate command', () => {
 
   describe('auto-YAML output on failure', () => {
     beforeEach(() => {
-      setupMockConfig(createMockConfig({
+      setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
             name: 'Test Phase',
@@ -1093,7 +1102,7 @@ describe('validate command', () => {
       });
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(1);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('View error details'),
@@ -1114,7 +1123,7 @@ describe('validate command', () => {
       setupSuccessfulValidation({ timestamp: '2025-11-24T00:00:00.000Z' });
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate']);
+      const exitCode = await parseCommand(env, ['validate']);
       expect(exitCode).toBe(0);
 
       const stderrCalls = stderrSpy.mock.calls.map(call => call[0]).join('');
@@ -1129,7 +1138,7 @@ describe('validate command', () => {
       setupFailedValidation({ timestamp: '2025-11-24T00:00:00.000Z', phases: [], fullLogFile: undefined });
       validateCommand(env.program);
 
-      const exitCode = await parseCommand(['validate', '--yaml']);
+      const exitCode = await parseCommand(env, ['validate', '--yaml']);
       expect(exitCode).toBe(1);
 
       const stdoutCalls = stdoutSpy.mock.calls.map(call => call[0]).join('');
@@ -1142,7 +1151,7 @@ describe('validate command', () => {
 
   describe('worktree stability', () => {
     beforeEach(() => {
-      setupMockConfig();
+      setupMockConfig(testDir);
     });
 
     it('should warn and skip history recording when worktree changes during validation', async () => {
@@ -1174,7 +1183,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate'], 0);
+      await parseCommandExpectingExit(env, ['validate'], 0);
 
       // Verify warning was displayed
       expect(warnSpy).toHaveBeenCalledWith(
@@ -1224,7 +1233,7 @@ describe('validate command', () => {
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(['validate'], 0);
+      await parseCommandExpectingExit(env, ['validate'], 0);
 
       // Verify NO worktree change warning
       expect(warnSpy).not.toHaveBeenCalledWith(
@@ -1254,7 +1263,7 @@ describe('validate command', () => {
       setupWorkingDirectoryMocks(configDir, 'test-tree-hash-129', true);
 
       // Execute command and verify cwd was changed to configDir during validation
-      await executeAndCaptureCwd(subdir, configDir, 0);
+      await executeAndCaptureCwd(env, subdir, configDir, 0);
     });
 
     it('should restore original directory after validation completes', async () => {
@@ -1271,7 +1280,7 @@ describe('validate command', () => {
       const originalCwd = process.cwd();
 
       validateCommand(env.program);
-      await parseCommandExpectingExit(['validate'], 0);
+      await parseCommandExpectingExit(env, ['validate'], 0);
 
       // CRITICAL: After validation completes, we should be back in the subdirectory
       expect(process.cwd()).toBe(originalCwd);

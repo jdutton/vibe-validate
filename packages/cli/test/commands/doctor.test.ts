@@ -102,38 +102,39 @@ vi.mock('../../src/commands/generate-workflow.js');
 /** @deprecated State file deprecated in v0.12.0 - validation now uses git notes */
 const DEPRECATED_STATE_FILE = '.vibe-validate-state.yaml';
 
-describe('doctor command', () => {
-  const mockConfig: VibeValidateConfig = {
-    validation: {
-      phases: [
-        {
-          name: 'Test',
-          parallel: false,
-          steps: [
-            { name: 'TypeCheck', command: 'pnpm typecheck' },
-          ],
-          timeout: 300000,
-          failFast: true,
-        },
-      ],
-    },
-    git: {
-      mainBranch: 'main',
-      autoSync: false,
-      warnIfBehind: true,
-    },
-  };
+const mockConfig: VibeValidateConfig = {
+  validation: {
+    phases: [
+      {
+        name: 'Test',
+        parallel: false,
+        steps: [
+          { name: 'TypeCheck', command: 'pnpm typecheck' },
+        ],
+        timeout: 300000,
+        failFast: true,
+      },
+    ],
+  },
+  git: {
+    mainBranch: 'main',
+    autoSync: false,
+    warnIfBehind: true,
+  },
+};
 
-  /**
-   * Setup all doctor mocks with defaults and configure loadConfig/checkSync
-   */
-  async function mockDoctorDefaults() {
-    await mockDoctorFileSystem();
-    await mockDoctorGit();
-    await mockDoctorEnvironment();
-    vi.mocked(loadConfig).mockResolvedValue(mockConfig);
-    vi.mocked(checkSync).mockReturnValue({ inSync: true });
-  }
+/**
+ * Setup all doctor mocks with defaults and configure loadConfig/checkSync
+ */
+async function mockDoctorDefaults() {
+  await mockDoctorFileSystem();
+  await mockDoctorGit();
+  await mockDoctorEnvironment();
+  vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+  vi.mocked(checkSync).mockReturnValue({ inSync: true });
+}
+
+describe('doctor command', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();

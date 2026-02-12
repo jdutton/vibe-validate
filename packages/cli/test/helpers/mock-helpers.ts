@@ -7,6 +7,8 @@
 import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 
+import { getGitTreeHash } from '@vibe-validate/git';
+import { hasHistoryForTree, readHistoryNote } from '@vibe-validate/history';
 import type { Command } from 'commander';
 import { vi } from 'vitest';
 
@@ -96,4 +98,17 @@ export async function executeCommandAndCaptureOutput(
   return vi.mocked(process.stdout.write).mock.calls
     .map(call => call[0])
     .join('');
+}
+
+/**
+ * Set up common history mocks for snapshot/state tests
+ * Reduces duplication of mock setup patterns
+ *
+ * @param treeHash - Mock tree hash value
+ */
+export function setupHistoryMocks(treeHash: string): void {
+  const mockTreeHashResult = { hash: treeHash };
+  vi.mocked(getGitTreeHash).mockResolvedValue(mockTreeHashResult);
+  vi.mocked(hasHistoryForTree).mockResolvedValue(false);
+  vi.mocked(readHistoryNote).mockResolvedValue(null);
 }

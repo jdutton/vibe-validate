@@ -236,6 +236,9 @@ export default [
       // Complexity limits can be higher in test files with many test cases
       'sonarjs/cognitive-complexity': ['warn', 20],
       'max-nested-callbacks': ['warn', 5],
+
+      // Test quality - shift-left SonarQube code smells
+      'local/no-test-scoped-functions': 'error', // Catch SonarQube S1515: functions inside test blocks
     },
   },
 ];

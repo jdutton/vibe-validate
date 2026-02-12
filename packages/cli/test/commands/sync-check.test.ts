@@ -70,6 +70,40 @@ function expectYamlOutput(contains?: string) {
   }
 }
 
+/**
+ * Helper: Run sync-check command and optionally verify exit code
+ */
+async function runSyncCheck(env: CommanderTestEnv, args: string[] = [], expectedExitCode?: number) {
+  const exitSpy = expectedExitCode === undefined ? null : createExitSpy();
+
+  syncCheckCommand(env.program);
+
+  try {
+    await env.program.parseAsync(['sync-check', ...args], { from: 'user' });
+  } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
+    // Expected exception from Commander.js exitOverride
+    expect(error).toBeDefined();
+  }
+
+  if (exitSpy) {
+    expect(exitSpy).toHaveBeenCalledWith(expectedExitCode);
+    exitSpy.mockRestore();
+  }
+}
+
+/**
+ * Helper: Get the sync-check command from program
+ */
+function getCommand(env: CommanderTestEnv) {
+  syncCheckCommand(env.program);
+  const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
+  expect(command).toBeDefined();
+  if (!command) {
+    throw new Error('Command not found');
+  }
+  return command;
+}
+
 describe('sync-check command', () => {
   let env: CommanderTestEnv;
 
@@ -94,64 +128,30 @@ describe('sync-check command', () => {
     env.cleanup();
   });
 
-  /**
-   * Helper: Run sync-check command and optionally verify exit code
-   */
-  async function runSyncCheck(args: string[] = [], expectedExitCode?: number) {
-    const exitSpy = expectedExitCode === undefined ? null : createExitSpy();
-
-    syncCheckCommand(env.program);
-
-    try {
-      await env.program.parseAsync(['sync-check', ...args], { from: 'user' });
-    } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-      // Expected exception from Commander.js exitOverride
-      expect(error).toBeDefined();
-    }
-
-    if (exitSpy) {
-      expect(exitSpy).toHaveBeenCalledWith(expectedExitCode);
-      exitSpy.mockRestore();
-    }
-  }
-
-  /**
-   * Helper: Get the sync-check command from program
-   */
-  function getCommand() {
-    syncCheckCommand(env.program);
-    const command = env.program.commands.find(cmd => cmd.name() === 'sync-check');
-    expect(command).toBeDefined();
-    if (!command) {
-      throw new Error('Command not found');
-    }
-    return command;
-  }
-
   describe('command registration', () => {
     it('should register sync-check command', () => {
-      getCommand();
+      getCommand(env);
     });
 
     it('should have correct description', () => {
-      const command = getCommand();
+      const command = getCommand(env);
       expect(command.description()).toBe('Check if branch is behind remote main branch');
     });
 
     it('should register --main-branch option', () => {
-      const command = getCommand();
+      const command = getCommand(env);
       const option = command.options.find(opt => opt.long === '--main-branch');
       expect(option).toBeDefined();
     });
 
     it('should register --remote-origin option', () => {
-      const command = getCommand();
+      const command = getCommand(env);
       const option = command.options.find(opt => opt.long === '--remote-origin');
       expect(option).toBeDefined();
     });
 
     it('should register --yaml option', () => {
-      const command = getCommand();
+      const command = getCommand(env);
       const option = command.options.find(opt => opt.long === '--yaml');
       expect(option).toBeDefined();
     });
@@ -160,14 +160,14 @@ describe('sync-check command', () => {
   describe('sync check when up to date', () => {
     it('should exit with code 0 when up to date', async () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(createMockResult());
-      await runSyncCheck([], 0);
+      await runSyncCheck(env, [], 0);
     });
 
     it('should display success message when up to date', async () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ currentBranch: 'feature/test' })
       );
-      await runSyncCheck();
+      await runSyncCheck(env);
       expect(console.log).toHaveBeenCalled();
     });
   });
@@ -177,14 +177,14 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ isUpToDate: false, currentBranch: 'feature/test', behindBy: 3 })
       );
-      await runSyncCheck([], 1);
+      await runSyncCheck(env, [], 1);
     });
 
     it('should display warning message when behind', async () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ isUpToDate: false, currentBranch: 'feature/test', behindBy: 5 })
       );
-      await runSyncCheck();
+      await runSyncCheck(env);
       expect(console.log).toHaveBeenCalled();
     });
   });
@@ -194,14 +194,14 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ hasRemote: false, currentBranch: 'feature/new' })
       );
-      await runSyncCheck([], 0);
+      await runSyncCheck(env, [], 0);
     });
 
     it('should display message when no remote', async () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ hasRemote: false, currentBranch: 'feature/new' })
       );
-      await runSyncCheck();
+      await runSyncCheck(env);
       expect(console.log).toHaveBeenCalled();
     });
   });
@@ -209,7 +209,7 @@ describe('sync-check command', () => {
   describe('--yaml flag', () => {
     it('should output YAML with --- separator when up to date', async () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(createMockResult());
-      await runSyncCheck(['--yaml']);
+      await runSyncCheck(env, ['--yaml']);
       expectYamlOutput('isUpToDate:');
     });
 
@@ -217,7 +217,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ isUpToDate: false, currentBranch: 'feature/test', behindBy: 3 })
       );
-      await runSyncCheck(['--yaml']);
+      await runSyncCheck(env, ['--yaml']);
       expectYamlOutput('behindBy:');
     });
 
@@ -225,7 +225,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ hasRemote: false, currentBranch: 'feature/new' })
       );
-      await runSyncCheck(['--yaml']);
+      await runSyncCheck(env, ['--yaml']);
       expectYamlOutput('hasRemote: false');
     });
   });
@@ -235,7 +235,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ currentBranch: 'feature/test' })
       );
-      await runSyncCheck(['--main-branch', 'develop']);
+      await runSyncCheck(env, ['--main-branch', 'develop']);
       expect(git.checkBranchSync).toHaveBeenCalledWith({
         remoteBranch: 'origin/develop',
       });
@@ -245,7 +245,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ currentBranch: 'feature/test' })
       );
-      await runSyncCheck(['--remote-origin', 'upstream']);
+      await runSyncCheck(env, ['--remote-origin', 'upstream']);
       expect(git.checkBranchSync).toHaveBeenCalledWith({
         remoteBranch: 'upstream/main',
       });
@@ -255,7 +255,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ currentBranch: 'feature/test' })
       );
-      await runSyncCheck(['--main-branch', 'develop', '--remote-origin', 'upstream']);
+      await runSyncCheck(env, ['--main-branch', 'develop', '--remote-origin', 'upstream']);
       expect(git.checkBranchSync).toHaveBeenCalledWith({
         remoteBranch: 'upstream/develop',
       });
@@ -265,7 +265,7 @@ describe('sync-check command', () => {
   describe('human-readable output', () => {
     it('should display human-friendly output when no --yaml flag', async () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(createMockResult());
-      await runSyncCheck();
+      await runSyncCheck(env);
       expect(console.log).toHaveBeenCalled();
 
       // Verify YAML separator was NOT written to stdout
@@ -278,7 +278,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ currentBranch: 'feature/test' })
       );
-      await runSyncCheck();
+      await runSyncCheck(env);
       expect(console.log).toHaveBeenCalled();
     });
 
@@ -286,7 +286,7 @@ describe('sync-check command', () => {
       vi.mocked(git.checkBranchSync).mockResolvedValue(
         createMockResult({ isUpToDate: false, currentBranch: 'feature/test', behindBy: 7 })
       );
-      await runSyncCheck();
+      await runSyncCheck(env);
       expect(console.log).toHaveBeenCalled();
     });
   });
@@ -295,7 +295,7 @@ describe('sync-check command', () => {
     it('should handle sync check errors gracefully', async () => {
       const error = new Error('Git command failed');
       vi.mocked(git.checkBranchSync).mockRejectedValue(error);
-      await runSyncCheck([], 2);
+      await runSyncCheck(env, [], 2);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Sync check failed with error:'),
         error
@@ -305,7 +305,7 @@ describe('sync-check command', () => {
     it('should handle config loading errors gracefully', async () => {
       const error = new Error('Config not found');
       vi.mocked(configLoader.loadConfig).mockRejectedValue(error);
-      await runSyncCheck([], 2);
+      await runSyncCheck(env, [], 2);
       expect(console.error).toHaveBeenCalled();
     });
   });

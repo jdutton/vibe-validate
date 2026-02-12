@@ -26,27 +26,27 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { executeWrapperSync } from '../helpers/test-command-runner.js';
 
+/**
+ * Helper: Run validation and return result
+ * Uses executeWrapperSync for secure, cross-platform execution
+ */
+function runValidation(testDir: string, expectedResult: 'pass' | 'fail') {
+  return executeWrapperSync(['validate', '--force'], {
+    cwd: testDir,
+    env: { VV_TEST_RESULT: expectedResult },
+  });
+}
+
+/**
+ * Helper: Get validation state
+ * Uses executeWrapperSync for secure, cross-platform execution
+ */
+function getState(testDir: string) {
+  return executeWrapperSync(['state'], { cwd: testDir });
+}
+
 describe('History Recording - Git Notes Merge Bug', () => {
   let testDir: string;
-
-  /**
-   * Helper: Run validation and return result
-   * Uses executeWrapperSync for secure, cross-platform execution
-   */
-  function runValidation(expectedResult: 'pass' | 'fail') {
-    return executeWrapperSync(['validate', '--force'], {
-      cwd: testDir,
-      env: { VV_TEST_RESULT: expectedResult },
-    });
-  }
-
-  /**
-   * Helper: Get validation state
-   * Uses executeWrapperSync for secure, cross-platform execution
-   */
-  function getState() {
-    return executeWrapperSync(['state'], { cwd: testDir });
-  }
 
   beforeEach(() => {
     // Create temporary test directory
@@ -92,7 +92,7 @@ validation:
 
   it('should record multiple validation runs for the same tree hash', () => {
     // Run 1: Pass validation
-    const run1 = runValidation('pass');
+    const run1 = runValidation(testDir, 'pass');
     expect(run1.status).toBe(0);
 
     // Get tree hash
@@ -109,7 +109,7 @@ validation:
     expect(runs1.length).toBe(1);
 
     // Run 2: Fail validation (SAME tree hash, different result)
-    const run2 = runValidation('fail');
+    const run2 = runValidation(testDir, 'fail');
     expect(run2.status).toBe(1);
 
     // Verify second run is recorded (THIS WILL FAIL WITH THE BUG)
@@ -121,7 +121,7 @@ validation:
     expect(runs2.length).toBe(2); // ← FAILS: Bug causes only 1 run to be recorded
 
     // Run 3: Pass again (verify third run also records)
-    const run3 = runValidation('pass');
+    const run3 = runValidation(testDir, 'pass');
     expect(run3.status).toBe(0);
 
     // Verify third run is recorded
@@ -135,37 +135,37 @@ validation:
 
   it('should show most recent cached result', () => {
     // Run 1: Fail
-    const run1 = runValidation('fail');
+    const run1 = runValidation(testDir, 'fail');
     expect(run1.status).toBe(1);
 
     // Check state - should show failed
-    const state1 = getState();
+    const state1 = getState(testDir);
     expect(state1.stdout).toContain('passed: false');
 
     // Run 2: Pass (same tree hash)
-    const run2 = runValidation('pass');
+    const run2 = runValidation(testDir, 'pass');
     expect(run2.status).toBe(0);
 
     // Check state - should show passed (most recent)
-    const state2 = getState();
+    const state2 = getState(testDir);
     expect(state2.stdout).toContain('passed: true');
 
     // Run 3: Fail again
-    const run3 = runValidation('fail');
+    const run3 = runValidation(testDir, 'fail');
     expect(run3.status).toBe(1);
 
     // Check state - should show failed (most recent)
-    const state3 = getState();
+    const state3 = getState(testDir);
     expect(state3.stdout).toContain('passed: false');
   });
 
   it('should detect flaky validations', () => {
     // Run 1: Pass
-    const run1 = runValidation('pass');
+    const run1 = runValidation(testDir, 'pass');
     expect(run1.status).toBe(0);
 
     // Run 2: Fail (same tree hash, different outcome = flaky)
-    const run2 = runValidation('fail');
+    const run2 = runValidation(testDir, 'fail');
     expect(run2.status).toBe(1);
 
     // Check for flakiness warning in output
