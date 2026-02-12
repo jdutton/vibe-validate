@@ -36,6 +36,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    setupFiles: ['./.github/vitest.setup.ts'], // Load global setup for env var cleanup
     include: [
       // System tests (end-to-end CLI)
       'packages/cli/test/packaging.system.test.ts',

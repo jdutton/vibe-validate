@@ -2,9 +2,9 @@ import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { getNotesRefs } from '@vibe-validate/git';
+import { getNotesRefs, removeNotesRefs } from '@vibe-validate/git';
 import { normalizePath, normalizedTmpdir } from '@vibe-validate/utils';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import yaml from 'yaml';
 
 import { executeVibeValidateCommand, getCliPath } from '../helpers/cli-execution-helpers.js';
@@ -98,7 +98,37 @@ function parseYamlFrontMatter(stdout: string): any {
   return parsed;
 }
 
+/**
+ * Test isolation: Clean up git notes before and after tests
+ *
+ * This prevents test state leakage where git notes created by one test
+ * (or by other test files like history-recording.test.ts) interfere with
+ * cache detection in subsequent tests. Without this cleanup, tests pass
+ * in isolation but fail in the full suite.
+ *
+ * Root cause: Performance optimizations (listNotes → listNoteObjects) exposed
+ * pre-existing test isolation issue where git notes state leaked between tests.
+ */
 describe('run command integration', () => {
+  // Clean up git notes once before all tests in this file
+  // This handles notes created by previous test files (e.g., history-recording.test.ts)
+  // Use a longer timeout since accumulated notes may take time to clean
+  beforeAll(() => {
+    try {
+      removeNotesRefs('refs/notes/vibe-validate/run');
+    } catch {
+      // Ignore errors - notes may not exist
+    }
+  }, 120000); // 2 minute timeout for cleanup
+
+  // Clean up after each test to prevent state leakage within this file
+  afterEach(() => {
+    try {
+      removeNotesRefs('refs/notes/vibe-validate/run');
+    } catch {
+      // Ignore errors - some tests may not create notes
+    }
+  });
   describe('real nested execution', () => {
     it('should handle real nested vibe-validate run commands (2 levels)', async () => {
       // Execute: vibe-validate run "echo test"
