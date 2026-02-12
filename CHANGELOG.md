@@ -45,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`--retry-failed` flag for flaky test recovery**
+  - Re-runs only failed validation steps while preserving passed step results from cache
+  - Detects and reports potential flakiness when retried steps pass after initial failure
+  - Ideal for CI environments where transient failures occur (network timeouts, race conditions)
+  - Usage: `vv validate --retry-failed`
+  - See flakiness warnings in output when steps pass on retry
+
 - **Dependency lock check**: Prevents cache poisoning by verifying lock files are in sync before validation runs
   - Auto-detects package manager (npm, pnpm, yarn, bun)
   - Configurable via `ci.dependencyLockCheck.runOn` (validate, pre-commit, or disabled)

@@ -14,6 +14,7 @@ import {
   checkWorktreeStability,
   checkHistoryHealth,
   findCachedValidation,
+  readHistoryNote,
   type ValidationRun,
 } from '@vibe-validate/history';
 import { runDependencyCheck } from '@vibe-validate/utils';
@@ -22,6 +23,7 @@ import { stringify as yamlStringify } from 'yaml';
 
 import type { AgentContext } from './context-detector.js';
 import { displayCachedResult } from './display-cached-result.js';
+import { detectFlakiness } from './flakiness-detector.js';
 import { formatWorktreeDisplay } from './format-worktree.js';
 import { createPerfTimer } from './logger.js';
 import { createRunnerConfig } from './runner-adapter.js';
@@ -33,6 +35,7 @@ export interface ValidateWorkflowOptions {
   yaml?: boolean;
   check?: boolean;
   debug?: boolean;
+  retryFailed?: boolean;
   context: AgentContext;
   /** Pre-computed tree hash from lock wrapper (avoids redundant computation) */
   treeHashResult?: TreeHashResult;
@@ -335,6 +338,32 @@ export async function runValidateWorkflow(
     }
     timer.mark('cache check');
 
+    // Load previous validation for --retry-failed functionality
+    let previousRunForRetry: ValidationRun | undefined;
+    if (options.retryFailed && treeHashResultBefore && !forceExecution && !result) {
+      try {
+        const previousRun = await findCachedValidation(treeHashResultBefore);
+
+        if (!previousRun) {
+          // No previous validation found
+          console.error(chalk.yellow(`No failed validation found for tree ${treeHashResultBefore.hash.slice(0, 12)}. Running full validation.`));
+        } else if (previousRun.passed) {
+          // Previous validation passed - can't retry failures if there were none
+          console.error(chalk.yellow(`Previous validation passed for tree ${treeHashResultBefore.hash.slice(0, 12)}. Running full validation.`));
+        } else {
+          // Previous validation failed - use it for retry
+          previousRunForRetry = previousRun;
+        }
+      } catch (error) {
+        // Silent failure - continue with full validation
+        if (verbose) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.warn(chalk.yellow(`⚠️  Could not load previous validation: ${errorMsg}`));
+        }
+      }
+    }
+    timer.mark('retry check');
+
     if (!result) {
       // Display tree hash before running validation
       if (treeHashResultBefore) {
@@ -362,8 +391,11 @@ export async function runValidateWorkflow(
         process.env.VV_FORCE_EXECUTION = '1';
       }
 
-      // Run validation
-      result = await runValidation(runnerConfig);
+      // Run validation (with optional previousRun for retry-failed)
+      result = await runValidation({
+        ...runnerConfig,
+        previousRun: previousRunForRetry,
+      });
 
       // Record validation history (if in git repo)
       if (treeHashResultBefore) {
@@ -382,6 +414,21 @@ export async function runValidateWorkflow(
       }
     } catch {
       // Silent failure - don't block validation
+    }
+
+    // Check for flakiness (only in human-readable mode and when validation passed)
+    if (!yaml && result.passed && treeHashBefore) {
+      try {
+        const note = await readHistoryNote(treeHashBefore);
+        if (note) {
+          const flakinessWarning = detectFlakiness(note, result);
+          if (flakinessWarning) {
+            console.warn(chalk.yellow(flakinessWarning));
+          }
+        }
+      } catch {
+        // Silent failure - don't block validation
+      }
     }
 
     // Display result (cached or fresh)

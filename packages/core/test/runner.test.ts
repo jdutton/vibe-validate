@@ -6,6 +6,7 @@ import type { ChildProcess } from 'node:child_process';
 import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { ValidationStep } from '@vibe-validate/config';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -16,11 +17,12 @@ import {
   runValidation,
   setupSignalHandlers,
 } from '../src/runner.js';
-import type { ValidationConfig, ValidationStep } from '../src/types.js';
+import type { ValidationConfig } from '../src/runner.js';
 
 // Mock git functions
 vi.mock('@vibe-validate/git', async (importOriginal) => {
-  const actual = await importOriginal();
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Dynamic import in mock
+  const actual = await importOriginal<typeof import('@vibe-validate/git')>();
   return {
     ...actual,
     getGitTreeHash: vi.fn(),
@@ -38,7 +40,7 @@ function mockFailingGitTreeHash(errorMessage: string): () => void {
     if (callCount > 1) {
       throw new Error(errorMessage);
     }
-    return { hash: 'test-tree-hash', components: [{ path: '.', treeHash: 'test-tree-hash' }] };
+    return { hash: 'test-tree-hash' as any };
   });
   return () => vi.mocked(getGitTreeHash).mockImplementation(originalMock);
 }
@@ -105,8 +107,7 @@ describe('runner', () => {
 
     // Mock git tree hash to return consistent value
     vi.mocked(getGitTreeHash).mockResolvedValue({
-      hash: 'test-tree-hash-abc123',
-      components: [{ path: '.', treeHash: 'test-tree-hash-abc123' }]
+      hash: 'test-tree-hash-abc123' as any,
     });
 
     // Spy on console.log to reduce noise
@@ -474,7 +475,7 @@ describe('runner', () => {
 
   describe('setupSignalHandlers', () => {
     it('should register SIGTERM handler', () => {
-      const activeProcesses = new Set();
+      const activeProcesses = new Set<ChildProcess>();
       const onSpy = vi.spyOn(process, 'on');
 
       setupSignalHandlers(activeProcesses);
@@ -483,7 +484,7 @@ describe('runner', () => {
     });
 
     it('should register SIGINT handler', () => {
-      const activeProcesses = new Set();
+      const activeProcesses = new Set<ChildProcess>();
       const onSpy = vi.spyOn(process, 'on');
 
       setupSignalHandlers(activeProcesses);
@@ -521,8 +522,8 @@ describe('runner', () => {
         const failedStep = result.phases![0].steps[0];
 
         expect(failedStep.passed).toBe(false);
-        // This should NOT exist when developerFeedback is false
-        expect(failedStep.extractionQuality).toBeUndefined();
+        // extractionQuality field was removed in v0.15.0
+        // Extraction metadata is now in extraction.metadata
       });
     });
 
@@ -561,8 +562,7 @@ describe('runner', () => {
         expect(failedStep.extraction!.metadata).toHaveProperty('confidence');
         expect(failedStep.extraction!.metadata).toHaveProperty('completeness');
         expect(failedStep.extraction!.metadata!.detection).toBeDefined();
-        // extractionQuality should NOT be present (would be redundant)
-        expect(failedStep.extractionQuality).toBeUndefined();
+        // extractionQuality field was removed in v0.15.0 - now uses extraction.metadata
       });
 
       it('should NOT include extractionQuality for passing tests', async () => {
@@ -594,7 +594,7 @@ describe('runner', () => {
 
         expect(passingStep.passed).toBe(true);
         // Should NOT extract on success - no failures to extract!
-        expect(passingStep.extractionQuality).toBeUndefined();
+        // extractionQuality field was removed in v0.15.0
       });
     });
 
@@ -876,7 +876,8 @@ rawOutput: |
       const outputFiles = result.phases![0].steps[0].outputFiles;
       expect(outputFiles?.combined).toBeDefined();
       // Normalize path separators for Windows (\ -> /)
-      const normalizedPath = outputFiles?.combined?.replaceAll('\\', '/');
+      // eslint-disable-next-line unicorn/prefer-string-replace-all -- Using replace for ES2020 compatibility
+      const normalizedPath = outputFiles?.combined?.replace(/\\/g, '/');
       expect(normalizedPath).toContain('/vibe-validate/steps/');
       expect(outputFiles?.combined).toContain('.jsonl');
 
@@ -1098,7 +1099,8 @@ rawOutput: |
       expect(result.outputFiles).toBeDefined();
       expect(result.outputFiles?.combined).toBeDefined();
       // Normalize path separators for Windows (\ -> /)
-      const normalizedPath1 = result.outputFiles?.combined?.replaceAll('\\', '/');
+      // eslint-disable-next-line unicorn/prefer-string-replace-all -- Using replace for ES2020 compatibility
+      const normalizedPath1 = result.outputFiles?.combined?.replace(/\\/g, '/');
       expect(normalizedPath1).toContain('/validation-');
       expect(result.outputFiles?.combined).toContain('.log');
 
@@ -1132,7 +1134,8 @@ rawOutput: |
       expect(result.outputFiles).toBeDefined();
       expect(result.outputFiles?.combined).toBeDefined();
       // Normalize path separators for Windows (\ -> /)
-      const normalizedPath2 = result.outputFiles?.combined?.replaceAll('\\', '/');
+      // eslint-disable-next-line unicorn/prefer-string-replace-all -- Using replace for ES2020 compatibility
+      const normalizedPath2 = result.outputFiles?.combined?.replace(/\\/g, '/');
       expect(normalizedPath2).toContain('/validation-');
       expect(result.outputFiles?.combined).toContain('.log');
 
@@ -1326,6 +1329,585 @@ rawOutput: |
 
     it('should handle SIGINT cleanup errors', async () => {
       await testSignalHandler('SIGINT');
+    });
+  });
+
+  describe('retry-failed: step matching and cache logic', () => {
+    describe('findPreviousStepResult', () => {
+      it('should find step by name in previous run', async () => {
+        const { findPreviousStepResult } = await import('../src/runner.js');
+
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: false,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: false,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Phase 1',
+                passed: true,
+                durationSecs: 2.5,
+                steps: [
+                  {
+                    name: 'TypeCheck',
+                    command: 'tsc --noEmit',
+                    exitCode: 0,
+                    durationSecs: 2.5,
+                    passed: true,
+                  },
+                ],
+              },
+              {
+                name: 'Phase 2',
+                passed: false,
+                durationSecs: 2.5,
+                steps: [
+                  {
+                    name: 'Tests',
+                    command: 'npm test',
+                    exitCode: 1,
+                    durationSecs: 2.5,
+                    passed: false,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        const found = findPreviousStepResult(previousRun, 'Tests');
+        expect(found).toBeDefined();
+        expect(found?.name).toBe('Tests');
+        expect(found?.exitCode).toBe(1);
+      });
+
+      it('should return null when step not found', async () => {
+        const { findPreviousStepResult } = await import('../src/runner.js');
+
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: true,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: true,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Phase 1',
+                passed: true,
+                durationSecs: 2.5,
+                steps: [
+                  {
+                    name: 'TypeCheck',
+                    command: 'tsc --noEmit',
+                    exitCode: 0,
+                    durationSecs: 2.5,
+                    passed: true,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        const found = findPreviousStepResult(previousRun, 'NonExistent');
+        expect(found).toBeNull();
+      });
+
+      it('should return null when previous run has no phases', async () => {
+        const { findPreviousStepResult } = await import('../src/runner.js');
+
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: true,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: true,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+          },
+        };
+
+        const found = findPreviousStepResult(previousRun, 'Tests');
+        expect(found).toBeNull();
+      });
+
+      it('should find step across multiple phases', async () => {
+        const { findPreviousStepResult } = await import('../src/runner.js');
+
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: false,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: false,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Quick Checks',
+                passed: true,
+                durationSecs: 1,
+                steps: [
+                  {
+                    name: 'Lint',
+                    command: 'eslint',
+                    exitCode: 0,
+                    durationSecs: 1,
+                    passed: true,
+                  },
+                ],
+              },
+              {
+                name: 'Tests',
+                passed: false,
+                durationSecs: 30,
+                steps: [
+                  {
+                    name: 'E2E',
+                    command: 'npm run e2e',
+                    exitCode: 1,
+                    durationSecs: 30,
+                    passed: false,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        const found = findPreviousStepResult(previousRun, 'E2E');
+        expect(found).toBeDefined();
+        expect(found?.name).toBe('E2E');
+        expect(found?.exitCode).toBe(1);
+      });
+    });
+
+    describe('shouldUseCachedResult', () => {
+      it('should return true when step passed and retry mode enabled', async () => {
+        const { shouldUseCachedResult } = await import('../src/runner.js');
+
+        const previousStep = {
+          name: 'TypeCheck',
+          command: 'tsc --noEmit',
+          exitCode: 0,
+          durationSecs: 2.5,
+          passed: true,
+        };
+
+        const result = shouldUseCachedResult(previousStep, true);
+        expect(result).toBe(true);
+      });
+
+      it('should return false when step failed', async () => {
+        const { shouldUseCachedResult } = await import('../src/runner.js');
+
+        const previousStep = {
+          name: 'Tests',
+          command: 'npm test',
+          exitCode: 1,
+          durationSecs: 2.5,
+          passed: false,
+        };
+
+        const result = shouldUseCachedResult(previousStep, true);
+        expect(result).toBe(false);
+      });
+
+      it('should return false when not in retry mode', async () => {
+        const { shouldUseCachedResult } = await import('../src/runner.js');
+
+        const previousStep = {
+          name: 'TypeCheck',
+          command: 'tsc --noEmit',
+          exitCode: 0,
+          durationSecs: 2.5,
+          passed: true,
+        };
+
+        const result = shouldUseCachedResult(previousStep, false);
+        expect(result).toBe(false);
+      });
+
+      it('should return false when previous step is null', async () => {
+        const { shouldUseCachedResult } = await import('../src/runner.js');
+
+        const result = shouldUseCachedResult(null, true);
+        expect(result).toBe(false);
+      });
+
+      it('should return false when step was killed (exitCode 143)', async () => {
+        const { shouldUseCachedResult } = await import('../src/runner.js');
+
+        const previousStep = {
+          name: 'SlowTest',
+          command: 'npm run slow',
+          exitCode: 143,
+          durationSecs: 2.5,
+          passed: false,
+        };
+
+        const result = shouldUseCachedResult(previousStep, true);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('runValidation with previousRun (cache logic integration)', () => {
+      it('should use cached result for passed steps when retryFailed enabled', async () => {
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: false,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: false,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Test Phase',
+                passed: false,
+                durationSecs: 5,
+                steps: [
+                  {
+                    name: 'Quick Step',
+                    command: 'node -e "console.log(\'cached\')"',
+                    exitCode: 0,
+                    durationSecs: 2.5,
+                    passed: true,
+                  },
+                  {
+                    name: 'Failing Step',
+                    command: 'node -e "process.exit(1)"',
+                    exitCode: 1,
+                    durationSecs: 2.5,
+                    passed: false,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              parallel: true,
+              steps: [
+                { name: 'Quick Step', command: 'node -e "console.log(\'new run\')"' },
+                { name: 'Failing Step', command: 'node -e "console.log(\'fixed\'); process.exit(0)"' },
+              ],
+            },
+          ],
+          previousRun,
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        expect(result.passed).toBe(true);
+        expect(result.phases).toBeDefined();
+
+        // eslint-disable-next-line sonarjs/no-nested-functions -- Test helper for finding steps
+        const quickStep = result.phases![0].steps.find(s => s.name === 'Quick Step');
+        // eslint-disable-next-line sonarjs/no-nested-functions -- Test helper for finding steps
+        const failingStep = result.phases![0].steps.find(s => s.name === 'Failing Step');
+
+        // Quick Step should use cache
+        expect(quickStep?.isCachedResult).toBe(true);
+        expect(quickStep?.exitCode).toBe(0);
+        expect(quickStep?.durationSecs).toBe(2.5); // Original duration
+
+        // Failing Step should execute fresh
+        expect(failingStep?.isCachedResult).toBeUndefined();
+        expect(failingStep?.exitCode).toBe(0);
+        expect(failingStep?.passed).toBe(true);
+      });
+
+      it('should execute all steps when previous run had no matching step', async () => {
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: false,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: false,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Old Phase',
+                passed: true,
+                durationSecs: 2.5,
+                steps: [
+                  {
+                    name: 'Old Step',
+                    command: 'node -e "console.log(\'old\')"',
+                    exitCode: 0,
+                    durationSecs: 2.5,
+                    passed: true,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'New Phase',
+              steps: [
+                { name: 'New Step', command: 'node -e "console.log(\'new\')"' },
+              ],
+            },
+          ],
+          previousRun,
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        expect(result.passed).toBe(true);
+        expect(result.phases![0].steps[0].isCachedResult).toBeUndefined();
+        expect(result.phases![0].steps[0].name).toBe('New Step');
+      });
+
+      it('should copy extraction and outputFiles from cached step', async () => {
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: true,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: true,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Test Phase',
+                passed: true,
+                durationSecs: 2.5,
+                steps: [
+                  {
+                    name: 'Step With Output',
+                    command: 'node -e "console.log(\'output\')"',
+                    exitCode: 0,
+                    durationSecs: 2.5,
+                    passed: true,
+                    outputFiles: {
+                      // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+                      stdout: '/tmp/stdout.log',
+                      // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+                      stderr: '/tmp/stderr.log',
+                      // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+                      combined: '/tmp/combined.jsonl',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                { name: 'Step With Output', command: 'node -e "console.log(\'new\')"' },
+              ],
+            },
+          ],
+          previousRun,
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        expect(result.passed).toBe(true);
+        const step = result.phases![0].steps[0];
+
+        expect(step.isCachedResult).toBe(true);
+        expect(step.outputFiles).toEqual({
+          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+          stdout: '/tmp/stdout.log',
+          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+          stderr: '/tmp/stderr.log',
+          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+          combined: '/tmp/combined.jsonl',
+        });
+      });
+
+      it('should log cache usage with timestamp in verbose mode', async () => {
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: false,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: false,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Test Phase',
+                passed: true,
+                durationSecs: 2.5,
+                steps: [
+                  {
+                    name: 'Cached Step',
+                    command: 'node -e "console.log(\'cached\')"',
+                    exitCode: 0,
+                    durationSecs: 2.5,
+                    passed: true,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        // eslint-disable-next-line sonarjs/no-nested-functions -- Test spy mock function
+        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                { name: 'Cached Step', command: 'node -e "console.log(\'new\')"' },
+              ],
+            },
+          ],
+          previousRun,
+          verbose: true,
+          yaml: true, // stderr output
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        expect(result.passed).toBe(true);
+
+        // eslint-disable-next-line sonarjs/no-nested-functions -- Test helper for extracting stderr output
+        const stderrOutput = stderrSpy.mock.calls.map(call => call[0]).join('');
+        expect(stderrOutput).toContain('⚡ Cached from 2026-02-12 10:00');
+
+        stderrSpy.mockRestore();
+      });
+
+      it('should show retry indicator for failed steps being re-executed', async () => {
+        const previousRun = {
+          id: 'run-123',
+          timestamp: '2026-02-12T10:00:00Z',
+          duration: 5000,
+          passed: false,
+          branch: 'main',
+          headCommit: 'abc123',
+          uncommittedChanges: false,
+          result: {
+            passed: false,
+            timestamp: '2026-02-12T10:00:00Z',
+            treeHash: 'tree-abc',
+            phases: [
+              {
+                name: 'Test Phase',
+                passed: false,
+                durationSecs: 5,
+                steps: [
+                  {
+                    name: 'Failed Step',
+                    command: 'node -e "console.log(\'fail\'); process.exit(1)"',
+                    exitCode: 1,
+                    durationSecs: 2.5,
+                    passed: false,
+                  },
+                  {
+                    name: 'Passed Step',
+                    command: 'node -e "console.log(\'pass\')"',
+                    exitCode: 0,
+                    durationSecs: 2.5,
+                    passed: true,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        // eslint-disable-next-line sonarjs/no-nested-functions -- Test spy mock function
+        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+        const config: ValidationConfig = {
+          phases: [
+            {
+              name: 'Test Phase',
+              steps: [
+                { name: 'Failed Step', command: 'node -e "console.log(\'fixed\'); process.exit(0)"' },
+                { name: 'Passed Step', command: 'node -e "console.log(\'pass\')"' },
+              ],
+            },
+          ],
+          previousRun,
+          verbose: true,
+          yaml: true, // stderr output
+          env: {},
+          enableFailFast: false,
+        };
+
+        const result = await runValidation(config);
+
+        expect(result.passed).toBe(true);
+
+        // eslint-disable-next-line sonarjs/no-nested-functions -- Test helper for extracting stderr output
+        const stderrOutput = stderrSpy.mock.calls.map(call => call[0]).join('');
+
+        // Failed step should show retry indicator
+        expect(stderrOutput).toContain('🔄 Retrying...');
+
+        // Passed step should show cache indicator (not retry)
+        expect(stderrOutput).toContain('⚡ Cached from 2026-02-12 10:00');
+
+        stderrSpy.mockRestore();
+      });
     });
   });
 });
