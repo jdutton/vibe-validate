@@ -412,7 +412,7 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
 
     try {
       // Use secure addNote with stdin piping (no shell, no heredoc)
-      addNote(refPath, treeHash, noteYaml, true);
+      addNote(refPath, treeHash, noteYaml);
       logDebug('cache', 'Cache stored successfully');
     } catch (error) {
       logWarning('cache', 'Failed to store cache result', error as Error);

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 
 import * as gitExecutor from '../src/git-executor.js';
 import {
@@ -11,6 +12,8 @@ import {
   removeNotesRefs,
   hasNotesRef,
   getNotesRefSha,
+  mergeReplace,
+  mergeAppendRuns,
 } from '../src/git-notes.js';
 import type { TreeHash, NotesRef } from '../src/types.js';
 
@@ -92,20 +95,14 @@ function mockConflictResult(): void {
 }
 
 /**
- * Mock a full atomic merge attempt sequence (7 git commands)
- * @param commitSha - The commit SHA to return for the ref
+ * Mock a merge attempt sequence (2 git commands: read + force-write)
  * @param existingNote - The existing note content
- * @param casSuccess - Whether the final update-ref should succeed
+ * @param writeSuccess - Whether the force-write should succeed
  */
-function mockAtomicMergeAttempt(commitSha: string, existingNote: string, casSuccess: boolean): void {
+function mockMergeAttempt(existingNote: string, writeSuccess: boolean): void {
   vi.mocked(gitExecutor.executeGitCommand)
-    .mockReturnValueOnce({ success: true, stdout: commitSha, stderr: '', exitCode: 0 }) // get ref SHA
     .mockReturnValueOnce({ success: true, stdout: existingNote, stderr: '', exitCode: 0 }) // read note
-    .mockReturnValueOnce({ success: true, stdout: '100644 blob blob-sha\tobj', stderr: '', exitCode: 0 }) // ls-tree
-    .mockReturnValueOnce({ success: true, stdout: 'new-blob', stderr: '', exitCode: 0 }) // hash-object
-    .mockReturnValueOnce({ success: true, stdout: 'new-tree', stderr: '', exitCode: 0 }) // mktree
-    .mockReturnValueOnce({ success: true, stdout: 'new-commit', stderr: '', exitCode: 0 }) // commit-tree
-    .mockReturnValueOnce({ success: casSuccess, stdout: '', stderr: '', exitCode: casSuccess ? 0 : 1 }); // update-ref
+    .mockReturnValueOnce({ success: writeSuccess, stdout: '', stderr: '', exitCode: writeSuccess ? 0 : 1 }); // force-write
 }
 
 
@@ -118,16 +115,16 @@ describe('git-notes - error handling', () => {
     it('should reject symbolic refs like HEAD', () => {
       mockTreeHashValidation();
 
-      expect(() => addNote(TEST_REF, 'HEAD' as TreeHash, 'content', false))
+      expect(() => addNote(TEST_REF, 'HEAD' as TreeHash, 'content'))
         .toThrow('must be hexadecimal');
     });
 
     it('should reject branch names', () => {
       mockTreeHashValidation();
 
-      expect(() => addNote(TEST_REF, 'main' as TreeHash, 'content', false))
+      expect(() => addNote(TEST_REF, 'main' as TreeHash, 'content'))
         .toThrow('must be hexadecimal');
-      expect(() => addNote(TEST_REF, 'feature/foo' as TreeHash, 'content', false))
+      expect(() => addNote(TEST_REF, 'feature/foo' as TreeHash, 'content'))
         .toThrow('must be hexadecimal');
     });
 
@@ -135,44 +132,21 @@ describe('git-notes - error handling', () => {
       mockSuccessfulValidation();
       mockSuccessfulCommand();
 
-      const result = addNote(TEST_REF, VALID_HASH, 'content', true);
+      const result = addNote(TEST_REF, VALID_HASH, 'content');
       expect(result).toBe(true);
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
-        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
-        expect.objectContaining({ stdin: 'content' })
-      );
-    });
-
-    it('should handle force flag correctly', () => {
-      mockSuccessfulValidation();
-      mockSuccessfulCommand();
-
-      // Without force
-      addNote(TEST_REF, VALID_HASH, 'content', false);
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
         ['notes', '--ref=vibe-validate/test', 'add', '-F', '-', VALID_HASH],
-        expect.objectContaining({ stdin: 'content' })
-      );
-
-      vi.clearAllMocks();
-
-      // With force
-      mockSuccessfulValidation();
-      mockSuccessfulCommand();
-      addNote(TEST_REF, VALID_HASH, 'content', true);
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
-        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
         expect.objectContaining({ stdin: 'content' })
       );
     });
   });
 
-  describe('addNote - optimistic locking', () => {
+  describe('addNote - merge strategy', () => {
     it('should succeed on first write when note does not exist', () => {
       mockSuccessfulValidation();
       mockSuccessfulCommand();
 
-      const result = addNote(TEST_REF, VALID_HASH, 'content', false);
+      const result = addNote(TEST_REF, VALID_HASH, 'content');
       expect(result).toBe(true);
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(1);
       expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
@@ -181,10 +155,9 @@ describe('git-notes - error handling', () => {
       );
     });
 
-    it('should retry and merge when note already exists (atomic CAS)', () => {
+    it('should merge using git notes add -f when note already exists (fan-out safe)', () => {
       mockSuccessfulValidation();
 
-      // YAML format (as written by packages/history/src/recorder.ts)
       const existingNote = `treeHash: abc123
 runs:
   - id: run-1
@@ -213,52 +186,17 @@ runs:
         .mockReturnValueOnce({
           success: false,
           stdout: '',
-          stderr: 'error: Object already exists for abc123',
+          stderr: 'error: Object already exists',
           exitCode: 1,
         })
-        // 2. Get notes ref SHA (for CAS)
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'commit-sha-123',
-          stderr: '',
-          exitCode: 0,
-        })
-        // 3. Read existing note
+        // 2. Read existing note
         .mockReturnValueOnce({
           success: true,
           stdout: existingNote,
           stderr: '',
           exitCode: 0,
         })
-        // 4. Read tree entries (ls-tree)
-        .mockReturnValueOnce({
-          success: true,
-          stdout: `100644 blob blob-sha-1\t${VALID_HASH}`,
-          stderr: '',
-          exitCode: 0,
-        })
-        // 5. Create blob (hash-object)
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'new-blob-sha',
-          stderr: '',
-          exitCode: 0,
-        })
-        // 6. Create tree (mktree)
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'new-tree-sha',
-          stderr: '',
-          exitCode: 0,
-        })
-        // 7. Create commit (commit-tree)
-        .mockReturnValueOnce({
-          success: true,
-          stdout: 'new-commit-sha',
-          stderr: '',
-          exitCode: 0,
-        })
-        // 8. Atomic update ref (update-ref with CAS)
+        // 3. Force-write merged content (git handles fan-out)
         .mockReturnValueOnce({
           success: true,
           stdout: '',
@@ -266,69 +204,68 @@ runs:
           exitCode: 0,
         });
 
-      const result = addNote(TEST_REF, VALID_HASH, newNote, false);
+      const result = addNote(TEST_REF, VALID_HASH, newNote, mergeAppendRuns);
 
       expect(result).toBe(true);
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(8);
+      // Only 3 calls: add (fail) + read + force-add (success)
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(3);
 
-      // Verify first call is attempt to add note
+      // Call 1: attempt to add note (no force)
       expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(1,
         ['notes', '--ref=vibe-validate/test', 'add', '-F', '-', VALID_HASH],
         expect.objectContaining({ stdin: newNote })
       );
 
-      // Verify get notes ref SHA call
+      // Call 2: read existing note
       expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(2,
-        ['rev-parse', '--verify', 'refs/notes/vibe-validate/test'],
-        expect.any(Object)
-      );
-
-      // Verify read existing note call
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(3,
         ['notes', '--ref=vibe-validate/test', 'show', VALID_HASH],
         expect.objectContaining({ ignoreErrors: true })
       );
 
-      // Verify ls-tree call
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(4,
-        ['ls-tree', 'commit-sha-123'],
-        expect.any(Object)
+      // Call 3: force-write merged content (git handles fan-out correctly)
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(3,
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
+        expect.objectContaining({
+          stdin: expect.stringContaining('run-1'),
+        })
       );
-
-      // Verify hash-object call (should contain merged content in YAML format)
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
-        ['hash-object', '-w', '--stdin'],
-        expect.objectContaining({ stdin: expect.stringContaining('run-1') })
-      );
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
-        ['hash-object', '-w', '--stdin'],
-        expect.objectContaining({ stdin: expect.stringContaining('run-2') })
-      );
-
-      // Verify mktree call
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(6,
-        ['mktree'],
-        expect.any(Object)
-      );
-
-      // Verify commit-tree call
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(7,
-        ['commit-tree', 'new-tree-sha', '-m', 'Notes added by vibe-validate', '-p', 'commit-sha-123']
-      );
-
-      // Verify atomic update-ref call
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(8,
-        ['update-ref', 'refs/notes/vibe-validate/test', 'new-commit-sha', 'commit-sha-123'],
-        expect.any(Object)
+      // Merged content should contain BOTH runs
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(3,
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
+        expect.objectContaining({
+          stdin: expect.stringContaining('run-2'),
+        })
       );
     });
 
-    it('should retry atomic merge even on non-conflict errors', () => {
-      // New behavior: Always attempt atomic merge when fast-path fails
-      // This is simpler and more robust than parsing error messages
+    it('should return false when existing note disappeared during merge', () => {
       mockSuccessfulValidation();
 
-      // All git commands fail with permission denied
+      vi.mocked(gitExecutor.executeGitCommand)
+        // 1. Try to add note (conflict)
+        .mockReturnValueOnce({
+          success: false,
+          stdout: '',
+          stderr: 'error: Object already exists',
+          exitCode: 1,
+        })
+        // 2. Read existing note (disappeared)
+        .mockReturnValueOnce({
+          success: false,
+          stdout: '',
+          stderr: 'error: no note found',
+          exitCode: 1,
+        });
+
+      const result = addNote(TEST_REF, VALID_HASH, 'content', mergeAppendRuns);
+      expect(result).toBe(false);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return false when all git commands fail', () => {
+      mockSuccessfulValidation();
+
+      // All git commands fail
       vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
         success: false,
         stdout: '',
@@ -336,73 +273,35 @@ runs:
         exitCode: 1,
       });
 
-      const result = addNote(TEST_REF, VALID_HASH, 'content', false);
+      const result = addNote(TEST_REF, VALID_HASH, 'content');
       expect(result).toBe(false);
-      // Will make multiple attempts (fast-path + atomic merge retries)
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalled();
+      // 1 (fast path fail) + 1 (readNote fail) = 2 calls
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(2);
     });
 
-    it('should retry up to maxRetries times with atomic CAS failures', () => {
+    it('should return false when force-write fails after successful read', () => {
       mockSuccessfulValidation();
 
       const existingNote = `treeHash: abc123
 runs:
   - id: run-1
 `;
-      const newNote = `treeHash: abc123
-runs:
-  - id: run-2
-`;
 
-      // Fast path: initial add attempt (conflict)
+      // Fast path: conflict
       mockConflictResult();
 
-      // Attempt 1: full atomic merge sequence, CAS fails
-      mockAtomicMergeAttempt('commit-sha-1', existingNote, false);
+      // Merge attempt: read succeeds, write fails
+      mockMergeAttempt(existingNote, false);
 
-      // Attempt 2: full atomic merge sequence, CAS fails
-      mockAtomicMergeAttempt('commit-sha-2', existingNote, false);
-
-      // Attempt 3 (last): full atomic merge sequence, CAS fails
-      mockAtomicMergeAttempt('commit-sha-3', existingNote, false);
-
-      const result = addNote(TEST_REF, VALID_HASH, newNote, false);
+      const result = addNote(TEST_REF, VALID_HASH, 'new content', mergeAppendRuns);
       expect(result).toBe(false);
-      // 1 (initial conflict) + 7*3 (three full atomic merge attempts) = 22 total calls
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(22);
-    });
-
-    it('should handle CAS failure and retry until success', () => {
-      mockSuccessfulValidation();
-
-      const existingNote = `treeHash: abc123
-runs:
-  - id: run-1
-`;
-      const newNote = `treeHash: abc123
-runs:
-  - id: run-2
-`;
-
-      // Fast path: initial add attempt (conflict)
-      mockConflictResult();
-
-      // Attempt 1: full atomic merge sequence, CAS fails
-      mockAtomicMergeAttempt('commit-sha-1', existingNote, false);
-
-      // Attempt 2: full atomic merge sequence, CAS succeeds
-      mockAtomicMergeAttempt('commit-sha-2', existingNote, true);
-
-      const result = addNote(TEST_REF, VALID_HASH, newNote, false);
-      expect(result).toBe(true);
-      // 1 (initial conflict) + 7 (attempt 1) + 7 (attempt 2) = 15 total calls
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(15);
+      // 1 (fast path) + 2 (read + failed write) = 3 calls
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(3);
     });
 
     it('should merge YAML-formatted notes correctly (bug fix test)', () => {
       mockSuccessfulValidation();
 
-      // YAML format (as written by packages/history/src/recorder.ts)
       const existingNote = `treeHash: abc123
 runs:
   - id: run-1
@@ -414,7 +313,6 @@ runs:
     uncommittedChanges: false
     result: {}
 `;
-
       const newNote = `treeHash: abc123
 runs:
   - id: run-2
@@ -427,30 +325,144 @@ runs:
     result: {}
 `;
 
-      // Fast path: initial add attempt (conflict)
+      // Fast path: conflict
       mockConflictResult();
 
-      // Atomic merge attempt (succeeds)
-      mockAtomicMergeAttempt('commit-sha-123', existingNote, true);
+      // Merge attempt: read + force-write
+      mockMergeAttempt(existingNote, true);
 
-      const result = addNote(TEST_REF, VALID_HASH, newNote, false);
+      const result = addNote(TEST_REF, VALID_HASH, newNote, mergeAppendRuns);
 
       expect(result).toBe(true);
-      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(8);
+      expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(3);
 
-      // Verify hash-object call contains merged content with BOTH runs
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
-        ['hash-object', '-w', '--stdin'],
+      // Verify force-write contains merged content with BOTH runs
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(3,
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
         expect.objectContaining({
-          stdin: expect.stringMatching(/run-1/)
+          stdin: expect.stringMatching(/run-1/),
         })
       );
-      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(5,
-        ['hash-object', '-w', '--stdin'],
+      expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(3,
+        ['notes', '--ref=vibe-validate/test', 'add', '-f', '-F', '-', VALID_HASH],
         expect.objectContaining({
-          stdin: expect.stringMatching(/run-2/)
+          stdin: expect.stringMatching(/run-2/),
         })
       );
+    });
+  });
+
+  describe('mergeReplace', () => {
+    it('should return incoming content unchanged', () => {
+      const existing = 'treeHash: abc123\ncommand: npm test\ntimestamp: old\n';
+      const incoming = 'treeHash: abc123\ncommand: npm test\ntimestamp: new\n';
+
+      expect(mergeReplace(existing, incoming)).toBe(incoming);
+    });
+
+    it('should ignore existing content entirely', () => {
+      const existing = 'completely different format\nwith: extra\nfields: here\n';
+      const incoming = 'treeHash: abc123\ncommand: npm test\n';
+
+      expect(mergeReplace(existing, incoming)).toBe(incoming);
+    });
+  });
+
+  describe('mergeAppendRuns', () => {
+    it('should append runs from both notes', () => {
+      const existing = `treeHash: abc123
+runs:
+  - id: run-1
+    passed: true
+`;
+      const incoming = `treeHash: abc123
+runs:
+  - id: run-2
+    passed: false
+`;
+
+      const result = mergeAppendRuns(existing, incoming);
+      const parsed = parseYaml(result);
+
+      expect(parsed.runs).toHaveLength(2);
+      expect(parsed.runs[0].id).toBe('run-1');
+      expect(parsed.runs[1].id).toBe('run-2');
+    });
+
+    it('should let new data fields win over existing', () => {
+      const existing = `treeHash: abc123
+runs:
+  - id: run-1
+    passed: true
+`;
+      const incoming = `treeHash: updated-hash
+runs:
+  - id: run-2
+    passed: false
+`;
+
+      const result = mergeAppendRuns(existing, incoming);
+      const parsed = parseYaml(result);
+
+      // New treeHash wins
+      expect(parsed.treeHash).toBe('updated-hash');
+      // But runs are appended, not replaced
+      expect(parsed.runs).toHaveLength(2);
+    });
+
+    it('should not add spurious runs key when neither note has runs', () => {
+      const existing = `treeHash: abc123
+command: npm test
+timestamp: old
+`;
+      const incoming = `treeHash: abc123
+command: npm test
+timestamp: new
+`;
+
+      const result = mergeAppendRuns(existing, incoming);
+      const parsed = parseYaml(result);
+
+      expect(parsed.runs).toBeUndefined();
+      expect(parsed.timestamp).toBe('new');
+    });
+
+    it('should fall back to incoming content on YAML parse failure', () => {
+      // Force a runtime error by making parseYaml return something that causes
+      // property access to throw (null/undefined with .runs access)
+      // Use a YAML document that parses to null so existingData?.runs is safe
+      // but we need it to actually throw — use a tab character in a flow context
+      const existing = '{ key: [}';
+      const incoming = 'treeHash: abc123\nruns: []\n';
+
+      const result = mergeAppendRuns(existing, incoming);
+      expect(result).toBe(incoming);
+    });
+
+    it('should handle corrupted notes with duplicate YAML keys', () => {
+      const existing = `treeHash: abc123
+runs:
+  - id: run-1
+    passed: true
+treeHash: abc123
+runs:
+  - id: run-old
+    passed: false
+`;
+      const incoming = `treeHash: abc123
+runs:
+  - id: run-new
+    passed: true
+`;
+
+      // Should not throw — uniqueKeys: false tolerates duplicate keys
+      const result = mergeAppendRuns(existing, incoming);
+      const parsed = parseYaml(result);
+
+      expect(parsed.runs).toBeDefined();
+      expect(parsed.runs.length).toBeGreaterThan(0);
+      // Should contain the new run
+      expect(parsed.runs.some((r: { id: string }) => r.id === 'run-new')).toBe(true);
     });
   });
 

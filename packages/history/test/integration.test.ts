@@ -23,6 +23,7 @@ vi.mock('@vibe-validate/git', () => ({
   getCurrentBranch: vi.fn(() => 'main'),
   getHeadCommitSha: vi.fn(() => '9abc3c4'),
   addNote: vi.fn(() => true),
+  mergeAppendRuns: vi.fn(), // merge strategy passed to addNote
   listNoteObjects: vi.fn(() => []),
   executeGitCommand: vi.fn(() => ({ success: false, stdout: '', stderr: '', exitCode: 1 })),
 }));

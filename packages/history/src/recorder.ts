@@ -9,6 +9,7 @@ import {
   getCurrentBranch as getGitBranch,
   getHeadCommitSha,
   addNote,
+  mergeAppendRuns,
   type NotesRef,
   type TreeHashResult,
 } from '@vibe-validate/git';
@@ -110,10 +111,9 @@ export async function recordValidationHistory(
       runs: [newRun],
     };
 
-    // 3. Add note to git using optimistic locking (prevents data loss in concurrent writes)
-    // addNote will merge this with existing runs and handle pruning atomically
+    // 3. Add note to git (mergeAppendRuns appends new run to existing history)
     const noteContent = stringifyYaml(note);
-    const success = addNote(notesRef, treeHashResult.hash, noteContent, false);
+    const success = addNote(notesRef, treeHashResult.hash, noteContent, mergeAppendRuns);
 
     if (!success) {
       return {

@@ -52,6 +52,13 @@ function createLockFile(dir: string, packageManager: PackageManager): void {
   writeFileSync(lockFile, packageManager === 'bun' ? Buffer.from([0x00]) : '# Lock file content');
 }
 
+/**
+ * Create bun.lock (text format, Bun v1.2+) in directory
+ */
+function createBunTextLockFile(dir: string): void {
+  writeFileSync(join(dir, 'bun.lock'), '# bun.lock text format');
+}
+
 describe('detectPackageManager', () => {
   let tempDir: string;
 
@@ -139,6 +146,23 @@ describe('detectPackageManager', () => {
 
     const result = detectPackageManager(tempDir);
     expect(result).toBe('npm');
+  });
+
+  it('should detect bun from bun.lock text format (v1.2+)', () => {
+    createPackageJson(tempDir);
+    createBunTextLockFile(tempDir);
+
+    const result = detectPackageManager(tempDir);
+    expect(result).toBe('bun');
+  });
+
+  it('should detect bun from bun.lock when both formats exist', () => {
+    createPackageJson(tempDir);
+    createBunTextLockFile(tempDir);
+    createLockFile(tempDir, 'bun'); // also creates bun.lockb
+
+    const result = detectPackageManager(tempDir);
+    expect(result).toBe('bun');
   });
 
   it('should return null when no package manager found', () => {
@@ -246,6 +270,19 @@ describe('runDependencyCheck', () => {
       skipped: false,
       error: 'No package manager detected (no lock file found)',
     });
+  });
+
+  it('should find bun.lock (text format) for detected bun package manager', async () => {
+    createPackageJson(tempDir, {
+      packageManager: 'bun@1.3.9',
+    });
+    createBunTextLockFile(tempDir);
+
+    const result = await runDependencyCheck(tempDir, {}, false);
+
+    // Should NOT fail with "No lock file found" - bun.lock exists
+    expect(result.error).not.toContain('No lock file found');
+    expect(result.packageManager).toBe('bun');
   });
 
   it('should fail when lock file missing for detected package manager', async () => {
