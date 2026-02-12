@@ -6,6 +6,7 @@ import {
   readNote,
   removeNote,
   hasNote,
+  listNoteObjects,
   listNotesRefs,
   removeNotesRefs,
   hasNotesRef,
@@ -533,6 +534,50 @@ runs:
 
       const result = hasNote(TEST_REF, VALID_HASH);
       expect(result).toBe(false);
+    });
+  });
+
+  describe('listNoteObjects', () => {
+    it('should return empty array when no notes exist', () => {
+      mockSuccessfulValidation();
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+        success: false,
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+
+      const result = listNoteObjects(TEST_REF);
+      expect(result).toEqual([]);
+    });
+
+    it('should return array of tree hashes that have notes', () => {
+      mockSuccessfulValidation();
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+        success: true,
+        stdout: 'note_sha1 abc123def456789012345678901234567890abcd\nnote_sha2 def456789012345678901234567890abcdef12',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const result = listNoteObjects(TEST_REF);
+      expect(result).toEqual([
+        'abc123def456789012345678901234567890abcd',
+        'def456789012345678901234567890abcdef12',
+      ]);
+    });
+
+    it('should skip lines without object SHA', () => {
+      mockSuccessfulValidation();
+      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+        success: true,
+        stdout: 'note_sha1 abc123def456789012345678901234567890abcd\n\ninvalid_line',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const result = listNoteObjects(TEST_REF);
+      expect(result).toEqual(['abc123def456789012345678901234567890abcd']);
     });
   });
 

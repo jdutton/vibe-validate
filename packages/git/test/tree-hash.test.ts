@@ -21,7 +21,7 @@ import {
   initTestRepo,
   stageTestFiles,
 } from '../src/test-helpers.js';
-import { getGitTreeHash } from '../src/tree-hash.js';
+import { getGitTreeHash, getSubmodules } from '../src/tree-hash.js';
 
 // Mock git-executor (use importOriginal for integration tests to call through)
 vi.mock('../src/git-executor.js', async (importOriginal) => {
@@ -790,5 +790,65 @@ describe('getGitTreeHash with submodules (integration)', () => {
     expect(result1.submoduleHashes?.['libs/auth']).toBeDefined();
     expect(result2.submoduleHashes?.['libs/auth']).toBeDefined();
     expect(result1.submoduleHashes?.['libs/auth']).not.toBe(result2.submoduleHashes?.['libs/auth']);
+  });
+});
+
+describe('getSubmodules', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return empty array when .gitmodules does not exist (fast path)', () => {
+    // Mock rev-parse to succeed but .gitmodules doesn't exist
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '/test/repo',
+        stderr: '',
+        exitCode: 0,
+      });
+
+    const result = getSubmodules();
+
+    expect(result).toEqual([]);
+    // Should only call rev-parse, not submodule status
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(1);
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
+      ['rev-parse', '--show-toplevel'],
+      expect.any(Object)
+    );
+  });
+
+  it('should fall back to git submodule status when fast path check fails', () => {
+    // Mock rev-parse to fail
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({
+        success: false,
+        stdout: '',
+        stderr: 'not a git repository',
+        exitCode: 128,
+      })
+      .mockReturnValueOnce({
+        success: true,
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+    const result = getSubmodules();
+
+    expect(result).toEqual([]);
+    // Should call both rev-parse AND submodule status
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(2);
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
+      1,
+      ['rev-parse', '--show-toplevel'],
+      expect.any(Object)
+    );
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
+      2,
+      ['submodule', 'status'],
+      expect.any(Object)
+    );
   });
 });
