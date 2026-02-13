@@ -189,9 +189,14 @@ async function recordHistory(
   result: ValidationResult,
   verbose: boolean
 ): Promise<void> {
+  const treeHashShort = treeHashResultBefore.hash.slice(0, 12);
   try {
     // Check if worktree changed during validation
     const stability = await checkWorktreeStability(treeHashResultBefore.hash);
+
+    if (verbose) {
+      console.log(chalk.gray(`\n📝 Recording history for tree ${treeHashShort} (stable=${stability.stable})`));
+    }
 
     if (stability.stable) {
       // Record to git notes
@@ -199,12 +204,12 @@ async function recordHistory(
 
       if (recordResult.recorded) {
         if (verbose) {
-          console.log(chalk.gray(`\n📝 History recorded (tree: ${treeHashResultBefore.hash.slice(0, 12)})`));
+          console.log(chalk.gray(`   ✓ History recorded (tree: ${treeHashShort})`));
         }
       } else {
         // Always warn on stderr when history recording fails (not just in verbose mode)
         console.error(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason ?? 'Unknown reason'}`));
-        console.error(chalk.gray(`   Tree hash: ${treeHashResultBefore.hash.slice(0, 12)}`));
+        console.error(chalk.gray(`   Tree hash: ${treeHashShort}`));
       }
     } else {
       console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));

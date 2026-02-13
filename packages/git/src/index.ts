@@ -83,8 +83,11 @@ export {
   hasNote,
   listNotesRefs,
   removeNotesRefs,
-  getNotesRefSha
+  getNotesRefSha,
+  mergeReplace,
+  mergeAppendRuns,
 } from './git-notes.js';
+export type { NoteMergeStrategy } from './git-notes.js';
 
 // Git staging detection (prevent partially staged files in pre-commit)
 export {

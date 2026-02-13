@@ -229,6 +229,101 @@ runs:
       expect(result?.runs[0].passed).toBe(true);
     });
 
+    it('should log warning when note has duplicate YAML keys (corruption detected)', async () => {
+      // Strict parsing detects corruption, logs warning, then permissive parsing continues
+      const corruptedYaml = `
+treeHash: abc123def456
+runs:
+  - id: run-new
+    timestamp: '2025-10-21T10:00:00Z'
+    duration: 3000
+    passed: true
+    branch: main
+    headCommit: commit456
+    uncommittedChanges: false
+    result:
+      passed: true
+      timestamp: '2025-10-21T10:00:00Z'
+      treeHash: abc123def456
+treeHash: abc123def456
+runs:
+  - id: run-old
+    timestamp: '2025-10-20T10:00:00Z'
+    duration: 5000
+    passed: true
+    branch: main
+    headCommit: commit123
+    uncommittedChanges: false
+    result:
+      passed: true
+      timestamp: '2025-10-20T10:00:00Z'
+      treeHash: abc123def456
+`;
+
+      vi.mocked(readNote).mockReturnValue(corruptedYaml);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const result = await readHistoryNote('abc123def456');
+
+        // Should still return data (permissive fallback)
+        expect(result).toBeDefined();
+        expect(result?.runs.length).toBeGreaterThan(0);
+
+        // Should have logged a warning about corruption
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('corrupted')
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('should handle corrupted notes with duplicate YAML keys', async () => {
+      // Bug: git notes can have duplicate top-level 'treeHash' keys from
+      // concatenated note content (legacy bug or manual edits).
+      // The YAML parser throws 'Map keys must be unique' by default,
+      // which causes readHistoryNote to return null, losing all history.
+      const corruptedYaml = `
+treeHash: abc123def456
+runs:
+  - id: run-old
+    timestamp: '2025-10-20T10:00:00Z'
+    duration: 5000
+    passed: false
+    branch: main
+    headCommit: commit123
+    uncommittedChanges: false
+    result:
+      passed: false
+      timestamp: '2025-10-20T10:00:00Z'
+      treeHash: abc123def456
+      summary: Test failed
+      failedStep: Unit Tests
+treeHash: abc123def456
+runs:
+  - id: run-new
+    timestamp: '2025-10-21T10:00:00Z'
+    duration: 3000
+    passed: true
+    branch: main
+    headCommit: commit456
+    uncommittedChanges: false
+    result:
+      passed: true
+      timestamp: '2025-10-21T10:00:00Z'
+      treeHash: abc123def456
+`;
+
+      vi.mocked(readNote).mockReturnValue(corruptedYaml);
+
+      const result = await readHistoryNote('abc123def456');
+
+      // Should NOT return null - should recover runs from corrupted note
+      expect(result).toBeDefined();
+      expect(result?.runs.length).toBeGreaterThan(0);
+    });
+
     it('should silently ignore old format notes without runs array (pre-0.19.0)', async () => {
       // Simulate legacy history from before PR #123 (composite hash format)
       const oldFormatYaml = `

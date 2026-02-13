@@ -15,6 +15,7 @@ vi.mock('@vibe-validate/git', () => ({
   getCurrentBranch: vi.fn(() => 'feature/foo'),
   getHeadCommitSha: vi.fn(() => '9abc3c4'),
   addNote: vi.fn(),
+  mergeAppendRuns: vi.fn(), // merge strategy passed to addNote
 }));
 
 vi.mock('child_process', () => ({
@@ -66,11 +67,12 @@ describe('recordValidationHistory', () => {
 
     // Verify addNote was called with correct parameters
     const { addNote } = await import('@vibe-validate/git');
+    const { mergeAppendRuns } = await import('@vibe-validate/git');
     expect(addNote).toHaveBeenCalledWith(
       'vibe-validate/validate',
       treeHash,
       expect.any(String), // YAML content
-      false // optimistic locking (not force)
+      mergeAppendRuns // merge strategy: append runs
     );
   });
 

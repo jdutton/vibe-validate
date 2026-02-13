@@ -42,12 +42,13 @@ export interface DependencyCheckResult {
 
 /**
  * Lock file names for each package manager
+ * Bun supports both bun.lock (text, v1.2+) and bun.lockb (binary, legacy)
  */
-const LOCK_FILES: Record<PackageManager, string> = {
-  bun: 'bun.lockb',
-  yarn: 'yarn.lock',
-  pnpm: 'pnpm-lock.yaml',
-  npm: 'package-lock.json',
+const LOCK_FILES: Record<PackageManager, string[]> = {
+  bun: ['bun.lock', 'bun.lockb'],
+  yarn: ['yarn.lock'],
+  pnpm: ['pnpm-lock.yaml'],
+  npm: ['package-lock.json'],
 };
 
 /**
@@ -104,8 +105,7 @@ export function detectPackageManager(
 
   // 3. Check for lock files in priority order
   for (const pm of DETECTION_PRIORITY) {
-    const lockFile = join(gitRoot, LOCK_FILES[pm]);
-    if (existsSync(lockFile)) {
+    if (LOCK_FILES[pm].some(f => existsSync(join(gitRoot, f)))) {
       return pm;
     }
   }
@@ -217,9 +217,9 @@ export async function runDependencyCheck(
     };
   }
 
-  // Verify lock file exists
-  const lockFile = join(gitRoot, LOCK_FILES[packageManager]);
-  if (!existsSync(lockFile)) {
+  // Verify lock file exists (check all variants, e.g. bun.lock and bun.lockb)
+  const lockFile = LOCK_FILES[packageManager].map(f => join(gitRoot, f)).find(f => existsSync(f));
+  if (!lockFile) {
     return {
       passed: false,
       skipped: false,

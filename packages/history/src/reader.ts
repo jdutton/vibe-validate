@@ -31,7 +31,18 @@ export async function readHistoryNote(
       return null;
     }
 
-    const parsed = parseYaml(yaml);
+    // Try strict parsing first to detect corruption, then fall back to permissive.
+    // This makes corruption visible (logged warning) while keeping the system functional.
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = parseYaml(yaml) as Record<string, unknown>;
+    } catch (strictError) {
+      // Strict parsing failed (e.g., duplicate keys from fan-out concatenation bug).
+      // Log warning so corruption is visible, then parse permissively to continue.
+      const msg = strictError instanceof Error ? strictError.message : String(strictError);
+      console.warn(`[vibe-validate] Note has corrupted YAML (using permissive parse): ${msg.slice(0, 120)}`);
+      parsed = parseYaml(yaml, { uniqueKeys: false }) as Record<string, unknown>;
+    }
 
     // Validate as HistoryNote structure (silently ignore old format notes)
     if (!parsed || typeof parsed !== 'object' || !('runs' in parsed) || !Array.isArray(parsed.runs)) {
