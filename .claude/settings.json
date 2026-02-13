@@ -138,11 +138,10 @@
       "mcp__github__list_issues"
     ],
     "ask": [
-      "Bash(gh run list:*)",
-      "Bash(gh run view:*)",
-      "Bash(git commit:*)",
-      "Bash(pnpm jscpd-update-baseline:*)",
-      "Bash(node tools/jscpd-update-baseline.js *)"
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(git commit *)",
+      "Bash(*jscpd-update-baseline*)"
     ],
     "deny": [
       "Skill(superpowers:using-git-worktrees)",

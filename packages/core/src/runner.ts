@@ -74,6 +74,26 @@ export interface ValidationConfig {
   /** Extractor plugin configuration (for loading local/external plugins) */
   extractors?: Pick<VibeValidateConfig, 'extractors'>['extractors'];
 
+  /**
+   * Previous validation run for retry-failed functionality
+   *
+   * When provided, the runner can skip steps that passed in the previous run
+   * and only re-execute failed steps. Used by --retry-failed flag.
+   *
+   * @see packages/history/src/schemas.ts - ValidationRunSchema
+   */
+  previousRun?: {
+    id: string;
+    timestamp: string;
+    duration: number;
+    passed: boolean;
+    branch: string;
+    headCommit: string;
+    uncommittedChanges: boolean;
+    submoduleHashes?: Record<string, string>;
+    result: ValidationResult;
+  };
+
   /** Callback when phase starts */
   onPhaseStart?: (_phase: ValidationPhase) => void;
 
@@ -115,6 +135,81 @@ interface StepExecutionOptions {
   developerFeedback?: boolean;
   /** Enable debug mode (create output files for all steps) */
   debug?: boolean;
+  /** Previous validation run for retry-failed functionality */
+  previousRun?: ValidationConfig['previousRun'];
+}
+
+/**
+ * Find step result from previous validation run by name
+ *
+ * Searches across all phases in the previous validation to find a step
+ * with the matching name. This enables step caching for --retry-failed.
+ *
+ * @param previousRun - Previous validation run data from history
+ * @param stepName - Name of step to find
+ * @returns Step result if found, null otherwise
+ *
+ * @example
+ * ```typescript
+ * const previousStep = findPreviousStepResult(previousRun, 'TypeCheck');
+ * if (previousStep && previousStep.exitCode === 0) {
+ *   // Use cached result
+ * }
+ * ```
+ *
+ * @public
+ */
+export function findPreviousStepResult(
+  previousRun: ValidationConfig['previousRun'],
+  stepName: string
+): StepResult | null {
+  if (!previousRun?.result.phases) {
+    return null;
+  }
+
+  for (const phase of previousRun.result.phases) {
+    for (const step of phase.steps) {
+      if (step.name === stepName) {
+        return step;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Determine if we should use cached result for this step
+ *
+ * Returns true only when all conditions are met:
+ * - Retry-failed mode is enabled
+ * - Previous step exists
+ * - Previous step passed (exitCode === 0)
+ *
+ * @param previousStep - Step result from previous run (or null if not found)
+ * @param isRetryFailed - Whether retry-failed mode is enabled
+ * @returns True if we should use cached result, false otherwise
+ *
+ * @example
+ * ```typescript
+ * const previousStep = findPreviousStepResult(previousRun, 'Build');
+ * if (shouldUseCachedResult(previousStep, true)) {
+ *   return createCachedStepResult(previousStep);
+ * }
+ * ```
+ *
+ * @public
+ */
+export function shouldUseCachedResult(
+  previousStep: StepResult | null,
+  isRetryFailed: boolean
+): boolean {
+  if (!previousStep || !isRetryFailed) {
+    return false;
+  }
+
+  // Use cache only if step passed (exitCode === 0)
+  return previousStep.exitCode === 0;
 }
 
 /**
@@ -439,19 +534,78 @@ async function processStepOutput(
 }
 
 /**
- * Execute a single validation step
+ * Options for executing a single step
  */
-async function executeSingleStep(
-  step: ValidationStep,
-  env: Record<string, string>,
-  verbose: boolean,
-  yaml: boolean,
-  debug: boolean,
-  maxNameLength: number,
-  log: (_msg: string) => void
-): Promise<{ output: string; stepResult: StepResult }> {
+interface ExecuteSingleStepOptions {
+  step: ValidationStep;
+  env: Record<string, string>;
+  verbose: boolean;
+  yaml: boolean;
+  debug: boolean;
+  maxNameLength: number;
+  log: (_msg: string) => void;
+  previousRun?: ValidationConfig['previousRun'];
+}
+
+/**
+ * Format timestamp for display in cache indicators
+ *
+ * Converts ISO 8601 timestamp to human-readable format.
+ *
+ * @param timestamp - ISO 8601 timestamp string
+ * @returns Formatted date and time string (e.g., "2026-02-12 10:30")
+ *
+ * @internal
+ */
+function formatCacheTimestamp(timestamp: string): string {
+  try {
+    const date = new Date(timestamp);
+    // Format as YYYY-MM-DD HH:MM
+    return date.toISOString().slice(0, 16).replace('T', ' ');
+  } catch {
+    return timestamp; // Fallback to original if parsing fails
+  }
+}
+
+/**
+ * Execute a single validation step (or use cached result if available)
+ */
+async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ output: string; stepResult: StepResult }> {
+  const { step, env, verbose, yaml, debug, maxNameLength, log, previousRun } = options;
   const paddedName = step.name.padEnd(maxNameLength);
-  log(`   ⏳ ${paddedName}  →  ${step.command}`);
+
+  // Check if we can use cached result from previous run
+  const previousStep = previousRun ? findPreviousStepResult(previousRun, step.name) : null;
+  const isRetryFailed = Boolean(previousRun);
+
+  if (shouldUseCachedResult(previousStep, isRetryFailed)) {
+    // Use cached result - copy everything from previous step and mark as cached
+    // previousStep is guaranteed non-null by shouldUseCachedResult check
+    if (!previousStep) {
+      throw new Error('Internal error: previousStep should not be null after shouldUseCachedResult');
+    }
+
+    const formattedTimestamp = formatCacheTimestamp(previousRun?.timestamp ?? '');
+    log(`   ⏳ ${paddedName}  →  ${step.command}`);
+    if (verbose) {
+      log(`      ⚡ Cached from ${formattedTimestamp}`);
+    }
+    const status = '✅';
+    const result = 'PASSED';
+    log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${previousStep.durationSecs}s)`);
+
+    const cachedStepResult: StepResult = {
+      ...previousStep,
+      isCachedResult: true,
+    };
+
+    return { output: '', stepResult: cachedStepResult };
+  }
+
+  // Execute step normally (check if this is a retry of a previously failed step)
+  const isRetryingFailedStep = isRetryFailed && previousStep && !previousStep.passed;
+  const commandPrefix = isRetryingFailedStep && verbose ? '🔄 Retrying...\n   ' : '';
+  log(`   ${commandPrefix}⏳ ${paddedName}  →  ${step.command}`);
 
   const startTime = Date.now();
   // Resolve cwd relative to git root (if specified)
@@ -563,6 +717,7 @@ export async function runStepsSequentially(
     verbose = false,
     yaml = false,
     debug = false,
+    previousRun,
   } = options;
   // When yaml mode is on, write progress to stderr to keep stdout clean
   const log = yaml ?
@@ -577,15 +732,16 @@ export async function runStepsSequentially(
 
   // Run steps one at a time
   for (const step of steps) {
-    const { output, stepResult } = await executeSingleStep(
+    const { output, stepResult } = await executeSingleStep({
       step,
       env,
       verbose,
       yaml,
       debug,
       maxNameLength,
-      log
-    );
+      log,
+      previousRun,
+    });
 
     outputs.set(step.name, output);
     stepResults.push(stepResult);
@@ -660,6 +816,7 @@ export async function runStepsInParallel(
     yaml = false,
     developerFeedback = false,
     debug = false,
+    previousRun,
   } = options;
   // When yaml mode is on, write progress to stderr to keep stdout clean
   const log = yaml ?
@@ -686,6 +843,39 @@ export async function runStepsInParallel(
     steps.map(step =>
       new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
         const paddedName = step.name.padEnd(maxNameLength);
+
+        // Check if we can use cached result from previous run
+        const previousStep = previousRun ? findPreviousStepResult(previousRun, step.name) : null;
+        const isRetryFailed = Boolean(previousRun);
+
+        if (shouldUseCachedResult(previousStep, isRetryFailed)) {
+          // Use cached result - copy everything from previous step and mark as cached
+          // previousStep is guaranteed non-null by shouldUseCachedResult check
+          if (!previousStep) {
+            reject(new Error('Internal error: previousStep should not be null after shouldUseCachedResult'));
+            return;
+          }
+
+          log(`   ⏳ ${paddedName}  →  ${step.command}`);
+          if (verbose) {
+            log(`      ⚡ Using cached result from previous validation`);
+          }
+          const status = '✅';
+          const result = 'PASSED';
+          log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${previousStep.durationSecs}s)`);
+
+          const cachedStepResult: StepResult = {
+            ...previousStep,
+            isCachedResult: true,
+          };
+
+          stepResults.push(cachedStepResult);
+          outputs.set(step.name, '');
+          resolve({ step, output: '', durationSecs: previousStep.durationSecs });
+          return;
+        }
+
+        // Execute step normally
         log(`   ⏳ ${paddedName}  →  ${step.command}`);
 
         const startTime = Date.now();
@@ -1062,6 +1252,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
         yaml: config.yaml ?? false,
         developerFeedback: config.developerFeedback ?? false,
         debug: config.debug ?? false,
+        previousRun: config.previousRun,
       }
     );
     const phaseDurationMs = Date.now() - phaseStartTime;

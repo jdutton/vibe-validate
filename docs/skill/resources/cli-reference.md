@@ -48,6 +48,7 @@ Run validation with git tree hash caching
 - `-y, --yaml` - Output validation result as YAML to stdout
 - `-c, --check` - Check if validation has already passed (do not run)
 - `-d, --debug` - Create output files for all steps (for debugging)
+- `--retry-failed` - Retry only failed steps from previous validation
 - `--no-lock` - Allow concurrent validation runs (disables single-instance mode)
 - `--no-wait` - Exit immediately if validation is already running (for background hooks)
 - `--wait-timeout <seconds>` - Maximum time to wait for running validation (default: 300)

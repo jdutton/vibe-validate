@@ -18,6 +18,7 @@ export function validateCommand(program: Command): void {
     .option('-y, --yaml', 'Output validation result as YAML to stdout')
     .option('-c, --check', 'Check if validation has already passed (do not run)')
     .option('-d, --debug', 'Create output files for all steps (for debugging)')
+    .option('--retry-failed', 'Retry only failed steps from previous validation')
     .option('--no-lock', 'Allow concurrent validation runs (disables single-instance mode)')
     .option('--no-wait', 'Exit immediately if validation is already running (for background hooks)')
     .option('--wait-timeout <seconds>', 'Maximum time to wait for running validation (default: 300)', '300')
@@ -64,6 +65,7 @@ export function validateCommand(program: Command): void {
                 yaml: options.yaml,
                 check: options.check,
                 debug: options.debug,
+                retryFailed: options.retryFailed,
                 context,
                 treeHashResult,
               });
@@ -116,7 +118,8 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 
 ## Options
 
-- \`-f, --force\` - Force validation even if already passed (bypasses cache)
+- \`-f, --force\` - Force validation even if already passed (bypasses cache, re-runs everything)
+- \`--retry-failed\` - Retry only failed steps from previous validation (preserves passed step cache)
 - \`-v, --verbose\` - Show detailed progress and output
 - \`-y, --yaml\` - Output validation result as YAML to stdout (LLM-friendly)
 - \`-c, --check\` - Check if validation has already passed without running
@@ -133,8 +136,11 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 # Standard usage (uses cache if available)
 vibe-validate validate
 
-# Force re-validation (bypass cache)
+# Force re-validation (bypass cache, re-runs everything)
 vibe-validate validate --force
+
+# Retry only failed steps (fast recovery from transient failures)
+vibe-validate validate --retry-failed
 
 # Check status without running
 vibe-validate validate --check
@@ -145,6 +151,17 @@ vibe-validate validate --yaml
 # Verbose output with YAML result
 vibe-validate validate --verbose --yaml
 \`\`\`
+
+## --force vs --retry-failed
+
+Both flags bypass the cached result, but they differ in scope:
+
+| Flag | Re-runs | Preserves cache | Use when |
+|------|---------|-----------------|----------|
+| \`--force\` | All steps | No | Config changed, need clean run |
+| \`--retry-failed\` | Failed steps only | Yes (passed steps) | Transient failure, flaky test |
+
+\`--retry-failed\` also detects flakiness: if a step that failed on the previous run now passes without code changes, it warns you about potential non-deterministic behavior.
 
 ## Caching Behavior
 

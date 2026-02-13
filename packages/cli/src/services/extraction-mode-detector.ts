@@ -54,37 +54,42 @@ export class ExtractionModeDetector {
    * @returns ErrorExtractorResult or null if not matrix mode
    */
   private async extractFromMatrixMode(logs: string): Promise<ErrorExtractorResult | null> {
-    try {
-      // Strip GitHub Actions log prefixes from each line
-      // Format: <job-name>\t<step-name>\t[BOM]<timestamp> <content>
-      // Where BOM is optional UTF-8 BOM (U+FEFF)
-      const cleanedLogs = logs
-        .split('\n')
-        .map((line) => this.stripLogPrefix(line))
-        .join('\n');
+    // Strip GitHub Actions log prefixes from each line
+    // Format: <job-name>\t<step-name>\t[BOM]<timestamp> <content>
+    // Where BOM is optional UTF-8 BOM (U+FEFF)
+    const cleanedLogs = logs
+      .split('\n')
+      .map((line) => this.stripLogPrefix(line))
+      .join('\n');
 
-      // Find YAML document between --- markers (using RegExp.exec for sonarjs compliance)
-      // eslint-disable-next-line sonarjs/slow-regex -- NOSONAR: False positive - regex is safe for YAML markers
-      const yamlRegex = /^---\s*\n([\s\S]*?)\n---\s*$/m;
-      const yamlMatch = yamlRegex.exec(cleanedLogs);
-      if (!yamlMatch) {
-        return null;
+    // Find all YAML documents between --- markers and try each one
+    // Multiple YAML blocks may exist (e.g., skills validation output before validate state)
+    // Earlier blocks may fail to parse (e.g., @ in package names), so try all of them
+    // eslint-disable-next-line sonarjs/slow-regex -- False positive: regex matches YAML document markers, input is bounded CI log output
+    const yamlRegex = /^---\s*\n([\s\S]*?)\n---\s*$/gm;
+    let yamlMatch: RegExpExecArray | null;
+
+    while ((yamlMatch = yamlRegex.exec(cleanedLogs)) !== null) {
+      try {
+        const yamlContent = yamlMatch[1];
+        const parsed = YAML.parse(yamlContent);
+
+        if (!parsed || typeof parsed !== 'object') {
+          continue;
+        }
+
+        // Try extracting from root level first, then nested
+        const result = this.extractFromYAML(parsed);
+        if (result) {
+          return result;
+        }
+      } catch {
+        // YAML parsing failed for this block - try next one
+        continue;
       }
-
-      // Parse and extract from YAML
-      const yamlContent = yamlMatch[1];
-      const parsed = YAML.parse(yamlContent);
-
-      if (!parsed || typeof parsed !== 'object') {
-        return null;
-      }
-
-      // Try extracting from root level first, then nested
-      return this.extractFromYAML(parsed);
-    } catch {
-      // YAML parsing failed - not matrix mode
-      return null;
     }
+
+    return null;
   }
 
   /**

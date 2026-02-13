@@ -70,6 +70,8 @@ export {
   runStepsInParallel,
   parseFailures,
   setupSignalHandlers,
+  findPreviousStepResult,
+  shouldUseCachedResult,
 } from './runner.js';
 
 // Export process utilities
