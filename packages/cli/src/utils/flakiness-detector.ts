@@ -121,9 +121,11 @@ function findFlakySteps(
 function formatFlakinessWarning(flakySteps: FlakyStep[]): string {
   const lines: string[] = [];
 
-  lines.push('⚠️  Validation passed, but failed on previous run without code changes.');
-  lines.push('');
-  lines.push('    Failed steps from previous run:');
+  lines.push(
+    '⚠️  Validation passed, but failed on previous run without code changes.',
+    '',
+    '    Failed steps from previous run:',
+  );
 
   for (const step of flakySteps) {
     lines.push(
@@ -131,11 +133,13 @@ function formatFlakinessWarning(flakySteps: FlakyStep[]): string {
     );
   }
 
-  lines.push('');
-  lines.push('    This may indicate flaky tests. Consider investigating:');
-  lines.push('    - Non-deterministic test behavior');
-  lines.push('    - System resource contention');
-  lines.push('    - External dependency issues');
+  lines.push(
+    '',
+    '    This may indicate flaky tests. Consider investigating:',
+    '    - Non-deterministic test behavior',
+    '    - System resource contention',
+    '    - External dependency issues',
+  );
 
   return lines.join('\n');
 }

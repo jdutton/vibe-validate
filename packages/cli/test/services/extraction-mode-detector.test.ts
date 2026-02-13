@@ -13,6 +13,7 @@
  */
 
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
+import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ExtractionModeDetector } from '../../src/services/extraction-mode-detector.js';
@@ -22,6 +23,38 @@ import { createTestCheck } from '../helpers/watch-pr-fixtures.js';
 vi.mock('@vibe-validate/extractors', () => ({
   autoDetectAndExtract: vi.fn(),
 }));
+
+/**
+ * Assert extraction result matches expected summary, error count, and error array length
+ */
+function expectExtraction(
+  result: ErrorExtractorResult | null,
+  expected: { summary: string; totalErrors: number; errorCount: number },
+): void {
+  expect(result).toBeDefined();
+  expect(result?.summary).toBe(expected.summary);
+  expect(result?.totalErrors).toBe(expected.totalErrors);
+  expect(result?.errors).toHaveLength(expected.errorCount);
+}
+
+/**
+ * Mock autoDetectAndExtract to return a simple fallback result and assert it was used
+ */
+function setupNonMatrixFallback(summary = 'Fallback result', totalErrors = 1): void {
+  vi.mocked(autoDetectAndExtract).mockReturnValue({
+    summary,
+    totalErrors,
+    errors: [{ message: 'Error' }],
+  });
+}
+
+/**
+ * Assert that non-matrix fallback was used (autoDetectAndExtract was called)
+ */
+function expectNonMatrixFallbackUsed(result: ErrorExtractorResult | null): void {
+  expect(result).toBeDefined();
+  expect(autoDetectAndExtract).toHaveBeenCalled();
+}
 
 describe('ExtractionModeDetector', () => {
   let detector: ExtractionModeDetector;
@@ -60,10 +93,7 @@ describe('ExtractionModeDetector', () => {
 
       const result = await detector.detectAndExtract(check, logs);
 
-      expect(result).toBeDefined();
-      expect(result?.summary).toBe('2 test failure(s)');
-      expect(result?.totalErrors).toBe(2);
-      expect(result?.errors).toHaveLength(2);
+      expectExtraction(result, { summary: '2 test failure(s)', totalErrors: 2, errorCount: 2 });
       expect(result?.guidance).toBe('Fix the failing tests');
     });
 
@@ -130,17 +160,12 @@ extraction:
 ---
 `;
 
-      vi.mocked(autoDetectAndExtract).mockReturnValue({
-        summary: '1 error',
-        totalErrors: 1,
-        errors: [{ message: 'Error' }],
-      });
+      setupNonMatrixFallback('1 error');
 
       const result = await detector.detectAndExtract(check, logs);
 
       // Should fall back to non-matrix mode
-      expect(result).toBeDefined();
-      expect(autoDetectAndExtract).toHaveBeenCalled();
+      expectNonMatrixFallbackUsed(result);
     });
   });
 
@@ -278,6 +303,62 @@ Job\tStep\t2025-12-16T10:01:00.000Z ---`;
       expect(result?.errors).toHaveLength(1); // Only one error in this fixture
       expect(result?.errors[0].file).toBe('test/example.test.ts');
       expect(result?.guidance).toBe('Fix the tests');
+    });
+
+    it('should extract from second YAML block when first block fails to parse', async () => {
+      const check = createTestCheck({
+        name: 'Run vibe-validate validation (windows-latest, 24)',
+        run_id: 22003731703,
+        workflow: 'Validation Pipeline',
+        duration: '6m21s',
+      });
+
+      // Real scenario: skills validation emits a YAML block with @ in package name
+      // (causes YAML parse error), followed by the validate state YAML with real errors
+      const logs = `Job\tStep\t2025-12-16T10:01:00.000Z ---
+Job\tStep\t2025-12-16T10:01:00.000Z status: success
+Job\tStep\t2025-12-16T10:01:00.000Z package: @vibe-agent-toolkit/vat-development-agents
+Job\tStep\t2025-12-16T10:01:00.000Z skillsBuilt: 1
+Job\tStep\t2025-12-16T10:01:00.000Z ---
+Job\tStep\t2025-12-16T10:01:01.000Z some other output
+Job\tStep\t2025-12-16T10:01:02.000Z ---
+Job\tStep\t2025-12-16T10:01:02.000Z passed: false
+Job\tStep\t2025-12-16T10:01:02.000Z summary: Unit tests with coverage failed
+Job\tStep\t2025-12-16T10:01:02.000Z failedStep: Unit tests with coverage
+Job\tStep\t2025-12-16T10:01:02.000Z phases:
+Job\tStep\t2025-12-16T10:01:02.000Z   - name: Testing
+Job\tStep\t2025-12-16T10:01:02.000Z     passed: false
+Job\tStep\t2025-12-16T10:01:02.000Z     steps:
+Job\tStep\t2025-12-16T10:01:02.000Z       - name: Unit tests with coverage
+Job\tStep\t2025-12-16T10:01:02.000Z         passed: false
+Job\tStep\t2025-12-16T10:01:02.000Z         exitCode: 1
+Job\tStep\t2025-12-16T10:01:02.000Z         extraction:
+Job\tStep\t2025-12-16T10:01:02.000Z           errors:
+Job\tStep\t2025-12-16T10:01:02.000Z             - file: packages/test/walk.test.ts
+Job\tStep\t2025-12-16T10:01:02.000Z               line: 200
+Job\tStep\t2025-12-16T10:01:02.000Z               message: "AssertionError: expected 'D:\\\\project\\\\docs' to be '/project/docs'"
+Job\tStep\t2025-12-16T10:01:02.000Z           summary: 1 test failure(s)
+Job\tStep\t2025-12-16T10:01:02.000Z           totalErrors: 1
+Job\tStep\t2025-12-16T10:01:02.000Z           guidance: Fix the failing tests
+Job\tStep\t2025-12-16T10:01:02.000Z ---`;
+
+      // Non-matrix fallback should NOT be used when YAML has real extraction data
+      vi.mocked(autoDetectAndExtract).mockReturnValue({
+        summary: 'WRONG: non-matrix fallback used',
+        totalErrors: 0,
+        errors: [],
+      });
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expect(result).toBeDefined();
+      expect(result?.summary).toBe('1 test failure(s)');
+      expect(result?.totalErrors).toBe(1);
+      expect(result?.errors).toHaveLength(1);
+      expect(result?.errors[0].file).toBe('packages/test/walk.test.ts');
+      expect(result?.guidance).toBe('Fix the failing tests');
+      // Verify we used YAML extraction, not the non-matrix fallback
+      expect(autoDetectAndExtract).not.toHaveBeenCalled();
     });
 
     it('should preserve indentation when stripping prefixes', async () => {
@@ -485,10 +566,7 @@ extraction:
 
       const result = await detector.detectAndExtract(check, logs);
 
-      expect(result).toBeDefined();
-      expect(result?.summary).toBe('2 test failure(s)');
-      expect(result?.totalErrors).toBe(2);
-      expect(result?.errors).toHaveLength(2);
+      expectExtraction(result, { summary: '2 test failure(s)', totalErrors: 2, errorCount: 2 });
     });
   });
 
@@ -539,17 +617,12 @@ exitCode: 1
 ---
 `;
 
-      vi.mocked(autoDetectAndExtract).mockReturnValue({
-        summary: 'Generic error',
-        totalErrors: 1,
-        errors: [{ message: 'Error' }],
-      });
+      setupNonMatrixFallback('Generic error');
 
       const result = await detector.detectAndExtract(check, logs);
 
       // Should fall back to non-matrix mode
-      expect(result).toBeDefined();
-      expect(autoDetectAndExtract).toHaveBeenCalled();
+      expectNonMatrixFallbackUsed(result);
     });
   });
 });
