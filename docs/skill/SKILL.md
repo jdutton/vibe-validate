@@ -160,6 +160,9 @@ npx vibe-validate validate
 # Force re-validation (bypass cache)
 npx vibe-validate validate --force
 
+# Retry only failed steps (preserves cache for passed steps)
+npx vibe-validate validate --retry-failed
+
 # Check validation status without running
 npx vibe-validate validate --check
 ```
@@ -169,6 +172,10 @@ npx vibe-validate validate --check
 - Parallel execution where configured
 - Caches result by git tree hash
 - Exit code 0 = pass, 1 = fail
+
+**`--force` vs `--retry-failed`**:
+- `--force` — Re-runs **everything** from scratch, ignoring all cached results
+- `--retry-failed` — Re-runs **only failed steps**, preserving passed step results from cache. Detects and warns about flaky tests (steps that pass on retry without code changes). Use this when a transient failure occurred (network timeout, resource contention) and you want a fast retry without re-running steps that already passed.
 
 ### 4. Setup Diagnostics
 
