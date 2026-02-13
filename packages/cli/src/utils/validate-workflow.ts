@@ -332,8 +332,13 @@ export async function runValidateWorkflow(
     if (treeHashResultBefore && !forceExecution) {
       const cached = await checkCache(treeHashResultBefore);
       if (cached) {
-        result = cached.result;
-        cachedRun = cached.run;
+        // When --retry-failed is set, don't use cached failures — let retry logic handle them
+        if (options.retryFailed && !cached.result.passed) {
+          // Skip cache — retry logic below will re-use this failed run as previousRun
+        } else {
+          result = cached.result;
+          cachedRun = cached.run;
+        }
       }
     }
     timer.mark('cache check');

@@ -39,13 +39,18 @@ function setupFindCachedValidationMock(
   }
 }
 
+async function getRunValidationMock() {
+  const { runValidation } = await import('@vibe-validate/core');
+  return vi.mocked(runValidation);
+}
+
 async function expectValidationRun(
   options: Partial<ValidateWorkflowOptions>,
   expectedPreviousRun?: ValidationRun
 ) {
-  const { runValidation } = await import('@vibe-validate/core');
+  const runValidation = await getRunValidationMock();
 
-  vi.mocked(runValidation).mockResolvedValue({
+  runValidation.mockResolvedValue({
     passed: true,
     timestamp: new Date().toISOString(),
     summary: 'All steps passed',
@@ -59,6 +64,19 @@ async function expectValidationRun(
       previousRun: expectedPreviousRun,
     })
   );
+}
+
+async function expectCacheUsed(
+  options: Partial<ValidateWorkflowOptions>,
+  expectedPassed: boolean
+) {
+  const runValidation = await getRunValidationMock();
+
+  const result = await executeWorkflow(options);
+
+  expect(runValidation).not.toHaveBeenCalled();
+  expect(result.passed).toBe(expectedPassed);
+  expect(result.isCachedResult).toBe(true);
 }
 
 describe('validate-workflow retry-failed', () => {
@@ -123,6 +141,32 @@ describe('validate-workflow retry-failed', () => {
         expect.stringContaining(MOCK_TREE_HASH)
       );
     });
+
+    it('should use cached result when cached validation passed', async () => {
+      // When the cached result PASSED, --retry-failed should still use the cache
+      // (nothing to retry — validation already succeeded)
+      const passedRun = createMockRun(true);
+      setupFindCachedValidationMock(passedRun);
+
+      await expectCacheUsed({
+        retryFailed: true,
+        treeHashResult: MOCK_TREE_HASH_RESULT,
+      }, true);
+    });
+  });
+
+  describe('retryFailed=false with cached failed validation (regression guard)', () => {
+    it('should still return cached failed result without retry flag', async () => {
+      // Without --retry-failed, a cached failure should be returned as-is
+      // (existing behavior must not break)
+      const failedRun = createMockRun(false);
+      setupFindCachedValidationMock(failedRun);
+
+      await expectCacheUsed({
+        retryFailed: false,
+        treeHashResult: MOCK_TREE_HASH_RESULT,
+      }, false);
+    });
   });
 
   describe('retryFailed=true with previous validation that failed', () => {
@@ -139,6 +183,20 @@ describe('validate-workflow retry-failed', () => {
       expect(consoleErrorSpy).not.toHaveBeenCalledWith(
         expect.stringContaining('No failed validation found')
       );
+    });
+
+    it('should bypass cache and retry when cached result is a failure', async () => {
+      // This models the REAL scenario: findCachedValidation returns the failed
+      // run on BOTH calls — first for checkCache(), then for retry logic.
+      // The cache check must NOT short-circuit when --retry-failed is set and
+      // the cached result is a failure.
+      const failedRun = createMockRun(false);
+      setupFindCachedValidationMock(failedRun, failedRun);
+
+      await expectValidationRun({
+        retryFailed: true,
+        treeHashResult: MOCK_TREE_HASH_RESULT,
+      }, failedRun);
     });
   });
 
