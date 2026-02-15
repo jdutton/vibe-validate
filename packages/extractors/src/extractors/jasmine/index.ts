@@ -292,6 +292,7 @@ const jasminePlugin: ExtractorPlugin = {
   hints: {
     required: ['spec'],
     anyOf: ['Failures:'],
+    forbidden: ['.py::'],
   },
   priority: 90, // Updated to match highest confidence
   detect,

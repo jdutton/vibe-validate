@@ -25,6 +25,7 @@ import mavenCompilerPlugin from './extractors/maven-compiler/index.js';
 import mavenSurefirePlugin from './extractors/maven-surefire/index.js';
 import mochaPlugin from './extractors/mocha/index.js';
 import playwrightPlugin from './extractors/playwright/index.js';
+import pytestPlugin from './extractors/pytest/index.js';
 import tapPlugin from './extractors/tap/index.js';
 import typescriptPlugin from './extractors/typescript/index.js';
 import vitestPlugin from './extractors/vitest/index.js';
@@ -74,10 +75,11 @@ export interface ExtractorDescriptor {
  * 2. JUnit (Priority 100) - XML format is unique
  * 3. TypeScript (Priority 95) - Very specific error codes
  * 4. Playwright (Priority 95) - .spec.ts files with › separator
- * 5. Jest (Priority 90) - Must check before Mocha
- * 6. Vitest (Priority 90) - Secondary fallback patterns
- * 7. ESLint (Priority 85) - Distinctive format
- * 8. Jasmine (Priority 85) - Distinctive "Failures:" header
+ * 5. Pytest (Priority 92) - Python pytest with .py:: paths
+ * 6. Jest (Priority 90) - Must check before Mocha
+ * 7. Vitest (Priority 90) - Secondary fallback patterns
+ * 8. ESLint (Priority 85) - Distinctive format
+ * 9. Jasmine (Priority 85) - Distinctive "Failures:" header
  * 9. Ava (Priority 82) - Ava v6+ format with ✘ markers
  * 10. Mocha (Priority 80) - Generic "passing/failing" patterns
  * 11. TAP (Priority 78) - TAP version 13 protocol
@@ -139,6 +141,16 @@ export const EXTRACTOR_REGISTRY: ExtractorDescriptor[] = [
     trust: 'full', // Built-in trusted code
     detect: playwrightPlugin.detect,
     extract: playwrightPlugin.extract,
+  },
+
+  // Pytest - Python pytest with distinctive .py:: test paths
+  {
+    name: pytestPlugin.metadata.name,
+    priority: pytestPlugin.priority,
+    trust: 'full', // Built-in trusted code
+    detect: pytestPlugin.detect,
+    extract: pytestPlugin.extract,
+    hints: pytestPlugin.hints,
   },
 
   // Jest - Must check BEFORE Mocha to avoid false positives

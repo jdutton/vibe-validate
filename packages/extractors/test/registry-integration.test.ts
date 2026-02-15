@@ -32,6 +32,7 @@ describe('Extractor Registry - Trust Level Integration', () => {
         'mocha',
         'jasmine',
         'playwright',
+        'pytest',
         'junit',
         'maven-compiler',
         'maven-checkstyle',
@@ -373,15 +374,15 @@ src/example.ts(15,10): error TS2304: Cannot find name 'foo'.
   });
 
   describe('Complete coverage of trust field', () => {
-    it('should have exactly 15 extractors with trust levels', () => {
+    it('should have exactly 16 extractors with trust levels', () => {
       // Count unique extractor names
       const uniqueNames = new Set(EXTRACTOR_REGISTRY.map(e => e.name));
 
-      // Should have 14 unique extractors (vitest appears twice with different priorities)
-      expect(uniqueNames.size).toBe(14);
+      // Should have 15 unique extractors (vitest appears twice with different priorities)
+      expect(uniqueNames.size).toBe(15);
 
-      // All 15+ registry entries should have trust field
-      expect(EXTRACTOR_REGISTRY.length).toBeGreaterThanOrEqual(15);
+      // All 16+ registry entries should have trust field
+      expect(EXTRACTOR_REGISTRY.length).toBeGreaterThanOrEqual(16);
       expect(EXTRACTOR_REGISTRY.every(e => e.trust === 'full')).toBe(true);
     });
 

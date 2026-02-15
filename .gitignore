@@ -7,6 +7,11 @@ build/
 *.tsbuildinfo
 *.tgz
 
+# TypeScript compilation artifacts (outside dist/)
+*.d.ts
+*.d.ts.map
+*.js.map
+
 # Turborepo cache
 .turbo/
 
