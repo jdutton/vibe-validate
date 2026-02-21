@@ -3,11 +3,11 @@ validation:
     - name: Pre-Qualification
       parallel: false
       steps:
+        - name: Build All Packages (TypeScript)
+          command: pnpm exec turbo run build
         - name: Repository Structure Validation
           command: pnpm exec tsx packages/dev-tools/src/validate-repo-structure.ts
           description: 'Validates build system, package.json, and source file conventions'
-        - name: Build All Packages (TypeScript)
-          command: pnpm exec turbo run build
         - name: TypeScript Type Check
           command: pnpm exec turbo run typecheck
         - name: ESLint Code Quality
