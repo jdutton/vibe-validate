@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: CI workflow generation always uses single validate job** (v0.19.0+)
+  - Removed non-matrix mode — `generate-workflow` now always produces a single `validate` job
+  - Matches local `pnpm validate` behavior: all steps run sequentially in one CI runner
+  - Setup steps (e.g., `npx playwright install`) now run before tests in CI, just like locally
+  - **Migration**: Run `npx vibe-validate generate-workflow` to regenerate your workflow file
+  - **API**: `useMatrix` option removed from `GenerateWorkflowOptions`
+
 - **BREAKING: TreeHashResult structure change** (v0.19.0+)
   - **Before**: `{ hash: string, components: Array<{path, treeHash}> }`
   - **After**: `{ hash: TreeHash, submoduleHashes?: Record<string, TreeHash> }`
