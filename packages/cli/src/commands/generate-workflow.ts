@@ -18,7 +18,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import type { VibeValidateConfig, ValidationPhase } from '@vibe-validate/config';
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import { mkdirSyncReal } from '@vibe-validate/utils';
 import { type Command } from 'commander';
 import { stringify as yamlStringify } from 'yaml';
@@ -91,9 +91,9 @@ interface GitHubWorkflow {
  * Generate GitHub Actions workflow options
  */
 export interface GenerateWorkflowOptions {
-  /** Node.js versions to test (default: ['20', '22']) - set to single version to disable matrix */
+  /** Node.js versions to test (default: auto-detect from package.json engines) */
   nodeVersions?: string[];
-  /** Operating systems to test (default: ['ubuntu-latest']) - set to single OS to disable matrix */
+  /** Operating systems to test (default: ['ubuntu-latest']) */
   os?: string[];
   /** Package manager (default: auto-detect from packageManager field or lockfiles) */
   packageManager?: PackageManager;
@@ -103,8 +103,6 @@ export interface GenerateWorkflowOptions {
   coverageProvider?: 'codecov' | 'coveralls';
   /** Codecov token secret name (default: 'CODECOV_TOKEN') */
   codecovTokenSecret?: string;
-  /** Use matrix strategy for multi-OS/Node testing (default: true if multiple values provided) */
-  useMatrix?: boolean;
   /** Fail fast in matrix (default: false) */
   matrixFailFast?: boolean;
   /** Project root directory for detecting package.json and lockfiles (default: process.cwd()) */
@@ -123,124 +121,6 @@ export function toJobId(name: string): string {
     .replaceAll(/(^-)|(-$)/g, '');
 }
 
-/**
- * Get all job IDs from validation phases
- * Handles both phase-based (parallel: false) and step-based (parallel: true) jobs
- */
-export function getAllJobIds(phases: ValidationPhase[]): string[] {
-  const jobIds: string[] = [];
-
-  for (const phase of phases) {
-    if (phase.parallel === false) {
-      // Phase-based: one job per phase
-      jobIds.push(toJobId(phase.name));
-    } else {
-      // Step-based: one job per step
-      for (const step of phase.steps) {
-        jobIds.push(toJobId(step.name));
-      }
-    }
-  }
-
-  return jobIds;
-}
-
-/**
- * Create common job setup steps (checkout, node, package manager)
- */
-function createCommonJobSetupSteps(
-  nodeVersion: string,
-  packageManager: PackageManager
-): GitHubWorkflowStep[] {
-  const steps: GitHubWorkflowStep[] = [
-    {
-      uses: ACTIONS_CHECKOUT_V4,
-      with: {
-        [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
-      }
-    },
-  ];
-
-  // Setup package manager and Node.js
-  if (packageManager === 'bun') {
-    // Bun uses its own setup action (includes Node.js)
-    steps.push(
-      {
-        name: 'Setup Bun',
-        uses: ACTIONS_SETUP_BUN_V2,
-      },
-      { run: getInstallCommand(packageManager) }
-    );
-  } else if (packageManager === 'pnpm') {
-    steps.push(
-      {
-        name: STEP_NAME_SETUP_PNPM,
-        uses: ACTIONS_SETUP_PNPM_V2,
-        with: { version: '8' },
-      },
-      {
-        uses: ACTIONS_SETUP_NODE_V4,
-        with: {
-          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersion,
-          cache: 'pnpm',
-        },
-      },
-      { run: getInstallCommand(packageManager) }
-    );
-  } else if (packageManager === 'yarn') {
-    steps.push(
-      {
-        uses: ACTIONS_SETUP_NODE_V4,
-        with: {
-          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersion,
-          cache: 'yarn',
-        },
-      },
-      { run: getInstallCommand(packageManager) }
-    );
-  } else {
-    // npm
-    steps.push(
-      {
-        uses: ACTIONS_SETUP_NODE_V4,
-        with: {
-          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersion,
-          cache: 'npm',
-        },
-      },
-      { run: getInstallCommand(packageManager) }
-    );
-  }
-
-  return steps;
-}
-
-/**
- * Add coverage reporting steps if enabled for this step
- */
-function addCoverageReportingSteps(
-  jobSteps: GitHubWorkflowStep[],
-  stepName: string,
-  enableCoverage: boolean,
-  coverageProvider: string
-): void {
-  if (enableCoverage && stepName.toLowerCase().includes('coverage')) {
-    if (coverageProvider === 'codecov') {
-      jobSteps.push({
-        name: 'Upload coverage to Codecov',
-        uses: 'codecov/codecov-action@v3',
-        with: {
-          'fail_ci_if_error': true,
-        },
-      });
-    } else if (coverageProvider === 'coveralls') {
-      jobSteps.push({
-        name: 'Upload coverage to Coveralls',
-        uses: 'coverallsapp/github-action@v2',
-      });
-    }
-  }
-}
 
 /**
  * Generate bash script to check all job statuses
@@ -291,8 +171,14 @@ function detectNodeVersion(cwd: string = process.cwd()): string {
 
 /**
  * Generate GitHub Actions workflow from validation config
+ *
+ * Always generates a single "validate" job that runs all validation steps
+ * sequentially within one CI runner - matching the local `pnpm validate` experience.
+ * This ensures setup steps (e.g., playwright install) run before tests, and
+ * new checkouts for developers and CI just work.
+ *
+ * Supports matrix strategy for testing across multiple Node.js versions and OS.
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 69 acceptable for workflow generation (converts config phases/steps into GitHub Actions YAML with proper dependency management and caching logic)
 export function generateWorkflow(
   config: VibeValidateConfig,
   options: GenerateWorkflowOptions = {}
@@ -308,15 +194,90 @@ export function generateWorkflow(
     matrixFailFast = false,
   } = options;
 
-  // Determine if we should use matrix strategy
-  const useMatrix = options.useMatrix ?? (nodeVersions.length > 1 || os.length > 1);
-
   const jobs: Record<string, GitHubWorkflowJob> = {};
   const phases = config.validation.phases;
 
-  if (useMatrix) {
-    // Matrix strategy: Create single job that runs validation with matrix
-    const jobSteps: GitHubWorkflowStep[] = [
+  // Single validate job - runs all validation steps sequentially (like local)
+  const jobSteps: GitHubWorkflowStep[] = [
+    {
+      uses: ACTIONS_CHECKOUT_V4,
+      with: {
+        [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
+      }
+    },
+  ];
+
+  // Setup package manager
+  if (packageManager === 'bun') {
+    jobSteps.push({
+      name: 'Setup Bun',
+      uses: ACTIONS_SETUP_BUN_V2,
+    });
+  } else if (packageManager === 'pnpm') {
+    jobSteps.push({
+      name: STEP_NAME_SETUP_PNPM,
+      uses: ACTIONS_SETUP_PNPM_V2,
+      with: { version: '9' },
+    });
+  }
+
+  // Setup Node.js with matrix variable
+  // Important: Even for Bun projects, Node.js setup ensures compatibility testing
+  // across versions that npm package consumers will use
+  const nodeCacheConfig = packageManager === 'bun' ? {} : { cache: packageManager };
+  jobSteps.push({
+    name: 'Setup Node.js ${{ matrix.node }}',
+    uses: ACTIONS_SETUP_NODE_V4,
+    with: {
+      [WORKFLOW_PROPERTY_NODE_VERSION]: '${{ matrix.node }}',
+      ...nodeCacheConfig,
+    },
+  });
+
+  // Install dependencies
+  jobSteps.push({
+    name: 'Install dependencies',
+    run: getInstallCommand(packageManager),
+  });
+
+  // Add build step if needed (common pattern)
+  const hasBuildPhase = phases.some(p =>
+    p.steps.some(s => s.name.toLowerCase().includes('build'))
+  );
+  if (hasBuildPhase) {
+    jobSteps.push({
+      name: STEP_NAME_BUILD_PACKAGES,
+      run: getBuildCommand(packageManager),
+    });
+  }
+
+  // Run validation - use exit code to determine success/failure
+  // No need for YAML output, grep checks, or platform-specific logic
+  // GitHub Actions will automatically fail the job if exit code != 0
+  jobSteps.push({
+    name: 'Run validation',
+    run: getValidateCommand(packageManager),
+    env: {
+      GH_TOKEN: '${{ github.token }}',
+    },
+  });
+
+  jobs['validate'] = {
+    name: 'Run vibe-validate validation',
+    'runs-on': '${{ matrix.os }}',
+    steps: jobSteps,
+    strategy: {
+      'fail-fast': matrixFailFast,
+      matrix: {
+        os,
+        node: nodeVersions,
+      },
+    },
+  };
+
+  // Add coverage job if enabled (separate, runs on ubuntu only)
+  if (enableCoverage) {
+    const coverageSteps: GitHubWorkflowStep[] = [
       {
         uses: ACTIONS_CHECKOUT_V4,
         with: {
@@ -325,251 +286,68 @@ export function generateWorkflow(
       },
     ];
 
-    // Setup package manager
     if (packageManager === 'bun') {
-      jobSteps.push({
+      coverageSteps.push({
         name: 'Setup Bun',
         uses: ACTIONS_SETUP_BUN_V2,
       });
     } else if (packageManager === 'pnpm') {
-      jobSteps.push({
+      coverageSteps.push({
         name: STEP_NAME_SETUP_PNPM,
         uses: ACTIONS_SETUP_PNPM_V2,
         with: { version: '9' },
       });
     }
 
-    // Setup Node.js with matrix variable
-    // Important: Even for Bun projects, Node.js setup ensures compatibility testing
-    // across versions that npm package consumers will use
-    const nodeCacheConfig = packageManager === 'bun' ? {} : { cache: packageManager };
-    jobSteps.push({
-      name: 'Setup Node.js ${{ matrix.node }}',
-      uses: ACTIONS_SETUP_NODE_V4,
-      with: {
-        [WORKFLOW_PROPERTY_NODE_VERSION]: '${{ matrix.node }}',
-        ...nodeCacheConfig,
-      },
-    });
+    if (packageManager !== 'bun') {
+      coverageSteps.push({
+        name: 'Setup Node.js',
+        uses: ACTIONS_SETUP_NODE_V4,
+        with: {
+          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersions[0],
+          cache: packageManager,
+        },
+      });
+    }
 
-    // Install dependencies
-    jobSteps.push({
+    coverageSteps.push({
       name: 'Install dependencies',
       run: getInstallCommand(packageManager),
     });
 
-    // Add build step if needed (common pattern)
-    const hasBuildPhase = phases.some(p =>
-      p.steps.some(s => s.name.toLowerCase().includes('build'))
-    );
     if (hasBuildPhase) {
-      jobSteps.push({
+      coverageSteps.push({
         name: STEP_NAME_BUILD_PACKAGES,
         run: getBuildCommand(packageManager),
       });
     }
 
-    // Run validation - use exit code to determine success/failure
-    // No need for YAML output, grep checks, or platform-specific logic
-    // GitHub Actions will automatically fail the job if exit code != 0
-    jobSteps.push({
-      name: 'Run validation',
-      run: getValidateCommand(packageManager),
-      env: {
-        GH_TOKEN: '${{ github.token }}',
-      },
+    coverageSteps.push({
+      name: 'Run tests with coverage',
+      run: getCoverageCommand(packageManager),
     });
 
-    jobs['validate'] = {
-      name: 'Run vibe-validate validation',
-      'runs-on': '${{ matrix.os }}',
-      steps: jobSteps,
-      strategy: {
-        'fail-fast': matrixFailFast,
-        matrix: {
-          os,
-          node: nodeVersions,
+    if (coverageProvider === 'codecov') {
+      coverageSteps.push({
+        name: 'Upload coverage to Codecov',
+        uses: 'codecov/codecov-action@v4',
+        with: {
+          token: `\${{ secrets.${codecovTokenSecret} }}`,
+          files: './coverage/coverage-final.json',
+          'fail_ci_if_error': false,
         },
-      },
+      });
+    }
+
+    jobs['validate-coverage'] = {
+      name: 'Run validation with coverage',
+      'runs-on': DEFAULT_RUNNER_OS,
+      steps: coverageSteps,
     };
-
-    // Add coverage job if enabled (separate, runs on ubuntu only)
-    if (enableCoverage) {
-      const coverageSteps: GitHubWorkflowStep[] = [
-        {
-          uses: ACTIONS_CHECKOUT_V4,
-          with: {
-            [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
-          }
-        },
-      ];
-
-      if (packageManager === 'bun') {
-        coverageSteps.push({
-          name: 'Setup Bun',
-          uses: ACTIONS_SETUP_BUN_V2,
-        });
-      } else if (packageManager === 'pnpm') {
-        coverageSteps.push({
-          name: STEP_NAME_SETUP_PNPM,
-          uses: ACTIONS_SETUP_PNPM_V2,
-          with: { version: '9' },
-        });
-      }
-
-      if (packageManager !== 'bun') {
-        coverageSteps.push({
-          name: 'Setup Node.js',
-          uses: ACTIONS_SETUP_NODE_V4,
-          with: {
-            [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersions[0],
-            cache: packageManager,
-          },
-        });
-      }
-
-      coverageSteps.push({
-        name: 'Install dependencies',
-        run: getInstallCommand(packageManager),
-      });
-
-      if (hasBuildPhase) {
-        coverageSteps.push({
-          name: STEP_NAME_BUILD_PACKAGES,
-          run: getBuildCommand(packageManager),
-        });
-      }
-
-      coverageSteps.push({
-        name: 'Run tests with coverage',
-        run: getCoverageCommand(packageManager),
-      });
-
-      if (coverageProvider === 'codecov') {
-        coverageSteps.push({
-          name: 'Upload coverage to Codecov',
-          uses: 'codecov/codecov-action@v4',
-          with: {
-            token: `\${{ secrets.${codecovTokenSecret} }}`,
-            files: './coverage/coverage-final.json',
-            'fail_ci_if_error': false,
-          },
-        });
-      }
-
-      jobs['validate-coverage'] = {
-        name: 'Run validation with coverage',
-        'runs-on': DEFAULT_RUNNER_OS,
-        steps: coverageSteps,
-      };
-    }
-  } else {
-    // Non-matrix: Create jobs based on parallel flag
-    // - parallel: false → One job per phase (phase-based grouping)
-    // - parallel: true → One job per step (step-based parallelism)
-
-    let previousJobIds: string[] | undefined;
-
-    for (const phase of phases) {
-
-      // Determine needs based on previous phase
-      const needs: string[] | undefined = previousJobIds;
-
-      if (phase.parallel === false) {
-        // Phase-based grouping: ONE job with sequential workflow steps
-        const phaseJobId = toJobId(phase.name);
-        const jobSteps = createCommonJobSetupSteps(nodeVersions[0], packageManager);
-
-        // Add bootstrap build if this phase has a build step
-        const hasBuildStep = phase.steps.some(s => s.name.toLowerCase().includes('build'));
-        if (hasBuildStep) {
-          jobSteps.push({
-            name: STEP_NAME_BUILD_PACKAGES,
-            run: getBuildCommand(packageManager),
-          });
-        }
-
-        // Add each step as a separate workflow step
-        for (const step of phase.steps) {
-          const stepWorkflowStep: GitHubWorkflowStep = {
-            name: step.name,
-            run: step.command,
-          };
-
-          // Add working directory if specified (relative to git root)
-          if (step.cwd) {
-            stepWorkflowStep['working-directory'] = step.cwd;
-          }
-
-          // Add environment variables from step config
-          if (step.env) {
-            stepWorkflowStep.env = { ...step.env };
-          }
-
-          jobSteps.push(stepWorkflowStep);
-
-          // Add coverage reporting if enabled
-          addCoverageReportingSteps(jobSteps, step.name, enableCoverage, coverageProvider);
-        }
-
-        jobs[phaseJobId] = {
-          name: phase.name,
-          'runs-on': os[0],
-          ...(needs && { needs }),
-          steps: jobSteps,
-        };
-
-        // Next phase depends on this phase job
-        previousJobIds = [phaseJobId];
-      } else {
-        // Step-based parallelism: Separate job for each step (existing behavior)
-        const stepJobIds: string[] = [];
-
-        for (const step of phase.steps) {
-          const jobId = toJobId(step.name);
-          stepJobIds.push(jobId);
-
-          const jobSteps = createCommonJobSetupSteps(nodeVersions[0], packageManager);
-
-          // Add the actual validation command
-          const testStep: GitHubWorkflowStep = { run: step.command };
-
-          // Add working directory if specified (relative to git root)
-          if (step.cwd) {
-            testStep['working-directory'] = step.cwd;
-          }
-
-          // Add environment variables from step config
-          if (step.env) {
-            testStep.env = { ...step.env };
-          }
-
-          jobSteps.push(testStep);
-
-          // Add coverage reporting if enabled
-          addCoverageReportingSteps(jobSteps, step.name, enableCoverage, coverageProvider);
-
-          jobs[jobId] = {
-            name: step.name,
-            'runs-on': os[0],
-            ...(needs && { needs }),
-            steps: jobSteps,
-          };
-        }
-
-        // Next phase depends on ALL step jobs from this phase
-        previousJobIds = stepJobIds;
-      }
-    }
   }
 
   // Add gate job - all validation must pass
-  let allJobs: string[];
-  if (useMatrix) {
-    allJobs = enableCoverage ? ['validate', 'validate-coverage'] : ['validate'];
-  } else {
-    allJobs = getAllJobIds(phases);
-  }
+  const allJobs = enableCoverage ? ['validate', 'validate-coverage'] : ['validate'];
 
   jobs['all-validation-passed'] = {
     name: 'All Validation Passed',
@@ -781,10 +559,9 @@ The \`generate-workflow\` command generates a \`.github/workflows/validate.yml\`
 ## How It Works
 
 1. Reads vibe-validate.config.yaml configuration
-2. Generates GitHub Actions workflow with proper job dependencies
-3. Supports matrix mode (multiple Node/OS versions)
-4. Supports non-matrix mode (separate jobs per phase)
-5. Can check if workflow is in sync with config
+2. Generates a single validate job matching local behavior
+3. Supports matrix strategy for multiple Node/OS versions
+4. Can check if workflow is in sync with config
 
 ## Options
 

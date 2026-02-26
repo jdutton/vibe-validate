@@ -8,7 +8,7 @@ import type { VibeValidateConfig } from '@vibe-validate/config';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
-import { generateWorkflow, checkSync, toJobId, getAllJobIds, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
+import { generateWorkflow, checkSync, toJobId, type GenerateWorkflowOptions } from '../../src/commands/generate-workflow.js';
 import { mockConfig as baseMockConfig } from '../helpers/generate-workflow-fixtures.js';
 
 
@@ -120,7 +120,7 @@ function generateAndParseWorkflow(
 }
 
 /**
- * Test package manager detection from packageManager field
+ * Test package manager detection from packageManager field (uses validate job)
  */
 function testPackageManagerDetection(
   pm: string,
@@ -131,8 +131,8 @@ function testPackageManagerDetection(
   mockPackageJson(`${pm}@${version}`);
   vi.mocked(existsSync).mockReturnValue(true);
 
-  const workflow = generateAndParseWorkflow(baseMockConfig, { useMatrix: false });
-  const job = workflow.jobs['typescript-type-check'];
+  const workflow = generateAndParseWorkflow(baseMockConfig);
+  const job = workflow.jobs['validate'];
 
   if (expectedAction) {
     expectStepWithUses(job, expectedAction);
@@ -143,7 +143,7 @@ function testPackageManagerDetection(
 }
 
 /**
- * Test package manager detection from lockfile
+ * Test package manager detection from lockfile (uses validate job)
  */
 function testLockfileDetection(
   lockfileConfig: {
@@ -158,8 +158,8 @@ function testLockfileDetection(
   mockLockfiles({ ...lockfileConfig, packageJsonExists: true });
   mockPackageJson(undefined, { node: '>=22.0.0' });
 
-  const workflow = generateAndParseWorkflow(baseMockConfig, { useMatrix: false });
-  const job = workflow.jobs['typescript-type-check'];
+  const workflow = generateAndParseWorkflow(baseMockConfig);
+  const job = workflow.jobs['validate'];
 
   if (expectedAction) {
     expectStepWithUses(job, expectedAction);
@@ -168,7 +168,7 @@ function testLockfileDetection(
 }
 
 /**
- * Test package manager commands in build workflow
+ * Test package manager commands in build workflow (uses validate job)
  */
 function testBuildCommands(pm: string, version: string, installCmd: string, buildCmd: string) {
   mockPackageJson(`${pm}@${version}`);
@@ -187,10 +187,9 @@ function testBuildCommands(pm: string, version: string, installCmd: string, buil
     },
   };
 
-  const workflow = generateAndParseWorkflow(configWithBuild, { useMatrix: false });
-  const job = workflow.jobs['build'];
+  const workflow = generateAndParseWorkflow(configWithBuild);
+  const job = workflow.jobs['validate'];
   expectStepWithRun(job, installCmd);
-  expectStepWithRun(job, buildCmd);
 }
 
 /**
@@ -205,8 +204,7 @@ function generateBunMatrixWorkflow(options: {
   vi.mocked(existsSync).mockReturnValue(true);
 
   const workflow = generateAndParseWorkflow(baseMockConfig, {
-    useMatrix: true,
-    nodeVersions: options.nodeVersions ?? ['20', '22'],
+        nodeVersions: options.nodeVersions ?? ['20', '22'],
     os: options.os ?? ['ubuntu-latest', 'windows-latest']
   });
 
@@ -244,22 +242,6 @@ describe('generate-workflow command', () => {
     });
   });
 
-  describe('getAllJobIds', () => {
-    it('should extract all job IDs from phases', () => {
-      const jobIds = getAllJobIds(mockConfig.validation.phases);
-      expect(jobIds).toEqual([
-        'typescript-type-check',
-        'eslint-code-quality',
-        'testing', // Phase 2 has parallel: false, so job is named after phase
-      ]);
-    });
-
-    it('should handle empty phases', () => {
-      const jobIds = getAllJobIds([]);
-      expect(jobIds).toEqual([]);
-    });
-  });
-
   describe('generateWorkflow', () => {
     it('should generate valid GitHub Actions workflow YAML', () => {
       const workflow = generateAndParseWorkflow();
@@ -269,194 +251,48 @@ describe('generate-workflow command', () => {
       expect(workflow.on.pull_request.branches).toContain('main');
     });
 
-    it('should generate jobs for each validation step in non-matrix mode', () => {
-      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
+    it('should always generate single validate job', () => {
+      const workflow = generateAndParseWorkflow(mockConfig);
 
-      expect(workflow.jobs).toHaveProperty('typescript-type-check');
-      expect(workflow.jobs).toHaveProperty('eslint-code-quality');
-      expect(workflow.jobs).toHaveProperty('testing'); // Phase 2 has parallel: false
+      // Always generates a single validate job
+      expect(workflow.jobs).toHaveProperty('validate');
+      expect(workflow.jobs).not.toHaveProperty('typescript-type-check');
+      expect(workflow.jobs).not.toHaveProperty('eslint-code-quality');
+      expect(workflow.jobs).not.toHaveProperty('testing');
     });
 
-    it('should auto-depend on previous phase in non-matrix mode', () => {
-      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
+    it('should include checkout and setup-node steps', () => {
+      const workflow = generateAndParseWorkflow(mockConfig);
 
-      // Testing phase (phase 2) auto-depends on Pre-Qualification phase (phase 1)
-      expect(workflow.jobs['testing'].needs).toEqual([
-        'typescript-type-check',
-        'eslint-code-quality',
-      ]);
-    });
-
-    it('should include checkout and setup-node steps in non-matrix mode', () => {
-      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
-
-      const job = workflow.jobs['typescript-type-check'];
+      const job = workflow.jobs['validate'];
       expect(job.steps[0].uses).toBe('actions/checkout@v4');
-      expect(job.steps[1].uses).toBe('actions/setup-node@v4');
+      expect(job.steps.some((s: any) => s.uses === 'actions/setup-node@v4')).toBe(true);
     });
 
+    it('should add all-validation-passed gate job', () => {
+      const workflow = generateAndParseWorkflow(mockConfig);
 
-    it('should add all-validation-passed gate job in non-matrix mode', () => {
-      const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
-
-      expectGateJob(workflow, [
-        'typescript-type-check',
-        'eslint-code-quality',
-        'testing', // Phase 2 job named after phase
-      ]);
+      expectGateJob(workflow, ['validate']);
     });
 
-    it('should detect pnpm and add pnpm installation steps in non-matrix mode', () => {
+    it('should detect pnpm and add pnpm installation steps', () => {
       const workflow = generateAndParseWorkflow(mockConfig, {
         packageManager: 'pnpm',
-        useMatrix: false,
       });
 
-      const job = workflow.jobs['typescript-type-check'];
+      const job = workflow.jobs['validate'];
       const pnpmStep = expectStepWithUses(job, 'pnpm/action-setup');
-      expect(pnpmStep.with.version).toBe('8');
+      expect(pnpmStep.with.version).toBe('9');
       expectStepWithRun(job, 'pnpm install --frozen-lockfile');
     });
 
-    it('should use npm ci when packageManager is npm in non-matrix mode', () => {
+    it('should use npm ci when packageManager is npm', () => {
       const workflow = generateAndParseWorkflow(mockConfig, {
         packageManager: 'npm',
-        useMatrix: false,
       });
 
-      const job = workflow.jobs['typescript-type-check'];
+      const job = workflow.jobs['validate'];
       expectStepWithRun(job, 'npm ci');
-    });
-
-    it('should add coverage reporting when enabled in non-matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, {
-        enableCoverage: true,
-        coverageProvider: 'codecov',
-        useMatrix: false,
-      });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const coverageJob = workflow.jobs['testing']; // Phase 2 job named after phase
-      const codecovStep = coverageJob.steps.find(
-        (s: any) => s.uses === 'codecov/codecov-action@v3'
-      );
-      expect(codecovStep).toBeDefined();
-    });
-
-    it('should preserve step environment variables in non-matrix mode', () => {
-      const configWithEnv: VibeValidateConfig = {
-        ...mockConfig,
-        validation: {
-          ...mockConfig.validation,
-          phases: [
-            {
-              name: 'Test',
-              parallel: false,
-              steps: [
-                {
-                  name: 'Test with Env',
-                  command: 'npm test',
-                  env: {
-                    NODE_ENV: 'test',
-                    API_KEY: '${{ secrets.API_KEY }}',
-                  },
-                },
-              ],
-              timeout: 300000,
-              failFast: true,
-            },
-          ],
-        },
-      };
-
-      const workflowYaml = generateWorkflow(configWithEnv, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const job = workflow.jobs['test']; // Phase has parallel: false, job named after phase
-      const testStep = job.steps.find((s: any) => s.run === 'npm test');
-      expect(testStep.env.NODE_ENV).toBe('test');
-      expect(testStep.env.API_KEY).toBe('${{ secrets.API_KEY }}');
-    });
-
-    it('should add working-directory when step has cwd field in non-matrix mode (phase-based)', () => {
-      const configWithCwd: VibeValidateConfig = {
-        ...mockConfig,
-        validation: {
-          ...mockConfig.validation,
-          phases: [
-            {
-              name: 'Test Backend',
-              parallel: false,
-              steps: [
-                {
-                  name: 'Run backend tests',
-                  command: 'npm test',
-                  cwd: 'packages/backend',
-                },
-              ],
-              timeout: 300000,
-              failFast: true,
-            },
-          ],
-        },
-      };
-
-      const workflowYaml = generateWorkflow(configWithCwd, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const job = workflow.jobs['test-backend']; // Phase has parallel: false, job named after phase
-      const testStep = job.steps.find((s: any) => s.run === 'npm test');
-      expect(testStep['working-directory']).toBe('packages/backend');
-    });
-
-    it('should add working-directory when step has cwd field in non-matrix mode (step-based)', () => {
-      const configWithCwd: VibeValidateConfig = {
-        ...mockConfig,
-        validation: {
-          ...mockConfig.validation,
-          phases: [
-            {
-              name: 'Test',
-              parallel: true,
-              steps: [
-                {
-                  name: 'Test Frontend',
-                  command: 'npm test',
-                  cwd: 'packages/frontend',
-                },
-                {
-                  name: 'Test Backend',
-                  command: 'npm test',
-                  cwd: 'packages/backend',
-                },
-              ],
-              timeout: 300000,
-              failFast: false,
-            },
-          ],
-        },
-      };
-
-      const workflowYaml = generateWorkflow(configWithCwd, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      // In step-based parallelism, each step becomes a separate job
-      const frontendJob = workflow.jobs['test-frontend'];
-      const frontendStep = frontendJob.steps.find((s: any) => s.run === 'npm test');
-      expect(frontendStep['working-directory']).toBe('packages/frontend');
-
-      const backendJob = workflow.jobs['test-backend'];
-      const backendStep = backendJob.steps.find((s: any) => s.run === 'npm test');
-      expect(backendStep['working-directory']).toBe('packages/backend');
-    });
-
-    it('should not add working-directory when step has no cwd field', () => {
-      const workflowYaml = generateWorkflow(mockConfig, { useMatrix: false });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const job = workflow.jobs['typescript-type-check'];
-      const testStep = job.steps.find((s: any) => s.run === 'pnpm -r typecheck');
-      expect(testStep['working-directory']).toBeUndefined();
     });
 
     it('should include header without timestamp', () => {
@@ -517,66 +353,24 @@ describe('generate-workflow command', () => {
       expect(workflow.jobs.validate.strategy['fail-fast']).toBe(true);
     });
 
-    it('should use non-matrix mode when single node version and single OS', () => {
+    it('should always use single validate job even with single node version and OS', () => {
       const workflowYaml = generateWorkflow(mockConfig, {
         nodeVersions: ['20'],
         os: ['ubuntu-latest'],
-        useMatrix: false,
       });
       const workflow = parseWorkflowYaml(workflowYaml);
 
-      // In non-matrix mode, jobs are created per step
-      expect(workflow.jobs).toHaveProperty('typescript-type-check');
-      expect(workflow.jobs).toHaveProperty('eslint-code-quality');
-      expect(workflow.jobs).not.toHaveProperty('validate');
-    });
-
-    it('should create validate job in matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, {
-        nodeVersions: ['20', '22'],
-        os: ['ubuntu-latest'],
-        useMatrix: true,
-      });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      // In matrix mode, single validate job with strategy
+      // Always generates a single validate job with matrix strategy
       expect(workflow.jobs).toHaveProperty('validate');
       expect(workflow.jobs.validate).toHaveProperty('strategy');
-      expect(workflow.jobs).not.toHaveProperty('typescript-type-check');
+      expect(workflow.jobs.validate.strategy.matrix.node).toEqual(['20']);
+      expect(workflow.jobs.validate.strategy.matrix.os).toEqual(['ubuntu-latest']);
     });
-
-    it('should include checkout and setup steps in matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, {
-        nodeVersions: ['20', '22'],
-        useMatrix: true,
-      });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const job = workflow.jobs['validate'];
-      expect(job.steps[0].uses).toBe('actions/checkout@v4');
-      expect(job.steps.some((s: any) => s.uses === 'actions/setup-node@v4')).toBe(true);
-    });
-
-    it('should add pnpm setup in matrix mode', () => {
-      const workflowYaml = generateWorkflow(mockConfig, {
-        packageManager: 'pnpm',
-        nodeVersions: ['20', '22'],
-        useMatrix: true,
-      });
-      const workflow = parseWorkflowYaml(workflowYaml);
-
-      const job = workflow.jobs['validate'];
-      const pnpmStep = job.steps.find((s: any) => s.uses === 'pnpm/action-setup@v2');
-      expect(pnpmStep).toBeDefined();
-      expect(pnpmStep.with.version).toBe('9');
-    });
-
 
     it('should NOT add validation state upload (deprecated in v0.12.0)', () => {
       const workflowYaml = generateWorkflow(mockConfig, {
         nodeVersions: ['20', '22'],
         os: ['ubuntu-latest', 'macos-latest'],
-        useMatrix: true,
       });
       const workflow = parseWorkflowYaml(workflowYaml);
 
@@ -593,8 +387,7 @@ describe('generate-workflow command', () => {
         enableCoverage: true,
         nodeVersions: ['20', '22', '24'],
         os: ['ubuntu-latest', 'macos-latest'],
-        useMatrix: true,
-      });
+              });
       const workflow = parseWorkflowYaml(workflowYaml);
 
       // Should have validate job with matrix
@@ -614,8 +407,7 @@ describe('generate-workflow command', () => {
     it('should add all-validation-passed gate job in matrix mode', () => {
       const workflowYaml = generateWorkflow(mockConfig, {
         nodeVersions: ['20', '22'],
-        useMatrix: true,
-      });
+              });
       const workflow = parseWorkflowYaml(workflowYaml);
 
       expect(workflow.jobs).toHaveProperty('all-validation-passed');
@@ -627,8 +419,7 @@ describe('generate-workflow command', () => {
       const workflowYaml = generateWorkflow(mockConfig, {
         enableCoverage: true,
         nodeVersions: ['20', '22'],
-        useMatrix: true,
-      });
+              });
       const workflow = parseWorkflowYaml(workflowYaml);
 
       expect(workflow.jobs['all-validation-passed'].needs).toEqual([
@@ -739,8 +530,8 @@ describe('generate-workflow command', () => {
         mockPackageJson('npm@10.0.0');
         vi.mocked(existsSync).mockReturnValue(true);
 
-        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
-        const job = workflow.jobs['typescript-type-check'];
+        const workflow = generateAndParseWorkflow(mockConfig);
+        const job = workflow.jobs['validate'];
         expectStepWithRun(job, 'npm ci');
         expectNoStepWithUses(job, 'pnpm/action-setup');
       });
@@ -749,10 +540,10 @@ describe('generate-workflow command', () => {
         mockLockfiles({ hasPackageLock: true, hasPnpmLock: true });
         mockPackageJson(undefined, { node: '>=22.0.0' });
 
-        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
+        const workflow = generateAndParseWorkflow(mockConfig);
 
         // Should default to npm when both exist (more conservative)
-        const job = workflow.jobs['typescript-type-check'];
+        const job = workflow.jobs['validate'];
         expectStepWithRun(job, 'npm ci');
         expectNoStepWithUses(job, 'pnpm/action-setup');
       });
@@ -761,10 +552,10 @@ describe('generate-workflow command', () => {
         mockLockfiles({ hasPackageLock: false, hasPnpmLock: true, packageJsonExists: true });
         mockPackageJson(undefined, { node: '>=22.0.0' });
 
-        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
+        const workflow = generateAndParseWorkflow(mockConfig);
 
         // Should use pnpm when only pnpm-lock exists
-        const job = workflow.jobs['typescript-type-check'];
+        const job = workflow.jobs['validate'];
         expectStepWithUses(job, 'pnpm/action-setup');
       });
 
@@ -772,10 +563,10 @@ describe('generate-workflow command', () => {
         mockLockfiles({ hasPackageLock: true, hasPnpmLock: false, packageJsonExists: true });
         mockPackageJson(undefined, { node: '>=22.0.0' });
 
-        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
+        const workflow = generateAndParseWorkflow(mockConfig);
 
         // Should use npm when only package-lock exists
-        const job = workflow.jobs['typescript-type-check'];
+        const job = workflow.jobs['validate'];
         expectStepWithRun(job, 'npm ci');
       });
 
@@ -783,10 +574,10 @@ describe('generate-workflow command', () => {
         vi.mocked(existsSync).mockReturnValue(true);
         mockPackageJson('pnpm@9.0.0', { node: '>=22.0.0' });
 
-        const workflow = generateAndParseWorkflow(mockConfig, { useMatrix: false });
+        const workflow = generateAndParseWorkflow(mockConfig);
 
         // Should use pnpm from packageManager field (not default to npm)
-        const job = workflow.jobs['typescript-type-check'];
+        const job = workflow.jobs['validate'];
         expectStepWithUses(job, 'pnpm/action-setup');
       });
 
@@ -838,7 +629,7 @@ describe('generate-workflow command', () => {
         testBuildCommands('yarn', '4.0.0', 'yarn install --frozen-lockfile', 'yarn run build');
       });
 
-      it('should use bun in matrix mode', () => {
+      it('should use bun with validate job', () => {
         const job = generateBunMatrixWorkflow();
 
         expect(job.strategy.matrix.node).toEqual(['20', '22']);
@@ -848,7 +639,7 @@ describe('generate-workflow command', () => {
         expectStepWithRun(job, 'bun run validate');
       });
 
-      it('should include Node.js setup for Bun projects with matrix for compatibility testing', () => {
+      it('should include Node.js setup for Bun projects for compatibility testing', () => {
         const job = generateBunMatrixWorkflow();
 
         // Should have BOTH Bun and Node.js setup
@@ -872,8 +663,7 @@ describe('generate-workflow command', () => {
         mockPackageJson(undefined, { node: '>=22.0.0' });
 
         const workflow = generateAndParseWorkflow(mockConfig, {
-          useMatrix: true,
-          nodeVersions: ['22', '24'],
+                    nodeVersions: ['22', '24'],
         });
 
         const job = workflow.jobs['validate'];
@@ -887,13 +677,12 @@ describe('generate-workflow command', () => {
         expect(nodeStep.with.cache).toBeUndefined();
       });
 
-      it('should use yarn in matrix mode', () => {
+      it('should use yarn with validate job', () => {
         mockPackageJson('yarn@4.0.0');
         vi.mocked(existsSync).mockReturnValue(true);
 
         const workflow = generateAndParseWorkflow(mockConfig, {
-          useMatrix: true,
-          nodeVersions: ['20', '22'],
+                    nodeVersions: ['20', '22'],
           os: ['ubuntu-latest']
         });
 

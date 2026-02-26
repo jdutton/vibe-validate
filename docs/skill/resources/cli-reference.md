@@ -314,8 +314,8 @@ Generate GitHub Actions workflow from vibe-validate config
 **What it does:**
 
 Generates .github/workflows/validate.yml from config
-Supports matrix mode (multiple Node/OS versions)
-Supports non-matrix mode (separate jobs per phase)
+Generates single validate job matching local behavior
+Supports matrix strategy for multiple Node/OS versions
 Can check if workflow is in sync with config
 
 **Exit codes:**

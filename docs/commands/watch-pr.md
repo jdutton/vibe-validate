@@ -11,7 +11,7 @@ The `watch-pr` command fetches complete PR check status from GitHub, including G
 1. **Fetches PR metadata** (title, branch, labels, linked issues, mergeable state)
 2. **Retrieves all checks** from GitHub (Actions + external checks like codecov/SonarCloud)
 3. **Classifies checks** into GitHub Actions vs external providers
-4. **Extracts errors** from failed GitHub Actions logs (matrix + non-matrix modes)
+4. **Extracts errors** from failed GitHub Actions logs (YAML extraction with raw output fallback)
 5. **Extracts summaries** from external checks (coverage %, quality gates)
 6. **Builds history summary** (last 10 runs, success rate, recent pattern)
 7. **Generates guidance** with severity-based next steps
@@ -616,7 +616,7 @@ cache:                      # ✅ NEW: Cache info
 ```
 
 **Key improvements:**
-- ✅ **Error extraction** (matrix + non-matrix modes)
+- ✅ **Error extraction** (YAML extraction with raw output fallback)
 - ✅ **Separate check types** (GitHub Actions vs external)
 - ✅ **History summary** (success rate, patterns)
 - ✅ **File changes** (insertions/deletions, top files)
