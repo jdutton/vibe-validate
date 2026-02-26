@@ -355,8 +355,8 @@ function showComprehensiveHelp(program: Command): void {
     'generate-workflow': {
       whatItDoes: [
         'Generates .github/workflows/validate.yml from config',
-        'Supports matrix mode (multiple Node/OS versions)',
-        'Supports non-matrix mode (separate jobs per phase)',
+        'Generates single validate job matching local behavior',
+        'Supports matrix strategy for multiple Node/OS versions',
         'Can check if workflow is in sync with config'
       ],
       exitCodes: {
