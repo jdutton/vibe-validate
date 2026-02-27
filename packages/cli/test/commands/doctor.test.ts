@@ -1282,7 +1282,7 @@ describe('doctor command', () => {
         const pathStr = path.toString();
         if (pathStr.includes('package.json')) {
           // Both running and source versions are the same
-          return JSON.stringify({ version: '0.17.4' });
+          return JSON.stringify({ name: '@vibe-validate/cli', version: '0.17.4' });
         }
         return 'npm run pre-commit';
       });
@@ -1294,6 +1294,34 @@ describe('doctor command', () => {
       assertCheck(result, 'CLI build status', {
         passed: true,
         messageContains: 'up to date'
+      });
+    });
+
+    it('should skip check when packages/cli exists but is not vibe-validate', async () => {
+      // Mock being in a different monorepo that has packages/cli/ (e.g., vibe-agent-toolkit)
+      const { readFileSync } = await import('node:fs');
+      vi.mocked(existsSync).mockImplementation((_path: string) => {
+        return true;
+      });
+
+      vi.mocked(readFileSync).mockImplementation((path: string | URL) => {
+        const pathStr = path.toString();
+        if (pathStr.includes('packages/cli/package.json')) {
+          return JSON.stringify({ name: '@vibe-agent-toolkit/cli', version: '0.1.15-rc.5' });
+        }
+        if (pathStr.includes('package.json')) {
+          return JSON.stringify({ name: '@vibe-validate/cli', version: '0.19.0-rc.13' });
+        }
+        return 'npm run pre-commit';
+      });
+
+      vi.mocked(loadConfig).mockResolvedValue(mockConfig);
+
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'CLI build status', {
+        passed: true,
+        messageContains: 'Skipped'
       });
     });
 
