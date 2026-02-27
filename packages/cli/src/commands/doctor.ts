@@ -158,8 +158,18 @@ function checkCliBuildSync(): DoctorCheckResult {
 
     const sourcePackageJsonPath = join(gitRoot, 'packages/cli/package.json');
 
-    // Not in vibe-validate source tree
+    // Not in vibe-validate source tree - verify both existence and package name
+    // Other monorepos (e.g., vibe-agent-toolkit) may also have packages/cli/
     if (!existsSync(sourcePackageJsonPath)) {
+      return {
+        name: CHECK_CLI_BUILD_STATUS,
+        passed: true,
+        message: 'Skipped (not in vibe-validate source tree)',
+      };
+    }
+
+    const sourcePackageJson = JSON.parse(readFileSync(sourcePackageJsonPath, 'utf8'));
+    if (sourcePackageJson.name !== '@vibe-validate/cli') {
       return {
         name: CHECK_CLI_BUILD_STATUS,
         passed: true,
@@ -172,8 +182,7 @@ function checkCliBuildSync(): DoctorCheckResult {
     const runningPackageJson = JSON.parse(readFileSync(runningPackageJsonPath, 'utf8'));
     const runningVersion = runningPackageJson.version;
 
-    // Get source version
-    const sourcePackageJson = JSON.parse(readFileSync(sourcePackageJsonPath, 'utf8'));
+    // Get source version (sourcePackageJson already read above for name check)
     const sourceVersion = sourcePackageJson.version;
 
     // Compare versions - this is the confusing scenario that needs detection
