@@ -5,160 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.19.0] - 2026-03-04
 
-### Fixed
+### Breaking Changes
 
-- **Fixed validation steps not executing from project root when invoked from subdirectory** (Issue #129, PR #131)
-  - **Problem**: When running `vv validate` from a subdirectory, validation steps would execute in that subdirectory rather than the project root
-  - **Root cause**: `pre-commit.ts` and `validate.ts` were using `process.cwd()` instead of the git root directory
-  - **Solution**: Both commands now consistently use git root as the working directory for all validation steps
-  - **Impact**: Validation behavior is now consistent regardless of where the command is invoked from
-  - **Testing**: Added comprehensive system test `subdirectory-behavior.system.test.ts` to prevent regression
-
-- **Fixed git notes with submodules to use structured TreeHashResult instead of composite hashes** (Issue #120, PR #121)
-  - **Problem**: Git notes operations failed when trying to store/retrieve composite SHA-256 hashes (64 chars) as git object references
-  - **Root cause**: Git expects object references to be valid SHA-1 hashes (40 hex chars), but composite hashes used SHA-256
-  - **Solution**: Store TreeHashResult structure in git notes instead of computing composite hash
-  - **Impact**: Git notes now work correctly with submodules - cache invalidation functions as designed
-  - **Storage**: Git notes contain both parent hash and submodule hashes as separate fields (not combined)
-
-### Changed
-
-- **BREAKING: CI workflow generation always uses single validate job** (v0.19.0+)
-  - Removed non-matrix mode — `generate-workflow` now always produces a single `validate` job
-  - Matches local `pnpm validate` behavior: all steps run sequentially in one CI runner
-  - Setup steps (e.g., `npx playwright install`) now run before tests in CI, just like locally
-  - **Migration**: Run `npx vibe-validate generate-workflow` to regenerate your workflow file
-  - **API**: `useMatrix` option removed from `GenerateWorkflowOptions`
-
-- **BREAKING: TreeHashResult structure change** (v0.19.0+)
-  - **Before**: `{ hash: string, components: Array<{path, treeHash}> }`
-  - **After**: `{ hash: TreeHash, submoduleHashes?: Record<string, TreeHash> }`
-  - **Migration**: No action required - backward compatible (projects without submodules work unchanged)
-  - **Why**: Simpler structure aligns with git notes requirements (valid Git SHA-1 hashes only)
-
-### Migration Guide
-
-**For projects WITH submodules:**
-- Cache entries created with v0.18.x will not match v0.19.0+ entries (different structure)
-- First validation after upgrade will be a cache miss (fresh run)
-- Subsequent validations will use new cache format
-
-**For projects WITHOUT submodules:**
-- Fully backward compatible
-- Cache continues to work across upgrade
-- No action required
+- **CI workflow generation now uses a single validate job.** Run `npx vibe-validate generate-workflow` to regenerate your workflow file. The `useMatrix` option has been removed.
+- **Cached failures are now returned instantly.** `vv validate` returns the last cached result for the current tree hash, even if it failed — no more redundant re-runs. Use `--force` to bypass cache when needed.
+- **TreeHashResult structure simplified** for projects with submodules. Projects without submodules are unaffected. See Migration Guide below.
 
 ### Added
 
-- **`--retry-failed` flag for flaky test recovery**
-  - Re-runs only failed validation steps while preserving passed step results from cache
-  - Detects and reports potential flakiness when retried steps pass after initial failure
-  - Ideal for CI environments where transient failures occur (network timeouts, race conditions)
-  - Usage: `vv validate --retry-failed`
-  - See flakiness warnings in output when steps pass on retry
+- **`--retry-failed` flag** — Re-runs only failed validation steps while preserving passed results from cache. Detects and reports flaky tests when retried steps pass. Usage: `vv validate --retry-failed`
+- **Dependency lock check** — Verifies lock files are in sync before validation to prevent cache poisoning. Auto-detects your package manager (npm, pnpm, yarn, bun). Configure via `ci.dependencyLockCheck.runOn`.
+- **`watch-pr` improvements:**
+  - Errors extracted and displayed immediately as CI checks fail (no waiting for final output)
+  - Log files saved with paths included in YAML output for easy follow-up
+- **`VV_TEMP_DIR` environment variable** — Override the default temp directory for project-local storage, CI builds, or network storage
+- **Flakiness detection** — Warns when the same code produces different validation outcomes across runs
 
-- **Dependency lock check**: Prevents cache poisoning by verifying lock files are in sync before validation runs
-  - Auto-detects package manager (npm, pnpm, yarn, bun)
-  - Configurable via `ci.dependencyLockCheck.runOn` (validate, pre-commit, or disabled)
-  - Respects `VV_SKIP_DEPENDENCY_CHECK=1` environment variable
-  - `vv doctor` warns if not configured
+### Performance
 
-- **watch-pr: Immediate error extraction during polling** (Enhancement)
-  - Extracted errors displayed immediately when checks fail (no waiting for final YAML)
-  - Shows job ID, run ID, and log file path for each completed check
-  - First 3 errors shown inline with summary
-  - Eliminates need for follow-up `gh run view` commands
-
-- **watch-pr: Log file paths in output** (Enhancement)
-  - Logs saved to `${VV_TEMP_DIR}/vibe-validate/watch-pr-logs/YYYY-MM-DD/`
-  - Filename format: `<runId>-HH-mm-ss-<job-name>.log`
-  - Flat daily directory structure = one permission approval per day
-  - Paths included in YAML output under `log_file` field
-
-- **`VV_TEMP_DIR` environment variable for customizable temp directory**
-  - Allows overriding default OS temp directory (`/tmp` on Unix, `%TEMP%` on Windows)
-  - Useful for project-local temp storage, CI/CD builds, or network storage
-  - Example: `export VV_TEMP_DIR="$HOME/.vibe-validate/temp"`
-
-- **⚡ 19x faster pre-commit secret scanning with automatic staged file optimization**
-  - **secretlint**: 15s → 0.8s (scans only staged files instead of all project files)
-  - **gitleaks**: Already optimized (0.2s, unchanged)
-  - **Total pre-commit**: ~15s → ~1s (15x faster overall)
-  - **Zero configuration required**: Automatically detects and optimizes both tools
-  - **Intelligent fallbacks**: Handles edge cases gracefully (>100 files, long paths, spaces in filenames)
-
-- **⚡ 10x faster ESLint with caching enabled** (Performance)
-  - Added `--cache` flag to ESLint command
-  - Cold run: ~18s (unchanged)
-  - Cached run: ~1.8s (10x faster)
-  - Validation workflow: ESLint completes in ~2.5s vs ~18s
-  - `.eslintcache` automatically managed and gitignored
-
-- **⚡ Eliminated performance bombs for instant cached validation** (Performance)
-  - **History health checks now O(1)**: checkHistoryHealth() optimized from 438 subprocess calls to a single batch read (63s → sub-second)
-  - **Git notes listing now O(1)**: listNotesRefs() uses single git-for-each-ref instead of per-ref subprocess calls
-  - **Repository structure validator**: 17 deterministic rules across 5 categories (build system, package.json, source conventions, security, turbo alignment) run in Pre-Qualification phase to catch drift before it accumulates
-  - **VV_ROOT_DIR support**: Umbrella package now supports cross-repo usage for monorepo workflows
+- **19x faster pre-commit secret scanning** — secretlint now scans only staged files (15s → 0.8s). Zero configuration required.
+- **10x faster ESLint** — Caching enabled automatically (18s → 1.8s on warm runs)
+- **Instant cached validation** — History health checks and git notes listing optimized from hundreds of subprocess calls to single batch operations
+- **Flattened temp directory structure** — Reduces permission prompts in AI coding assistants to one approval per day
 
 ### Changed
 
-- **watch-pr: Default timeout increased from 30 min to 10 min** (Breaking Change)
-  - More realistic for CI pipeline completion times
-  - Aligns with LLM patience thresholds
-  - Power users can override with `--timeout` flag
-
-- **watch-pr: Reduced token bloat in output** (Enhancement)
-  - Stripped extractor metadata (patterns, detection reasons)
-  - Saves ~30-50 tokens per failed check
-  - Keeps metadata.confidence, metadata.completeness, metadata.issues for extraction confidence
-
-- **Improved cache messaging to prevent LLM suspicion** (UX Fix, Issue #122)
-  - **Problem**: Since v0.19.0-rc.1, users (especially LLMs) reported "cache is wrong" due to defensive/suspicious messaging
-  - **Cached results now displayed authoritatively**: "❌ Validation failed for this code" (not "❌ Cached result: ...")
-  - **Removed defensive language**: No more "Cached result:", "(unchanged since validation)", or suggestions to use `--force`
-  - **Flakiness detection toned down**: Changed from "⚠️ Flaky validation detected" to neutral "Note: 2 validation runs exist..."
-  - **Impact**: LLMs stop doubting cache validity, users trust results, cache becomes invisible implementation detail
-  - Cache mechanism works correctly - only messaging changed to prevent misunderstanding
-
-- **⚡ Flattened temp directory structure to minimize AI assistant permission prompts**
-  - **Previously**: `/tmp/vibe-validate/runs/2026-02-05/abc123-14-31-10/stdout.log` (new directory per run → new prompt)
-  - **Now**: `/tmp/vibe-validate/runs/2026-02-05/abc123-14-31-10-stdout.log` (flat structure → one approval per day)
-  - **Impact**: Dramatically reduces permission prompts in Claude Code, Cursor, and similar AI coding assistants
-  - **Filename format**: `{treeHash}-{HH-mm-ss}-{suffix}.{ext}` ensures uniqueness without nested directories
-
-- **⚡ Faster agent feedback loops: `vv validate` now returns cached failures instantly**
-  - **Stop hooks and pre-commit checks are now instant on cached results** (whether passed or failed)
-  - **Previously**: Cache hits only returned passing results; failed results triggered re-runs
-  - **Now**: Most recent cached result returned by default (pass or fail), speeding up agent debugging cycles
-  - **Force re-run**: Use `vv validate --force` to bypass cache and run fresh validation
-  - **Cache invalidation unchanged**: Tree hash changes still trigger automatic re-validation
-
-- **Flakiness detection**: Warns when the same tree hash has multiple runs with different outcomes (pass/fail), helping identify non-deterministic validation issues
+- **Cache messaging improved** — Results displayed authoritatively ("Validation failed for this code") instead of defensive language ("Cached result: ...") that caused AI assistants to doubt cache validity
+- **`watch-pr` default timeout reduced** from 30 minutes to 10 minutes. Override with `--timeout`.
+- **`watch-pr` output optimized** — Stripped internal metadata to reduce token usage (~30-50 tokens saved per failed check)
 
 ### Fixed
 
-- **watch-pr: --fail-fast now waits for extraction** (Bug Fix)
-  - Ensures log download and error extraction complete before exit
-  - Guarantees complete data in output (no race conditions)
-  - Output always includes log_file paths and extracted errors
+- **Validation now always runs from project root**, regardless of which subdirectory you invoke `vv validate` from
+- **Git submodule cache invalidation** — Changes in submodule working trees now correctly invalidate the cache
+- **Git notes storage fixed for submodules** — Notes now store structured data instead of composite hashes that were incompatible with Git's SHA-1 object references
+- **Validation history recording** — Fixed bug where `vv validate --force` on the same tree hash would silently fail to record history
+- **`watch-pr --fail-fast`** now waits for error extraction to complete before exiting
 
-- **Fixed git submodule working tree changes not reflected in cache key** (Issue #120, PR #121)
-  - **Root cause**: Tree hash calculation only considered main repository's tree, ignoring submodule working tree state
-  - **Solution**: Implemented composite tree hashing that recursively includes all submodule tree hashes
-  - **Impact**: Cache invalidation now works correctly when any submodule content changes
-  - **Technical**: Composite hashes use SHA-256 (64 chars) vs standard Git SHA-1 (40 chars) to accommodate submodule metadata
+### Migration Guide
 
-- **Fixed validation history not recording for subsequent runs on same tree hash** (PR #116)
-  - **Root cause**: Conflict detection relied on parsing stderr for `"already exists"`, but git returns `"Found existing notes for object..."` - string matching failed across git versions
-  - **Solution**: Always attempt atomic merge when fast-path add fails (simpler, more robust, works universally)
-  - **Impact**: History recording now works correctly when running `vv validate --force` multiple times
-  - **Since**: Bug introduced in v0.18.2 (Dec 2025, PR #105) but became more apparent with improved caching in v0.19.0-rc.1
+**Projects with submodules:**
+- Cache entries from v0.18.x are incompatible — first validation after upgrade will be a fresh run
+- Subsequent runs use the new cache format automatically
 
-### Breaking Change
-
-`vv validate` now returns the last cached result for the current tree hash, even if it failed. This dramatically improves agent feedback loops by avoiding redundant test re-runs. Use `--force` to bypass cache when needed.
+**Projects without submodules:**
+- Fully backward compatible, no action required
 
 ## [0.18.4] - 2026-01-31
 
