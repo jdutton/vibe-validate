@@ -36,6 +36,9 @@ export const ValidationStepSchema = z.object({
 
   /** Optional: Working directory for this step, relative to git root (default: git root) */
   cwd: z.string().optional(),
+
+  /** Optional: Restrict step to run only in CI or only locally */
+  runScope: z.enum(['ci', 'local']).optional(),
 }).strict();
 
 export type ValidationStep = z.infer<typeof ValidationStepSchema>;
@@ -183,6 +186,26 @@ export const CIConfigSchema = z.object({
    * before validation runs. Recommended for all Node.js projects.
    */
   dependencyLockCheck: DependencyLockCheckSchema.optional(),
+
+  /** Optional: Custom npm registry URL for CI workflows */
+  registryUrl: z.string().optional(),
+
+  /** Optional: Environment variables to set in CI workflows */
+  env: z.record(z.string()).optional(),
+
+  /** Optional: GitHub Actions permissions for the workflow */
+  permissions: z.record(z.string()).optional(),
+
+  /** Optional: Concurrency settings for CI workflows */
+  concurrency: z.object({
+    /** Concurrency group expression */
+    group: z.string(),
+    /** Cancel in-progress runs when a new run is triggered (default: undefined) */
+    cancelInProgress: z.boolean().optional(),
+  }).strict().optional(),
+
+  /** Optional: Additional setup steps to run before validation in CI */
+  setupSteps: z.array(z.record(z.unknown())).optional(),
 }).strict();
 
 export type CIConfig = z.infer<typeof CIConfigSchema>;

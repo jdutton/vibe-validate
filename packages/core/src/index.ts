@@ -72,6 +72,7 @@ export {
   setupSignalHandlers,
   findPreviousStepResult,
   shouldUseCachedResult,
+  shouldSkipByRunScope,
 } from './runner.js';
 
 // Export process utilities
