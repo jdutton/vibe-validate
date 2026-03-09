@@ -272,14 +272,17 @@ export class GitHubFetcher {
    * Uses git diff --numstat to get file change statistics.
    *
    * @param _prNumber - PR number (unused - we use git diff from current branch)
+   * @param baseBranch - Base branch name (e.g., 'main', 'master', 'develop')
    * @returns File change context
    */
-  async fetchFileChanges(_prNumber: number): Promise<ChangesContext> {
+  async fetchFileChanges(_prNumber: number, baseBranch: string): Promise<ChangesContext> {
+    const baseRef = `origin/${baseBranch}`;
+
     // Get diff stats using getDiffStats from @vibe-validate/git (architectural compliance)
-    const diffOutput = getDiffStats('origin/main', 'HEAD');
+    const diffOutput = getDiffStats(baseRef, 'HEAD');
 
     // Get commit count using getCommitCount from @vibe-validate/git (architectural compliance)
-    const commitCount = getCommitCount('origin/main', 'HEAD');
+    const commitCount = getCommitCount(baseRef, 'HEAD');
 
     // Parse diff output
     const lines = diffOutput.trim().split('\n').filter((line) => line.length > 0);

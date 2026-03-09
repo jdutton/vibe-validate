@@ -592,7 +592,7 @@ describe('WatchPROrchestrator', () => {
 
       // Verify PR context is still fetched
       expect(fetchPRSpy).toHaveBeenCalledWith(mockPRNumber);
-      expect(fetchFileChangesSpy).toHaveBeenCalledWith(mockPRNumber);
+      expect(fetchFileChangesSpy).toHaveBeenCalledWith(mockPRNumber, expect.any(String));
     });
   });
 
