@@ -16,6 +16,7 @@ import {
   runStepsInParallel,
   runValidation,
   setupSignalHandlers,
+  shouldSkipByRunScope,
 } from '../src/runner.js';
 import type { ValidationConfig } from '../src/runner.js';
 
@@ -1908,6 +1909,166 @@ rawOutput: |
 
         stderrSpy.mockRestore();
       });
+    });
+  });
+
+  describe('shouldSkipByRunScope', () => {
+    it('should not skip when runScope is undefined', () => {
+      expect(shouldSkipByRunScope(undefined, false)).toBe(false);
+      expect(shouldSkipByRunScope(undefined, true)).toBe(false);
+    });
+
+    it('should skip ci-only step when not in CI', () => {
+      expect(shouldSkipByRunScope('ci', false)).toBe(true);
+    });
+
+    it('should not skip ci-only step when in CI', () => {
+      expect(shouldSkipByRunScope('ci', true)).toBe(false);
+    });
+
+    it('should skip local-only step when in CI', () => {
+      expect(shouldSkipByRunScope('local', true)).toBe(true);
+    });
+
+    it('should not skip local-only step when not in CI', () => {
+      expect(shouldSkipByRunScope('local', false)).toBe(false);
+    });
+  });
+
+  describe('runScope filtering (integration)', () => {
+    const originalCI = process.env.CI;
+
+    afterEach(() => {
+      // Restore original CI env var
+      if (originalCI === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = originalCI;
+      }
+    });
+
+    it('should skip ci-only step when CI env is not set', async () => {
+      delete process.env.CI;
+
+      const steps: ValidationStep[] = [
+        { name: 'CI Only', command: 'node -e "console.log(\'ran\')"', runScope: 'ci' },
+        { name: 'Always', command: 'node -e "console.log(\'always\')"' },
+      ];
+
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
+
+      expect(result.success).toBe(true);
+      expect(result.stepResults).toHaveLength(2);
+
+      const ciStep = result.stepResults.find(s => s.name === 'CI Only');
+      expect(ciStep).toBeDefined();
+      expect(ciStep!.passed).toBe(true);
+      expect(ciStep!.exitCode).toBe(0);
+      expect(ciStep!.durationSecs).toBe(0);
+
+      // The always step should have actually run (has a command, not synthetic skip)
+      const alwaysStep = result.stepResults.find(s => s.name === 'Always');
+      expect(alwaysStep).toBeDefined();
+      expect(alwaysStep!.passed).toBe(true);
+      // Verify it actually executed (output captured)
+      expect(result.outputs.get('Always')).toContain('always');
+    });
+
+    it('should run ci-only step when CI env is set', async () => {
+      process.env.CI = 'true';
+
+      const steps: ValidationStep[] = [
+        { name: 'CI Only', command: 'node -e "console.log(\'ran\')"', runScope: 'ci' },
+      ];
+
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
+
+      expect(result.success).toBe(true);
+      const ciStep = result.stepResults.find(s => s.name === 'CI Only');
+      expect(ciStep).toBeDefined();
+      expect(ciStep!.passed).toBe(true);
+      // Verify it actually executed (output captured)
+      expect(result.outputs.get('CI Only')).toContain('ran');
+    });
+
+    it('should skip local-only step when CI env is set', async () => {
+      process.env.CI = 'true';
+
+      const steps: ValidationStep[] = [
+        { name: 'Local Only', command: 'node -e "console.log(\'ran\')"', runScope: 'local' },
+      ];
+
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
+
+      expect(result.success).toBe(true);
+      const localStep = result.stepResults.find(s => s.name === 'Local Only');
+      expect(localStep).toBeDefined();
+      expect(localStep!.passed).toBe(true);
+      expect(localStep!.exitCode).toBe(0);
+      expect(localStep!.durationSecs).toBe(0);
+    });
+
+    it('should run local-only step when CI env is not set', async () => {
+      delete process.env.CI;
+
+      const steps: ValidationStep[] = [
+        { name: 'Local Only', command: 'node -e "console.log(\'ran\')"', runScope: 'local' },
+      ];
+
+      const result = await runStepsInParallel(steps, 'Test Phase', {});
+
+      expect(result.success).toBe(true);
+      const localStep = result.stepResults.find(s => s.name === 'Local Only');
+      expect(localStep).toBeDefined();
+      expect(localStep!.passed).toBe(true);
+      // Verify it actually executed (output captured)
+      expect(result.outputs.get('Local Only')).toContain('ran');
+    });
+
+    it('should run step without runScope in both environments', async () => {
+      const steps: ValidationStep[] = [
+        { name: 'Always Run', command: 'node -e "console.log(\'ran\')"' },
+      ];
+
+      // Test without CI
+      delete process.env.CI;
+      const resultLocal = await runStepsInParallel(steps, 'Test Phase', {});
+      expect(resultLocal.success).toBe(true);
+      expect(resultLocal.outputs.get('Always Run')).toContain('ran');
+
+      // Test with CI
+      process.env.CI = 'true';
+      const resultCI = await runStepsInParallel(steps, 'Test Phase', {});
+      expect(resultCI.success).toBe(true);
+      expect(resultCI.outputs.get('Always Run')).toContain('ran');
+    });
+
+    it('should log skip reason for skipped steps', async () => {
+      delete process.env.CI;
+
+      const steps: ValidationStep[] = [
+        { name: 'CI Step', command: 'node -e "console.log(\'ran\')"', runScope: 'ci' },
+      ];
+
+      const consoleSpy = vi.spyOn(console, 'log');
+      await runStepsInParallel(steps, 'Test Phase', {});
+
+      const logOutput = consoleSpy.mock.calls.map(call => String(call[0])).join('\n');
+      expect(logOutput).toContain('skipped (ci-only)');
+    });
+
+    it('should log local-only skip reason when in CI', async () => {
+      process.env.CI = 'true';
+
+      const steps: ValidationStep[] = [
+        { name: 'Local Step', command: 'node -e "console.log(\'ran\')"', runScope: 'local' },
+      ];
+
+      const consoleSpy = vi.spyOn(console, 'log');
+      await runStepsInParallel(steps, 'Test Phase', {});
+
+      const logOutput = consoleSpy.mock.calls.map(call => String(call[0])).join('\n');
+      expect(logOutput).toContain('skipped (local-only)');
     });
   });
 });

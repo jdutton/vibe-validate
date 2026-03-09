@@ -910,3 +910,228 @@ describe('ExtractorsConfigSchema', () => {
     expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
   });
 });
+
+describe('CIConfigSchema - new fields', () => {
+  it('should accept registryUrl', () => {
+    const config = createBaseConfig({
+      ci: {
+        registryUrl: 'https://npm.pkg.github.com'
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.registryUrl).toBe('https://npm.pkg.github.com');
+  });
+
+  it('should accept env record', () => {
+    const config = createBaseConfig({
+      ci: {
+        env: { NODE_ENV: 'test', CI: 'true' }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.env).toEqual({ NODE_ENV: 'test', CI: 'true' });
+  });
+
+  it('should accept permissions record', () => {
+    const config = createBaseConfig({
+      ci: {
+        permissions: { contents: 'read', 'pull-requests': 'write' }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.permissions).toEqual({ contents: 'read', 'pull-requests': 'write' });
+  });
+
+  it('should accept concurrency with group and cancelInProgress', () => {
+    const config = createBaseConfig({
+      ci: {
+        concurrency: {
+          group: 'ci-${{ github.ref }}',
+          cancelInProgress: true
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.concurrency?.group).toBe('ci-${{ github.ref }}');
+    expect(result.data?.ci?.concurrency?.cancelInProgress).toBe(true);
+  });
+
+  it('should accept concurrency with only group', () => {
+    const config = createBaseConfig({
+      ci: {
+        concurrency: {
+          group: 'ci-${{ github.ref }}'
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.concurrency?.group).toBe('ci-${{ github.ref }}');
+    expect(result.data?.ci?.concurrency?.cancelInProgress).toBeUndefined();
+  });
+
+  it('should reject concurrency without group', () => {
+    const config = createBaseConfig({
+      ci: {
+        concurrency: {
+          cancelInProgress: true
+        }
+      }
+    });
+
+    expectInvalidConfig(config, /group|Required/);
+  });
+
+  it('should reject unknown properties in concurrency (strict)', () => {
+    const config = createBaseConfig({
+      ci: {
+        concurrency: {
+          group: 'ci-${{ github.ref }}',
+          unknownField: 'bad'
+        }
+      }
+    });
+
+    expectInvalidConfig(config, UNRECOGNIZED_KEY_ERROR);
+  });
+
+  it('should accept setupSteps array', () => {
+    const config = createBaseConfig({
+      ci: {
+        setupSteps: [
+          { name: 'Setup Java', uses: 'actions/setup-java@v4', with: { 'java-version': '17' } },
+          { name: 'Cache Gradle', uses: 'actions/cache@v4' }
+        ]
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.setupSteps).toHaveLength(2);
+  });
+
+  it('should accept empty setupSteps array', () => {
+    const config = createBaseConfig({
+      ci: {
+        setupSteps: []
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.setupSteps).toEqual([]);
+  });
+
+  it('should accept all new CI fields together', () => {
+    const config = createBaseConfig({
+      ci: {
+        nodeVersions: ['20'],
+        packageManager: 'pnpm',
+        registryUrl: 'https://registry.npmjs.org',
+        env: { CI: 'true' },
+        permissions: { contents: 'read' },
+        concurrency: { group: 'ci-${{ github.ref }}', cancelInProgress: true },
+        setupSteps: [{ name: 'Custom step', run: 'echo hello' }]
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.registryUrl).toBe('https://registry.npmjs.org');
+    expect(result.data?.ci?.env).toEqual({ CI: 'true' });
+    expect(result.data?.ci?.permissions).toEqual({ contents: 'read' });
+    expect(result.data?.ci?.concurrency?.group).toBe('ci-${{ github.ref }}');
+    expect(result.data?.ci?.setupSteps).toHaveLength(1);
+  });
+
+  it('should not require any new fields (backwards compatible)', () => {
+    const config = createBaseConfig({
+      ci: {
+        packageManager: 'npm'
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.ci?.registryUrl).toBeUndefined();
+    expect(result.data?.ci?.env).toBeUndefined();
+    expect(result.data?.ci?.permissions).toBeUndefined();
+    expect(result.data?.ci?.concurrency).toBeUndefined();
+    expect(result.data?.ci?.setupSteps).toBeUndefined();
+  });
+
+  it('should reject non-string values in env record', () => {
+    const config = createBaseConfig({
+      ci: {
+        env: { NODE_ENV: 123 }
+      }
+    });
+
+    expectInvalidConfig(config, /Expected string/);
+  });
+});
+
+describe('ValidationStepSchema - runScope', () => {
+  it('should accept runScope "ci"', () => {
+    const step = {
+      name: TYPESCRIPT_NAME,
+      command: TSC_NO_EMIT,
+      runScope: 'ci',
+    };
+
+    const result = ValidationStepSchema.parse(step);
+    expect(result.runScope).toBe('ci');
+  });
+
+  it('should accept runScope "local"', () => {
+    const step = {
+      name: TYPESCRIPT_NAME,
+      command: TSC_NO_EMIT,
+      runScope: 'local',
+    };
+
+    const result = ValidationStepSchema.parse(step);
+    expect(result.runScope).toBe('local');
+  });
+
+  it('should reject invalid runScope value', () => {
+    const step = {
+      name: TYPESCRIPT_NAME,
+      command: TSC_NO_EMIT,
+      runScope: 'both',
+    };
+
+    expect(() => ValidationStepSchema.parse(step)).toThrow(/Invalid enum/);
+  });
+
+  it('should not require runScope (optional)', () => {
+    const step = {
+      name: TYPESCRIPT_NAME,
+      command: TSC_NO_EMIT,
+    };
+
+    const result = ValidationStepSchema.parse(step);
+    expect(result.runScope).toBeUndefined();
+  });
+
+  it('should accept runScope in full config context', () => {
+    const config = createBaseConfig({
+      validation: {
+        phases: [{
+          name: 'Test',
+          steps: [
+            { name: 'Lint', command: 'npm run lint', runScope: 'ci' },
+            { name: 'Test', command: 'npm test' },
+            { name: 'Coverage', command: 'npm run coverage', runScope: 'local' }
+          ]
+        }]
+      }
+    });
+
+    const result = expectValidConfig(config);
+    const steps = result.data?.validation?.phases?.[0]?.steps;
+    expect(steps?.[0]?.runScope).toBe('ci');
+    expect(steps?.[1]?.runScope).toBeUndefined();
+    expect(steps?.[2]?.runScope).toBe('local');
+  });
+});

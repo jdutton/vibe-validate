@@ -454,6 +454,45 @@ validation:
 
 **Cache optimization**: Using `cwd` field instead of `cd` commands improves cache hit rates by 30-50% in monorepo scenarios.
 
+#### `runScope` (optional)
+
+Controls whether a validation step runs locally, in CI, or both. Use this when certain steps require CI-specific infrastructure (e.g., private NuGet feeds, specific SDKs) that isn't available on developer machines.
+
+**Type**: `'ci' | 'local'`
+
+**Default**: none (runs everywhere)
+
+**Values**:
+- `ci` — Step runs only in CI (detected via `CI` environment variable). Skipped locally with "skipped (ci-only)" message.
+- `local` — Step runs only on developer machines. Skipped in CI with "skipped (local-only)" message.
+
+**Example — .NET steps that need CI-only NuGet auth**:
+```yaml
+validation:
+  phases:
+    - name: 'Build & Test'
+      steps:
+        - name: 'dotnet build'
+          command: 'dotnet build MyApp.sln --no-restore'
+          runScope: ci
+        - name: 'dotnet test'
+          command: 'dotnet test MyApp.sln --no-build'
+          runScope: ci
+        - name: 'PHI scan'
+          command: 'npx phi-scan'
+          # no runScope — runs everywhere
+```
+
+**Skipped steps** appear in validation output as passed with zero duration, so they don't block other steps or fail the pipeline. They are visually distinct in the output:
+```
+   ⏭️  dotnet build  →  skipped (ci-only)
+   ⏭️  dotnet test   →  skipped (ci-only)
+   ⏳  PHI scan      →  npx phi-scan
+      ✅ PHI scan     - PASSED (3.2s)
+```
+
+**Difference from `continueOnError`**: `continueOnError` runs the step and ignores failure. `runScope` skips the step entirely — the command is never executed.
+
 ### `validation.failFast`
 
 Whether to stop validation at first phase failure.
@@ -621,13 +660,147 @@ ci:
   coverage: true  # Upload coverage reports to Codecov
 ```
 
+### `ci.registryUrl` (optional)
+
+Custom npm registry URL for `actions/setup-node` in generated workflows. Use this when your project installs packages from a private registry (e.g., GitHub Packages).
+
+**Type**: `string`
+
+**Default**: none (uses npmjs.org default)
+
+**Example**:
+```yaml
+ci:
+  registryUrl: 'https://npm.pkg.github.com'
+```
+
+When set, the generated workflow's `setup-node` step includes `registry-url`, which configures npm auth for the registry. Pair with `ci.env` to provide the authentication token.
+
+**Note**: This sets auth for **one** registry. If your project uses scoped packages (e.g., `@myorg/pkg`), npm routes scoped packages to the registry specified in your `.npmrc` while unscoped packages still come from npmjs.org. For multiple authenticated registries, use `ci.setupSteps` to write a custom `.npmrc` instead.
+
+### `ci.env` (optional)
+
+Environment variables added at workflow level in generated workflows. All steps (install, build, validate) inherit these.
+
+**Type**: `Record<string, string>`
+
+**Default**: none
+
+**Example**:
+```yaml
+ci:
+  env:
+    NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+```
+
+**Common use case**: GitHub Packages authentication. When `ci.registryUrl` is set, `npm ci` needs `NODE_AUTH_TOKEN` to authenticate:
+
+```yaml
+ci:
+  registryUrl: 'https://npm.pkg.github.com'
+  env:
+    NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+```
+
+### `ci.permissions` (optional)
+
+GitHub Actions `permissions:` block for the generated workflow. Scopes the `GITHUB_TOKEN` to minimum required permissions.
+
+**Type**: `Record<string, string>`
+
+**Default**: none (uses org/repo default permissions)
+
+**Example**:
+```yaml
+ci:
+  permissions:
+    contents: read
+    packages: read
+```
+
+**When to use**: If your org has restrictive default token permissions, or your workflow needs `packages: read` for GitHub Packages access.
+
+### `ci.concurrency` (optional)
+
+Concurrency settings to cancel in-progress CI runs when new commits are pushed.
+
+**Type**: `object`
+- `group` (required): Concurrency group expression
+- `cancelInProgress` (optional): Whether to cancel in-progress runs (default: `false`)
+
+**Example**:
+```yaml
+ci:
+  concurrency:
+    group: '${{ github.workflow }}-${{ github.ref }}'
+    cancelInProgress: true
+```
+
+This prevents wasted CI minutes when pushing multiple commits to a PR branch in quick succession.
+
+### `ci.setupSteps` (optional)
+
+Custom GitHub Actions steps injected into the generated workflow after `actions/checkout` but before Node.js setup. Use this for additional SDK setup, tool installation, or registry configuration that vibe-validate doesn't handle natively.
+
+**Type**: Array of GitHub Actions step objects (passed through as-is to YAML)
+
+**Default**: none
+
+**Example — .NET + Node.js project**:
+```yaml
+ci:
+  setupSteps:
+    - uses: 'actions/setup-dotnet@v4'
+      with:
+        dotnet-version: '9.0.x'
+    - name: 'NuGet auth (Telerik)'
+      run: 'dotnet nuget update source "Telerik" --username "api-key" --password "${{ secrets.TELERIK_NUGET_KEY }}" --store-password-in-clear-text'
+```
+
+**Example — Chrome for Karma tests on Linux**:
+```yaml
+ci:
+  setupSteps:
+    - name: 'Install Chrome for Karma'
+      run: 'sudo apt-get update && sudo apt-get install -y chromium-browser'
+      if: "runner.os == 'Linux'"
+```
+
+**Example — Multiple authenticated npm registries**:
+```yaml
+ci:
+  setupSteps:
+    - name: 'Configure npm registries'
+      run: |
+        echo "@myorg:registry=https://npm.pkg.github.com" >> .npmrc
+        echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+        echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+```
+
+Steps are injected in array order. Supports all GitHub Actions step properties (`uses`, `with`, `run`, `if`, `env`, `name`, etc.).
+
 **Complete CI Example**:
 ```yaml
 ci:
-  nodeVersions: ['20', '22', '24']
-  os: ['ubuntu-latest', 'macos-latest']
+  nodeVersions: ['22']
+  os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
   failFast: false
-  coverage: true
+  registryUrl: 'https://npm.pkg.github.com'
+  env:
+    NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+  permissions:
+    contents: read
+    packages: read
+  concurrency:
+    group: '${{ github.workflow }}-${{ github.ref }}'
+    cancelInProgress: true
+  setupSteps:
+    - uses: 'actions/setup-dotnet@v4'
+      with:
+        dotnet-version: '9.0.x'
+    - name: 'Install Chrome'
+      run: 'sudo apt-get install -y chromium-browser'
+      if: "runner.os == 'Linux'"
 ```
 
 ## Hooks Configuration

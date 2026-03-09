@@ -84,6 +84,12 @@ interface GitHubWorkflowJob {
 interface GitHubWorkflow {
   name: string;
   on: unknown;
+  permissions?: Record<string, string>;
+  concurrency?: {
+    group: string;
+    'cancel-in-progress'?: boolean;
+  };
+  env?: Record<string, string>;
   jobs: Record<string, GitHubWorkflowJob>;
 }
 
@@ -131,13 +137,13 @@ function generateCheckScript(jobNames: string[]): string {
       const envVar = `needs.${job}.result`;
       return `[ "\${{ ${envVar} }}" != "success" ]`;
     })
-    .join(' || \\\n             ');
+    .join(' || \\\n  ');
 
   return `if ${checks}; then
-            echo "❌ Some validation checks failed"
-            exit 1
-          fi
-          echo "✅ All validation checks passed!"`;
+  echo "❌ Some validation checks failed"
+  exit 1
+fi
+echo "✅ All validation checks passed!"`;
 }
 
 /**
@@ -170,6 +176,125 @@ function detectNodeVersion(cwd: string = process.cwd()): string {
 }
 
 /**
+ * Check if the project has a "build" script in package.json
+ *
+ * @param cwd - Project root directory
+ * @returns true if package.json has a scripts.build entry
+ */
+export function projectHasBuildScript(cwd: string = process.cwd()): boolean {
+  try {
+    const packageJsonPath = join(cwd, 'package.json');
+    if (!existsSync(packageJsonPath)) {
+      return false;
+    }
+
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    return typeof packageJson.scripts?.build === 'string';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build the common setup steps shared by validate and coverage jobs:
+ * checkout, custom setup steps, package manager setup, Node.js setup, install, and optional build.
+ */
+function buildCommonJobSteps(params: {
+  packageManager: PackageManager;
+  ciSetupSteps: unknown[] | undefined;
+  registryUrlConfig: Record<string, string>;
+  nodeVersionLabel: string;
+  nodeCacheConfig: Record<string, string>;
+  hasBuildScript: boolean;
+  skipNodeSetup?: boolean;
+}): GitHubWorkflowStep[] {
+  const steps: GitHubWorkflowStep[] = [
+    {
+      uses: ACTIONS_CHECKOUT_V4,
+      with: {
+        [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
+      }
+    },
+  ];
+
+  // Inject custom setup steps after checkout but before package manager setup
+  if (params.ciSetupSteps) {
+    steps.push(...(params.ciSetupSteps as GitHubWorkflowStep[]));
+  }
+
+  // Setup package manager
+  if (params.packageManager === 'bun') {
+    steps.push({
+      name: 'Setup Bun',
+      uses: ACTIONS_SETUP_BUN_V2,
+    });
+  } else if (params.packageManager === 'pnpm') {
+    steps.push({
+      name: STEP_NAME_SETUP_PNPM,
+      uses: ACTIONS_SETUP_PNPM_V2,
+      with: { version: '9' },
+    });
+  }
+
+  // Setup Node.js (skip for bun-only coverage jobs)
+  if (!params.skipNodeSetup) {
+    steps.push({
+      name: `Setup Node.js ${params.nodeVersionLabel}`,
+      uses: ACTIONS_SETUP_NODE_V4,
+      with: {
+        [WORKFLOW_PROPERTY_NODE_VERSION]: params.nodeVersionLabel,
+        ...params.nodeCacheConfig,
+        ...params.registryUrlConfig,
+      },
+    });
+  }
+
+  // Install dependencies
+  steps.push({
+    name: 'Install dependencies',
+    run: getInstallCommand(params.packageManager),
+  });
+
+  // Add build step if project has a build script
+  if (params.hasBuildScript) {
+    steps.push({
+      name: STEP_NAME_BUILD_PACKAGES,
+      run: getBuildCommand(params.packageManager),
+    });
+  }
+
+  return steps;
+}
+
+/**
+ * Build the top-level workflow metadata (permissions, concurrency, env)
+ * from the vibe-validate config.
+ */
+function buildWorkflowMetadata(config: VibeValidateConfig): Pick<GitHubWorkflow, 'permissions' | 'concurrency' | 'env'> {
+  const metadata: Pick<GitHubWorkflow, 'permissions' | 'concurrency' | 'env'> = {};
+
+  if (config.ci?.permissions) {
+    metadata.permissions = config.ci.permissions;
+  }
+
+  if (config.ci?.concurrency) {
+    const concurrency: GitHubWorkflow['concurrency'] = {
+      group: config.ci.concurrency.group,
+    };
+    if (config.ci.concurrency.cancelInProgress !== undefined) {
+      concurrency['cancel-in-progress'] = config.ci.concurrency.cancelInProgress;
+    }
+    metadata.concurrency = concurrency;
+  }
+
+  if (config.ci?.env) {
+    metadata.env = config.ci.env;
+  }
+
+  return metadata;
+}
+
+/**
  * Generate GitHub Actions workflow from validation config
  *
  * Always generates a single "validate" job that runs all validation steps
@@ -195,64 +320,25 @@ export function generateWorkflow(
   } = options;
 
   const jobs: Record<string, GitHubWorkflowJob> = {};
-  const phases = config.validation.phases;
+
+  // Extract CI config fields
+  const ciRegistryUrl = config.ci?.registryUrl;
+  const ciSetupSteps = config.ci?.setupSteps;
+  const registryUrlConfig: Record<string, string> = ciRegistryUrl ? { 'registry-url': ciRegistryUrl } : {};
+  const hasBuildScript = projectHasBuildScript(projectRoot);
+  const nodeCacheConfig: Record<string, string> = packageManager === 'bun' ? {} : { cache: packageManager };
 
   // Single validate job - runs all validation steps sequentially (like local)
-  const jobSteps: GitHubWorkflowStep[] = [
-    {
-      uses: ACTIONS_CHECKOUT_V4,
-      with: {
-        [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
-      }
-    },
-  ];
-
-  // Setup package manager
-  if (packageManager === 'bun') {
-    jobSteps.push({
-      name: 'Setup Bun',
-      uses: ACTIONS_SETUP_BUN_V2,
-    });
-  } else if (packageManager === 'pnpm') {
-    jobSteps.push({
-      name: STEP_NAME_SETUP_PNPM,
-      uses: ACTIONS_SETUP_PNPM_V2,
-      with: { version: '9' },
-    });
-  }
-
-  // Setup Node.js with matrix variable
-  // Important: Even for Bun projects, Node.js setup ensures compatibility testing
-  // across versions that npm package consumers will use
-  const nodeCacheConfig = packageManager === 'bun' ? {} : { cache: packageManager };
-  jobSteps.push({
-    name: 'Setup Node.js ${{ matrix.node }}',
-    uses: ACTIONS_SETUP_NODE_V4,
-    with: {
-      [WORKFLOW_PROPERTY_NODE_VERSION]: '${{ matrix.node }}',
-      ...nodeCacheConfig,
-    },
+  const jobSteps = buildCommonJobSteps({
+    packageManager,
+    ciSetupSteps,
+    registryUrlConfig,
+    nodeVersionLabel: '${{ matrix.node }}',
+    nodeCacheConfig,
+    hasBuildScript,
   });
-
-  // Install dependencies
-  jobSteps.push({
-    name: 'Install dependencies',
-    run: getInstallCommand(packageManager),
-  });
-
-  // Add build step if needed (common pattern)
-  const hasBuildPhase = phases.some(p =>
-    p.steps.some(s => s.name.toLowerCase().includes('build'))
-  );
-  if (hasBuildPhase) {
-    jobSteps.push({
-      name: STEP_NAME_BUILD_PACKAGES,
-      run: getBuildCommand(packageManager),
-    });
-  }
 
   // Run validation - use exit code to determine success/failure
-  // No need for YAML output, grep checks, or platform-specific logic
   // GitHub Actions will automatically fail the job if exit code != 0
   jobSteps.push({
     name: 'Run validation',
@@ -277,50 +363,15 @@ export function generateWorkflow(
 
   // Add coverage job if enabled (separate, runs on ubuntu only)
   if (enableCoverage) {
-    const coverageSteps: GitHubWorkflowStep[] = [
-      {
-        uses: ACTIONS_CHECKOUT_V4,
-        with: {
-          [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
-        }
-      },
-    ];
-
-    if (packageManager === 'bun') {
-      coverageSteps.push({
-        name: 'Setup Bun',
-        uses: ACTIONS_SETUP_BUN_V2,
-      });
-    } else if (packageManager === 'pnpm') {
-      coverageSteps.push({
-        name: STEP_NAME_SETUP_PNPM,
-        uses: ACTIONS_SETUP_PNPM_V2,
-        with: { version: '9' },
-      });
-    }
-
-    if (packageManager !== 'bun') {
-      coverageSteps.push({
-        name: 'Setup Node.js',
-        uses: ACTIONS_SETUP_NODE_V4,
-        with: {
-          [WORKFLOW_PROPERTY_NODE_VERSION]: nodeVersions[0],
-          cache: packageManager,
-        },
-      });
-    }
-
-    coverageSteps.push({
-      name: 'Install dependencies',
-      run: getInstallCommand(packageManager),
+    const coverageSteps = buildCommonJobSteps({
+      packageManager,
+      ciSetupSteps,
+      registryUrlConfig,
+      nodeVersionLabel: nodeVersions[0],
+      nodeCacheConfig: { cache: packageManager } as Record<string, string>,
+      hasBuildScript,
+      skipNodeSetup: packageManager === 'bun',
     });
-
-    if (hasBuildPhase) {
-      coverageSteps.push({
-        name: STEP_NAME_BUILD_PACKAGES,
-        run: getBuildCommand(packageManager),
-      });
-    }
 
     coverageSteps.push({
       name: 'Run tests with coverage',
@@ -372,6 +423,7 @@ export function generateWorkflow(
         branches: [config.git?.mainBranch ?? 'main'],
       },
     },
+    ...buildWorkflowMetadata(config),
     jobs,
   };
 

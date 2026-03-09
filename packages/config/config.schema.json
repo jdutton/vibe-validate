@@ -51,6 +51,13 @@
                         },
                         "cwd": {
                           "type": "string"
+                        },
+                        "runScope": {
+                          "type": "string",
+                          "enum": [
+                            "ci",
+                            "local"
+                          ]
                         }
                       },
                       "required": [
@@ -176,6 +183,43 @@
                 }
               },
               "additionalProperties": false
+            },
+            "registryUrl": {
+              "type": "string"
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "concurrency": {
+              "type": "object",
+              "properties": {
+                "group": {
+                  "type": "string"
+                },
+                "cancelInProgress": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "group"
+              ],
+              "additionalProperties": false
+            },
+            "setupSteps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": {}
+              }
             }
           },
           "additionalProperties": false

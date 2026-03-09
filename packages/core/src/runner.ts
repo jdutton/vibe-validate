@@ -38,6 +38,38 @@ import type {
 import { parseVibeValidateOutput } from './run-output-parser.js';
 
 /**
+ * Determine if a step should be skipped based on its runScope and the current environment.
+ *
+ * - `runScope: 'ci'` — only runs in CI, skipped locally
+ * - `runScope: 'local'` — only runs locally, skipped in CI
+ * - No `runScope` (undefined) — runs everywhere (backwards compatible)
+ *
+ * @param runScope - The step's runScope setting
+ * @param isCI - Whether the current environment is CI
+ * @returns true if the step should be skipped
+ *
+ * @public
+ */
+export function shouldSkipByRunScope(runScope: 'ci' | 'local' | undefined, isCI: boolean): boolean {
+  if (!runScope) return false;
+  if (runScope === 'ci' && !isCI) return true;
+  if (runScope === 'local' && isCI) return true;
+  return false;
+}
+
+/**
+ * Get the human-readable skip reason for a runScope-skipped step.
+ *
+ * @param runScope - The step's runScope setting
+ * @returns Display string for the skip reason
+ *
+ * @internal
+ */
+function getRunScopeSkipReason(runScope: 'ci' | 'local' | undefined): string {
+  return runScope === 'ci' ? 'skipped (ci-only)' : 'skipped (local-only)';
+}
+
+/**
  * Runtime validation configuration
  *
  * This extends the file-based configuration from @vibe-validate/config
@@ -570,40 +602,75 @@ function formatCacheTimestamp(timestamp: string): string {
 /**
  * Execute a single validation step (or use cached result if available)
  */
+/**
+ * Build a skipped step result for runScope filtering
+ */
+function buildSkippedStepResult(step: ValidationStep): { output: string; stepResult: StepResult } {
+  return {
+    output: '',
+    stepResult: {
+      name: step.name,
+      command: step.command,
+      passed: true,
+      durationSecs: 0,
+      exitCode: 0,
+    },
+  };
+}
+
+/**
+ * Try to use a cached result from a previous run. Returns null if no cache hit.
+ */
+function tryUseCachedResult(
+  step: ValidationStep,
+  paddedName: string,
+  maxNameLength: number,
+  previousRun: ValidationConfig['previousRun'],
+  verbose: boolean,
+  log: (msg: string) => void,
+): { output: string; stepResult: StepResult } | null {
+  const previousStep = previousRun ? findPreviousStepResult(previousRun, step.name) : null;
+  const isRetryFailed = Boolean(previousRun);
+
+  if (!shouldUseCachedResult(previousStep, isRetryFailed)) {
+    return null;
+  }
+
+  // previousStep is guaranteed non-null by shouldUseCachedResult check
+  if (!previousStep) {
+    throw new Error('Internal error: previousStep should not be null after shouldUseCachedResult');
+  }
+
+  const formattedTimestamp = formatCacheTimestamp(previousRun?.timestamp ?? '');
+  log(`   ⏳ ${paddedName}  →  ${step.command}`);
+  if (verbose) {
+    log(`      ⚡ Cached from ${formattedTimestamp}`);
+  }
+  log(`      ✅ ${step.name.padEnd(maxNameLength)} - PASSED (${previousStep.durationSecs}s)`);
+
+  return { output: '', stepResult: { ...previousStep, isCachedResult: true } };
+}
+
 async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ output: string; stepResult: StepResult }> {
   const { step, env, verbose, yaml, debug, maxNameLength, log, previousRun } = options;
   const paddedName = step.name.padEnd(maxNameLength);
 
+  // Check if step should be skipped based on runScope
+  const isCI = Boolean(process.env.CI);
+  if (shouldSkipByRunScope(step.runScope, isCI)) {
+    log(`   ⏭️  ${paddedName}  →  ${getRunScopeSkipReason(step.runScope)}`);
+    return buildSkippedStepResult(step);
+  }
+
   // Check if we can use cached result from previous run
-  const previousStep = previousRun ? findPreviousStepResult(previousRun, step.name) : null;
-  const isRetryFailed = Boolean(previousRun);
-
-  if (shouldUseCachedResult(previousStep, isRetryFailed)) {
-    // Use cached result - copy everything from previous step and mark as cached
-    // previousStep is guaranteed non-null by shouldUseCachedResult check
-    if (!previousStep) {
-      throw new Error('Internal error: previousStep should not be null after shouldUseCachedResult');
-    }
-
-    const formattedTimestamp = formatCacheTimestamp(previousRun?.timestamp ?? '');
-    log(`   ⏳ ${paddedName}  →  ${step.command}`);
-    if (verbose) {
-      log(`      ⚡ Cached from ${formattedTimestamp}`);
-    }
-    const status = '✅';
-    const result = 'PASSED';
-    log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${previousStep.durationSecs}s)`);
-
-    const cachedStepResult: StepResult = {
-      ...previousStep,
-      isCachedResult: true,
-    };
-
-    return { output: '', stepResult: cachedStepResult };
+  const cachedResult = tryUseCachedResult(step, paddedName, maxNameLength, previousRun, verbose, log);
+  if (cachedResult) {
+    return cachedResult;
   }
 
   // Execute step normally (check if this is a retry of a previously failed step)
-  const isRetryingFailedStep = isRetryFailed && previousStep && !previousStep.passed;
+  const previousStep = previousRun ? findPreviousStepResult(previousRun, step.name) : null;
+  const isRetryingFailedStep = previousRun && previousStep && !previousStep.passed;
   const commandPrefix = isRetryingFailedStep && verbose ? '🔄 Retrying...\n   ' : '';
   log(`   ${commandPrefix}⏳ ${paddedName}  →  ${step.command}`);
 
@@ -843,6 +910,26 @@ export async function runStepsInParallel(
     steps.map(step =>
       new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
         const paddedName = step.name.padEnd(maxNameLength);
+
+        // Check if step should be skipped based on runScope
+        const isCI = Boolean(process.env.CI);
+        if (shouldSkipByRunScope(step.runScope, isCI)) {
+          const skipReason = getRunScopeSkipReason(step.runScope);
+          log(`   ⏭️  ${paddedName}  →  ${skipReason}`);
+
+          const skippedStepResult: StepResult = {
+            name: step.name,
+            command: step.command,
+            passed: true,
+            durationSecs: 0,
+            exitCode: 0,
+          };
+
+          stepResults.push(skippedStepResult);
+          outputs.set(step.name, '');
+          resolve({ step, output: '', durationSecs: 0 });
+          return;
+        }
 
         // Check if we can use cached result from previous run
         const previousStep = previousRun ? findPreviousStepResult(previousRun, step.name) : null;
