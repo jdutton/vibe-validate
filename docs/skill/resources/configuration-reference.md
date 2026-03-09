@@ -473,10 +473,10 @@ validation:
     - name: 'Build & Test'
       steps:
         - name: 'dotnet build'
-          command: 'dotnet build MPNAPI.sln --no-restore'
+          command: 'dotnet build MyApp.sln --no-restore'
           runScope: ci
         - name: 'dotnet test'
-          command: 'dotnet test MPNAPI.sln --no-build'
+          command: 'dotnet test MyApp.sln --no-build'
           runScope: ci
         - name: 'PHI scan'
           command: 'npx phi-scan'
