@@ -499,7 +499,7 @@ describe('GitHubFetcher', () => {
       vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
       vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
-      const changes = await fetcher.fetchFileChanges(123);
+      const changes = await fetcher.fetchFileChanges(123, 'main');
 
       expect(changes).toEqual({
         files_changed: 4,
@@ -523,7 +523,7 @@ describe('GitHubFetcher', () => {
       vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
       vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
-      const changes = await fetcher.fetchFileChanges(123);
+      const changes = await fetcher.fetchFileChanges(123, 'main');
 
       expect(changes.top_files).toHaveLength(10);
       expect(changes.files_changed).toBe(20);
@@ -539,7 +539,7 @@ describe('GitHubFetcher', () => {
       vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
       vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
-      const changes = await fetcher.fetchFileChanges(123);
+      const changes = await fetcher.fetchFileChanges(123, 'main');
 
       expect(changes.top_files?.[0].new_file).toBe(true);
     });
@@ -552,7 +552,7 @@ describe('GitHubFetcher', () => {
       vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
       vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
 
-      const changes = await fetcher.fetchFileChanges(123);
+      const changes = await fetcher.fetchFileChanges(123, 'main');
 
       expect(changes).toEqual({
         files_changed: 0,
@@ -569,7 +569,20 @@ describe('GitHubFetcher', () => {
         throw new Error('git: not a git repository');
       });
 
-      await expect(fetcher.fetchFileChanges(123)).rejects.toThrow();
+      await expect(fetcher.fetchFileChanges(123, 'main')).rejects.toThrow();
+    });
+
+    it('should use the provided base branch instead of hardcoded main', async () => {
+      const mockDiffOutput = '1\t0\tfile.ts';
+      const mockCommitCount = '1';
+
+      const diffSpy = vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);
+      const countSpy = vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);
+
+      await fetcher.fetchFileChanges(123, 'master');
+
+      expect(diffSpy).toHaveBeenCalledWith('origin/master', 'HEAD');
+      expect(countSpy).toHaveBeenCalledWith('origin/master', 'HEAD');
     });
   });
 

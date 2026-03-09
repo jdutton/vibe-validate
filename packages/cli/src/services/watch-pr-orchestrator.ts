@@ -157,8 +157,8 @@ export class WatchPROrchestrator {
     // Fetch history summary
     const historySummary = await this.historyBuilder.buildSummary(prMetadata.branch);
 
-    // Fetch file changes
-    const changes = await this.fetcher.fetchFileChanges(prNumber);
+    // Fetch file changes (use PR's base branch, not hardcoded 'main')
+    const changes = await this.fetcher.fetchFileChanges(prNumber, prMetadata.base_branch);
 
     // Determine overall status
     let status: PRStatus = 'passed';
@@ -351,8 +351,8 @@ export class WatchPROrchestrator {
       jobs.map(job => this.buildCheckFromJob(job, runId, runDetails.workflow))
     );
 
-    // Fetch file changes
-    const changes = await this.fetcher.fetchFileChanges(prNumber);
+    // Fetch file changes (use PR's base branch, not hardcoded 'main')
+    const changes = await this.fetcher.fetchFileChanges(prNumber, prMetadata.base_branch);
 
     // Determine status
     const status = this.determineOverallStatus(actionChecks);

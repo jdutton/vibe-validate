@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`watch-pr` crashes on repos with non-main default branch** — `fetchFileChanges` hardcoded `origin/main` for git diff, causing failures on repos using `master`, `develop`, or other base branches. Now uses the PR's actual base branch from GitHub metadata.
+
 ## [0.19.0] - 2026-03-04
 
 ### Breaking Changes
