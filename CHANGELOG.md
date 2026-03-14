@@ -18,9 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`generate-workflow` hardening** — `ci.permissions` and `ci.env` are now applied to the `validate` and `coverage` jobs instead of at workflow level, so the `all-validation-passed` gate job no longer inherits unnecessary access (resolves SonarQube workflow-level permissions flag). Also fixed check script indentation and build step auto-detection (no longer matches on step name substring — checks `package.json` for a `build` script instead).
 - **`watch-pr` crashes on repos with non-main default branch** — `fetchFileChanges` hardcoded `origin/main` for git diff, causing failures on repos using `master`, `develop`, or other base branches. Now uses the PR's actual base branch from GitHub metadata.
-- **`generate-workflow` check script indentation** — The `all-validation-passed` gate job's bash script had excessive indentation, now uses standard 2-space indent
-- **`generate-workflow` build step auto-detection** — No longer matches on step name substring (e.g., "dotnet build" falsely triggered `npm run build`). Now checks `package.json` for a `build` script instead.
 
 ## [0.19.0] - 2026-03-04
 

@@ -66,6 +66,7 @@ interface GitHubWorkflowStep {
 interface GitHubWorkflowJob {
   name: string;
   'runs-on': string;
+  permissions?: Record<string, string>;
   needs?: string[];
   if?: string;
   steps: GitHubWorkflowStep[];
@@ -76,6 +77,7 @@ interface GitHubWorkflowJob {
       node: string[];
     };
   };
+  env?: Record<string, string>;
 }
 
 /**
@@ -84,12 +86,10 @@ interface GitHubWorkflowJob {
 interface GitHubWorkflow {
   name: string;
   on: unknown;
-  permissions?: Record<string, string>;
   concurrency?: {
     group: string;
     'cancel-in-progress'?: boolean;
   };
-  env?: Record<string, string>;
   jobs: Record<string, GitHubWorkflowJob>;
 }
 
@@ -267,15 +267,15 @@ function buildCommonJobSteps(params: {
 }
 
 /**
- * Build the top-level workflow metadata (permissions, concurrency, env)
- * from the vibe-validate config.
+ * Build the top-level workflow metadata (concurrency only).
+ *
+ * Permissions and env are applied at the job level, not the workflow level.
+ * This avoids granting permissions to jobs that don't need them (e.g., the
+ * gate job only checks results and needs no special access). SonarQube and
+ * other security scanners flag workflow-level permissions as a vulnerability.
  */
-function buildWorkflowMetadata(config: VibeValidateConfig): Pick<GitHubWorkflow, 'permissions' | 'concurrency' | 'env'> {
-  const metadata: Pick<GitHubWorkflow, 'permissions' | 'concurrency' | 'env'> = {};
-
-  if (config.ci?.permissions) {
-    metadata.permissions = config.ci.permissions;
-  }
+function buildWorkflowMetadata(config: VibeValidateConfig): Pick<GitHubWorkflow, 'concurrency'> {
+  const metadata: Pick<GitHubWorkflow, 'concurrency'> = {};
 
   if (config.ci?.concurrency) {
     const concurrency: GitHubWorkflow['concurrency'] = {
@@ -285,6 +285,20 @@ function buildWorkflowMetadata(config: VibeValidateConfig): Pick<GitHubWorkflow,
       concurrency['cancel-in-progress'] = config.ci.concurrency.cancelInProgress;
     }
     metadata.concurrency = concurrency;
+  }
+
+  return metadata;
+}
+
+/**
+ * Build job-level metadata (permissions, env) from the vibe-validate config.
+ * Applied to validate and coverage jobs, but NOT to the gate job.
+ */
+function buildJobMetadata(config: VibeValidateConfig): Pick<GitHubWorkflowJob, 'permissions' | 'env'> {
+  const metadata: Pick<GitHubWorkflowJob, 'permissions' | 'env'> = {};
+
+  if (config.ci?.permissions) {
+    metadata.permissions = config.ci.permissions;
   }
 
   if (config.ci?.env) {
@@ -348,9 +362,12 @@ export function generateWorkflow(
     },
   });
 
+  const jobMetadata = buildJobMetadata(config);
+
   jobs['validate'] = {
     name: 'Run vibe-validate validation',
     'runs-on': '${{ matrix.os }}',
+    ...jobMetadata,
     steps: jobSteps,
     strategy: {
       'fail-fast': matrixFailFast,
@@ -393,6 +410,7 @@ export function generateWorkflow(
     jobs['validate-coverage'] = {
       name: 'Run validation with coverage',
       'runs-on': DEFAULT_RUNNER_OS,
+      ...jobMetadata,
       steps: coverageSteps,
     };
   }
