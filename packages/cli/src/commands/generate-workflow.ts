@@ -298,7 +298,9 @@ function buildJobMetadata(config: VibeValidateConfig): Pick<GitHubWorkflowJob, '
   const metadata: Pick<GitHubWorkflowJob, 'permissions' | 'env'> = {};
 
   if (config.ci?.permissions) {
-    metadata.permissions = config.ci.permissions;
+    // Job-level permissions replace all defaults — actions/checkout always
+    // needs contents:read, so inject it automatically if not already present.
+    metadata.permissions = { contents: 'read', ...config.ci.permissions };
   }
 
   if (config.ci?.env) {
