@@ -791,7 +791,7 @@ describe('generate-workflow command', () => {
       it('should add permissions to validate job when ci.permissions is set', () => {
         const config: VibeValidateConfig = {
           ...baseMockConfig,
-          ci: { permissions: { contents: 'read', packages: 'write' } },
+          ci: { permissions: { packages: 'write' } },
         };
 
         const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
@@ -799,6 +799,30 @@ describe('generate-workflow command', () => {
         // permissions should be on the validate job, not at workflow level
         expect(workflow.permissions).toBeUndefined();
         expect(workflow.jobs['validate'].permissions).toEqual({ contents: 'read', packages: 'write' });
+      });
+
+      it('should auto-inject contents:read for actions/checkout', () => {
+        const config: VibeValidateConfig = {
+          ...baseMockConfig,
+          ci: { permissions: { packages: 'read' } },
+        };
+
+        const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
+
+        // contents:read is required for actions/checkout and must always be present
+        expect(workflow.jobs['validate'].permissions).toEqual({ contents: 'read', packages: 'read' });
+      });
+
+      it('should not override explicit contents permission', () => {
+        const config: VibeValidateConfig = {
+          ...baseMockConfig,
+          ci: { permissions: { contents: 'write', packages: 'read' } },
+        };
+
+        const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
+
+        // User-specified contents:write should take precedence over the default
+        expect(workflow.jobs['validate'].permissions).toEqual({ contents: 'write', packages: 'read' });
       });
 
       it('should NOT add permissions to gate job', () => {
@@ -823,7 +847,7 @@ describe('generate-workflow command', () => {
           enableCoverage: true,
         });
 
-        expect(workflow.jobs['validate-coverage'].permissions).toEqual({ packages: 'read' });
+        expect(workflow.jobs['validate-coverage'].permissions).toEqual({ contents: 'read', packages: 'read' });
       });
 
       it('should NOT add permissions block when ci.permissions is not set', () => {
