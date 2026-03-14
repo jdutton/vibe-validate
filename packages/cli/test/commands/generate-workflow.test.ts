@@ -751,8 +751,8 @@ describe('generate-workflow command', () => {
       });
     });
 
-    describe('F2: workflow-level env', () => {
-      it('should add workflow-level env block when ci.env is set', () => {
+    describe('F2: job-level env', () => {
+      it('should add env to validate job when ci.env is set', () => {
         const config: VibeValidateConfig = {
           ...baseMockConfig,
           ci: { env: { NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}', CI: 'true' } },
@@ -760,21 +760,35 @@ describe('generate-workflow command', () => {
 
         const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
 
-        expect(workflow.env).toEqual({
+        // env should be on the validate job, not at workflow level
+        expect(workflow.env).toBeUndefined();
+        expect(workflow.jobs['validate'].env).toEqual({
           NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
           CI: 'true',
         });
+      });
+
+      it('should NOT add env to gate job', () => {
+        const config: VibeValidateConfig = {
+          ...baseMockConfig,
+          ci: { env: { NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}' } },
+        };
+
+        const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
+
+        expect(workflow.jobs['all-validation-passed'].env).toBeUndefined();
       });
 
       it('should NOT add env block when ci.env is not set', () => {
         const workflow = generateAndParseWorkflow(baseMockConfig, { packageManager: 'pnpm' });
 
         expect(workflow.env).toBeUndefined();
+        expect(workflow.jobs['validate'].env).toBeUndefined();
       });
     });
 
-    describe('F3: permissions block', () => {
-      it('should add permissions block when ci.permissions is set', () => {
+    describe('F3: permissions block (job-level)', () => {
+      it('should add permissions to validate job when ci.permissions is set', () => {
         const config: VibeValidateConfig = {
           ...baseMockConfig,
           ci: { permissions: { contents: 'read', packages: 'write' } },
@@ -782,13 +796,41 @@ describe('generate-workflow command', () => {
 
         const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
 
-        expect(workflow.permissions).toEqual({ contents: 'read', packages: 'write' });
+        // permissions should be on the validate job, not at workflow level
+        expect(workflow.permissions).toBeUndefined();
+        expect(workflow.jobs['validate'].permissions).toEqual({ contents: 'read', packages: 'write' });
+      });
+
+      it('should NOT add permissions to gate job', () => {
+        const config: VibeValidateConfig = {
+          ...baseMockConfig,
+          ci: { permissions: { packages: 'read' } },
+        };
+
+        const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
+
+        expect(workflow.jobs['all-validation-passed'].permissions).toBeUndefined();
+      });
+
+      it('should add permissions to coverage job when enabled', () => {
+        const config: VibeValidateConfig = {
+          ...baseMockConfig,
+          ci: { permissions: { packages: 'read' } },
+        };
+
+        const workflow = generateAndParseWorkflow(config, {
+          packageManager: 'pnpm',
+          enableCoverage: true,
+        });
+
+        expect(workflow.jobs['validate-coverage'].permissions).toEqual({ packages: 'read' });
       });
 
       it('should NOT add permissions block when ci.permissions is not set', () => {
         const workflow = generateAndParseWorkflow(baseMockConfig, { packageManager: 'pnpm' });
 
         expect(workflow.permissions).toBeUndefined();
+        expect(workflow.jobs['validate'].permissions).toBeUndefined();
       });
     });
 
@@ -996,7 +1038,7 @@ describe('generate-workflow command', () => {
     });
 
     describe('YAML property ordering', () => {
-      it('should output workflow properties in order: name, on, permissions, concurrency, env, jobs', () => {
+      it('should output workflow properties in order: name, on, concurrency, jobs', () => {
         const config: VibeValidateConfig = {
           ...baseMockConfig,
           ci: {
@@ -1011,16 +1053,17 @@ describe('generate-workflow command', () => {
         // Find positions of top-level keys in the YAML output
         const namePos = workflowYaml.indexOf('\nname:');
         const onPos = workflowYaml.includes('\n"on":') ? workflowYaml.indexOf('\n"on":') : workflowYaml.indexOf('\non:');
-        const permissionsPos = workflowYaml.indexOf('\npermissions:');
         const concurrencyPos = workflowYaml.indexOf('\nconcurrency:');
-        const envPos = workflowYaml.indexOf('\nenv:');
         const jobsPos = workflowYaml.indexOf('\njobs:');
 
         expect(namePos).toBeLessThan(onPos);
-        expect(onPos).toBeLessThan(permissionsPos);
-        expect(permissionsPos).toBeLessThan(concurrencyPos);
-        expect(concurrencyPos).toBeLessThan(envPos);
-        expect(envPos).toBeLessThan(jobsPos);
+        expect(onPos).toBeLessThan(concurrencyPos);
+        expect(concurrencyPos).toBeLessThan(jobsPos);
+
+        // permissions and env should NOT appear at workflow level
+        // (they are on the validate job instead)
+        expect(workflowYaml).not.toMatch(/^permissions:/m);
+        expect(workflowYaml).not.toMatch(/^env:/m);
       });
     });
   });
