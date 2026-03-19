@@ -1,6 +1,6 @@
 ---
 name: vibe-validate
-version: 0.19.1-rc.3 # Tracks vibe-validate package version
+version: 0.19.1-rc.4 # Tracks vibe-validate package version
 description: Expert guidance for vibe-validate, an LLM-optimized validation orchestration tool. Use when working with vibe-validate commands, configuration, pre-commit workflows, or validation orchestration in TypeScript projects.
 model: claude-sonnet-4-5
 tools:
@@ -348,6 +348,14 @@ vv history list --limit 5  # Find recent validation
 git checkout <tree-hash> -- path/to/file.ts  # Recover
 ```
 
+**"Validation locked / concurrent run conflict"**
+Locking prevents conflicting parallel runs. Default: `directory` scope (each worktree independent).
+```bash
+vv validate --no-lock     # One-off: skip locking
+vv validate --no-wait     # Exit immediately if locked (for background hooks)
+```
+For persistent config, set `locking.concurrencyScope` in `vibe-validate.config.yaml`. See [Configuration Reference](resources/configuration-reference.md) for all locking options.
+
 **For comprehensive troubleshooting**:
 - **Load**: [Troubleshooting Guide](resources/troubleshooting.md)
 
@@ -360,6 +368,7 @@ For complete command syntax and options:
 ### Configuration
 For schema details, templates, and examples:
 - **Load**: [Configuration Reference](resources/configuration-reference.md)
+- **Load**: [Config JSON Schema](resources/config.schema.json) — all config keys, types, and defaults
 
 ### Error Extractors
 For complete extractor system details:

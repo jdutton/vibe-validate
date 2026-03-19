@@ -2,6 +2,22 @@
 
 Complete reference for vibe-validate configuration options.
 
+**Full JSON Schema**: [config.schema.json](config.schema.json) — all config keys, types, defaults, and descriptions in machine-readable format.
+
+## Config Quick Reference
+
+All top-level configuration keys at a glance:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `$schema` | `string` | — | JSON Schema URL for IDE autocomplete |
+| `git` | `object` | `{ mainBranch: 'main', remoteOrigin: 'origin', autoSync: false }` | Branch and remote settings |
+| `validation` | `object` | — | Pipeline phases, steps, and failFast behavior |
+| `ci` | `object` | — | CI workflow generation (Node versions, OS matrix, etc.) |
+| `hooks` | `object` | `{ preCommit: { enabled: true } }` | Pre-commit hook configuration |
+| `locking` | `object` | `{ enabled: true, concurrencyScope: 'directory' }` | Concurrency control — see [Locking Configuration](#locking-configuration) |
+| `extractors` | `object` | — | Error extraction plugins (builtins, local, external) |
+
 ## Configuration File
 
 vibe-validate uses **YAML** as the configuration format.
@@ -844,6 +860,63 @@ hooks:
   preCommit:
     enabled: true
     command: 'npx vibe-validate pre-commit'
+```
+
+## Locking Configuration
+
+Controls concurrent validation behavior. Prevents multiple validation runs from interfering with each other.
+
+### `locking.enabled` (optional)
+
+Enable or disable validation locking.
+
+**Type**: `boolean`
+
+**Default**: `true`
+
+When enabled, only one validation can run at a time within the configured scope. Other runs will wait (or exit immediately with `--no-wait`).
+
+### `locking.concurrencyScope` (optional)
+
+Determines how lock files are scoped.
+
+**Type**: `'directory' | 'project'`
+
+**Default**: `'directory'`
+
+- **`directory`** — Each working directory gets its own lock. This is the default and allows **parallel validation in git worktrees** since each worktree has a separate directory.
+- **`project`** — All directories for the same project share a single lock. Use this when your validation steps use shared resources (e.g., fixed ports, shared databases) that would conflict across parallel runs.
+
+### `locking.projectId` (optional)
+
+Identifier for project-scoped locking.
+
+**Type**: `string`
+
+**Default**: Auto-detected from git remote URL or `package.json` name
+
+Only needed when `concurrencyScope` is `'project'` and auto-detection fails (e.g., no git remote configured).
+
+### CLI Flags for Locking
+
+These flags override config settings per-invocation:
+
+- `--no-lock` — Disable locking entirely (allow concurrent runs)
+- `--no-wait` — Exit immediately if another validation is running (useful for background pre-commit hooks)
+- `--wait-timeout <seconds>` — Maximum time to wait for a running validation to finish (default: 300)
+
+**Complete Locking Example**:
+```yaml
+# Default — each worktree validates independently
+locking:
+  enabled: true
+  concurrencyScope: directory
+
+# Shared resources — prevent parallel runs across worktrees
+locking:
+  enabled: true
+  concurrencyScope: project
+  projectId: my-app  # Optional, auto-detected from git remote
 ```
 
 ## Using Config Templates
