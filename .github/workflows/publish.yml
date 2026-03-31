@@ -59,6 +59,7 @@ jobs:
         id: publish
         run: pnpm exec tsx packages/dev-tools/src/publish-with-rollback.ts ${{ steps.version.outputs.version }}
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
       - name: Extract CHANGELOG for release (stable only)
