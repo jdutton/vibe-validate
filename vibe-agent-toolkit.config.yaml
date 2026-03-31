@@ -1,0 +1,20 @@
+version: 1
+
+skills:
+  include:
+    - "docs/skill/SKILL.md"
+  config:
+    vibe-validate:
+      ignoreValidationErrors:
+        SKILL_TOTAL_SIZE_LARGE: "vibe-validate is a comprehensive skill with many interconnected resources"
+        SKILL_TOO_MANY_FILES: "vibe-validate ships multiple focused reference docs that agents load on demand"
+
+claude:
+  marketplaces:
+    vibe-validate:
+      owner:
+        name: vibe-validate
+      plugins:
+        - name: vibe-validate
+          description: LLM-optimized validation orchestration for vibe coding
+          skills: "*"
