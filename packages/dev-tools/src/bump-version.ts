@@ -277,7 +277,7 @@ console.log('');
 log('Updating Claude Code skill documentation...', 'blue');
 
 // Update skill documentation version
-const skillFile = { path: join(PROJECT_ROOT, 'docs/skill/SKILL.md'), name: 'Skill documentation' };
+const skillFile = { path: join(PROJECT_ROOT, 'packages/vibe-validate/SKILL.md'), name: 'Skill documentation' };
 
 let skillUpdatedCount = 0;
 let skillSkippedCount = 0;

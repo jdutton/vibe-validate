@@ -659,9 +659,9 @@ vv create-extractor company-tool \
 
 ## Related Documentation
 
-- [Error Extractors Guide](../../../docs/error-extractors-guide.md) - Comprehensive extractor documentation
-- [Extractor Plugin Architecture](../../../docs/extractor-plugin-architecture.md) - Technical architecture details
-- [CLI Reference](../../../docs/cli-reference.md) - Full CLI command documentation
+- [Error Extractors Guide](./error-extractors-guide.md) - Comprehensive extractor documentation
+- [Extractor Plugin Architecture](./extractor-plugin-architecture.md) - Technical architecture details
+- [CLI Reference](./cli-reference.md) - Full CLI command documentation
 
 ## Quick Reference
 

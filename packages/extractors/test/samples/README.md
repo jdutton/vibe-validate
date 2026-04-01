@@ -72,7 +72,7 @@ Full extraction details only shown with `--debug` flag.
 
 ## Contributing Samples
 
-We need your help! See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for how to:
+We need your help! See CONTRIBUTING.md for how to:
 1. File an issue with test output
 2. Submit a PR with a sample
 3. Let Claude Code do it for you
