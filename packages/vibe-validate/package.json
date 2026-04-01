@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.19.1-rc.3",
+  "version": "0.19.1-rc.9",
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development) - umbrella package",
   "type": "module",
   "bin": {
@@ -9,9 +9,16 @@
   },
   "files": [
     "bin",
-    "scripts",
-    "skill"
+    "dist",
+    "README.md"
   ],
+  "vat": {
+    "version": "1.0",
+    "skills": ["vibe-validate"],
+    "replaces": {
+      "flatSkills": ["vibe-validate"]
+    }
+  },
   "keywords": [
     "validation",
     "testing",
@@ -51,7 +58,8 @@
   },
   "dependencies": {
     "@vibe-validate/cli": "workspace:*",
-    "@vibe-validate/utils": "workspace:*"
+    "@vibe-validate/utils": "workspace:*",
+    "vibe-agent-toolkit": "^0.1.22"
   },
   "devDependencies": {
     "@types/node": "^20.19.26",
@@ -61,7 +69,7 @@
   "scripts": {
     "test": "vitest run",
     "lint": "echo 'No linting needed for delegation wrappers'",
-    "prepare": "rm -rf skill && cp -R ../../docs/skill .",
-    "postinstall": "node scripts/install-skill.js"
+    "prepare": "vat build",
+    "postinstall": "vat claude plugin install --npm-postinstall 2>/dev/null || exit 0"
   }
 }

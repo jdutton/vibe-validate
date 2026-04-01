@@ -1,6 +1,6 @@
 ---
 name: vibe-validate
-version: 0.19.1-rc.3 # Tracks vibe-validate package version
+version: 0.19.1-rc.9 # Tracks vibe-validate package version
 description: Expert guidance for vibe-validate, an LLM-optimized validation orchestration tool. Use when working with vibe-validate commands, configuration, pre-commit workflows, or validation orchestration in TypeScript projects.
 model: claude-sonnet-4-5
 tools:
@@ -89,7 +89,7 @@ npx vibe-validate pre-commit
 ```
 
 **For complete workflow patterns and decision trees**:
-- **Load**: [Workflows & Decision Trees](resources/workflows.md)
+- **Load**: [Workflows & Decision Trees](../../docs/workflows.md)
 
 ### 2. Context-Optimized Test Running
 
@@ -147,7 +147,7 @@ npx vibe-validate run --force "pnpm test"
 ```
 
 **For complete run capability details**:
-- **Load**: [Run Capability Guide](resources/run-capability.md)
+- **Load**: [Run Capability Guide](../../docs/run-capability.md)
 
 ### 3. Full Validation Pipeline
 
@@ -236,7 +236,7 @@ git checkout <tree-hash> -- src/
 - `vv run <command>` - Individual command execution
 
 **For comprehensive recovery patterns**:
-- **Load**: [Work Recovery Guide](resources/work-recovery.md)
+- **Load**: [Work Recovery Guide](../../docs/work-recovery.md)
 
 ### 7. PR Monitoring
 
@@ -274,7 +274,7 @@ npx vibe-validate init --template typescript-react
 **After init**: Always run `npx vibe-validate doctor`
 
 **For comprehensive setup guidance**:
-- **Load**: [Configure Project Guide](resources/configure-project.md)
+- **Load**: [Configure Project Guide](../../docs/configure-project.md)
 
 ### 9. Improving Poor Extraction Results
 
@@ -296,7 +296,7 @@ extraction:
 ```
 
 **Step 2: Create custom extractor**
-- **Load**: [Extending Extraction Guide](resources/extending-extraction.md)
+- **Load**: [Extending Extraction Guide](../../docs/extending-extraction.md)
 
 This guide shows how to use `vv create-extractor` and implement custom error extraction logic.
 
@@ -310,7 +310,7 @@ $schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 ```
 
 **For complete configuration reference**:
-- **Load**: [Configuration Reference](resources/configuration-reference.md)
+- **Load**: [Configuration Reference](../../docs/configuration-reference.md)
 
 ## Performance & Caching
 
@@ -325,7 +325,7 @@ $schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 - Git operations (commits, merges)
 
 **For complete caching internals and optimization strategies**:
-- **Load**: [Caching Internals Guide](resources/caching-internals.md)
+- **Load**: [Caching Internals Guide](../../docs/caching-internals.md)
 
 ## Troubleshooting
 
@@ -348,29 +348,38 @@ vv history list --limit 5  # Find recent validation
 git checkout <tree-hash> -- path/to/file.ts  # Recover
 ```
 
+**"Validation locked / concurrent run conflict"**
+Locking prevents conflicting parallel runs. Default: `directory` scope (each worktree independent).
+```bash
+vv validate --no-lock     # One-off: skip locking
+vv validate --no-wait     # Exit immediately if locked (for background hooks)
+```
+For persistent config, set `locking.concurrencyScope` in `vibe-validate.config.yaml`. See [Configuration Reference](../../docs/configuration-reference.md) for all locking options.
+
 **For comprehensive troubleshooting**:
-- **Load**: [Troubleshooting Guide](resources/troubleshooting.md)
+- **Load**: [Troubleshooting Guide](../../docs/troubleshooting.md)
 
 ## Reference Documentation
 
 ### CLI Commands
 For complete command syntax and options:
-- **Load**: [CLI Reference](resources/cli-reference.md)
+- **Load**: [CLI Reference](../../docs/cli-reference.md)
 
 ### Configuration
 For schema details, templates, and examples:
-- **Load**: [Configuration Reference](resources/configuration-reference.md)
+- **Load**: [Configuration Reference](../../docs/configuration-reference.md)
+- **Load**: [Config JSON Schema](../../docs/config.schema.json) — all config keys, types, and defaults
 
 ### Error Extractors
 For complete extractor system details:
-- **Load**: [Error Extractors Guide](resources/error-extractors-guide.md)
+- **Load**: [Error Extractors Guide](../../docs/error-extractors-guide.md)
 
 For creating custom extractors:
-- **Load**: [Extending Extraction](resources/extending-extraction.md)
+- **Load**: [Extending Extraction](../../docs/extending-extraction.md)
 
 ### Agent Integration
 For integration with other AI assistants (Cursor, Aider, Continue) or when user asks for help configuring those tools:
-- **Load**: [Agent Integration Guide](resources/agent-integration-guide.md)
+- **Load**: [Agent Integration Guide](../../docs/agent-integration-guide.md)
 
 **Note**: This guide is NOT for Claude Code (you already have vibe-validate via this skill). Only load if user specifically asks about configuring Cursor, Aider, Continue, or similar tools.
 

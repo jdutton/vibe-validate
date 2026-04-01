@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-04-01
+
 ### Added
 
 - **`ci.registryUrl` config** — Set `registry-url` on `actions/setup-node` for GitHub Packages authentication in generated workflows
@@ -15,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ci.concurrency` config** — Add `concurrency:` block to cancel in-progress CI runs on new pushes
 - **`ci.setupSteps` config** — Inject custom GitHub Actions steps (e.g., `actions/setup-dotnet`, Chrome install) after checkout in generated workflows
 - **`runScope` step property** — Set `runScope: ci` or `runScope: local` on validation steps to control where they run. CI-only steps are skipped locally (shown as "skipped"), local-only steps are skipped in CI.
+
+### Changed
+
+- **Skill distribution migrated to vibe-agent-toolkit plugin system** — Skills now install as Claude Code plugins via `~/.claude/plugins/` instead of flat files at `~/.claude/skills/`. Upgrading from older versions automatically cleans up the legacy flat-skill install.
 
 ### Fixed
 
@@ -852,7 +858,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
     - Directory scope: No shared resources, parallel worktrees OK
     - Project scope: Tests use fixed ports (3000, 8080) or shared databases
     - Disable: CI environments with isolated containers
-  - See [Locking Configuration Guide](./docs/locking-configuration.md) for details
+  - See `docs/locking-configuration.md` for details
 
 ### ♻️ Refactoring
 
@@ -1152,7 +1158,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
 - **Removed TypeScript Preset System**
   - `preset:` property no longer supported in configs
   - Migration: Copy YAML templates from `config-templates/` directory instead
-  - See [Config Templates Guide](./packages/cli/config-templates/README.md) for migration instructions
+  - See `packages/cli/config-templates/README.md` for migration instructions
 
 - **Strict Schema Validation Enabled**
   - Unknown properties in configs now cause validation errors (previously ignored silently)
@@ -1177,7 +1183,7 @@ Major update bringing run command caching, code quality enforcement, smart defau
 
 ### 📝 Documentation
 
-- **New**: [Config Templates Guide](./packages/cli/config-templates/README.md)
+- **New**: `packages/cli/config-templates/README.md`
   - Explains how to use YAML templates
   - Migration guide from old `preset:` system
   - Best practices for customizing templates

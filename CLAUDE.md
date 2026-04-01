@@ -206,7 +206,7 @@ Use `getCommandName()` in error messages to match user's invocation (`vv` or `vi
 ### Documentation
 - JSDoc for public APIs
 - Auto-generate CLI docs: `pnpm generate-cli-docs`
-- **Never manually edit** `docs/skill/resources/cli-reference.md`
+- **Never manually edit** `docs/cli-reference.md`
 
 ## Development Workflow
 
@@ -246,7 +246,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ## Contributing Guidelines
 
-**CRITICAL**: Follow [CONTRIBUTING.md](CONTRIBUTING.md):
+**CRITICAL**: Follow CONTRIBUTING.md:
 - All changes via PRs (no direct main commits)
 - Run `pnpm validate` before creating PR
 - Conventional commits (feat:, fix:, docs:, test:, refactor:, chore:)

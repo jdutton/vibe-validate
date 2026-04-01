@@ -3,6 +3,8 @@ validation:
     - name: Pre-Qualification
       parallel: false
       steps:
+        - name: Resource Link Validation
+          command: pnpm --filter vibe-validate exec vat resources validate
         - name: Build All Packages (TypeScript)
           command: pnpm exec turbo run build
         - name: Repository Structure Validation
