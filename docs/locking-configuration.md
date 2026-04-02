@@ -466,8 +466,8 @@ Or use `--no-lock` flag.
 
 ## Related Documentation
 
-- [CLI Reference](./skill/resources/cli-reference.md) - All CLI flags and commands
-- [Configuration Schema](./skill/resources/configuration-reference.md) - Full config options
+- [CLI Reference](./cli-reference.md) - All CLI flags and commands
+- [Configuration Schema](./configuration-reference.md) - Full config options
 - [Pre-Commit Workflow](./getting-started.md#pre-commit-validation) - Using locks in hooks
 
 ## Future Enhancements

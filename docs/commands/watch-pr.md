@@ -673,6 +673,6 @@ gh run view <run-id> --log
 ## See Also
 
 - [run command](./run.md) - Run commands with LLM-friendly error extraction
-- [validate command](../skill/resources/cli-reference.md#validate) - Run validation phases
-- [history command](../skill/resources/cli-reference.md#history) - View validation timeline
+- [validate command](../cli-reference.md#validate) - Run validation phases
+- [history command](../cli-reference.md#history) - View validation timeline
 - [Git-Based Validation Tracking](../git-validation-tracking.md) - Architecture details

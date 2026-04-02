@@ -192,5 +192,5 @@ Before publishing vibe-validate to npm:
 
 - [CONTRIBUTING.md](../.github/CONTRIBUTING.md) - General contribution guidelines
 - [README.md](../README.md) - User documentation
-- [Configuration Reference](./skill/resources/configuration-reference.md) - Complete config options
-- [CLI Reference](./skill/resources/cli-reference.md) - All CLI commands
+- [Configuration Reference](./configuration-reference.md) - Complete config options
+- [CLI Reference](./cli-reference.md) - All CLI commands
