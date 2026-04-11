@@ -62,15 +62,16 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-      - name: Publish Claude marketplace
+      - name: Publish Claude marketplace (next)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "${{ steps.version_type.outputs.is_stable }}" = "true" ]; then
-            pnpm --filter vibe-validate exec vat claude marketplace publish
-          else
-            pnpm --filter vibe-validate exec vat claude marketplace publish --branch claude-marketplace-next
-          fi
+        run: pnpm --filter vibe-validate exec vat claude marketplace publish --branch claude-marketplace-next
+
+      - name: Publish Claude marketplace (stable)
+        if: steps.version_type.outputs.is_stable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter vibe-validate exec vat claude marketplace publish
 
       - name: Extract CHANGELOG for release (stable only)
         if: steps.version_type.outputs.is_stable == 'true'
