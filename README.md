@@ -269,6 +269,40 @@ vibe-validate includes 14+ built-in extractors that parse verbose output from po
 
 ---
 
+## Claude Code Plugin
+
+vibe-validate ships a [Claude Code](https://claude.ai/code) skill that teaches Claude how to configure and use vibe-validate in your projects. The skill is published via [vibe-agent-toolkit](https://github.com/jdutton/vibe-agent-toolkit).
+
+### Install from the [Claude marketplace](https://github.com/jdutton/vibe-validate/tree/claude-marketplace) (no npm required)
+
+```bash
+claude plugin marketplace add jdutton/vibe-validate#claude-marketplace
+claude plugin install vibe-validate@vibe-validate
+```
+
+Or from within a Claude Code session:
+
+```
+/plugin marketplace add jdutton/vibe-validate#claude-marketplace
+/plugin install vibe-validate@vibe-validate
+```
+
+**For project-scope** (shared with team via `.claude/settings.json`), add `--scope project`:
+
+```bash
+claude plugin marketplace add jdutton/vibe-validate#claude-marketplace --scope project
+```
+
+### Install via npm (automatic)
+
+```bash
+npm install -g vibe-validate
+```
+
+The npm package includes a postinstall hook that registers the plugin automatically.
+
+---
+
 ## Related Tools
 
 vibe-validate complements build optimization tools like Turborepo:
