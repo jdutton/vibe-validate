@@ -1,68 +1,58 @@
-# vibe-validate
+# vibe-validate Skills Marketplace
 
-> Git-aware validation orchestration with 312x faster cached runs
+LLM-optimized validation orchestration for vibe coding. [vibe-validate](https://github.com/jdutton/vibe-validate) caches validation state using git tree hashes, runs steps in parallel, and formats errors for LLM consumption.
 
-[![npm version](https://img.shields.io/npm/v/vibe-validate.svg)](https://www.npmjs.com/package/vibe-validate)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**What you get:** A skill that teaches Claude Code how to configure and use vibe-validate for pre-commit workflows, CI validation, and error extraction in TypeScript projects.
 
-## Umbrella Package
+## Install
 
-This is a convenience package that installs the **vibe-validate CLI**.
-
-When you install `vibe-validate`, you're actually installing `@vibe-validate/cli` and getting access to the `vibe-validate` command-line tool.
-
-## Quick Install
+### For yourself (user-level)
 
 ```bash
-npm install -D vibe-validate
+claude plugin marketplace add jdutton/vibe-validate#claude-marketplace
+claude plugin install vibe-validate@vibe-validate
 ```
 
-This installs:
-- `@vibe-validate/cli` - The main CLI tool
-- All its dependencies (`@vibe-validate/core`, `@vibe-validate/config`, etc.)
-
-## Usage
-
-After installation, use the `vibe-validate` command:
+### For your project (shared with team)
 
 ```bash
-# Initialize configuration
-npx vibe-validate init
-
-# Run validation
-npx vibe-validate validate
-
-# Check configuration diagnostics
-npx vibe-validate doctor
+claude plugin marketplace add jdutton/vibe-validate#claude-marketplace --scope project
+claude plugin install vibe-validate@vibe-validate
 ```
 
-## Full Documentation
+Project-scope writes to `.claude/settings.json` (committed to git). Team members
+who clone the repo will be prompted to install the marketplace automatically.
 
-For complete documentation, examples, and guides, visit:
+### Update
 
-**https://github.com/jdutton/vibe-validate**
+```bash
+claude plugin marketplace update vibe-validate
+```
 
-## Packages
+Then start a new Claude Code session. The skill appears as `/vibe-validate:vibe-validate`.
 
-The vibe-validate ecosystem consists of:
+### Pre-release channel
 
-- **vibe-validate** (this package) - Umbrella package for easy installation
-- **[@vibe-validate/cli](https://www.npmjs.com/package/@vibe-validate/cli)** - Command-line interface
-- **[@vibe-validate/core](https://www.npmjs.com/package/@vibe-validate/core)** - Validation orchestration engine
-- **[@vibe-validate/config](https://www.npmjs.com/package/@vibe-validate/config)** - Configuration system
-- **[@vibe-validate/extractors](https://www.npmjs.com/package/@vibe-validate/extractors)** - Error formatting
-- **[@vibe-validate/git](https://www.npmjs.com/package/@vibe-validate/git)** - Git utilities
+To track the latest pre-release builds, use the `-next` branch instead:
 
-## Why vibe-validate?
+```bash
+claude plugin marketplace add jdutton/vibe-validate#claude-marketplace-next
+```
 
-Built for **agentic coding workflows** with AI assistants like [Claude Code](https://claude.ai/code):
+## How it works
 
-- **312x faster cached validation** (288ms vs 90s when code unchanged)
-- **Git tree hash caching** - Content-based, deterministic
-- **Parallel execution** - Run checks simultaneously
-- **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue
-- **Branch sync enforcement** - Pre-commit hook ensures branches stay current
+This branch is a **Claude plugin marketplace** — a structured directory that Claude Code can install directly from GitHub. No npm account or registry needed.
+
+The marketplace is built from the [main branch](https://github.com/jdutton/vibe-validate) source using `vat build` and published with `vat claude marketplace publish`.
+
+## Also available via npm
+
+```bash
+npm install -g vibe-validate
+```
+
+The npm package includes a postinstall hook that automatically registers the plugin in Claude Code.
 
 ## License
 
-MIT © Jeff Dutton
+MIT
