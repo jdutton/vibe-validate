@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.3] - 2026-04-11
+
 ### Fixed
 
 - **Claude marketplace CI** — Stable releases now update both `claude-marketplace` and `claude-marketplace-next` branches, matching npm's `@latest`/`@next` tag behavior
