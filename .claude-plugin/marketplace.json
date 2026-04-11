@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "vibe-validate",
+  "owner": {
+    "name": "vibe-validate"
+  },
+  "plugins": [
+    {
+      "name": "vibe-validate",
+      "description": "LLM-optimized validation orchestration for vibe coding",
+      "source": "./plugins/vibe-validate",
+      "author": {
+        "name": "vibe-validate"
+      }
+    }
+  ]
+}
