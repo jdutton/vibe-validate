@@ -15,6 +15,8 @@ claude:
     vibe-validate:
       owner:
         name: vibe-validate
+      publish:
+        branch: claude-marketplace
       plugins:
         - name: vibe-validate
           description: LLM-optimized validation orchestration for vibe coding
