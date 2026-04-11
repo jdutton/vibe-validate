@@ -138,20 +138,23 @@ Updates all package.json files + Claude Code plugin manifest.
 **Automated via GitHub Actions**. DO NOT use `pnpm publish:all` manually unless automation fails.
 
 ### Full Release (e.g., v0.19.0)
-1. Update CHANGELOG.md: Change `[Unreleased]` → `[0.19.0] - YYYY-MM-DD`
-2. `pnpm bump-version 0.19.0`
-3. `git commit -m "chore: Release v0.19.0"`
-4. `git tag v0.19.0 && git push origin main v0.19.0`
-5. Monitor: https://github.com/jdutton/vibe-validate/actions
+1. `pnpm bump-version 0.19.0` (validates CHANGELOG, auto-stamps `[Unreleased]` → `[0.19.0] - YYYY-MM-DD`)
+2. `git commit -m "chore: Release v0.19.0"`
+3. Merge to main, then run: `pnpm pre-release` (validates tag doesn't exist, CHANGELOG section non-empty)
+4. Only after pre-release passes: `git tag v0.19.0`
+5. `git push origin main v0.19.0`
+6. Monitor: https://github.com/jdutton/vibe-validate/actions
+
+**Do NOT tag until `pnpm pre-release` passes. Tags trigger CI publish.**
 
 ### Pre-Release (e.g., v0.19.0-rc.2)
 1. **DO NOT update CHANGELOG.md** - keep changes under `[Unreleased]`
-2. `pnpm bump-version 0.19.0-rc.2`
+2. `pnpm bump-version 0.19.0-rc.2` (skips CHANGELOG stamp for pre-releases)
 3. `git commit -m "chore: Prepare v0.19.0-rc.2"`
 4. `git tag v0.19.0-rc.2 && git push origin main v0.19.0-rc.2`
 5. Monitor: https://github.com/jdutton/vibe-validate/actions
 
-**IMPORTANT**: CHANGELOG `[Unreleased]` → `[X.Y.Z]` updates are ONLY for full releases, NEVER for pre-releases (rc, beta, alpha).
+**IMPORTANT**: CHANGELOG `[Unreleased]` → `[X.Y.Z]` updates are ONLY for full releases, NEVER for pre-releases (rc, beta, alpha). The `bump-version` script enforces this automatically.
 
 See `docs/automated-publishing.md` for RC vs stable behavior, troubleshooting.
 

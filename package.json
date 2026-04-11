@@ -60,6 +60,7 @@
     "generate-cli-docs": "tsx packages/dev-tools/src/generate-cli-docs.ts",
     "bump-version": "tsx packages/dev-tools/src/bump-version.ts",
     "pre-publish": "tsx packages/dev-tools/src/pre-publish-check.ts",
+    "pre-release": "tsx packages/dev-tools/src/pre-publish-check.ts --release-readiness",
     "verify-npm-packages": "tsx packages/dev-tools/src/verify-npm-packages.ts",
     "publish:dry-run": "pnpm -r --filter='@vibe-validate/*' exec npm publish --dry-run",
     "publish:all": "tsx packages/dev-tools/src/publish-all.ts \"$@\"",
