@@ -21,11 +21,36 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
+import semver from 'semver';
+
 import { PROJECT_ROOT, log, processWorkspacePackages } from './common.js';
 
 // Constants for duplicate string elimination
 const PACKAGE_JSON_FILENAME = 'package.json';
 const VIBE_VALIDATE_PKG_NAME = 'vibe-validate';
+const CHANGELOG_PATH = join(PROJECT_ROOT, 'CHANGELOG.md');
+const UNRELEASED_HEADING = '## [Unreleased]';
+
+interface ChangelogUnreleasedSection {
+  content: string;
+  body: string;
+  unreleasedIndex: number;
+  afterHeading: number;
+  nextSectionOffset: number;
+}
+
+function parseChangelogUnreleased(): ChangelogUnreleasedSection {
+  const content = readFileSync(CHANGELOG_PATH, 'utf8');
+  const unreleasedIndex = content.indexOf(UNRELEASED_HEADING);
+  if (unreleasedIndex === -1) {
+    throw new Error('CHANGELOG.md is missing the [Unreleased] section');
+  }
+  const afterHeading = unreleasedIndex + UNRELEASED_HEADING.length;
+  const nextSectionMatch = /\n## \[/.exec(content.slice(afterHeading));
+  const nextSectionOffset = nextSectionMatch?.index ?? content.slice(afterHeading).length;
+  const body = content.slice(afterHeading, afterHeading + nextSectionOffset);
+  return { content, body, unreleasedIndex, afterHeading, nextSectionOffset };
+}
 
 // Helper to log file processing errors with proper error type handling
 function logFileError(fileName: string, error: unknown): void {
@@ -119,12 +144,40 @@ if (['patch', 'minor', 'major'].includes(versionArg)) {
   // Explicit version provided
   newVersion = versionArg;
 
-  // Validate version format (simple semver check)
-  // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
-  if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(newVersion)) {
+  // Validate version format using semver
+  if (!semver.valid(newVersion)) {
     log(`✗ Invalid version format: ${newVersion}`, 'red');
     log('  Expected format: X.Y.Z or X.Y.Z-prerelease', 'yellow');
     log('  Examples: 0.14.2, 1.0.0, 1.0.0-beta.1, patch, minor, major', 'yellow');
+    process.exit(1);
+  }
+}
+
+// Pre-flight: validate CHANGELOG before touching any files (prevents dirty state on failure)
+const isPrerelease = semver.prerelease(newVersion) !== null;
+if (!isPrerelease) {
+  try {
+    const { content, body } = parseChangelogUnreleased();
+
+    // Safety: refuse to stamp if this version already exists in CHANGELOG
+    const escapedVersion = newVersion.replaceAll('.', String.raw`\.`);
+    // eslint-disable-next-line security/detect-non-literal-regexp -- version is from CLI arg, already validated by semver
+    const existingPattern = new RegExp(String.raw`^## \[${escapedVersion}\]`, 'm');
+    if (existingPattern.test(content)) {
+      log(`✗ CHANGELOG.md already has an entry for [${newVersion}]. Refusing to stamp to avoid corruption.`, 'red');
+      console.log('  If you need to re-stamp, manually remove the existing entry first.');
+      process.exit(1);
+    }
+
+    if (!body.trim()) {
+      log('✗ CHANGELOG.md has no content under [Unreleased]. Add release notes before bumping to a stable version.', 'red');
+      process.exit(1);
+    }
+
+    log('✓ CHANGELOG.md pre-flight check passed', 'green');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`✗ Failed to validate CHANGELOG.md: ${message}`, 'red');
     process.exit(1);
   }
 }
@@ -313,6 +366,28 @@ try {
   skillSkippedCount++;
 }
 
+// Stamp CHANGELOG.md for stable releases (pre-flight already validated, just do the write)
+if (isPrerelease) {
+  log('⊘ CHANGELOG stamp skipped (prerelease version)', 'yellow');
+} else {
+  try {
+    const { content, body, afterHeading, nextSectionOffset } = parseChangelogUnreleased();
+    const today = new Date().toISOString().split('T')[0] ?? '';
+    const versionHeading = `## [${newVersion}] - ${today}`;
+
+    const before = content.slice(0, afterHeading);
+    const after = content.slice(afterHeading + nextSectionOffset);
+    const updatedChangelog = `${before}\n\n${versionHeading}\n${body.replace(/^\n/, '')}${after}`;
+
+    writeFileSync(CHANGELOG_PATH, updatedChangelog, 'utf8');
+    log(`✓ CHANGELOG.md stamped for v${newVersion}`, 'green');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`✗ Failed to stamp CHANGELOG.md: ${message}`, 'red');
+    process.exit(1);
+  }
+}
+
 console.log('');
 log(`✅ Version bump complete!`, 'green');
 log(`   Packages updated: ${updatedCount + (updatedCount > 0 || skippedCount === 0 ? 1 : 0)}`, 'green');
@@ -324,9 +399,17 @@ if (skippedCount > 0 || testSkippedCount > 0 || skillSkippedCount > 0) {
 console.log('');
 console.log('Next steps:');
 console.log(`  1. Review changes: git diff`);
-console.log(`  2. Commit: git add -A && git commit -m "chore: Release v${newVersion}"`);
-console.log(`  3. Tag: git tag v${newVersion}`);
-console.log(`  4. Push: git push origin main && git push origin v${newVersion}`);
+console.log(`  2. Commit: git add -A && git commit -m "chore: bump version to v${newVersion}"`);
+if (isPrerelease) {
+  console.log(`  3. Push: git push origin main`);
+  console.log(`  (RC versions are not tagged — content stays under [Unreleased] in CHANGELOG)`);
+} else {
+  console.log(`  3. Merge to main, then run: pnpm pre-release`);
+  console.log(`  4. Only after pre-release passes: git tag v${newVersion}`);
+  console.log(`  5. Push: git push origin main v${newVersion}`);
+  console.log('');
+  log('⚠ Do NOT tag until pnpm pre-release passes. Tags trigger CI publish.', 'yellow');
+}
 console.log('');
 
 process.exit(0);

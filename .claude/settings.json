@@ -137,18 +137,18 @@
       "mcp__github__get_pull_request_status",
       "mcp__github__list_issues"
     ],
-    "ask": [
-      "Bash(gh run list *)",
-      "Bash(gh run view *)",
-      "Bash(git commit *)",
-      "Bash(*jscpd-update-baseline*)"
-    ],
     "deny": [
       "Skill(superpowers:using-git-worktrees)",
       "Bash(sed *)",
       "Bash(sed)",
       "Bash(awk *)",
       "Bash(awk)"
+    ],
+    "ask": [
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(git commit *)",
+      "Bash(*jscpd-update-baseline*)"
     ]
   },
   "hooks": {
@@ -164,5 +164,24 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "vibe-validate@vibe-validate": true
+  },
+  "extraKnownMarketplaces": {
+    "vibe-validate": {
+      "source": {
+        "source": "github",
+        "repo": "jdutton/vibe-validate",
+        "ref": "claude-marketplace"
+      }
+    },
+    "vat-skills": {
+      "source": {
+        "source": "github",
+        "repo": "jdutton/vibe-agent-toolkit",
+        "ref": "claude-marketplace"
+      }
+    }
   }
 }

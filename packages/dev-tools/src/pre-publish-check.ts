@@ -13,11 +13,16 @@
  * 8. Workspace dependencies are correct
  * 9. All packages have proper "files" field
  * 10. All packages have required metadata (repository, author, license)
- * 11. CHANGELOG.md has entry for current version (publish mode only)
+ * 11. CHANGELOG.md has entry for current version
+ *
+ * Release-readiness checks (--release-readiness only):
+ * 12. Tag doesn't already exist on remote
+ * 13. No stale unreleased content (stable versions only)
+ * 14. CHANGELOG section non-empty (stable versions only)
  *
  * Usage:
- *   tsx packages/dev-tools/src/pre-publish-check.ts [--allow-branch BRANCH] [--skip-git-checks]
- *   pnpm pre-publish [--allow-branch BRANCH] [--skip-git-checks]
+ *   tsx packages/dev-tools/src/pre-publish-check.ts [--allow-branch BRANCH] [--skip-git-checks] [--release-readiness]
+ *   pnpm pre-publish [--allow-branch BRANCH] [--skip-git-checks] [--release-readiness]
  *
  * Exit codes:
  *   0 - Ready to publish
@@ -84,6 +89,7 @@ const args = process.argv.slice(2);
 let allowedBranch = 'main';
 let allowCustomBranch = false;
 let skipGitChecks = false;
+let releaseReadiness = false;
 
 let i = 0;
 while (i < args.length) {
@@ -92,9 +98,11 @@ while (i < args.length) {
     allowedBranch = nextArg;
     allowCustomBranch = true;
     i += 2;
+    continue;
   } else if (args[i] === '--skip-git-checks') {
     skipGitChecks = true;
-    i += 1;
+  } else if (args[i] === '--release-readiness') {
+    releaseReadiness = true;
   } else if (args[i] === '--help' || args[i] === '-h') {
     console.log(`
 Pre-Publish Validation Check
@@ -107,6 +115,10 @@ Options:
   --allow-branch BRANCH  Allow publishing from a specific branch (default: main)
   --skip-git-checks      Skip git-related checks (branch, uncommitted changes, untracked files)
                          Use this when running in vibe-validate during development
+  --release-readiness    Run additional release-readiness checks:
+                           - Tag doesn't already exist on remote
+                           - No stale unreleased content
+                           - CHANGELOG section non-empty
   --help, -h             Show this help message
 
 Exit codes:
@@ -532,79 +544,168 @@ try {
   process.exit(1);
 }
 
-// Check 11: CHANGELOG.md has entry for current version (skip in development mode)
-if (skipGitChecks) {
-  log('⊘ CHANGELOG check skipped (development mode)', 'yellow');
-} else {
-  console.log('');
-  console.log('Checking CHANGELOG.md...');
+// Check 11: CHANGELOG.md has entry for current version (content check, always runs)
+console.log('');
+console.log('Checking CHANGELOG.md...');
 
-  try {
-    // Read version from umbrella package (monorepo canonical version)
-    const umbrellaPkgJsonPath = join(packagesDir, 'vibe-validate', 'package.json');
-    if (!existsSync(umbrellaPkgJsonPath)) {
-      throw new Error('Umbrella package (vibe-validate) package.json not found');
-    }
+// Read version from umbrella package (monorepo canonical version) — hoisted for use by release-readiness checks
+let currentVersion: string;
+try {
+  const umbrellaPkgJsonPath = join(packagesDir, 'vibe-validate', 'package.json');
+  if (!existsSync(umbrellaPkgJsonPath)) {
+    throw new Error('Umbrella package (vibe-validate) package.json not found');
+  }
 
-    const umbrellaPkgJson = JSON.parse(readFileSync(umbrellaPkgJsonPath, 'utf8')) as Record<string, unknown>;
-    const version = umbrellaPkgJson['version'];
-    if (typeof version !== 'string') {
-      throw new TypeError('Version not found in umbrella package (vibe-validate) package.json');
-    }
+  const umbrellaPkgJson = JSON.parse(readFileSync(umbrellaPkgJsonPath, 'utf8')) as Record<string, unknown>;
+  const version = umbrellaPkgJson['version'];
+  if (typeof version !== 'string') {
+    throw new TypeError('Version not found in umbrella package (vibe-validate) package.json');
+  }
+  currentVersion = version;
+} catch (error) {
+  log('✗ Failed to read version from umbrella package', 'red');
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  process.exit(1);
+}
 
-    // Read CHANGELOG.md
-    const changelogPath = join(PROJECT_ROOT, 'CHANGELOG.md');
-    if (!existsSync(changelogPath)) {
-      log('✗ CHANGELOG.md not found', 'red');
-      console.log('  Create CHANGELOG.md to document releases');
+try {
+  // Read CHANGELOG.md
+  const changelogPath = join(PROJECT_ROOT, 'CHANGELOG.md');
+  if (!existsSync(changelogPath)) {
+    log('✗ CHANGELOG.md not found', 'red');
+    console.log('  Create CHANGELOG.md to document releases');
+    process.exit(1);
+  }
+
+  // Skip CHANGELOG check for prerelease versions (RC, alpha, beta, etc.)
+  const isPrerelease = /-(rc|alpha|beta|dev|canary)\./i.test(currentVersion);
+  if (isPrerelease) {
+    log(`⊘ CHANGELOG check skipped (prerelease version: ${currentVersion})`, 'yellow');
+  } else {
+    const changelogContent = readFileSync(changelogPath, 'utf8');
+
+    // Look for version entry: ## [X.Y.Z] - YYYY-MM-DD
+    // Escape dots in version string for regex matching
+    const escapedVersion = currentVersion.replaceAll('.', String.raw`\.`);
+    // eslint-disable-next-line security/detect-non-literal-regexp -- version from package.json is trusted
+    const versionPattern = new RegExp(String.raw`^## \[${escapedVersion}\] - \d{4}-\d{2}-\d{2}`, 'm');
+
+    if (!versionPattern.test(changelogContent)) {
+      log(`✗ CHANGELOG.md missing entry for version ${currentVersion}`, 'red');
+      console.log('');
+      console.log('  Recovery instructions:');
+      console.log(`  1. Add version entry to CHANGELOG.md:`);
+      console.log(`     ## [${currentVersion}] - ${String(new Date().toISOString().split('T')[0] ?? '')}`);
+      console.log('  2. Document changes under the version header');
+      console.log('  3. Run pre-publish-check again');
+      console.log('');
       process.exit(1);
     }
 
-    // Skip CHANGELOG check for prerelease versions (RC, alpha, beta, etc.)
-    const isPrerelease = /-(rc|alpha|beta|dev|canary)\./i.test(version);
-    if (isPrerelease) {
-      log(`⊘ CHANGELOG check skipped (prerelease version: ${version})`, 'yellow');
-    } else {
-      const changelogContent = readFileSync(changelogPath, 'utf8');
+    log(`✓ CHANGELOG.md has entry for version ${currentVersion}`, 'green');
+  }
+} catch (error) {
+  log('✗ Failed to check CHANGELOG.md', 'red');
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  process.exit(1);
+}
 
-      // Look for version entry: ## [X.Y.Z] - YYYY-MM-DD
-      // Escape dots in version string for regex matching
-      const escapedVersion = version.replaceAll('.', String.raw`\.`);
+// Release-readiness checks (only when --release-readiness is passed)
+if (releaseReadiness) {
+  console.log('');
+  console.log('Running release-readiness checks...');
+
+  // Check 12: Tag doesn't already exist on remote
+  console.log('');
+  console.log(`Checking remote tag v${currentVersion}...`);
+
+  {
+    const tagResult = executeGitCommand(['ls-remote', '--tags', 'origin', `refs/tags/v${currentVersion}`], {
+      encoding: 'utf8',
+      ignoreErrors: true,
+    });
+
+    if (tagResult.success && tagResult.stdout.trim().length > 0) {
+      log(`✗ v${currentVersion} tag already exists on remote`, 'red');
+      console.log(`  The tag v${currentVersion} has already been pushed to the remote.`);
+      console.log('  Bump the version before releasing.');
+      process.exit(1);
+    }
+
+    log(`✓ v${currentVersion} tag does not exist on remote`, 'green');
+  }
+
+  // Check 13 & 14: CHANGELOG content checks (stable versions only)
+  const isPrerelease = /-(rc|alpha|beta|dev|canary)\./i.test(currentVersion);
+  if (isPrerelease) {
+    log(`⊘ CHANGELOG content checks skipped (prerelease version: ${currentVersion})`, 'yellow');
+  } else {
+    const changelogPath = join(PROJECT_ROOT, 'CHANGELOG.md');
+    const changelogContent = readFileSync(changelogPath, 'utf8');
+
+    // Check 13: No stale unreleased content
+    console.log('');
+    console.log('Checking for stale unreleased content...');
+
+    {
+      const escapedVersion = currentVersion.replaceAll('.', String.raw`\.`);
       // eslint-disable-next-line security/detect-non-literal-regexp -- version from package.json is trusted
-      const versionPattern = new RegExp(String.raw`^## \[${escapedVersion}\] - \d{4}-\d{2}-\d{2}`, 'm');
+      const versionPattern = new RegExp(String.raw`^## \[${escapedVersion}\]`, 'm');
+      const isStamped = versionPattern.test(changelogContent);
 
-      if (!versionPattern.test(changelogContent)) {
-        log(`✗ CHANGELOG.md missing entry for version ${version}`, 'red');
-        console.log('');
-        console.log('  Recovery instructions:');
-        console.log(`  1. Add version entry to CHANGELOG.md:`);
-        console.log(`     ## [${version}] - ${new Date().toISOString().split('T')[0]}`);
-        console.log('  2. Document changes under the version header');
-        console.log('  3. Run pre-publish-check again');
-        console.log('');
+      if (isStamped) {
+        // Check if [Unreleased] has content
+        const unreleasedMatch = /^## \[Unreleased\]([\s\S]*?)(?=^## \[|$)/m.exec(changelogContent);
+        const unreleasedContent = unreleasedMatch?.[1]?.trim() ?? '';
+        if (unreleasedContent.length > 0) {
+          log(`⚠ v${currentVersion} is stamped but not yet released. New changes should go under [${currentVersion}], not [Unreleased].`, 'yellow');
+        } else {
+          log('✓ No stale unreleased content', 'green');
+        }
+      } else {
+        log('✓ No stale unreleased content', 'green');
+      }
+    }
+
+    // Check 14: CHANGELOG section non-empty
+    console.log('');
+    console.log(`Checking CHANGELOG section for v${currentVersion} is non-empty...`);
+
+    {
+      const escapedVersion = currentVersion.replaceAll('.', String.raw`\.`);
+      // eslint-disable-next-line security/detect-non-literal-regexp -- version from package.json is trusted
+      const sectionPattern = new RegExp(String.raw`^## \[${escapedVersion}\][^\n]*\n([\s\S]*?)(?=^## \[|\z)`, 'm');
+      const sectionMatch = sectionPattern.exec(changelogContent);
+      const sectionContent = sectionMatch?.[1]?.trim() ?? '';
+
+      if (sectionContent.length === 0) {
+        log(`✗ CHANGELOG section for v${currentVersion} is empty`, 'red');
+        console.log('  Add at least one entry under the version heading before releasing.');
         process.exit(1);
       }
 
-      log(`✓ CHANGELOG.md has entry for version ${version}`, 'green');
+      log(`✓ CHANGELOG section for v${currentVersion} has content`, 'green');
     }
-  } catch (error) {
-    log('✗ Failed to check CHANGELOG.md', 'red');
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
-    process.exit(1);
   }
 }
 
 // Success!
 console.log('');
-log('✅ Repository is ready to publish!', 'green');
-console.log('');
-console.log('Next steps:');
-console.log('  1. Update package versions: pnpm bump-version patch (or minor/major)');
-console.log('  2. Commit version changes: git commit -am \'chore: Release vX.Y.Z\'');
-console.log('  3. Create git tag: git tag -a vX.Y.Z -m \'Release vX.Y.Z\'');
-console.log('  4. Push to GitHub: git push origin main --tags');
-console.log('  5. GitHub Actions will automatically publish to npm');
+if (releaseReadiness) {
+  log(`✅ Release v${currentVersion} is ready! Safe to tag and push.`, 'green');
+  console.log('');
+  console.log('Next steps:');
+  console.log(`  1. Tag:  git tag v${currentVersion}`);
+  console.log(`  2. Push: git push origin main v${currentVersion}`);
+  console.log('');
+  console.log('CI will publish to npm and create the GitHub release automatically.');
+} else {
+  log('✅ Validation checks passed.', 'green');
+  console.log('');
+  console.log('Before tagging a release, run: pnpm pre-release');
+}
 console.log('');
 
 process.exit(0);
