@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Claude marketplace CI** — Stable releases now update both `claude-marketplace` and `claude-marketplace-next` branches, matching npm's `@latest`/`@next` tag behavior
+
+### Changed
+
+- **README** — Added Claude Code plugin install instructions (marketplace, `/plugin` slash command, project-scope)
+
+## [0.19.2] - 2026-04-10
+
 ### Added
 
 - **Claude marketplace distribution** — Users can now install the vibe-validate skill directly from GitHub via `claude plugin marketplace add jdutton/vibe-validate#claude-marketplace`, no npm account required. Pre-release channel available via `claude-marketplace-next` branch.
