@@ -15,6 +15,11 @@ claude:
     vibe-validate:
       owner:
         name: vibe-validate
+      publish:
+        branch: claude-marketplace
+        changelog: ../../CHANGELOG.md
+        readme: ../../docs/marketplace-readme.md
+        license: mit
       plugins:
         - name: vibe-validate
           description: LLM-optimized validation orchestration for vibe coding
