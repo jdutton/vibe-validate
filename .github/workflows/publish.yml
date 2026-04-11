@@ -67,9 +67,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ steps.version_type.outputs.is_stable }}" = "true" ]; then
-            pnpm exec vat claude marketplace publish --cwd packages/vibe-validate
+            pnpm --filter vibe-validate exec vat claude marketplace publish
           else
-            pnpm exec vat claude marketplace publish --cwd packages/vibe-validate --branch claude-marketplace-next
+            pnpm --filter vibe-validate exec vat claude marketplace publish --branch claude-marketplace-next
           fi
 
       - name: Extract CHANGELOG for release (stable only)
