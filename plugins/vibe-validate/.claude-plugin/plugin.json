@@ -1,0 +1,8 @@
+{
+  "name": "vibe-validate",
+  "description": "LLM-optimized validation orchestration for vibe coding",
+  "version": "0.19.2-rc.4",
+  "author": {
+    "name": "vibe-validate"
+  }
+}

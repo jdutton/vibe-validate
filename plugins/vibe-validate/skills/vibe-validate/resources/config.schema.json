@@ -1,0 +1,398 @@
+{
+  "$ref": "#/definitions/VibeValidateConfig",
+  "definitions": {
+    "VibeValidateConfig": {
+      "type": "object",
+      "properties": {
+        "validation": {
+          "type": "object",
+          "properties": {
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parallel": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "command": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "timeout": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "continueOnError": {
+                          "type": "boolean"
+                        },
+                        "env": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "cwd": {
+                          "type": "string"
+                        },
+                        "runScope": {
+                          "type": "string",
+                          "enum": [
+                            "ci",
+                            "local"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "command"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  },
+                  "timeout": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "default": 300000
+                  },
+                  "failFast": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [
+                  "name",
+                  "steps"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "failFast": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "phases"
+          ],
+          "additionalProperties": false
+        },
+        "git": {
+          "type": "object",
+          "properties": {
+            "mainBranch": {
+              "type": "string",
+              "default": "main"
+            },
+            "remoteOrigin": {
+              "type": "string",
+              "default": "origin"
+            },
+            "autoSync": {
+              "type": "boolean",
+              "default": false
+            },
+            "warnIfBehind": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "mainBranch": "main",
+            "remoteOrigin": "origin",
+            "autoSync": false,
+            "warnIfBehind": true
+          }
+        },
+        "ci": {
+          "type": "object",
+          "properties": {
+            "nodeVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "os": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "packageManager": {
+              "type": "string",
+              "enum": [
+                "npm",
+                "pnpm",
+                "yarn",
+                "bun"
+              ]
+            },
+            "failFast": {
+              "type": "boolean"
+            },
+            "coverage": {
+              "type": "boolean"
+            },
+            "disableWorkflowCheck": {
+              "type": "boolean",
+              "default": false
+            },
+            "dependencyLockCheck": {
+              "type": "object",
+              "properties": {
+                "runOn": {
+                  "type": "string",
+                  "enum": [
+                    "validate",
+                    "pre-commit",
+                    "disabled"
+                  ]
+                },
+                "packageManager": {
+                  "type": "string",
+                  "enum": [
+                    "npm",
+                    "pnpm",
+                    "yarn",
+                    "bun"
+                  ]
+                },
+                "command": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "registryUrl": {
+              "type": "string"
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "concurrency": {
+              "type": "object",
+              "properties": {
+                "group": {
+                  "type": "string"
+                },
+                "cancelInProgress": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "group"
+              ],
+              "additionalProperties": false
+            },
+            "setupSteps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "hooks": {
+          "type": "object",
+          "properties": {
+            "preCommit": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "command": {
+                  "type": "string",
+                  "default": "npx vibe-validate pre-commit"
+                },
+                "secretScanning": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "scanCommand": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "enabled": true,
+                "command": "npx vibe-validate pre-commit"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "preCommit": {
+              "enabled": true,
+              "command": "npx vibe-validate pre-commit"
+            }
+          }
+        },
+        "locking": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "concurrencyScope": {
+              "type": "string",
+              "enum": [
+                "directory",
+                "project"
+              ],
+              "default": "directory"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "enabled": true,
+            "concurrencyScope": "directory"
+          }
+        },
+        "extractors": {
+          "type": "object",
+          "properties": {
+            "builtins": {
+              "type": "object",
+              "properties": {
+                "trust": {
+                  "type": "string",
+                  "enum": [
+                    "full",
+                    "sandbox"
+                  ]
+                },
+                "disable": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "trust": "full",
+                "disable": []
+              }
+            },
+            "localPlugins": {
+              "type": "object",
+              "properties": {
+                "trust": {
+                  "type": "string",
+                  "enum": [
+                    "full",
+                    "sandbox"
+                  ]
+                },
+                "disable": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "trust": "sandbox",
+                "disable": []
+              }
+            },
+            "external": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "package": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "trust": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "sandbox"
+                    ],
+                    "default": "sandbox"
+                  }
+                },
+                "required": [
+                  "package"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "builtins": {
+              "trust": "full",
+              "disable": []
+            },
+            "localPlugins": {
+              "trust": "sandbox",
+              "disable": []
+            },
+            "external": []
+          }
+        },
+        "developerFeedback": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "validation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
