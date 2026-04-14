@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`watch-pr --fail-fast`** — Now exits on first failure extraction instead of waiting for all failures, matching the documented "exit immediately" behavior
+
 ## [0.19.3] - 2026-04-11
 
 ### Fixed
