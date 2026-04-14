@@ -479,22 +479,21 @@ describe('watch-pr command', () => {
   });
 
   describe('--fail-fast option', () => {
-    it('should exit immediately when any check fails (integration test - placeholder)', async () => {
-      // Full end-to-end test with --fail-fast requires comprehensive mocking
-      // Option is registered and wired up in the command
-      // Integration tests with real PRs verify this behavior
-      expect(true).toBe(true);
-    });
+    // Exit-condition logic (allFailedChecksHaveExtraction, anyFailedCheckHasExtraction)
+    // is unit tested in test/utils/watch-pr-exit-conditions.test.ts
 
-    it('should continue polling without --fail-fast', async () => {
-      // This is tested by the normal polling behavior tests
-      // Without --fail-fast, polling continues even when status is failed
-      expect(true).toBe(true);
-    });
+    it('should accept --fail-fast option without error', async () => {
+      const result = await executeVv([
+        'watch-pr',
+        '999999',
+        '--fail-fast',
+        '--timeout',
+        '1',
+      ]);
 
-    it('should not fail-fast on pending status', async () => {
-      // fail-fast only triggers on status='failed', not on pending with failures
-      expect(true).toBe(true);
+      // Should accept the option without argument validation error
+      expect(result.stderr).not.toContain('unknown option');
+      expect(result.stderr).not.toContain('--fail-fast');
     });
   });
 
