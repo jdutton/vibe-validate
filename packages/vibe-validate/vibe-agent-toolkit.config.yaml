@@ -3,12 +3,6 @@ version: 1
 skills:
   include:
     - "SKILL.md"
-  config:
-    vibe-validate:
-      ignoreValidationErrors:
-        SKILL_TOTAL_SIZE_LARGE: "vibe-validate is a comprehensive skill with many interconnected resources"
-        SKILL_TOO_MANY_FILES: "vibe-validate ships multiple focused reference docs that agents load on demand"
-        OUTSIDE_PROJECT_BOUNDARY: "skill resources live in docs/ at repo root, outside the package directory"
 
 claude:
   marketplaces:

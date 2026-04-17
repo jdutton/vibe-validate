@@ -59,7 +59,7 @@
   "dependencies": {
     "@vibe-validate/cli": "workspace:*",
     "@vibe-validate/utils": "workspace:*",
-    "vibe-agent-toolkit": "^0.1.26"
+    "vibe-agent-toolkit": "^0.1.30"
   },
   "devDependencies": {
     "@types/node": "^20.19.26",
