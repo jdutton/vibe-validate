@@ -3,6 +3,10 @@ version: 1
 skills:
   include:
     - "SKILL.md"
+  defaults:
+    # vibe-validate orchestrates `vv` CLI invocations and shell-based
+    # validation pipelines — local shell is required.
+    targets: ['claude-code']
 
 claude:
   marketplaces:
