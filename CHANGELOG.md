@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`generate-workflow`** — Generated workflows now use `actions/checkout@v6` and `actions/setup-node@v6` (upgraded from `v4`). Existing users should re-run `vv generate-workflow` to pick up the new versions.
+
 ### Fixed
 
 - **`watch-pr --fail-fast`** — Now exits on first failure extraction instead of waiting for all failures, matching the documented "exit immediately" behavior

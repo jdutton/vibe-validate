@@ -36,8 +36,8 @@ import {
 } from '../utils/package-manager-commands.js';
 
 // GitHub Actions constants
-const ACTIONS_CHECKOUT_V4 = 'actions/checkout@v4';
-const ACTIONS_SETUP_NODE_V4 = 'actions/setup-node@v4';
+const ACTIONS_CHECKOUT_V6 = 'actions/checkout@v6';
+const ACTIONS_SETUP_NODE_V6 = 'actions/setup-node@v6';
 const ACTIONS_SETUP_BUN_V2 = 'oven-sh/setup-bun@v2';
 const ACTIONS_SETUP_PNPM_V2 = 'pnpm/action-setup@v2';
 const WORKFLOW_PROPERTY_NODE_VERSION = 'node-version';
@@ -210,7 +210,7 @@ function buildCommonJobSteps(params: {
 }): GitHubWorkflowStep[] {
   const steps: GitHubWorkflowStep[] = [
     {
-      uses: ACTIONS_CHECKOUT_V4,
+      uses: ACTIONS_CHECKOUT_V6,
       with: {
         [WORKFLOW_PROPERTY_FETCH_DEPTH]: 0  // Fetch all history for git-based checks (doctor command)
       }
@@ -240,7 +240,7 @@ function buildCommonJobSteps(params: {
   if (!params.skipNodeSetup) {
     steps.push({
       name: `Setup Node.js ${params.nodeVersionLabel}`,
-      uses: ACTIONS_SETUP_NODE_V4,
+      uses: ACTIONS_SETUP_NODE_V6,
       with: {
         [WORKFLOW_PROPERTY_NODE_VERSION]: params.nodeVersionLabel,
         ...params.nodeCacheConfig,
