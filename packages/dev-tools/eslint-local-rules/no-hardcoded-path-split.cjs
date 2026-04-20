@@ -51,8 +51,7 @@ module.exports = {
       VariableDeclarator(node) {
         // Check if this variable is assigned from toForwardSlash()
         if (
-          node.init &&
-          node.init.type === 'CallExpression' &&
+          node.init?.type === 'CallExpression' &&
           node.init.callee.type === 'Identifier' &&
           node.init.callee.name === 'toForwardSlash' &&
           node.id.type === 'Identifier'

@@ -418,7 +418,7 @@ This simulates the entire workflow locally without actual publishing.
 
 - [Publishing Manual Fallback](./publishing.md) - Manual publishing procedures
 - [Release Workflow](./release-workflow.md) - Overall release process
-- [CHANGELOG Format](../CHANGELOG.md) - Keep a Changelog format
+- [CHANGELOG Format](../../CHANGELOG.md) - Keep a Changelog format
 
 ## Support
 

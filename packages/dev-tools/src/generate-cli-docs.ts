@@ -2,7 +2,7 @@
 /**
  * Generate CLI Reference Documentation
  *
- * This script regenerates docs/cli-reference.md from the actual CLI --help --verbose output.
+ * This script regenerates docs/skills/vibe-validate/cli-reference.md from the actual CLI --help --verbose output.
  * Run this script whenever you modify CLI help text or add new commands.
  *
  * Usage:
@@ -22,7 +22,7 @@ import { safeExecSync } from '../../utils/dist/safe-exec.js';
 import { PROJECT_ROOT, log } from './common.js';
 
 const CLI_BIN = join(PROJECT_ROOT, 'packages/cli/dist/bin.js');
-const DOCS_FILE = join(PROJECT_ROOT, 'docs/cli-reference.md');
+const DOCS_FILE = join(PROJECT_ROOT, 'docs/skills/vibe-validate/cli-reference.md');
 
 // Check if CLI is built
 if (!existsSync(CLI_BIN)) {
@@ -84,5 +84,5 @@ if (existsSync(DOCS_FILE)) {
 writeFileSync(DOCS_FILE, newContent, 'utf8');
 
 const lineCount = newContent.split('\n').length;
-log(`✓ Generated docs/cli-reference.md (${lineCount} lines)`, 'green');
+log(`✓ Generated docs/skills/vibe-validate/cli-reference.md (${lineCount} lines)`, 'green');
 log('📋 Remember to commit the updated documentation', 'yellow');

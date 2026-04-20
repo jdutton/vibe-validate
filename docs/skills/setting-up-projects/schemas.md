@@ -402,5 +402,5 @@ $schema: https://unpkg.com/@vibe-validate/config@0.15.0/config.schema.json
 ## See Also
 
 - [Configuration Reference](configuration-reference.md) - Complete config documentation
-- [Getting Started](getting-started.md) - Initial setup guide
-- [CLI Reference](cli-reference.md) - Command-line options
+- [Getting Started](../../getting-started.md) - Initial setup guide
+- [CLI Reference](../vibe-validate/cli-reference.md) - Command-line options

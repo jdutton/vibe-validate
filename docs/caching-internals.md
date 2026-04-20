@@ -362,5 +362,5 @@ function cacheValidation(treeHash: string, result: ValidationResult): void {
 ## See Also
 
 - [Run Capability Guide](run-capability.md) - Deep dive on `vv run` caching
-- [CLI Reference](cli-reference.md) - Cache control flags
+- [CLI Reference](skills/vibe-validate/cli-reference.md) - Cache control flags
 - [Troubleshooting Guide](troubleshooting.md) - Cache issues

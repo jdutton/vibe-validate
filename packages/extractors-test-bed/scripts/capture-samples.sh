@@ -1,9 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "═══════════════════════════════════════════════════════════════════"
+readonly SEPARATOR='═══════════════════════════════════════════════════════════════════'
+
+echo "$SEPARATOR"
 echo "Capturing Test Framework Output Samples"
-echo "═══════════════════════════════════════════════════════════════════"
+echo "$SEPARATOR"
 echo ""
 echo "This script runs intentionally failing tests and captures their output"
 echo "for use in testing error extractors."
@@ -51,9 +53,9 @@ else
 fi
 echo ""
 
-echo "═══════════════════════════════════════════════════════════════════"
+echo "$SEPARATOR"
 echo "Sample Capture Complete!"
-echo "═══════════════════════════════════════════════════════════════════"
+echo "$SEPARATOR"
 echo ""
 echo "Next steps:"
 echo "  1. Review samples in packages/extractors/test/samples/"

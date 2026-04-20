@@ -42,11 +42,11 @@ function removeUnsafeImportSpecifiers(fixer, sourceCode, unsafeImportNode, unsaf
   const fixes = [];
   unsafeSpecs.forEach((spec) => {
     const comma = sourceCode.getTokenAfter(spec);
-    if (comma && comma.value === ',') {
+    if (comma?.value === ',') {
       fixes.push(fixer.removeRange([spec.range[0], comma.range[1]]));
     } else {
       const commaBefore = sourceCode.getTokenBefore(spec);
-      if (commaBefore && commaBefore.value === ',') {
+      if (commaBefore?.value === ',') {
         fixes.push(fixer.removeRange([commaBefore.range[0], spec.range[1]]));
       } else {
         fixes.push(fixer.remove(spec));

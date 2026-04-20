@@ -1,6 +1,6 @@
 {
   "name": "vibe-validate",
-  "version": "0.19.4-rc.3",
+  "version": "0.19.4",
   "description": "Git-aware validation orchestration for vibe coding (LLM-assisted development) - umbrella package",
   "type": "module",
   "bin": {
@@ -59,7 +59,7 @@
   "dependencies": {
     "@vibe-validate/cli": "workspace:*",
     "@vibe-validate/utils": "workspace:*",
-    "vibe-agent-toolkit": "^0.1.32"
+    "vibe-agent-toolkit": "^0.1.33"
   },
   "devDependencies": {
     "@types/node": "^20.19.26",
@@ -69,7 +69,7 @@
   "scripts": {
     "test": "vitest run",
     "lint": "echo 'No linting needed for delegation wrappers'",
-    "prepare": "vat build",
+    "prepare": "cd ../.. && vat build",
     "postinstall": "vat claude plugin install --npm-postinstall || exit 0"
   }
 }

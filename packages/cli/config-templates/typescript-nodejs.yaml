@@ -12,7 +12,7 @@
 # It includes pre-configured validation phases for type checking, linting,
 # unit tests, integration tests, and building.
 #
-# Learn more: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
+# Learn more: https://github.com/jdutton/vibe-validate/blob/main/docs/skills/setting-up-projects/configuration-reference.md
 # ============================================================================
 
 $schema: https://unpkg.com/@vibe-validate/config/config.schema.json

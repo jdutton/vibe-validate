@@ -63,7 +63,7 @@ $schema: https://unpkg.com/@vibe-validate/core/validate-result.schema.json
 - ✅ Inline validation errors
 - ✅ Type checking for YAML validation results
 
-See [Schema Documentation](../../docs/schemas.md) for complete details.
+See [Schema Documentation](../../docs/skills/setting-up-projects/schemas.md) for complete details.
 
 ## License
 

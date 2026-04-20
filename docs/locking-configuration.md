@@ -466,8 +466,8 @@ Or use `--no-lock` flag.
 
 ## Related Documentation
 
-- [CLI Reference](./cli-reference.md) - All CLI flags and commands
-- [Configuration Schema](./configuration-reference.md) - Full config options
+- [CLI Reference](./skills/vibe-validate/cli-reference.md) - All CLI flags and commands
+- [Configuration Schema](./skills/setting-up-projects/configuration-reference.md) - Full config options
 - [Pre-Commit Workflow](./getting-started.md#pre-commit-validation) - Using locks in hooks
 
 ## Future Enhancements

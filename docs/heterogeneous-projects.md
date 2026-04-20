@@ -913,9 +913,9 @@ steps:
 
 ## Further Reading
 
-- [Configuration Reference](./configuration-reference.md) - Complete `cwd` field documentation
-- [CLI Reference](./cli-reference.md) - `--cwd` flag usage
-- [Workflow Generation](./cli-reference.md#generate-workflow) - GitHub Actions integration
+- [Configuration Reference](./skills/setting-up-projects/configuration-reference.md) - Complete `cwd` field documentation
+- [CLI Reference](./skills/vibe-validate/cli-reference.md) - `--cwd` flag usage
+- [Workflow Generation](./skills/vibe-validate/cli-reference.md#generate-workflow) - GitHub Actions integration
 - [Caching Guide](./git-validation-tracking.md) - Deep dive on git tree hash caching
 
 ---

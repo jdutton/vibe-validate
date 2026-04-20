@@ -498,7 +498,7 @@ git branch --set-upstream-to=origin/main
 
 ## See Also
 
-- [CLI Reference](cli-reference.md) - All command options
+- [CLI Reference](skills/vibe-validate/cli-reference.md) - All command options
 - [Work Recovery Guide](work-recovery.md) - Recovery workflows
 - [Troubleshooting Guide](troubleshooting.md) - Diagnostic workflows
 - [Run Capability Guide](run-capability.md) - `vv run` workflow details

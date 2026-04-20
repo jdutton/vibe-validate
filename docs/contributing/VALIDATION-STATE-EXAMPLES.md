@@ -205,7 +205,7 @@ $schema: https://unpkg.com/@vibe-validate/core@0.15.0/validate-result.schema.jso
 $schema: https://unpkg.com/@vibe-validate/core/validate-result.schema.json
 ```
 
-See [Schema Documentation](schemas.md) for complete details on all published schemas.
+See [Schema Documentation](../skills/setting-up-projects/schemas.md) for complete details on all published schemas.
 
 ## For Agent Integration
 
@@ -291,8 +291,8 @@ validation:
 
 ## Related Documentation
 
-- [Agent Integration Guide](./agent-integration-guide.md)
-- [CLI Reference](./cli-reference.md)
-- [Configuration Reference](./configuration-reference.md)
-- [Validation Result Schema](../packages/core/validate-result.schema.json)
-- [Config Schema](../packages/config/config.schema.json)
+- [Agent Integration Guide](../agent-integration-guide.md)
+- [CLI Reference](../skills/vibe-validate/cli-reference.md)
+- [Configuration Reference](../skills/setting-up-projects/configuration-reference.md)
+- [Validation Result Schema](../../packages/core/validate-result.schema.json)
+- [Config Schema](../../packages/config/config.schema.json)

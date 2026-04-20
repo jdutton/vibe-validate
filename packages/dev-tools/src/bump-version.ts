@@ -326,46 +326,6 @@ for (const testFile of testFilesWithVersions) {
   }
 }
 
-console.log('');
-log('Updating Claude Code skill documentation...', 'blue');
-
-// Update skill documentation version
-const skillFile = { path: join(PROJECT_ROOT, 'packages/vibe-validate/SKILL.md'), name: 'Skill documentation' };
-
-let skillUpdatedCount = 0;
-let skillSkippedCount = 0;
-
-try {
-  const content = readFileSync(skillFile.path, 'utf8');
-
-  // Match: version: 0.17.2 # Tracks vibe-validate package version
-  // eslint-disable-next-line security/detect-unsafe-regex -- Simple semver pattern, safe
-  const versionPattern = /^version:\s*(\d+\.\d+\.\d+(?:-[\w.]+)?)\s*#\s*Tracks vibe-validate package version/m;
-  const match = versionPattern.exec(content);
-
-  if (match) {
-    const oldVersion = match[1];
-    if (oldVersion === newVersion) {
-      log(`  - ${skillFile.name}: already at ${newVersion}`, 'yellow');
-      skillSkippedCount++;
-    } else {
-      const updatedContent = content.replace(
-        versionPattern,
-        `version: ${newVersion} # Tracks vibe-validate package version`
-      );
-      writeFileSync(skillFile.path, updatedContent, 'utf8');
-      log(`  ✓ ${skillFile.name}: ${oldVersion} → ${newVersion}`, 'green');
-      skillUpdatedCount++;
-    }
-  } else {
-    log(`  - ${skillFile.name}: skipped (version tracking comment not found)`, 'yellow');
-    skillSkippedCount++;
-  }
-} catch (error: unknown) {
-  logFileError(skillFile.name, error);
-  skillSkippedCount++;
-}
-
 // Stamp CHANGELOG.md for stable releases (pre-flight already validated, just do the write)
 if (isPrerelease) {
   log('⊘ CHANGELOG stamp skipped (prerelease version)', 'yellow');
@@ -392,9 +352,8 @@ console.log('');
 log(`✅ Version bump complete!`, 'green');
 log(`   Packages updated: ${updatedCount + (updatedCount > 0 || skippedCount === 0 ? 1 : 0)}`, 'green');
 log(`   Test files updated: ${testUpdatedCount}`, 'green');
-log(`   Skill documentation updated: ${skillUpdatedCount}`, 'green');
-if (skippedCount > 0 || testSkippedCount > 0 || skillSkippedCount > 0) {
-  log(`   Skipped: ${skippedCount + testSkippedCount + skillSkippedCount} (already at ${newVersion})`, 'yellow');
+if (skippedCount > 0 || testSkippedCount > 0) {
+  log(`   Skipped: ${skippedCount + testSkippedCount} (already at ${newVersion})`, 'yellow');
 }
 console.log('');
 console.log('Next steps:');

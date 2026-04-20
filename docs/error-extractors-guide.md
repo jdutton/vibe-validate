@@ -728,8 +728,8 @@ TypeScript (3 errors):
 ## Related Documentation
 
 - [Getting Started Guide](./getting-started.md)
-- [Configuration Reference](./configuration-reference.md)
-- [CLI Reference](./cli-reference.md)
+- [Configuration Reference](./skills/setting-up-projects/configuration-reference.md)
+- [CLI Reference](./skills/vibe-validate/cli-reference.md)
 - [Config Templates Guide](../packages/cli/config-templates/README.md)
 - [Agent Integration Guide](./agent-integration-guide.md)
 

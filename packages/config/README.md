@@ -92,7 +92,7 @@ This gives you:
 - ✅ Hover documentation for each field
 - ✅ Type checking for YAML configs
 
-See [Schema Documentation](../../docs/schemas.md) for complete details on versioning and all published schemas.
+See [Schema Documentation](../../docs/skills/setting-up-projects/schemas.md) for complete details on versioning and all published schemas.
 
 ## API (Programmatic Usage)
 
@@ -152,7 +152,7 @@ The loader searches for the config file:
 
 ## Configuration Schema
 
-See the complete configuration reference: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md
+See the complete configuration reference: https://github.com/jdutton/vibe-validate/blob/main/docs/skills/setting-up-projects/configuration-reference.md
 
 ### Key Sections
 

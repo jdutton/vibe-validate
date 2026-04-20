@@ -49,7 +49,7 @@ export function formatConfigSuggestions(): string[] {
   return [
     chalk.blue('💡 Suggestions:'),
     chalk.gray('  • Check YAML syntax (indentation, colons, quotes)'),
-    chalk.gray('  • See docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md'),
+    chalk.gray('  • See docs: https://github.com/jdutton/vibe-validate/blob/main/docs/skills/setting-up-projects/configuration-reference.md'),
     chalk.gray('  • View examples: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates'),
     chalk.gray('  • Use JSON Schema in your IDE for autocomplete'),
   ];
@@ -129,7 +129,7 @@ export function formatDoctorConfigError(
 
   const suggestion = [
     'Fix validation errors shown above',
-    'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
+    'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/skills/setting-up-projects/configuration-reference.md',
     'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json',
     'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates'
   ].join('\n   ');
