@@ -281,8 +281,8 @@ describe('generate-workflow command', () => {
       const workflow = generateAndParseWorkflow(mockConfig);
 
       const job = workflow.jobs['validate'];
-      expect(job.steps[0].uses).toBe('actions/checkout@v4');
-      expect(job.steps.some((s: any) => s.uses === 'actions/setup-node@v4')).toBe(true);
+      expect(job.steps[0].uses).toBe('actions/checkout@v6');
+      expect(job.steps.some((s: any) => s.uses === 'actions/setup-node@v6')).toBe(true);
     });
 
     it('should add all-validation-passed gate job', () => {
@@ -660,7 +660,7 @@ describe('generate-workflow command', () => {
 
         // Should have BOTH Bun and Node.js setup
         const bunStep = expectStepWithUses(job, 'oven-sh/setup-bun@v2');
-        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v4');
+        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v6');
 
         // Verify Node.js setup uses matrix variable
         expect(nodeStep.with['node-version']).toBe('${{ matrix.node }}');
@@ -686,7 +686,7 @@ describe('generate-workflow command', () => {
 
         // Should detect Bun and include both setups
         expectStepWithUses(job, 'oven-sh/setup-bun@v2');
-        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v4');
+        const nodeStep = expectStepWithUses(job, 'actions/setup-node@v6');
 
         // Node.js setup should use matrix variable and not have cache
         expect(nodeStep.with['node-version']).toBe('${{ matrix.node }}');
@@ -721,7 +721,7 @@ describe('generate-workflow command', () => {
 
         const workflow = generateAndParseWorkflow(config, { packageManager: 'pnpm' });
         const job = workflow.jobs['validate'];
-        const nodeStep = findStepByUses(job, 'actions/setup-node@v4');
+        const nodeStep = findStepByUses(job, 'actions/setup-node@v6');
 
         expect(nodeStep.with['registry-url']).toBe('https://npm.pkg.github.com');
       });
@@ -737,7 +737,7 @@ describe('generate-workflow command', () => {
           enableCoverage: true,
         });
         const coverageJob = workflow.jobs['validate-coverage'];
-        const nodeStep = findStepByUses(coverageJob, 'actions/setup-node@v4');
+        const nodeStep = findStepByUses(coverageJob, 'actions/setup-node@v6');
 
         expect(nodeStep.with['registry-url']).toBe('https://npm.pkg.github.com');
       });
@@ -745,7 +745,7 @@ describe('generate-workflow command', () => {
       it('should NOT add registry-url when ci.registryUrl is not set', () => {
         const workflow = generateAndParseWorkflow(baseMockConfig, { packageManager: 'pnpm' });
         const job = workflow.jobs['validate'];
-        const nodeStep = findStepByUses(job, 'actions/setup-node@v4');
+        const nodeStep = findStepByUses(job, 'actions/setup-node@v6');
 
         expect(nodeStep.with['registry-url']).toBeUndefined();
       });
@@ -932,10 +932,10 @@ describe('generate-workflow command', () => {
         const job = workflow.jobs['validate'];
 
         // Find step indices
-        const checkoutIdx = findStepIndexByUses(job, 'actions/checkout@v4');
+        const checkoutIdx = findStepIndexByUses(job, 'actions/checkout@v6');
         const javaIdx = findStepIndexByName(job, 'Setup Java');
         const pnpmIdx = findStepIndexByName(job, 'Setup pnpm');
-        const nodeIdx = findStepIndexByUses(job, 'actions/setup-node@v4');
+        const nodeIdx = findStepIndexByUses(job, 'actions/setup-node@v6');
 
         expect(javaIdx).toBeGreaterThan(checkoutIdx);
         expect(javaIdx).toBeLessThan(pnpmIdx);
@@ -958,7 +958,7 @@ describe('generate-workflow command', () => {
         });
 
         const coverageJob = workflow.jobs['validate-coverage'];
-        const checkoutIdx = findStepIndexByUses(coverageJob, 'actions/checkout@v4');
+        const checkoutIdx = findStepIndexByUses(coverageJob, 'actions/checkout@v6');
         const customIdx = findStepIndexByName(coverageJob, 'Custom setup');
         const pnpmIdx = findStepIndexByName(coverageJob, 'Setup pnpm');
 
@@ -971,7 +971,7 @@ describe('generate-workflow command', () => {
         const job = workflow.jobs['validate'];
 
         // Should go directly from checkout to pnpm setup
-        expect(job.steps[0].uses).toBe('actions/checkout@v4');
+        expect(job.steps[0].uses).toBe('actions/checkout@v6');
         expect(job.steps[1].name).toBe('Setup pnpm');
       });
 
