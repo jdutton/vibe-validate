@@ -101,6 +101,9 @@
   "pnpm": {
     "overrides": {
       "esbuild@<=0.24.2": ">=0.25.0"
+    },
+    "patchedDependencies": {
+      "@jscpd/finder@4.0.1": "patches/@jscpd__finder@4.0.1.patch"
     }
   }
 }

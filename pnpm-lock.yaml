@@ -7,6 +7,11 @@ settings:
 overrides:
   esbuild@<=0.24.2: '>=0.25.0'
 
+patchedDependencies:
+  '@jscpd/finder@4.0.1':
+    hash: d3olrqs7ghoqr45zgsyi43y5ta
+    path: patches/@jscpd__finder@4.0.1.patch
+
 importers:
 
   .:
@@ -869,7 +874,6 @@ packages:
   '@lancedb/lancedb@0.23.0':
     resolution: {integrity: sha512-aYrIoEG24AC+wILCL57Ius/Y4yU+xFHDPKLvmjzzN4byAjzeIGF0TC86S5RBt4Ji+dxS7yIWV5Q/gE5/fybIFQ==}
     engines: {node: '>= 18'}
-    cpu: [x64, arm64]
     os: [darwin, linux, win32]
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
@@ -4569,7 +4573,7 @@ snapshots:
     dependencies:
       eventemitter3: 5.0.1
 
-  '@jscpd/finder@4.0.1':
+  '@jscpd/finder@4.0.1(patch_hash=d3olrqs7ghoqr45zgsyi43y5ta)':
     dependencies:
       '@jscpd/core': 4.0.1
       '@jscpd/tokenizer': 4.0.1
@@ -6861,7 +6865,7 @@ snapshots:
   jscpd@4.0.5:
     dependencies:
       '@jscpd/core': 4.0.1
-      '@jscpd/finder': 4.0.1
+      '@jscpd/finder': 4.0.1(patch_hash=d3olrqs7ghoqr45zgsyi43y5ta)
       '@jscpd/html-reporter': 4.0.1
       '@jscpd/tokenizer': 4.0.1
       colors: 1.4.0

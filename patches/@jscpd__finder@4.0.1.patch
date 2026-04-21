@@ -1,0 +1,13 @@
+diff --git a/dist/index.js b/dist/index.js
+index 5cf986abf9503d0ecdb3b54fc3ee9838a6a02336..4e6c2f41ebcdb484d40c60b651d0ab74fe65367e 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -186,7 +186,7 @@ function getFilesToDetect(options) {
+     patterns = patterns !== void 0 ? patterns.filter((path) => !isSymlink(path)) : [];
+   }
+   patterns = patterns !== void 0 ? patterns.map((path) => {
+-    const currentPath = _fsextra.realpathSync.call(void 0, path);
++    const currentPath = path;
+     if (isFile(currentPath)) {
+       return path;
+     }
