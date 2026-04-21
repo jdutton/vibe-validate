@@ -8,6 +8,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
+import { toForwardSlash } from '../../utils/dist/path-helpers.js';
 import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 const BASELINE_FILE = '.github/.jscpd-baseline.json';
@@ -41,8 +42,15 @@ const reportPath = './jscpd-report/jscpd-report.json';
 const currentReport = JSON.parse(readFileSync(reportPath, 'utf-8'));
 const currentClones = currentReport.duplicates ?? [];
 
+// Normalize paths to forward slashes so baselines are cross-platform portable
+const normalizedClones = currentClones.map((clone: Record<string, Record<string, string>>) => ({
+  ...clone,
+  firstFile: { ...clone.firstFile, name: toForwardSlash(clone.firstFile.name) },
+  secondFile: { ...clone.secondFile, name: toForwardSlash(clone.secondFile.name) },
+}));
+
 // Save as new baseline
-writeFileSync(BASELINE_FILE, JSON.stringify({ duplicates: currentClones }, null, 2));
+writeFileSync(BASELINE_FILE, JSON.stringify({ duplicates: normalizedClones }, null, 2));
 
 console.log('✅ Baseline updated!');
 console.log(`   Clones: ${String(currentClones.length)}`);
