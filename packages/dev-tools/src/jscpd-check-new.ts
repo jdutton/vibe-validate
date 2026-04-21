@@ -9,6 +9,7 @@
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { toForwardSlash } from '../../utils/dist/path-helpers.js';
 import { safeExecSync } from '../../utils/dist/safe-exec.js';
 
 const BASELINE_FILE = join('.github', '.jscpd-baseline.json');
@@ -81,7 +82,7 @@ interface Clone {
  * Create clone signature for comparison
  */
 function getCloneSignature(clone: Clone): string {
-  return `${clone.format}:${clone.firstFile.name}:${clone.firstFile.startLoc.line}-${clone.firstFile.endLoc.line}:${clone.secondFile.name}:${clone.secondFile.startLoc.line}-${clone.secondFile.endLoc.line}`;
+  return `${clone.format}:${toForwardSlash(clone.firstFile.name)}:${clone.firstFile.startLoc.line}-${clone.firstFile.endLoc.line}:${toForwardSlash(clone.secondFile.name)}:${clone.secondFile.startLoc.line}-${clone.secondFile.endLoc.line}`;
 }
 
 /**
