@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`generate-workflow`** — Generated workflows now use `pnpm/action-setup@v5` (upgraded from `v2`). Existing users should re-run `vv generate-workflow` to pick up the new version and silence Node.js 20 deprecation warnings in CI.
+
 ## [0.19.4] - 2026-04-21
 
 ### Changed

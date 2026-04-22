@@ -39,7 +39,7 @@ import {
 const ACTIONS_CHECKOUT_V6 = 'actions/checkout@v6';
 const ACTIONS_SETUP_NODE_V6 = 'actions/setup-node@v6';
 const ACTIONS_SETUP_BUN_V2 = 'oven-sh/setup-bun@v2';
-const ACTIONS_SETUP_PNPM_V2 = 'pnpm/action-setup@v2';
+const ACTIONS_SETUP_PNPM_V5 = 'pnpm/action-setup@v5';
 const WORKFLOW_PROPERTY_NODE_VERSION = 'node-version';
 const WORKFLOW_PROPERTY_FETCH_DEPTH = 'fetch-depth';
 const STEP_NAME_SETUP_PNPM = 'Setup pnpm';
@@ -231,7 +231,7 @@ function buildCommonJobSteps(params: {
   } else if (params.packageManager === 'pnpm') {
     steps.push({
       name: STEP_NAME_SETUP_PNPM,
-      uses: ACTIONS_SETUP_PNPM_V2,
+      uses: ACTIONS_SETUP_PNPM_V5,
       with: { version: '9' },
     });
   }
