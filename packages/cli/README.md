@@ -627,7 +627,7 @@ vv config
 ## Links
 
 - [Full Documentation](https://github.com/jdutton/vibe-validate#readme)
-- [Configuration Reference](https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md)
+- [Configuration Reference](https://github.com/jdutton/vibe-validate/blob/main/docs/skills/setting-up-projects/configuration-reference.md)
 - [Config Templates Guide](https://github.com/jdutton/vibe-validate/blob/main/packages/cli/config-templates/README.md)
 - [Getting Started](https://github.com/jdutton/vibe-validate/blob/main/docs/getting-started.md)
 

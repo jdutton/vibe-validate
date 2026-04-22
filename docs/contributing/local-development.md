@@ -190,7 +190,7 @@ Before publishing vibe-validate to npm:
 
 ## Further Reading
 
-- [CONTRIBUTING.md](../.github/CONTRIBUTING.md) - General contribution guidelines
-- [README.md](../README.md) - User documentation
-- [Configuration Reference](./configuration-reference.md) - Complete config options
-- [CLI Reference](./cli-reference.md) - All CLI commands
+- [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) - General contribution guidelines
+- [README.md](../../README.md) - User documentation
+- [Configuration Reference](../skills/setting-up-projects/configuration-reference.md) - Complete config options
+- [CLI Reference](../skills/vibe-validate/cli-reference.md) - All CLI commands

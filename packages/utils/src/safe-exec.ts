@@ -115,6 +115,62 @@ function shouldUseShell(commandPath: string): boolean {
 }
 
 /**
+ * Quote a single argument for a Windows `cmd.exe` command line.
+ *
+ * Rules:
+ *   - An arg that's empty, or contains whitespace, quotes, or any of `& | < > ^ ( ) % !`,
+ *     gets wrapped in double quotes.
+ *   - Embedded double quotes become `""` (cmd.exe's escape form inside quoted strings).
+ *
+ * Narrow on purpose: only used when we're forced to assemble a shell string for
+ * `.cmd` / `.bat` wrappers on Windows (the DEP0190 path). Keeps stray spaces,
+ * glob metacharacters, and parens from being re-interpreted by the shell.
+ */
+function windowsShellQuote(arg: string): string {
+  if (arg === '' || /["\s&|<>^()%!]/.test(arg)) {
+    return `"${arg.replaceAll('"', '""')}"`;
+  }
+  return arg;
+}
+
+/**
+ * Resolve command, build spawn options, and execute via spawnSync.
+ *
+ * Handles Windows shell requirements: `.cmd`/`.bat`/`.ps1` files need `shell:true`.
+ * Node.js v24+ (DEP0190) rejects `shell:true` with a separate args array containing
+ * shell metacharacters (`*`, `?`, `(`, `)`, etc.) with `EINVAL`. When shell mode is
+ * needed, join command + args into a single string with per-arg quoting via
+ * {@link windowsShellQuote} so metacharacters don't get re-interpreted by cmd.exe.
+ */
+function resolveAndSpawn(
+  command: string,
+  args: string[],
+  options: SafeExecOptions,
+): ReturnType<typeof spawnSync> {
+  const commandPath = which.sync(command);
+  const useShell = shouldUseShell(commandPath);
+
+  const spawnOptions: SpawnSyncOptions = {
+    shell: useShell,
+    stdio: options.stdio ?? 'pipe',
+    env: options.env,
+    cwd: options.cwd,
+    maxBuffer: options.maxBuffer,
+    timeout: options.timeout,
+    encoding: options.encoding,
+  };
+
+  const execCommand = useShell ? command : commandPath;
+  if (!useShell) {
+    return spawnSync(execCommand, args, spawnOptions);
+  }
+
+  const shellLine = `${execCommand} ${args.map(windowsShellQuote).join(' ')}`;
+  // eslint-disable-next-line sonarjs/os-command -- Windows DEP0190 workaround: command resolved via which.sync(); args are per-arg shell-quoted via windowsShellQuote()
+  return spawnSync(shellLine, { ...spawnOptions, shell: true });
+}
+
+/**
  * Safe command execution using spawnSync + which pattern
  *
  * More secure than execSync:
@@ -148,26 +204,7 @@ export function safeExecSync(
   args: string[] = [],
   options: SafeExecOptions = {},
 ): Buffer | string {
-  // Resolve command path using which (pure Node.js, no shell)
-  const commandPath = which.sync(command);
-
-  // Determine if shell is needed (Windows-specific logic)
-  const useShell = shouldUseShell(commandPath);
-
-  const spawnOptions: SpawnSyncOptions = {
-    shell: useShell, // shell:true on Windows for node and shell scripts, shell:false otherwise for security
-    stdio: options.stdio ?? 'pipe',
-    env: options.env,
-    cwd: options.cwd,
-    maxBuffer: options.maxBuffer,
-    timeout: options.timeout,
-    encoding: options.encoding,
-  };
-
-  // Execute with absolute path (or command name if using shell on Windows)
-  // When shell:true, use command name so shell can resolve it properly
-  const execCommand = useShell ? command : commandPath;
-  const result = spawnSync(execCommand, args, spawnOptions);
+  const result = resolveAndSpawn(command, args, options);
 
   // Check for spawn errors
   if (result.error) {
@@ -212,24 +249,7 @@ export function safeExecResult(
   options: SafeExecOptions = {},
 ): SafeExecResult {
   try {
-    const commandPath = which.sync(command);
-
-    // Determine if shell is needed (Windows-specific logic)
-    const useShell = shouldUseShell(commandPath);
-
-    const spawnOptions: SpawnSyncOptions = {
-      shell: useShell,
-      stdio: options.stdio ?? 'pipe',
-      env: options.env,
-      cwd: options.cwd,
-      maxBuffer: options.maxBuffer,
-      timeout: options.timeout,
-      encoding: options.encoding,
-    };
-
-    // When shell:true, use command name so shell can resolve it properly
-    const execCommand = useShell ? command : commandPath;
-    const result = spawnSync(execCommand, args, spawnOptions);
+    const result = resolveAndSpawn(command, args, options);
 
     return {
       status: result.status ?? -1,

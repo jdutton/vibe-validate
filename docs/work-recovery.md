@@ -229,5 +229,5 @@ rm .git/index.tmp
 
 ## See Also
 
-- [CLI Reference](cli-reference.md) - `history` command options
+- [CLI Reference](skills/vibe-validate/cli-reference.md) - `history` command options
 - [Troubleshooting Guide](troubleshooting.md) - General recovery issues

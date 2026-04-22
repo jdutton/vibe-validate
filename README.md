@@ -63,7 +63,7 @@ Built-in tools for AI agents and developers: health diagnostics, PR monitoring, 
 
 ---
 
-**For AI Assistants**: Get all command help at once with `vv --help --verbose` (or `npx vibe-validate --help --verbose` before install) or see the [Complete CLI Reference](docs/cli-reference.md)
+**For AI Assistants**: Get all command help at once with `vv --help --verbose` (or `npx vibe-validate --help --verbose` before install) or see the [Complete CLI Reference](docs/skills/vibe-validate/cli-reference.md)
 
 ## Quick Start
 
@@ -186,7 +186,7 @@ vv watch-pr 90 --yaml       # Force YAML output (auto on failure)
 vv generate-workflow
 ```
 
-**📖 Full command reference:** Run `vv --help --verbose` or see [Complete CLI Reference](docs/cli-reference.md)
+**📖 Full command reference:** Run `vv --help --verbose` or see [Complete CLI Reference](docs/skills/vibe-validate/cli-reference.md)
 
 ---
 
@@ -247,7 +247,7 @@ validation:
 - [Work Protection & Recovery](docs/work-protection.md)
 - [Agent Integration Guide](docs/agent-integration-guide.md)
 - [CI Debugging](docs/ci-debugging.md)
-- [Complete CLI Reference](docs/cli-reference.md)
+- [Complete CLI Reference](docs/skills/vibe-validate/cli-reference.md)
 
 **🔧 Monorepo Packages:** `vibe-validate` (umbrella) • `@vibe-validate/cli` • `@vibe-validate/core` • `@vibe-validate/config` • `@vibe-validate/extractors` • `@vibe-validate/git`
 

@@ -661,7 +661,7 @@ vv create-extractor company-tool \
 
 - [Error Extractors Guide](./error-extractors-guide.md) - Comprehensive extractor documentation
 - [Extractor Plugin Architecture](./extractor-plugin-architecture.md) - Technical architecture details
-- [CLI Reference](./cli-reference.md) - Full CLI command documentation
+- [CLI Reference](./skills/vibe-validate/cli-reference.md) - Full CLI command documentation
 
 ## Quick Reference
 

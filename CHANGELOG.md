@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.4] - 2026-04-21
+
 ### Changed
 
+- **Claude Code skill** — Split the monolithic `vibe-validate` skill into a thin router plus seven intent-scoped sub-skills (`vv-validate-dev-loop`, `setting-up-projects`, `caching-and-locking`, `recovering-work`, `authoring-extractors`, `vv-watch-pr`, `integrating-agents`). Adopters get more focused guidance and smaller context loads; the plugin now follows the VAT 0.1.33 router pattern.
 - **`generate-workflow`** — Generated workflows now use `actions/checkout@v6` and `actions/setup-node@v6` (upgraded from `v4`). Existing users should re-run `vv generate-workflow` to pick up the new versions.
+- **`vibe-agent-toolkit` dependency** — Bumped to `^0.1.33` (stable).
 
 ### Fixed
 
-- **`watch-pr --fail-fast`** — Now exits on first failure extraction instead of waiting for all failures, matching the documented "exit immediately" behavior
+- **Code duplication check on Windows** — `pnpm duplication-check` now runs on Windows instead of silently skipping. Fixed a path-handling bug in `@jscpd/finder` via a pnpm patch and normalized path separators in baseline comparison.
+- **Windows Node 24+ compatibility (`@vibe-validate/utils`)** — `safeExecSync` / `safeExecResult` now build a single shell-quoted command string when invoking `.cmd` / `.bat` / `.ps1` wrappers, instead of passing args as a separate array with `shell: true`. Silences Node.js `DEP0190` deprecation warnings on Windows CI and future-proofs against the eventual hard error.
+- **`watch-pr --fail-fast`** — Now exits on first failure extraction instead of waiting for all failures, matching the documented "exit immediately" behavior.
 
 ## [0.19.3] - 2026-04-11
 

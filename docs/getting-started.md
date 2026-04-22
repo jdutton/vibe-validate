@@ -370,8 +370,8 @@ vv cleanup
 
 ## Next Steps
 
-- **Customize configuration**: See [Configuration Reference](./configuration-reference.md)
-- **Learn CLI commands**: See [CLI Reference](./cli-reference.md)
+- **Customize configuration**: See [Configuration Reference](./skills/setting-up-projects/configuration-reference.md)
+- **Learn CLI commands**: See [CLI Reference](./skills/vibe-validate/cli-reference.md)
 - **Use config templates**: See [Config Templates Guide](../packages/cli/config-templates/README.md)
 - **Set up dependency lock check**: See [Dependency Lock Check](./dependency-lock-check.md)
 - **Integrate with AI assistants**: See [Agent Integration Guide](./agent-integration-guide.md)

@@ -35,6 +35,37 @@
  * });
  */
 
+/**
+ * Check if a node is a test-related call expression
+ * (describe, it, test, beforeEach, afterEach, beforeAll, afterAll, etc.)
+ */
+function isTestBlock(node) {
+  if (node.type !== 'CallExpression') {
+    return false;
+  }
+
+  const callee = node.callee;
+
+  // Direct calls: describe(), it(), test(), etc.
+  if (callee.type === 'Identifier') {
+    return /^(describe|it|test|before|after|beforeEach|afterEach|beforeAll|afterAll)$/i.test(
+      callee.name
+    );
+  }
+
+  // Member calls: test.describe(), test.it(), etc. (Playwright)
+  if (
+    callee.type === 'MemberExpression' &&
+    callee.property.type === 'Identifier'
+  ) {
+    return /^(describe|it|test|before|after|beforeEach|afterEach|beforeAll|afterAll)$/i.test(
+      callee.property.name
+    );
+  }
+
+  return false;
+}
+
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -69,37 +100,6 @@ module.exports = {
     const allowedNames = new Set(
       context.options[0]?.allowedFunctionNames || []
     );
-
-    /**
-     * Check if a node is a test-related call expression
-     * (describe, it, test, beforeEach, afterEach, beforeAll, afterAll, etc.)
-     */
-    function isTestBlock(node) {
-      if (node.type !== 'CallExpression') {
-        return false;
-      }
-
-      const callee = node.callee;
-
-      // Direct calls: describe(), it(), test(), etc.
-      if (callee.type === 'Identifier') {
-        return /^(describe|it|test|before|after|beforeEach|afterEach|beforeAll|afterAll)$/i.test(
-          callee.name
-        );
-      }
-
-      // Member calls: test.describe(), test.it(), etc. (Playwright)
-      if (
-        callee.type === 'MemberExpression' &&
-        callee.property.type === 'Identifier'
-      ) {
-        return /^(describe|it|test|before|after|beforeEach|afterEach|beforeAll|afterAll)$/i.test(
-          callee.property.name
-        );
-      }
-
-      return false;
-    }
 
     return {
       // Track entering any call expression

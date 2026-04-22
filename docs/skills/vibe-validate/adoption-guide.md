@@ -533,7 +533,7 @@ npx vibe-validate doctor
 
 - **Getting Started**: `docs/getting-started.md`
 - **CLI Reference**: `packages/cli/README.md`
-- **Configuration**: `docs/configuration-reference.md`
+- **Configuration**: `docs/skills/setting-up-projects/configuration-reference.md`
 - **Troubleshooting**: `docs/troubleshooting.md`
 
 ---

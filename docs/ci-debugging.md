@@ -529,6 +529,6 @@ When CI fails but tests pass locally:
 
 ## See Also
 
-- [Configuration Reference](./configuration-reference.md) - Environment-specific commands
-- [Local Development Guide](./local-development.md) - Testing changes locally
+- [Configuration Reference](./skills/setting-up-projects/configuration-reference.md) - Environment-specific commands
+- [Local Development Guide](./contributing/local-development.md) - Testing changes locally
 - [Agent Integration Guide](./agent-integration-guide.md) - LLM-friendly output

@@ -222,6 +222,6 @@ If output files aren't being created:
 
 ## See Also
 
-- [Configuration Reference](configuration-reference.md)
+- [Configuration Reference](skills/setting-up-projects/configuration-reference.md)
 - [Error Extractors Guide](error-extractors-guide.md)
 - [Troubleshooting](troubleshooting.md)

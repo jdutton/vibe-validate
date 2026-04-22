@@ -616,14 +616,14 @@ Even though CI always does fresh install, the check provides value:
 
 ## Learn More
 
-- **Configuration Reference**: [configuration-reference.md](./configuration-reference.md)
-- **Pre-commit Workflow**: [pre-commit command](./cli-reference.md#pre-commit)
-- **Doctor Command**: [doctor command](./cli-reference.md#doctor)
+- **Configuration Reference**: [configuration-reference.md](./skills/setting-up-projects/configuration-reference.md)
+- **Pre-commit Workflow**: [pre-commit command](./skills/vibe-validate/cli-reference.md#pre-commit)
+- **Doctor Command**: [doctor command](./skills/vibe-validate/cli-reference.md#doctor)
 - **Getting Started**: [getting-started.md](./getting-started.md)
 
 ## Related
 
 - [Getting Started](./getting-started.md)
 - [Pre-commit Workflow](./getting-started.md#pre-commit-validation)
-- [Configuration Reference](./configuration-reference.md)
-- [Doctor Command](./cli-reference.md#doctor)
+- [Configuration Reference](./skills/setting-up-projects/configuration-reference.md)
+- [Doctor Command](./skills/vibe-validate/cli-reference.md#doctor)

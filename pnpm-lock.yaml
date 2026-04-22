@@ -337,8 +337,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       vibe-agent-toolkit:
-        specifier: ^0.1.32
-        version: 0.1.32
+        specifier: ^0.1.33
+        version: 0.1.33
     devDependencies:
       '@types/node':
         specifier: ^20.19.26
@@ -874,6 +874,7 @@ packages:
   '@lancedb/lancedb@0.23.0':
     resolution: {integrity: sha512-aYrIoEG24AC+wILCL57Ius/Y4yU+xFHDPKLvmjzzN4byAjzeIGF0TC86S5RBt4Ji+dxS7yIWV5Q/gE5/fybIFQ==}
     engines: {node: '>= 18'}
+    cpu: [x64, arm64]
     os: [darwin, linux, win32]
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
@@ -1248,44 +1249,44 @@ packages:
     resolution: {integrity: sha512-IrDKrw7pCRUR94zeuCSUWQ+w8JEf5ZX5jl/e6AHGSLi1/zIr0lgutfn/7JpfCey+urpgQEdrZVYzCaVVKiTwhQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@vibe-agent-toolkit/agent-config@0.1.32':
-    resolution: {integrity: sha512-j/eeosiW+Tf48HNIEc+FDPHe7DJk3jJHDCOVijJ6uC0myrZlcNp14GNWhslU99MIZO2y+Xzlcs1dNwT+GJpJbA==}
+  '@vibe-agent-toolkit/agent-config@0.1.33':
+    resolution: {integrity: sha512-ZHgWsft4J3mDuw0yC7AhfmuaX9skXK+hoNqn+b+TF6yZTs5glgnwdCEn4hXoMp0FhgbEU42PBVY7Tn8go+Ejjg==}
 
-  '@vibe-agent-toolkit/agent-schema@0.1.32':
-    resolution: {integrity: sha512-fjzFp0Tw+sq02pMBOXZiJtiBBxWtTYDN2srKDyHPxBVlpMAw2vGcmpzXFIwgJMwE915ZhYXENML0lnbp7YXLDQ==}
+  '@vibe-agent-toolkit/agent-schema@0.1.33':
+    resolution: {integrity: sha512-24pInktOPgbiji6g5j00iUuenFlcz5L9taCcQ4aGNQILkOmcvVFz7y93swEMxi87KuGUiGz4sJ6LBrwiecqFWg==}
 
-  '@vibe-agent-toolkit/agent-skills@0.1.32':
-    resolution: {integrity: sha512-ffKM2ytn/MTBytwZBd5wwHSBZ8CE6bUQ1JHXnCqlYbxHEAeLRAlrzEfsu0/4josf0ssTEk0iTILY9IhleF3tGg==}
+  '@vibe-agent-toolkit/agent-skills@0.1.33':
+    resolution: {integrity: sha512-oBHVEVtyRZ8nKR3mvrtbXSn29aWlvwDnN5yLXjdkUUbuNtcCMFi2IV19t5A24pjO6/Fum0uZV83KKh6vFml4Bw==}
 
-  '@vibe-agent-toolkit/claude-marketplace@0.1.32':
-    resolution: {integrity: sha512-1RQtp0NME4U6tNFFx7CYU1fMqr51HLIHn9RB6RgsV8T80rxoRFuYq1nWIGlZGX57l2GoSbNlf5GX4e4DzH/tAg==}
+  '@vibe-agent-toolkit/claude-marketplace@0.1.33':
+    resolution: {integrity: sha512-UqtWfOOFF+zBoIKTjl4Nv6Koe7067bEzlghk6UKJa8gdMyt8HzpZxriQxZZgrKYWfBculPnGOp2ntvljXOOXVw==}
 
-  '@vibe-agent-toolkit/cli@0.1.32':
-    resolution: {integrity: sha512-pojYsDKFDd2RisTHVtoA/q6LU8FPE3BeMIcRsXzAmjuDA8CE3PLpJCKjXxZ3fEbO3X4XqIs6wT4hwaKQtugW+g==}
+  '@vibe-agent-toolkit/cli@0.1.33':
+    resolution: {integrity: sha512-0RQukKa5LhJKqqIMW+aC3YsIH6TOzZV2q3O1nPO8xCDjT6fGm0yCvPiaIIuSUgOiJtkh9b9U4/of4q0Mv9NRwg==}
     hasBin: true
 
-  '@vibe-agent-toolkit/discovery@0.1.32':
-    resolution: {integrity: sha512-SDu/VwkvaN849M9G56kzlU/Ig8lYUU/AWVhlgIqFWbMoym+PRxyyaHGJ8e2nkII7JsHcz/nOI9ffneCnIT3efg==}
+  '@vibe-agent-toolkit/discovery@0.1.33':
+    resolution: {integrity: sha512-xvkYl3tDxD/ShXiHGf+9lG4n6Tho+ToUQm0FLCcMSiTpn8tldgMbhwbnyQqw9ZZI4tKx5n9KbF5D6vU0nh+5+g==}
 
-  '@vibe-agent-toolkit/gateway-mcp@0.1.32':
-    resolution: {integrity: sha512-uV79OT1w1daetNCVUF/t4t6O6p922r16LJjjHOrqPfzCFeL7aNLAhBzKAhrQExuK6soyhBtmK7ig8rJTzxrwNw==}
+  '@vibe-agent-toolkit/gateway-mcp@0.1.33':
+    resolution: {integrity: sha512-XuY8nZakA1m/A7283zmBKHLG/p8E9Yu+XKO4hm1/cJRF8JVJirj4YDV0GseKCT4Cb51dCtxjlRRXEIiZBkI/Hw==}
 
-  '@vibe-agent-toolkit/rag-lancedb@0.1.32':
-    resolution: {integrity: sha512-VJMemWzpuV4wCIXX39UqmweFJGP3oQHWv/s0cV6/ePYoZVhRLcyfDEU7VIIWGMxa1Hom6hNDI4DxzqJQ+pHy4g==}
+  '@vibe-agent-toolkit/rag-lancedb@0.1.33':
+    resolution: {integrity: sha512-VvB0tLJm0Yw/Vr/yLNsqOTZ7aD0uBL5+d5kUZhbg7MpBzfhc7HAXidAnUpQGqz5w1ALVwSJt5wN37yvCVCaecQ==}
 
-  '@vibe-agent-toolkit/rag@0.1.32':
-    resolution: {integrity: sha512-MkUTRFwWaeF6mwf8kewTp107Rq5nEzrzQOJmY5oPtj0+DPUw0KH5NyaUUbgFgPPq5pmruJXNYV7hplHDJUjauQ==}
+  '@vibe-agent-toolkit/rag@0.1.33':
+    resolution: {integrity: sha512-oSqwT+vz+Wprgp2O1stan/ABX2mCkpC7vfxCToLoBUEfyiIunJkW9ydW8XTEcA8LX0slzNn4X7fp5sG1LVbw8w==}
 
-  '@vibe-agent-toolkit/resources@0.1.32':
-    resolution: {integrity: sha512-wy2Twy3JOv/QjDUeeXabXNBX16IjdeKvqMhkcCHazTBNTxOKn2RySQAtOY/Waklxtg0zBthj+Zho0v8SZlzj7A==}
+  '@vibe-agent-toolkit/resources@0.1.33':
+    resolution: {integrity: sha512-yHI79/0Yg0dRZqQgJkz2/4niT8GqZW9UTMnIBlEWcUgkDVAhwd26gL5h1IcnU2apLQvMDt1Ib/WGAn2Bu5cDIA==}
 
-  '@vibe-agent-toolkit/utils@0.1.32':
-    resolution: {integrity: sha512-VdKlXii+0orJ095yF89FekcO1WnzSIFCGiQEswSNmUS0+UD35OAKMicVSyDybzZUDGD0CRzqZVC6CSlNjvaZzg==}
+  '@vibe-agent-toolkit/utils@0.1.33':
+    resolution: {integrity: sha512-ce9vwqQ96wSTz3UM9TV0fTmG8xucV3+Lz1qwUrcobGuv8aZAs/BPI6Cv3FmvzQ2Gaw8n7RktFDvX6b3qeyNCqw==}
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  '@vibe-agent-toolkit/vat-development-agents@0.1.32':
-    resolution: {integrity: sha512-82wapjMBoqW9Z8Ye0mRKMx/Fnr1t4024vavcBqYs0utvNJ+zKl7eo5yINYO/6NEIGRqlj0V4cxGJfYJ94T00XQ==}
+  '@vibe-agent-toolkit/vat-development-agents@0.1.33':
+    resolution: {integrity: sha512-xw/TlyrYYHJnCG2XXDEODua0ZTpFdb4Sk5vpUMzu5AVU/D2gjxlBd+IDP9Aw3GGLIJVt8MV/bmBlUFu4dd/phw==}
 
   '@vitest/coverage-v8@3.2.4':
     resolution: {integrity: sha512-EyF9SXU6kS5Ku/U82E259WSnvg6c8KTjppUncuNdm5QHpe17mwREHnjDzozC8x9MZ0xfBUFSaLkRv4TMA75ALQ==}
@@ -4012,8 +4013,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vibe-agent-toolkit@0.1.32:
-    resolution: {integrity: sha512-+gEJ18YZS70MHd9Jr1+l4HruCQfPQGxMAApip2UgcSbCgIHPvE4z6hWRgWSaH9420VYTEbjoTiuK7K4oQ+7GFA==}
+  vibe-agent-toolkit@0.1.33:
+    resolution: {integrity: sha512-lZAiYw+eszG2MGPsMbYT16gl0cdRHV+0qjah04YmQ6iYFNE7lHehq90tvpk8Qqix/c7ryoURxbAUgTUmpf1D8g==}
     hasBin: true
 
   vite-node@2.1.9:
@@ -5040,25 +5041,25 @@ snapshots:
       '@typescript-eslint/types': 8.50.1
       eslint-visitor-keys: 4.2.1
 
-  '@vibe-agent-toolkit/agent-config@0.1.32(zod@3.25.76)':
+  '@vibe-agent-toolkit/agent-config@0.1.33(zod@3.25.76)':
     dependencies:
-      '@vibe-agent-toolkit/agent-schema': 0.1.32
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/agent-schema': 0.1.33
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       yaml: 2.8.2
     transitivePeerDependencies:
       - zod
 
-  '@vibe-agent-toolkit/agent-schema@0.1.32':
+  '@vibe-agent-toolkit/agent-schema@0.1.33':
     dependencies:
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
 
-  '@vibe-agent-toolkit/agent-skills@0.1.32':
+  '@vibe-agent-toolkit/agent-skills@0.1.33':
     dependencies:
-      '@vibe-agent-toolkit/agent-config': 0.1.32(zod@3.25.76)
-      '@vibe-agent-toolkit/agent-schema': 0.1.32
-      '@vibe-agent-toolkit/resources': 0.1.32
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/agent-config': 0.1.33(zod@3.25.76)
+      '@vibe-agent-toolkit/agent-schema': 0.1.33
+      '@vibe-agent-toolkit/resources': 0.1.33
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       adm-zip: 0.5.16
       picomatch: 4.0.3
       yaml: 2.8.2
@@ -5067,28 +5068,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vibe-agent-toolkit/claude-marketplace@0.1.32':
+  '@vibe-agent-toolkit/claude-marketplace@0.1.33':
     dependencies:
-      '@vibe-agent-toolkit/agent-skills': 0.1.32
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/agent-skills': 0.1.33
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       ignore: 6.0.2
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
 
-  '@vibe-agent-toolkit/cli@0.1.32':
+  '@vibe-agent-toolkit/cli@0.1.33':
     dependencies:
       '@anthropic-ai/sdk': 0.71.2(zod@3.25.76)
-      '@vibe-agent-toolkit/agent-config': 0.1.32(zod@3.25.76)
-      '@vibe-agent-toolkit/agent-schema': 0.1.32
-      '@vibe-agent-toolkit/agent-skills': 0.1.32
-      '@vibe-agent-toolkit/claude-marketplace': 0.1.32
-      '@vibe-agent-toolkit/discovery': 0.1.32(zod@3.25.76)
-      '@vibe-agent-toolkit/gateway-mcp': 0.1.32
-      '@vibe-agent-toolkit/rag': 0.1.32
-      '@vibe-agent-toolkit/rag-lancedb': 0.1.32
-      '@vibe-agent-toolkit/resources': 0.1.32
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/agent-config': 0.1.33(zod@3.25.76)
+      '@vibe-agent-toolkit/agent-schema': 0.1.33
+      '@vibe-agent-toolkit/agent-skills': 0.1.33
+      '@vibe-agent-toolkit/claude-marketplace': 0.1.33
+      '@vibe-agent-toolkit/discovery': 0.1.33(zod@3.25.76)
+      '@vibe-agent-toolkit/gateway-mcp': 0.1.33
+      '@vibe-agent-toolkit/rag': 0.1.33
+      '@vibe-agent-toolkit/rag-lancedb': 0.1.33
+      '@vibe-agent-toolkit/resources': 0.1.33
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       adm-zip: 0.5.16
       commander: 12.1.0
       js-yaml: 4.1.1
@@ -5104,28 +5105,28 @@ snapshots:
       - supports-color
       - ws
 
-  '@vibe-agent-toolkit/discovery@0.1.32(zod@3.25.76)':
+  '@vibe-agent-toolkit/discovery@0.1.33(zod@3.25.76)':
     dependencies:
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       picomatch: 4.0.3
     transitivePeerDependencies:
       - zod
 
-  '@vibe-agent-toolkit/gateway-mcp@0.1.32':
+  '@vibe-agent-toolkit/gateway-mcp@0.1.33':
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
-      '@vibe-agent-toolkit/agent-schema': 0.1.32
+      '@vibe-agent-toolkit/agent-schema': 0.1.33
       zod: 3.25.76
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@vibe-agent-toolkit/rag-lancedb@0.1.32':
+  '@vibe-agent-toolkit/rag-lancedb@0.1.33':
     dependencies:
       '@lancedb/lancedb': 0.23.0(apache-arrow@18.1.0)
-      '@vibe-agent-toolkit/rag': 0.1.32
-      '@vibe-agent-toolkit/resources': 0.1.32
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/rag': 0.1.33
+      '@vibe-agent-toolkit/resources': 0.1.33
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       apache-arrow: 18.1.0
       zod: 3.25.76
     transitivePeerDependencies:
@@ -5135,10 +5136,10 @@ snapshots:
       - supports-color
       - ws
 
-  '@vibe-agent-toolkit/rag@0.1.32':
+  '@vibe-agent-toolkit/rag@0.1.33':
     dependencies:
-      '@vibe-agent-toolkit/resources': 0.1.32
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/resources': 0.1.33
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       gpt-tokenizer: 2.9.0
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
@@ -5153,10 +5154,10 @@ snapshots:
       - supports-color
       - ws
 
-  '@vibe-agent-toolkit/resources@0.1.32':
+  '@vibe-agent-toolkit/resources@0.1.33':
     dependencies:
-      '@vibe-agent-toolkit/agent-schema': 0.1.32
-      '@vibe-agent-toolkit/utils': 0.1.32(zod@3.25.76)
+      '@vibe-agent-toolkit/agent-schema': 0.1.33
+      '@vibe-agent-toolkit/utils': 0.1.33(zod@3.25.76)
       ajv: 8.17.1
       github-slugger: 2.0.0
       js-yaml: 4.1.1
@@ -5171,7 +5172,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vibe-agent-toolkit/utils@0.1.32(zod@3.25.76)':
+  '@vibe-agent-toolkit/utils@0.1.33(zod@3.25.76)':
     dependencies:
       handlebars: 4.7.9
       ignore: 7.0.5
@@ -5179,10 +5180,10 @@ snapshots:
       which: 5.0.0
       zod: 3.25.76
 
-  '@vibe-agent-toolkit/vat-development-agents@0.1.32':
+  '@vibe-agent-toolkit/vat-development-agents@0.1.33':
     dependencies:
-      '@vibe-agent-toolkit/agent-schema': 0.1.32
-      '@vibe-agent-toolkit/cli': 0.1.32
+      '@vibe-agent-toolkit/agent-schema': 0.1.33
+      '@vibe-agent-toolkit/cli': 0.1.33
       yaml: 2.8.2
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -8610,10 +8611,10 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vibe-agent-toolkit@0.1.32:
+  vibe-agent-toolkit@0.1.33:
     dependencies:
-      '@vibe-agent-toolkit/cli': 0.1.32
-      '@vibe-agent-toolkit/vat-development-agents': 0.1.32
+      '@vibe-agent-toolkit/cli': 0.1.33
+      '@vibe-agent-toolkit/vat-development-agents': 0.1.33
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - bare-abort-controller

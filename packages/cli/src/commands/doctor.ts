@@ -379,7 +379,7 @@ async function checkConfigValid(
           message: `Found ${fileName} but it contains validation errors`,
           suggestion: [
             `Fix syntax/validation errors in ${fileName}`,
-            'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/configuration-reference.md',
+            'See configuration docs: https://github.com/jdutton/vibe-validate/blob/main/docs/skills/setting-up-projects/configuration-reference.md',
             'JSON Schema for IDE validation: https://raw.githubusercontent.com/jdutton/vibe-validate/main/packages/config/config.schema.json',
             'Example YAML configs: https://github.com/jdutton/vibe-validate/tree/main/packages/cli/config-templates'
           ].join('\n   '),

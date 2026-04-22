@@ -306,11 +306,11 @@ describe('bin.ts - CLI entry point', () => {
         const { normalizeLineEndings, splitLines } = await import('../src/utils/normalize-line-endings.js');
 
         const result = await executeCLI(binPath, testDir, ['--help', '--verbose']);
-        const docsPath = join(__dirname, '../../../docs/cli-reference.md');
+        const docsPath = join(__dirname, '../../../docs/skills/vibe-validate/cli-reference.md');
 
         if (!existsSync(docsPath)) {
           throw new Error(
-            'CLI reference docs missing at docs/cli-reference.md\n' +
+            'CLI reference docs missing at docs/skills/vibe-validate/cli-reference.md\n' +
             'The documentation should be auto-generated from --help --verbose output.'
           );
         }
@@ -326,7 +326,7 @@ describe('bin.ts - CLI entry point', () => {
         const docsSections = normalizedDocs.split('---\n');
         if (docsSections.length < 2) {
           throw new Error(
-            'docs/cli-reference.md should have a preamble followed by --- separator, ' +
+            'docs/skills/vibe-validate/cli-reference.md should have a preamble followed by --- separator, ' +
             'then the exact --help --verbose output'
           );
         }
@@ -342,7 +342,7 @@ describe('bin.ts - CLI entry point', () => {
           const helpLines = splitLines(expectedHelpOutput);
           const maxLines = Math.max(docsLines.length, helpLines.length);
 
-          console.error('\n❌ docs/cli-reference.md does NOT match --help --verbose output exactly!\n');
+          console.error('\n❌ docs/skills/vibe-validate/cli-reference.md does NOT match --help --verbose output exactly!\n');
           console.error('Showing first 10 differences:\n');
 
           let diffsShown = 0;
@@ -360,11 +360,11 @@ describe('bin.ts - CLI entry point', () => {
           }
 
           console.error(`\nTotal: ${docsLines.length} lines in docs, ${helpLines.length} lines in help output\n`);
-          console.error('To fix: Run `node packages/cli/dist/bin.js --help --verbose` and update docs/cli-reference.md\n');
+          console.error('To fix: Run `node packages/cli/dist/bin.js --help --verbose` and update docs/skills/vibe-validate/cli-reference.md\n');
         }
 
         expect(docsHelpContent,
-          'docs/cli-reference.md must contain the EXACT output from --help --verbose (after the --- separator). ' +
+          'docs/skills/vibe-validate/cli-reference.md must contain the EXACT output from --help --verbose (after the --- separator). ' +
           'This ensures perfect sync between CLI and documentation.'
         ).toBe(expectedHelpOutput);
       });

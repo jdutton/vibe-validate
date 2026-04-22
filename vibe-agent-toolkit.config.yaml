@@ -2,7 +2,7 @@ version: 1
 
 skills:
   include:
-    - "SKILL.md"
+    - "docs/skills/*/SKILL.md"
   defaults:
     # vibe-validate orchestrates `vv` CLI invocations and shell-based
     # validation pipelines — local shell is required.
@@ -15,8 +15,8 @@ claude:
         name: vibe-validate
       publish:
         branch: claude-marketplace
-        changelog: ../../CHANGELOG.md
-        readme: ../../docs/marketplace-readme.md
+        changelog: CHANGELOG.md
+        readme: docs/marketplace-readme.md
         license: mit
       plugins:
         - name: vibe-validate
