@@ -39,7 +39,7 @@ import {
 const ACTIONS_CHECKOUT_V6 = 'actions/checkout@v6';
 const ACTIONS_SETUP_NODE_V6 = 'actions/setup-node@v6';
 const ACTIONS_SETUP_BUN_V2 = 'oven-sh/setup-bun@v2';
-const ACTIONS_SETUP_PNPM_V2 = 'pnpm/action-setup@v2';
+const ACTIONS_SETUP_PNPM_V5 = 'pnpm/action-setup@v5';
 const WORKFLOW_PROPERTY_NODE_VERSION = 'node-version';
 const WORKFLOW_PROPERTY_FETCH_DEPTH = 'fetch-depth';
 const STEP_NAME_SETUP_PNPM = 'Setup pnpm';
@@ -229,10 +229,14 @@ function buildCommonJobSteps(params: {
       uses: ACTIONS_SETUP_BUN_V2,
     });
   } else if (params.packageManager === 'pnpm') {
+    // pnpm/action-setup v5+ reads the version from the project's
+    // `packageManager` field in package.json. Passing a separate `version`
+    // input alongside `packageManager` is rejected with ERR_PNPM_BAD_PM_VERSION,
+    // so we omit it here and rely on the consumer declaring their pnpm version
+    // in package.json (required by Corepack anyway).
     steps.push({
       name: STEP_NAME_SETUP_PNPM,
-      uses: ACTIONS_SETUP_PNPM_V2,
-      with: { version: '9' },
+      uses: ACTIONS_SETUP_PNPM_V5,
     });
   }
 

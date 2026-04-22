@@ -20,9 +20,7 @@ jobs:
           fetch-depth: 0  # Full history for CHANGELOG extraction
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: "9"
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -80,7 +78,7 @@ jobs:
 
       - name: Create GitHub Release (stable only)
         if: steps.version_type.outputs.is_stable == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

@@ -298,7 +298,9 @@ describe('generate-workflow command', () => {
 
       const job = workflow.jobs['validate'];
       const pnpmStep = expectStepWithUses(job, 'pnpm/action-setup');
-      expect(pnpmStep.with.version).toBe('9');
+      // pnpm/action-setup v5+ reads version from `packageManager` in package.json;
+      // emitting a `version` input alongside `packageManager` is rejected.
+      expect(pnpmStep.with).toBeUndefined();
       expectStepWithRun(job, 'pnpm install --frozen-lockfile');
     });
 
