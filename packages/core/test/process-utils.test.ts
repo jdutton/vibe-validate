@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { stopProcessGroup, getGitRoot, resolveGitRelativePath } from '../src/process-utils.js';
+import { stopProcessGroup, getGitRoot, resolveGitRelativePath, spawnCommand } from '../src/process-utils.js';
 
 describe('process-utils', () => {
   describe('stopProcessGroup', () => {
@@ -292,6 +292,24 @@ describe('process-utils', () => {
       const path = 'packages/cli';
       const resolved = resolveGitRelativePath(path);
       expect(resolved).toContain('packages/cli');
+    });
+  });
+
+  describe('spawnCommand stdio option', () => {
+    it('defaults to piped stdio (existing behavior)', () => {
+      const proc = spawnCommand('node -e "process.exit(0)"');
+      expect(proc.stdout).not.toBeNull();
+      expect(proc.stderr).not.toBeNull();
+      proc.kill();
+    });
+
+    it('uses inherit when stdio: "inherit" is passed', () => {
+      const proc = spawnCommand('node -e "process.exit(0)"', { stdio: 'inherit' });
+      // With inherit, stdout/stderr on the ChildProcess are null because
+      // they're attached directly to the parent's streams.
+      expect(proc.stdout).toBeNull();
+      expect(proc.stderr).toBeNull();
+      proc.kill();
     });
   });
 });
