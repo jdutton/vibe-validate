@@ -137,3 +137,14 @@ export {
   OutputLineSchema,
   CapturedOutputSchema,
 } from './output-capture-schema.js';
+
+// Export ParentContext schema and utilities
+export {
+  PARENT_CONTEXT_ENV,
+  MAX_NESTED_DEPTH,
+  ParentContextSchema,
+  readParentContext,
+  buildChildContext,
+  serializeForEnv,
+} from './parent-context.js';
+export type { ParentContext, ChildContextInput } from './parent-context.js';
