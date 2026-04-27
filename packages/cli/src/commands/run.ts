@@ -8,8 +8,17 @@
 import { writeFile, readFile } from 'node:fs/promises';
 import { join, resolve, relative } from 'node:path';
 
-import type { OutputLine } from '@vibe-validate/core';
-import { spawnCommand, parseVibeValidateOutput, getGitRoot, getTempFilename } from '@vibe-validate/core';
+import type { OutputLine, ParentContext } from '@vibe-validate/core';
+import {
+  spawnCommand,
+  parseVibeValidateOutput,
+  getGitRoot,
+  getTempFilename,
+  readParentContext,
+  buildChildContext,
+  serializeForEnv,
+  PARENT_CONTEXT_ENV,
+} from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
@@ -22,6 +31,8 @@ import { type RunResult } from '../schemas/run-result-schema.js';
 import { getCommandName } from '../utils/command-name.js';
 import { logDebug, logWarning } from '../utils/logger.js';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
+
+const NOT_IN_GIT_REPO_ERROR = 'Not in a git repository';
 
 export function runCommand(program: Command): void {
   program
@@ -94,6 +105,27 @@ export function runCommand(program: Command): void {
         // No command or command starts with a flag - show run command help
         showRunHelp();
         process.exit(0);
+      }
+
+      // Pass-through mode: when running inside another vibe-validate command
+      // (parent set VV_PARENT_CONTEXT with capturing=true), we just exec the
+      // command with inherited stdio and propagate the exit code. The parent
+      // handles capture, extraction, caching, and YAML emission.
+      let parent: ParentContext | null;
+      try {
+        parent = readParentContext();
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exit(2);
+      }
+      if (parent?.capturing) {
+        try {
+          const exitCode = await executePassThrough(commandString, parent, actualOptions.cwd);
+          process.exit(exitCode);
+        } catch (error) {
+          console.error(error instanceof Error ? error.message : String(error));
+          process.exit(1);
+        }
       }
 
       try {
@@ -234,7 +266,7 @@ function getWorkingDirectory(explicitCwd?: string): string {
     const gitRoot = getGitRoot();
 
     if (!gitRoot) {
-      throw new Error('Not in a git repository');
+      throw new Error(NOT_IN_GIT_REPO_ERROR);
     }
 
     // Use explicit --cwd if provided
@@ -432,6 +464,58 @@ function stripAnsiCodes(text: string): string {
 }
 
 /**
+ * Pass-through execution: when running inside another vibe-validate command,
+ * spawn the underlying command with inherited stdio and propagate the exit code.
+ *
+ * No capture, no YAML emit, no cache, no output files — the parent handles all of that.
+ *
+ * Re-exports VV_PARENT_CONTEXT with depth+1 so grandchildren get a correct
+ * ancestry chain. If `buildChildContext` would exceed MAX_NESTED_DEPTH, it
+ * throws — which the action handler converts into a non-zero exit with a
+ * "depth exceeded" message on stderr.
+ */
+async function executePassThrough(
+  commandString: string,
+  parent: ParentContext,
+  explicitCwd?: string
+): Promise<number> {
+  const childCtx = buildChildContext(parent, {
+    runId: parent.runId,
+    treeHash: parent.treeHash,
+    stepName: parent.stepName,
+    ...(parent.phaseName ? { phaseName: parent.phaseName } : {}),
+    outputDir: parent.outputDir,
+    verbose: parent.verbose,
+    forceExecution: parent.forceExecution,
+  });
+
+  let resolvedCwd: string | undefined;
+  if (explicitCwd) {
+    const gitRoot = getGitRoot();
+    if (!gitRoot) {
+      throw new Error(NOT_IN_GIT_REPO_ERROR);
+    }
+    resolvedCwd = resolve(gitRoot, explicitCwd);
+    const normalizedResolvedCwd = normalizePath(resolvedCwd);
+    const normalizedGitRoot = normalizePath(gitRoot);
+    if (!normalizedResolvedCwd.startsWith(normalizedGitRoot)) {
+      throw new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`);
+    }
+  }
+
+  const child = spawnCommand(commandString, {
+    cwd: resolvedCwd,
+    stdio: 'inherit',
+    env: { [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx) },
+  });
+
+  return new Promise<number>((resolvePromise, rejectPromise) => {
+    child.on('close', code => resolvePromise(code ?? 1));
+    child.on('error', err => rejectPromise(err));
+  });
+}
+
+/**
  * Execute a command and extract errors from its output
  */
 async function executeAndExtract(commandString: string, explicitCwd?: string): Promise<{
@@ -447,7 +531,7 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
       try {
         const gitRoot = getGitRoot();
         if (!gitRoot) {
-          rejectPromise(new Error('Not in a git repository'));
+          rejectPromise(new Error(NOT_IN_GIT_REPO_ERROR));
           return;
         }
         resolvedCwd = resolve(gitRoot, explicitCwd);
