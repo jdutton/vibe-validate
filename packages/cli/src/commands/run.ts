@@ -464,6 +464,31 @@ function stripAnsiCodes(text: string): string {
 }
 
 /**
+ * Resolve an explicit --cwd argument to an absolute path, ensuring it stays
+ * within the git repository root.
+ *
+ * Both sides of the comparison are normalized AND converted to forward slashes
+ * to guarantee byte-identical comparison on Windows (where path separators may
+ * mix `\` and `/` after `path.resolve`).
+ *
+ * @throws if not in a git repo, or if `explicitCwd` resolves outside the git root
+ */
+function resolveCwdWithinGitRoot(explicitCwd: string): string {
+  const gitRoot = getGitRoot();
+  if (!gitRoot) {
+    throw new Error(NOT_IN_GIT_REPO_ERROR);
+  }
+  const resolvedCwd = resolve(gitRoot, explicitCwd);
+  // toForwardSlash + normalizePath ensures byte-identical comparison on Windows
+  const normalizedCwd = toForwardSlash(normalizePath(resolvedCwd));
+  const normalizedRoot = toForwardSlash(normalizePath(gitRoot));
+  if (!normalizedCwd.startsWith(normalizedRoot)) {
+    throw new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`);
+  }
+  return resolvedCwd;
+}
+
+/**
  * Pass-through execution: when running inside another vibe-validate command,
  * spawn the underlying command with inherited stdio and propagate the exit code.
  *
@@ -489,19 +514,7 @@ async function executePassThrough(
     forceExecution: parent.forceExecution,
   });
 
-  let resolvedCwd: string | undefined;
-  if (explicitCwd) {
-    const gitRoot = getGitRoot();
-    if (!gitRoot) {
-      throw new Error(NOT_IN_GIT_REPO_ERROR);
-    }
-    resolvedCwd = resolve(gitRoot, explicitCwd);
-    const normalizedResolvedCwd = normalizePath(resolvedCwd);
-    const normalizedGitRoot = normalizePath(gitRoot);
-    if (!normalizedResolvedCwd.startsWith(normalizedGitRoot)) {
-      throw new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`);
-    }
-  }
+  const resolvedCwd = explicitCwd ? resolveCwdWithinGitRoot(explicitCwd) : undefined;
 
   const child = spawnCommand(commandString, {
     cwd: resolvedCwd,
@@ -529,23 +542,9 @@ async function executeAndExtract(commandString: string, explicitCwd?: string): P
     let resolvedCwd: string | undefined;
     if (explicitCwd) {
       try {
-        const gitRoot = getGitRoot();
-        if (!gitRoot) {
-          rejectPromise(new Error(NOT_IN_GIT_REPO_ERROR));
-          return;
-        }
-        resolvedCwd = resolve(gitRoot, explicitCwd);
-
-        // Security: Validate path is within git root
-        // Normalize both paths for cross-platform comparison (Windows uses backslashes, git root may use forward slashes)
-        const normalizedResolvedCwd = normalizePath(resolvedCwd);
-        const normalizedGitRoot = normalizePath(gitRoot);
-        if (!normalizedResolvedCwd.startsWith(normalizedGitRoot)) {
-          rejectPromise(new Error(`Invalid --cwd: "${explicitCwd}" - must be within git repository`));
-          return;
-        }
+        resolvedCwd = resolveCwdWithinGitRoot(explicitCwd);
       } catch (error) {
-        rejectPromise(new Error(`Failed to resolve --cwd: ${error instanceof Error ? error.message : 'unknown error'}`));
+        rejectPromise(error instanceof Error ? error : new Error(String(error)));
         return;
       }
     }
