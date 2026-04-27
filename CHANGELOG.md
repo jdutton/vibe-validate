@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Nested `vv run` pass-through** — When a `package.json` script wraps a tool with `vibe-validate run` and is invoked from `vibe-validate validate`, the inner `vv run` now switches automatically to pass-through mode: it inherits the parent's stdio, propagates the exit code, and skips its own capture/extract/cache. The outer captures the real underlying tool's output (vitest, eslint, etc.) instead of an inner YAML summary, so error extraction runs on actual data and `vv watch-pr` can recover failures from CI logs. A depth cap of 3 fails loudly on recursive misconfiguration. Signaled via the new `VV_PARENT_CONTEXT` environment variable, set automatically by the parent.
+- **`vv doctor` nested-invocation reporting** — Doctor now reports `Running inside parent vibe-validate (runId=…, depth=N, step="…")` when invoked under a parent vv process, and fails loudly when `VV_PARENT_CONTEXT` is set but malformed.
+
+### Changed
+
+- **`generate-workflow`** — Generated workflows now use `pnpm/action-setup@v5` (upgraded from `v2`). Existing users should re-run `vv generate-workflow` to pick up the new version and silence Node.js 20 deprecation warnings in CI.
+
 ## [0.19.4] - 2026-04-21
 
 ### Changed
