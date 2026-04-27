@@ -2044,15 +2044,16 @@ describe('doctor command', () => {
       });
     });
 
-    it('should not report parent context check in filtered output when env var is unset', async () => {
+    it('should pass with informational message when VV_PARENT_CONTEXT is unset', async () => {
       delete process.env['VV_PARENT_CONTEXT'];
 
       await mockDoctorDefaults();
-      // In non-verbose mode, passing checks without suggestions are filtered out
-      const result = await runDoctor({ verbose: false });
+      const result = await runDoctor({ verbose: true });
 
-      const nestedCheck = result.checks.find(c => c.name === 'Nested invocation');
-      expect(nestedCheck).toBeUndefined();
+      assertCheck(result, 'Nested invocation', {
+        passed: true,
+        messageContains: 'Not running inside',
+      });
     });
 
     it('should fail and report error when VV_PARENT_CONTEXT contains invalid JSON', async () => {
@@ -2061,7 +2062,7 @@ describe('doctor command', () => {
       await mockDoctorDefaults();
       const result = await runDoctor({ verbose: true });
 
-      assertCheck(result, 'Parent context env var', {
+      assertCheck(result, 'Nested invocation', {
         passed: false,
         messageContains: 'VV_PARENT_CONTEXT',
       });

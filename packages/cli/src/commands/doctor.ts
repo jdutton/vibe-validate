@@ -67,7 +67,6 @@ const CHECK_PRE_COMMIT_SECRET_SCANNING = 'Pre-commit secret scanning';
 const CHECK_VIBE_VALIDATE_VERSION = 'vibe-validate version';
 const CHECK_DEPENDENCY_LOCK_CHECK = 'Dependency lock check configuration';
 const CHECK_NESTED_INVOCATION = 'Nested invocation';
-const CHECK_PARENT_CONTEXT_ENV = 'Parent context env var';
 
 // Common message constants
 const MSG_SKIPPED_NOT_IN_GIT = 'Skipped (not in git repository)';
@@ -1252,7 +1251,7 @@ function checkParentContext(): DoctorCheckResult {
     };
   } catch (error) {
     return {
-      name: CHECK_PARENT_CONTEXT_ENV,
+      name: CHECK_NESTED_INVOCATION,
       passed: false,
       message: `Invalid ${PARENT_CONTEXT_ENV}: ${error instanceof Error ? error.message : String(error)}`,
       suggestion: `Unset the env var and retry: unset ${PARENT_CONTEXT_ENV}`,
