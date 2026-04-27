@@ -4,6 +4,7 @@
  
 import type { ChildProcess } from 'node:child_process';
 import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { ValidationStep } from '@vibe-validate/config';
@@ -2069,6 +2070,64 @@ rawOutput: |
 
       const logOutput = consoleSpy.mock.calls.map(call => String(call[0])).join('\n');
       expect(logOutput).toContain('skipped (local-only)');
+    });
+  });
+
+  describe('ParentContext propagation', () => {
+    it('sets VV_PARENT_CONTEXT in spawned step environment (sequential)', async () => {
+      const config: ValidationConfig = {
+        phases: [{
+          name: 'TestPhase',
+          parallel: false,
+          steps: [{
+            name: 'echo-context',
+            command: 'node -e "process.stdout.write(process.env.VV_PARENT_CONTEXT || \'NONE\')"',
+          }],
+        }],
+        env: {},
+        verbose: false,
+        yaml: false,
+        debug: true,
+      };
+
+      const result = await runValidation(config);
+
+      const stepOutput = result.phases[0].steps[0];
+      expect(stepOutput.passed).toBe(true);
+      const captured = await readFile(stepOutput.outputFiles!.stdout!, 'utf-8');
+      const parsed = JSON.parse(captured);
+      expect(parsed.stepName).toBe('echo-context');
+      expect(parsed.phaseName).toBe('TestPhase');
+      expect(parsed.depth).toBe(1);
+      expect(parsed.capturing).toBe(true);
+    });
+
+    it('sets VV_PARENT_CONTEXT in spawned step environment (parallel)', async () => {
+      const config: ValidationConfig = {
+        phases: [{
+          name: 'ParallelPhase',
+          parallel: true,
+          steps: [{
+            name: 'echo-context-parallel',
+            command: 'node -e "process.stdout.write(process.env.VV_PARENT_CONTEXT || \'NONE\')"',
+          }],
+        }],
+        env: {},
+        verbose: false,
+        yaml: false,
+        debug: true,
+      };
+
+      const result = await runValidation(config);
+
+      const stepOutput = result.phases[0].steps[0];
+      expect(stepOutput.passed).toBe(true);
+      const captured = await readFile(stepOutput.outputFiles!.stdout!, 'utf-8');
+      const parsed = JSON.parse(captured);
+      expect(parsed.stepName).toBe('echo-context-parallel');
+      expect(parsed.phaseName).toBe('ParallelPhase');
+      expect(parsed.depth).toBe(1);
+      expect(parsed.capturing).toBe(true);
     });
   });
 });

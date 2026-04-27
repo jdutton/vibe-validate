@@ -29,6 +29,12 @@ import {
   createLogFileWrite,
   createCombinedJsonl,
 } from './fs-utils.js';
+import {
+  buildChildContext,
+  PARENT_CONTEXT_ENV,
+  readParentContext,
+  serializeForEnv,
+} from './parent-context.js';
 import { stopProcessGroup, spawnCommand, resolveGitRelativePath } from './process-utils.js';
 import type {
   ValidationResult,
@@ -169,6 +175,10 @@ interface StepExecutionOptions {
   debug?: boolean;
   /** Previous validation run for retry-failed functionality */
   previousRun?: ValidationConfig['previousRun'];
+  /** Pre-computed git tree hash for the current run (reused across all steps) */
+  treeHash?: string;
+  /** Pre-computed run id for the current run (reused across all steps) */
+  runId?: string;
 }
 
 /**
@@ -577,6 +587,12 @@ interface ExecuteSingleStepOptions {
   maxNameLength: number;
   log: (_msg: string) => void;
   previousRun?: ValidationConfig['previousRun'];
+  /** Containing phase name (propagated into VV_PARENT_CONTEXT) */
+  phaseName?: string;
+  /** Pre-computed git tree hash for the current run */
+  treeHash?: string;
+  /** Pre-computed run id for the current run */
+  runId?: string;
 }
 
 /**
@@ -652,7 +668,7 @@ function tryUseCachedResult(
 }
 
 async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ output: string; stepResult: StepResult }> {
-  const { step, env, verbose, yaml, debug, maxNameLength, log, previousRun } = options;
+  const { step, env, verbose, yaml, debug, maxNameLength, log, previousRun, phaseName, treeHash, runId } = options;
   const paddedName = step.name.padEnd(maxNameLength);
 
   // Check if step should be skipped based on runScope
@@ -677,7 +693,29 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   const startTime = Date.now();
   // Resolve cwd relative to git root (if specified)
   const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
-  const proc = spawnCommand(step.command, { env, cwd: resolvedCwd });
+
+  // Build per-step ParentContext and inject into child env. Reuse the run-level
+  // treeHash/runId when provided by runValidation (avoids extra git calls and
+  // keeps the runId stable across all steps in this validation run).
+  const resolvedTreeHash = treeHash ?? (await getGitTreeHash()).hash;
+  const resolvedRunId = runId ?? `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${resolvedTreeHash.slice(0, 8)}`;
+  const stepOutputDir = join(getTempDir('steps'), resolvedRunId, step.name.replaceAll(/[^a-z0-9]/gi, '-'));
+  const parent = readParentContext();
+  const childCtx = buildChildContext(parent, {
+    runId: resolvedRunId,
+    treeHash: resolvedTreeHash,
+    stepName: step.name,
+    ...(phaseName ? { phaseName } : {}),
+    outputDir: stepOutputDir,
+    verbose,
+    forceExecution: process.env.VV_FORCE_EXECUTION === '1',
+  });
+  const stepEnv = {
+    ...env,
+    [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx),
+  };
+
+  const proc = spawnCommand(step.command, { env: stepEnv, cwd: resolvedCwd });
 
   // Use object accumulators for mutable references
   const stdoutAccumulator = { value: '' };
@@ -785,6 +823,8 @@ export async function runStepsSequentially(
     yaml = false,
     debug = false,
     previousRun,
+    treeHash,
+    runId,
   } = options;
   // When yaml mode is on, write progress to stderr to keep stdout clean
   const log = yaml ?
@@ -808,6 +848,9 @@ export async function runStepsSequentially(
       maxNameLength,
       log,
       previousRun,
+      phaseName,
+      treeHash,
+      runId,
     });
 
     outputs.set(step.name, output);
@@ -906,6 +949,31 @@ export async function runStepsInParallel(
 
   const ignoreStopErrors = () => { /* Process may have already exited */ };
 
+  // Pre-compute per-step ParentContext env so the spawn executor below stays synchronous.
+  // Reuse run-level treeHash/runId when provided by runValidation; otherwise fall back
+  // to a single getGitTreeHash() call (used when runStepsInParallel is invoked directly).
+  const parentCtx = readParentContext();
+  const sharedTreeHash = options.treeHash ?? (await getGitTreeHash()).hash;
+  const sharedRunId =
+    options.runId ?? `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${sharedTreeHash.slice(0, 8)}`;
+  const stepEnvs = new Map<string, Record<string, string>>();
+  for (const step of steps) {
+    const stepOutputDir = join(getTempDir('steps'), sharedRunId, step.name.replaceAll(/[^a-z0-9]/gi, '-'));
+    const childCtx = buildChildContext(parentCtx, {
+      runId: sharedRunId,
+      treeHash: sharedTreeHash,
+      stepName: step.name,
+      ...(phaseName ? { phaseName } : {}),
+      outputDir: stepOutputDir,
+      verbose,
+      forceExecution: process.env.VV_FORCE_EXECUTION === '1',
+    });
+    stepEnvs.set(step.name, {
+      ...env,
+      [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx),
+    });
+  }
+
   const results = await Promise.allSettled(
     steps.map(step =>
       new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
@@ -969,8 +1037,9 @@ export async function runStepsInParallel(
 
         // Resolve cwd relative to git root (if specified)
         const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
+        const stepEnv = stepEnvs.get(step.name) ?? env;
         const proc = spawnCommand(step.command, {
-          env,
+          env: stepEnv,
           cwd: resolvedCwd,
         });
 
@@ -1284,6 +1353,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   // Get current working tree hash (deterministic, content-based)
   const treeHashResult = await getGitTreeHash();
   const currentTreeHash = treeHashResult.hash;
+  // Stable per-validation-run identifier (used for ParentContext.runId / outputDir layout)
+  const runId = `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${currentTreeHash.slice(0, 8)}`;
 
   // Note: Caching is now handled at the CLI layer via git notes
   // (see packages/cli/src/commands/validate.ts and @vibe-validate/history)
@@ -1340,6 +1411,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
         developerFeedback: config.developerFeedback ?? false,
         debug: config.debug ?? false,
         previousRun: config.previousRun,
+        treeHash: currentTreeHash,
+        runId,
       }
     );
     const phaseDurationMs = Date.now() - phaseStartTime;
