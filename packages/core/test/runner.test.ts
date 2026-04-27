@@ -2092,7 +2092,7 @@ rawOutput: |
 
       const result = await runValidation(config);
 
-      const stepOutput = result.phases[0].steps[0];
+      const stepOutput = result.phases![0].steps[0];
       expect(stepOutput.passed).toBe(true);
       const captured = await readFile(stepOutput.outputFiles!.stdout!, 'utf-8');
       const parsed = JSON.parse(captured);
@@ -2120,7 +2120,7 @@ rawOutput: |
 
       const result = await runValidation(config);
 
-      const stepOutput = result.phases[0].steps[0];
+      const stepOutput = result.phases![0].steps[0];
       expect(stepOutput.passed).toBe(true);
       const captured = await readFile(stepOutput.outputFiles!.stdout!, 'utf-8');
       const parsed = JSON.parse(captured);
