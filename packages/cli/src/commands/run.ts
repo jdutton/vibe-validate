@@ -119,13 +119,16 @@ export function runCommand(program: Command): void {
         process.exit(2);
       }
       if (parent?.capturing) {
+        let passThroughExitCode: number;
         try {
-          const exitCode = await executePassThrough(commandString, parent, actualOptions.cwd);
-          process.exit(exitCode);
+          passThroughExitCode = await executePassThrough(commandString, parent, actualOptions.cwd);
         } catch (error) {
           console.error(error instanceof Error ? error.message : String(error));
           process.exit(1);
         }
+        // process.exit must be outside the try/catch — otherwise a test mock
+        // that throws on exit would re-trigger the catch path
+        process.exit(passThroughExitCode);
       }
 
       try {

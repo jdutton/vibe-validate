@@ -1,6 +1,8 @@
 import * as childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { join } from 'node:path';
 
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { runCommand } from '../../src/commands/run.js';
@@ -11,6 +13,50 @@ import { createMockChildProcess } from '../helpers/mock-helpers.js';
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
 }));
+
+const VALID_PARENT_CTX = {
+  runId: 'unit-run',
+  treeHash: 'abc12345',
+  depth: 1,
+  stepName: 'test-step',
+  outputDir: join(normalizedTmpdir(), 'vv-unit'),
+  capturing: true,
+  caching: true,
+  extracting: true,
+  verbose: false,
+  forceExecution: false,
+};
+
+/**
+ * Run `vv run` with a specific VV_PARENT_CONTEXT env value, capturing the exit code.
+ * Pass `null` to clear the env, a string for raw env content, or an object that
+ * will be JSON.stringified.
+ */
+async function runWithParentCtx(
+  env: CommanderTestEnv,
+  parentCtx: object | string | null,
+  args: string[],
+): Promise<number> {
+  if (parentCtx === null) {
+    delete process.env.VV_PARENT_CONTEXT;
+  } else {
+    process.env.VV_PARENT_CONTEXT = typeof parentCtx === 'string' ? parentCtx : JSON.stringify(parentCtx);
+  }
+  runCommand(env.program);
+  try {
+    await env.program.parseAsync(['run', ...args], { from: 'user' });
+    return 0;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.startsWith('process.exit(')) {
+      const match = /process\.exit\((\d+)\)/.exec(err.message);
+      return match ? Number.parseInt(match[1], 10) : 0;
+    }
+    if (err && typeof err === 'object' && 'exitCode' in err) {
+      return (err as { exitCode: number }).exitCode;
+    }
+    throw err;
+  }
+}
 
 describe('run command', () => {
   let env: CommanderTestEnv;
@@ -1472,6 +1518,99 @@ extraction:
         .map(call => call[0])
         .join('');
       expect(stderrCalls).toContain('package@1.0.0 test');
+    });
+  });
+
+  describe('pass-through mode (VV_PARENT_CONTEXT)', () => {
+    let savedParentCtx: string | undefined;
+
+    beforeEach(() => {
+      savedParentCtx = process.env.VV_PARENT_CONTEXT;
+    });
+
+    afterEach(() => {
+      if (savedParentCtx === undefined) delete process.env.VV_PARENT_CONTEXT;
+      else process.env.VV_PARENT_CONTEXT = savedParentCtx;
+    });
+
+    it('spawns the inner command with stdio: inherit when parent.capturing=true', async () => {
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess('', '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      const exitCode = await runWithParentCtx(env, VALID_PARENT_CTX, ['echo hello']);
+
+      expect(exitCode).toBe(0);
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'echo hello',
+        [],
+        expect.objectContaining({
+          shell: true,
+          stdio: ['ignore', 'inherit', 'inherit'],
+        }),
+      );
+    });
+
+    it('re-exports VV_PARENT_CONTEXT with depth+1 to children', async () => {
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess('', '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      await runWithParentCtx(env, VALID_PARENT_CTX, ['echo hi']);
+
+      const spawnCall = mockSpawn.mock.calls[0];
+      const spawnEnv = (spawnCall[2] as { env?: Record<string, string> }).env;
+      expect(spawnEnv).toBeDefined();
+      const childCtx = JSON.parse(spawnEnv!.VV_PARENT_CONTEXT);
+      expect(childCtx.depth).toBe(2);
+      expect(childCtx.runId).toBe(VALID_PARENT_CTX.runId);
+      expect(childCtx.stepName).toBe(VALID_PARENT_CTX.stepName);
+      expect(childCtx.capturing).toBe(true);
+    });
+
+    it('propagates non-zero exit code from the inner command', async () => {
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess('', '', 7);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      const exitCode = await runWithParentCtx(env, VALID_PARENT_CTX, ['echo fail']);
+      expect(exitCode).toBe(7);
+    });
+
+    it('exits 2 with stderr message when VV_PARENT_CONTEXT is malformed JSON', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const exitCode = await runWithParentCtx(env, '{not valid json', ['echo x']);
+
+      expect(exitCode).toBe(2);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/Invalid VV_PARENT_CONTEXT/));
+    });
+
+    it('exits non-zero with "depth exceeded" when child depth would exceed MAX_NESTED_DEPTH', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const tooDeepCtx = { ...VALID_PARENT_CTX, depth: 3 };
+
+      const exitCode = await runWithParentCtx(env, tooDeepCtx, ['echo deep']);
+
+      expect(exitCode).not.toBe(0);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/depth exceeded/));
+    });
+
+    it('does NOT pass through when parent.capturing=false (uses normal mode)', async () => {
+      const mockSpawn = vi.mocked(childProcess.spawn);
+      const mockProcess = createMockChildProcess('output', '', 0);
+      mockSpawn.mockReturnValue(mockProcess as any);
+
+      // capturing=false means the parent isn't asking us to pass through
+      await runWithParentCtx(env, { ...VALID_PARENT_CTX, capturing: false }, ['echo test']);
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'echo test',
+        [],
+        expect.objectContaining({
+          stdio: ['ignore', 'pipe', 'pipe'], // normal mode = piped
+        }),
+      );
     });
   });
 });
