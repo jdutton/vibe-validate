@@ -2100,6 +2100,9 @@ rawOutput: |
       expect(parsed.phaseName).toBe('TestPhase');
       expect(parsed.depth).toBe(1);
       expect(parsed.capturing).toBe(true);
+      // Advertised ParentContext.outputDir must match where the outer-captured
+      // step output files actually live (Task 3 / I1: alignment).
+      expect(stepOutput.outputFiles!.stdout!.startsWith(parsed.outputDir)).toBe(true);
     });
 
     it('sets VV_PARENT_CONTEXT in spawned step environment (parallel)', async () => {
@@ -2128,6 +2131,9 @@ rawOutput: |
       expect(parsed.phaseName).toBe('ParallelPhase');
       expect(parsed.depth).toBe(1);
       expect(parsed.capturing).toBe(true);
+      // Advertised ParentContext.outputDir must match where the outer-captured
+      // step output files actually live (Task 3 / I1: alignment).
+      expect(stepOutput.outputFiles!.stdout!.startsWith(parsed.outputDir)).toBe(true);
     });
   });
 });

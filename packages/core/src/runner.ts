@@ -44,6 +44,79 @@ import type {
 import { parseVibeValidateOutput } from './run-output-parser.js';
 
 /**
+ * Convert a step name into a filesystem-safe slug for output directory paths.
+ *
+ * Replaces any non-alphanumeric character with `-`. Used to build per-step
+ * output directories under the run-scoped temp directory.
+ *
+ * @param name - The step name to slugify
+ * @returns A filesystem-safe slug
+ *
+ * @internal
+ */
+function slugifyStepName(name: string): string {
+  return name.replaceAll(/[^a-z0-9]/gi, '-');
+}
+
+/**
+ * Build a stable per-validation-run identifier from the current ISO timestamp
+ * and the leading 8 characters of the working tree hash.
+ *
+ * Used as `ParentContext.runId` and as the directory key under
+ * `${getTempDir('steps')}/<runId>/<step-slug>`.
+ *
+ * @param treeHash - Current git working tree hash
+ * @returns Run identifier string (e.g. `2026-04-24T12-00-00-000Z-abcd1234`)
+ *
+ * @internal
+ */
+function makeRunId(treeHash: string): string {
+  return `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${treeHash.slice(0, 8)}`;
+}
+
+/**
+ * Resolve the per-step output directory and build the spawn environment with
+ * VV_PARENT_CONTEXT injected for nested vibe-validate invocations.
+ *
+ * Used by both the sequential and parallel step execution paths. Returns the
+ * resolved `outputDir` so the caller can pass it back to the file-creation
+ * helpers, ensuring `ParentContext.outputDir` and the actual file location
+ * are always identical.
+ *
+ * @param args - Step, base env, parent context, runId, treeHash, optional phase
+ * @returns Step env (with VV_PARENT_CONTEXT) and the resolved outputDir
+ *
+ * @internal
+ */
+function buildStepEnv(args: {
+  step: ValidationStep;
+  baseEnv: Record<string, string>;
+  parent: ReturnType<typeof readParentContext>;
+  runId: string;
+  treeHash: string;
+  phaseName?: string;
+  verbose: boolean;
+}): { env: Record<string, string>; outputDir: string } {
+  const outputDir = join(getTempDir('steps'), args.runId, slugifyStepName(args.step.name));
+  const childCtx = buildChildContext(args.parent, {
+    runId: args.runId,
+    treeHash: args.treeHash,
+    stepName: args.step.name,
+    ...(args.phaseName ? { phaseName: args.phaseName } : {}),
+    outputDir,
+    verbose: args.verbose,
+    forceExecution: process.env.VV_FORCE_EXECUTION === '1',
+  });
+  return {
+    env: {
+      ...args.baseEnv,
+      [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx),
+    },
+    outputDir,
+  };
+}
+
+/**
  * Determine if a step should be skipped based on its runScope and the current environment.
  *
  * - `runScope: 'ci'` — only runs in CI, skipped locally
@@ -487,7 +560,12 @@ function parseAndLogCacheStatus(
 }
 
 /**
- * Create output files for step
+ * Create output files for step.
+ *
+ * Writes the captured stdout/stderr/combined streams under `outputDir`.
+ * The caller is responsible for resolving `outputDir` (typically the same
+ * directory advertised in `ParentContext.outputDir`), so a nested child
+ * process can predict where its outer-captured files will live.
  */
 async function createStepOutputFiles(
   stepName: string,
@@ -495,12 +573,12 @@ async function createStepOutputFiles(
   stderr: string,
   combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
   verbose: boolean,
-  log: (_msg: string) => void
+  log: (_msg: string) => void,
+  outputDir: string
 ): Promise<{ stdout?: string; stderr?: string; combined?: string } | undefined> {
   try {
     const treeHashResult = await getGitTreeHash();
     const treeHash = treeHashResult.hash;
-    const outputDir = getTempDir('steps');
     await ensureDir(outputDir);
 
     // Generate unique filenames with tree hash and timestamp
@@ -541,7 +619,8 @@ async function processStepOutput(
   stdout: string,
   stderr: string,
   combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
-  options: ProcessOutputOptions
+  options: ProcessOutputOptions,
+  outputDir: string
 ): Promise<{
   extraction?: ErrorExtractorResult;
   isCachedResult?: boolean;
@@ -569,7 +648,7 @@ async function processStepOutput(
   // Create output files if needed
   const shouldCreateFiles = exitCode !== 0 || options.debug;
   if (shouldCreateFiles && !outputFiles) {
-    outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, options.verbose, options.log);
+    outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, options.verbose, options.log, outputDir);
   }
 
   return { extraction, isCachedResult, outputFiles };
@@ -698,22 +777,17 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   // treeHash/runId when provided by runValidation (avoids extra git calls and
   // keeps the runId stable across all steps in this validation run).
   const resolvedTreeHash = treeHash ?? (await getGitTreeHash()).hash;
-  const resolvedRunId = runId ?? `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${resolvedTreeHash.slice(0, 8)}`;
-  const stepOutputDir = join(getTempDir('steps'), resolvedRunId, step.name.replaceAll(/[^a-z0-9]/gi, '-'));
+  const resolvedRunId = runId ?? makeRunId(resolvedTreeHash);
   const parent = readParentContext();
-  const childCtx = buildChildContext(parent, {
+  const { env: stepEnv, outputDir: stepOutputDir } = buildStepEnv({
+    step,
+    baseEnv: env,
+    parent,
     runId: resolvedRunId,
     treeHash: resolvedTreeHash,
-    stepName: step.name,
     ...(phaseName ? { phaseName } : {}),
-    outputDir: stepOutputDir,
     verbose,
-    forceExecution: process.env.VV_FORCE_EXECUTION === '1',
   });
-  const stepEnv = {
-    ...env,
-    [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx),
-  };
 
   const proc = spawnCommand(step.command, { env: stepEnv, cwd: resolvedCwd });
 
@@ -753,7 +827,8 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
     stdout,
     stderr,
     combinedLines,
-    { verbose, debug, log }
+    { verbose, debug, log },
+    stepOutputDir
   );
 
   // Create step result (build without type annotation to let TS infer)
@@ -954,24 +1029,18 @@ export async function runStepsInParallel(
   // to a single getGitTreeHash() call (used when runStepsInParallel is invoked directly).
   const parentCtx = readParentContext();
   const sharedTreeHash = options.treeHash ?? (await getGitTreeHash()).hash;
-  const sharedRunId =
-    options.runId ?? `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${sharedTreeHash.slice(0, 8)}`;
-  const stepEnvs = new Map<string, Record<string, string>>();
+  const sharedRunId = options.runId ?? makeRunId(sharedTreeHash);
+  const stepEnvs = new Map<string, { env: Record<string, string>; outputDir: string }>();
   for (const step of steps) {
-    const stepOutputDir = join(getTempDir('steps'), sharedRunId, step.name.replaceAll(/[^a-z0-9]/gi, '-'));
-    const childCtx = buildChildContext(parentCtx, {
+    stepEnvs.set(step.name, buildStepEnv({
+      step,
+      baseEnv: env,
+      parent: parentCtx,
       runId: sharedRunId,
       treeHash: sharedTreeHash,
-      stepName: step.name,
       ...(phaseName ? { phaseName } : {}),
-      outputDir: stepOutputDir,
       verbose,
-      forceExecution: process.env.VV_FORCE_EXECUTION === '1',
-    });
-    stepEnvs.set(step.name, {
-      ...env,
-      [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx),
-    });
+    }));
   }
 
   const results = await Promise.allSettled(
@@ -1037,7 +1106,13 @@ export async function runStepsInParallel(
 
         // Resolve cwd relative to git root (if specified)
         const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
-        const stepEnv = stepEnvs.get(step.name) ?? env;
+        const stepEnvEntry = stepEnvs.get(step.name);
+        const stepEnv = stepEnvEntry?.env ?? env;
+        // Output directory advertised in ParentContext.outputDir; the inline
+        // file-creation block below writes to this same directory so the
+        // advertised location matches the actual filesystem location.
+        const stepOutputDir =
+          stepEnvEntry?.outputDir ?? join(getTempDir('steps'), sharedRunId, slugifyStepName(step.name));
         const proc = spawnCommand(step.command, {
           env: stepEnv,
           cwd: resolvedCwd,
@@ -1154,8 +1229,9 @@ export async function runStepsInParallel(
               try {
                 const treeHashResult = await getGitTreeHash();
                 const treeHash = treeHashResult.hash;
-                const outputDir = getTempDir('steps');
-                await ensureDir(outputDir);
+                // Use the same outputDir we advertised in ParentContext.outputDir
+                // so the advertised location matches where the files actually live.
+                await ensureDir(stepOutputDir);
 
                 const writePromises: Promise<void>[] = [];
 
@@ -1166,16 +1242,16 @@ export async function runStepsInParallel(
 
                 // Write stdout.log (only if non-empty) using shared utility
                 const { file: stdoutFile, promise: stdoutPromise } =
-                  createLogFileWrite(stdout, outputDir, stdoutFilename);
+                  createLogFileWrite(stdout, stepOutputDir, stdoutFilename);
                 if (stdoutPromise) writePromises.push(stdoutPromise);
 
                 // Write stderr.log (only if non-empty) using shared utility
                 const { file: stderrFile, promise: stderrPromise } =
-                  createLogFileWrite(stderr, outputDir, stderrFilename);
+                  createLogFileWrite(stderr, stepOutputDir, stderrFilename);
                 if (stderrPromise) writePromises.push(stderrPromise);
 
                 // Write combined.jsonl (always - timestamped interleaved output)
-                const combinedFile = join(outputDir, combinedFilename);
+                const combinedFile = join(stepOutputDir, combinedFilename);
                 const combinedContent = createCombinedJsonl(combinedLines);
                 writePromises.push(writeFile(combinedFile, combinedContent, 'utf-8'));
 
@@ -1354,7 +1430,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   const treeHashResult = await getGitTreeHash();
   const currentTreeHash = treeHashResult.hash;
   // Stable per-validation-run identifier (used for ParentContext.runId / outputDir layout)
-  const runId = `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${currentTreeHash.slice(0, 8)}`;
+  const runId = makeRunId(currentTreeHash);
 
   // Note: Caching is now handled at the CLI layer via git notes
   // (see packages/cli/src/commands/validate.ts and @vibe-validate/history)
