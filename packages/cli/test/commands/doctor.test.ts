@@ -15,6 +15,7 @@ import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { runDoctor, type DoctorCheckResult } from '../../src/commands/doctor.js';
@@ -186,7 +187,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       expect(result.allPassed).toBe(true);
-      expect(result.checks).toHaveLength(19);
+      expect(result.checks).toHaveLength(20);
       expect(result.checks.every(c => c.passed)).toBe(true);
     });
 
@@ -317,7 +318,7 @@ describe('doctor command', () => {
       const result = await runDoctor({ verbose: true });
 
       // Verify that all 16 checks ran (not just the config check)
-      expect(result.checks).toHaveLength(19);
+      expect(result.checks).toHaveLength(20);
 
       // Config check should fail
       assertCheck(result, 'Configuration valid', {
@@ -331,10 +332,10 @@ describe('doctor command', () => {
       assertCheck(result, 'Git installed', { passed: true });
       assertCheck(result, 'Git repository', { passed: true });
 
-      // Summary should show 18/19 passed (only config check fails)
+      // Summary should show 19/20 passed (only config check fails)
       expect(result.allPassed).toBe(false);
-      expect(result.totalChecks).toBe(19);
-      expect(result.passedChecks).toBe(18);
+      expect(result.totalChecks).toBe(20);
+      expect(result.passedChecks).toBe(19);
     });
 
     it('should detect not in git repository', async () => {
@@ -462,7 +463,7 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true });
 
-      expect(result.checks).toHaveLength(19);
+      expect(result.checks).toHaveLength(20);
       expect(result.verboseMode).toBe(true);
     });
 
@@ -522,7 +523,7 @@ describe('doctor command', () => {
 
       // Verbose mode should show ALL 16 checks (including passing ones)
       expect(result.verboseMode).toBe(true);
-      expect(result.checks).toHaveLength(19); // All checks
+      expect(result.checks).toHaveLength(20); // All checks
       expect(result.allPassed).toBe(false); // Has failures
 
       const failedChecks = result.checks.filter(c => !c.passed);
@@ -1247,7 +1248,7 @@ describe('doctor command', () => {
 
       const result = await runDoctor({ verbose: true, versionChecker: mockVersionChecker });
 
-      expect(result.checks).toHaveLength(19);
+      expect(result.checks).toHaveLength(20);
       assertCheck(result, 'vibe-validate version', { passed: true });
     });
 
@@ -1269,7 +1270,7 @@ describe('doctor command', () => {
 
       expect(duration).toBeLessThan(5000); // Should be fast (<5s without network)
       assertCheck(result, 'vibe-validate version', { passed: true });
-      expect(result.checks).toHaveLength(19);
+      expect(result.checks).toHaveLength(20);
     });
   });
 
@@ -1994,6 +1995,77 @@ describe('doctor command', () => {
       });
 
       mockCheckHealth.mockRestore();
+    });
+  });
+
+  describe('checkParentContext() - Nested invocation reporting', () => {
+    let savedParentCtx: string | undefined;
+
+    beforeEach(() => {
+      savedParentCtx = process.env['VV_PARENT_CONTEXT'];
+    });
+
+    afterEach(() => {
+      if (savedParentCtx === undefined) {
+        delete process.env['VV_PARENT_CONTEXT'];
+      } else {
+        process.env['VV_PARENT_CONTEXT'] = savedParentCtx;
+      }
+    });
+
+    it('should report nested invocation when VV_PARENT_CONTEXT is set', async () => {
+      process.env['VV_PARENT_CONTEXT'] = JSON.stringify({
+        runId: 'run-abc123',
+        treeHash: 'hash-xyz',
+        depth: 2,
+        stepName: 'integration',
+        outputDir: normalizedTmpdir() + '/vv-out',
+        capturing: true,
+        caching: true,
+        extracting: true,
+        verbose: false,
+        forceExecution: false,
+      });
+
+      await mockDoctorDefaults();
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Nested invocation', {
+        passed: true,
+        messageContains: 'run-abc123',
+      });
+      assertCheck(result, 'Nested invocation', {
+        passed: true,
+        messageContains: 'depth=2',
+      });
+      assertCheck(result, 'Nested invocation', {
+        passed: true,
+        messageContains: 'integration',
+      });
+    });
+
+    it('should pass with informational message when VV_PARENT_CONTEXT is unset', async () => {
+      delete process.env['VV_PARENT_CONTEXT'];
+
+      await mockDoctorDefaults();
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Nested invocation', {
+        passed: true,
+        messageContains: 'Not running inside',
+      });
+    });
+
+    it('should fail and report error when VV_PARENT_CONTEXT contains invalid JSON', async () => {
+      process.env['VV_PARENT_CONTEXT'] = 'not-valid-json';
+
+      await mockDoctorDefaults();
+      const result = await runDoctor({ verbose: true });
+
+      assertCheck(result, 'Nested invocation', {
+        passed: false,
+        messageContains: 'VV_PARENT_CONTEXT',
+      });
     });
   });
 });

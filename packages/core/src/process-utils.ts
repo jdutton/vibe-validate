@@ -178,15 +178,22 @@ export function spawnCommand(
     env?: Record<string, string>;
     /** Working directory (defaults to current directory) */
     cwd?: string;
+    /** Stdio mode. 'pipe' (default) captures stdout/stderr; 'inherit' attaches to parent's streams. */
+    stdio?: 'pipe' | 'inherit';
   }
 ): ChildProcess {
+  const stdio: ['ignore', 'pipe' | 'inherit', 'pipe' | 'inherit'] =
+    options?.stdio === 'inherit'
+      ? ['ignore', 'inherit', 'inherit']
+      : ['ignore', 'pipe', 'pipe'];
+
   // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
   // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
   // NOSONAR - Intentional shell execution of user-defined commands
   // eslint-disable-next-line sonarjs/os-command
   return spawn(command, options?.args ?? [], {
     shell: true,
-    stdio: ['ignore', 'pipe', 'pipe'], // No stdin (prevent hangs), capture stdout/stderr
+    stdio,
     timeout: options?.timeout,
     // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
     detached: options?.detached ?? (process.platform !== 'win32'),

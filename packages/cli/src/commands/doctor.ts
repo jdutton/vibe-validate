@@ -15,6 +15,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 import { getMainBranch, getRemoteOrigin, type VibeValidateConfig } from '@vibe-validate/config';
+import { readParentContext, PARENT_CONTEXT_ENV } from '@vibe-validate/core';
 import {
   executeGitCommand,
   isGitRepository,
@@ -65,6 +66,7 @@ const CHECK_GITHUB_ACTIONS_WORKFLOW = 'GitHub Actions workflow';
 const CHECK_PRE_COMMIT_SECRET_SCANNING = 'Pre-commit secret scanning';
 const CHECK_VIBE_VALIDATE_VERSION = 'vibe-validate version';
 const CHECK_DEPENDENCY_LOCK_CHECK = 'Dependency lock check configuration';
+const CHECK_NESTED_INVOCATION = 'Nested invocation';
 
 // Common message constants
 const MSG_SKIPPED_NOT_IN_GIT = 'Skipped (not in git repository)';
@@ -1226,6 +1228,38 @@ async function checkDependencyLockCheck(config?: VibeValidateConfig | null): Pro
 }
 
 /**
+ * Check if vibe-validate is running inside a parent vibe-validate invocation
+ *
+ * Reports the nested context when VV_PARENT_CONTEXT is set, and fails if the
+ * env var is present but malformed.
+ */
+function checkParentContext(): DoctorCheckResult {
+  try {
+    const parentCtx = readParentContext();
+    if (parentCtx) {
+      return {
+        name: CHECK_NESTED_INVOCATION,
+        passed: true,
+        message: `Running inside parent vibe-validate (runId=${parentCtx.runId}, depth=${String(parentCtx.depth)}, step="${parentCtx.stepName}")`,
+      };
+    }
+    // VV_PARENT_CONTEXT is unset — not nested, nothing to report
+    return {
+      name: CHECK_NESTED_INVOCATION,
+      passed: true,
+      message: 'Not running inside a parent vibe-validate invocation',
+    };
+  } catch (error) {
+    return {
+      name: CHECK_NESTED_INVOCATION,
+      passed: false,
+      message: `Invalid ${PARENT_CONTEXT_ENV}: ${error instanceof Error ? error.message : String(error)}`,
+      suggestion: `Unset the env var and retry: unset ${PARENT_CONTEXT_ENV}`,
+    };
+  }
+}
+
+/**
  * Run all doctor checks
  */
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
@@ -1276,6 +1310,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     await checkPreCommitHook(config),
     await checkSecretScanning(config),
     await checkDependencyLockCheck(config),
+    checkParentContext(),
     checkGitignoreStateFile(),
     checkValidationState(),
     checkCacheMigration(),

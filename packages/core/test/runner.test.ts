@@ -4,11 +4,12 @@
  
 import type { ChildProcess } from 'node:child_process';
 import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { ValidationStep } from '@vibe-validate/config';
 import { getGitTreeHash } from '@vibe-validate/git';
-import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
+import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -94,6 +95,50 @@ async function testSignalHandler(signalName: 'SIGTERM' | 'SIGINT'): Promise<void
 
   // Verify process.exit was called
   expect(processExitSpy).toHaveBeenCalled();
+}
+
+/**
+ * Run a single-step validation that echoes VV_PARENT_CONTEXT to stdout, then
+ * read back the captured context for assertion.
+ */
+async function runEchoContextStep(parallel: boolean, phaseName: string, stepName: string) {
+  const config: ValidationConfig = {
+    phases: [{
+      name: phaseName,
+      parallel,
+      steps: [{
+        name: stepName,
+        command: 'node -e "process.stdout.write(process.env.VV_PARENT_CONTEXT || \'NONE\')"',
+      }],
+    }],
+    env: {},
+    verbose: false,
+    yaml: false,
+    debug: true,
+  };
+
+  const result = await runValidation(config);
+  const phases = result.phases;
+  if (!phases) throw new Error('expected phases on result');
+  const stepOutput = phases[0].steps[0];
+  const stdoutPath = stepOutput.outputFiles?.stdout;
+  if (!stdoutPath) throw new Error('expected outputFiles.stdout on step');
+  const captured = await readFile(stdoutPath, 'utf-8');
+  return { stepOutput, parsed: JSON.parse(captured), stdoutPath };
+}
+
+function expectParentContext(
+  result: Awaited<ReturnType<typeof runEchoContextStep>>,
+  expected: { stepName: string; phaseName: string },
+) {
+  expect(result.stepOutput.passed).toBe(true);
+  expect(result.parsed.stepName).toBe(expected.stepName);
+  expect(result.parsed.phaseName).toBe(expected.phaseName);
+  expect(result.parsed.depth).toBe(1);
+  expect(result.parsed.capturing).toBe(true);
+  // Advertised ParentContext.outputDir must match where the outer-captured
+  // step output files actually live (Task 3 / I1: alignment).
+  expect(toForwardSlash(result.stdoutPath).startsWith(toForwardSlash(result.parsed.outputDir))).toBe(true);
 }
 
 describe('runner', () => {
@@ -2069,6 +2114,18 @@ rawOutput: |
 
       const logOutput = consoleSpy.mock.calls.map(call => String(call[0])).join('\n');
       expect(logOutput).toContain('skipped (local-only)');
+    });
+  });
+
+  describe('ParentContext propagation', () => {
+    it('sets VV_PARENT_CONTEXT in spawned step environment (sequential)', async () => {
+      const result = await runEchoContextStep(false, 'TestPhase', 'echo-context');
+      expectParentContext(result, { stepName: 'echo-context', phaseName: 'TestPhase' });
+    });
+
+    it('sets VV_PARENT_CONTEXT in spawned step environment (parallel)', async () => {
+      const result = await runEchoContextStep(true, 'ParallelPhase', 'echo-context-parallel');
+      expectParentContext(result, { stepName: 'echo-context-parallel', phaseName: 'ParallelPhase' });
     });
   });
 });

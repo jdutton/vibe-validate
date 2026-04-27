@@ -21,13 +21,14 @@ import { defineConfig } from 'vitest/config';
  *
  * All tests must be cross-platform (Windows + Unix).
  *
- * INCLUDED TESTS (89 total):
+ * INCLUDED TESTS (90 total):
  * - packaging.system.test.ts: npm package integrity (14 tests, ALL SKIPPED - see test file for reason)
  * - subdirectory-behavior.system.test.ts: CLI from subdirectories (26 tests)
  * - tree-hash.integration.test.ts: git tree hash with real repos (11 tests)
  * - history-recording.test.ts: git notes history tracking (3 tests)
  * - cache-manager.integration.test.ts: real filesystem cache operations (9 tests)
  * - watch-pr-extraction.integration.test.ts: extractor quality validation (6 tests)
+ * - nested-passthrough.integration.test.ts: end-to-end nested vv run pass-through (1 test)
  * - run.integration.test.ts: run command with real extractors (34 tests)
  */
 const isWindows = process.platform === 'win32';
@@ -47,6 +48,7 @@ export default defineConfig({
       'packages/cli/test/integration/history-recording.test.ts',
       'packages/cli/test/integration/cache-manager.integration.test.ts',
       'packages/cli/test/integration/watch-pr-extraction.integration.test.ts',
+      'packages/cli/test/integration/nested-passthrough.integration.test.ts',
       'packages/cli/test/commands/run.integration.test.ts',
     ],
     testTimeout: 60000, // 60 seconds per test (increased for Windows CI resource constraints)
