@@ -543,7 +543,7 @@
     {
       "format": "typescript",
       "lines": 11,
-      "fragment": ";\n\n      const mockCommitCount = '1';\n\n      // Mock git package functions instead of safeExecSync\n      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);\n      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);\n\n      const changes = await fetcher.fetchFileChanges(123);\n\n      expect(changes.top_files?",
+      "fragment": ";\n\n      const mockCommitCount = '1';\n\n      // Mock git package functions instead of safeExecSync\n      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);\n      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);\n\n      const changes = await fetcher.fetchFileChanges(123, 'main');\n\n      expect(changes.top_files?",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/services/github-fetcher.test.ts",
@@ -552,12 +552,12 @@
         "startLoc": {
           "line": 534,
           "column": 9,
-          "position": 3910
+          "position": 3916
         },
         "endLoc": {
           "line": 544,
           "column": 2,
-          "position": 3986
+          "position": 3995
         }
       },
       "secondFile": {
@@ -567,19 +567,19 @@
         "startLoc": {
           "line": 519,
           "column": 2,
-          "position": 3784
+          "position": 3787
         },
         "endLoc": {
           "line": 528,
           "column": 2,
-          "position": 3859
+          "position": 3865
         }
       }
     },
     {
       "format": "typescript",
       "lines": 10,
-      "fragment": ";\n\n      // Mock git package functions instead of safeExecSync\n      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);\n      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);\n\n      const changes = await fetcher.fetchFileChanges(123);\n\n      expect(changes).toEqual({\n        files_changed: 0",
+      "fragment": ";\n\n      // Mock git package functions instead of safeExecSync\n      vi.spyOn(gitPackage, 'getDiffStats').mockReturnValue(mockDiffOutput);\n      vi.spyOn(gitPackage, 'getCommitCount').mockReturnValue(mockCommitCount);\n\n      const changes = await fetcher.fetchFileChanges(123, 'main');\n\n      expect(changes).toEqual({\n        files_changed: 0",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/services/github-fetcher.test.ts",
@@ -588,12 +588,12 @@
         "startLoc": {
           "line": 549,
           "column": 4,
-          "position": 4040
+          "position": 4049
         },
         "endLoc": {
           "line": 558,
           "column": 2,
-          "position": 4113
+          "position": 4125
         }
       },
       "secondFile": {
@@ -608,115 +608,7 @@
         "endLoc": {
           "line": 505,
           "column": 2,
-          "position": 3552
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": ";\n\n      const result = await detector.detectAndExtract(check, logs);\n\n      expect(result).toBeDefined();\n      expect(result?.summary).toBe('2 test failure(s)');\n      expect(result?.totalErrors).toBe(2);\n      expect(result?.errors).toHaveLength(2);\n      expect(result?.errors",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/extraction-mode-detector.test.ts",
-        "start": 172,
-        "end": 180,
-        "startLoc": {
-          "line": 172,
-          "column": 101,
-          "position": 825
-        },
-        "endLoc": {
-          "line": 180,
-          "column": 7,
-          "position": 911
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/extraction-mode-detector.test.ts",
-        "start": 59,
-        "end": 67,
-        "startLoc": {
-          "line": 59,
-          "column": 2,
-          "position": 210
-        },
-        "endLoc": {
-          "line": 67,
-          "column": 9,
-          "position": 296
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": ";\n\n      const result = await detector.detectAndExtract(check, logs);\n\n      expect(result).toBeDefined();\n      expect(result?.summary).toBe('2 test failure(s)');\n      expect(result?.totalErrors).toBe(2);\n      expect(result?.errors).toHaveLength(2);\n    }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/extraction-mode-detector.test.ts",
-        "start": 484,
-        "end": 492,
-        "startLoc": {
-          "line": 484,
-          "column": 2,
-          "position": 2867
-        },
-        "endLoc": {
-          "line": 492,
-          "column": 2,
-          "position": 2948
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/extraction-mode-detector.test.ts",
-        "start": 59,
-        "end": 67,
-        "startLoc": {
-          "line": 59,
-          "column": 2,
-          "position": 210
-        },
-        "endLoc": {
-          "line": 67,
-          "column": 7,
-          "position": 291
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ",\n        totalErrors: 1,\n        errors: [{ message: 'Error' }],\n      });\n\n      const result = await detector.detectAndExtract(check, logs);\n\n      // Should fall back to non-matrix mode\n      expect(result).toBeDefined();\n      expect(autoDetectAndExtract).toHaveBeenCalled();\n    });\n  });\n}",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/services/extraction-mode-detector.test.ts",
-        "start": 543,
-        "end": 555,
-        "startLoc": {
-          "line": 543,
-          "column": 16,
-          "position": 3355
-        },
-        "endLoc": {
-          "line": 555,
-          "column": 2,
-          "position": 3442
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/services/extraction-mode-detector.test.ts",
-        "start": 134,
-        "end": 147,
-        "startLoc": {
-          "line": 134,
-          "column": 10,
-          "position": 646
-        },
-        "endLoc": {
-          "line": 147,
-          "column": 9,
-          "position": 735
+          "position": 3555
         }
       }
     },
@@ -866,94 +758,22 @@
     },
     {
       "format": "typescript",
-      "lines": 8,
-      "fragment": "));\n\n      snapshotCommand(env.program);\n      const exitCode = await runSnapshotCommand();\n      expect(exitCode).toBe(0);\n\n      const output = getLogOutput();\n      expect(output.some(call => call.includes('Validation Status:') && call.includes('Failed'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 146,
-        "end": 153,
-        "startLoc": {
-          "line": 146,
-          "column": 6,
-          "position": 1504
-        },
-        "endLoc": {
-          "line": 153,
-          "column": 9,
-          "position": 1581
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 133,
-        "end": 140,
-        "startLoc": {
-          "line": 133,
-          "column": 5,
-          "position": 1342
-        },
-        "endLoc": {
-          "line": 140,
-          "column": 9,
-          "position": 1419
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "));\n      snapshotCommand(env.program);\n\n      const exitCode = await runSnapshotCommand();\n      expect(exitCode).toBe(1);\n      expect(console.error).toHaveBeenCalledWith(\n        expect.stringContaining('Failed to get snapshot'),\n        expect.any(Error)\n      );\n    });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 198,
-        "end": 208,
-        "startLoc": {
-          "line": 198,
-          "column": 25,
-          "position": 2104
-        },
-        "endLoc": {
-          "line": 208,
-          "column": 2,
-          "position": 2182
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/commands/snapshot.test.ts",
-        "start": 185,
-        "end": 196,
-        "startLoc": {
-          "line": 185,
-          "column": 23,
-          "position": 1982
-        },
-        "endLoc": {
-          "line": 196,
-          "column": 3,
-          "position": 2061
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 11,
       "fragment": ": vi.fn(),\n  };\n});\n\n// Mock the config loader\nvi.mock('../../src/utils/config-loader.js', async () => {\n  const actual = await vi.importActual<typeof configLoader>('../../src/utils/config-loader.js');\n  return {\n    ...actual,\n    loadConfig: vi.fn(),\n    loadConfigWithDir",
       "tokens": 0,
       "firstFile": {
         "name": "packages/cli/test/commands/pre-commit.test.ts",
-        "start": 58,
-        "end": 68,
+        "start": 59,
+        "end": 69,
         "startLoc": {
-          "line": 58,
+          "line": 59,
           "column": 19,
-          "position": 565
+          "position": 576
         },
         "endLoc": {
-          "line": 68,
+          "line": 69,
           "column": 18,
-          "position": 645
+          "position": 656
         }
       },
       "secondFile": {
@@ -1113,186 +933,6 @@
           "line": 103,
           "column": 43,
           "position": 753
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "),\n}));\n\nvi.mock('fs', () => ({\n  writeFileSync: vi.fn(),\n  unlinkSync: vi.fn(),\n}));\n\nvi.mock('../src/reader.js', () => ({\n  readHistoryNote: vi.fn(() => Promise.resolve(null)),\n  listHistoryTreeHashes",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/history/test/integration.test.ts",
-        "start": 34,
-        "end": 44,
-        "startLoc": {
-          "line": 34,
-          "column": 2,
-          "position": 315
-        },
-        "endLoc": {
-          "line": 44,
-          "column": 22,
-          "position": 405
-        }
-      },
-      "secondFile": {
-        "name": "packages/history/test/recorder.test.ts",
-        "start": 21,
-        "end": 31,
-        "startLoc": {
-          "line": 21,
-          "column": 2,
-          "position": 203
-        },
-        "endLoc": {
-          "line": 31,
-          "column": 2,
-          "position": 292
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 15,
-      "fragment": ",\n        stderr: '',\n        exitCode: 0,\n      })\n      .mockReturnValueOnce({\n        success: true,\n        stdout: '0\\n',\n        stderr: '',\n        exitCode: 0,\n      });\n\n    const result = isCurrentBranchBehindTracking();\n\n    expect(result).toBe(0);\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/git/test/tracking-branch.test.ts",
-        "start": 98,
-        "end": 112,
-        "startLoc": {
-          "line": 98,
-          "column": 16,
-          "position": 653
-        },
-        "endLoc": {
-          "line": 112,
-          "column": 2,
-          "position": 739
-        }
-      },
-      "secondFile": {
-        "name": "packages/git/test/tracking-branch.test.ts",
-        "start": 46,
-        "end": 60,
-        "startLoc": {
-          "line": 46,
-          "column": 23,
-          "position": 302
-        },
-        "endLoc": {
-          "line": 60,
-          "column": 7,
-          "position": 388
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ",\n          metadata: {\n            confidence: 100,\n            completeness: 100,\n            issues: [],\n            detection: {\n              extractor: 'vitest',\n              confidence: 100,\n              patterns: [],\n              reason: 'test',\n            },\n          },\n        },\n      };\n\n      const result = StepResultSchema.parse",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/core/test/step-result-schema.test.ts",
-        "start": 111,
-        "end": 126,
-        "startLoc": {
-          "line": 111,
-          "column": 3,
-          "position": 783
-        },
-        "endLoc": {
-          "line": 126,
-          "column": 6,
-          "position": 874
-        }
-      },
-      "secondFile": {
-        "name": "packages/core/test/step-result-schema.test.ts",
-        "start": 52,
-        "end": 67,
-        "startLoc": {
-          "line": 52,
-          "column": 37,
-          "position": 332
-        },
-        "endLoc": {
-          "line": 67,
-          "column": 10,
-          "position": 423
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 15,
-      "fragment": "];\n\n      // Check that expected fields appear in order\n      let lastIndex = -1;\n      for (const expectedKey of expectedOrder) {\n        const currentIndex = keys.indexOf(expectedKey);\n        if (currentIndex !== -1) {\n          expect(currentIndex).toBeGreaterThan(lastIndex);\n          lastIndex = currentIndex;\n        }\n      }\n    });\n  });\n\n  describe('v0.15.0 breaking changes'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/core/test/step-result-schema.test.ts",
-        "start": 138,
-        "end": 152,
-        "startLoc": {
-          "line": 138,
-          "column": 7,
-          "position": 948
-        },
-        "endLoc": {
-          "line": 152,
-          "column": 27,
-          "position": 1050
-        }
-      },
-      "secondFile": {
-        "name": "packages/cli/test/schemas/run-result-schema.test.ts",
-        "start": 75,
-        "end": 89,
-        "startLoc": {
-          "line": 75,
-          "column": 7,
-          "position": 499
-        },
-        "endLoc": {
-          "line": 89,
-          "column": 24,
-          "position": 601
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": ", // ❌ Removed in v0.15.0\n      };\n\n      const result = StepResultSchema.safeParse(stepWithOldFormat);\n\n      expect(result.success).toBe(false);\n      if (!result.success) {\n        expect(result.error.errors.some(e =>\n          e.message.includes('Unrecognized key')\n        )).toBe(true);\n      }\n    });\n  }",
-      "tokens": 0,
-      "firstFile": {
-        "name": "packages/core/test/step-result-schema.test.ts",
-        "start": 180,
-        "end": 192,
-        "startLoc": {
-          "line": 180,
-          "column": 2,
-          "position": 1287
-        },
-        "endLoc": {
-          "line": 192,
-          "column": 2,
-          "position": 1382
-        }
-      },
-      "secondFile": {
-        "name": "packages/core/test/step-result-schema.test.ts",
-        "start": 160,
-        "end": 173,
-        "startLoc": {
-          "line": 160,
-          "column": 19,
-          "position": 1125
-        },
-        "endLoc": {
-          "line": 173,
-          "column": 3,
-          "position": 1221
         }
       }
     },

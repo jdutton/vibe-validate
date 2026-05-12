@@ -4,6 +4,10 @@
  * Tests the high-level git command wrappers that build on git-executor.
  */
 
+import { existsSync } from 'node:fs';
+import type * as nodeFs from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -18,6 +22,7 @@ import {
   verifyRefOrThrow,
   hasNotesRef,
   isMergeInProgress,
+  isRebaseInProgress,
   getDiffStats,
   getCommitCount,
   getNotesRefs,
@@ -31,6 +36,15 @@ vi.mock('../src/git-executor.js', async () => {
     ...actual,
     execGitCommand: vi.fn(),
     tryGitCommand: vi.fn(),
+  };
+});
+
+// Mock node:fs for filesystem-based checks (e.g. .git/rebase-merge directory)
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof nodeFs>();
+  return {
+    ...actual,
+    existsSync: vi.fn(),
   };
 });
 
@@ -240,6 +254,63 @@ describe('git-commands', () => {
       const result = isMergeInProgress();
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('isRebaseInProgress', () => {
+    const GIT_DIR = '/path/to/repo/.git';
+    // Production uses path.join, which produces backslash separators on Windows.
+    // Build comparison paths the same way so the mock matches on every platform.
+    const REBASE_MERGE_PATH = join(GIT_DIR, 'rebase-merge');
+    const REBASE_APPLY_PATH = join(GIT_DIR, 'rebase-apply');
+    const MERGE_HEAD_PATH = join(GIT_DIR, 'MERGE_HEAD');
+    const REBASE_STASH_PATH = join(GIT_DIR, 'rebase-stash');
+
+    beforeEach(() => {
+      // Inside a git repo by default; the "no repo" test overrides this.
+      vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(true);
+      vi.mocked(gitExecutor.execGitCommand).mockReturnValue(GIT_DIR);
+    });
+
+    it('should return true when .git/rebase-merge directory exists (interactive rebase)', () => {
+      vi.mocked(existsSync).mockImplementation((p) => p === REBASE_MERGE_PATH);
+
+      expect(isRebaseInProgress()).toBe(true);
+    });
+
+    it('should return true when .git/rebase-apply directory exists (am-based rebase)', () => {
+      vi.mocked(existsSync).mockImplementation((p) => p === REBASE_APPLY_PATH);
+
+      expect(isRebaseInProgress()).toBe(true);
+    });
+
+    it('should return true when both rebase directories exist', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      expect(isRebaseInProgress()).toBe(true);
+    });
+
+    it('should return false when no rebase is in progress', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      expect(isRebaseInProgress()).toBe(false);
+    });
+
+    it('should not be confused by a similarly-named file (only checks rebase-merge/rebase-apply)', () => {
+      vi.mocked(existsSync).mockImplementation((p) =>
+        p === MERGE_HEAD_PATH || p === REBASE_STASH_PATH
+      );
+
+      expect(isRebaseInProgress()).toBe(false);
+    });
+
+    it('should return false (not throw) when outside a git repository', () => {
+      // Outside a repo, isRebaseInProgress short-circuits via isGitRepository
+      // before ever calling getGitDir, matching isMergeInProgress's contract.
+      vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(false);
+
+      expect(() => isRebaseInProgress()).not.toThrow();
+      expect(isRebaseInProgress()).toBe(false);
     });
   });
 

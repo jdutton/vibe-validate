@@ -9,9 +9,10 @@ import { getRemoteBranch } from '@vibe-validate/config';
 import {
   checkBranchSync,
   getPartiallyStagedFiles,
-  isCurrentBranchBehindTracking,
+  getTrackingDivergence,
   getGitTreeHash,
-  isMergeInProgress
+  isMergeInProgress,
+  isRebaseInProgress
 } from '@vibe-validate/git';
 import { isToolAvailable } from '@vibe-validate/utils';
 import chalk from 'chalk';
@@ -144,13 +145,18 @@ export function preCommitCommand(program: Command): void {
         }
         console.log(chalk.green('✅ No partially staged files'));
 
-        // Step 3: Check if current branch is behind its remote tracking branch
-        console.log(chalk.blue('🔍 Checking if current branch is behind remote...'));
-        const behindTracking = isCurrentBranchBehindTracking();
+        // Step 3: Check how current branch diverges from its remote tracking branch
+        console.log(chalk.blue('🔍 Checking divergence from remote tracking branch...'));
+        const divergence = getTrackingDivergence();
 
-        if (behindTracking !== null && behindTracking > 0) {
+        if (divergence === null) {
+          console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or not pushed yet)'));
+        } else if (divergence.ahead === 0 && divergence.behind === 0) {
+          console.log(chalk.green('✅ Current branch is up to date with remote'));
+        } else if (divergence.ahead === 0 && divergence.behind > 0) {
+          // Purely behind: someone else pushed. Legitimate fail.
           console.error(chalk.red(`❌ Current branch is behind its remote tracking branch`));
-          console.error(chalk.yellow(`   Behind by ${behindTracking} commit(s)`));
+          console.error(chalk.yellow(`   Behind by ${divergence.behind} commit(s)`));
           console.error(chalk.yellow('   Someone else has pushed changes to this branch.'));
 
           showWorkProtectionMessage(treeHash, 'git pull', programName);
@@ -158,24 +164,31 @@ export function preCommitCommand(program: Command): void {
           console.error(chalk.gray('\n   Alternative: git pull --rebase'));
           console.error(chalk.gray('\n   Skip this check with: --skip-sync (not recommended)'));
           process.exit(1);
-        }
-
-        if (behindTracking === null) {
-          console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or not pushed yet)'));
+        } else if (divergence.ahead > 0 && divergence.behind === 0) {
+          // Purely ahead: local unpushed commits. Normal mid-PR state.
+          console.log(chalk.green(`✅ Local branch is ahead of remote by ${divergence.ahead} commit(s) (unpushed)`));
         } else {
-          console.log(chalk.green('✅ Current branch is up to date with remote'));
+          // Diverged: history rewritten (typically a rebase). Pass with notice.
+          console.log(chalk.blue('ℹ️  Local branch has rewritten history vs remote tracking branch.'));
+          console.log(chalk.gray(`   Ahead by ${divergence.ahead} commit(s), behind by ${divergence.behind} commit(s) (rebased history).`));
+          console.log(chalk.gray('   When ready to push: git push --force-with-lease'));
         }
 
-        // Step 4: Check branch sync (unless skipped or in merge)
+        // Step 4: Check branch sync (unless skipped, mid-merge, or mid-rebase)
         if (!options.skipSync) {
           // Construct remote branch reference using helper
           const remoteBranch = getRemoteBranch(config.git);
 
-          // Check if we're in the middle of a merge (MERGE_HEAD exists)
-          // During a merge, being behind origin/main is expected - the merge commit will resolve it
+          // Skip the base-branch sync check while a merge or rebase is mid-flight.
+          // During a merge, being behind origin/main is expected - the merge commit
+          // will resolve it. During a rebase, HEAD is transiently rewinding and
+          // checking sync would produce misleading results.
           if (isMergeInProgress()) {
             console.log(chalk.blue(`🔄 Merge in progress - skipping branch sync check`));
             console.log(chalk.gray(`   (This merge commit will sync with ${remoteBranch})`));
+          } else if (isRebaseInProgress()) {
+            console.log(chalk.blue(`🔄 Rebase in progress - skipping branch sync check`));
+            console.log(chalk.gray(`   (Sync state will settle once the rebase completes)`));
           } else {
             console.log(chalk.blue(`🔄 Checking branch sync with ${remoteBranch}...`));
 
