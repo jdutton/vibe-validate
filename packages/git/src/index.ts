@@ -57,6 +57,7 @@ export {
   verifyRefOrThrow,
   hasNotesRef,
   isMergeInProgress,
+  isRebaseInProgress,
   getDiffStats,
   getCommitCount,
   getNotesRefs
@@ -95,9 +96,11 @@ export {
   getPartiallyStagedFiles
 } from './staging.js';
 
-// Git tracking branch detection (check if current branch is behind remote)
+// Git tracking branch detection (check if current branch diverges from remote)
 export {
-  isCurrentBranchBehindTracking
+  getTrackingDivergence,
+  isCurrentBranchBehindTracking,
+  type TrackingDivergence
 } from './tracking-branch.js';
 
 // GitHub CLI commands (centralized gh command execution)

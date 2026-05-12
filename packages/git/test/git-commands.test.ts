@@ -4,6 +4,9 @@
  * Tests the high-level git command wrappers that build on git-executor.
  */
 
+import { existsSync } from 'node:fs';
+import type * as nodeFs from 'node:fs';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -18,6 +21,7 @@ import {
   verifyRefOrThrow,
   hasNotesRef,
   isMergeInProgress,
+  isRebaseInProgress,
   getDiffStats,
   getCommitCount,
   getNotesRefs,
@@ -31,6 +35,15 @@ vi.mock('../src/git-executor.js', async () => {
     ...actual,
     execGitCommand: vi.fn(),
     tryGitCommand: vi.fn(),
+  };
+});
+
+// Mock node:fs for filesystem-based checks (e.g. .git/rebase-merge directory)
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof nodeFs>();
+  return {
+    ...actual,
+    existsSync: vi.fn(),
   };
 });
 
@@ -240,6 +253,50 @@ describe('git-commands', () => {
       const result = isMergeInProgress();
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('isRebaseInProgress', () => {
+    const GIT_DIR = '/path/to/repo/.git';
+
+    beforeEach(() => {
+      vi.mocked(gitExecutor.execGitCommand).mockReturnValue(GIT_DIR);
+    });
+
+    it('should return true when .git/rebase-merge directory exists (interactive rebase)', () => {
+      vi.mocked(existsSync).mockImplementation((p) =>
+        p === `${GIT_DIR}/rebase-merge`
+      );
+
+      expect(isRebaseInProgress()).toBe(true);
+    });
+
+    it('should return true when .git/rebase-apply directory exists (am-based rebase)', () => {
+      vi.mocked(existsSync).mockImplementation((p) =>
+        p === `${GIT_DIR}/rebase-apply`
+      );
+
+      expect(isRebaseInProgress()).toBe(true);
+    });
+
+    it('should return true when both rebase directories exist', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      expect(isRebaseInProgress()).toBe(true);
+    });
+
+    it('should return false when no rebase is in progress', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      expect(isRebaseInProgress()).toBe(false);
+    });
+
+    it('should not be confused by a similarly-named file (only checks rebase-merge/rebase-apply)', () => {
+      vi.mocked(existsSync).mockImplementation((p) =>
+        p === `${GIT_DIR}/MERGE_HEAD` || p === `${GIT_DIR}/rebase-stash`
+      );
+
+      expect(isRebaseInProgress()).toBe(false);
     });
   });
 

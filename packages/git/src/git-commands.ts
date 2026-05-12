@@ -5,6 +5,9 @@
  * These functions provide convenient access to common git commands.
  */
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { execGitCommand, tryGitCommand } from './git-executor.js';
 
 /**
@@ -104,6 +107,22 @@ export function hasNotesRef(notesRef: string): boolean {
  */
 export function isMergeInProgress(): boolean {
   return tryGitCommand(['rev-parse', '--verify', '--quiet', 'MERGE_HEAD']);
+}
+
+/**
+ * Check if git is currently in the middle of a rebase.
+ *
+ * Git uses two different scratch directories depending on which rebase
+ * backend is active: `rebase-merge` (interactive / default since git 2.26)
+ * and `rebase-apply` (legacy `am`-based). Either being present means a
+ * rebase is mid-flight.
+ *
+ * @returns true if a rebase is in progress, false otherwise
+ */
+export function isRebaseInProgress(): boolean {
+  const gitDir = getGitDir();
+  return existsSync(join(gitDir, 'rebase-merge'))
+    || existsSync(join(gitDir, 'rebase-apply'));
 }
 
 /**

@@ -1,18 +1,28 @@
 /**
- * Git Tracking Branch Detection
+ * Git Tracking Branch Divergence Detection
  *
- * Detects if current branch is behind its remote tracking branch.
+ * Compares the current branch against its remote tracking branch and reports
+ * how many commits diverge on each side.
  *
  * ## The Problem
  *
- * If you're working on local `fix-issue-X` and someone else pushes to `origin/fix-issue-X`:
- * 1. Your local branch is now behind the remote tracking branch
- * 2. If you commit and push, you may create conflicts or lose their changes
- * 3. You should pull/merge before committing
+ * Two different real-world conditions can leave the local branch out of sync
+ * with its upstream, and the pre-commit hook needs to treat them differently:
+ *
+ * 1. **Purely behind** — someone else pushed to origin while we worked locally.
+ *    `ahead = 0`, `behind > 0`. The user must pull before committing.
+ * 2. **Diverged** — we rebased our feature branch onto an updated base; the
+ *    upstream branch still has the pre-rebase commits. `ahead > 0`, `behind > 0`.
+ *    The user will force-push-with-lease when ready; pre-commit should NOT block.
+ *
+ * A simple "is the branch behind?" check (e.g. counting `HEAD..@{u}`) cannot
+ * tell these apart, because in both cases the upstream contains commits not
+ * reachable from HEAD. We need both sides of the comparison.
  *
  * ## Solution
  *
- * Pre-commit hook should detect and warn when current branch is behind its tracking branch.
+ * Use `git rev-list --left-right --count HEAD...@{u}`, which returns
+ * `<ahead>\t<behind>` in a single deterministic call.
  */
 
 import { executeGitCommand } from './git-executor.js';
@@ -20,58 +30,94 @@ import { executeGitCommand } from './git-executor.js';
 const GIT_TIMEOUT = 30000;
 
 /**
- * Check if current branch is behind its remote tracking branch
+ * Divergence between HEAD and its remote tracking branch.
  *
- * @returns Number of commits behind (0 = up to date), or null if no tracking branch
+ * - `ahead`: commits on HEAD that are not on upstream
+ * - `behind`: commits on upstream that are not on HEAD
+ */
+export interface TrackingDivergence {
+  ahead: number;
+  behind: number;
+}
+
+/**
+ * Check how the current branch diverges from its remote tracking branch.
+ *
+ * @returns The ahead/behind counts, or `null` if there is no upstream
+ *          tracking branch (e.g. a freshly created local branch).
  *
  * @example
  * ```typescript
- * const behindBy = isCurrentBranchBehindTracking();
- * if (behindBy === null) {
- *   console.log('No remote tracking branch');
- * } else if (behindBy > 0) {
- *   console.error(`Behind by ${behindBy} commit(s)`);
- *   console.error('Pull changes with: git pull');
+ * const div = getTrackingDivergence();
+ * if (div === null) {
+ *   // No upstream — nothing to compare against.
+ * } else if (div.ahead === 0 && div.behind === 0) {
+ *   // Fully synced.
+ * } else if (div.ahead === 0 && div.behind > 0) {
+ *   // Purely behind — someone else pushed; pull before committing.
+ * } else if (div.ahead > 0 && div.behind === 0) {
+ *   // Ahead only — local commits not yet pushed.
+ * } else {
+ *   // Diverged (e.g. rebased) — force-push-with-lease when ready.
  * }
  * ```
  */
-export function isCurrentBranchBehindTracking(): number | null {
+export function getTrackingDivergence(): TrackingDivergence | null {
   try {
-    // Get the upstream tracking branch for current branch
-    // Example output: "origin/fix-issue-X"
-    // Throws error if no upstream configured
-    const trackingResult = executeGitCommand(
+    // Confirm an upstream exists first. Without this, the rev-list call
+    // below would fail with the same "no upstream" error and we'd have to
+    // pattern-match on stderr to distinguish it from real errors.
+    const upstreamResult = executeGitCommand(
       ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
       { timeout: GIT_TIMEOUT, ignoreErrors: true }
     );
 
-    if (!trackingResult.success || !trackingResult.stdout.trim()) {
-      // No tracking branch or command failed
+    if (!upstreamResult.success || !upstreamResult.stdout.trim()) {
       return null;
     }
 
-    // Count commits behind: HEAD..@{u}
-    // This shows commits in tracking branch that are not in HEAD
-    const behindResult = executeGitCommand(
-      ['rev-list', '--count', 'HEAD..@{u}'],
+    // `--left-right --count HEAD...@{u}` returns `<ahead>\t<behind>`.
+    // The triple-dot (...) means "symmetric difference": commits reachable
+    // from exactly one side. --left-right tags each commit with < (left
+    // side = HEAD) or > (right side = @{u}); --count collapses to counts.
+    const divergenceResult = executeGitCommand(
+      ['rev-list', '--left-right', '--count', 'HEAD...@{u}'],
       { timeout: GIT_TIMEOUT, ignoreErrors: true }
     );
 
-    if (!behindResult.success) {
+    if (!divergenceResult.success) {
       return null;
     }
 
-    const behindCount = Number.parseInt(behindResult.stdout.trim(), 10);
+    const [aheadRaw, behindRaw] = divergenceResult.stdout.trim().split(/\s+/);
+    const ahead = Number.parseInt(aheadRaw ?? '', 10);
+    const behind = Number.parseInt(behindRaw ?? '', 10);
 
-    // Return 0 if parsing failed (defensive)
-    return Number.isNaN(behindCount) ? 0 : behindCount;
+    return {
+      ahead: Number.isNaN(ahead) ? 0 : ahead,
+      behind: Number.isNaN(behind) ? 0 : behind,
+    };
   } catch (error) {
-    // Check if error is "no upstream configured" (expected for new branches)
     if (error instanceof Error && error.message.includes('no upstream')) {
       return null;
     }
-
-    // Other errors (not in git repo, etc.) - return null
     return null;
   }
+}
+
+/**
+ * Check if the current branch is behind its remote tracking branch.
+ *
+ * @deprecated Prefer {@link getTrackingDivergence}, which distinguishes
+ * "purely behind" (someone pushed) from "diverged" (we rebased). This
+ * wrapper only reports the behind count and treats diverged branches the
+ * same as purely-behind ones — which incorrectly blocks legitimate
+ * post-rebase commits in pre-commit hooks. Retained for backwards
+ * compatibility with external consumers of `@vibe-validate/git`.
+ *
+ * @returns Number of commits behind, or `null` if no tracking branch.
+ */
+export function isCurrentBranchBehindTracking(): number | null {
+  const divergence = getTrackingDivergence();
+  return divergence === null ? null : divergence.behind;
 }

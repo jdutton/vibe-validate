@@ -41,9 +41,10 @@ vi.mock('@vibe-validate/git', async () => {
     checkBranchSync: vi.fn(),
     getGitTreeHash: vi.fn(),
     getRepositoryRoot: vi.fn(),
-    isCurrentBranchBehindTracking: vi.fn(),
+    getTrackingDivergence: vi.fn(),
     getPartiallyStagedFiles: vi.fn().mockReturnValue([]),
     isMergeInProgress: vi.fn(),
+    isRebaseInProgress: vi.fn(),
   };
 });
 
@@ -246,7 +247,9 @@ function setupBranchBehind(behindBy: number, hasTracking = true) {
     hash: 'abc123def456' as git.TreeHash,
   });
   vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]);
-  vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(hasTracking ? behindBy : null);
+  vi.mocked(git.getTrackingDivergence).mockReturnValue(
+    hasTracking ? { ahead: 0, behind: behindBy } : null
+  );
   vi.mocked(git.checkBranchSync).mockResolvedValue(
     createBranchSyncResult({ isUpToDate: false, behindBy })
   );
@@ -457,9 +460,10 @@ describe('pre-commit command', () => {
     vi.mocked(git.checkBranchSync).mockReset();
     vi.mocked(git.getGitTreeHash).mockReset();
     vi.mocked(git.getRepositoryRoot).mockReset();
-    vi.mocked(git.isCurrentBranchBehindTracking).mockReset();
+    vi.mocked(git.getTrackingDivergence).mockReset();
     vi.mocked(git.getPartiallyStagedFiles).mockReset();
     vi.mocked(git.isMergeInProgress).mockReset();
+    vi.mocked(git.isRebaseInProgress).mockReset();
     vi.mocked(utils.safeExecSync).mockReset();
     vi.mocked(utils.safeExecFromString).mockReset();
     vi.mocked(utils.isToolAvailable).mockReset();
@@ -471,9 +475,10 @@ describe('pre-commit command', () => {
       hash: 'abc123def456' as git.TreeHash,
       });
     vi.mocked(git.getRepositoryRoot).mockReturnValue('/test/repo'); // Default git repo path
-    vi.mocked(git.isCurrentBranchBehindTracking).mockReturnValue(0); // Up to date by default
+    vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 0 }); // Up to date by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
     vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
+    vi.mocked(git.isRebaseInProgress).mockReturnValue(false); // No rebase by default
     vi.mocked(utils.safeExecSync).mockReturnValue(''); // Default empty output
     vi.mocked(utils.safeExecFromString).mockReturnValue(''); // Default empty output
     vi.mocked(utils.isToolAvailable).mockReturnValue(false); // No tools available by default
