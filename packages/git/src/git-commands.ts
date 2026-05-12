@@ -123,13 +123,12 @@ export function isMergeInProgress(): boolean {
  * @returns true if a rebase is in progress, false otherwise
  */
 export function isRebaseInProgress(): boolean {
-  try {
-    const gitDir = getGitDir();
-    return existsSync(join(gitDir, 'rebase-merge'))
-      || existsSync(join(gitDir, 'rebase-apply'));
-  } catch {
+  if (!isGitRepository()) {
     return false;
   }
+  const gitDir = getGitDir();
+  return existsSync(join(gitDir, 'rebase-merge'))
+    || existsSync(join(gitDir, 'rebase-apply'));
 }
 
 /**

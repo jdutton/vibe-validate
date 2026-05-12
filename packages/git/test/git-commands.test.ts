@@ -267,6 +267,8 @@ describe('git-commands', () => {
     const REBASE_STASH_PATH = join(GIT_DIR, 'rebase-stash');
 
     beforeEach(() => {
+      // Inside a git repo by default; the "no repo" test overrides this.
+      vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(true);
       vi.mocked(gitExecutor.execGitCommand).mockReturnValue(GIT_DIR);
     });
 
@@ -303,11 +305,9 @@ describe('git-commands', () => {
     });
 
     it('should return false (not throw) when outside a git repository', () => {
-      // getGitDir() throws when not in a repo; isRebaseInProgress should
-      // match isMergeInProgress's contract and return false silently.
-      vi.mocked(gitExecutor.execGitCommand).mockImplementation(() => {
-        throw new Error('fatal: not a git repository');
-      });
+      // Outside a repo, isRebaseInProgress short-circuits via isGitRepository
+      // before ever calling getGitDir, matching isMergeInProgress's contract.
+      vi.mocked(gitExecutor.tryGitCommand).mockReturnValue(false);
 
       expect(() => isRebaseInProgress()).not.toThrow();
       expect(isRebaseInProgress()).toBe(false);

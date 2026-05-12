@@ -671,22 +671,26 @@ describe('pre-commit command', () => {
     it('should pass pre-commit when local history is rewritten (ahead AND behind tracking)', async () => {
       // Classic post-rebase shape: ahead by N (rewritten commits), behind by M
       // (pre-rebase originals still on origin). Pre-commit must NOT fail here —
-      // the user will force-push-with-lease when ready.
+      // the user will force-push-with-lease when ready. Step 3 should pass-through
+      // to Step 4 (checkBranchSync) rather than bail with exit 1.
       setupSuccessfulPreCommit();
       vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 5, behind: 3 });
 
       await runPreCommit(env, 0);
 
       expect(git.getTrackingDivergence).toHaveBeenCalled();
+      // checkBranchSync only runs if Step 3 didn't bail — this pins the diverged
+      // pass-through path (the bug fix). Without it, the test would also pass
+      // if the mock returned {0, 0} or {N, 0}.
+      expect(git.checkBranchSync).toHaveBeenCalled();
     });
 
     it('should skip base-branch sync check when a rebase is in progress', async () => {
       // During an interactive rebase pause (e.g. edit step), HEAD is transiently
       // rewinding; sync against origin/main is meaningless. Mirror the merge
       // short-circuit: skip checkBranchSync, let validation run.
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+      setupSuccessfulPreCommit();
       vi.mocked(git.isRebaseInProgress).mockReturnValue(true);
-      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 
       await runPreCommit(env, 0);
 
