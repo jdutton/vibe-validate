@@ -267,12 +267,20 @@ export function spawnCommand(
       ? ['ignore', 'inherit', 'inherit']
       : ['ignore', 'pipe', 'pipe'];
 
-  // SAFETY: Scrub GIT_* vars from process.env before passing to child.
-  // When vv runs as a git pre-commit hook, git sets GIT_DIR / GIT_INDEX_FILE /
-  // GIT_WORK_TREE on the hook process. Those vars override `cwd` in any child
-  // that runs git, which would silently corrupt the parent repository if a step
-  // shells out to git against a temp directory. See docs/skills/vibe-validate/git-hook-safety.md.
-  const scrubbedParentEnv = stripGitEnv(process.env);
+  // SAFETY: Scrub GIT_* vars from the final spawn env. When vv runs as a git
+  // pre-commit hook, git sets GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE on the
+  // hook process. Those vars override `cwd` in any child that runs git, which
+  // would silently corrupt the parent repository if a step shells out to git
+  // against a temp directory. See docs/skills/vibe-validate/git-hook-safety.md.
+  //
+  // The scrub is applied to the MERGED env (parent ∪ caller-provided), not
+  // just the parent — otherwise a caller passing `options.env` derived from
+  // `process.env` (the runner does this) would silently re-inject GIT_* on
+  // top of the parent scrub via the second spread.
+  const mergedEnv = options?.env
+    ? { ...process.env, ...options.env }
+    : process.env;
+  const scrubbedEnv = stripGitEnv(mergedEnv);
   // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
   // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
   // NOSONAR - Intentional shell execution of user-defined commands
@@ -283,7 +291,7 @@ export function spawnCommand(
     timeout: options?.timeout,
     // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
     detached: options?.detached ?? (process.platform !== 'win32'),
-    env: options?.env ? { ...scrubbedParentEnv, ...options.env } : scrubbedParentEnv,
+    env: scrubbedEnv,
     cwd: options?.cwd,
   });
 }
