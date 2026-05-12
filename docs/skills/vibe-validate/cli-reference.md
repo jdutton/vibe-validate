@@ -21,7 +21,7 @@ vibe-validate <command> [options]
 
 ### `validate`
 
-Run validation with git tree hash caching. Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/git-hook-safety.md).
+Run validation with git tree hash caching. Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).
 
 **What it does:**
 
@@ -108,7 +108,7 @@ vibe-validate init --force --template typescript-react  # Overwrite existing
 
 ### `pre-commit`
 
-Run branch sync check + validation (recommended before commit). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/git-hook-safety.md).
+Run branch sync check + validation (recommended before commit). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).
 
 **What it does:**
 
@@ -451,7 +451,7 @@ View and manage validation history stored in git notes
 
 ### `run`
 
-Run a command and extract LLM-friendly errors (with smart caching). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/git-hook-safety.md).
+Run a command and extract LLM-friendly errors (with smart caching). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).
 
 **What it does:**
 

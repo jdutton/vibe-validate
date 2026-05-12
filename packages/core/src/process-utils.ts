@@ -216,7 +216,7 @@ export function spawnCommand(
   // When vv runs as a git pre-commit hook, git sets GIT_DIR / GIT_INDEX_FILE /
   // GIT_WORK_TREE on the hook process. Those vars override `cwd` in any child
   // that runs git, which would silently corrupt the parent repository if a step
-  // shells out to git against a temp directory. See docs/git-hook-safety.md.
+  // shells out to git against a temp directory. See docs/skills/vibe-validate/git-hook-safety.md.
   const scrubbedParentEnv = stripGitEnv(process.env);
   // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
   // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.

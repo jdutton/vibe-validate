@@ -53,6 +53,10 @@ describe('GIT_* env scrubbing (end-to-end)', () => {
     // The --verbose flag makes vv run replay each captured output line to its own stderr
     // as "[stdout] <line>" so we can assert on vv's combined output stream without
     // reading temporary log files.
+    //
+    // Windows note: the inline script passes through cmd.exe (vv's spawnCommand uses
+    // shell: true). Keep cmd metacharacters (& | < > ^) out of this string, or escape
+    // them — Windows will mangle the script even though it's inside double quotes.
     const stepCmd = `node -e "console.log('GIT_DIR=' + (process.env.GIT_DIR || '<unset>')); console.log('GIT_INDEX_FILE=' + (process.env.GIT_INDEX_FILE || '<unset>'))"`;
 
     const result = await executeCommandWithSeparateStreams(binPath, ['run', '--verbose', stepCmd], {

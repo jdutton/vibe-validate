@@ -18,6 +18,9 @@ interface CapturedChildEnv {
 
 function captureChildEnv(envOverride?: Record<string, string>): Promise<CapturedChildEnv> {
   return new Promise<CapturedChildEnv>((resolve, reject) => {
+    // The inline node -e script passes through cmd.exe on Windows (spawnCommand uses shell: true).
+    // Keep cmd metacharacters (& | < > ^) out of the script body, or escape them — otherwise
+    // Windows will mangle the script even though it's inside double quotes.
     const proc = spawnCommand(
       `node -e "console.log(JSON.stringify({GIT_DIR: process.env.GIT_DIR, GIT_INDEX_FILE: process.env.GIT_INDEX_FILE, PATH: !!process.env.PATH, CUSTOM: process.env.CUSTOM}))"`,
       envOverride ? { env: envOverride } : undefined
@@ -336,7 +339,10 @@ describe('process-utils', () => {
     });
   });
 
-  describe('spawnCommand GIT_* scrubbing', () => {
+  // Sequential: this block mutates process.env.GIT_DIR / GIT_INDEX_FILE in beforeEach.
+  // describe.sequential makes the within-block ordering explicit so future re-orderings
+  // (or added describes that hit real git via process.env) don't leak through.
+  describe.sequential('spawnCommand GIT_* scrubbing', () => {
     const originalGitDir = process.env.GIT_DIR;
     const originalGitIndex = process.env.GIT_INDEX_FILE;
 

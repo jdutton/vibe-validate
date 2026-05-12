@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **Failure mode if hit:** branch refs in the parent worktree get rewritten to test commits, `.git/config` may get test author identity written to it, and the user's real commits survive only in the reflog. The corruption is silent — no error is raised.
 
-  See `docs/git-hook-safety.md` for details and the per-step opt-back-in mechanism.
+  See `docs/skills/vibe-validate/git-hook-safety.md` for details and the per-step opt-back-in mechanism.
 
 ## [0.19.4] - 2026-04-21
 
