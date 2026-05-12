@@ -132,6 +132,86 @@ export async function stopProcessGroup(
 }
 
 /**
+ * Blacklist of GIT_* env vars that are DANGEROUS to inherit into a step
+ * subprocess because they can redirect git operations to a different
+ * repository, override repository discovery, alter loaded config, or
+ * change the history view git sees.
+ *
+ * Everything else (identity, editor, SSH/credentials, tracing, pager,
+ * cosmetic) is safe to inherit — none of those can redirect operations
+ * to a different repo.
+ */
+const DANGEROUS_GIT_ENV_KEYS: ReadonlySet<string> = new Set([
+  // Repository / index / worktree redirection
+  'GIT_DIR',
+  'GIT_INDEX_FILE',
+  'GIT_WORK_TREE',
+  'GIT_COMMON_DIR',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  // Ref namespace redirection
+  'GIT_NAMESPACE',
+  // Repository discovery behavior
+  'GIT_CEILING_DIRECTORIES',
+  'GIT_DISCOVERY_ACROSS_FILESYSTEM',
+  // Alternate config loading (can change defaults, point at other repos)
+  'GIT_CONFIG',
+  'GIT_CONFIG_GLOBAL',
+  'GIT_CONFIG_SYSTEM',
+  'GIT_CONFIG_NOSYSTEM',
+  'GIT_CONFIG_COUNT',
+  // Would steer vv's own notes-based cache to a different ref
+  'GIT_NOTES_REF',
+  // Alter history view
+  'GIT_SHALLOW_FILE',
+  'GIT_GRAFT_FILE',
+]);
+
+/**
+ * Prefixes for groups of dangerous GIT_* vars (e.g., GIT_CONFIG_KEY_0,
+ * GIT_CONFIG_VALUE_0, … which are read when GIT_CONFIG_COUNT is set).
+ */
+const DANGEROUS_GIT_ENV_PREFIXES: readonly string[] = [
+  'GIT_CONFIG_KEY_',
+  'GIT_CONFIG_VALUE_',
+];
+
+function isDangerousGitEnvKey(key: string): boolean {
+  if (DANGEROUS_GIT_ENV_KEYS.has(key)) return true;
+  return DANGEROUS_GIT_ENV_PREFIXES.some(prefix => key.startsWith(prefix));
+}
+
+/**
+ * Strip dangerous GIT_* environment variables from an env object.
+ *
+ * When vv runs as a git pre-commit hook, git sets GIT_DIR, GIT_INDEX_FILE,
+ * GIT_WORK_TREE, and related vars on the hook process. These vars override
+ * `cwd` for any `git` command in a child process — so a test that creates a
+ * temp repo via `mkdtempSync` and runs `git init` / `git commit` against it
+ * can silently operate on the parent repository instead. Strip them before
+ * spawning a validation step subprocess.
+ *
+ * Uses a focused blacklist: only the GIT_* vars that can redirect git
+ * operations, override repository discovery, load alternate config, or
+ * alter the history view are stripped. Everything else (identity, editor,
+ * SSH/credentials, tracing, pager) is inherited normally.
+ *
+ * Does not mutate the input. Drops entries whose value is undefined so the
+ * return type is `Record<string, string>` (suitable for use as spawn `env`).
+ *
+ * @public
+ */
+export function stripGitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) continue;
+    if (isDangerousGitEnvKey(key)) continue;
+    result[key] = value;
+  }
+  return result;
+}
+
+/**
  * Spawn a command with consistent, secure defaults for validation
  *
  * **Key Features:**
@@ -187,6 +267,12 @@ export function spawnCommand(
       ? ['ignore', 'inherit', 'inherit']
       : ['ignore', 'pipe', 'pipe'];
 
+  // SAFETY: Scrub GIT_* vars from process.env before passing to child.
+  // When vv runs as a git pre-commit hook, git sets GIT_DIR / GIT_INDEX_FILE /
+  // GIT_WORK_TREE on the hook process. Those vars override `cwd` in any child
+  // that runs git, which would silently corrupt the parent repository if a step
+  // shells out to git against a temp directory. See docs/skills/vibe-validate/git-hook-safety.md.
+  const scrubbedParentEnv = stripGitEnv(process.env);
   // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
   // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
   // NOSONAR - Intentional shell execution of user-defined commands
@@ -197,7 +283,7 @@ export function spawnCommand(
     timeout: options?.timeout,
     // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
     detached: options?.detached ?? (process.platform !== 'win32'),
-    env: options?.env ? { ...process.env, ...options.env } : process.env,
+    env: options?.env ? { ...scrubbedParentEnv, ...options.env } : scrubbedParentEnv,
     cwd: options?.cwd,
   });
 }

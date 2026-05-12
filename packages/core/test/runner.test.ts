@@ -13,6 +13,7 @@ import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
+  buildStepEnv,
   parseFailures,
   runStepsInParallel,
   runValidation,
@@ -20,6 +21,21 @@ import {
   shouldSkipByRunScope,
 } from '../src/runner.js';
 import type { ValidationConfig } from '../src/runner.js';
+
+const buildStepEnvBaseArgs = {
+  parent: null,
+  runId: 'test-run',
+  treeHash: 'abc123',
+  verbose: false,
+} as const;
+
+function makeStepWithEnv(env?: Record<string, string>): ValidationStep {
+  return {
+    name: 'test-step',
+    command: 'echo hi',
+    ...(env ? { env } : {}),
+  };
+}
 
 // Mock git functions
 vi.mock('@vibe-validate/git', async (importOriginal) => {
@@ -77,7 +93,7 @@ function createAsyncErrorConfig(options: { verbose?: boolean } = {}): Validation
 async function testSignalHandler(signalName: 'SIGTERM' | 'SIGINT'): Promise<void> {
   const activeProcesses: Set<ChildProcess> = new Set();
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+  const processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
   setupSignalHandlers(activeProcesses);
 
@@ -232,6 +248,44 @@ describe('runner', () => {
       const failures = parseFailures(output);
 
       expect(failures).toHaveLength(0);
+    });
+  });
+
+  describe('buildStepEnv', () => {
+    it('merges per-step env into the returned env', () => {
+      const { env } = buildStepEnv({
+        ...buildStepEnvBaseArgs,
+        step: makeStepWithEnv({ FOO: 'bar' }),
+        baseEnv: {},
+      });
+      expect(env.FOO).toBe('bar');
+    });
+
+    it('lets per-step env override baseEnv on key conflict', () => {
+      const { env } = buildStepEnv({
+        ...buildStepEnvBaseArgs,
+        step: makeStepWithEnv({ NODE_ENV: 'test' }),
+        baseEnv: { NODE_ENV: 'production' },
+      });
+      expect(env.NODE_ENV).toBe('test');
+    });
+
+    it('returns baseEnv unchanged when step has no env', () => {
+      const { env } = buildStepEnv({
+        ...buildStepEnvBaseArgs,
+        step: makeStepWithEnv(),
+        baseEnv: { FOO: 'bar' },
+      });
+      expect(env.FOO).toBe('bar');
+    });
+
+    it('always sets VV_PARENT_CONTEXT regardless of step env', () => {
+      const { env } = buildStepEnv({
+        ...buildStepEnvBaseArgs,
+        step: makeStepWithEnv({ FOO: 'bar' }),
+        baseEnv: {},
+      });
+      expect(env.VV_PARENT_CONTEXT).toBeDefined();
     });
   });
 
