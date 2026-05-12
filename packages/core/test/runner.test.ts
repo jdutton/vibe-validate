@@ -93,7 +93,7 @@ function createAsyncErrorConfig(options: { verbose?: boolean } = {}): Validation
 async function testSignalHandler(signalName: 'SIGTERM' | 'SIGINT'): Promise<void> {
   const activeProcesses: Set<ChildProcess> = new Set();
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  const processExitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+  const processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
   setupSignalHandlers(activeProcesses);
 

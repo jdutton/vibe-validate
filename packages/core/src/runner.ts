@@ -110,7 +110,7 @@ export function buildStepEnv(args: {
   return {
     env: {
       ...args.baseEnv,
-      ...(args.step.env ?? {}),
+      ...args.step.env,
       [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx),
     },
     outputDir,
