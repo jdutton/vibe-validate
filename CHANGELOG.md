@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.6] - 2026-05-12
+
+### Fixed
+
+- **`vv pre-commit` no longer blocks legitimate post-rebase commits.** After `git pull --rebase` or a rebase against an updated base, your local branch is "diverged" from its tracking branch — both ahead and behind. The old check treated that state as "behind" and blocked the commit with an unhelpful error. `pre-commit` now distinguishes "purely behind" (legitimate stop — you're missing remote commits) from "diverged" (post-rebase shape — pass with an informational notice), and short-circuits the sync check entirely during a mid-flight rebase, mirroring the existing mid-merge handling. ([#160](https://github.com/jdutton/vibe-validate/pull/160))
+
+- **`vibe-validate` works under pnpm strict isolation.** The umbrella package's bin wrappers (`vibe-validate`, `vv`) used a hardcoded relative path to locate `@vibe-validate/cli`, which only resolves under flat-hoisted `node_modules` (npm classic, bun, yarn classic). Under pnpm's default strict isolation (`node-linker=isolated`), `@vibe-validate/cli` is a *sibling* of `vibe-validate` inside `.pnpm/<id>/node_modules/` rather than nested, so every CLI command crashed with `ERR_MODULE_NOT_FOUND`. The wrappers now resolve the CLI via Node's module algorithm (`createRequire`), which works under every layout: npm flat, pnpm isolated, yarn berry PnP, and bun. ([#161](https://github.com/jdutton/vibe-validate/issues/161))
+
 ## [0.19.5] - 2026-05-12
 
 ### Added
