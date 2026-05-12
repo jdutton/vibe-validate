@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.5] - 2026-05-12
+
+### Added
+
+- **Nested `vv run` pass-through** — When a `package.json` script wraps a tool with `vibe-validate run` and is invoked from `vibe-validate validate`, the inner `vv run` now switches automatically to pass-through mode: it inherits the parent's stdio, propagates the exit code, and skips its own capture/extract/cache. The outer captures the real underlying tool's output (vitest, eslint, etc.) instead of an inner YAML summary, so error extraction runs on actual data and `vv watch-pr` can recover failures from CI logs. A depth cap of 3 fails loudly on recursive misconfiguration. Signaled via the new `VV_PARENT_CONTEXT` environment variable, set automatically by the parent.
+- **`vv doctor` nested-invocation reporting** — Doctor now reports `Running inside parent vibe-validate (runId=…, depth=N, step="…")` when invoked under a parent vv process, and fails loudly when `VV_PARENT_CONTEXT` is set but malformed.
+
+### Changed
+
+- **`generate-workflow`** — Generated workflows now use `pnpm/action-setup@v5` (upgraded from `v2`). Existing users should re-run `vv generate-workflow` to pick up the new version and silence Node.js 20 deprecation warnings in CI.
+- **Per-step `env:` is now actually applied to step subprocesses.** The field was declared in the `ValidationStep` schema but silently dropped at execution time. Per-step `env:` takes precedence over config-level `env:`. ([#157](https://github.com/jdutton/vibe-validate/issues/157))
+
+### Fixed
+
+- **Prevent silent corruption of the parent repository when validation steps shell out to `git`.** ([#157](https://github.com/jdutton/vibe-validate/issues/157))
+
+  When vv runs as a git pre-commit hook, git sets `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, and related vars on the hook process. These vars were inherited by every subprocess vv spawned, including multi-process step chains like `npm run test → vitest → fork(worker)`. Inside those subprocesses, `GIT_*` vars override the `cwd` passed to git — so a validation step (typically a test) that creates a temp git repo with `mkdtempSync` + `cwd: <tmpdir>` and runs `git init` / `git commit` / `git config` would **silently operate on the parent repository's `.git/index` and branch refs instead**.
+
+  vv now strips a focused **blacklist** of dangerous `GIT_*` env vars at two layers: (1) the runner adapter strips them when snapshotting `process.env` into the runner config, and (2) `spawnCommand` strips them from the *final merged* spawn env (parent ∪ caller-provided), so no caller can accidentally re-inject one via `options.env`. Together this guarantees no dangerous `GIT_*` reaches a step subprocess or anything it spawns. Everything else `GIT_*` (identity, editor, SSH/credentials, tracing, pager) is inherited normally.
+
+  **Stripped:** `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_NAMESPACE`, `GIT_CEILING_DIRECTORIES`, `GIT_DISCOVERY_ACROSS_FILESYSTEM`, `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT`, all numbered `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`, `GIT_NOTES_REF`, `GIT_SHALLOW_FILE`, `GIT_GRAFT_FILE`.
+
+  **This is not a regression** — the risk has existed since vv first supported the pre-commit-hook workflow. This release closes the gap.
+
+  **Who was at risk:** any repository where (1) `vv` runs as a git pre-commit hook, AND (2) a validation step shells out to `git` against a temp directory (commonly tests for tooling that itself wraps git — release orchestrators, scaffolders, plugin generators). The vast majority of validation steps (lint, typecheck, build, unit tests that don't touch git) were unaffected.
+
+  **Failure mode if hit:** branch refs in the parent worktree get rewritten to test commits, `.git/config` may get test author identity written to it, and the user's real commits survive only in the reflog. The corruption is silent — no error is raised.
+
+  See `docs/skills/vibe-validate/git-hook-safety.md` for details and the per-step opt-back-in mechanism.
+
 ## [0.19.4] - 2026-04-21
 
 ### Changed

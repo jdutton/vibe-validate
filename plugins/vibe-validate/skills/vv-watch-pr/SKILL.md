@@ -152,6 +152,8 @@ Run it whenever the branch list gets long, or as part of a post-merge ritual.
 
 **"Extracted errors are empty despite a failure"** — the extractor didn't recognize the tool's output format. See `vibe-validate:authoring-extractors` for how to build a custom extractor and validate it against the CI output.
 
+**"Inner `vv run` swallowed the failure output"** — if your `package.json` test scripts wrap commands in `vibe-validate run "vitest ..."` and you run them from `vibe-validate validate`, the inner `vv run` automatically switches to **pass-through mode**: it inherits stdio, propagates the exit code, and skips its own capture/extract/cache so the outer captures the real underlying tool's output. Extraction then runs on actual data instead of an inner YAML summary, and `vv watch-pr` can recover the real failure from the CI log. This is signaled via the `VV_PARENT_CONTEXT` env var, set automatically by the parent. A depth cap of 3 fails loudly on recursive misconfiguration. `vv doctor` reports `Running inside parent vibe-validate (runId=…, depth=N, step="…")` when invoked under a parent.
+
 ## See also
 
 - `vibe-validate:vv-validate-dev-loop` — the local validation loop, state queries, and `vv run`.
