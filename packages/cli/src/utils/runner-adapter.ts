@@ -6,6 +6,7 @@
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationConfig, ValidationPhase, ValidationStep, PhaseResult, StepResult } from '@vibe-validate/core';
+import { stripGitEnv } from '@vibe-validate/core';
 import chalk from 'chalk';
 
 import type { AgentContext } from './context-detector.js';
@@ -29,13 +30,13 @@ export function createRunnerConfig(
   config: VibeValidateConfig,
   options: RunnerOptions
 ): ValidationConfig {
-  // Convert process.env to Record<string, string> by filtering out undefined values
-  const envVars: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined) {
-      envVars[key] = value;
-    }
-  }
+  // Convert process.env to Record<string, string> for the runner's `env`.
+  // Strip dangerous GIT_* vars (GIT_DIR, GIT_INDEX_FILE, …) here so they
+  // never enter the runner pipeline. Without this scrub, the runner would
+  // pass them as `options.env` to spawnCommand, where they'd be re-injected
+  // on top of the spawn-boundary scrub. spawnCommand also re-scrubs the
+  // merged env defensively (belt + suspenders).
+  const envVars = stripGitEnv(process.env);
 
   // Choose callbacks based on verbosity
   const callbacks = options.verbose

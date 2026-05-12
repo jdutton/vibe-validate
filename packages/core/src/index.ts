@@ -82,6 +82,7 @@ export {
   captureCommandOutput,
   getGitRoot,
   resolveGitRelativePath,
+  stripGitEnv,
   type CaptureCommandOptions,
 } from './process-utils.js';
 

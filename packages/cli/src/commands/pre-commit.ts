@@ -88,7 +88,7 @@ function handleScanResult(
 export function preCommitCommand(program: Command): void {
   const cmd = program
     .command('pre-commit')
-    .description('Run branch sync check + validation (recommended before commit)')
+    .description('Run branch sync check + validation (recommended before commit). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).')
     .option('--skip-sync', 'Skip branch sync check')
     .option('-v, --verbose', 'Show detailed progress and output');
 
