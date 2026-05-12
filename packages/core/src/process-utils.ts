@@ -132,22 +132,54 @@ export async function stopProcessGroup(
 }
 
 /**
- * Whitelist of GIT_* env vars that are SAFE to inherit into a step subprocess.
+ * Blacklist of GIT_* env vars that are DANGEROUS to inherit into a step
+ * subprocess because they can redirect git operations to a different
+ * repository, override repository discovery, alter loaded config, or
+ * change the history view git sees.
  *
- * Author/committer identity and editor — none of these can redirect git
- * operations to a different repository. They're propagated so steps that
- * legitimately need to commit/sign/edit (or that run nested vv with caching
- * via git notes in clean CI environments) keep working.
+ * Everything else (identity, editor, SSH/credentials, tracing, pager,
+ * cosmetic) is safe to inherit — none of those can redirect operations
+ * to a different repo.
  */
-const SAFE_GIT_ENV_KEYS: ReadonlySet<string> = new Set([
-  'GIT_AUTHOR_NAME',
-  'GIT_AUTHOR_EMAIL',
-  'GIT_AUTHOR_DATE',
-  'GIT_COMMITTER_NAME',
-  'GIT_COMMITTER_EMAIL',
-  'GIT_COMMITTER_DATE',
-  'GIT_EDITOR',
+const DANGEROUS_GIT_ENV_KEYS: ReadonlySet<string> = new Set([
+  // Repository / index / worktree redirection
+  'GIT_DIR',
+  'GIT_INDEX_FILE',
+  'GIT_WORK_TREE',
+  'GIT_COMMON_DIR',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  // Ref namespace redirection
+  'GIT_NAMESPACE',
+  // Repository discovery behavior
+  'GIT_CEILING_DIRECTORIES',
+  'GIT_DISCOVERY_ACROSS_FILESYSTEM',
+  // Alternate config loading (can change defaults, point at other repos)
+  'GIT_CONFIG',
+  'GIT_CONFIG_GLOBAL',
+  'GIT_CONFIG_SYSTEM',
+  'GIT_CONFIG_NOSYSTEM',
+  'GIT_CONFIG_COUNT',
+  // Would steer vv's own notes-based cache to a different ref
+  'GIT_NOTES_REF',
+  // Alter history view
+  'GIT_SHALLOW_FILE',
+  'GIT_GRAFT_FILE',
 ]);
+
+/**
+ * Prefixes for groups of dangerous GIT_* vars (e.g., GIT_CONFIG_KEY_0,
+ * GIT_CONFIG_VALUE_0, … which are read when GIT_CONFIG_COUNT is set).
+ */
+const DANGEROUS_GIT_ENV_PREFIXES: readonly string[] = [
+  'GIT_CONFIG_KEY_',
+  'GIT_CONFIG_VALUE_',
+];
+
+function isDangerousGitEnvKey(key: string): boolean {
+  if (DANGEROUS_GIT_ENV_KEYS.has(key)) return true;
+  return DANGEROUS_GIT_ENV_PREFIXES.some(prefix => key.startsWith(prefix));
+}
 
 /**
  * Strip dangerous GIT_* environment variables from an env object.
@@ -159,9 +191,10 @@ const SAFE_GIT_ENV_KEYS: ReadonlySet<string> = new Set([
  * can silently operate on the parent repository instead. Strip them before
  * spawning a validation step subprocess.
  *
- * Uses a whitelist: every GIT_* key is stripped EXCEPT the identity and
- * editor vars (GIT_AUTHOR_*, GIT_COMMITTER_*, GIT_EDITOR). Those are safe
- * because they cannot redirect git operations to a different repository.
+ * Uses a focused blacklist: only the GIT_* vars that can redirect git
+ * operations, override repository discovery, load alternate config, or
+ * alter the history view are stripped. Everything else (identity, editor,
+ * SSH/credentials, tracing, pager) is inherited normally.
  *
  * Does not mutate the input. Drops entries whose value is undefined so the
  * return type is `Record<string, string>` (suitable for use as spawn `env`).
@@ -172,7 +205,7 @@ export function stripGitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined) continue;
-    if (key.startsWith('GIT_') && !SAFE_GIT_ENV_KEYS.has(key)) continue;
+    if (isDangerousGitEnvKey(key)) continue;
     result[key] = value;
   }
   return result;

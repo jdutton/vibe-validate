@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.19.5] - 2026-05-12
-
 ### Added
 
 - **Nested `vv run` pass-through** — When a `package.json` script wraps a tool with `vibe-validate run` and is invoked from `vibe-validate validate`, the inner `vv run` now switches automatically to pass-through mode: it inherits the parent's stdio, propagates the exit code, and skips its own capture/extract/cache. The outer captures the real underlying tool's output (vitest, eslint, etc.) instead of an inner YAML summary, so error extraction runs on actual data and `vv watch-pr` can recover failures from CI logs. A depth cap of 3 fails loudly on recursive misconfiguration. Signaled via the new `VV_PARENT_CONTEXT` environment variable, set automatically by the parent.
@@ -25,7 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   When vv runs as a git pre-commit hook, git sets `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, and related vars on the hook process. These vars were inherited by every subprocess vv spawned. Inside those subprocesses, `GIT_*` vars override the `cwd` passed to git — so a validation step (typically a test) that creates a temp git repo with `mkdtempSync` + `cwd: <tmpdir>` and runs `git init` / `git commit` / `git config` would **silently operate on the parent repository's `.git/index` and branch refs instead**.
 
-  vv now strips dangerous `GIT_*` env vars from the env passed to spawned validation steps. The strip uses a whitelist — identity (`GIT_AUTHOR_*` / `GIT_COMMITTER_*`) and `GIT_EDITOR` are preserved because they cannot redirect git operations to a different repository. User-provided env (via config-level `env:` or per-step `env:`) still wins on top of the whitelist, so any step that legitimately needs another `GIT_*` var can re-add it explicitly.
+  vv now strips a focused **blacklist** of dangerous `GIT_*` env vars from the env passed to spawned validation steps — the exact set of vars that can redirect git operations to a different repository, override repository discovery, load alternate git configuration, or alter the history view. Everything else `GIT_*` (identity, editor, SSH/credentials, tracing, pager) is inherited normally. User-provided env via config-level `env:` or per-step `env:` always wins on top, so any step that legitimately needs a stripped var can re-add it explicitly.
+
+  **Stripped:** `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_NAMESPACE`, `GIT_CEILING_DIRECTORIES`, `GIT_DISCOVERY_ACROSS_FILESYSTEM`, `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT`, all numbered `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`, `GIT_NOTES_REF`, `GIT_SHALLOW_FILE`, `GIT_GRAFT_FILE`.
 
   **This is not a regression** — the risk has existed since vv first supported the pre-commit-hook workflow. This release closes the gap.
 

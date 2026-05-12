@@ -383,7 +383,7 @@ describe('process-utils', () => {
   });
 
   describe('stripGitEnv', () => {
-    it('strips redirect-class GIT_* vars (GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE)', () => {
+    it('strips repository/index/worktree redirection vars', () => {
       const result = stripGitEnv({
         GIT_DIR: '/some/.git',
         GIT_INDEX_FILE: '/some/idx',
@@ -392,7 +392,6 @@ describe('process-utils', () => {
         GIT_OBJECT_DIRECTORY: '/some/objects',
         GIT_ALTERNATE_OBJECT_DIRECTORIES: '/some/alt',
         PATH: '/usr/bin',
-        HOME: '/home/test',
       });
       expect(result.GIT_DIR).toBeUndefined();
       expect(result.GIT_INDEX_FILE).toBeUndefined();
@@ -401,18 +400,83 @@ describe('process-utils', () => {
       expect(result.GIT_OBJECT_DIRECTORY).toBeUndefined();
       expect(result.GIT_ALTERNATE_OBJECT_DIRECTORIES).toBeUndefined();
       expect(result.PATH).toBe('/usr/bin');
-      expect(result.HOME).toBe('/home/test');
     });
 
-    it('preserves whitelisted identity and editor GIT_* vars', () => {
+    it('strips ref-namespace and discovery vars', () => {
       const result = stripGitEnv({
+        GIT_NAMESPACE: 'private',
+        GIT_CEILING_DIRECTORIES: '/home',
+        GIT_DISCOVERY_ACROSS_FILESYSTEM: '1',
+        PATH: '/usr/bin',
+      });
+      expect(result.GIT_NAMESPACE).toBeUndefined();
+      expect(result.GIT_CEILING_DIRECTORIES).toBeUndefined();
+      expect(result.GIT_DISCOVERY_ACROSS_FILESYSTEM).toBeUndefined();
+      expect(result.PATH).toBe('/usr/bin');
+    });
+
+    it('strips alternate-config vars including numbered GIT_CONFIG_KEY_/VALUE_ groups', () => {
+      const result = stripGitEnv({
+        GIT_CONFIG: '/custom/.gitconfig',
+        GIT_CONFIG_GLOBAL: '/empty',
+        GIT_CONFIG_SYSTEM: '/empty',
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_CONFIG_COUNT: '2',
+        GIT_CONFIG_KEY_0: 'user.email',
+        GIT_CONFIG_VALUE_0: 'evil@example.com',
+        GIT_CONFIG_KEY_1: 'core.autocrlf',
+        GIT_CONFIG_VALUE_1: 'true',
+        PATH: '/usr/bin',
+      });
+      expect(result.GIT_CONFIG).toBeUndefined();
+      expect(result.GIT_CONFIG_GLOBAL).toBeUndefined();
+      expect(result.GIT_CONFIG_SYSTEM).toBeUndefined();
+      expect(result.GIT_CONFIG_NOSYSTEM).toBeUndefined();
+      expect(result.GIT_CONFIG_COUNT).toBeUndefined();
+      expect(result.GIT_CONFIG_KEY_0).toBeUndefined();
+      expect(result.GIT_CONFIG_VALUE_0).toBeUndefined();
+      expect(result.GIT_CONFIG_KEY_1).toBeUndefined();
+      expect(result.GIT_CONFIG_VALUE_1).toBeUndefined();
+      expect(result.PATH).toBe('/usr/bin');
+    });
+
+    it('strips notes-redirect and history-altering vars', () => {
+      const result = stripGitEnv({
+        GIT_NOTES_REF: 'refs/notes/other',
+        GIT_SHALLOW_FILE: '/some/shallow',
+        GIT_GRAFT_FILE: '/some/grafts',
+      });
+      expect(result.GIT_NOTES_REF).toBeUndefined();
+      expect(result.GIT_SHALLOW_FILE).toBeUndefined();
+      expect(result.GIT_GRAFT_FILE).toBeUndefined();
+    });
+
+    it('preserves identity, editor, SSH, credential, tracing, and cosmetic GIT_* vars', () => {
+      const result = stripGitEnv({
+        // identity
         GIT_AUTHOR_NAME: 'Test User',
         GIT_AUTHOR_EMAIL: 'test@example.com',
         GIT_AUTHOR_DATE: '2026-05-12T00:00:00Z',
         GIT_COMMITTER_NAME: 'Test User',
         GIT_COMMITTER_EMAIL: 'test@example.com',
         GIT_COMMITTER_DATE: '2026-05-12T00:00:00Z',
+        // editor / UI
         GIT_EDITOR: 'vim',
+        GIT_SEQUENCE_EDITOR: 'vim',
+        GIT_PAGER: 'less',
+        // SSH / network / credentials
+        GIT_SSH: '/usr/bin/ssh',
+        GIT_SSH_COMMAND: 'ssh -i /run/secrets/key',
+        GIT_SSH_VARIANT: 'openssh',
+        GIT_ASKPASS: '/usr/local/bin/askpass',
+        GIT_TERMINAL_PROMPT: '0',
+        GIT_HTTP_USER_AGENT: 'vv-test',
+        // tracing
+        GIT_TRACE: '1',
+        GIT_TRACE_PERFORMANCE: '1',
+        GIT_TRACE2: '1',
+        GIT_CURL_VERBOSE: '1',
+        // sanity: dangerous one is still stripped
         GIT_DIR: '/dangerous/.git',
       });
       expect(result.GIT_AUTHOR_NAME).toBe('Test User');
@@ -422,6 +486,18 @@ describe('process-utils', () => {
       expect(result.GIT_COMMITTER_EMAIL).toBe('test@example.com');
       expect(result.GIT_COMMITTER_DATE).toBe('2026-05-12T00:00:00Z');
       expect(result.GIT_EDITOR).toBe('vim');
+      expect(result.GIT_SEQUENCE_EDITOR).toBe('vim');
+      expect(result.GIT_PAGER).toBe('less');
+      expect(result.GIT_SSH).toBe('/usr/bin/ssh');
+      expect(result.GIT_SSH_COMMAND).toBe('ssh -i /run/secrets/key');
+      expect(result.GIT_SSH_VARIANT).toBe('openssh');
+      expect(result.GIT_ASKPASS).toBe('/usr/local/bin/askpass');
+      expect(result.GIT_TERMINAL_PROMPT).toBe('0');
+      expect(result.GIT_HTTP_USER_AGENT).toBe('vv-test');
+      expect(result.GIT_TRACE).toBe('1');
+      expect(result.GIT_TRACE_PERFORMANCE).toBe('1');
+      expect(result.GIT_TRACE2).toBe('1');
+      expect(result.GIT_CURL_VERBOSE).toBe('1');
       expect(result.GIT_DIR).toBeUndefined();
     });
 

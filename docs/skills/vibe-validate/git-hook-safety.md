@@ -6,19 +6,40 @@ These vars **override `cwd`** when any child process invokes `git`. A validation
 
 ## What vv does
 
-Before spawning any validation step, vv strips dangerous `GIT_*` environment variables from the inherited `process.env`. The strip uses a **whitelist**: every `GIT_*` key is removed *except* identity and editor vars, which are safe to inherit because they cannot redirect git operations to a different repository.
+Before spawning any validation step, vv strips a focused **blacklist** of dangerous `GIT_*` environment variables from the inherited `process.env`. The blacklist is exactly the set of vars that can:
 
-**Stripped:** `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, and any other `GIT_*` not on the whitelist below.
+1. Redirect git operations to a different repository,
+2. Override repository discovery,
+3. Load alternate git configuration, or
+4. Alter the history view git sees.
 
-**Preserved (whitelist):** `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_AUTHOR_DATE`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`, `GIT_COMMITTER_DATE`, `GIT_EDITOR`.
+Everything else `GIT_*` (identity, editor, SSH/credentials, tracing, pager) is inherited normally — none of those can redirect operations to a different repo.
 
-This applies to spawned steps under:
+### Stripped (dangerous)
+
+- **Repository / index / worktree redirect:** `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`
+- **Ref namespace:** `GIT_NAMESPACE`
+- **Discovery behavior:** `GIT_CEILING_DIRECTORIES`, `GIT_DISCOVERY_ACROSS_FILESYSTEM`
+- **Alternate config:** `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT`, plus all numbered `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`
+- **Notes redirect:** `GIT_NOTES_REF` (would steer vv's own cache to a different ref)
+- **History alteration:** `GIT_SHALLOW_FILE`, `GIT_GRAFT_FILE`
+
+### Preserved (everything else)
+
+- **Identity:** `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_AUTHOR_DATE`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`, `GIT_COMMITTER_DATE`
+- **Editor / UI:** `GIT_EDITOR`, `GIT_SEQUENCE_EDITOR`, `GIT_PAGER`
+- **SSH / network / credentials:** `GIT_SSH`, `GIT_SSH_COMMAND`, `GIT_SSH_VARIANT`, `GIT_ASKPASS`, `GIT_TERMINAL_PROMPT`, `GIT_HTTP_USER_AGENT`, `GIT_HTTP_LOW_SPEED_LIMIT`, `GIT_HTTP_LOW_SPEED_TIME`, `GIT_PROXY_COMMAND`
+- **Tracing / debug:** `GIT_TRACE`, all `GIT_TRACE_*`, `GIT_TRACE2*`, `GIT_CURL_VERBOSE`, `GIT_PROGRESS`
+- **Cosmetic:** `GIT_REFLOG_ACTION`, `GIT_MERGE_AUTOEDIT`, `GIT_FLUSH`
+- Any other `GIT_*` not in the dangerous list — including future vars added by upstream git.
+
+The strip applies to spawned steps under:
 
 - `vv validate`
 - `vv pre-commit`
 - `vv run <command>`
 
-vv's own `process.env` is **not** modified — only the env passed to the subprocess. vv's hook-aware behavior (reading the staged index, partial-staging checks) is preserved. Test environments that pre-set `GIT_AUTHOR_*` / `GIT_COMMITTER_*` for clean CI runs continue to work, including nested `vv` patterns that write git notes from inside spawned subprocesses.
+vv's own `process.env` is **not** modified — only the env passed to the subprocess. vv's hook-aware behavior (reading the staged index, partial-staging checks) is preserved.
 
 ## Who is affected
 
@@ -31,17 +52,16 @@ The second condition is rare in practice: it applies to tests for tooling that i
 
 ## Opting back in for a specific step
 
-If a step legitimately needs a `GIT_*` var (rare), declare it explicitly in the step's `env:` field in `vibe-validate.config.yaml`:
+In the rare case a step legitimately needs a stripped `GIT_*` var (e.g., a release-orchestrator test that deliberately exercises `GIT_DIR` redirection against a tmp repo and *does* want the parent context for some reason), declare it explicitly in the step's `env:` field in `vibe-validate.config.yaml`:
 
 ```yaml
 phases:
   - name: Special
     steps:
-      - name: needs-git-author
+      - name: needs-alternate-config
         command: pnpm test:that-needs-it
         env:
-          GIT_AUTHOR_NAME: "CI"
-          GIT_AUTHOR_EMAIL: "ci@example.com"
+          GIT_CONFIG_GLOBAL: "/path/to/test-only-config"
 ```
 
 Per-step `env:` always wins over the scrub.
