@@ -132,7 +132,25 @@ export async function stopProcessGroup(
 }
 
 /**
- * Strip all GIT_* environment variables from an env object.
+ * Whitelist of GIT_* env vars that are SAFE to inherit into a step subprocess.
+ *
+ * Author/committer identity and editor — none of these can redirect git
+ * operations to a different repository. They're propagated so steps that
+ * legitimately need to commit/sign/edit (or that run nested vv with caching
+ * via git notes in clean CI environments) keep working.
+ */
+const SAFE_GIT_ENV_KEYS: ReadonlySet<string> = new Set([
+  'GIT_AUTHOR_NAME',
+  'GIT_AUTHOR_EMAIL',
+  'GIT_AUTHOR_DATE',
+  'GIT_COMMITTER_NAME',
+  'GIT_COMMITTER_EMAIL',
+  'GIT_COMMITTER_DATE',
+  'GIT_EDITOR',
+]);
+
+/**
+ * Strip dangerous GIT_* environment variables from an env object.
  *
  * When vv runs as a git pre-commit hook, git sets GIT_DIR, GIT_INDEX_FILE,
  * GIT_WORK_TREE, and related vars on the hook process. These vars override
@@ -140,6 +158,10 @@ export async function stopProcessGroup(
  * temp repo via `mkdtempSync` and runs `git init` / `git commit` against it
  * can silently operate on the parent repository instead. Strip them before
  * spawning a validation step subprocess.
+ *
+ * Uses a whitelist: every GIT_* key is stripped EXCEPT the identity and
+ * editor vars (GIT_AUTHOR_*, GIT_COMMITTER_*, GIT_EDITOR). Those are safe
+ * because they cannot redirect git operations to a different repository.
  *
  * Does not mutate the input. Drops entries whose value is undefined so the
  * return type is `Record<string, string>` (suitable for use as spawn `env`).
@@ -149,8 +171,8 @@ export async function stopProcessGroup(
 export function stripGitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
-    if (key.startsWith('GIT_')) continue;
     if (value === undefined) continue;
+    if (key.startsWith('GIT_') && !SAFE_GIT_ENV_KEYS.has(key)) continue;
     result[key] = value;
   }
   return result;

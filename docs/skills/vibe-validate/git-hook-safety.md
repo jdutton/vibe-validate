@@ -6,13 +6,19 @@ These vars **override `cwd`** when any child process invokes `git`. A validation
 
 ## What vv does
 
-Before spawning any validation step, vv strips every environment variable whose name starts with `GIT_` from the inherited `process.env`. This applies to:
+Before spawning any validation step, vv strips dangerous `GIT_*` environment variables from the inherited `process.env`. The strip uses a **whitelist**: every `GIT_*` key is removed *except* identity and editor vars, which are safe to inherit because they cannot redirect git operations to a different repository.
+
+**Stripped:** `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, and any other `GIT_*` not on the whitelist below.
+
+**Preserved (whitelist):** `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_AUTHOR_DATE`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`, `GIT_COMMITTER_DATE`, `GIT_EDITOR`.
+
+This applies to spawned steps under:
 
 - `vv validate`
 - `vv pre-commit`
 - `vv run <command>`
 
-vv's own `process.env` is **not** modified — only the env passed to the subprocess. vv's hook-aware behavior (reading the staged index, partial-staging checks) is preserved.
+vv's own `process.env` is **not** modified — only the env passed to the subprocess. vv's hook-aware behavior (reading the staged index, partial-staging checks) is preserved. Test environments that pre-set `GIT_AUTHOR_*` / `GIT_COMMITTER_*` for clean CI runs continue to work, including nested `vv` patterns that write git notes from inside spawned subprocesses.
 
 ## Who is affected
 

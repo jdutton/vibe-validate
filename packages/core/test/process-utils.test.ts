@@ -383,21 +383,46 @@ describe('process-utils', () => {
   });
 
   describe('stripGitEnv', () => {
-    it('removes every key with the GIT_ prefix', () => {
+    it('strips redirect-class GIT_* vars (GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE)', () => {
       const result = stripGitEnv({
         GIT_DIR: '/some/.git',
         GIT_INDEX_FILE: '/some/idx',
         GIT_WORK_TREE: '/some/wt',
-        GIT_AUTHOR_NAME: 'Test',
+        GIT_COMMON_DIR: '/some/common',
+        GIT_OBJECT_DIRECTORY: '/some/objects',
+        GIT_ALTERNATE_OBJECT_DIRECTORIES: '/some/alt',
         PATH: '/usr/bin',
         HOME: '/home/test',
       });
       expect(result.GIT_DIR).toBeUndefined();
       expect(result.GIT_INDEX_FILE).toBeUndefined();
       expect(result.GIT_WORK_TREE).toBeUndefined();
-      expect(result.GIT_AUTHOR_NAME).toBeUndefined();
+      expect(result.GIT_COMMON_DIR).toBeUndefined();
+      expect(result.GIT_OBJECT_DIRECTORY).toBeUndefined();
+      expect(result.GIT_ALTERNATE_OBJECT_DIRECTORIES).toBeUndefined();
       expect(result.PATH).toBe('/usr/bin');
       expect(result.HOME).toBe('/home/test');
+    });
+
+    it('preserves whitelisted identity and editor GIT_* vars', () => {
+      const result = stripGitEnv({
+        GIT_AUTHOR_NAME: 'Test User',
+        GIT_AUTHOR_EMAIL: 'test@example.com',
+        GIT_AUTHOR_DATE: '2026-05-12T00:00:00Z',
+        GIT_COMMITTER_NAME: 'Test User',
+        GIT_COMMITTER_EMAIL: 'test@example.com',
+        GIT_COMMITTER_DATE: '2026-05-12T00:00:00Z',
+        GIT_EDITOR: 'vim',
+        GIT_DIR: '/dangerous/.git',
+      });
+      expect(result.GIT_AUTHOR_NAME).toBe('Test User');
+      expect(result.GIT_AUTHOR_EMAIL).toBe('test@example.com');
+      expect(result.GIT_AUTHOR_DATE).toBe('2026-05-12T00:00:00Z');
+      expect(result.GIT_COMMITTER_NAME).toBe('Test User');
+      expect(result.GIT_COMMITTER_EMAIL).toBe('test@example.com');
+      expect(result.GIT_COMMITTER_DATE).toBe('2026-05-12T00:00:00Z');
+      expect(result.GIT_EDITOR).toBe('vim');
+      expect(result.GIT_DIR).toBeUndefined();
     });
 
     it('returns an empty object when given an empty env', () => {
