@@ -667,6 +667,34 @@ describe('pre-commit command', () => {
     });
   });
 
+  describe('rebase divergence handling (Issue #155)', () => {
+    it('should pass pre-commit when local history is rewritten (ahead AND behind tracking)', async () => {
+      // Classic post-rebase shape: ahead by N (rewritten commits), behind by M
+      // (pre-rebase originals still on origin). Pre-commit must NOT fail here —
+      // the user will force-push-with-lease when ready.
+      setupSuccessfulPreCommit();
+      vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 5, behind: 3 });
+
+      await runPreCommit(env, 0);
+
+      expect(git.getTrackingDivergence).toHaveBeenCalled();
+    });
+
+    it('should skip base-branch sync check when a rebase is in progress', async () => {
+      // During an interactive rebase pause (e.g. edit step), HEAD is transiently
+      // rewinding; sync against origin/main is meaningless. Mirror the merge
+      // short-circuit: skip checkBranchSync, let validation run.
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+      vi.mocked(git.isRebaseInProgress).mockReturnValue(true);
+      vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
+
+      await runPreCommit(env, 0);
+
+      expect(git.isRebaseInProgress).toHaveBeenCalled();
+      expect(git.checkBranchSync).not.toHaveBeenCalled();
+    });
+  });
+
   describe('dependency lock check integration', () => {
     it('should run dependency check with runOn: pre-commit during pre-commit', async () => {
       setupDependencyCheckTest('pre-commit');

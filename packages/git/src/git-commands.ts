@@ -117,12 +117,19 @@ export function isMergeInProgress(): boolean {
  * and `rebase-apply` (legacy `am`-based). Either being present means a
  * rebase is mid-flight.
  *
+ * Returns `false` (rather than throwing) when called outside a git
+ * repository, matching the contract of `isMergeInProgress()`.
+ *
  * @returns true if a rebase is in progress, false otherwise
  */
 export function isRebaseInProgress(): boolean {
-  const gitDir = getGitDir();
-  return existsSync(join(gitDir, 'rebase-merge'))
-    || existsSync(join(gitDir, 'rebase-apply'));
+  try {
+    const gitDir = getGitDir();
+    return existsSync(join(gitDir, 'rebase-merge'))
+      || existsSync(join(gitDir, 'rebase-apply'));
+  } catch {
+    return false;
+  }
 }
 
 /**
