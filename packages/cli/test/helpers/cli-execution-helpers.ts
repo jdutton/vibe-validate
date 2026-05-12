@@ -9,10 +9,11 @@
  */
 
 import type { ExecSyncOptions } from 'node:child_process';
-import { rmSync, existsSync } from 'node:fs';
+import { rmSync, existsSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { executeGitCommand } from '@vibe-validate/git';
 import { normalizePath, safeExecFromString, normalizedTmpdir, mkdirSyncReal } from '@vibe-validate/utils';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -306,6 +307,53 @@ export function setupTestDir(prefix: string): string {
   const targetDir = join(tmpBase, `${prefix}-${Date.now()}`);
   return mkdirSyncReal(targetDir, { recursive: true });
 }
+
+/**
+ * Create a temporary test directory pre-initialized as a minimal git repo.
+ *
+ * Initializes `main` branch and configures a dummy user.email / user.name so
+ * subsequent `git commit` calls succeed in CI environments that lack a global
+ * git identity. The returned directory is a normal `setupTestDir` output, so
+ * `cleanupTestDir` cleans it up as usual.
+ *
+ * If `options.files` is provided, the files are written, staged, and
+ * committed as an initial commit (so the repo has a tree hash that vv can
+ * resolve). Use `options.commitMessage` to override the default message.
+ *
+ * @param prefix - Directory name prefix
+ * @param options - Optional initial files to commit
+ * @returns Normalized path to the created git repo
+ */
+export function setupTestGitRepo(
+  prefix: string,
+  options?: { files?: Record<string, string>; commitMessage?: string },
+): string {
+  const testDir = setupTestDir(prefix);
+  executeGitCommand(['-C', testDir, 'init', '-b', 'main'], { suppressStderr: true });
+  executeGitCommand(['-C', testDir, 'config', 'user.email', 'test@example.com'], { suppressStderr: true });
+  executeGitCommand(['-C', testDir, 'config', 'user.name', 'Test'], { suppressStderr: true });
+
+  if (options?.files) {
+    for (const [relPath, content] of Object.entries(options.files)) {
+      writeFileSync(join(testDir, relPath), content);
+    }
+    executeGitCommand(['-C', testDir, 'add', '.'], { suppressStderr: true });
+    executeGitCommand(
+      ['-C', testDir, 'commit', '-m', options.commitMessage ?? 'init'],
+      { suppressStderr: true },
+    );
+  }
+  return testDir;
+}
+
+/**
+ * Absolute path to the built CLI bin (`packages/cli/dist/bin.js`).
+ *
+ * Resolved relative to this helper file so it works regardless of which
+ * integration test imports it. Used by `executeCommandWithSeparateStreams`
+ * and `executeWrapperCommand` callers that spawn the real CLI.
+ */
+export const cliBinPath = join(__dirname, '../../dist/bin.js');
 
 /**
  * Clean up a temporary test directory

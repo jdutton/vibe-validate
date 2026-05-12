@@ -369,9 +369,15 @@ describe('process-utils', () => {
       expect(env.PATH).toBe(true);
     });
 
-    it('lets caller-provided env override the scrub (re-add path)', async () => {
+    it('also strips dangerous GIT_* from caller-provided options.env (worker chain fix)', async () => {
+      // The runner adapter passes a snapshot of process.env as options.env to
+      // spawnCommand. Without scrubbing the merged env, dangerous GIT_* vars
+      // would be re-injected on top of the parent scrub and leak through to
+      // step subprocesses (and their forked workers). The fix scrubs the
+      // FINAL merged env, so even caller-provided GIT_* is dropped.
       const env = await captureChildEnv({ GIT_DIR: '/restored', CUSTOM: 'yes' });
-      expect(env.GIT_DIR).toBe('/restored');
+      expect(env.GIT_DIR).toBeUndefined();
+      // Non-dangerous caller-provided vars are preserved.
       expect(env.CUSTOM).toBe('yes');
     });
 
