@@ -37,7 +37,7 @@ const NOT_IN_GIT_REPO_ERROR = 'Not in a git repository';
 export function runCommand(program: Command): void {
   program
     .command('run')
-    .description('Run a command and extract LLM-friendly errors (with smart caching)')
+    .description('Run a command and extract LLM-friendly errors (with smart caching). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/git-hook-safety.md).')
     .argument('<command...>', 'Command to execute (multiple words supported)')
     .option('--check', 'Check if cached result exists without executing')
     .option('--force', 'Force execution and update cache (bypass cache read)')

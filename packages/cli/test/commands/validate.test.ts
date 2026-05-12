@@ -524,7 +524,7 @@ describe('validate command', () => {
       const validateCmd = getValidateCommand(env);
 
       expect(validateCmd).toBeDefined();
-      expect(validateCmd?.description()).toBe('Run validation with git tree hash caching');
+      expect(validateCmd?.description()).toContain('Run validation with git tree hash caching');
     });
 
     it('should register --force option', () => {

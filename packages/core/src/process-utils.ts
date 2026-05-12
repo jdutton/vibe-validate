@@ -132,6 +132,31 @@ export async function stopProcessGroup(
 }
 
 /**
+ * Strip all GIT_* environment variables from an env object.
+ *
+ * When vv runs as a git pre-commit hook, git sets GIT_DIR, GIT_INDEX_FILE,
+ * GIT_WORK_TREE, and related vars on the hook process. These vars override
+ * `cwd` for any `git` command in a child process — so a test that creates a
+ * temp repo via `mkdtempSync` and runs `git init` / `git commit` against it
+ * can silently operate on the parent repository instead. Strip them before
+ * spawning a validation step subprocess.
+ *
+ * Does not mutate the input. Drops entries whose value is undefined so the
+ * return type is `Record<string, string>` (suitable for use as spawn `env`).
+ *
+ * @public
+ */
+export function stripGitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (key.startsWith('GIT_')) continue;
+    if (value === undefined) continue;
+    result[key] = value;
+  }
+  return result;
+}
+
+/**
  * Spawn a command with consistent, secure defaults for validation
  *
  * **Key Features:**
@@ -187,6 +212,12 @@ export function spawnCommand(
       ? ['ignore', 'inherit', 'inherit']
       : ['ignore', 'pipe', 'pipe'];
 
+  // SAFETY: Scrub GIT_* vars from process.env before passing to child.
+  // When vv runs as a git pre-commit hook, git sets GIT_DIR / GIT_INDEX_FILE /
+  // GIT_WORK_TREE on the hook process. Those vars override `cwd` in any child
+  // that runs git, which would silently corrupt the parent repository if a step
+  // shells out to git against a temp directory. See docs/git-hook-safety.md.
+  const scrubbedParentEnv = stripGitEnv(process.env);
   // SECURITY: shell: true required for shell operators (&&, ||, |) and cross-platform compatibility.
   // Commands from user config files only (same trust as npm scripts). See SECURITY.md for full threat model.
   // NOSONAR - Intentional shell execution of user-defined commands
@@ -197,7 +228,7 @@ export function spawnCommand(
     timeout: options?.timeout,
     // detached: true only on Unix - Windows doesn't pipe stdio correctly when detached
     detached: options?.detached ?? (process.platform !== 'win32'),
-    env: options?.env ? { ...process.env, ...options.env } : process.env,
+    env: options?.env ? { ...scrubbedParentEnv, ...options.env } : scrubbedParentEnv,
     cwd: options?.cwd,
   });
 }

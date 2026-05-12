@@ -7,7 +7,30 @@ import { join } from 'node:path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { stopProcessGroup, getGitRoot, resolveGitRelativePath, spawnCommand } from '../src/process-utils.js';
+import { stopProcessGroup, getGitRoot, resolveGitRelativePath, spawnCommand, stripGitEnv } from '../src/process-utils.js';
+
+interface CapturedChildEnv {
+  GIT_DIR?: string;
+  GIT_INDEX_FILE?: string;
+  PATH?: boolean;
+  CUSTOM?: string;
+}
+
+function captureChildEnv(envOverride?: Record<string, string>): Promise<CapturedChildEnv> {
+  return new Promise<CapturedChildEnv>((resolve, reject) => {
+    const proc = spawnCommand(
+      `node -e "console.log(JSON.stringify({GIT_DIR: process.env.GIT_DIR, GIT_INDEX_FILE: process.env.GIT_INDEX_FILE, PATH: !!process.env.PATH, CUSTOM: process.env.CUSTOM}))"`,
+      envOverride ? { env: envOverride } : undefined
+    );
+    let stdout = '';
+    proc.stdout?.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+    proc.on('close', (code) => {
+      if (code === 0) resolve(JSON.parse(stdout) as CapturedChildEnv);
+      else reject(new Error(`child exited ${code ?? 'null'}: ${stdout}`));
+    });
+    proc.on('error', reject);
+  });
+}
 
 describe('process-utils', () => {
   describe('stopProcessGroup', () => {
@@ -310,6 +333,93 @@ describe('process-utils', () => {
       expect(proc.stdout).toBeNull();
       expect(proc.stderr).toBeNull();
       proc.kill();
+    });
+  });
+
+  describe('spawnCommand GIT_* scrubbing', () => {
+    const originalGitDir = process.env.GIT_DIR;
+    const originalGitIndex = process.env.GIT_INDEX_FILE;
+
+    beforeEach(() => {
+      process.env.GIT_DIR = '/fake/parent/.git';
+      process.env.GIT_INDEX_FILE = '/fake/parent/index';
+    });
+
+    afterEach(() => {
+      if (originalGitDir === undefined) delete process.env.GIT_DIR;
+      else process.env.GIT_DIR = originalGitDir;
+      if (originalGitIndex === undefined) delete process.env.GIT_INDEX_FILE;
+      else process.env.GIT_INDEX_FILE = originalGitIndex;
+    });
+
+    it('strips GIT_DIR and GIT_INDEX_FILE from the child env', async () => {
+      const env = await captureChildEnv();
+      expect(env.GIT_DIR).toBeUndefined();
+      expect(env.GIT_INDEX_FILE).toBeUndefined();
+    });
+
+    it('preserves non-GIT_ vars (PATH) in the child env', async () => {
+      const env = await captureChildEnv();
+      expect(env.PATH).toBe(true);
+    });
+
+    it('lets caller-provided env override the scrub (re-add path)', async () => {
+      const env = await captureChildEnv({ GIT_DIR: '/restored', CUSTOM: 'yes' });
+      expect(env.GIT_DIR).toBe('/restored');
+      expect(env.CUSTOM).toBe('yes');
+    });
+
+    it('does not mutate process.env in the parent', async () => {
+      await captureChildEnv();
+      expect(process.env.GIT_DIR).toBe('/fake/parent/.git');
+      expect(process.env.GIT_INDEX_FILE).toBe('/fake/parent/index');
+    });
+  });
+
+  describe('stripGitEnv', () => {
+    it('removes every key with the GIT_ prefix', () => {
+      const result = stripGitEnv({
+        GIT_DIR: '/some/.git',
+        GIT_INDEX_FILE: '/some/idx',
+        GIT_WORK_TREE: '/some/wt',
+        GIT_AUTHOR_NAME: 'Test',
+        PATH: '/usr/bin',
+        HOME: '/home/test',
+      });
+      expect(result.GIT_DIR).toBeUndefined();
+      expect(result.GIT_INDEX_FILE).toBeUndefined();
+      expect(result.GIT_WORK_TREE).toBeUndefined();
+      expect(result.GIT_AUTHOR_NAME).toBeUndefined();
+      expect(result.PATH).toBe('/usr/bin');
+      expect(result.HOME).toBe('/home/test');
+    });
+
+    it('returns an empty object when given an empty env', () => {
+      expect(stripGitEnv({})).toEqual({});
+    });
+
+    it('preserves vars whose name contains GIT but does not start with GIT_', () => {
+      const result = stripGitEnv({
+        MYGIT_TOKEN: 'abc',
+        LEGIT_VAR: 'xyz',
+        GITHUB_TOKEN: 'gh',
+      });
+      expect(result.MYGIT_TOKEN).toBe('abc');
+      expect(result.LEGIT_VAR).toBe('xyz');
+      expect(result.GITHUB_TOKEN).toBe('gh');
+    });
+
+    it('does not mutate the input env', () => {
+      const input = { GIT_DIR: '/x', PATH: '/usr/bin' };
+      stripGitEnv(input);
+      expect(input.GIT_DIR).toBe('/x');
+    });
+
+    it('drops keys whose value is undefined (NodeJS.ProcessEnv-compatible)', () => {
+      const input: NodeJS.ProcessEnv = { GIT_DIR: '/x', PATH: '/usr/bin', UNDEF: undefined };
+      const result = stripGitEnv(input);
+      expect(result.PATH).toBe('/usr/bin');
+      expect('UNDEF' in result).toBe(false);
     });
   });
 });

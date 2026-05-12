@@ -88,7 +88,7 @@ function makeRunId(treeHash: string): string {
  *
  * @internal
  */
-function buildStepEnv(args: {
+export function buildStepEnv(args: {
   step: ValidationStep;
   baseEnv: Record<string, string>;
   parent: ReturnType<typeof readParentContext>;
@@ -110,6 +110,7 @@ function buildStepEnv(args: {
   return {
     env: {
       ...args.baseEnv,
+      ...(args.step.env ?? {}),
       [PARENT_CONTEXT_ENV]: serializeForEnv(childCtx),
     },
     outputDir,

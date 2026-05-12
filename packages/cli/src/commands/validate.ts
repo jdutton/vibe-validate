@@ -12,7 +12,7 @@ import { withValidationLock } from '../utils/validation-lock-wrapper.js';
 export function validateCommand(program: Command): void {
   program
     .command('validate')
-    .description('Run validation with git tree hash caching')
+    .description('Run validation with git tree hash caching. Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/git-hook-safety.md).')
     .option('-f, --force', 'Force validation even if already passed')
     .option('-v, --verbose', 'Show detailed progress and output')
     .option('-y, --yaml', 'Output validation result as YAML to stdout')
