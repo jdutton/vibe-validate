@@ -7,11 +7,20 @@
  *   VV_ROOT_DIR=~/Workspaces/vibe-validate vv validate
  */
 import { existsSync } from 'fs';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
+// Resolve the published @vibe-validate/cli wrapper via Node's module algorithm
+// so this works under every install layout: npm flat, pnpm strict isolation,
+// yarn berry PnP, bun. (Issue #161 — hardcoded relative paths only work under
+// flat-hoisted node_modules.)
+function resolvePublishedCliWrapper() {
+  const cliPkgJson = require.resolve('@vibe-validate/cli/package.json');
+  return join(dirname(cliPkgJson), 'dist/bin/vibe-validate.js');
+}
 
 // VV_ROOT_DIR override: use dev build's CLI wrapper instead of published one
 // This lets developers test their local build against any project
@@ -24,10 +33,10 @@ if (vvRootDir) {
     cliWrapperPath = devWrapper;
   } else {
     console.error(`[vv] VV_ROOT_DIR set but ${devWrapper} not found — ignoring`);
-    cliWrapperPath = join(__dirname, '../node_modules/@vibe-validate/cli/dist/bin/vibe-validate.js');
+    cliWrapperPath = resolvePublishedCliWrapper();
   }
 } else {
-  cliWrapperPath = join(__dirname, '../node_modules/@vibe-validate/cli/dist/bin/vibe-validate.js');
+  cliWrapperPath = resolvePublishedCliWrapper();
 }
 
 // Import and execute the CLI wrapper
