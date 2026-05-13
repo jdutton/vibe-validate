@@ -11,20 +11,44 @@ import { fileURLToPath } from 'node:url';
 
 import { Command } from 'commander';
 
-import { cleanupCommand } from './commands/cleanup.js';
-import { configCommand } from './commands/config.js';
-import { createExtractorCommand } from './commands/create-extractor.js';
-import { doctorCommand } from './commands/doctor.js';
-import { generateWorkflowCommand } from './commands/generate-workflow.js';
-import { historyCommand } from './commands/history.js';
-import { initCommand } from './commands/init.js';
-import { preCommitCommand } from './commands/pre-commit.js';
-import { runCommand } from './commands/run.js';
-import { snapshotCommand } from './commands/snapshot.js';
-import { stateCommand } from './commands/state.js';
-import { syncCheckCommand } from './commands/sync-check.js';
-import { validateCommand } from './commands/validate.js';
-import { registerWatchPRCommand } from './commands/watch-pr.js';
+/**
+ * Command module registry for lazy loading.
+ *
+ * Maps command names to their module path and exported registration function.
+ * Only the invoked command's module is imported at runtime, avoiding the cost
+ * of loading all 14 command modules and their transitive dependencies on every
+ * invocation.  This reduces startup time from ~10-30 s (depending on platform
+ * and filesystem) to a fraction of that for single-command runs.
+ */
+const COMMAND_MODULES: Record<string, { path: string; fn: string }> = {
+  validate:           { path: './commands/validate.js',           fn: 'validateCommand' },
+  init:               { path: './commands/init.js',               fn: 'initCommand' },
+  'pre-commit':       { path: './commands/pre-commit.js',         fn: 'preCommitCommand' },
+  state:              { path: './commands/state.js',               fn: 'stateCommand' },
+  snapshot:           { path: './commands/snapshot.js',             fn: 'snapshotCommand' },
+  'sync-check':       { path: './commands/sync-check.js',         fn: 'syncCheckCommand' },
+  cleanup:            { path: './commands/cleanup.js',             fn: 'cleanupCommand' },
+  config:             { path: './commands/config.js',               fn: 'configCommand' },
+  'generate-workflow': { path: './commands/generate-workflow.js',  fn: 'generateWorkflowCommand' },
+  doctor:             { path: './commands/doctor.js',               fn: 'doctorCommand' },
+  'watch-pr':         { path: './commands/watch-pr.js',            fn: 'registerWatchPRCommand' },
+  history:            { path: './commands/history.js',              fn: 'historyCommand' },
+  run:                { path: './commands/run.js',                  fn: 'runCommand' },
+  'create-extractor': { path: './commands/create-extractor.js',    fn: 'createExtractorCommand' },
+};
+
+async function loadAndRegisterCommand(name: string, program: Command): Promise<void> {
+  const entry = COMMAND_MODULES[name];
+  if (!entry) return;
+  const mod = await import(entry.path);
+  (mod[entry.fn] as (p: Command) => void)(program);
+}
+
+async function loadAndRegisterAllCommands(program: Command): Promise<void> {
+  for (const name of Object.keys(COMMAND_MODULES)) {
+    await loadAndRegisterCommand(name, program);
+  }
+}
 
 // Constants for error guidance (extracted to avoid duplication warnings)
 const RETRY_PRE_COMMIT = 'vibe-validate pre-commit  # Retry';
@@ -58,21 +82,20 @@ program
   .version(version)
   .option('--verbose', 'Show detailed output (use with --help for comprehensive help)');
 
-// Register commands
-validateCommand(program);            // vibe-validate validate
-initCommand(program);                 // vibe-validate init
-preCommitCommand(program);            // vibe-validate pre-commit
-stateCommand(program);                // vibe-validate state
-snapshotCommand(program);             // vibe-validate snapshot
-syncCheckCommand(program);            // vibe-validate sync-check
-cleanupCommand(program);              // vibe-validate cleanup
-configCommand(program);               // vibe-validate config
-generateWorkflowCommand(program);     // vibe-validate generate-workflow
-doctorCommand(program);               // vibe-validate doctor
-registerWatchPRCommand(program);      // vibe-validate watch-pr
-historyCommand(program);              // vibe-validate history
-runCommand(program);                  // vibe-validate run
-createExtractorCommand(program);      // vibe-validate create-extractor
+// Lazy-load command modules: only import the command being invoked.
+// --version needs no commands; --help needs all; otherwise load just the target.
+const cliArgs = process.argv.slice(2);
+const isVersionOnly = cliArgs.includes('--version') || cliArgs.includes('-V');
+const needsAllCommands = cliArgs.includes('--help') || cliArgs.includes('-h');
+const targetCommand = cliArgs.find(a => !a.startsWith('-') && a in COMMAND_MODULES);
+
+if (isVersionOnly) {
+  // Commander handles --version before command dispatch — no modules needed
+} else if (needsAllCommands || !targetCommand) {
+  await loadAndRegisterAllCommands(program);
+} else {
+  await loadAndRegisterCommand(targetCommand, program);
+}
 
 /**
  * Registry mapping command names to their verbose help loaders
