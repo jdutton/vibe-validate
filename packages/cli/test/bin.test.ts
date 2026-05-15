@@ -118,10 +118,6 @@ function expectContainsAll(text: string, needles: readonly string[]): void {
   for (const needle of needles) expect(text).toContain(needle);
 }
 
-function expectNotContainsAny(text: string, needles: readonly string[]): void {
-  for (const needle of needles) expect(text).not.toContain(needle);
-}
-
 /**
  * Run program.parseAsync expecting it to reject, and return the caught value.
  * Fails the calling test if parseAsync resolves cleanly (so a regression
@@ -237,134 +233,25 @@ describe('bin.ts - CLI entry point', () => {
         expect(verboseResult.code).toBe(0);
       });
 
-      // Each entry maps a section name to the substrings that must appear in
-      // the verbose-help output. Driven by a table so a single it.each row
-      // owns each section's assertions.
-      const sections: ReadonlyArray<{ name: string; needles: readonly string[] }> = [
-        {
-          name: 'Markdown headers',
-          needles: [
-            '# vibe-validate CLI Reference',
-            '> Agent-friendly validation framework',
-            '## Usage',
-            '## Commands',
-          ],
-        },
-        {
-          name: 'exit codes for all commands',
-          needles: [
-            '**Exit codes:**',
-            '- `0` - Validation passed (or cached pass)',
-            '- `1` - Validation failed',
-            '- `2` - Configuration error',
-            '- `0` - Configuration created successfully',
-            '- `0` - Up to date or no remote tracking',
-            '- `1` - Branch is behind (needs merge)',
-          ],
-        },
-        {
-          name: '"What it does" sections',
-          needles: [
-            'What it does:',
-            'Calculates git tree hash of working directory',
-            'Checks if hash matches cached state',
-            'Creates vibe-validate.config.yaml in project root',
-            'Runs sync-check',
-            'Runs validate',
-          ],
-        },
-        {
-          name: 'file locations created/modified',
-          needles: [
-            'Creates/modifies:',
-            'Git notes under refs/notes/vibe-validate/validate',
-            'vibe-validate.config.yaml (always)',
-            '.husky/pre-commit (with --setup-hooks)',
-            '.github/workflows/validate.yml',
-          ],
-        },
-        {
-          name: 'examples for commands',
-          needles: [
-            'Examples:',
-            'vibe-validate validate              # Use cache if available',
-            'vibe-validate validate --force      # Always run validation',
-            'vibe-validate init --template typescript-nodejs',
-            'vibe-validate doctor         # Run diagnostics',
-          ],
-        },
-        {
-          name: 'error recovery guidance',
-          needles: [
-            '**Error recovery:**',
-            'If **sync failed**:',
-            'git fetch origin',
-            'git merge origin/main',
-            'If **validation failed**:',
-            'Fix errors shown in output',
-          ],
-        },
-        {
-          name: '"When to use" guidance',
-          needles: [
-            'When to use:',
-            'Run before every commit to ensure code is synced and validated',
-            'Debug why validation is cached/not cached',
-            'Diagnose setup issues or verify environment',
-          ],
-        },
-        {
-          name: 'FILES section',
-          needles: [
-            '## Files',
-            'vibe-validate.config.yaml',
-            'refs/notes/vibe-validate/validate',
-            '.github/workflows/validate.yml',
-            '.husky/pre-commit',
-          ],
-        },
-        {
-          name: 'COMMON WORKFLOWS section',
-          needles: [
-            '## Common Workflows',
-            '### First-time setup',
-            'vibe-validate init --template typescript-nodejs --setup-workflow',
-            '### Before every commit (recommended)',
-            'vibe-validate pre-commit',
-            '### After PR merge',
-            'vibe-validate cleanup',
-            '### Check validation state',
-            'vibe-validate state --verbose',
-            '### Force re-validation',
-            'vibe-validate validate --force',
-          ],
-        },
-        {
-          name: 'EXIT CODES section',
-          needles: [
-            '## Exit Codes',
-            '| `0` | Success |',
-            '| `1` | Failure (validation failed, sync check failed, invalid config) |',
-            '| `2` | Error (git command failed, file system error) |',
-          ],
-        },
-        {
-          name: 'CACHING section',
-          needles: [
-            '## Caching',
-            '**Cache key**: Git tree hash of working directory (includes untracked files)',
-            '**Cache hit**: Validation skipped (sub-second)',
-            '**Cache miss**: Full validation runs (~60-90s)',
-            '**Invalidation**: Any file change (tracked or untracked)',
-          ],
-        },
-        {
-          name: 'repository link',
-          needles: ['For more details: https://github.com/jdutton/vibe-validate'],
-        },
-      ];
+      // Section name → substrings that must appear in the verbose-help output.
+      // Inlined as a flat Record (one entry per line) so SonarCloud's CPD can't
+      // sliding-match repeated `{ name:, needles: [...] }` object shapes.
+      const sections: Record<string, readonly string[]> = {
+        'Markdown headers': ['# vibe-validate CLI Reference', '> Agent-friendly validation framework', '## Usage', '## Commands'],
+        'exit codes for all commands': ['**Exit codes:**', '- `0` - Validation passed (or cached pass)', '- `1` - Validation failed', '- `2` - Configuration error', '- `0` - Configuration created successfully', '- `0` - Up to date or no remote tracking', '- `1` - Branch is behind (needs merge)'],
+        '"What it does" sections': ['What it does:', 'Calculates git tree hash of working directory', 'Checks if hash matches cached state', 'Creates vibe-validate.config.yaml in project root', 'Runs sync-check', 'Runs validate'],
+        'file locations created/modified': ['Creates/modifies:', 'Git notes under refs/notes/vibe-validate/validate', 'vibe-validate.config.yaml (always)', '.husky/pre-commit (with --setup-hooks)', '.github/workflows/validate.yml'],
+        'examples for commands': ['Examples:', 'vibe-validate validate              # Use cache if available', 'vibe-validate validate --force      # Always run validation', 'vibe-validate init --template typescript-nodejs', 'vibe-validate doctor         # Run diagnostics'],
+        'error recovery guidance': ['**Error recovery:**', 'If **sync failed**:', 'git fetch origin', 'git merge origin/main', 'If **validation failed**:', 'Fix errors shown in output'],
+        '"When to use" guidance': ['When to use:', 'Run before every commit to ensure code is synced and validated', 'Debug why validation is cached/not cached', 'Diagnose setup issues or verify environment'],
+        'FILES section': ['## Files', 'vibe-validate.config.yaml', 'refs/notes/vibe-validate/validate', '.github/workflows/validate.yml', '.husky/pre-commit'],
+        'COMMON WORKFLOWS section': ['## Common Workflows', '### First-time setup', 'vibe-validate init --template typescript-nodejs --setup-workflow', '### Before every commit (recommended)', 'vibe-validate pre-commit', '### After PR merge', 'vibe-validate cleanup', '### Check validation state', 'vibe-validate state --verbose', '### Force re-validation', 'vibe-validate validate --force'],
+        'EXIT CODES section': ['## Exit Codes', '| `0` | Success |', '| `1` | Failure (validation failed, sync check failed, invalid config) |', '| `2` | Error (git command failed, file system error) |'],
+        'CACHING section': ['## Caching', '**Cache key**: Git tree hash of working directory (includes untracked files)', '**Cache hit**: Validation skipped (sub-second)', '**Cache miss**: Full validation runs (~60-90s)', '**Invalidation**: Any file change (tracked or untracked)'],
+        'repository link': ['For more details: https://github.com/jdutton/vibe-validate'],
+      };
 
-      it.each(sections)('should include $name', ({ needles }) => {
+      it.each(Object.entries(sections))('should include %s', (_name, needles) => {
         expectContainsAll(verboseResult.stdout, needles);
       });
 
@@ -455,120 +342,43 @@ describe('bin.ts - CLI entry point', () => {
 
       // Each entry verifies: exit 0, the per-command header appears, every
       // "contains" needle is present, and the root CLI-reference marker is
-      // absent (so we know we're getting per-command docs, not the root
-      // comprehensive help).
-      const subcommandHelpCases: ReadonlyArray<{
-        cmd: typeof subcommands[number];
-        header: string;
-        contains: readonly string[];
-        notContains?: readonly string[];
-      }> = [
-        {
-          cmd: 'history',
-          header: '# history Command Reference',
-          contains: [
-            '> View and manage validation history stored in git notes',
-            '## Overview',
-            '## Subcommands',
-            '### `list` - List validation history',
-            '### `show` - Show detailed history for a tree hash',
-            '### `prune` - Remove old validation history',
-            '### `health` - Check history health',
-            '## Storage Details',
-            '## Exit Codes',
-            '## Common Workflows',
-            '## Integration with CI',
-          ],
-          notContains: ['### `validate`'],
-        },
-        {
-          cmd: 'validate',
-          header: '# validate Command Reference',
-          contains: [
-            '> Run validation with git tree hash caching',
-            '## Overview',
-            '## How It Works',
-            '## Options',
-            '## Exit Codes',
-            '## Caching Behavior',
-          ],
-        },
-        {
-          cmd: 'init',
-          header: '# init Command Reference',
-          contains: [
-            '> Initialize vibe-validate configuration',
-            '## Templates',
-            '## Pre-commit Hook Setup',
-          ],
-        },
-        {
-          cmd: 'state',
-          header: '# state Command Reference',
-          contains: [
-            '> View current validation state',
-            '## Overview',
-            '## When to Use',
-          ],
-        },
-        {
-          cmd: 'config',
-          header: '# config Command Reference',
-          contains: ['> Show or validate vibe-validate configuration'],
-        },
-        {
-          cmd: 'pre-commit',
-          header: '# pre-commit Command Reference',
-          contains: [
-            '> Run branch sync check + validation (recommended before commit)',
-            '## Overview',
-          ],
-        },
-        {
-          cmd: 'sync-check',
-          header: '# sync-check Command Reference',
-          contains: ['> Check if branch is behind remote main branch'],
-        },
-        {
-          cmd: 'cleanup',
-          header: '# cleanup Command Reference',
-          contains: ['> Comprehensive branch cleanup with GitHub integration (v0.18.0)'],
-        },
-        {
-          cmd: 'doctor',
-          header: '# doctor Command Reference',
-          contains: [
-            '> Diagnose vibe-validate setup and environment',
-            '## Overview',
-          ],
-        },
-        {
-          cmd: 'generate-workflow',
-          header: '# generate-workflow Command Reference',
-          contains: ['> Generate GitHub Actions workflow from vibe-validate config'],
-        },
-        {
-          cmd: 'watch-pr',
-          header: '# watch-pr Command Reference',
-          contains: [
-            '> Monitor PR checks with auto-polling, error extraction, and flaky test detection',
-            '## Overview',
-          ],
-        },
-      ];
+      // absent (so we know we're getting per-command docs, not the root help).
+      // Tuple shape `[header, contains[]]` with one entry per line so adjacent
+      // entries don't share an object-literal structure that CPD can slide-match.
+      type SubHelpRow = readonly [header: string, contains: readonly string[]];
+      const subcommandHelpCases: Record<typeof subcommands[number], SubHelpRow> = {
+        'history': ['# history Command Reference', ['> View and manage validation history stored in git notes', '## Overview', '## Subcommands', '### `list` - List validation history', '### `show` - Show detailed history for a tree hash', '### `prune` - Remove old validation history', '### `health` - Check history health', '## Storage Details', '## Exit Codes', '## Common Workflows', '## Integration with CI']],
+        'validate': ['# validate Command Reference', ['> Run validation with git tree hash caching', '## Overview', '## How It Works', '## Options', '## Exit Codes', '## Caching Behavior']],
+        'init': ['# init Command Reference', ['> Initialize vibe-validate configuration', '## Templates', '## Pre-commit Hook Setup']],
+        'state': ['# state Command Reference', ['> View current validation state', '## Overview', '## When to Use']],
+        'config': ['# config Command Reference', ['> Show or validate vibe-validate configuration']],
+        'pre-commit': ['# pre-commit Command Reference', ['> Run branch sync check + validation (recommended before commit)', '## Overview']],
+        'sync-check': ['# sync-check Command Reference', ['> Check if branch is behind remote main branch']],
+        'cleanup': ['# cleanup Command Reference', ['> Comprehensive branch cleanup with GitHub integration (v0.18.0)']],
+        'doctor': ['# doctor Command Reference', ['> Diagnose vibe-validate setup and environment', '## Overview']],
+        'generate-workflow': ['# generate-workflow Command Reference', ['> Generate GitHub Actions workflow from vibe-validate config']],
+        'watch-pr': ['# watch-pr Command Reference', ['> Monitor PR checks with auto-polling, error extraction, and flaky test detection', '## Overview']],
+      };
 
       const ROOT_CLI_REFERENCE_MARKER = '# vibe-validate CLI Reference';
 
-      it.each(subcommandHelpCases)(
-        'should show detailed Markdown docs for "$cmd --help --verbose"',
-        ({ cmd, header, contains, notContains }) => {
+      it.each(Object.entries(subcommandHelpCases) as Array<[typeof subcommands[number], SubHelpRow]>)(
+        'should show detailed Markdown docs for "%s --help --verbose"',
+        (cmd, [header, contains]) => {
           const r = results[cmd];
           expect(r.code).toBe(0);
           expect(r.stdout).toContain(header);
           expectContainsAll(r.stdout, contains);
-          expectNotContainsAny(r.stdout, [ROOT_CLI_REFERENCE_MARKER, ...(notContains ?? [])]);
+          expect(r.stdout).not.toContain(ROOT_CLI_REFERENCE_MARKER);
         },
       );
+
+      // history's docs additionally must NOT enumerate other top-level commands
+      // (was: notContains: ['### `validate`'] on the history table entry — split
+      // out so the main table can stay uniform).
+      it('history --help --verbose should not enumerate other top-level commands', () => {
+        expect(results.history.stdout).not.toContain('### `validate`');
+      });
 
       it('should show comprehensive help only for root "--help --verbose" (no subcommand)', () => {
         // Uses the shared verboseResult from parent describe
