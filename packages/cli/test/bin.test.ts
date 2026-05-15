@@ -12,6 +12,8 @@ import {
   COMMAND_MODULES,
   loadAndRegisterAllCommands,
   loadAndRegisterCommand,
+  selectCommandsToLoad,
+  type LoadPlan,
 } from '../src/command-registry.js';
 import { configCommand } from '../src/commands/config.js';
 import { stateCommand } from '../src/commands/state.js';
@@ -235,8 +237,9 @@ describe('bin.ts - CLI entry point', () => {
         expect(verboseResult.code).toBe(0);
       });
 
-      // Driven by a table so the assertion shape isn't duplicated across many it() blocks
-      // (SonarCloud/jscpd flagged the previous one-it-per-section layout as duplication).
+      // Each entry maps a section name to the substrings that must appear in
+      // the verbose-help output. Driven by a table so a single it.each row
+      // owns each section's assertions.
       const sections: ReadonlyArray<{ name: string; needles: readonly string[] }> = [
         {
           name: 'Markdown headers',
@@ -450,12 +453,10 @@ describe('bin.ts - CLI entry point', () => {
         results = await fetchSubcommandHelpResults(binPath, sharedDir, subcommands);
       });
 
-      // Per-subcommand verbose-help assertions, driven by a table so the same
-      // shape isn't repeated across 11 it() blocks (SonarCloud/jscpd flagged
-      // this previously). Every subcommand verifies: exit 0, the header is
-      // present, all expected "contains" needles appear, and the root CLI
-      // reference markers do NOT appear (so we know we're getting per-command
-      // docs, not the comprehensive root help).
+      // Each entry verifies: exit 0, the per-command header appears, every
+      // "contains" needle is present, and the root CLI-reference marker is
+      // absent (so we know we're getting per-command docs, not the root
+      // comprehensive help).
       const subcommandHelpCases: ReadonlyArray<{
         cmd: typeof subcommands[number];
         header: string;
@@ -582,12 +583,11 @@ describe('bin.ts - CLI entry point', () => {
   // ────────────────────────────────────────────────────────
   // Lazy-load registry guard — in-process, 0 spawns
   // ────────────────────────────────────────────────────────
-  // Replaces the compile-time export-existence check that static imports
-  // used to provide. Without this, a rename like stateCommand → stateCmd
-  // (or a typo in the registry value) would pass tsc but crash at runtime
-  // the first time someone runs `vv state`. By driving these tests through
-  // loadAndRegisterCommand / loadAndRegisterAllCommands, we also cover
-  // src/command-registry.ts (so the extraction doesn't worsen patch coverage).
+  // Because command modules are imported dynamically by string key, a rename
+  // like stateCommand → stateCmd (or a typo in the registry value) compiles
+  // cleanly but crashes at runtime the first time someone runs `vv state`.
+  // These tests run the real loader against every entry so any registry/export
+  // drift fails here instead.
   describe('COMMAND_MODULES registry', () => {
     const entries = Object.entries(COMMAND_MODULES);
     let env: CommanderTestEnv;
@@ -608,18 +608,79 @@ describe('bin.ts - CLI entry point', () => {
       },
     );
 
-    it('loadAndRegisterAllCommands should register every entry', async () => {
+    // Some register functions legitimately add more than one top-level
+    // command (e.g. cleanupCommand registers both `cleanup` and `cleanup-temp`).
+    // Enumerate them here so the count assertion stays strict and any future
+    // unintended extra registration fails this test loudly.
+    const EXTRAS_FROM_GROUPED_REGISTRATIONS = ['cleanup-temp'];
+
+    it('loadAndRegisterAllCommands should register every entry plus known extras', async () => {
       await loadAndRegisterAllCommands(env.program);
       for (const [name] of entries) {
         expect(env.program.commands.find((c) => c.name() === name)).toBeDefined();
       }
-      expect(env.program.commands.length).toBeGreaterThanOrEqual(entries.length);
+      for (const extra of EXTRAS_FROM_GROUPED_REGISTRATIONS) {
+        expect(env.program.commands.find((c) => c.name() === extra)).toBeDefined();
+      }
+      expect(env.program.commands.length).toBe(
+        entries.length + EXTRAS_FROM_GROUPED_REGISTRATIONS.length,
+      );
     });
 
     it('loadAndRegisterCommand should throw a helpful error for an unknown name', async () => {
       await expect(
         loadAndRegisterCommand('definitely-not-a-real-command', env.program),
       ).rejects.toThrow(/not a registered command/);
+    });
+
+    it('loadAndRegisterCommand should throw TypeError when entry.fn names a non-function export', async () => {
+      // Inject a registry entry whose module exists but whose named export does
+      // not, so the loader has to take the `typeof fn !== 'function'` branch.
+      // Cleaned up in a finally block to avoid leaking state to other tests.
+      const bogusKey = '__test_bad_fn_export__';
+      COMMAND_MODULES[bogusKey] = {
+        path: './commands/validate.js',
+        fn: 'thisExportDoesNotExist',
+      };
+      try {
+        await expect(
+          loadAndRegisterCommand(bogusKey, env.program),
+        ).rejects.toThrow(TypeError);
+      } finally {
+        delete COMMAND_MODULES[bogusKey];
+      }
+    });
+  });
+
+  // ────────────────────────────────────────────────────────
+  // Dispatch decision — pure function, in-process, 0 spawns
+  // ────────────────────────────────────────────────────────
+  // selectCommandsToLoad is what bin.ts uses to decide whether to load no
+  // command modules (just printing --version), all of them (--help or unknown
+  // input), or one (a recognized command name). Testing the function directly
+  // covers code that otherwise only runs when bin.js is the entry point and
+  // therefore wouldn't show up in istanbul coverage.
+  describe('selectCommandsToLoad', () => {
+    const cases: ReadonlyArray<{ name: string; args: readonly string[]; expected: LoadPlan }> = [
+      { name: '--version alone',          args: ['--version'],            expected: { kind: 'none' } },
+      { name: '-V alone',                 args: ['-V'],                   expected: { kind: 'none' } },
+      { name: '--version with extra arg', args: ['--version', 'foo'],     expected: { kind: 'none' } },
+      { name: '--help alone',             args: ['--help'],               expected: { kind: 'all' } },
+      { name: '-h alone',                 args: ['-h'],                   expected: { kind: 'all' } },
+      { name: 'known command alone',      args: ['validate'],             expected: { kind: 'one', name: 'validate' } },
+      { name: 'known command + flag',     args: ['validate', '--force'],  expected: { kind: 'one', name: 'validate' } },
+      { name: 'multi-word command name',  args: ['watch-pr', '123'],      expected: { kind: 'one', name: 'watch-pr' } },
+      { name: 'unknown command alone',    args: ['unknown-thing'],        expected: { kind: 'all' } },
+      { name: 'no command, only flags',   args: ['--verbose'],            expected: { kind: 'all' } },
+      { name: 'empty args',               args: [],                       expected: { kind: 'all' } },
+      // Precedence
+      { name: 'version beats help',       args: ['--version', '--help'],  expected: { kind: 'none' } },
+      { name: 'help beats command',       args: ['validate', '--help'],   expected: { kind: 'all' } },
+      { name: 'version beats command',    args: ['validate', '--version'],expected: { kind: 'none' } },
+    ];
+
+    it.each(cases)('$name → $expected.kind', ({ args, expected }) => {
+      expect(selectCommandsToLoad(args)).toEqual(expected);
     });
   });
 
@@ -664,14 +725,11 @@ describe('bin.ts - CLI entry point', () => {
   // ────────────────────────────────────────────────────────
   // Error handling — in-process, 0 spawns
   // ────────────────────────────────────────────────────────
-  // Each test asserts THREE orthogonal things on the failure:
+  // Each case asserts three orthogonal things on the failure:
   //   1. The thrown value is an Error instance (catches non-Error throws
   //      like strings, plain objects, or `throw 42`).
-  //   2. It carries exitCode === 1 (the contract for "user mistake → exit 1").
+  //   2. It carries exitCode === 1 (the user-mistake → exit 1 contract).
   //   3. Stderr received the human-readable message users rely on.
-  // Each assertion fails loudly and independently — the previous
-  // `if ('exitCode' in err) expect(...).toBe(1)` shape could silently pass
-  // when Commander threw any other error type.
   describe('error handling', () => {
     let env: CommanderTestEnvWithCapture;
 

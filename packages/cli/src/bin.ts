@@ -12,9 +12,9 @@ import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 
 import {
-  COMMAND_MODULES,
   loadAndRegisterAllCommands,
   loadAndRegisterCommand,
+  selectCommandsToLoad,
 } from './command-registry.js';
 
 // Constants for error guidance (extracted to avoid duplication warnings)
@@ -49,19 +49,12 @@ program
   .version(version)
   .option('--verbose', 'Show detailed output (use with --help for comprehensive help)');
 
-// Lazy-load command modules: only import the command being invoked.
-// --version needs no commands; --help needs all; otherwise load just the target.
-const cliArgs = process.argv.slice(2);
-const isVersionOnly = cliArgs.includes('--version') || cliArgs.includes('-V');
-const needsAllCommands = cliArgs.includes('--help') || cliArgs.includes('-h');
-const targetCommand = cliArgs.find(a => !a.startsWith('-') && a in COMMAND_MODULES);
-
-if (isVersionOnly) {
-  // Commander handles --version before command dispatch — no modules needed
-} else if (needsAllCommands || !targetCommand) {
-  await loadAndRegisterAllCommands(program);
-} else {
-  await loadAndRegisterCommand(targetCommand, program);
+// Lazy-load command modules according to the dispatch plan.
+const plan = selectCommandsToLoad(process.argv.slice(2));
+switch (plan.kind) {
+  case 'none': break;
+  case 'all': await loadAndRegisterAllCommands(program); break;
+  case 'one': await loadAndRegisterCommand(plan.name, program); break;
 }
 
 /**

@@ -63,3 +63,32 @@ export async function loadAndRegisterAllCommands(program: Command): Promise<void
     await loadAndRegisterCommand(name, program);
   }
 }
+
+/**
+ * Decision for which command modules to load given the raw CLI args.
+ *
+ *   - `none`: `--version` / `-V` only — Commander prints version without
+ *     consulting any registered command, so loading modules would be waste.
+ *   - `all`:  `--help` / `-h` was passed, or the user didn't name a registered
+ *     command (Commander needs every command registered to render help or
+ *     emit "unknown command").
+ *   - `one`:  a single registered command name appears in args — load only
+ *     its module to keep startup fast.
+ *
+ * Precedence: version > help > known-command > all (fallback).
+ */
+export type LoadPlan =
+  | { kind: 'none' }
+  | { kind: 'all' }
+  | { kind: 'one'; name: string };
+
+export function selectCommandsToLoad(cliArgs: readonly string[]): LoadPlan {
+  if (cliArgs.includes('--version') || cliArgs.includes('-V')) {
+    return { kind: 'none' };
+  }
+  if (cliArgs.includes('--help') || cliArgs.includes('-h')) {
+    return { kind: 'all' };
+  }
+  const target = cliArgs.find((a) => !a.startsWith('-') && a in COMMAND_MODULES);
+  return target ? { kind: 'one', name: target } : { kind: 'all' };
+}
