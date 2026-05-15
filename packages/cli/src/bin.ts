@@ -11,44 +11,11 @@ import { fileURLToPath } from 'node:url';
 
 import { Command } from 'commander';
 
-/**
- * Command module registry for lazy loading.
- *
- * Maps command names to their module path and exported registration function.
- * Only the invoked command's module is imported at runtime, avoiding the cost
- * of loading all 14 command modules and their transitive dependencies on every
- * invocation.  This reduces startup time from ~10-30 s (depending on platform
- * and filesystem) to a fraction of that for single-command runs.
- */
-const COMMAND_MODULES: Record<string, { path: string; fn: string }> = {
-  validate:           { path: './commands/validate.js',           fn: 'validateCommand' },
-  init:               { path: './commands/init.js',               fn: 'initCommand' },
-  'pre-commit':       { path: './commands/pre-commit.js',         fn: 'preCommitCommand' },
-  state:              { path: './commands/state.js',               fn: 'stateCommand' },
-  snapshot:           { path: './commands/snapshot.js',             fn: 'snapshotCommand' },
-  'sync-check':       { path: './commands/sync-check.js',         fn: 'syncCheckCommand' },
-  cleanup:            { path: './commands/cleanup.js',             fn: 'cleanupCommand' },
-  config:             { path: './commands/config.js',               fn: 'configCommand' },
-  'generate-workflow': { path: './commands/generate-workflow.js',  fn: 'generateWorkflowCommand' },
-  doctor:             { path: './commands/doctor.js',               fn: 'doctorCommand' },
-  'watch-pr':         { path: './commands/watch-pr.js',            fn: 'registerWatchPRCommand' },
-  history:            { path: './commands/history.js',              fn: 'historyCommand' },
-  run:                { path: './commands/run.js',                  fn: 'runCommand' },
-  'create-extractor': { path: './commands/create-extractor.js',    fn: 'createExtractorCommand' },
-};
-
-async function loadAndRegisterCommand(name: string, program: Command): Promise<void> {
-  const entry = COMMAND_MODULES[name];
-  if (!entry) return;
-  const mod = await import(entry.path);
-  (mod[entry.fn] as (p: Command) => void)(program);
-}
-
-async function loadAndRegisterAllCommands(program: Command): Promise<void> {
-  for (const name of Object.keys(COMMAND_MODULES)) {
-    await loadAndRegisterCommand(name, program);
-  }
-}
+import {
+  COMMAND_MODULES,
+  loadAndRegisterAllCommands,
+  loadAndRegisterCommand,
+} from './command-registry.js';
 
 // Constants for error guidance (extracted to avoid duplication warnings)
 const RETRY_PRE_COMMIT = 'vibe-validate pre-commit  # Retry';

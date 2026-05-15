@@ -4,9 +4,15 @@ import { join } from 'node:path';
 
 import { executeGitCommand } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
+import type { Command } from 'commander';
 import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } from 'vitest';
 
 // In-process command imports (no spawn needed for registration/option tests)
+import {
+  COMMAND_MODULES,
+  loadAndRegisterAllCommands,
+  loadAndRegisterCommand,
+} from '../src/command-registry.js';
 import { configCommand } from '../src/commands/config.js';
 import { stateCommand } from '../src/commands/state.js';
 import { syncCheckCommand } from '../src/commands/sync-check.js';
@@ -14,9 +20,11 @@ import { validateCommand } from '../src/commands/validate.js';
 
 import {
   setupCommanderTest,
+  setupCommanderTestWithCapture,
   getCommandByName,
   hasOption,
   type CommanderTestEnv,
+  type CommanderTestEnvWithCapture,
 } from './helpers/commander-test-setup.js';
 import { initializeGitRepo } from './helpers/integration-setup-helpers.js';
 import { executeCommandWithSeparateStreams } from './helpers/test-command-runner.js';
@@ -102,6 +110,39 @@ async function fetchSubcommandHelpResults(
     ] as const),
   );
   return Object.fromEntries(entries);
+}
+
+function expectContainsAll(text: string, needles: readonly string[]): void {
+  for (const needle of needles) expect(text).toContain(needle);
+}
+
+function expectNotContainsAny(text: string, needles: readonly string[]): void {
+  for (const needle of needles) expect(text).not.toContain(needle);
+}
+
+/**
+ * Run program.parseAsync expecting it to reject, and return the caught value.
+ * Fails the calling test if parseAsync resolves cleanly (so a regression
+ * where Commander stops throwing on bad input can't pass silently).
+ */
+async function captureParseError(
+  program: Command,
+  args: readonly string[],
+): Promise<unknown> {
+  let caught: unknown;
+  let resolved = false;
+  try {
+    await program.parseAsync([...args], { from: 'user' });
+    resolved = true;
+  } catch (err) {
+    caught = err;
+  }
+  if (resolved) {
+    throw new Error(
+      `parseAsync(${JSON.stringify(args)}) should have rejected but resolved cleanly`,
+    );
+  }
+  return caught;
 }
 
 describe('bin.ts - CLI entry point', () => {
@@ -190,104 +231,138 @@ describe('bin.ts - CLI entry point', () => {
     });
 
     describe('comprehensive help (--help --verbose)', () => {
-      it('should display comprehensive help with --help --verbose (Markdown format)', () => {
+      it('should display comprehensive help with --help --verbose (Markdown format) and exit 0', () => {
         expect(verboseResult.code).toBe(0);
-        expect(verboseResult.stdout).toContain('# vibe-validate CLI Reference');
-        expect(verboseResult.stdout).toContain('> Agent-friendly validation framework');
-        expect(verboseResult.stdout).toContain('## Usage');
-        expect(verboseResult.stdout).toContain('## Commands');
       });
 
-      it('should include exit codes for all commands (Markdown format)', () => {
-        expect(verboseResult.stdout).toContain('**Exit codes:**');
-        expect(verboseResult.stdout).toContain('- `0` - Validation passed (or cached pass)');
-        expect(verboseResult.stdout).toContain('- `1` - Validation failed');
-        expect(verboseResult.stdout).toContain('- `2` - Configuration error');
-        expect(verboseResult.stdout).toContain('- `0` - Configuration created successfully');
-        expect(verboseResult.stdout).toContain('- `0` - Up to date or no remote tracking');
-        expect(verboseResult.stdout).toContain('- `1` - Branch is behind (needs merge)');
-      });
+      // Driven by a table so the assertion shape isn't duplicated across many it() blocks
+      // (SonarCloud/jscpd flagged the previous one-it-per-section layout as duplication).
+      const sections: ReadonlyArray<{ name: string; needles: readonly string[] }> = [
+        {
+          name: 'Markdown headers',
+          needles: [
+            '# vibe-validate CLI Reference',
+            '> Agent-friendly validation framework',
+            '## Usage',
+            '## Commands',
+          ],
+        },
+        {
+          name: 'exit codes for all commands',
+          needles: [
+            '**Exit codes:**',
+            '- `0` - Validation passed (or cached pass)',
+            '- `1` - Validation failed',
+            '- `2` - Configuration error',
+            '- `0` - Configuration created successfully',
+            '- `0` - Up to date or no remote tracking',
+            '- `1` - Branch is behind (needs merge)',
+          ],
+        },
+        {
+          name: '"What it does" sections',
+          needles: [
+            'What it does:',
+            'Calculates git tree hash of working directory',
+            'Checks if hash matches cached state',
+            'Creates vibe-validate.config.yaml in project root',
+            'Runs sync-check',
+            'Runs validate',
+          ],
+        },
+        {
+          name: 'file locations created/modified',
+          needles: [
+            'Creates/modifies:',
+            'Git notes under refs/notes/vibe-validate/validate',
+            'vibe-validate.config.yaml (always)',
+            '.husky/pre-commit (with --setup-hooks)',
+            '.github/workflows/validate.yml',
+          ],
+        },
+        {
+          name: 'examples for commands',
+          needles: [
+            'Examples:',
+            'vibe-validate validate              # Use cache if available',
+            'vibe-validate validate --force      # Always run validation',
+            'vibe-validate init --template typescript-nodejs',
+            'vibe-validate doctor         # Run diagnostics',
+          ],
+        },
+        {
+          name: 'error recovery guidance',
+          needles: [
+            '**Error recovery:**',
+            'If **sync failed**:',
+            'git fetch origin',
+            'git merge origin/main',
+            'If **validation failed**:',
+            'Fix errors shown in output',
+          ],
+        },
+        {
+          name: '"When to use" guidance',
+          needles: [
+            'When to use:',
+            'Run before every commit to ensure code is synced and validated',
+            'Debug why validation is cached/not cached',
+            'Diagnose setup issues or verify environment',
+          ],
+        },
+        {
+          name: 'FILES section',
+          needles: [
+            '## Files',
+            'vibe-validate.config.yaml',
+            'refs/notes/vibe-validate/validate',
+            '.github/workflows/validate.yml',
+            '.husky/pre-commit',
+          ],
+        },
+        {
+          name: 'COMMON WORKFLOWS section',
+          needles: [
+            '## Common Workflows',
+            '### First-time setup',
+            'vibe-validate init --template typescript-nodejs --setup-workflow',
+            '### Before every commit (recommended)',
+            'vibe-validate pre-commit',
+            '### After PR merge',
+            'vibe-validate cleanup',
+            '### Check validation state',
+            'vibe-validate state --verbose',
+            '### Force re-validation',
+            'vibe-validate validate --force',
+          ],
+        },
+        {
+          name: 'EXIT CODES section',
+          needles: [
+            '## Exit Codes',
+            '| `0` | Success |',
+            '| `1` | Failure (validation failed, sync check failed, invalid config) |',
+            '| `2` | Error (git command failed, file system error) |',
+          ],
+        },
+        {
+          name: 'CACHING section',
+          needles: [
+            '## Caching',
+            '**Cache key**: Git tree hash of working directory (includes untracked files)',
+            '**Cache hit**: Validation skipped (sub-second)',
+            '**Cache miss**: Full validation runs (~60-90s)',
+            '**Invalidation**: Any file change (tracked or untracked)',
+          ],
+        },
+        {
+          name: 'repository link',
+          needles: ['For more details: https://github.com/jdutton/vibe-validate'],
+        },
+      ];
 
-      it('should include "What it does" sections for commands', () => {
-        expect(verboseResult.stdout).toContain('What it does:');
-        expect(verboseResult.stdout).toContain('Calculates git tree hash of working directory');
-        expect(verboseResult.stdout).toContain('Checks if hash matches cached state');
-        expect(verboseResult.stdout).toContain('Creates vibe-validate.config.yaml in project root');
-        expect(verboseResult.stdout).toContain('Runs sync-check');
-        expect(verboseResult.stdout).toContain('Runs validate');
-      });
-
-      it('should include file locations created/modified', () => {
-        expect(verboseResult.stdout).toContain('Creates/modifies:');
-        expect(verboseResult.stdout).toContain('Git notes under refs/notes/vibe-validate/validate');
-        expect(verboseResult.stdout).toContain('vibe-validate.config.yaml (always)');
-        expect(verboseResult.stdout).toContain('.husky/pre-commit (with --setup-hooks)');
-        expect(verboseResult.stdout).toContain('.github/workflows/validate.yml');
-      });
-
-      it('should include examples for commands', () => {
-        expect(verboseResult.stdout).toContain('Examples:');
-        expect(verboseResult.stdout).toContain('vibe-validate validate              # Use cache if available');
-        expect(verboseResult.stdout).toContain('vibe-validate validate --force      # Always run validation');
-        expect(verboseResult.stdout).toContain('vibe-validate init --template typescript-nodejs');
-        expect(verboseResult.stdout).toContain('vibe-validate doctor         # Run diagnostics');
-      });
-
-      it('should include error recovery guidance (Markdown format)', () => {
-        expect(verboseResult.stdout).toContain('**Error recovery:**');
-        expect(verboseResult.stdout).toContain('If **sync failed**:');
-        expect(verboseResult.stdout).toContain('git fetch origin');
-        expect(verboseResult.stdout).toContain('git merge origin/main');
-        expect(verboseResult.stdout).toContain('If **validation failed**:');
-        expect(verboseResult.stdout).toContain('Fix errors shown in output');
-      });
-
-      it('should include "When to use" guidance', () => {
-        expect(verboseResult.stdout).toContain('When to use:');
-        expect(verboseResult.stdout).toContain('Run before every commit to ensure code is synced and validated');
-        expect(verboseResult.stdout).toContain('Debug why validation is cached/not cached');
-        expect(verboseResult.stdout).toContain('Diagnose setup issues or verify environment');
-      });
-
-      it('should include FILES section (Markdown format)', () => {
-        expect(verboseResult.stdout).toContain('## Files');
-        expect(verboseResult.stdout).toContain('vibe-validate.config.yaml');
-        expect(verboseResult.stdout).toContain('refs/notes/vibe-validate/validate');
-        expect(verboseResult.stdout).toContain('.github/workflows/validate.yml');
-        expect(verboseResult.stdout).toContain('.husky/pre-commit');
-      });
-
-      it('should include COMMON WORKFLOWS section (Markdown format)', () => {
-        expect(verboseResult.stdout).toContain('## Common Workflows');
-        expect(verboseResult.stdout).toContain('### First-time setup');
-        expect(verboseResult.stdout).toContain('vibe-validate init --template typescript-nodejs --setup-workflow');
-        expect(verboseResult.stdout).toContain('### Before every commit (recommended)');
-        expect(verboseResult.stdout).toContain('vibe-validate pre-commit');
-        expect(verboseResult.stdout).toContain('### After PR merge');
-        expect(verboseResult.stdout).toContain('vibe-validate cleanup');
-        expect(verboseResult.stdout).toContain('### Check validation state');
-        expect(verboseResult.stdout).toContain('vibe-validate state --verbose');
-        expect(verboseResult.stdout).toContain('### Force re-validation');
-        expect(verboseResult.stdout).toContain('vibe-validate validate --force');
-      });
-
-      it('should include EXIT CODES section (Markdown format)', () => {
-        expect(verboseResult.stdout).toContain('## Exit Codes');
-        expect(verboseResult.stdout).toContain('| `0` | Success |');
-        expect(verboseResult.stdout).toContain('| `1` | Failure (validation failed, sync check failed, invalid config) |');
-        expect(verboseResult.stdout).toContain('| `2` | Error (git command failed, file system error) |');
-      });
-
-      it('should include CACHING section (Markdown format)', () => {
-        expect(verboseResult.stdout).toContain('## Caching');
-        expect(verboseResult.stdout).toContain('**Cache key**: Git tree hash of working directory (includes untracked files)');
-        expect(verboseResult.stdout).toContain('**Cache hit**: Validation skipped (sub-second)');
-        expect(verboseResult.stdout).toContain('**Cache miss**: Full validation runs (~60-90s)');
-        expect(verboseResult.stdout).toContain('**Invalidation**: Any file change (tracked or untracked)');
-      });
-
-      it('should include repository link', () => {
-        expect(verboseResult.stdout).toContain('For more details: https://github.com/jdutton/vibe-validate');
+      it.each(sections)('should include $name', ({ needles }) => {
+        expectContainsAll(verboseResult.stdout, needles);
       });
 
       it('should be significantly longer than regular help', async () => {
@@ -375,105 +450,124 @@ describe('bin.ts - CLI entry point', () => {
         results = await fetchSubcommandHelpResults(binPath, sharedDir, subcommands);
       });
 
-      it('should show detailed Markdown documentation for "history --help --verbose"', () => {
-        expect(results.history.code).toBe(0);
-        expect(results.history.stdout).toContain('# history Command Reference');
-        expect(results.history.stdout).toContain('> View and manage validation history stored in git notes');
-        expect(results.history.stdout).toContain('## Overview');
-        expect(results.history.stdout).toContain('## Subcommands');
-        expect(results.history.stdout).toContain('### `list` - List validation history');
-        expect(results.history.stdout).toContain('### `show` - Show detailed history for a tree hash');
-        expect(results.history.stdout).toContain('### `prune` - Remove old validation history');
-        expect(results.history.stdout).toContain('### `health` - Check history health');
-        expect(results.history.stdout).toContain('## Storage Details');
-        expect(results.history.stdout).toContain('## Exit Codes');
-        expect(results.history.stdout).toContain('## Common Workflows');
-        expect(results.history.stdout).toContain('## Integration with CI');
-        expect(results.history.stdout).not.toContain('# vibe-validate CLI Reference');
-        expect(results.history.stdout).not.toContain('### `validate`');
-      });
+      // Per-subcommand verbose-help assertions, driven by a table so the same
+      // shape isn't repeated across 11 it() blocks (SonarCloud/jscpd flagged
+      // this previously). Every subcommand verifies: exit 0, the header is
+      // present, all expected "contains" needles appear, and the root CLI
+      // reference markers do NOT appear (so we know we're getting per-command
+      // docs, not the comprehensive root help).
+      const subcommandHelpCases: ReadonlyArray<{
+        cmd: typeof subcommands[number];
+        header: string;
+        contains: readonly string[];
+        notContains?: readonly string[];
+      }> = [
+        {
+          cmd: 'history',
+          header: '# history Command Reference',
+          contains: [
+            '> View and manage validation history stored in git notes',
+            '## Overview',
+            '## Subcommands',
+            '### `list` - List validation history',
+            '### `show` - Show detailed history for a tree hash',
+            '### `prune` - Remove old validation history',
+            '### `health` - Check history health',
+            '## Storage Details',
+            '## Exit Codes',
+            '## Common Workflows',
+            '## Integration with CI',
+          ],
+          notContains: ['### `validate`'],
+        },
+        {
+          cmd: 'validate',
+          header: '# validate Command Reference',
+          contains: [
+            '> Run validation with git tree hash caching',
+            '## Overview',
+            '## How It Works',
+            '## Options',
+            '## Exit Codes',
+            '## Caching Behavior',
+          ],
+        },
+        {
+          cmd: 'init',
+          header: '# init Command Reference',
+          contains: [
+            '> Initialize vibe-validate configuration',
+            '## Templates',
+            '## Pre-commit Hook Setup',
+          ],
+        },
+        {
+          cmd: 'state',
+          header: '# state Command Reference',
+          contains: [
+            '> View current validation state',
+            '## Overview',
+            '## When to Use',
+          ],
+        },
+        {
+          cmd: 'config',
+          header: '# config Command Reference',
+          contains: ['> Show or validate vibe-validate configuration'],
+        },
+        {
+          cmd: 'pre-commit',
+          header: '# pre-commit Command Reference',
+          contains: [
+            '> Run branch sync check + validation (recommended before commit)',
+            '## Overview',
+          ],
+        },
+        {
+          cmd: 'sync-check',
+          header: '# sync-check Command Reference',
+          contains: ['> Check if branch is behind remote main branch'],
+        },
+        {
+          cmd: 'cleanup',
+          header: '# cleanup Command Reference',
+          contains: ['> Comprehensive branch cleanup with GitHub integration (v0.18.0)'],
+        },
+        {
+          cmd: 'doctor',
+          header: '# doctor Command Reference',
+          contains: [
+            '> Diagnose vibe-validate setup and environment',
+            '## Overview',
+          ],
+        },
+        {
+          cmd: 'generate-workflow',
+          header: '# generate-workflow Command Reference',
+          contains: ['> Generate GitHub Actions workflow from vibe-validate config'],
+        },
+        {
+          cmd: 'watch-pr',
+          header: '# watch-pr Command Reference',
+          contains: [
+            '> Monitor PR checks with auto-polling, error extraction, and flaky test detection',
+            '## Overview',
+          ],
+        },
+      ];
 
-      it('should show detailed Markdown documentation for "validate --help --verbose"', () => {
-        expect(results.validate.code).toBe(0);
-        expect(results.validate.stdout).toContain('# validate Command Reference');
-        expect(results.validate.stdout).toContain('> Run validation with git tree hash caching');
-        expect(results.validate.stdout).toContain('## Overview');
-        expect(results.validate.stdout).toContain('## How It Works');
-        expect(results.validate.stdout).toContain('## Options');
-        expect(results.validate.stdout).toContain('## Exit Codes');
-        expect(results.validate.stdout).toContain('## Caching Behavior');
-        expect(results.validate.stdout).not.toContain('# vibe-validate CLI Reference');
-      });
+      const ROOT_CLI_REFERENCE_MARKER = '# vibe-validate CLI Reference';
 
-      it('should show detailed Markdown documentation for "init --help --verbose"', () => {
-        expect(results.init.code).toBe(0);
-        expect(results.init.stdout).toContain('# init Command Reference');
-        expect(results.init.stdout).toContain('> Initialize vibe-validate configuration');
-        expect(results.init.stdout).toContain('## Templates');
-        expect(results.init.stdout).toContain('## Pre-commit Hook Setup');
-        expect(results.init.stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "state --help --verbose"', () => {
-        expect(results.state.code).toBe(0);
-        expect(results.state.stdout).toContain('# state Command Reference');
-        expect(results.state.stdout).toContain('> View current validation state');
-        expect(results.state.stdout).toContain('## Overview');
-        expect(results.state.stdout).toContain('## When to Use');
-        expect(results.state.stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "config --help --verbose"', () => {
-        expect(results.config.code).toBe(0);
-        expect(results.config.stdout).toContain('# config Command Reference');
-        expect(results.config.stdout).toContain('> Show or validate vibe-validate configuration');
-        expect(results.config.stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "pre-commit --help --verbose"', () => {
-        expect(results['pre-commit'].code).toBe(0);
-        expect(results['pre-commit'].stdout).toContain('# pre-commit Command Reference');
-        expect(results['pre-commit'].stdout).toContain('> Run branch sync check + validation (recommended before commit)');
-        expect(results['pre-commit'].stdout).toContain('## Overview');
-        expect(results['pre-commit'].stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "sync-check --help --verbose"', () => {
-        expect(results['sync-check'].code).toBe(0);
-        expect(results['sync-check'].stdout).toContain('# sync-check Command Reference');
-        expect(results['sync-check'].stdout).toContain('> Check if branch is behind remote main branch');
-        expect(results['sync-check'].stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "cleanup --help --verbose"', () => {
-        expect(results.cleanup.code).toBe(0);
-        expect(results.cleanup.stdout).toContain('# cleanup Command Reference');
-        expect(results.cleanup.stdout).toContain('> Comprehensive branch cleanup with GitHub integration (v0.18.0)');
-        expect(results.cleanup.stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "doctor --help --verbose"', () => {
-        expect(results.doctor.code).toBe(0);
-        expect(results.doctor.stdout).toContain('# doctor Command Reference');
-        expect(results.doctor.stdout).toContain('> Diagnose vibe-validate setup and environment');
-        expect(results.doctor.stdout).toContain('## Overview');
-        expect(results.doctor.stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "generate-workflow --help --verbose"', () => {
-        expect(results['generate-workflow'].code).toBe(0);
-        expect(results['generate-workflow'].stdout).toContain('# generate-workflow Command Reference');
-        expect(results['generate-workflow'].stdout).toContain('> Generate GitHub Actions workflow from vibe-validate config');
-        expect(results['generate-workflow'].stdout).not.toContain('# vibe-validate CLI Reference');
-      });
-
-      it('should show detailed Markdown documentation for "watch-pr --help --verbose"', () => {
-        expect(results['watch-pr'].code).toBe(0);
-        expect(results['watch-pr'].stdout).toContain('# watch-pr Command Reference');
-        expect(results['watch-pr'].stdout).toContain('> Monitor PR checks with auto-polling, error extraction, and flaky test detection');
-        expect(results['watch-pr'].stdout).toContain('## Overview');
-        expect(results['watch-pr'].stdout).not.toContain('# vibe-validate CLI Reference');
-      });
+      it.each(subcommandHelpCases)(
+        'should show detailed Markdown docs for "$cmd --help --verbose"',
+        ({ cmd, header, contains, notContains }) => {
+          const r = results[cmd];
+          expect(r.code).toBe(0);
+          expect(r.stdout).toContain(header);
+          expectContainsAll(r.stdout, contains);
+          expectNotContainsAny(r.stdout, [ROOT_CLI_REFERENCE_MARKER, ...(notContains ?? [])]);
+        },
+      );
 
       it('should show comprehensive help only for root "--help --verbose" (no subcommand)', () => {
         // Uses the shared verboseResult from parent describe
@@ -482,6 +576,50 @@ describe('bin.ts - CLI entry point', () => {
         expect(verboseResult.stdout).toContain('## Common Workflows');
         expect(verboseResult.stdout).toContain('## Exit Codes');
       });
+    });
+  });
+
+  // ────────────────────────────────────────────────────────
+  // Lazy-load registry guard — in-process, 0 spawns
+  // ────────────────────────────────────────────────────────
+  // Replaces the compile-time export-existence check that static imports
+  // used to provide. Without this, a rename like stateCommand → stateCmd
+  // (or a typo in the registry value) would pass tsc but crash at runtime
+  // the first time someone runs `vv state`. By driving these tests through
+  // loadAndRegisterCommand / loadAndRegisterAllCommands, we also cover
+  // src/command-registry.ts (so the extraction doesn't worsen patch coverage).
+  describe('COMMAND_MODULES registry', () => {
+    const entries = Object.entries(COMMAND_MODULES);
+    let env: CommanderTestEnv;
+
+    beforeEach(() => { env = setupCommanderTest(); });
+    afterEach(() => { env.cleanup(); });
+
+    it('should not be empty', () => {
+      expect(entries.length).toBeGreaterThan(0);
+    });
+
+    it.each(entries)(
+      'loadAndRegisterCommand("%s") should register a command on the program',
+      async (name, _entry) => {
+        await loadAndRegisterCommand(name, env.program);
+        const registered = env.program.commands.find((c) => c.name() === name);
+        expect(registered).toBeDefined();
+      },
+    );
+
+    it('loadAndRegisterAllCommands should register every entry', async () => {
+      await loadAndRegisterAllCommands(env.program);
+      for (const [name] of entries) {
+        expect(env.program.commands.find((c) => c.name() === name)).toBeDefined();
+      }
+      expect(env.program.commands.length).toBeGreaterThanOrEqual(entries.length);
+    });
+
+    it('loadAndRegisterCommand should throw a helpful error for an unknown name', async () => {
+      await expect(
+        loadAndRegisterCommand('definitely-not-a-real-command', env.program),
+      ).rejects.toThrow(/not a registered command/);
     });
   });
 
@@ -526,34 +664,36 @@ describe('bin.ts - CLI entry point', () => {
   // ────────────────────────────────────────────────────────
   // Error handling — in-process, 0 spawns
   // ────────────────────────────────────────────────────────
+  // Each test asserts THREE orthogonal things on the failure:
+  //   1. The thrown value is an Error instance (catches non-Error throws
+  //      like strings, plain objects, or `throw 42`).
+  //   2. It carries exitCode === 1 (the contract for "user mistake → exit 1").
+  //   3. Stderr received the human-readable message users rely on.
+  // Each assertion fails loudly and independently — the previous
+  // `if ('exitCode' in err) expect(...).toBe(1)` shape could silently pass
+  // when Commander threw any other error type.
   describe('error handling', () => {
-    let env: CommanderTestEnv;
+    let env: CommanderTestEnvWithCapture;
 
-    beforeEach(() => { env = setupCommanderTest(); });
+    beforeEach(() => { env = setupCommanderTestWithCapture(); });
     afterEach(() => { env.cleanup(); });
 
-    it('should exit with error for unknown command', async () => {
+    it('unknown command: throws Error with exitCode 1 and writes "unknown command" to stderr', async () => {
       validateCommand(env.program);
-      try {
-        await env.program.parseAsync(['unknown-command'], { from: 'user' });
-        expect.fail('Should have thrown for unknown command');
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect((err as { exitCode: number }).exitCode).toBe(1);
-        }
-      }
+      const caught = await captureParseError(env.program, ['unknown-command']);
+
+      expect(caught).toBeInstanceOf(Error);
+      expect(caught).toMatchObject({ exitCode: 1 });
+      expect(env.capturedStderr.join('')).toContain('unknown command');
     });
 
-    it('should exit with error for invalid option', async () => {
+    it('unknown option: throws Error with exitCode 1 and writes "unknown option" to stderr', async () => {
       validateCommand(env.program);
-      try {
-        await env.program.parseAsync(['validate', '--invalid-option'], { from: 'user' });
-        expect.fail('Should have thrown for invalid option');
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'exitCode' in err) {
-          expect((err as { exitCode: number }).exitCode).toBe(1);
-        }
-      }
+      const caught = await captureParseError(env.program, ['validate', '--invalid-option']);
+
+      expect(caught).toBeInstanceOf(Error);
+      expect(caught).toMatchObject({ exitCode: 1 });
+      expect(env.capturedStderr.join('')).toContain('unknown option');
     });
   });
 
