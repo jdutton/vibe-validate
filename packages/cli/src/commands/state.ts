@@ -8,7 +8,6 @@ import type { ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
 import {
   readHistoryNote,
-  hasHistoryForTree,
   getAllRunCacheForTree,
   getMostRecentRun,
   type RunCacheNote,
@@ -43,6 +42,13 @@ export function stateCommand(program: Command): void {
 async function executeStateCommand(options: { verbose?: boolean; runs?: boolean; all?: boolean }): Promise<void> {
   const treeHashResult = await getGitTreeHash();
   const treeHash = treeHashResult.hash;
+
+  // Fast path: not in a git repository — skip all history lookups
+  if (treeHash === 'unknown') {
+    displayNoDataMessage(treeHash, options.verbose);
+    process.exit(0);
+  }
+
   const hasConfig = findConfigPath() !== null;
   const showRunsOnly = options.runs === true;
   const showAll = options.all === true;
@@ -76,9 +82,8 @@ async function executeStateCommand(options: { verbose?: boolean; runs?: boolean;
  * Load validation history for current tree
  */
 async function loadValidationHistory(treeHash: string): Promise<ValidationResult | null> {
-  const hasHistory = await hasHistoryForTree(treeHash);
-  if (!hasHistory) return null;
-
+  // Call readHistoryNote directly (hasHistoryForTree just calls readHistoryNote internally,
+  // so going through it would double the git subprocess cost)
   const historyNote = await readHistoryNote(treeHash);
   if (!historyNote || historyNote.runs.length === 0) return null;
 

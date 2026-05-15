@@ -153,6 +153,32 @@ describe('state command', () => {
     });
   });
 
+  describe('not in a git repository (tree hash "unknown" fast path)', () => {
+    // Covers the early-return added in state.ts: when getGitTreeHash returns
+    // {hash: 'unknown'} (i.e., not in a git repo) the command must skip all
+    // history lookups and emit the no-data message immediately.
+    //
+    // Note: we deliberately don't assert on the exit code here. In production
+    // the fast path calls process.exit(0), but in tests setupCommanderTest()
+    // mocks process.exit to throw, which is then caught by state.ts's action
+    // wrapper try/catch and routed through handleStateError → process.exit(1).
+    // The exit code observed by the test is therefore 1 even though the
+    // real-world behavior is exit 0. The unique behavior we care about — the
+    // fast path SKIPPED history lookups — is asserted directly via mock-call
+    // checks, which is a stronger signal than the (mock-perturbed) exit code.
+    it('should short-circuit before any history lookups', async () => {
+      vi.mocked(getGitTreeHash).mockResolvedValue({ hash: 'unknown' as TreeHash });
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state']);
+
+      expectConsoleLogContains('exists: false', 'treeHash: unknown');
+      expect(vi.mocked(hasHistoryForTree)).not.toHaveBeenCalled();
+      expect(vi.mocked(readHistoryNote)).not.toHaveBeenCalled();
+      expect(vi.mocked(getAllRunCacheForTree)).not.toHaveBeenCalled();
+    });
+  });
+
   describe('no validation state', () => {
     it('should handle missing state with tree hash (minimal output)', async () => {
       vi.mocked(hasHistoryForTree).mockResolvedValue(false);

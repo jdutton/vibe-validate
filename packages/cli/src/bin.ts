@@ -11,20 +11,11 @@ import { fileURLToPath } from 'node:url';
 
 import { Command } from 'commander';
 
-import { cleanupCommand } from './commands/cleanup.js';
-import { configCommand } from './commands/config.js';
-import { createExtractorCommand } from './commands/create-extractor.js';
-import { doctorCommand } from './commands/doctor.js';
-import { generateWorkflowCommand } from './commands/generate-workflow.js';
-import { historyCommand } from './commands/history.js';
-import { initCommand } from './commands/init.js';
-import { preCommitCommand } from './commands/pre-commit.js';
-import { runCommand } from './commands/run.js';
-import { snapshotCommand } from './commands/snapshot.js';
-import { stateCommand } from './commands/state.js';
-import { syncCheckCommand } from './commands/sync-check.js';
-import { validateCommand } from './commands/validate.js';
-import { registerWatchPRCommand } from './commands/watch-pr.js';
+import {
+  loadAndRegisterAllCommands,
+  loadAndRegisterCommand,
+  selectCommandsToLoad,
+} from './command-registry.js';
 
 // Constants for error guidance (extracted to avoid duplication warnings)
 const RETRY_PRE_COMMIT = 'vibe-validate pre-commit  # Retry';
@@ -58,21 +49,13 @@ program
   .version(version)
   .option('--verbose', 'Show detailed output (use with --help for comprehensive help)');
 
-// Register commands
-validateCommand(program);            // vibe-validate validate
-initCommand(program);                 // vibe-validate init
-preCommitCommand(program);            // vibe-validate pre-commit
-stateCommand(program);                // vibe-validate state
-snapshotCommand(program);             // vibe-validate snapshot
-syncCheckCommand(program);            // vibe-validate sync-check
-cleanupCommand(program);              // vibe-validate cleanup
-configCommand(program);               // vibe-validate config
-generateWorkflowCommand(program);     // vibe-validate generate-workflow
-doctorCommand(program);               // vibe-validate doctor
-registerWatchPRCommand(program);      // vibe-validate watch-pr
-historyCommand(program);              // vibe-validate history
-runCommand(program);                  // vibe-validate run
-createExtractorCommand(program);      // vibe-validate create-extractor
+// Lazy-load command modules according to the dispatch plan.
+const plan = selectCommandsToLoad(process.argv.slice(2));
+switch (plan.kind) {
+  case 'none': break;
+  case 'all': await loadAndRegisterAllCommands(program); break;
+  case 'one': await loadAndRegisterCommand(plan.name, program); break;
+}
 
 /**
  * Registry mapping command names to their verbose help loaders
