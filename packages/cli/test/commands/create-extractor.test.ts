@@ -9,13 +9,25 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import yaml from 'yaml';
 
 import { showCreateExtractorVerboseHelp } from '../../src/commands/create-extractor.js';
 import {
   executeVibeValidateCombined as execCLI,
+  executeVibeValidateCommand,
   setupTestDir,
   cleanupTestDir
 } from '../helpers/cli-execution-helpers.js';
+
+/**
+ * Parse the YAML document emitted between `---` separators by `outputYamlResult()`.
+ * Mirrors the pattern used in run.integration.test.ts.
+ */
+function parseYamlFrontMatter(stdout: string): any {
+  const yamlMatch = /^---\n([\s\S]*?)\n---/.exec(stdout);
+  expect(yamlMatch).toBeTruthy();
+  return yaml.parse(yamlMatch![1]);
+}
 
 /**
  * Helper: Create an extractor plugin with standard options
@@ -349,6 +361,163 @@ describe('create-extractor command', () => {
       expect(packageJson.scripts).toHaveProperty('test');
       expect(packageJson.keywords).toContain('vibe-validate');
       expect(packageJson.keywords).toContain('version-test');
+    });
+  });
+
+  describe('--dry-run', () => {
+    it('should emit YAML preview and create no files', async () => {
+      const result = await executeVibeValidateCommand([
+        'create-extractor',
+        'dry-tool',
+        '--description', 'Dry-run preview test',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'DRY:',
+        '--dry-run',
+      ], { cwd: testDir });
+
+      expect(result.exitCode).toBe(0);
+
+      // No files should exist on disk.
+      const pluginDir = join(testDir, 'vibe-validate-plugin-dry-tool');
+      expect(existsSync(pluginDir)).toBe(false);
+      expect(readdirSync(testDir)).toHaveLength(0);
+
+      // YAML should match the documented schema.
+      const parsed = parseYamlFrontMatter(result.stdout);
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('dry-tool');
+      expect(parsed.pluginDir).toBe('./vibe-validate-plugin-dry-tool');
+      expect(parsed.wouldCreateDir).toEqual([
+        './vibe-validate-plugin-dry-tool',
+        './vibe-validate-plugin-dry-tool/samples',
+      ]);
+
+      // 7 files in canonical order: index.ts, index.test.ts, README.md,
+      // CLAUDE.md, package.json, tsconfig.json, samples/sample-error.txt
+      expect(parsed.wouldCreate).toHaveLength(7);
+      const paths = parsed.wouldCreate.map((entry: { path: string }) => entry.path);
+      expect(paths).toEqual([
+        './vibe-validate-plugin-dry-tool/index.ts',
+        './vibe-validate-plugin-dry-tool/index.test.ts',
+        './vibe-validate-plugin-dry-tool/README.md',
+        './vibe-validate-plugin-dry-tool/CLAUDE.md',
+        './vibe-validate-plugin-dry-tool/package.json',
+        './vibe-validate-plugin-dry-tool/tsconfig.json',
+        './vibe-validate-plugin-dry-tool/samples/sample-error.txt',
+      ]);
+      for (const entry of parsed.wouldCreate) {
+        expect(typeof entry.bytes).toBe('number');
+        expect(entry.bytes).toBeGreaterThan(0);
+      }
+
+      // Summary should be consistent with the file list.
+      expect(parsed.summary.filesCount).toBe(7);
+      expect(parsed.summary.dirsCount).toBe(2);
+      const expectedTotal = parsed.wouldCreate.reduce(
+        (sum: number, entry: { bytes: number }) => sum + entry.bytes,
+        0,
+      );
+      expect(parsed.summary.totalBytes).toBe(expectedTotal);
+
+      // "Next steps" guidance must NOT appear in dry-run (misleading otherwise).
+      expect(result.stdout + result.stderr).not.toContain('Next steps:');
+    });
+
+    it('should emit YAML and skip overwrite warning when --dry-run + --force on existing dir', async () => {
+      // First, actually create the plugin so the directory exists.
+      await createPlugin(testDir, 'existing-tool', {
+        description: 'Existing plugin',
+        detectionPattern: 'ERR:',
+      });
+
+      const pluginDir = join(testDir, 'vibe-validate-plugin-existing-tool');
+      expect(existsSync(pluginDir)).toBe(true);
+      const indexBefore = readFileSync(join(pluginDir, 'index.ts'), 'utf-8');
+
+      // Re-run with --dry-run --force: should preview, not overwrite.
+      const result = await executeVibeValidateCommand([
+        'create-extractor',
+        'existing-tool',
+        '--description', 'Different description',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'NEW:',
+        '--dry-run',
+        '--force',
+      ], { cwd: testDir });
+
+      expect(result.exitCode).toBe(0);
+      // The overwrite warning should NOT have fired (dry-run bypasses it).
+      expect(result.stderr).not.toContain('already exists');
+
+      // YAML preview emitted.
+      const parsed = parseYamlFrontMatter(result.stdout);
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('existing-tool');
+
+      // The actual file on disk must be untouched.
+      const indexAfter = readFileSync(join(pluginDir, 'index.ts'), 'utf-8');
+      expect(indexAfter).toBe(indexBefore);
+    });
+  });
+
+  describe('non-TTY guard', () => {
+    it('should exit 1 with helpful error when stdin is not a TTY and required args missing', async () => {
+      // executeVibeValidateCommand spawns with stdio: ['ignore', ...],
+      // so process.stdin.isTTY is undefined in the child — matching the
+      // `vv create-extractor </dev/null` scenario the guard fixes.
+      const result = await executeVibeValidateCommand(['create-extractor'], { cwd: testDir });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('plugin name is required when running non-interactively');
+      expect(result.stderr).toContain('create-extractor <name>');
+      expect(result.stderr).toContain('--description');
+      expect(result.stderr).toContain('--author');
+      expect(result.stderr).toContain('--detection-pattern');
+
+      // No files written.
+      expect(readdirSync(testDir)).toHaveLength(0);
+    });
+
+    it('should proceed normally when all required flags are passed (hasAllOptions=true)', async () => {
+      const result = await executeVibeValidateCommand([
+        'create-extractor',
+        'full-flags-tool',
+        '--description', 'All flags supplied',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'FULL:',
+        '--force',
+      ], { cwd: testDir });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain('plugin name is required when running non-interactively');
+      expect(existsSync(join(testDir, 'vibe-validate-plugin-full-flags-tool', 'index.ts'))).toBe(true);
+    });
+  });
+
+  describe('test-extractor reference scrubbed', () => {
+    it('should not mention test-extractor in post-creation output', async () => {
+      const output = await execCLI([
+        'create-extractor',
+        'scrub-check',
+        '--description', 'Scrub check',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'ERR:',
+        '--force',
+      ], { cwd: testDir });
+
+      expect(output).not.toContain('test-extractor .');
+      expect(output).not.toContain('Test the plugin:');
+    });
+
+    it('should not mention test-extractor in verbose help', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      showCreateExtractorVerboseHelp();
+      const output = consoleSpy.mock.calls.map(call => call[0]).join('\n');
+      consoleSpy.mockRestore();
+
+      // The verbose help must not advertise a command that doesn't exist yet.
+      // PR 3 will land `test-extractor` and re-add these references.
+      expect(output).not.toContain('test-extractor');
     });
   });
 
