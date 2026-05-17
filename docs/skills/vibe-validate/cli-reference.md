@@ -256,6 +256,10 @@ Comprehensive branch cleanup with GitHub integration
 
 **When to use:** After PR merge to clean up local branches
 
+**Options:**
+
+- `--dry-run` - Preview which branches would be deleted without modifying anything
+
 **Examples:**
 
 ```bash

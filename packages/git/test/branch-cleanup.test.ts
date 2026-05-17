@@ -1029,4 +1029,62 @@ describe('Branch Cleanup - categorizeBranches', () => {
     expect(needsReview).toHaveLength(1);
     expect(needsReview[0].name).toBe('feature/review');
   });
+
+  it('should NOT invoke git branch -d when dryRun is true', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockReturnValue('');
+
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/safe',
+          mergedToMain: true,
+          unpushedCommitCount: 0,
+        }),
+        assessment: {
+          summary: 'Auto-delete safe',
+          deleteCommand: 'git branch -D feature/safe',
+          recoveryCommand: 'git reflog | grep feature/safe',
+        },
+      },
+    ];
+
+    const { autoDeleted, wouldDelete, needsReview } = categorizeBranches(analyses, { dryRun: true });
+
+    expect(autoDeleted).toHaveLength(0);
+    expect(wouldDelete).toHaveLength(1);
+    expect(wouldDelete[0].name).toBe('feature/safe');
+    expect(wouldDelete[0].reason).toBe('merged_to_main');
+    expect(needsReview).toHaveLength(0);
+    // Critical safety property: no git mutation in dry-run
+    expect(gitExecutor.execGitCommand).not.toHaveBeenCalled();
+  });
+
+  it('should still surface needs-review branches in dryRun mode', () => {
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/squashed',
+          mergedToMain: false,
+          remoteStatus: 'deleted',
+          unpushedCommitCount: 0,
+          daysSinceActivity: 45,
+        }),
+        githubFacts: createGitHubFacts({
+          prState: 'merged',
+          mergeMethod: 'squash',
+        }),
+        assessment: {
+          summary: 'Needs review',
+          deleteCommand: 'git branch -D feature/squashed',
+          recoveryCommand: 'git reflog | grep feature/squashed',
+        },
+      },
+    ];
+
+    const { wouldDelete, needsReview } = categorizeBranches(analyses, { dryRun: true });
+
+    expect(wouldDelete).toHaveLength(0);
+    expect(needsReview).toHaveLength(1);
+    expect(needsReview[0].name).toBe('feature/squashed');
+  });
 });
