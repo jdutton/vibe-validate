@@ -17,14 +17,15 @@ import { outputYamlResult } from '../utils/yaml-output.js';
 
 
 export function cleanupCommand(program: Command): void {
-  // Branch cleanup - YAML-only output (no options)
+  // Branch cleanup - YAML-only output
   program
     .command('cleanup')
     .description('Comprehensive branch cleanup with GitHub integration')
-    .action(async () => {
+    .option('--dry-run', 'Preview which branches would be deleted without modifying anything')
+    .action(async (options: { dryRun?: boolean }) => {
       try {
         // Run comprehensive branch cleanup
-        const result = await cleanupBranches();
+        const result = await cleanupBranches({ dryRun: options.dryRun });
 
         // Always output YAML (LLM-optimized)
         await outputYamlResult(result);
@@ -175,7 +176,7 @@ The \`cleanup\` command provides LLM-optimized branch cleanup with comprehensive
 - **Smart Categorization**: Auto-deletes 100% safe branches, shows complete context for others
 - **Current Branch Handling**: Automatically switches away if current branch needs cleanup
 - **YAML-Only Output**: LLM-optimized structured data (no human-readable mode)
-- **No Options**: Simple, opinionated design - just run \`cleanup\`
+- **Dry-Run Support**: Use \`--dry-run\` to preview deletions without modifying anything
 
 ## How It Works
 
@@ -255,6 +256,9 @@ recovery_info: |
 ## Examples
 
 \`\`\`bash
+# Preview which branches would be deleted (safe, no modifications)
+vibe-validate cleanup --dry-run
+
 # Run cleanup (always YAML output)
 vibe-validate cleanup
 
@@ -306,9 +310,13 @@ git checkout -b feature/old-branch <SHA>
 4. **Complete context upfront** (no follow-up questions needed)
 5. **Switches away from current branch** if it needs cleanup
 
+## Options
+
+- \`--dry-run\` - Preview which branches would be deleted (sets \`dryRun: true\`, \`wouldDelete: [...]\`, \`autoDeleted: []\` in output)
+
 ## Breaking Changes from v0.17.x
 
-- **Removed options**: No --main-branch, --dry-run, --yaml (always YAML now)
+- **Removed options**: No --main-branch, --yaml (always YAML now)
 - **GitHub CLI required**: No graceful degradation (error if missing)
 - **Output format changed**: New structured YAML format
 - **No human-readable mode**: YAML-only for LLM consumption

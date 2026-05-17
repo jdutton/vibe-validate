@@ -11,6 +11,7 @@ import * as utils from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
+  cleanupBranches,
   detectDefaultBranch,
   isAutoDeleteSafe,
   needsReview,
@@ -1028,5 +1029,172 @@ describe('Branch Cleanup - categorizeBranches', () => {
     expect(autoDeleted[0].name).toBe('feature/safe');
     expect(needsReview).toHaveLength(1);
     expect(needsReview[0].name).toBe('feature/review');
+  });
+
+  it('should NOT invoke git branch -d when dryRun is true', () => {
+    vi.mocked(gitExecutor.execGitCommand).mockReturnValue('');
+
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/safe',
+          mergedToMain: true,
+          unpushedCommitCount: 0,
+        }),
+        assessment: {
+          summary: 'Auto-delete safe',
+          deleteCommand: 'git branch -D feature/safe',
+          recoveryCommand: 'git reflog | grep feature/safe',
+        },
+      },
+    ];
+
+    const { autoDeleted, wouldDelete, needsReview } = categorizeBranches(analyses, { dryRun: true });
+
+    expect(autoDeleted).toHaveLength(0);
+    expect(wouldDelete).toHaveLength(1);
+    expect(wouldDelete[0].name).toBe('feature/safe');
+    expect(wouldDelete[0].reason).toBe('merged_to_main');
+    expect(needsReview).toHaveLength(0);
+    // Critical safety property: no git mutation in dry-run
+    expect(gitExecutor.execGitCommand).not.toHaveBeenCalled();
+  });
+
+  it('should still surface needs-review branches in dryRun mode', () => {
+    const analyses: BranchAnalysis[] = [
+      {
+        gitFacts: createBranchFacts({
+          name: 'feature/squashed',
+          mergedToMain: false,
+          remoteStatus: 'deleted',
+          unpushedCommitCount: 0,
+          daysSinceActivity: 45,
+        }),
+        githubFacts: createGitHubFacts({
+          prState: 'merged',
+          mergeMethod: 'squash',
+        }),
+        assessment: {
+          summary: 'Needs review',
+          deleteCommand: 'git branch -D feature/squashed',
+          recoveryCommand: 'git reflog | grep feature/squashed',
+        },
+      },
+    ];
+
+    const { wouldDelete, needsReview } = categorizeBranches(analyses, { dryRun: true });
+
+    expect(wouldDelete).toHaveLength(0);
+    expect(needsReview).toHaveLength(1);
+    expect(needsReview[0].name).toBe('feature/squashed');
+  });
+});
+
+/**
+ * Resolve a single git-command invocation to its mocked return value. Pulled
+ * out of `mockGitForOrchestration` so neither function exceeds the cognitive-
+ * complexity ceiling; also makes the matching rules easy to read in isolation.
+ */
+function resolveOrchestrationGitCommand(args: string[], branches: string[]): string {
+  // Default-branch detection + repo setup
+  if (args[0] === 'symbolic-ref' && args[1] === 'refs/remotes/origin/HEAD') {
+    return 'refs/heads/main';
+  }
+  if (args[0] === 'remote' && args[1] === 'get-url') {
+    return 'https://github.com/owner/repo.git';
+  }
+  // setupCleanupContext → getCurrentBranch
+  if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref' && args[2] === 'HEAD') {
+    return 'main';
+  }
+  // Branch listings (merged + all)
+  if (args[0] === 'branch' && (args[1] === '--merged' || args.includes('--format=%(refname:short)'))) {
+    return branches.join('\n');
+  }
+  // Per-branch fact gathering: pretend each branch tracks origin/<name>.
+  if (args[0] === 'config' && args[1] === '--get') {
+    if (args[2]?.endsWith('.merge')) return 'refs/heads/feature/done';
+    if (args[2]?.endsWith('.remote')) return 'origin';
+  }
+  if (args[0] === 'rev-parse' && args[1] === '--verify') return 'abc123'; // remote ref exists
+  if (args[0] === 'rev-list' && args[1] === '--count') return '0'; // no unpushed commits
+  if (args[0] === 'log' && args[1] === '-1') return '2026-01-01T00:00:00Z\nTest User';
+  return '';
+}
+
+/**
+ * Mock the git surface used by `cleanupBranches` orchestration. Parameterised
+ * over the set of branches to surface (so the dry-run tests can put a safe
+ * branch in front of `categorizeBranches`).
+ */
+function mockGitForOrchestration(branches: string[]): void {
+  vi.mocked(gitExecutor.execGitCommand).mockImplementation((args: string[]) =>
+    resolveOrchestrationGitCommand(args, branches)
+  );
+}
+
+describe('Branch Cleanup - cleanupBranches (orchestration)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // gh CLI must be reachable for enrichWithGitHubData to proceed past its
+    // hard-requirement check; we mock the actual PR fetch below.
+    vi.mocked(utils.isToolAvailable).mockReturnValue(true);
+    vi.mocked(ghCommands.listPullRequests).mockReturnValue([]);
+  });
+
+  it('emits dryRun fields and zero counts when there are no local branches', async () => {
+    mockGitForOrchestration([]); // empty branch listing
+
+    const result = await cleanupBranches({ dryRun: true });
+
+    expect(result.dryRun).toBe(true);
+    expect(result.wouldDelete).toEqual([]);
+    expect(result.autoDeleted).toEqual([]);
+    expect(result.needsReview).toEqual([]);
+    expect(result.summary.wouldDeleteCount).toBe(0);
+    expect(result.summary.autoDeletedCount).toBe(0);
+    expect(result.summary.totalBranchesAnalyzed).toBe(0);
+
+    // Critical safety property: `git branch -d` is NEVER called in dry-run.
+    const branchDeleteCalls = vi.mocked(gitExecutor.execGitCommand).mock.calls.filter(
+      ([args]) => args[0] === 'branch' && (args[1] === '-d' || args[1] === '-D')
+    );
+    expect(branchDeleteCalls).toHaveLength(0);
+  });
+
+  it('populates wouldDelete (not autoDeleted) when safe branches exist in dry-run', async () => {
+    mockGitForOrchestration(['feature/done']);
+
+    const result = await cleanupBranches({ dryRun: true });
+
+    expect(result.dryRun).toBe(true);
+    expect(result.autoDeleted).toEqual([]);
+    expect(result.wouldDelete).toHaveLength(1);
+    expect(result.wouldDelete?.[0]).toMatchObject({
+      name: 'feature/done',
+      reason: 'merged_to_main',
+    });
+    expect(result.summary.wouldDeleteCount).toBe(1);
+    expect(result.summary.autoDeletedCount).toBe(0);
+    expect(result.summary.totalBranchesAnalyzed).toBe(1);
+
+    // No mutation: branch -d / -D never invoked even though a safe branch
+    // existed and would have been auto-deleted in non-dry-run mode.
+    const branchDeleteCalls = vi.mocked(gitExecutor.execGitCommand).mock.calls.filter(
+      ([args]) => args[0] === 'branch' && (args[1] === '-d' || args[1] === '-D')
+    );
+    expect(branchDeleteCalls).toHaveLength(0);
+  });
+
+  it('omits dryRun fields entirely when called without options (backward compat)', async () => {
+    mockGitForOrchestration([]);
+
+    const result = await cleanupBranches();
+
+    expect(result.dryRun).toBeUndefined();
+    expect(result.wouldDelete).toBeUndefined();
+    expect(result.summary.wouldDeleteCount).toBeUndefined();
+    expect(result.autoDeleted).toEqual([]);
+    expect(result.needsReview).toEqual([]);
   });
 });

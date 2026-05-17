@@ -13,6 +13,33 @@ vi.mock('@vibe-validate/git', async () => {
   };
 });
 
+type CleanupMockResult = Awaited<ReturnType<typeof git.cleanupBranches>>;
+
+/**
+ * Build a minimal cleanup result for mocking. Tests override only the fields
+ * they care about; everything else defaults to a healthy "no branches" outcome.
+ */
+function createCleanupMockResult(overrides: Partial<CleanupMockResult> = {}): CleanupMockResult {
+  return {
+    context: {
+      repository: 'owner/repo',
+      remote: 'origin',
+      defaultBranch: 'main',
+      currentBranch: 'main',
+      switchedBranch: false,
+    },
+    autoDeleted: [],
+    needsReview: [],
+    summary: {
+      autoDeletedCount: 0,
+      needsReviewCount: 0,
+      totalBranchesAnalyzed: 0,
+    },
+    recoveryInfo: 'Deleted branches are recoverable for 30 days via git reflog',
+    ...overrides,
+  };
+}
+
 describe('cleanup command', () => {
   let env: CommanderTestEnv;
 
@@ -42,69 +69,37 @@ describe('cleanup command', () => {
       expect(command?.description()).toBe('Comprehensive branch cleanup with GitHub integration');
     });
 
-    it('should have no custom options (YAML-only, no flags)', () => {
+    it('should expose --dry-run option', () => {
       cleanupCommand(env.program);
 
       const command = env.program.commands.find(cmd => cmd.name() === 'cleanup');
-      // Should have no custom options (Commander adds standard --help option)
-      expect(command?.options.length).toBe(0); // No custom options
+      const optionNames = command?.options.map(opt => opt.long) ?? [];
+      expect(optionNames).toEqual(['--dry-run']);
     });
   });
 
   describe('cleanup execution', () => {
     it('should call cleanupBranches function', async () => {
-      const mockResult = {
-        context: {
-          repository: 'owner/repo',
-          remote: 'origin',
-          defaultBranch: 'main',
-          currentBranch: 'main',
-          switchedBranch: false,
-        },
-        autoDeleted: [],
-        needsReview: [],
-        summary: {
-          autoDeletedCount: 0,
-          needsReviewCount: 0,
-          totalBranchesAnalyzed: 0,
-        },
-        recoveryInfo: 'Deleted branches are recoverable for 30 days via git reflog',
-      };
-
-      vi.mocked(git.cleanupBranches).mockResolvedValue(mockResult);
+      vi.mocked(git.cleanupBranches).mockResolvedValue(createCleanupMockResult());
 
       cleanupCommand(env.program);
 
       try {
         await env.program.parseAsync(['cleanup'], { from: 'user' });
       } catch (error) { // NOSONAR - Commander.js throws on exitOverride, caught to test exit codes
-        // Expected exception from Commander.js exitOverride
         expect(error).toBeDefined();
       }
 
-      expect(git.cleanupBranches).toHaveBeenCalledWith();
+      expect(git.cleanupBranches).toHaveBeenCalledWith({ dryRun: undefined });
     });
 
     it('should output YAML on success', async () => {
-      const mockResult = {
-        context: {
-          repository: 'owner/repo',
-          remote: 'origin',
-          defaultBranch: 'main',
-          currentBranch: 'main',
-          switchedBranch: false,
-        },
-        autoDeleted: [{ name: 'feature/test', reason: 'merged_to_main', recoveryCommand: 'git reflog' }],
-        needsReview: [],
-        summary: {
-          autoDeletedCount: 1,
-          needsReviewCount: 0,
-          totalBranchesAnalyzed: 1,
-        },
-        recoveryInfo: 'Deleted branches are recoverable for 30 days via git reflog',
-      };
-
-      vi.mocked(git.cleanupBranches).mockResolvedValue(mockResult);
+      vi.mocked(git.cleanupBranches).mockResolvedValue(
+        createCleanupMockResult({
+          autoDeleted: [{ name: 'feature/test', reason: 'merged_to_main', recoveryCommand: 'git reflog' }],
+          summary: { autoDeletedCount: 1, needsReviewCount: 0, totalBranchesAnalyzed: 1 },
+        })
+      );
 
       cleanupCommand(env.program);
 
@@ -115,7 +110,32 @@ describe('cleanup command', () => {
       }
 
       // Verify cleanupBranches was called (output format tested in branch-cleanup.test.ts)
-      expect(git.cleanupBranches).toHaveBeenCalledWith();
+      expect(git.cleanupBranches).toHaveBeenCalledWith({ dryRun: undefined });
+    });
+
+    it('should pass dryRun=true when --dry-run flag is provided', async () => {
+      vi.mocked(git.cleanupBranches).mockResolvedValue(
+        createCleanupMockResult({
+          dryRun: true,
+          wouldDelete: [{ name: 'feature/test', reason: 'merged_to_main', recoveryCommand: 'git reflog' }],
+          summary: {
+            autoDeletedCount: 0,
+            wouldDeleteCount: 1,
+            needsReviewCount: 0,
+            totalBranchesAnalyzed: 1,
+          },
+        })
+      );
+
+      cleanupCommand(env.program);
+
+      try {
+        await env.program.parseAsync(['cleanup', '--dry-run'], { from: 'user' });
+      } catch (error) { // NOSONAR - Commander.js throws on exitOverride
+        expect(error).toBeDefined();
+      }
+
+      expect(git.cleanupBranches).toHaveBeenCalledWith({ dryRun: true });
     });
 
     it('should handle errors and output YAML error format', async () => {
@@ -132,7 +152,7 @@ describe('cleanup command', () => {
       }
 
       // Verify cleanupBranches was called
-      expect(git.cleanupBranches).toHaveBeenCalledWith();
+      expect(git.cleanupBranches).toHaveBeenCalledWith({ dryRun: undefined });
     });
   });
 

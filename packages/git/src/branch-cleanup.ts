@@ -546,8 +546,16 @@ export async function enrichWithGitHubData(
 export interface CleanupResult {
   /** Context about the cleanup operation */
   context: CleanupContext;
-  /** Branches that were auto-deleted */
+  /** True if this was a dry-run (no branches actually deleted) */
+  dryRun?: boolean;
+  /** Branches that were auto-deleted (empty in dry-run mode) */
   autoDeleted: Array<{
+    name: string;
+    reason: string;
+    recoveryCommand: string;
+  }>;
+  /** Branches that would have been auto-deleted (only present in dry-run mode) */
+  wouldDelete?: Array<{
     name: string;
     reason: string;
     recoveryCommand: string;
@@ -563,6 +571,8 @@ export interface CleanupResult {
   /** Summary statistics */
   summary: {
     autoDeletedCount: number;
+    /** Only present in dry-run mode */
+    wouldDeleteCount?: number;
     needsReviewCount: number;
     totalBranchesAnalyzed: number;
   };
@@ -702,20 +712,36 @@ export function tryDeleteBranch(gitFacts: BranchGitFacts): { deleted: boolean; e
 
 /**
  * Categorize branches into auto-delete and needs-review
+ *
+ * In dry-run mode, safe branches are reported in `wouldDelete` and never
+ * passed to `tryDeleteBranch` (so the filesystem is not touched).
  */
 export function categorizeBranches(
-  analyses: BranchAnalysis[]
+  analyses: BranchAnalysis[],
+  options: { dryRun?: boolean } = {}
 ): {
   autoDeleted: CleanupResult['autoDeleted'];
+  wouldDelete: NonNullable<CleanupResult['wouldDelete']>;
   needsReview: CleanupResult['needsReview'];
 } {
+  const { dryRun = false } = options;
   const autoDeleted: CleanupResult['autoDeleted'] = [];
+  const wouldDelete: NonNullable<CleanupResult['wouldDelete']> = [];
   const branchesNeedingReview: CleanupResult['needsReview'] = [];
 
   for (const analysis of analyses) {
     const { gitFacts, githubFacts, assessment } = analysis;
 
     if (isAutoDeleteSafe(gitFacts)) {
+      if (dryRun) {
+        wouldDelete.push({
+          name: gitFacts.name,
+          reason: 'merged_to_main',
+          recoveryCommand: assessment.recoveryCommand,
+        });
+        continue;
+      }
+
       const result = tryDeleteBranch(gitFacts);
 
       if (result.deleted) {
@@ -744,7 +770,7 @@ export function categorizeBranches(
     }
   }
 
-  return { autoDeleted, needsReview: branchesNeedingReview };
+  return { autoDeleted, wouldDelete, needsReview: branchesNeedingReview };
 }
 
 /**
@@ -755,12 +781,18 @@ export function categorizeBranches(
  * 2. Gathers all local branches
  * 3. Analyzes each branch (git facts + GitHub enrichment)
  * 4. Categorizes branches (auto-delete vs needs-review)
- * 5. Deletes safe branches
+ * 5. Deletes safe branches (or reports `wouldDelete` if `dryRun` is true)
  * 6. Returns structured result with YAML-compatible format
  *
+ * @param options - Cleanup options
+ * @param options.dryRun - If true, preview the deletions without modifying anything
  * @returns Cleanup result with detailed analysis
  */
-export async function cleanupBranches(): Promise<CleanupResult> {
+export async function cleanupBranches(
+  options: { dryRun?: boolean } = {}
+): Promise<CleanupResult> {
+  const { dryRun = false } = options;
+
   // Step 1: Setup context (may switch branches)
   const context = await setupCleanupContext();
 
@@ -797,11 +829,11 @@ export async function cleanupBranches(): Promise<CleanupResult> {
   // Step 5: Enrich with GitHub data (throws if gh not available)
   await enrichWithGitHubData(analyses, context.repository);
 
-  // Step 6: Categorize and delete safe branches
-  const { autoDeleted, needsReview } = categorizeBranches(analyses);
+  // Step 6: Categorize and (unless dry-run) delete safe branches
+  const { autoDeleted, wouldDelete, needsReview } = categorizeBranches(analyses, { dryRun });
 
   // Step 7: Build result
-  return {
+  const result: CleanupResult = {
     context,
     autoDeleted,
     needsReview,
@@ -815,4 +847,12 @@ export async function cleanupBranches(): Promise<CleanupResult> {
       '  git reflog\n' +
       '  git checkout -b <branch-name> <SHA>',
   };
+
+  if (dryRun) {
+    result.dryRun = true;
+    result.wouldDelete = wouldDelete;
+    result.summary.wouldDeleteCount = wouldDelete.length;
+  }
+
+  return result;
 }
