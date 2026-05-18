@@ -28,6 +28,25 @@ function expectErrorSummary(
   }
 }
 
+/**
+ * Build an input that on its own satisfies the multi-key YAML heuristic
+ * (3 top-level keys + 5 meaningful lines), then appends the given trailer
+ * line. Used by both the log-indicator disqualifier tests and the
+ * threshold-boundary tests.
+ */
+function qualifyingYamlPlus(trailer: string): string {
+  return `status: ok
+phase: build
+step: compile
+detail: foo
+note: bar
+${trailer}
+`;
+}
+
+/** Body-only lines that ARE preserved by the YAML path but dropped by the keyword filter. */
+const YAML_ONLY_BODY = ['phase: build', 'detail: foo', 'note: bar'];
+
 describe('Generic Extractor Plugin', () => {
   describe('detect', () => {
     it('should always return low confidence (fallback)', () => {
@@ -201,67 +220,32 @@ errors:
     // matches and reports 'No errors detected'.
 
     it('Traceback line disqualifies YAML preservation', () => {
-      // 'Traceback' is an ERROR_KEYWORD, so the keyword filter would still
-      // mark this as 'Command failed - see output'. Distinguish the two
-      // paths by asserting a body line that only YAML preservation keeps.
-      const input = `status: ok
-phase: build
-step: compile
-detail: foo
-note: bar
-Traceback (most recent call last):
-`;
-      const result = extractGenericErrors(input);
-      // YAML path would preserve `phase: build`; keyword filter drops it
-      // because it has no error keyword / file:line / summary token.
-      expectErrorSummary(result, {
-        missing: ['phase: build', 'detail: foo', 'note: bar'],
+      // 'Traceback' is itself an ERROR_KEYWORD, so the keyword filter would still
+      // set summary to 'Command failed'. Distinguish the two paths by asserting
+      // YAML-only body lines were dropped.
+      expectErrorSummary(extractGenericErrors(qualifyingYamlPlus('Traceback (most recent call last):')), {
+        missing: YAML_ONLY_BODY,
       });
     });
 
     it('npm ERR! line disqualifies YAML preservation', () => {
-      // `npm ERR!` is also a NOISE_PATTERN, so it gets stripped by both
-      // paths. The distinguishing signal is `summary`: YAML preservation
-      // sets 'Command failed - see output'; the keyword filter with no
-      // error keywords matched sets 'No errors detected'.
-      const input = `status: ok
-phase: build
-step: compile
-detail: foo
-note: bar
-npm ERR! code ELIFECYCLE
-`;
-      const result = extractGenericErrors(input);
+      // `npm ERR!` is also a NOISE_PATTERN, so both paths strip the line itself.
+      // Summary distinguishes: YAML path sets 'Command failed'; keyword filter
+      // with no matches sets 'No errors detected'.
+      const result = extractGenericErrors(qualifyingYamlPlus('npm ERR! code ELIFECYCLE'));
       expect(result.summary).toBe('No errors detected');
     });
 
     it('stack frame ("at /...") line disqualifies YAML preservation', () => {
-      // 'at ' (with trailing space) is an ERROR_KEYWORD, so distinguish via
-      // a YAML-only body line as in the Traceback test above.
-      const input = `status: ok
-phase: build
-step: compile
-detail: foo
-note: bar
-    at /home/user/app/index.js:42:9
-`;
-      const result = extractGenericErrors(input);
-      expectErrorSummary(result, {
-        missing: ['phase: build', 'detail: foo', 'note: bar'],
+      // 'at ' is an ERROR_KEYWORD, so distinguish via YAML-only body lines.
+      expectErrorSummary(extractGenericErrors(qualifyingYamlPlus('    at /home/user/app/index.js:42:9')), {
+        missing: YAML_ONLY_BODY,
       });
     });
 
     it('caret indicator line disqualifies YAML preservation', () => {
-      // A bare `^^^^` line matches no error keyword, so `summary` cleanly
-      // distinguishes the two paths.
-      const input = `status: ok
-phase: build
-step: compile
-detail: foo
-note: bar
-    ^^^^
-`;
-      const result = extractGenericErrors(input);
+      // Bare `^^^^` matches no error keyword, so `summary` cleanly distinguishes.
+      const result = extractGenericErrors(qualifyingYamlPlus('    ^^^^'));
       expect(result.summary).toBe('No errors detected');
     });
 
