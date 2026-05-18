@@ -22,9 +22,10 @@ import { outputYamlResult } from '../utils/yaml-output.js';
 const SAMPLES_DIR_NAME = 'samples';
 
 /**
- * Options for the create-extractor command
+ * Options for the create-extractor command. Exported for `gatherContext`'s
+ * unit tests.
  */
-interface CreateExtractorOptions {
+export interface CreateExtractorOptions {
   name?: string;
   description?: string;
   author?: string;
@@ -35,9 +36,10 @@ interface CreateExtractorOptions {
 }
 
 /**
- * Template context for variable substitution
+ * Template context for variable substitution. Exported for in-process unit
+ * testing of `getPluginFileList` / `emitDryRunPreview`.
  */
-interface TemplateContext {
+export interface TemplateContext {
   pluginName: string;          // e.g., "my-plugin"
   className: string;            // e.g., "MyPlugin"
   displayName: string;          // e.g., "My Plugin"
@@ -115,8 +117,11 @@ export function createExtractorCommand(program: Command): void {
  * (`emitDryRunPreview`) iterate this list, guaranteeing they stay in sync.
  * All generators here are pure (no I/O), so the same list is safe to use for
  * both writing and previewing.
+ *
+ * Exported for in-process unit testing — subprocess-based command tests
+ * don't contribute line hits to V8 coverage instrumentation.
  */
-function getPluginFileList(context: TemplateContext): Array<{ relPath: string; content: string }> {
+export function getPluginFileList(context: TemplateContext): Array<{ relPath: string; content: string }> {
   return [
     { relPath: 'index.ts', content: generateIndexTs(context) },
     { relPath: 'index.test.ts', content: generateIndexTestTs(context) },
@@ -133,8 +138,10 @@ function getPluginFileList(context: TemplateContext): Array<{ relPath: string; c
  *
  * Calls every template generator (they are pure) and measures `Buffer.byteLength`
  * for each result. Does not call `mkdirSyncReal` or `writeFileSync`.
+ *
+ * Exported for in-process unit testing (see `getPluginFileList` for rationale).
  */
-async function emitDryRunPreview(
+export async function emitDryRunPreview(
   cwd: string,
   pluginDir: string,
   context: TemplateContext
@@ -210,9 +217,13 @@ function buildPromptsConfig(
 }
 
 /**
- * Gather context from command-line arguments and interactive prompts
+ * Gather context from command-line arguments and interactive prompts.
+ *
+ * Exported so the non-TTY guard can be unit-tested in-process — driving the
+ * full Commander action via `parseAsync` is awkward because of how the test
+ * harness's `process.exit` mock interacts with command parsing.
  */
-async function gatherContext(
+export async function gatherContext(
   name: string | undefined,
   options: CreateExtractorOptions
 ): Promise<TemplateContext> {

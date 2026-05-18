@@ -6,12 +6,20 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
+import { normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import yaml from 'yaml';
 
-import { showCreateExtractorVerboseHelp } from '../../src/commands/create-extractor.js';
+import {
+  emitDryRunPreview,
+  gatherContext,
+  getPluginFileList,
+  showCreateExtractorVerboseHelp,
+  type CreateExtractorOptions,
+  type TemplateContext,
+} from '../../src/commands/create-extractor.js';
 import {
   executeVibeValidateCombined as execCLI,
   executeVibeValidateCommand,
@@ -560,5 +568,230 @@ describe('create-extractor command', () => {
     });
   });
 
+});
+
+/**
+ * In-process unit tests for the testable seams of `create-extractor.ts`.
+ *
+ * The subprocess-based tests above prove behaviour end-to-end but don't
+ * contribute to V8 coverage (Vitest's instrumentation only sees code that
+ * runs inside the test process). These tests call the exported functions
+ * directly so the patch coverage reflects what's actually exercised.
+ */
+
+const SAMPLE_FILE = join('samples', 'sample-error.txt');
+
+function makeContext(overrides: Partial<TemplateContext> = {}): TemplateContext {
+  return {
+    pluginName: 'test-tool',
+    className: 'TestTool',
+    displayName: 'Test Tool',
+    description: 'A test extractor plugin',
+    author: 'Test Author <test@example.com>',
+    priority: 70,
+    detectionPattern: 'ERROR:',
+    year: '2026',
+    ...overrides,
+  };
+}
+
+/**
+ * Capture every `process.stdout.write` call until the test restores the spy.
+ * `outputYamlResult` writes the document in four separate calls plus a
+ * "flush" trailing empty write; we concatenate everything but the empty
+ * pings so the YAML parser sees a single coherent string.
+ */
+function captureStdout(): { read: () => string; restore: () => void } {
+  const chunks: string[] = [];
+  const spy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array): boolean => {
+    chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
+    return true;
+  });
+  return {
+    read: () => chunks.join(''),
+    restore: () => spy.mockRestore(),
+  };
+}
+
+describe('create-extractor (in-process unit tests)', () => {
+  describe('getPluginFileList', () => {
+    it('returns the 7 canonical file entries in stable order', () => {
+      const list = getPluginFileList(makeContext());
+
+      // Order matters — both writers and previewers iterate this list and
+      // surface entries in the same sequence to the user.
+      expect(list.map(f => f.relPath)).toEqual([
+        'index.ts',
+        'index.test.ts',
+        'README.md',
+        'CLAUDE.md',
+        'package.json',
+        'tsconfig.json',
+        SAMPLE_FILE,
+      ]);
+    });
+
+    it('returns non-empty content for every entry', () => {
+      const list = getPluginFileList(makeContext());
+
+      for (const { relPath, content } of list) {
+        expect(content.length, `empty content for ${relPath}`).toBeGreaterThan(0);
+      }
+    });
+
+    it('substitutes pluginName into generated content', () => {
+      const list = getPluginFileList(makeContext({ pluginName: 'my-cool-plugin' }));
+      const pkg = list.find(f => f.relPath === 'package.json');
+
+      expect(pkg).toBeDefined();
+      expect(pkg!.content).toContain('vibe-validate-plugin-my-cool-plugin');
+    });
+
+    it('substitutes className and detectionPattern into the main source', () => {
+      const list = getPluginFileList(makeContext({
+        className: 'MyClass',
+        detectionPattern: 'FAIL:',
+      }));
+      const indexTs = list.find(f => f.relPath === 'index.ts');
+
+      expect(indexTs).toBeDefined();
+      expect(indexTs!.content).toContain('detectMyClass');
+      expect(indexTs!.content).toContain('FAIL:');
+    });
+  });
+
+  describe('emitDryRunPreview', () => {
+    // The function is pure with respect to its `cwd`/`pluginDir` arguments —
+    // it does no I/O, just path-relative arithmetic — so any string-shaped
+    // path is fine. Using `normalizedTmpdir()` satisfies the project's
+    // "no publicly-writable directory literals" lint rule while keeping the
+    // test self-contained (no actual files touched).
+    const dummyCwd = normalizedTmpdir();
+    const dummyPluginDir = join(dummyCwd, 'vibe-validate-plugin-test-tool');
+
+    it('emits a YAML document with the documented schema', async () => {
+      const captured = captureStdout();
+
+      try {
+        await emitDryRunPreview(dummyCwd, dummyPluginDir, makeContext({ pluginName: 'test-tool' }));
+      } finally {
+        captured.restore();
+      }
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('test-tool');
+      expect(parsed.pluginDir).toBe('./vibe-validate-plugin-test-tool');
+      expect(parsed.wouldCreateDir).toEqual([
+        './vibe-validate-plugin-test-tool',
+        './vibe-validate-plugin-test-tool/samples',
+      ]);
+      expect(parsed.wouldCreate).toHaveLength(7);
+      expect(parsed.summary.filesCount).toBe(7);
+      expect(parsed.summary.dirsCount).toBe(2);
+    });
+
+    it('byte counts match Buffer.byteLength of the generated content', async () => {
+      const list = getPluginFileList(makeContext());
+      const captured = captureStdout();
+
+      try {
+        await emitDryRunPreview(dummyCwd, dummyPluginDir, makeContext());
+      } finally {
+        captured.restore();
+      }
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      const expectedTotal = list.reduce((sum, f) => sum + Buffer.byteLength(f.content, 'utf8'), 0);
+
+      expect(parsed.summary.totalBytes).toBe(expectedTotal);
+      // Each entry's byte count matches its generator's output. We match by
+      // basename rather than full path because the emitted path is relative
+      // to cwd and the source list uses bare relPaths.
+      for (const entry of parsed.wouldCreate as Array<{ path: string; bytes: number }>) {
+        const filename = basename(entry.path);
+        const sourceEntry = list.find(f => f.relPath.endsWith(filename));
+        expect(sourceEntry).toBeDefined();
+        expect(entry.bytes).toBe(Buffer.byteLength(sourceEntry!.content, 'utf8'));
+      }
+    });
+
+    it('emits POSIX-style forward-slash paths regardless of OS path separator', async () => {
+      const captured = captureStdout();
+
+      try {
+        await emitDryRunPreview(dummyCwd, dummyPluginDir, makeContext());
+      } finally {
+        captured.restore();
+      }
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      // toForwardSlash() guarantees no backslashes; the leading-`./` marker
+      // is set by emitDryRunPreview's display-path helper. We pre-normalize
+      // through toForwardSlash to satisfy the project's `no-path-startswith`
+      // lint rule (which insists on normalization before path comparisons).
+      for (const entry of parsed.wouldCreate as Array<{ path: string }>) {
+        expect(entry.path).not.toContain('\\');
+        expect(toForwardSlash(entry.path).startsWith('./')).toBe(true);
+      }
+    });
+  });
+
+  describe('gatherContext non-TTY guard', () => {
+    let originalIsTTY: boolean | undefined;
+    let exitSpy: ReturnType<typeof vi.spyOn>;
+    let errorSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      originalIsTTY = process.stdin.isTTY;
+      // Simulate a non-TTY stdin (e.g., `vv create-extractor </dev/null`).
+      Object.defineProperty(process.stdin, 'isTTY', { value: undefined, configurable: true });
+      // process.exit is the boundary we assert on. Throwing from the mock
+      // lets the test halt the function without actually exiting node.
+      exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new Error(`process.exit(${code ?? 'undefined'})`);
+      }) as never);
+      errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, configurable: true });
+      exitSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it('exits 1 when stdin is not a TTY and required args are missing', async () => {
+      // No positional name, no --description etc. → guard should fire.
+      const opts: CreateExtractorOptions = {};
+
+      await expect(gatherContext(undefined, opts)).rejects.toThrow('process.exit(1)');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      // The stderr message lists the flags the user needs to pass.
+      const stderr = errorSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(stderr).toContain('plugin name is required when running non-interactively');
+      expect(stderr).toContain('--description');
+      expect(stderr).toContain('--author');
+      expect(stderr).toContain('--detection-pattern');
+    });
+
+    it('proceeds (no exit) when stdin is not a TTY but all required args supplied', async () => {
+      // hasAllOptions === true short-circuits both the prompts call AND the
+      // guard. Returning a fully-populated TemplateContext is the success
+      // path — the function never has to read from stdin.
+      const opts: CreateExtractorOptions = {
+        description: 'A non-interactive run',
+        author: 'CI <ci@example.com>',
+        detectionPattern: 'ERR:',
+        priority: 70,
+      };
+
+      const ctx = await gatherContext('my-tool', opts);
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(ctx.pluginName).toBe('my-tool');
+      expect(ctx.description).toBe('A non-interactive run');
+      expect(ctx.detectionPattern).toBe('ERR:');
+    });
+  });
 });
 
