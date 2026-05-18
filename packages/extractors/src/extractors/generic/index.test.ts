@@ -114,6 +114,207 @@ FAIL example.com/project 0.123s
     });
   });
 
+  describe('Structured YAML output preservation', () => {
+    const vatYamlOutput = `status: failed
+filesScanned: 248
+filesWithErrors: 1
+errorsFound: 1
+errorSummary:
+  broken_file: 1
+durationSecs: 1.45
+validationMode: strict
+collections:
+  adrs:
+    resourceCount: 5
+    hasSchema: true
+    validationMode: permissive
+  processes:
+    resourceCount: 10
+    hasSchema: true
+    validationMode: permissive
+  systems:
+    resourceCount: 28
+    hasSchema: true
+    validationMode: permissive
+  teams:
+    resourceCount: 2
+    hasSchema: true
+    validationMode: permissive
+errors:
+  - file: /fixtures/repo/CLAUDE.md
+    errors:
+      - line: 28
+        column: 1
+        type: broken_file
+        message: "Link target is a directory: /fixtures/repo/docs/teams"
+`;
+
+    it('should preserve YAML value lines, not just keys', () => {
+      const result = extractGenericErrors(vatYamlOutput);
+
+      expect(result.errorSummary).toContain('broken_file: 1');
+      expect(result.errorSummary).toContain('/fixtures/repo/CLAUDE.md');
+      expect(result.errorSummary).toContain('line: 28');
+      expect(result.errorSummary).toContain('message: "Link target is a directory');
+    });
+
+    it('should preserve all top-level YAML keys', () => {
+      const result = extractGenericErrors(vatYamlOutput);
+
+      expect(result.errorSummary).toContain('status:');
+      expect(result.errorSummary).toContain('filesScanned:');
+      expect(result.errorSummary).toContain('filesWithErrors:');
+      expect(result.errorSummary).toContain('errorsFound:');
+      expect(result.errorSummary).toContain('errorSummary:');
+      expect(result.errorSummary).toContain('errors:');
+    });
+
+    it('should report Command failed summary when YAML output indicates failure', () => {
+      const result = extractGenericErrors(vatYamlOutput);
+      expect(result.summary).toBe('Command failed - see output');
+    });
+
+    it('should truncate structured YAML output longer than 80 lines', () => {
+      const header = 'status: failed\nphase: build\nstep: compile\n';
+      const longBody = Array.from({ length: 200 }, (_, i) => `  key${i}: value${i}`).join('\n');
+      const longYaml = `${header}details:\n${longBody}\n`;
+
+      const result = extractGenericErrors(longYaml);
+
+      const lines = (result.errorSummary ?? '').split('\n');
+      expect(lines.length).toBeLessThanOrEqual(81);
+      expect(lines.at(-1)).toContain('truncated at 80 lines');
+    });
+  });
+
+  describe('Delimited (---bracketed) YAML extraction', () => {
+    it('detects ---bracketed YAML and extracts only the YAML block', () => {
+      const input = `preamble line 1
+> npm install
+---
+status: ok
+key: value
+---
+trailing log line
+more trailing
+`;
+      const result = extractGenericErrors(input);
+
+      expect(result.errorSummary).toContain('---');
+      expect(result.errorSummary).toContain('status: ok');
+      expect(result.errorSummary).toContain('key: value');
+      expect(result.errorSummary).not.toContain('preamble line 1');
+      expect(result.errorSummary).not.toContain('> npm install');
+      expect(result.errorSummary).not.toContain('trailing log line');
+      expect(result.errorSummary).not.toContain('more trailing');
+    });
+
+    it('stops at non-YAML line when no closing --- exists', () => {
+      const input = `---
+foo: 1
+bar: 2
+this is not yaml
+more log
+`;
+      const result = extractGenericErrors(input);
+
+      expect(result.errorSummary).toContain('---');
+      expect(result.errorSummary).toContain('foo: 1');
+      expect(result.errorSummary).toContain('bar: 2');
+      expect(result.errorSummary).not.toContain('this is not yaml');
+      expect(result.errorSummary).not.toContain('more log');
+    });
+
+    it('comments and blank lines between --- and first key are allowed', () => {
+      const input = `---
+# header comment
+
+key: value
+`;
+      const result = extractGenericErrors(input);
+
+      expect(result.errorSummary).toContain('---');
+      expect(result.errorSummary).toContain('# header comment');
+      expect(result.errorSummary).toContain('key: value');
+    });
+
+    it('--- alone followed by a non-YAML line is rejected (falls through)', () => {
+      const input = `---
+this is garbage not yaml
+more stuff
+`;
+      const result = extractGenericErrors(input);
+
+      // YAML preservation path would set summary to 'Command failed - see output'.
+      // Falling through to keyword filter with no error keywords yields 'No errors detected'.
+      expect(result.summary).toBe('No errors detected');
+    });
+
+    it('closing ... terminates the block', () => {
+      const input = `---
+key: value
+...
+after the ellipsis line
+`;
+      const result = extractGenericErrors(input);
+
+      expect(result.errorSummary).toContain('---');
+      expect(result.errorSummary).toContain('key: value');
+      expect(result.errorSummary).toContain('...');
+      expect(result.errorSummary).not.toContain('after the ellipsis line');
+    });
+
+    it('VAT-style output (no ---) still goes through the multi-key heuristic', () => {
+      const vatYamlOutput = `status: failed
+filesScanned: 248
+filesWithErrors: 1
+errorsFound: 1
+errorSummary:
+  broken_file: 1
+durationSecs: 1.45
+validationMode: strict
+collections:
+  adrs:
+    resourceCount: 5
+    hasSchema: true
+    validationMode: permissive
+errors:
+  - file: /fixtures/repo/CLAUDE.md
+    errors:
+      - line: 28
+        column: 1
+        type: broken_file
+        message: "Link target is a directory: /fixtures/repo/docs/teams"
+`;
+      const result = extractGenericErrors(vatYamlOutput);
+
+      expect(result.summary).toBe('Command failed - see output');
+      expect(result.errorSummary).toContain('status: failed');
+      expect(result.errorSummary).toContain('filesScanned: 248');
+      expect(result.errorSummary).toContain('/fixtures/repo/CLAUDE.md');
+      expect(result.errorSummary).toContain('line: 28');
+    });
+  });
+
+  describe('Non-YAML output still keyword-filtered', () => {
+    it('should not include non-error log lines for free-form logs', () => {
+      const pytestLog = `Loading config from /etc/pytest.ini
+Collecting tests
+Loading plugin: coverage
+Starting test session
+FAILED tests/test_foo.py::test_divide - ZeroDivisionError
+FAILED tests/test_bar.py::test_validate - AssertionError
+2 failed, 3 passed
+Done`;
+
+      const result = extractGenericErrors(pytestLog);
+
+      expect(result.errorSummary).toContain('FAILED');
+      expect(result.errorSummary).not.toContain('Loading config');
+      expect(result.errorSummary).not.toContain('Loading plugin');
+    });
+  });
+
   describe('Plugin Samples', () => {
     it('should pass all registered samples', () => {
       for (const sample of genericExtractor.samples) {
