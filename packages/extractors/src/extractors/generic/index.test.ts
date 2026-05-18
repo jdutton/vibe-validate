@@ -10,10 +10,23 @@ import {
   expectDetection,
   expectPluginMetadata,
 } from '../../test/helpers/extractor-test-helpers.js';
+import type { ErrorExtractorResult } from '../../types.js';
 
 import genericExtractor from './index.js';
 
 const { extract: extractGenericErrors } = genericExtractor;
+
+function expectErrorSummary(
+  result: ErrorExtractorResult,
+  expectations: { has?: string[]; missing?: string[] }
+): void {
+  for (const text of expectations.has ?? []) {
+    expect(result.errorSummary).toContain(text);
+  }
+  for (const text of expectations.missing ?? []) {
+    expect(result.errorSummary).not.toContain(text);
+  }
+}
 
 describe('Generic Extractor Plugin', () => {
   describe('detect', () => {
@@ -150,23 +163,20 @@ errors:
 `;
 
     it('should preserve YAML value lines, not just keys', () => {
-      const result = extractGenericErrors(vatYamlOutput);
-
-      expect(result.errorSummary).toContain('broken_file: 1');
-      expect(result.errorSummary).toContain('/fixtures/repo/CLAUDE.md');
-      expect(result.errorSummary).toContain('line: 28');
-      expect(result.errorSummary).toContain('message: "Link target is a directory');
+      expectErrorSummary(extractGenericErrors(vatYamlOutput), {
+        has: [
+          'broken_file: 1',
+          '/fixtures/repo/CLAUDE.md',
+          'line: 28',
+          'message: "Link target is a directory',
+        ],
+      });
     });
 
     it('should preserve all top-level YAML keys', () => {
-      const result = extractGenericErrors(vatYamlOutput);
-
-      expect(result.errorSummary).toContain('status:');
-      expect(result.errorSummary).toContain('filesScanned:');
-      expect(result.errorSummary).toContain('filesWithErrors:');
-      expect(result.errorSummary).toContain('errorsFound:');
-      expect(result.errorSummary).toContain('errorSummary:');
-      expect(result.errorSummary).toContain('errors:');
+      expectErrorSummary(extractGenericErrors(vatYamlOutput), {
+        has: ['status:', 'filesScanned:', 'filesWithErrors:', 'errorsFound:', 'errorSummary:', 'errors:'],
+      });
     });
 
     it('should report Command failed summary when YAML output indicates failure', () => {
@@ -198,15 +208,10 @@ key: value
 trailing log line
 more trailing
 `;
-      const result = extractGenericErrors(input);
-
-      expect(result.errorSummary).toContain('---');
-      expect(result.errorSummary).toContain('status: ok');
-      expect(result.errorSummary).toContain('key: value');
-      expect(result.errorSummary).not.toContain('preamble line 1');
-      expect(result.errorSummary).not.toContain('> npm install');
-      expect(result.errorSummary).not.toContain('trailing log line');
-      expect(result.errorSummary).not.toContain('more trailing');
+      expectErrorSummary(extractGenericErrors(input), {
+        has: ['---', 'status: ok', 'key: value'],
+        missing: ['preamble line 1', '> npm install', 'trailing log line', 'more trailing'],
+      });
     });
 
     it('stops at non-YAML line when no closing --- exists', () => {
@@ -216,13 +221,10 @@ bar: 2
 this is not yaml
 more log
 `;
-      const result = extractGenericErrors(input);
-
-      expect(result.errorSummary).toContain('---');
-      expect(result.errorSummary).toContain('foo: 1');
-      expect(result.errorSummary).toContain('bar: 2');
-      expect(result.errorSummary).not.toContain('this is not yaml');
-      expect(result.errorSummary).not.toContain('more log');
+      expectErrorSummary(extractGenericErrors(input), {
+        has: ['---', 'foo: 1', 'bar: 2'],
+        missing: ['this is not yaml', 'more log'],
+      });
     });
 
     it('comments and blank lines between --- and first key are allowed', () => {
@@ -231,11 +233,9 @@ more log
 
 key: value
 `;
-      const result = extractGenericErrors(input);
-
-      expect(result.errorSummary).toContain('---');
-      expect(result.errorSummary).toContain('# header comment');
-      expect(result.errorSummary).toContain('key: value');
+      expectErrorSummary(extractGenericErrors(input), {
+        has: ['---', '# header comment', 'key: value'],
+      });
     });
 
     it('--- alone followed by a non-YAML line is rejected (falls through)', () => {
@@ -256,12 +256,10 @@ key: value
 ...
 after the ellipsis line
 `;
-      const result = extractGenericErrors(input);
-
-      expect(result.errorSummary).toContain('---');
-      expect(result.errorSummary).toContain('key: value');
-      expect(result.errorSummary).toContain('...');
-      expect(result.errorSummary).not.toContain('after the ellipsis line');
+      expectErrorSummary(extractGenericErrors(input), {
+        has: ['---', 'key: value', '...'],
+        missing: ['after the ellipsis line'],
+      });
     });
 
     it('VAT-style output (no ---) still goes through the multi-key heuristic', () => {
@@ -287,12 +285,10 @@ errors:
         message: "Link target is a directory: /fixtures/repo/docs/teams"
 `;
       const result = extractGenericErrors(vatYamlOutput);
-
       expect(result.summary).toBe('Command failed - see output');
-      expect(result.errorSummary).toContain('status: failed');
-      expect(result.errorSummary).toContain('filesScanned: 248');
-      expect(result.errorSummary).toContain('/fixtures/repo/CLAUDE.md');
-      expect(result.errorSummary).toContain('line: 28');
+      expectErrorSummary(result, {
+        has: ['status: failed', 'filesScanned: 248', '/fixtures/repo/CLAUDE.md', 'line: 28'],
+      });
     });
   });
 
