@@ -44,19 +44,22 @@ const YAML_MAX_LINES = 80;
 
 const TOP_LEVEL_YAML_KEY = /^[A-Za-z_][\w-]*:(?:\s|$)/;
 
+// Anchored at `^` so that legitimate YAML containing these tokens inside a
+// string value (e.g. `message: "Traceback in user code"`) is not mistaken for
+// a free-form log.
 const LOG_INDICATORS = [
-  'Traceback (most recent',
-  'npm ERR!',
+  /^Traceback \(most recent/,
+  /^npm ERR!/,
 ];
 
 /**
- * Per-alternative regexes for YAML line classification. Each is anchored and
- * matches a single non-overlapping leading-character class, so checking each
- * in sequence is linear and ReDoS-safe (no nested quantifiers, no
- * greedy/lazy interplay).
+ * Per-alternative regexes for YAML line classification.
  *
- * Split into individual literals (rather than one fat alternation) to keep
- * each pattern's complexity low and readable.
+ * Each pattern is anchored at `^`, uses only bounded repetition over fixed
+ * character classes, and has no nested quantifiers or ambiguous alternation —
+ * so each is O(line length) and ReDoS-safe. Split into individual literals
+ * (rather than one combined alternation) to keep each pattern small enough
+ * to audit by eye and to satisfy `sonarjs/regex-complexity`.
  */
 const YAML_BLANK_LINE = /^\s*$/;                                // empty / whitespace-only line
 const YAML_COMMENT_LINE = /^\s*#/;                              // comment
@@ -146,18 +149,22 @@ function looksLikeYaml(lines: string[]): boolean {
 
   for (const line of lines) {
     if (line.trim() === '') continue;
+
+    // Disqualifier checks run BEFORE the noise filter so that lines which
+    // happen to overlap a noise pattern (e.g. `npm ERR!` is both a noise
+    // pattern and a log indicator) can still disqualify the block.
+    if (LOG_INDICATORS.some((re) => re.test(line))) {
+      return false;
+    }
+    if (/^\s*at \//.test(line)) return false;
+    if (/^\s*\^+\s*$/.test(line)) return false;
+
     if (NOISE_PATTERNS.some((pattern) => pattern.test(line))) continue;
     meaningfulLineCount++;
 
     if (TOP_LEVEL_YAML_KEY.test(line)) {
       topLevelKeyCount++;
     }
-
-    if (LOG_INDICATORS.some((indicator) => line.includes(indicator))) {
-      return false;
-    }
-    if (/^\s*at \//.test(line)) return false;
-    if (/^\s*\^+\s*$/.test(line)) return false;
   }
 
   return topLevelKeyCount >= 3 && meaningfulLineCount >= 5;
@@ -193,8 +200,11 @@ function buildYamlResult(lines: string[]): ErrorExtractorResult {
   );
   const truncated = denoised.length > YAML_MAX_LINES;
   const kept = truncated ? denoised.slice(0, YAML_MAX_LINES) : denoised;
+  // Prefix the marker with `# ` so it remains valid YAML (a comment) rather
+  // than a stray document-end marker (`...`) that would terminate parsing.
+  const omitted = denoised.length - YAML_MAX_LINES;
   const errorSummary = truncated
-    ? `${kept.join('\n')}\n... (truncated at ${YAML_MAX_LINES} lines)`
+    ? `${kept.join('\n')}\n# ... (truncated, ${omitted} additional lines omitted)`
     : kept.join('\n');
 
   return {

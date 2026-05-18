@@ -184,6 +184,139 @@ errors:
       expect(result.summary).toBe('Command failed - see output');
     });
 
+    // ---- Log-indicator disqualifier tests ----------------------------------
+    //
+    // Each input below satisfies the multi-key heuristic on its own
+    // (>= 3 top-level keys, >= 5 meaningful lines) AND contains exactly one
+    // log-indicator line. If the log indicator did not disqualify the input,
+    // `looksLikeYaml` would return true and `summary` would be set to
+    // 'Command failed - see output' (YAML preservation path). We detect
+    // "fell through to keyword filter" by asserting `summary` is the
+    // benign value the keyword filter produces when no error keywords match.
+    //
+    // Note: each input below intentionally uses error-keyword-free body lines
+    // (`status: ok`, `phase: build`, etc.) and a log indicator that is NOT
+    // itself an error keyword recognised by the keyword filter — so when the
+    // disqualifier rejects YAML preservation, the keyword filter sees no
+    // matches and reports 'No errors detected'.
+
+    it('Traceback line disqualifies YAML preservation', () => {
+      // 'Traceback' is an ERROR_KEYWORD, so the keyword filter would still
+      // mark this as 'Command failed - see output'. Distinguish the two
+      // paths by asserting a body line that only YAML preservation keeps.
+      const input = `status: ok
+phase: build
+step: compile
+detail: foo
+note: bar
+Traceback (most recent call last):
+`;
+      const result = extractGenericErrors(input);
+      // YAML path would preserve `phase: build`; keyword filter drops it
+      // because it has no error keyword / file:line / summary token.
+      expectErrorSummary(result, {
+        missing: ['phase: build', 'detail: foo', 'note: bar'],
+      });
+    });
+
+    it('npm ERR! line disqualifies YAML preservation', () => {
+      // `npm ERR!` is also a NOISE_PATTERN, so it gets stripped by both
+      // paths. The distinguishing signal is `summary`: YAML preservation
+      // sets 'Command failed - see output'; the keyword filter with no
+      // error keywords matched sets 'No errors detected'.
+      const input = `status: ok
+phase: build
+step: compile
+detail: foo
+note: bar
+npm ERR! code ELIFECYCLE
+`;
+      const result = extractGenericErrors(input);
+      expect(result.summary).toBe('No errors detected');
+    });
+
+    it('stack frame ("at /...") line disqualifies YAML preservation', () => {
+      // 'at ' (with trailing space) is an ERROR_KEYWORD, so distinguish via
+      // a YAML-only body line as in the Traceback test above.
+      const input = `status: ok
+phase: build
+step: compile
+detail: foo
+note: bar
+    at /home/user/app/index.js:42:9
+`;
+      const result = extractGenericErrors(input);
+      expectErrorSummary(result, {
+        missing: ['phase: build', 'detail: foo', 'note: bar'],
+      });
+    });
+
+    it('caret indicator line disqualifies YAML preservation', () => {
+      // A bare `^^^^` line matches no error keyword, so `summary` cleanly
+      // distinguishes the two paths.
+      const input = `status: ok
+phase: build
+step: compile
+detail: foo
+note: bar
+    ^^^^
+`;
+      const result = extractGenericErrors(input);
+      expect(result.summary).toBe('No errors detected');
+    });
+
+    // ---- Threshold-boundary tests ------------------------------------------
+
+    it('exactly 3 top-level keys + 5 meaningful lines is preserved as YAML', () => {
+      // 3 root keys (status, phase, step) + 2 indented continuation lines =
+      // exactly 5 meaningful lines. Indented lines do not count as
+      // top-level keys, so this lands exactly on both floors.
+      const input = `status: ok
+phase: build
+step: compile
+  detail: foo
+  note: bar
+`;
+      const result = extractGenericErrors(input);
+      expect(result.summary).toBe('Command failed - see output');
+      // Indented body lines are preserved on the YAML path; the keyword
+      // filter would drop them.
+      expectErrorSummary(result, {
+        has: ['status: ok', 'phase: build', 'detail: foo', 'note: bar'],
+      });
+    });
+
+    it('2 top-level keys + 10 meaningful lines falls through to keyword filter', () => {
+      // Two top-level keys; remaining lines are indented (so they do NOT
+      // increment the top-level key count) but they are non-blank /
+      // non-noise, so meaningfulLineCount >= 5.
+      const input = `status: ok
+details:
+  one: 1
+  two: 2
+  three: 3
+  four: 4
+  five: 5
+  six: 6
+  seven: 7
+  eight: 8
+`;
+      const result = extractGenericErrors(input);
+      expect(result.summary).toBe('No errors detected');
+    });
+
+    it('3 top-level keys + 4 meaningful lines falls through to keyword filter', () => {
+      // 3 root keys (status, phase, step) + 1 indented continuation line =
+      // 4 meaningful lines total, below the 5-line floor.
+      const input = `status: ok
+phase: build
+step: compile
+  nested: thing
+`;
+      const result = extractGenericErrors(input);
+      expect(result.summary).toBe('No errors detected');
+    });
+
     it('should truncate structured YAML output longer than 80 lines', () => {
       const header = 'status: failed\nphase: build\nstep: compile\n';
       const longBody = Array.from({ length: 200 }, (_, i) => `  key${i}: value${i}`).join('\n');
@@ -193,7 +326,16 @@ errors:
 
       const lines = (result.errorSummary ?? '').split('\n');
       expect(lines.length).toBeLessThanOrEqual(81);
-      expect(lines.at(-1)).toContain('truncated at 80 lines');
+      const lastLine = lines.at(-1) ?? '';
+      // Marker must be a YAML comment (`# ...`) so downstream YAML parsers
+      // treat the truncation note as a comment rather than a doc-end marker.
+      expect(lastLine.startsWith('# ')).toBe(true);
+      // Header contributes 4 lines ("status:", "phase:", "step:", "details:"),
+      // plus 200 body lines, plus 1 trailing empty line from the closing `\n`
+      // (`buildYamlResult` keeps blank lines). 205 - 80 = 125 omitted.
+      const denoisedTotal = 4 + 200 + 1;
+      const omitted = denoisedTotal - 80;
+      expect(lastLine).toContain(`${omitted} additional lines omitted`);
     });
   });
 
