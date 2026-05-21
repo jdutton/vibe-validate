@@ -62,52 +62,66 @@ export function createExtractorCommand(program: Command): void {
     .option('--dry-run', 'Show which files would be created without writing anything')
     .action(async (name: string | undefined, options: CreateExtractorOptions) => {
       try {
-        // Normalize cwd to avoid Windows short path issues (e.g., RUNNER~1)
-        const cwd = normalizePath(process.cwd());
-
-        // Interactive prompts for missing information (skip entirely if all options provided)
-        const context = await gatherContext(name, options);
-
-        // Determine output directory
-        const pluginDir = join(cwd, `vibe-validate-plugin-${context.pluginName}`);
-
-        // Check if directory exists (skipped in dry-run: we never overwrite, so no warning needed)
-        if (existsSync(pluginDir) && !options.force && !options.dryRun) {
-          console.error(chalk.red('❌ Plugin directory already exists:'));
-          console.error(chalk.gray(`   ${pluginDir}`));
-          console.error(chalk.gray('   Use --force to overwrite'));
-          process.exit(1);
-        }
-
-        // Dry-run path: emit YAML preview without touching the filesystem
-        if (options.dryRun) {
-          await emitDryRunPreview(cwd, pluginDir, context);
-          process.exit(0);
-        }
-
-        // Create plugin directory
-        console.log(chalk.blue('🔨 Creating extractor plugin...'));
-        createPluginDirectory(pluginDir, context);
-
-        console.log(chalk.green('✅ Extractor plugin created successfully!'));
-        console.log(chalk.blue(`📁 Created: ${pluginDir}`));
-        const pm = detectPackageManager(pluginDir);
-        const installCmd = getInstallCommandUnfrozen(pm);
-
-        console.log();
-        console.log(chalk.yellow('Next steps:'));
-        console.log(chalk.gray('  1. cd ' + `vibe-validate-plugin-${context.pluginName}`));
-        console.log(chalk.gray(`  2. ${installCmd}`));
-        console.log(chalk.gray('  3. Add your sample error output to samples/sample-error.txt'));
-        console.log(chalk.gray('  4. Implement detect() and extract() functions in index.ts'));
-        console.log(chalk.gray(`  5. Run tests: ${pm} test`));
-
-        process.exit(0);
+        await runCreateExtractor(name, options);
       } catch (error) {
         console.error(chalk.red('❌ Failed to create extractor plugin:'), error);
         process.exit(1);
       }
     });
+}
+
+/**
+ * Execute the create-extractor logic.
+ *
+ * Extracted from the Commander `.action()` closure so the directory-exists,
+ * dry-run dispatch, and write paths can be exercised by in-process unit tests
+ * (V8 coverage only sees code that runs inside the Vitest worker).
+ */
+export async function runCreateExtractor(
+  name: string | undefined,
+  options: CreateExtractorOptions
+): Promise<void> {
+  // Normalize cwd to avoid Windows short path issues (e.g., RUNNER~1)
+  const cwd = normalizePath(process.cwd());
+
+  // Interactive prompts for missing information (skip entirely if all options provided)
+  const context = await gatherContext(name, options);
+
+  // Determine output directory
+  const pluginDir = join(cwd, `vibe-validate-plugin-${context.pluginName}`);
+
+  // Check if directory exists (skipped in dry-run: we never overwrite, so no warning needed)
+  if (existsSync(pluginDir) && !options.force && !options.dryRun) {
+    console.error(chalk.red('❌ Plugin directory already exists:'));
+    console.error(chalk.gray(`   ${pluginDir}`));
+    console.error(chalk.gray('   Use --force to overwrite'));
+    process.exit(1);
+  }
+
+  // Dry-run path: emit YAML preview without touching the filesystem
+  if (options.dryRun) {
+    await emitDryRunPreview(cwd, pluginDir, context);
+    process.exit(0);
+  }
+
+  // Create plugin directory
+  console.log(chalk.blue('🔨 Creating extractor plugin...'));
+  createPluginDirectory(pluginDir, context);
+
+  console.log(chalk.green('✅ Extractor plugin created successfully!'));
+  console.log(chalk.blue(`📁 Created: ${pluginDir}`));
+  const pm = detectPackageManager(pluginDir);
+  const installCmd = getInstallCommandUnfrozen(pm);
+
+  console.log();
+  console.log(chalk.yellow('Next steps:'));
+  console.log(chalk.gray('  1. cd ' + `vibe-validate-plugin-${context.pluginName}`));
+  console.log(chalk.gray(`  2. ${installCmd}`));
+  console.log(chalk.gray('  3. Add your sample error output to samples/sample-error.txt'));
+  console.log(chalk.gray('  4. Implement detect() and extract() functions in index.ts'));
+  console.log(chalk.gray(`  5. Run tests: ${pm} test`));
+
+  process.exit(0);
 }
 
 /**

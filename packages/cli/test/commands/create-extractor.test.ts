@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
-import { normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
+import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import yaml from 'yaml';
 
@@ -16,6 +16,7 @@ import {
   emitDryRunPreview,
   gatherContext,
   getPluginFileList,
+  runCreateExtractor,
   showCreateExtractorVerboseHelp,
   type CreateExtractorOptions,
   type TemplateContext,
@@ -791,6 +792,100 @@ describe('create-extractor (in-process unit tests)', () => {
       expect(ctx.pluginName).toBe('my-tool');
       expect(ctx.description).toBe('A non-interactive run');
       expect(ctx.detectionPattern).toBe('ERR:');
+    });
+  });
+
+  describe('runCreateExtractor', () => {
+    // These tests cover the three branches inside the action body:
+    //   1. Existing directory + no --force/--dry-run → exit 1
+    //   2. --dry-run dispatch → emitDryRunPreview, exit 0 (skips overwrite warning)
+    //   3. Happy path → createPluginDirectory writes files, exit 0
+    // We spy on process.cwd() so the function writes into a real per-test
+    // tmpdir; process.exit is mocked to throw so each branch can be asserted.
+    let testDir: string;
+    let cwdSpy: ReturnType<typeof vi.spyOn>;
+    let exitSpy: ReturnType<typeof vi.spyOn>;
+    let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+    const baseOpts: CreateExtractorOptions = {
+      description: 'Test extractor',
+      author: 'Test <test@example.com>',
+      detectionPattern: 'ERROR:',
+      priority: 70,
+    };
+
+    beforeEach(() => {
+      testDir = setupTestDir('vv-run-create-extractor');
+      cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(testDir);
+      exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new Error(`process.exit(${code ?? 'undefined'})`);
+      }) as never);
+      consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      cwdSpy.mockRestore();
+      exitSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+      cleanupTestDir(testDir);
+    });
+
+    it('exits 1 when target directory already exists and neither --force nor --dry-run is set', async () => {
+      // Pre-create the plugin folder so the existsSync() guard fires.
+      mkdirSyncReal(join(testDir, 'vibe-validate-plugin-conflict'), { recursive: true });
+
+      await expect(runCreateExtractor('conflict', baseOpts)).rejects.toThrow('process.exit(1)');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      const stderr = consoleErrorSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(stderr).toContain('Plugin directory already exists');
+      expect(stderr).toContain('Use --force to overwrite');
+    });
+
+    it('bypasses the overwrite check in --dry-run mode and emits YAML preview', async () => {
+      // Existing dir would normally hit the exit-1 branch above; --dry-run
+      // skips that check entirely (we never overwrite anyway).
+      const existingDir = join(testDir, 'vibe-validate-plugin-existing');
+      mkdirSyncReal(existingDir, { recursive: true });
+
+      const captured = captureStdout();
+      try {
+        await expect(
+          runCreateExtractor('existing', { ...baseOpts, dryRun: true }),
+        ).rejects.toThrow('process.exit(0)');
+      } finally {
+        captured.restore();
+      }
+
+      expect(exitSpy).toHaveBeenCalledWith(0);
+
+      const stderr = consoleErrorSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(stderr).not.toContain('already exists');
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('existing');
+
+      // Pre-existing directory must remain untouched on disk.
+      expect(readdirSync(existingDir)).toHaveLength(0);
+    });
+
+    it('writes the full plugin file list on the happy path and exits 0', async () => {
+      await expect(runCreateExtractor('happy-path', baseOpts)).rejects.toThrow('process.exit(0)');
+      expect(exitSpy).toHaveBeenCalledWith(0);
+
+      const pluginDir = join(testDir, 'vibe-validate-plugin-happy-path');
+      expect(existsSync(pluginDir)).toBe(true);
+
+      // Every entry returned by getPluginFileList should be on disk now —
+      // this is what proves createPluginDirectory ran end-to-end.
+      const expected = getPluginFileList(makeContext({ pluginName: 'happy-path' }));
+      for (const { relPath } of expected) {
+        expect(existsSync(join(pluginDir, relPath)), `missing ${relPath}`).toBe(true);
+      }
     });
   });
 });
