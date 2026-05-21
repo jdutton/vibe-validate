@@ -6,33 +6,40 @@
  */
 
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { mkdirSyncReal, normalizePath } from '@vibe-validate/utils';
+import { mkdirSyncReal, normalizePath, toForwardSlash } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 import prompts from 'prompts';
 
 import { getCommandName } from '../utils/command-name.js';
 import { detectPackageManager, getInstallCommandUnfrozen } from '../utils/package-manager-commands.js';
+import { outputYamlResult } from '../utils/yaml-output.js';
+
+/** Subdirectory inside the scaffolded plugin that holds real-world error samples. */
+const SAMPLES_DIR_NAME = 'samples';
 
 /**
- * Options for the create-extractor command
+ * Options for the create-extractor command. Exported for `gatherContext`'s
+ * unit tests.
  */
-interface CreateExtractorOptions {
+export interface CreateExtractorOptions {
   name?: string;
   description?: string;
   author?: string;
   priority?: number;
   detectionPattern?: string;
   force?: boolean;
+  dryRun?: boolean;
 }
 
 /**
- * Template context for variable substitution
+ * Template context for variable substitution. Exported for in-process unit
+ * testing of `getPluginFileList` / `emitDryRunPreview`.
  */
-interface TemplateContext {
+export interface TemplateContext {
   pluginName: string;          // e.g., "my-plugin"
   className: string;            // e.g., "MyPlugin"
   displayName: string;          // e.g., "My Plugin"
@@ -52,50 +59,137 @@ export function createExtractorCommand(program: Command): void {
     .option('--detection-pattern <pattern>', 'Detection keyword or pattern')
     .option('--priority <number>', 'Detection priority (higher = check first)', '70')
     .option('-f, --force', 'Overwrite existing plugin directory')
+    .option('--dry-run', 'Show which files would be created without writing anything')
     .action(async (name: string | undefined, options: CreateExtractorOptions) => {
       try {
-        // Normalize cwd to avoid Windows short path issues (e.g., RUNNER~1)
-        const cwd = normalizePath(process.cwd());
-
-        // Interactive prompts for missing information (skip entirely if all options provided)
-        const context = await gatherContext(name, options);
-
-        // Determine output directory
-        const pluginDir = join(cwd, `vibe-validate-plugin-${context.pluginName}`);
-
-        // Check if directory exists
-        if (existsSync(pluginDir) && !options.force) {
-          console.error(chalk.red('❌ Plugin directory already exists:'));
-          console.error(chalk.gray(`   ${pluginDir}`));
-          console.error(chalk.gray('   Use --force to overwrite'));
-          process.exit(1);
-        }
-
-        // Create plugin directory
-        console.log(chalk.blue('🔨 Creating extractor plugin...'));
-        createPluginDirectory(pluginDir, context);
-
-        console.log(chalk.green('✅ Extractor plugin created successfully!'));
-        console.log(chalk.blue(`📁 Created: ${pluginDir}`));
-        const cmd = getCommandName();
-        const pm = detectPackageManager(pluginDir);
-        const installCmd = getInstallCommandUnfrozen(pm);
-
-        console.log();
-        console.log(chalk.yellow('Next steps:'));
-        console.log(chalk.gray('  1. cd ' + `vibe-validate-plugin-${context.pluginName}`));
-        console.log(chalk.gray(`  2. ${installCmd}`));
-        console.log(chalk.gray('  3. Add your sample error output to samples/sample-error.txt'));
-        console.log(chalk.gray('  4. Implement detect() and extract() functions in index.ts'));
-        console.log(chalk.gray(`  5. Run tests: ${pm} test`));
-        console.log(chalk.gray(`  6. Test the plugin: ${cmd} test-extractor .`));
-
-        process.exit(0);
+        await runCreateExtractor(name, options);
       } catch (error) {
         console.error(chalk.red('❌ Failed to create extractor plugin:'), error);
         process.exit(1);
       }
     });
+}
+
+/**
+ * Execute the create-extractor logic.
+ *
+ * Extracted from the Commander `.action()` closure so the directory-exists,
+ * dry-run dispatch, and write paths can be exercised by in-process unit tests
+ * (V8 coverage only sees code that runs inside the Vitest worker).
+ */
+export async function runCreateExtractor(
+  name: string | undefined,
+  options: CreateExtractorOptions
+): Promise<void> {
+  // Normalize cwd to avoid Windows short path issues (e.g., RUNNER~1)
+  const cwd = normalizePath(process.cwd());
+
+  // Interactive prompts for missing information (skip entirely if all options provided)
+  const context = await gatherContext(name, options);
+
+  // Determine output directory
+  const pluginDir = join(cwd, `vibe-validate-plugin-${context.pluginName}`);
+
+  // Check if directory exists (skipped in dry-run: we never overwrite, so no warning needed)
+  if (existsSync(pluginDir) && !options.force && !options.dryRun) {
+    console.error(chalk.red('❌ Plugin directory already exists:'));
+    console.error(chalk.gray(`   ${pluginDir}`));
+    console.error(chalk.gray('   Use --force to overwrite'));
+    process.exit(1);
+  }
+
+  // Dry-run path: emit YAML preview without touching the filesystem
+  if (options.dryRun) {
+    await emitDryRunPreview(cwd, pluginDir, context);
+    process.exit(0);
+  }
+
+  // Create plugin directory
+  console.log(chalk.blue('🔨 Creating extractor plugin...'));
+  createPluginDirectory(pluginDir, context);
+
+  console.log(chalk.green('✅ Extractor plugin created successfully!'));
+  console.log(chalk.blue(`📁 Created: ${pluginDir}`));
+  const pm = detectPackageManager(pluginDir);
+  const installCmd = getInstallCommandUnfrozen(pm);
+
+  console.log();
+  console.log(chalk.yellow('Next steps:'));
+  console.log(chalk.gray('  1. cd ' + `vibe-validate-plugin-${context.pluginName}`));
+  console.log(chalk.gray(`  2. ${installCmd}`));
+  console.log(chalk.gray('  3. Add your sample error output to samples/sample-error.txt'));
+  console.log(chalk.gray('  4. Implement detect() and extract() functions in index.ts'));
+  console.log(chalk.gray(`  5. Run tests: ${pm} test`));
+
+  process.exit(0);
+}
+
+/**
+ * Single source of truth for the files a scaffolded plugin contains.
+ *
+ * Both the real write path (`createPluginDirectory`) and the dry-run preview
+ * (`emitDryRunPreview`) iterate this list, guaranteeing they stay in sync.
+ * All generators here are pure (no I/O), so the same list is safe to use for
+ * both writing and previewing.
+ *
+ * Exported for in-process unit testing — subprocess-based command tests
+ * don't contribute line hits to V8 coverage instrumentation.
+ */
+export function getPluginFileList(context: TemplateContext): Array<{ relPath: string; content: string }> {
+  return [
+    { relPath: 'index.ts', content: generateIndexTs(context) },
+    { relPath: 'index.test.ts', content: generateIndexTestTs(context) },
+    { relPath: 'README.md', content: generateReadme(context) },
+    { relPath: 'CLAUDE.md', content: generateClaudeMd(context) },
+    { relPath: 'package.json', content: generatePackageJson(context) },
+    { relPath: 'tsconfig.json', content: generateTsConfig(context) },
+    { relPath: join(SAMPLES_DIR_NAME, 'sample-error.txt'), content: generateSampleError(context) },
+  ];
+}
+
+/**
+ * Compute the list of files that would be created and emit a YAML preview to stdout.
+ *
+ * Calls every template generator (they are pure) and measures `Buffer.byteLength`
+ * for each result. Does not call `mkdirSyncReal` or `writeFileSync`.
+ *
+ * Exported for in-process unit testing (see `getPluginFileList` for rationale).
+ */
+export async function emitDryRunPreview(
+  cwd: string,
+  pluginDir: string,
+  context: TemplateContext
+): Promise<void> {
+  // Format a path relative to cwd with a leading `./` (matches what users see).
+  // POSIX-style separators in YAML output for consistency across platforms.
+  const toDisplayPath = (absPath: string): string => {
+    const posix = toForwardSlash(relative(cwd, absPath));
+    return posix.startsWith('.') ? posix : `./${posix}`;
+  };
+
+  const samplesDir = join(pluginDir, SAMPLES_DIR_NAME);
+
+  const wouldCreate = getPluginFileList(context).map(({ relPath, content }) => ({
+    path: toDisplayPath(join(pluginDir, relPath)),
+    bytes: Buffer.byteLength(content, 'utf8'),
+  }));
+
+  const totalBytes = wouldCreate.reduce((sum, entry) => sum + entry.bytes, 0);
+
+  const result = {
+    dryRun: true,
+    pluginName: context.pluginName,
+    pluginDir: toDisplayPath(pluginDir),
+    wouldCreateDir: [toDisplayPath(pluginDir), toDisplayPath(samplesDir)],
+    wouldCreate,
+    summary: {
+      filesCount: wouldCreate.length,
+      dirsCount: 2,
+      totalBytes,
+    },
+  };
+
+  await outputYamlResult(result);
 }
 
 /**
@@ -137,9 +231,13 @@ function buildPromptsConfig(
 }
 
 /**
- * Gather context from command-line arguments and interactive prompts
+ * Gather context from command-line arguments and interactive prompts.
+ *
+ * Exported so the non-TTY guard can be unit-tested in-process — driving the
+ * full Commander action via `parseAsync` is awkward because of how the test
+ * harness's `process.exit` mock interacts with command parsing.
  */
-async function gatherContext(
+export async function gatherContext(
   name: string | undefined,
   options: CreateExtractorOptions
 ): Promise<TemplateContext> {
@@ -149,6 +247,19 @@ async function gatherContext(
   const hasAllOptions = name && options.description && options.author && options.detectionPattern;
 
   let responses: Record<string, string | undefined> = {};
+
+  // Bail fast when stdin is not a TTY and required info is missing.
+  // Without this guard, prompts() returns {} on closed stdin and the
+  // existing cancellation path silently exits 0 — confusing in CI / pipes.
+  if (!hasAllOptions && !process.stdin.isTTY) {
+    const cmd = getCommandName();
+    console.error(chalk.red(
+      `error: plugin name is required when running non-interactively\n` +
+      `       pass it as a positional argument, plus the required flags:\n` +
+      `       ${cmd} create-extractor <name> --description <desc> --author <author> --detection-pattern <pattern>`
+    ));
+    process.exit(1);
+  }
 
   // Only run prompts if we're missing required information
   if (!hasAllOptions) {
@@ -192,28 +303,13 @@ async function gatherContext(
 function createPluginDirectory(pluginDir: string, context: TemplateContext): void {
   // Create directories (using mkdirSyncReal to handle Windows short paths)
   const normalizedPluginDir = mkdirSyncReal(pluginDir, { recursive: true });
-  mkdirSyncReal(join(normalizedPluginDir, 'samples'), { recursive: true });
+  mkdirSyncReal(join(normalizedPluginDir, SAMPLES_DIR_NAME), { recursive: true });
 
   // Write files (using normalized path to ensure consistency)
-  writeFileSync(join(normalizedPluginDir, 'index.ts'), generateIndexTs(context), 'utf-8');
-  writeFileSync(join(normalizedPluginDir, 'index.test.ts'), generateIndexTestTs(context), 'utf-8');
-  writeFileSync(join(normalizedPluginDir, 'README.md'), generateReadme(context), 'utf-8');
-  writeFileSync(join(normalizedPluginDir, 'CLAUDE.md'), generateClaudeMd(context), 'utf-8');
-  writeFileSync(join(normalizedPluginDir, 'package.json'), generatePackageJson(context), 'utf-8');
-  writeFileSync(join(normalizedPluginDir, 'tsconfig.json'), generateTsConfig(context), 'utf-8');
-  writeFileSync(
-    join(normalizedPluginDir, 'samples', 'sample-error.txt'),
-    generateSampleError(context),
-    'utf-8'
-  );
-
-  console.log(chalk.gray('   ✓ Created index.ts'));
-  console.log(chalk.gray('   ✓ Created index.test.ts'));
-  console.log(chalk.gray('   ✓ Created README.md'));
-  console.log(chalk.gray('   ✓ Created CLAUDE.md'));
-  console.log(chalk.gray('   ✓ Created package.json'));
-  console.log(chalk.gray('   ✓ Created tsconfig.json'));
-  console.log(chalk.gray('   ✓ Created samples/sample-error.txt'));
+  for (const { relPath, content } of getPluginFileList(context)) {
+    writeFileSync(join(normalizedPluginDir, relPath), content, 'utf-8');
+    console.log(chalk.gray(`   ✓ Created ${relPath}`));
+  }
 }
 
 /**
@@ -854,10 +950,7 @@ npm install    # or: pnpm install / yarn install / bun install
 # 6. Run tests
 npm test
 
-# 7. Test with vibe-validate
-vibe-validate test-extractor .
-
-# 8. Publish (optional)
+# 7. Publish (optional)
 npm publish
 \`\`\`
 
@@ -876,12 +969,10 @@ Generated plugins follow the vibe-validate plugin architecture:
 2. **Implement detect()** function to identify your tool's output
 3. **Implement extract()** function to parse errors
 4. **Run tests** to validate functionality
-5. **Test with vibe-validate** using \`test-extractor\` command
-6. **Publish to npm** (optional) or use locally
+5. **Publish to npm** (optional) or use locally
 
 ## Related Commands
 
 - \`vibe-validate fork-extractor <name>\` - Copy built-in extractor for customization
-- \`vibe-validate test-extractor <path>\` - Validate plugin functionality and security
 `);
 }

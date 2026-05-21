@@ -505,6 +505,7 @@ Create a new extractor plugin from template
 - `--detection-pattern <pattern>` - Detection keyword or pattern
 - `--priority <number>` - Detection priority (higher = check first)
 - `-f, --force` - Overwrite existing plugin directory
+- `--dry-run` - Show which files would be created without writing anything
 
 ---
 

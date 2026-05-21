@@ -6,16 +6,37 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
+import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import yaml from 'yaml';
 
-import { showCreateExtractorVerboseHelp } from '../../src/commands/create-extractor.js';
+import {
+  emitDryRunPreview,
+  gatherContext,
+  getPluginFileList,
+  runCreateExtractor,
+  showCreateExtractorVerboseHelp,
+  type CreateExtractorOptions,
+  type TemplateContext,
+} from '../../src/commands/create-extractor.js';
 import {
   executeVibeValidateCombined as execCLI,
+  executeVibeValidateCommand,
   setupTestDir,
   cleanupTestDir
 } from '../helpers/cli-execution-helpers.js';
+
+/**
+ * Parse the YAML document emitted between `---` separators by `outputYamlResult()`.
+ * Mirrors the pattern used in run.integration.test.ts.
+ */
+function parseYamlFrontMatter(stdout: string): any {
+  const yamlMatch = /^---\n([\s\S]*?)\n---/.exec(stdout);
+  expect(yamlMatch).toBeTruthy();
+  return yaml.parse(yamlMatch![1]);
+}
 
 /**
  * Helper: Create an extractor plugin with standard options
@@ -352,6 +373,163 @@ describe('create-extractor command', () => {
     });
   });
 
+  describe('--dry-run', () => {
+    it('should emit YAML preview and create no files', async () => {
+      const result = await executeVibeValidateCommand([
+        'create-extractor',
+        'dry-tool',
+        '--description', 'Dry-run preview test',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'DRY:',
+        '--dry-run',
+      ], { cwd: testDir });
+
+      expect(result.exitCode).toBe(0);
+
+      // No files should exist on disk.
+      const pluginDir = join(testDir, 'vibe-validate-plugin-dry-tool');
+      expect(existsSync(pluginDir)).toBe(false);
+      expect(readdirSync(testDir)).toHaveLength(0);
+
+      // YAML should match the documented schema.
+      const parsed = parseYamlFrontMatter(result.stdout);
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('dry-tool');
+      expect(parsed.pluginDir).toBe('./vibe-validate-plugin-dry-tool');
+      expect(parsed.wouldCreateDir).toEqual([
+        './vibe-validate-plugin-dry-tool',
+        './vibe-validate-plugin-dry-tool/samples',
+      ]);
+
+      // 7 files in canonical order: index.ts, index.test.ts, README.md,
+      // CLAUDE.md, package.json, tsconfig.json, samples/sample-error.txt
+      expect(parsed.wouldCreate).toHaveLength(7);
+      const paths = parsed.wouldCreate.map((entry: { path: string }) => entry.path);
+      expect(paths).toEqual([
+        './vibe-validate-plugin-dry-tool/index.ts',
+        './vibe-validate-plugin-dry-tool/index.test.ts',
+        './vibe-validate-plugin-dry-tool/README.md',
+        './vibe-validate-plugin-dry-tool/CLAUDE.md',
+        './vibe-validate-plugin-dry-tool/package.json',
+        './vibe-validate-plugin-dry-tool/tsconfig.json',
+        './vibe-validate-plugin-dry-tool/samples/sample-error.txt',
+      ]);
+      for (const entry of parsed.wouldCreate) {
+        expect(typeof entry.bytes).toBe('number');
+        expect(entry.bytes).toBeGreaterThan(0);
+      }
+
+      // Summary should be consistent with the file list.
+      expect(parsed.summary.filesCount).toBe(7);
+      expect(parsed.summary.dirsCount).toBe(2);
+      const expectedTotal = parsed.wouldCreate.reduce(
+        (sum: number, entry: { bytes: number }) => sum + entry.bytes,
+        0,
+      );
+      expect(parsed.summary.totalBytes).toBe(expectedTotal);
+
+      // "Next steps" guidance must NOT appear in dry-run (misleading otherwise).
+      expect(result.stdout + result.stderr).not.toContain('Next steps:');
+    });
+
+    it('should emit YAML and skip overwrite warning when --dry-run + --force on existing dir', async () => {
+      // First, actually create the plugin so the directory exists.
+      await createPlugin(testDir, 'existing-tool', {
+        description: 'Existing plugin',
+        detectionPattern: 'ERR:',
+      });
+
+      const pluginDir = join(testDir, 'vibe-validate-plugin-existing-tool');
+      expect(existsSync(pluginDir)).toBe(true);
+      const indexBefore = readFileSync(join(pluginDir, 'index.ts'), 'utf-8');
+
+      // Re-run with --dry-run --force: should preview, not overwrite.
+      const result = await executeVibeValidateCommand([
+        'create-extractor',
+        'existing-tool',
+        '--description', 'Different description',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'NEW:',
+        '--dry-run',
+        '--force',
+      ], { cwd: testDir });
+
+      expect(result.exitCode).toBe(0);
+      // The overwrite warning should NOT have fired (dry-run bypasses it).
+      expect(result.stderr).not.toContain('already exists');
+
+      // YAML preview emitted.
+      const parsed = parseYamlFrontMatter(result.stdout);
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('existing-tool');
+
+      // The actual file on disk must be untouched.
+      const indexAfter = readFileSync(join(pluginDir, 'index.ts'), 'utf-8');
+      expect(indexAfter).toBe(indexBefore);
+    });
+  });
+
+  describe('non-TTY guard', () => {
+    it('should exit 1 with helpful error when stdin is not a TTY and required args missing', async () => {
+      // executeVibeValidateCommand spawns with stdio: ['ignore', ...],
+      // so process.stdin.isTTY is undefined in the child — matching the
+      // `vv create-extractor </dev/null` scenario the guard fixes.
+      const result = await executeVibeValidateCommand(['create-extractor'], { cwd: testDir });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('plugin name is required when running non-interactively');
+      expect(result.stderr).toContain('create-extractor <name>');
+      expect(result.stderr).toContain('--description');
+      expect(result.stderr).toContain('--author');
+      expect(result.stderr).toContain('--detection-pattern');
+
+      // No files written.
+      expect(readdirSync(testDir)).toHaveLength(0);
+    });
+
+    it('should proceed normally when all required flags are passed (hasAllOptions=true)', async () => {
+      const result = await executeVibeValidateCommand([
+        'create-extractor',
+        'full-flags-tool',
+        '--description', 'All flags supplied',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'FULL:',
+        '--force',
+      ], { cwd: testDir });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain('plugin name is required when running non-interactively');
+      expect(existsSync(join(testDir, 'vibe-validate-plugin-full-flags-tool', 'index.ts'))).toBe(true);
+    });
+  });
+
+  describe('test-extractor reference scrubbed', () => {
+    it('should not mention test-extractor in post-creation output', async () => {
+      const output = await execCLI([
+        'create-extractor',
+        'scrub-check',
+        '--description', 'Scrub check',
+        '--author', 'Test <test@example.com>',
+        '--detection-pattern', 'ERR:',
+        '--force',
+      ], { cwd: testDir });
+
+      expect(output).not.toContain('test-extractor .');
+      expect(output).not.toContain('Test the plugin:');
+    });
+
+    it('should not mention test-extractor in verbose help', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      showCreateExtractorVerboseHelp();
+      const output = consoleSpy.mock.calls.map(call => call[0]).join('\n');
+      consoleSpy.mockRestore();
+
+      // The verbose help must not advertise a command that doesn't exist yet.
+      // PR 3 will land `test-extractor` and re-add these references.
+      expect(output).not.toContain('test-extractor');
+    });
+  });
+
   describe('verbose help', () => {
     it('should display comprehensive help documentation', () => {
       // Spy on console.log to capture output
@@ -391,5 +569,324 @@ describe('create-extractor command', () => {
     });
   });
 
+});
+
+/**
+ * In-process unit tests for the testable seams of `create-extractor.ts`.
+ *
+ * The subprocess-based tests above prove behaviour end-to-end but don't
+ * contribute to V8 coverage (Vitest's instrumentation only sees code that
+ * runs inside the test process). These tests call the exported functions
+ * directly so the patch coverage reflects what's actually exercised.
+ */
+
+const SAMPLE_FILE = join('samples', 'sample-error.txt');
+
+function makeContext(overrides: Partial<TemplateContext> = {}): TemplateContext {
+  return {
+    pluginName: 'test-tool',
+    className: 'TestTool',
+    displayName: 'Test Tool',
+    description: 'A test extractor plugin',
+    author: 'Test Author <test@example.com>',
+    priority: 70,
+    detectionPattern: 'ERROR:',
+    year: '2026',
+    ...overrides,
+  };
+}
+
+/**
+ * Capture every `process.stdout.write` call until the test restores the spy.
+ * `outputYamlResult` writes the document in four separate calls plus a
+ * "flush" trailing empty write; we concatenate everything but the empty
+ * pings so the YAML parser sees a single coherent string.
+ */
+function captureStdout(): { read: () => string; restore: () => void } {
+  const chunks: string[] = [];
+  const spy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array): boolean => {
+    chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
+    return true;
+  });
+  return {
+    read: () => chunks.join(''),
+    restore: () => spy.mockRestore(),
+  };
+}
+
+describe('create-extractor (in-process unit tests)', () => {
+  describe('getPluginFileList', () => {
+    it('returns the 7 canonical file entries in stable order', () => {
+      const list = getPluginFileList(makeContext());
+
+      // Order matters — both writers and previewers iterate this list and
+      // surface entries in the same sequence to the user.
+      expect(list.map(f => f.relPath)).toEqual([
+        'index.ts',
+        'index.test.ts',
+        'README.md',
+        'CLAUDE.md',
+        'package.json',
+        'tsconfig.json',
+        SAMPLE_FILE,
+      ]);
+    });
+
+    it('returns non-empty content for every entry', () => {
+      const list = getPluginFileList(makeContext());
+
+      for (const { relPath, content } of list) {
+        expect(content.length, `empty content for ${relPath}`).toBeGreaterThan(0);
+      }
+    });
+
+    it('substitutes pluginName into generated content', () => {
+      const list = getPluginFileList(makeContext({ pluginName: 'my-cool-plugin' }));
+      const pkg = list.find(f => f.relPath === 'package.json');
+
+      expect(pkg).toBeDefined();
+      expect(pkg!.content).toContain('vibe-validate-plugin-my-cool-plugin');
+    });
+
+    it('substitutes className and detectionPattern into the main source', () => {
+      const list = getPluginFileList(makeContext({
+        className: 'MyClass',
+        detectionPattern: 'FAIL:',
+      }));
+      const indexTs = list.find(f => f.relPath === 'index.ts');
+
+      expect(indexTs).toBeDefined();
+      expect(indexTs!.content).toContain('detectMyClass');
+      expect(indexTs!.content).toContain('FAIL:');
+    });
+  });
+
+  describe('emitDryRunPreview', () => {
+    // The function is pure with respect to its `cwd`/`pluginDir` arguments —
+    // it does no I/O, just path-relative arithmetic — so any string-shaped
+    // path is fine. Using `normalizedTmpdir()` satisfies the project's
+    // "no publicly-writable directory literals" lint rule while keeping the
+    // test self-contained (no actual files touched).
+    const dummyCwd = normalizedTmpdir();
+    const dummyPluginDir = join(dummyCwd, 'vibe-validate-plugin-test-tool');
+
+    it('emits a YAML document with the documented schema', async () => {
+      const captured = captureStdout();
+
+      try {
+        await emitDryRunPreview(dummyCwd, dummyPluginDir, makeContext({ pluginName: 'test-tool' }));
+      } finally {
+        captured.restore();
+      }
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('test-tool');
+      expect(parsed.pluginDir).toBe('./vibe-validate-plugin-test-tool');
+      expect(parsed.wouldCreateDir).toEqual([
+        './vibe-validate-plugin-test-tool',
+        './vibe-validate-plugin-test-tool/samples',
+      ]);
+      expect(parsed.wouldCreate).toHaveLength(7);
+      expect(parsed.summary.filesCount).toBe(7);
+      expect(parsed.summary.dirsCount).toBe(2);
+    });
+
+    it('byte counts match Buffer.byteLength of the generated content', async () => {
+      const list = getPluginFileList(makeContext());
+      const captured = captureStdout();
+
+      try {
+        await emitDryRunPreview(dummyCwd, dummyPluginDir, makeContext());
+      } finally {
+        captured.restore();
+      }
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      const expectedTotal = list.reduce((sum, f) => sum + Buffer.byteLength(f.content, 'utf8'), 0);
+
+      expect(parsed.summary.totalBytes).toBe(expectedTotal);
+      // Each entry's byte count matches its generator's output. We match by
+      // basename rather than full path because the emitted path is relative
+      // to cwd and the source list uses bare relPaths.
+      for (const entry of parsed.wouldCreate as Array<{ path: string; bytes: number }>) {
+        const filename = basename(entry.path);
+        const sourceEntry = list.find(f => f.relPath.endsWith(filename));
+        expect(sourceEntry).toBeDefined();
+        expect(entry.bytes).toBe(Buffer.byteLength(sourceEntry!.content, 'utf8'));
+      }
+    });
+
+    it('emits POSIX-style forward-slash paths regardless of OS path separator', async () => {
+      const captured = captureStdout();
+
+      try {
+        await emitDryRunPreview(dummyCwd, dummyPluginDir, makeContext());
+      } finally {
+        captured.restore();
+      }
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      // toForwardSlash() guarantees no backslashes; the leading-`./` marker
+      // is set by emitDryRunPreview's display-path helper. We pre-normalize
+      // through toForwardSlash to satisfy the project's `no-path-startswith`
+      // lint rule (which insists on normalization before path comparisons).
+      for (const entry of parsed.wouldCreate as Array<{ path: string }>) {
+        expect(entry.path).not.toContain('\\');
+        expect(toForwardSlash(entry.path).startsWith('./')).toBe(true);
+      }
+    });
+  });
+
+  describe('gatherContext non-TTY guard', () => {
+    let originalIsTTY: boolean | undefined;
+    let exitSpy: ReturnType<typeof vi.spyOn>;
+    let errorSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      originalIsTTY = process.stdin.isTTY;
+      // Simulate a non-TTY stdin (e.g., `vv create-extractor </dev/null`).
+      Object.defineProperty(process.stdin, 'isTTY', { value: undefined, configurable: true });
+      // process.exit is the boundary we assert on. Throwing from the mock
+      // lets the test halt the function without actually exiting node.
+      exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new Error(`process.exit(${code ?? 'undefined'})`);
+      }) as never);
+      errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, configurable: true });
+      exitSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it('exits 1 when stdin is not a TTY and required args are missing', async () => {
+      // No positional name, no --description etc. → guard should fire.
+      const opts: CreateExtractorOptions = {};
+
+      await expect(gatherContext(undefined, opts)).rejects.toThrow('process.exit(1)');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      // The stderr message lists the flags the user needs to pass.
+      const stderr = errorSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(stderr).toContain('plugin name is required when running non-interactively');
+      expect(stderr).toContain('--description');
+      expect(stderr).toContain('--author');
+      expect(stderr).toContain('--detection-pattern');
+    });
+
+    it('proceeds (no exit) when stdin is not a TTY but all required args supplied', async () => {
+      // hasAllOptions === true short-circuits both the prompts call AND the
+      // guard. Returning a fully-populated TemplateContext is the success
+      // path — the function never has to read from stdin.
+      const opts: CreateExtractorOptions = {
+        description: 'A non-interactive run',
+        author: 'CI <ci@example.com>',
+        detectionPattern: 'ERR:',
+        priority: 70,
+      };
+
+      const ctx = await gatherContext('my-tool', opts);
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(ctx.pluginName).toBe('my-tool');
+      expect(ctx.description).toBe('A non-interactive run');
+      expect(ctx.detectionPattern).toBe('ERR:');
+    });
+  });
+
+  describe('runCreateExtractor', () => {
+    // These tests cover the three branches inside the action body:
+    //   1. Existing directory + no --force/--dry-run → exit 1
+    //   2. --dry-run dispatch → emitDryRunPreview, exit 0 (skips overwrite warning)
+    //   3. Happy path → createPluginDirectory writes files, exit 0
+    // We spy on process.cwd() so the function writes into a real per-test
+    // tmpdir; process.exit is mocked to throw so each branch can be asserted.
+    let testDir: string;
+    let cwdSpy: ReturnType<typeof vi.spyOn>;
+    let exitSpy: ReturnType<typeof vi.spyOn>;
+    let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+    const baseOpts: CreateExtractorOptions = {
+      description: 'Test extractor',
+      author: 'Test <test@example.com>',
+      detectionPattern: 'ERROR:',
+      priority: 70,
+    };
+
+    beforeEach(() => {
+      testDir = setupTestDir('vv-run-create-extractor');
+      cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(testDir);
+      exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new Error(`process.exit(${code ?? 'undefined'})`);
+      }) as never);
+      consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      cwdSpy.mockRestore();
+      exitSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+      cleanupTestDir(testDir);
+    });
+
+    it('exits 1 when target directory already exists and neither --force nor --dry-run is set', async () => {
+      // Pre-create the plugin folder so the existsSync() guard fires.
+      mkdirSyncReal(join(testDir, 'vibe-validate-plugin-conflict'), { recursive: true });
+
+      await expect(runCreateExtractor('conflict', baseOpts)).rejects.toThrow('process.exit(1)');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      const stderr = consoleErrorSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(stderr).toContain('Plugin directory already exists');
+      expect(stderr).toContain('Use --force to overwrite');
+    });
+
+    it('bypasses the overwrite check in --dry-run mode and emits YAML preview', async () => {
+      // Existing dir would normally hit the exit-1 branch above; --dry-run
+      // skips that check entirely (we never overwrite anyway).
+      const existingDir = join(testDir, 'vibe-validate-plugin-existing');
+      mkdirSyncReal(existingDir, { recursive: true });
+
+      const captured = captureStdout();
+      try {
+        await expect(
+          runCreateExtractor('existing', { ...baseOpts, dryRun: true }),
+        ).rejects.toThrow('process.exit(0)');
+      } finally {
+        captured.restore();
+      }
+
+      expect(exitSpy).toHaveBeenCalledWith(0);
+
+      const stderr = consoleErrorSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(stderr).not.toContain('already exists');
+
+      const parsed = parseYamlFrontMatter(captured.read());
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.pluginName).toBe('existing');
+
+      // Pre-existing directory must remain untouched on disk.
+      expect(readdirSync(existingDir)).toHaveLength(0);
+    });
+
+    it('writes the full plugin file list on the happy path and exits 0', async () => {
+      await expect(runCreateExtractor('happy-path', baseOpts)).rejects.toThrow('process.exit(0)');
+      expect(exitSpy).toHaveBeenCalledWith(0);
+
+      const pluginDir = join(testDir, 'vibe-validate-plugin-happy-path');
+      expect(existsSync(pluginDir)).toBe(true);
+
+      // Every entry returned by getPluginFileList should be on disk now —
+      // this is what proves createPluginDirectory ran end-to-end.
+      const expected = getPluginFileList(makeContext({ pluginName: 'happy-path' }));
+      for (const { relPath } of expected) {
+        expect(existsSync(join(pluginDir, relPath)), `missing ${relPath}`).toBe(true);
+      }
+    });
+  });
 });
 
