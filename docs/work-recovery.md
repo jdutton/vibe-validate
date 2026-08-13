@@ -21,7 +21,7 @@ Automatic snapshots happen during:
 - `vv pre-commit` - Pre-commit workflow
 - `vv run <command>` - Individual command execution (v0.15.0+)
 
-Each creates a tree hash in git objects that captures complete working directory state at that moment.
+Each creates a tree hash in git objects that captures your working directory state at that moment, excluding ignored paths.
 
 ## View Validation Snapshots
 

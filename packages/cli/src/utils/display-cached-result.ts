@@ -67,7 +67,8 @@ export function displayCachedResult(cachedRun: ValidationRun, treeHash: string):
  */
 export function displayCachedFailureHint(write: (message: string) => void = console.error): void {
   const cmd = getCommandName();
-  write(chalk.gray('\n   Keyed on your tracked + untracked files; .gitignore\'d paths are excluded.'));
+  write(chalk.gray('\n   Keyed on your tracked + untracked files; ignored paths are excluded'));
+  write(chalk.gray('   (.gitignore, .git/info/exclude, or your global excludes file).'));
   write(chalk.gray('   If your fix was to an ignored path or to state outside the repo, this'));
   write(chalk.gray(`   result can't see it. Re-run with: ${cmd} validate --force`));
 }

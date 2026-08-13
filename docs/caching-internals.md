@@ -11,7 +11,8 @@ vibe-validate achieves **dramatic speedup** through git-aware caching using cont
 A **tree hash** is git's way of creating a deterministic fingerprint of your working directory:
 - Content-based (same files = same hash)
 - No timestamps (purely about file contents)
-- Includes untracked files (not just committed code), but **not `.gitignore`d paths**
+- Includes untracked files (not just committed code), but **not ignored paths**
+  (`.gitignore`, `.git/info/exclude`, or your global excludes file)
 - Deterministic (same state always produces same hash)
 
 ### How vibe-validate uses tree hashes
@@ -37,21 +38,25 @@ Real-world measurements from vibe-validate development:
 
 ## Cache Key: What Invalidates Cache?
 
+All of the following apply to **non-ignored** files only.
+
 ### Cache invalidates when:
-- ✅ Any file content changes
+- ✅ Any non-ignored file's content changes
 - ✅ New files added (even untracked, as long as they are not ignored)
 - ✅ Files deleted
 - ✅ File renamed
-- ✅ Working tree modifications
+- ✅ Working tree modifications to non-ignored files
+- ✅ Editing `.gitignore` itself (it is a tracked file, so it is part of the key)
 
 ### Cache persists when:
 - ✅ Switching branches (if same code state)
 - ✅ Git operations (commits, merges) that result in same tree
 - ✅ Time passing (content-based, not time-based)
-- ✅ .gitignore changes (ignored files not in tree hash)
-- ✅ **Adding, changing, or deleting a `.gitignore`d file** — ignored paths are
+- ✅ **Adding, changing, or deleting an ignored file** — ignored paths are
   excluded from the key by design, so that secrets and per-developer build
-  artifacts are never checksummed and the cache stays shareable
+  artifacts are never checksummed and the cache stays shareable. "Ignored"
+  means ignored by any source: `.gitignore`, `.git/info/exclude`, or your
+  global excludes file
 
 ### Consequence worth knowing
 

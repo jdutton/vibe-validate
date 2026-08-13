@@ -16,7 +16,7 @@ Every time you run vibe-validate, you're automatically creating a recoverable sn
 
 ### Technical Explanation
 
-When vibe-validate calculates the git tree hash for caching, it uses a temporary git index to create git objects for every file in your working directory:
+When vibe-validate calculates the git tree hash for caching, it uses a temporary git index to create git objects for the files in your working directory (ignored paths excluded):
 
 ```bash
 # 1. Create temporary index
@@ -43,10 +43,10 @@ rm "$TEMP_INDEX"
 - Tracked files with staged changes
 - Tracked files with unstaged modifications
 - Untracked files (new files you just created)
-- All file content in your working directory
+- The full content of each of the above
 
 ❌ **Not protected** (security by design):
-- Files in `.gitignore` (secrets, API keys, credentials, .env files)
+- Ignored files — via `.gitignore`, `.git/info/exclude`, or your global excludes file (secrets, API keys, credentials, .env files)
 - Build artifacts (dist/, node_modules/, target/)
 - Temporary files (*.tmp, *.swp, *.bak)
 - System files (.DS_Store)

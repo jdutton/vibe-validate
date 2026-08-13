@@ -10,6 +10,7 @@ import { getGitTreeHash } from '@vibe-validate/git';
 import { findCachedValidation } from '@vibe-validate/history';
 import chalk from 'chalk';
 
+import { getCommandName } from './command-name.js';
 import { displayCachedFailureHint, displayCachedResult } from './display-cached-result.js';
 import { outputYamlResult } from './yaml-output.js';
 
@@ -115,8 +116,11 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
   if (!cachedRun.passed) {
     // Last validation failed - show error details (same as fresh failure)
     if (yaml) {
-      // YAML mode: Output failed result as YAML to stdout
-      await outputYamlResult(cachedRun.result);
+      // YAML mode: Output failed result as YAML to stdout.
+      // --check only ever reports a stored result, so flag its provenance the same
+      // way the validate workflow does - otherwise an agent parsing this sees a bare
+      // failure with no way to tell it was not just computed (issue #169).
+      await outputYamlResult({ ...cachedRun.result, isCachedResult: true });
     } else {
       // Human-readable mode: Display failure details
       displayCachedResult(cachedRun, treeHashResult.hash);
@@ -124,8 +128,9 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
       // Show which phase/step failed (actionable info)
       displayFailedPhaseInfo(cachedRun.result?.phases);
 
-      console.log(chalk.blue('\n📋 View full error details:'), chalk.white('vibe-validate state'));
-      console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white('npx vibe-validate validate'));
+      const cmd = getCommandName();
+      console.log(chalk.blue('\n📋 View full error details:'), chalk.white(`${cmd} state`));
+      console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white(`${cmd} validate`));
 
       // --check never runs validation, so this verdict is always a replay (issue #169)
       displayCachedFailureHint(console.log);

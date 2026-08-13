@@ -15,6 +15,8 @@ import type { AgentContext } from '../../src/utils/context-detector.js';
 import type { ValidateWorkflowOptions } from '../../src/utils/validate-workflow.js';
 import { runValidateWorkflow } from '../../src/utils/validate-workflow.js';
 
+export type { ValidateWorkflowOptions } from '../../src/utils/validate-workflow.js';
+
 /**
  * Standard mock tree hash result used across tests
  */

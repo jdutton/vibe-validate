@@ -242,7 +242,7 @@ Each history entry stores:
 - `headCommit`: Last commit at validation time
 - `uncommittedChanges`: Whether you had uncommitted work
 
-The `treeHash` is the key to recovery - it references a git tree object containing all your files as they existed during that validation.
+The `treeHash` is the key to recovery - it references a git tree object containing your files as they existed during that validation. Ignored paths (`.gitignore`, `.git/info/exclude`, global excludes) are **not** captured, so they cannot be recovered this way.
 
 ### Recovery Workflow
 

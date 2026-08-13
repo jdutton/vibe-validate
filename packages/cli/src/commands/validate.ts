@@ -109,7 +109,7 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 
 ## How It Works
 
-1. **Calculates git tree hash** of working directory (includes all tracked and untracked files)
+1. **Calculates git tree hash** of working directory (tracked and untracked files; ignored paths excluded)
 2. **Checks if hash matches cached state** (from previous run)
 3. **If match:** Exits immediately with cached result (sub-second)
 4. **If no match:** Runs validation pipeline (~60-90s depending on your project)

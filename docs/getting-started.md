@@ -117,7 +117,7 @@ npm run pre-commit
 
 ### Bonus: Your Work is Now Protected
 
-Congratulations! By running your first validation, you've created a safety snapshot of all your files.
+Congratulations! By running your first validation, you've created a safety snapshot of your files (everything except ignored paths).
 
 If you accidentally delete or modify files, you can recover them:
 
@@ -128,7 +128,7 @@ vv history list
 # Shows something like:
 # 2025-12-02 15:30:45  abc123def  main  ✓ PASSED
 
-# That tree hash (abc123def) contains all your files
+# That tree hash (abc123def) contains your files (ignored paths excluded)
 # You can view any file from that point:
 git cat-file -p abc123def:src/index.ts
 
