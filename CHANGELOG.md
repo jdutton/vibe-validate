@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       trackingSync: warn    # behind your own remote branch (someone else pushed)
   ```
 
-  `warn` checks and reports but lets the commit through; `block` is the previous behaviour; `off` skips the check **and its network fetch**. Set `block` on either to restore the old hard stop. `warn` still fetches — a sync notice computed from a stale ref is worth nothing, so freshness is the entire point of the warning; only `off` skips the network call. If the remote is unreachable, both guards degrade to no opinion and the commit proceeds, even in `block` mode.
+  `warn` checks and reports but lets the commit through; `block` is the previous behaviour; `off` skips the check **and its network fetch**. Set `block` on either to restore the old hard stop. `warn` still fetches — a sync notice computed from a stale ref is worth nothing, so freshness is the entire point of the warning; only `off` skips the network call. If a ref cannot be refreshed, the guard that depends on it degrades to no opinion and the commit proceeds, even in `block` mode — a verdict either way from a ref you could not refresh is not evidence of anything.
 
   Two things are deliberately unchanged. **The partially-staged-files check still blocks** — that one *is* a correctness guard: validation runs against the full file while git commits only the staged hunk, so a pass could certify code that isn't what lands. And **`vv sync-check` keeps its exit-1 semantics**; hard enforcement belongs in CI, which is where it already lives. This change moves only the commit path off the gate.
 
