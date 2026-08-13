@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.7] - 2026-08-13
+
 ### Fixed
+
+- **`pnpm bump-version` no longer silently skips the root `package.json` outside a directory named `vibe-validate`.** It identified the root package by checking whether the path ended with `vibe-validate/package.json`, which is true of the ordinary checkout but false in a git worktree or any clone into a differently-named folder. Because the root package is `"private": true`, an unrecognised root was then skipped as private — leaving the nine workspace packages bumped and the root behind, an invalid release state caught only later by `validate-repo-structure`. The root is now identified by resolved path. (Contributor tooling; no effect on published packages.)
 
 - **The "report this extraction issue" prompt no longer nags on repeat.** It was tied to the failure footer, so once replayed failures started carrying that footer it would re-ask on every commit attempt against an unchanged tree — for a run that executed exactly once. It is now shown only for a freshly computed failure. Its link also pointed at a repository that does not exist (`anthropics/vibe-validate`); it now points at `jdutton/vibe-validate`.
 
