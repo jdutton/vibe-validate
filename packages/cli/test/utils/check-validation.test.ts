@@ -156,9 +156,24 @@ describe('checkValidationStatus', () => {
       expectConsoleOutput(consoleLogSpy, [
         'Validation failed for this code',
         'Tree hash: abc123def456',
-        'Validated: 2025-10-21T10:00:00Z on branch main'
+        // --check never runs validation, so the verdict is always a replay (issue #169)
+        'Replayed from 2025-10-21T10:00:00Z on branch main (not re-run just now)'
       ]);
       expect(processExitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should explain the cache key and the force escape hatch', async () => {
+      mockTreeHash();
+      vi.mocked(history.findCachedValidation).mockResolvedValue(
+        createValidationRunFromNote({ passed: false })
+      );
+
+      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
+
+      expectConsoleOutput(consoleLogSpy, [
+        '.gitignore',
+        'validate --force'
+      ]);
     });
 
     it('should show the returned run details', async () => {
@@ -176,7 +191,7 @@ describe('checkValidationStatus', () => {
 
       // Should show the run details
       expectConsoleOutput(consoleLogSpy, [
-        'Validated: 2025-10-21T10:00:00Z on branch feature-branch'
+        'Replayed from 2025-10-21T10:00:00Z on branch feature-branch'
       ]);
     });
 

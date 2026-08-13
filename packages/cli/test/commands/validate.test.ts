@@ -1016,11 +1016,20 @@ describe('validate command', () => {
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Tree hash: abc123def456')
       );
+      // A replayed failure must say so - it was not re-run (issue #169)
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validated: 2025-10-22T00:00:00.000Z on branch main')
+        expect.stringContaining('Replayed from 2025-10-22T00:00:00.000Z on branch main (not re-run just now)')
       );
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Phases: 1, Steps: 1 (5.0s)')
+      );
+      // ...and must carry the same actionable footer a fresh failure gets
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('View error details'),
+        expect.anything()
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('validate --force')
       );
     });
 

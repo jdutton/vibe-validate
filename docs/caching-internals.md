@@ -11,7 +11,7 @@ vibe-validate achieves **dramatic speedup** through git-aware caching using cont
 A **tree hash** is git's way of creating a deterministic fingerprint of your working directory:
 - Content-based (same files = same hash)
 - No timestamps (purely about file contents)
-- Includes untracked files (not just committed code)
+- Includes untracked files (not just committed code), but **not `.gitignore`d paths**
 - Deterministic (same state always produces same hash)
 
 ### How vibe-validate uses tree hashes
@@ -39,7 +39,7 @@ Real-world measurements from vibe-validate development:
 
 ### Cache invalidates when:
 - ✅ Any file content changes
-- ✅ New files added (even untracked)
+- ✅ New files added (even untracked, as long as they are not ignored)
 - ✅ Files deleted
 - ✅ File renamed
 - ✅ Working tree modifications
@@ -49,6 +49,20 @@ Real-world measurements from vibe-validate development:
 - ✅ Git operations (commits, merges) that result in same tree
 - ✅ Time passing (content-based, not time-based)
 - ✅ .gitignore changes (ignored files not in tree hash)
+- ✅ **Adding, changing, or deleting a `.gitignore`d file** — ignored paths are
+  excluded from the key by design, so that secrets and per-developer build
+  artifacts are never checksummed and the cache stays shareable
+
+### Consequence worth knowing
+
+A validation step that inspects ignored working-tree state (say, one that walks
+the directory looking for stray files) can record a result that cleaning up that
+state will not invalidate — the key cannot see the change. Re-run explicitly:
+
+```bash
+vv validate --force          # re-run everything
+vv validate --retry-failed   # re-run only the failed steps
+```
 
 ## How Caching Works: Step by Step
 

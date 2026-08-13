@@ -2,11 +2,11 @@
 
 ## Overview
 
-Every time you run vibe-validate, you're automatically creating a recoverable snapshot of ALL your files - no user action required. This invisible safety net protects you from accidental file loss, bad refactoring decisions, and editor crashes.
+Every time you run vibe-validate, you're automatically creating a recoverable snapshot of your files - no user action required. This invisible safety net protects you from accidental file loss, bad refactoring decisions, and editor crashes.
 
 **Key Benefits:**
 - **Automatic**: No manual steps - protection happens during normal validation
-- **Comprehensive**: Captures staged, unstaged, AND untracked files
+- **Comprehensive**: Captures staged, unstaged, AND untracked files (`.gitignore`d paths are excluded, so they are not recoverable this way)
 - **Zero overhead**: Git deduplicates identical content automatically
 - **Simple recovery**: Standard git commands - no proprietary tools
 - **Historical timeline**: Every validation creates a timestamped snapshot

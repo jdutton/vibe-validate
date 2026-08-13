@@ -167,7 +167,10 @@ Both flags bypass the cached result, but they differ in scope:
 
 ### Cache Key
 - Based on **git tree hash** (not commit SHA)
-- Includes **all files** (tracked + untracked)
+- Covers **tracked and untracked files** in the working tree
+- **Excludes \`.gitignore\`d paths**, by design: secrets and per-developer build
+  artifacts are never checksummed, and the cache stays shareable between
+  developers whose ignored files differ
 - Deterministic: same content = same hash
 
 ### Cache Hit
@@ -181,9 +184,15 @@ Both flags bypass the cached result, but they differ in scope:
 - Typical duration: 60-90s
 
 ### Cache Invalidation
-- ANY file change (content or path)
-- Adding/removing files
+- Any change to a tracked or untracked file (content or path)
+- Adding/removing those files
 - Modifying .gitignore
+
+Changing a \`.gitignore\`d path does **not** invalidate the cache, since those
+paths are not part of the key. So a step that inspects ignored working-tree
+state can produce a result that cleaning up that state will not invalidate.
+Re-run it explicitly with \`--force\` (everything) or \`--retry-failed\` (failed
+steps only).
 
 ## YAML Output Mode
 

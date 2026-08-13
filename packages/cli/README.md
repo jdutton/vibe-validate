@@ -496,11 +496,11 @@ vibe-validate automatically protects your uncommitted work every time it calcula
 
 When you run validation commands, vibe-validate:
 1. Creates a temporary git index
-2. Stages all your files (tracked + untracked) in that temp index
-3. Runs `git write-tree` to create git objects for everything
+2. Stages your tracked + untracked files in that temp index (`.gitignore`d paths are excluded)
+3. Runs `git write-tree` to create git objects for everything staged
 4. Cleans up the temp index (your real index is untouched)
 
-**Result**: All your files are now in `.git/objects/` as git blobs, even if they're unstaged or untracked.
+**Result**: Your files are now in `.git/objects/` as git blobs, even if they're unstaged or untracked. Ignored files are not captured — they are excluded so that secrets and per-developer build artifacts are never checksummed, which also means they are not recoverable this way.
 
 ### Recovery Commands
 

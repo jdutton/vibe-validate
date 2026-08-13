@@ -304,7 +304,7 @@ $ npx vibe-validate validate
 
 **Why it works**:
 - Content-based (not timestamp-based)
-- Includes untracked files
+- Includes untracked files (but not `.gitignore`d ones)
 - Deterministic (same code = same hash)
 - No side effects (index restored after calculation)
 
@@ -321,6 +321,9 @@ Cache is NOT invalidated by:
 - ❌ Git commit history
 - ❌ Git branch changes
 - ❌ Environment variables
+- ❌ **Changes to `.gitignore`d paths** — they are excluded from the key by
+  design, so secrets and per-developer build artifacts are never checksummed.
+  Use `vv validate --force` when you need to re-run regardless.
 
 ### Performance Tips
 

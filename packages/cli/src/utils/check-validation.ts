@@ -10,7 +10,7 @@ import { getGitTreeHash } from '@vibe-validate/git';
 import { findCachedValidation } from '@vibe-validate/history';
 import chalk from 'chalk';
 
-import { displayCachedResult } from './display-cached-result.js';
+import { displayCachedFailureHint, displayCachedResult } from './display-cached-result.js';
 import { outputYamlResult } from './yaml-output.js';
 
 // Constants (extracted to avoid duplication warnings)
@@ -126,6 +126,9 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
 
       console.log(chalk.blue('\n📋 View full error details:'), chalk.white('vibe-validate state'));
       console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white('npx vibe-validate validate'));
+
+      // --check never runs validation, so this verdict is always a replay (issue #169)
+      displayCachedFailureHint(console.log);
     }
 
     process.exit(1);

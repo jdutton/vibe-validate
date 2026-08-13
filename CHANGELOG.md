@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A replayed validation failure now says it was replayed, and how to re-run it.** When the working tree is unchanged, a previous FAILURE is served straight from cache — but the output was indistinguishable from a failure computed just now, and it silently dropped the "view error details" / "to retry" footer that fresh failures get. If you fixed the cause and the fix lived somewhere the cache key cannot see, you got the identical stale verdict with no next step and no hint that nothing had re-run. Cached failures now disclose their provenance (`Replayed from <timestamp> on branch <branch> (not re-run just now)`), keep the full actionable footer, and state what the key covers plus the `--force` escape hatch. Cached passes are unchanged — the happy path gets no new noise. ([#169](https://github.com/jdutton/vibe-validate/issues/169))
+
+### Documentation
+
+- **The cache key documentation no longer contradicts the implementation.** `validate --help --verbose` claimed the key "includes **all files** (tracked + untracked)" and that "ANY file change" invalidates it. Both are untrue for `.gitignore`d paths, which are deliberately excluded so that secrets and per-developer build artifacts are never checksummed and the cache stays shareable across developers whose ignored files differ. The help text, `docs/caching-internals.md`, `docs/getting-started.md`, `docs/work-protection.md`, `docs/work-recovery.md`, and `packages/cli/README.md` now state the exclusion and its one sharp consequence: a step that inspects ignored working-tree state can record a result that cleaning up that state will not invalidate. Reported with a precise diagnosis and suggested wording by [@ryshah73](https://github.com/ryshah73). ([#169](https://github.com/jdutton/vibe-validate/issues/169))
+
 ## [0.19.6] - 2026-05-12
 
 ### Fixed

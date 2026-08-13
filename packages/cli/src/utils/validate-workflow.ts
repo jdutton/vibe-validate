@@ -22,7 +22,7 @@ import chalk from 'chalk';
 import { stringify as yamlStringify } from 'yaml';
 
 import type { AgentContext } from './context-detector.js';
-import { displayCachedResult } from './display-cached-result.js';
+import { displayCachedFailureHint, displayCachedResult } from './display-cached-result.js';
 import { detectFlakiness } from './flakiness-detector.js';
 import { formatWorktreeDisplay } from './format-worktree.js';
 import { createPerfTimer } from './logger.js';
@@ -445,9 +445,18 @@ export async function runValidateWorkflow(
       if (cachedRun && treeHashBefore) {
         // Show cached result message
         displayCachedResult(cachedRun, treeHashBefore);
-      } else if (!result.passed) {
-        // Show failure info for fresh failures
+      }
+
+      if (!result.passed) {
+        // Every failure gets the actionable footer. A replayed failure previously
+        // lost it, leaving a stale verdict with no next step (issue #169).
         displayFailureInfo(result, config);
+
+        // Only a REPLAY can be out of step with the working tree - a fresh failure
+        // was just computed, so re-running it would change nothing.
+        if (cachedRun) {
+          displayCachedFailureHint();
+        }
       }
 
       // Auto-output YAML on failure (cached or fresh) to stderr
