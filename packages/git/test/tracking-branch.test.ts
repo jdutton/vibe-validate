@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as gitExecutor from '../src/git-executor.js';
 import {
   getTrackingDivergence,
+  getUpstreamRef,
   // eslint-disable-next-line sonarjs/deprecation -- tests intentionally exercise the deprecated wrapper to verify backwards-compat
   isCurrentBranchBehindTracking,
 } from '../src/tracking-branch.js';
@@ -42,7 +43,7 @@ function mockDivergence(aheadBehind: string): void {
 
 describe('getTrackingDivergence', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('should return null when branch has no upstream tracking branch', () => {
@@ -159,11 +160,88 @@ describe('getTrackingDivergence', () => {
   });
 });
 
+/**
+ * Mock the three reads getUpstreamRef makes: current branch, then
+ * branch.<name>.remote and branch.<name>.merge.
+ */
+function mockUpstreamConfig(
+  currentBranch: string | null,
+  remote?: string,
+  mergeRef?: string
+): void {
+  const ok = (stdout: string) => ({ success: true, stdout, stderr: '', exitCode: 0 });
+  const fail = { success: false, stdout: '', stderr: 'error', exitCode: 1 };
+
+  vi.mocked(gitExecutor.executeGitCommand)
+    .mockReturnValueOnce(currentBranch === null ? fail : ok(`${currentBranch}\n`))
+    .mockReturnValueOnce(remote === undefined ? fail : ok(`${remote}\n`))
+    .mockReturnValueOnce(mergeRef === undefined ? fail : ok(`${mergeRef}\n`));
+}
+
+describe('getUpstreamRef', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should return the remote and branch the current branch tracks', () => {
+    mockUpstreamConfig('fix-issue-X', 'origin', 'refs/heads/fix-issue-X');
+
+    expect(getUpstreamRef()).toEqual({ remote: 'origin', branch: 'fix-issue-X' });
+  });
+
+  it('should keep slashes in the branch name intact', () => {
+    // The reason this reads git config instead of parsing `@{u}`: `@{u}` renders
+    // as `origin/feature/foo`, and splitting that on '/' cannot tell the remote
+    // name from the first path segment of the branch.
+    mockUpstreamConfig('feature/foo', 'origin', 'refs/heads/feature/foo');
+
+    expect(getUpstreamRef()).toEqual({ remote: 'origin', branch: 'feature/foo' });
+  });
+
+  it('should handle a remote branch named differently from the local one', () => {
+    mockUpstreamConfig('local-name', 'upstream', 'refs/heads/remote-name');
+
+    expect(getUpstreamRef()).toEqual({ remote: 'upstream', branch: 'remote-name' });
+  });
+
+  it('should return null on detached HEAD', () => {
+    mockUpstreamConfig('HEAD');
+
+    expect(getUpstreamRef()).toBeNull();
+  });
+
+  it('should return null when no upstream is configured', () => {
+    mockUpstreamConfig('new-branch');
+
+    expect(getUpstreamRef()).toBeNull();
+  });
+
+  it('should return null when the upstream is another local branch', () => {
+    // `branch.<name>.remote = .` means "tracks a branch in this repository".
+    // There is nothing to fetch.
+    mockUpstreamConfig('local-tracker', '.', 'refs/heads/main');
+
+    expect(getUpstreamRef()).toBeNull();
+  });
+
+  it('should return null when not in a git repository', () => {
+    mockUpstreamConfig(null);
+
+    expect(getUpstreamRef()).toBeNull();
+  });
+
+  it('should accept a merge ref that is not refs/heads-prefixed', () => {
+    mockUpstreamConfig('odd', 'origin', 'main');
+
+    expect(getUpstreamRef()).toEqual({ remote: 'origin', branch: 'main' });
+  });
+});
+
 // Tests below intentionally call the deprecated wrapper to verify back-compat semantics.
 /* eslint-disable sonarjs/deprecation */
 describe('isCurrentBranchBehindTracking (backwards-compat wrapper)', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('should return null when there is no upstream', () => {

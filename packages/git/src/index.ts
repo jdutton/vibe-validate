@@ -99,9 +99,19 @@ export {
 // Git tracking branch detection (check if current branch diverges from remote)
 export {
   getTrackingDivergence,
+  getUpstreamRef,
   isCurrentBranchBehindTracking,
-  type TrackingDivergence
+  type TrackingDivergence,
+  type UpstreamRef
 } from './tracking-branch.js';
+
+// Targeted remote ref fetching (refresh only the refs a check depends on)
+export {
+  fetchRemoteRefs,
+  refKey,
+  type RemoteRef,
+  type FetchOutcome
+} from './fetch-refs.js';
 
 // GitHub CLI commands (centralized gh command execution)
 export {

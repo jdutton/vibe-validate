@@ -239,6 +239,32 @@ export type SecretScanningConfig = z.infer<typeof SecretScanningSchema>;
 const DEFAULT_PRE_COMMIT_COMMAND = 'npx vibe-validate pre-commit';
 
 /**
+ * Behaviour of a pre-commit sync guard.
+ *
+ * Neither sync guard is a correctness condition — being behind a branch does not
+ * make the code you are committing wrong. They exist to tell you something
+ * useful early. Blocking a commit for a non-correctness reason pushes people to
+ * `git commit --no-verify`, which skips *everything* (secret scanning,
+ * validation, partial-stage detection), so the default is to inform rather than
+ * gate.
+ *
+ * - `warn`  — run the check, print a notice, allow the commit (default)
+ * - `block` — run the check and fail the commit when behind
+ * - `off`   — skip the check entirely, **including its network fetch**
+ */
+export const SyncGuardModeSchema = z.enum(['warn', 'block', 'off']);
+
+export type SyncGuardMode = z.infer<typeof SyncGuardModeSchema>;
+
+/**
+ * Shipped default for both sync guards.
+ *
+ * Exported so callers reading the config can fall back to the same value the
+ * schema applies, instead of hardcoding a second copy that can drift.
+ */
+export const DEFAULT_SYNC_GUARD_MODE: SyncGuardMode = 'warn';
+
+/**
  * Hooks Configuration Schema
  */
 export const HooksConfigSchema = z.object({
@@ -249,6 +275,18 @@ export const HooksConfigSchema = z.object({
 
     /** Custom pre-commit command (default: 'npx vibe-validate pre-commit') */
     command: z.string().default(DEFAULT_PRE_COMMIT_COMMAND),
+
+    /**
+     * Behaviour when the branch is behind the base branch, e.g. `origin/main`
+     * (default: 'warn'). Being behind the base is the normal mid-PR state.
+     */
+    branchSync: SyncGuardModeSchema.default(DEFAULT_SYNC_GUARD_MODE),
+
+    /**
+     * Behaviour when the branch is behind its own remote tracking branch —
+     * someone else, or another machine, pushed to your branch (default: 'warn').
+     */
+    trackingSync: SyncGuardModeSchema.default(DEFAULT_SYNC_GUARD_MODE),
 
     /** Secret scanning configuration (optional) */
     secretScanning: SecretScanningSchema.optional(),

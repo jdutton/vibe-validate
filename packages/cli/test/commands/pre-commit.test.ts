@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import type { SyncGuardMode, VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
@@ -39,9 +39,11 @@ vi.mock('@vibe-validate/git', async () => {
   return {
     ...actual,
     checkBranchSync: vi.fn(),
+    fetchRemoteRefs: vi.fn(),
     getGitTreeHash: vi.fn(),
     getRepositoryRoot: vi.fn(),
     getTrackingDivergence: vi.fn(),
+    getUpstreamRef: vi.fn(),
     getPartiallyStagedFiles: vi.fn().mockReturnValue([]),
     isMergeInProgress: vi.fn(),
     isRebaseInProgress: vi.fn(),
@@ -70,6 +72,35 @@ vi.mock('../../src/utils/config-loader.js', async () => {
     loadConfigWithErrors: vi.fn(),
   };
 });
+
+/** The upstream the test branch tracks — used for the sync-guard fetch. */
+const UPSTREAM_REF = { remote: 'origin', branch: 'feature/test' };
+
+/** The base branch ref the base-branch guard fetches (origin/main by default). */
+const BASE_REF = { remote: 'origin', branch: 'main' };
+
+/**
+ * Factory: fetch outcomes where every requested ref refreshed successfully
+ *
+ * `fetchRemoteRefs` reports per ref (keyed by `refKey`), not per remote, so a
+ * deleted upstream branch cannot take the base-branch guard down with it.
+ */
+function allRefsFresh(): Record<string, { ok: boolean }> {
+  return {
+    [git.refKey(BASE_REF)]: { ok: true },
+    [git.refKey(UPSTREAM_REF)]: { ok: true },
+  };
+}
+
+/**
+ * Factory: fetch outcomes where nothing could be refreshed (offline)
+ */
+function noRefsFresh(error = 'network unreachable'): Record<string, { ok: boolean; error: string }> {
+  return {
+    [git.refKey(BASE_REF)]: { ok: false, error },
+    [git.refKey(UPSTREAM_REF)]: { ok: false, error },
+  };
+}
 
 // ========================================================================
 // FACTORY FUNCTIONS: Create test objects
@@ -120,6 +151,24 @@ function createConfigWithSecretScanning(
           enabled,
           ...(scanCommand !== undefined && { scanCommand }),
         },
+      },
+    },
+  });
+}
+
+/**
+ * Factory: Create config with explicit sync guard modes
+ *
+ * Omitted guards fall back to the shipped default ('warn').
+ */
+function createConfigWithSyncGuards(
+  guards: { branchSync?: SyncGuardMode; trackingSync?: SyncGuardMode }
+): VibeValidateConfig {
+  return createConfig({
+    hooks: {
+      preCommit: {
+        enabled: true,
+        ...guards,
       },
     },
   });
@@ -241,6 +290,8 @@ function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
 
 /**
  * Setup: Configure mocks for branch behind scenario
+ *
+ * Behind on BOTH axes when `hasTracking`, so a test can pin either guard.
  */
 function setupBranchBehind(behindBy: number, hasTracking = true) {
   vi.mocked(git.getGitTreeHash).mockResolvedValue({
@@ -250,6 +301,7 @@ function setupBranchBehind(behindBy: number, hasTracking = true) {
   vi.mocked(git.getTrackingDivergence).mockReturnValue(
     hasTracking ? { ahead: 0, behind: behindBy } : null
   );
+  vi.mocked(git.getUpstreamRef).mockReturnValue(hasTracking ? UPSTREAM_REF : null);
   vi.mocked(git.checkBranchSync).mockResolvedValue(
     createBranchSyncResult({ isUpToDate: false, behindBy })
   );
@@ -296,10 +348,9 @@ function setupMergeTest(isMerging: boolean) {
     createBranchSyncResult({ isUpToDate: false, behindBy: 3 })
   );
 
-  // Only mock validation for merge case (normal case exits before validation)
-  if (isMerging) {
-    vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
-  }
+  // Validation runs either way: mid-merge the base-branch guard is skipped, and
+  // outside a merge the default 'warn' mode reports but does not stop the run.
+  vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 }
 
 /**
@@ -351,11 +402,11 @@ function setupDependencyCheckTest(runOn?: 'pre-commit' | 'validate' | 'disabled'
  * Execute pre-commit command and verify exit code
  * Replicates the repeated try/catch pattern from the original tests
  */
-async function runPreCommit(env: CommanderTestEnv, expectedExitCode = 0): Promise<void> {
+async function runPreCommit(env: CommanderTestEnv, expectedExitCode = 0, args: string[] = []): Promise<void> {
   preCommitCommand(env.program);
 
   try {
-    await env.program.parseAsync(['pre-commit'], { from: 'user' });
+    await env.program.parseAsync(['pre-commit', ...args], { from: 'user' });
   } catch (err: unknown) {
     // Commander throws on exitOverride, expected
     if (err && typeof err === 'object' && 'exitCode' in err) {
@@ -387,9 +438,41 @@ async function runPreCommitExpectError(env: CommanderTestEnv, expectedExitCode =
 
 /**
  * Assert that checkBranchSync was called with expected remote branch
+ *
+ * `skipFetch` is always true from pre-commit: the combined fetch in Step 5
+ * already refreshed the ref, so checkBranchSync must not pay for a second
+ * round-trip.
  */
 function expectBranchSyncCalledWith(remoteBranch: string) {
-  expect(git.checkBranchSync).toHaveBeenCalledWith({ remoteBranch });
+  expect(git.checkBranchSync).toHaveBeenCalledWith({ remoteBranch, skipFetch: true });
+}
+
+/**
+ * Collect everything written to a console channel as one searchable string
+ */
+function consoleOutput(channel: 'log' | 'warn' | 'error'): string {
+  return vi.mocked(console[channel]).mock.calls.map(call => call.join(' ')).join('\n');
+}
+
+/**
+ * Assert that console.warn output contains specific text
+ */
+function expectWarnContains(text: string) {
+  expect(consoleOutput('warn')).toContain(text);
+}
+
+/**
+ * Assert that console.log output contains specific text
+ */
+function expectLogContains(text: string) {
+  expect(consoleOutput('log')).toContain(text);
+}
+
+/**
+ * Assert exactly which refs were fetched for the sync guards
+ */
+function expectFetchedRefs(refs: Array<{ remote: string; branch: string }>) {
+  expect(git.fetchRemoteRefs).toHaveBeenCalledWith(refs);
 }
 
 /**
@@ -458,9 +541,11 @@ describe('pre-commit command', () => {
     // Reset mocks
     vi.mocked(core.runValidation).mockReset();
     vi.mocked(git.checkBranchSync).mockReset();
+    vi.mocked(git.fetchRemoteRefs).mockReset();
     vi.mocked(git.getGitTreeHash).mockReset();
     vi.mocked(git.getRepositoryRoot).mockReset();
     vi.mocked(git.getTrackingDivergence).mockReset();
+    vi.mocked(git.getUpstreamRef).mockReset();
     vi.mocked(git.getPartiallyStagedFiles).mockReset();
     vi.mocked(git.isMergeInProgress).mockReset();
     vi.mocked(git.isRebaseInProgress).mockReset();
@@ -476,6 +561,8 @@ describe('pre-commit command', () => {
       });
     vi.mocked(git.getRepositoryRoot).mockReturnValue('/test/repo'); // Default git repo path
     vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 0 }); // Up to date by default
+    vi.mocked(git.getUpstreamRef).mockReturnValue(UPSTREAM_REF); // Branch tracks origin/feature/test
+    vi.mocked(git.fetchRemoteRefs).mockReturnValue(allRefsFresh()); // Remote reachable by default
     vi.mocked(git.getPartiallyStagedFiles).mockReturnValue([]); // No partially staged by default
     vi.mocked(git.isMergeInProgress).mockReturnValue(false); // No merge by default
     vi.mocked(git.isRebaseInProgress).mockReturnValue(false); // No rebase by default
@@ -657,13 +744,16 @@ describe('pre-commit command', () => {
       expect(git.checkBranchSync).not.toHaveBeenCalled();
     });
 
-    it('should enforce branch sync check when NOT in merge', async () => {
+    it('should run the branch sync check when NOT in merge', async () => {
       setupMergeTest(false);
 
-      await runPreCommit(env, 1);
+      // Default mode is 'warn': the check still runs and still reports, it just
+      // no longer gates the commit.
+      await runPreCommit(env, 0);
 
       expect(git.isMergeInProgress).toHaveBeenCalled();
       expect(git.checkBranchSync).toHaveBeenCalled();
+      expectWarnContains('Branch is behind origin/main by 3 commit(s)');
     });
   });
 
@@ -696,6 +786,360 @@ describe('pre-commit command', () => {
 
       expect(git.isRebaseInProgress).toHaveBeenCalled();
       expect(git.checkBranchSync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sync guards (branchSync / trackingSync)', () => {
+    describe('fetch policy', () => {
+      it('should refresh both guards refs in a single call when both are active', async () => {
+        setupSuccessfulPreCommit();
+
+        await runPreCommit(env, 0);
+
+        // One call, both refs — not one round-trip per guard.
+        expect(git.fetchRemoteRefs).toHaveBeenCalledTimes(1);
+        expectFetchedRefs([BASE_REF, UPSTREAM_REF]);
+      });
+
+      it('should fetch only the base branch ref when trackingSync is off', async () => {
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ trackingSync: 'off' }));
+
+        await runPreCommit(env, 0);
+
+        expectFetchedRefs([BASE_REF]);
+        expect(git.getTrackingDivergence).not.toHaveBeenCalled();
+      });
+
+      it('should fetch only the upstream ref when branchSync is off', async () => {
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ branchSync: 'off' }));
+
+        await runPreCommit(env, 0);
+
+        expectFetchedRefs([UPSTREAM_REF]);
+        expect(git.checkBranchSync).not.toHaveBeenCalled();
+      });
+
+      it('should make no network call at all when both guards are off', async () => {
+        setupSuccessfulPreCommit(
+          createConfigWithSyncGuards({ branchSync: 'off', trackingSync: 'off' })
+        );
+
+        await runPreCommit(env, 0);
+
+        // 'off' must cost nothing — that is the whole point of having it.
+        expect(git.fetchRemoteRefs).not.toHaveBeenCalled();
+        expect(git.getTrackingDivergence).not.toHaveBeenCalled();
+        expect(git.checkBranchSync).not.toHaveBeenCalled();
+      });
+
+      it('should still fetch in warn mode', async () => {
+        // Rejected alternative: skip the fetch when only warning. A notice
+        // computed from a stale ref is worth nothing — freshness IS the warning.
+        setupSuccessfulPreCommit(
+          createConfigWithSyncGuards({ branchSync: 'warn', trackingSync: 'warn' })
+        );
+
+        await runPreCommit(env, 0);
+
+        expect(git.fetchRemoteRefs).toHaveBeenCalledTimes(1);
+      });
+
+      it('should not fetch the base branch ref while a merge is in progress', async () => {
+        setupSuccessfulPreCommit();
+        vi.mocked(git.isMergeInProgress).mockReturnValue(true);
+
+        await runPreCommit(env, 0);
+
+        // The base guard is skipped mid-merge, so its ref is dead weight.
+        expectFetchedRefs([UPSTREAM_REF]);
+      });
+
+      it('should make no network call while a rebase is in progress', async () => {
+        // Mid-rebase HEAD is detached: the base comparison is meaningless and
+        // there is no upstream to compare against either.
+        setupSuccessfulPreCommit();
+        vi.mocked(git.isRebaseInProgress).mockReturnValue(true);
+
+        await runPreCommit(env, 0);
+
+        expect(git.fetchRemoteRefs).not.toHaveBeenCalled();
+        expect(git.getTrackingDivergence).not.toHaveBeenCalled();
+      });
+
+      it('should not claim the branch has no upstream while a rebase is in progress', async () => {
+        // Detached HEAD makes getUpstreamRef/getTrackingDivergence report "no
+        // tracking branch", which is false — and it would print on every commit
+        // during a conflict resolution.
+        setupSuccessfulPreCommit();
+        vi.mocked(git.isRebaseInProgress).mockReturnValue(true);
+
+        await runPreCommit(env, 0);
+
+        expect(consoleOutput('log')).not.toContain('No remote tracking branch');
+        expectLogContains('Rebase in progress');
+      });
+
+      it('should not request an upstream fetch when the branch has no upstream', async () => {
+        setupSuccessfulPreCommit();
+        vi.mocked(git.getUpstreamRef).mockReturnValue(null);
+
+        await runPreCommit(env, 0);
+
+        expectFetchedRefs([BASE_REF]);
+      });
+
+      it('should pass skipFetch to checkBranchSync so the ref is not fetched twice', async () => {
+        setupSuccessfulPreCommit();
+
+        await runPreCommit(env, 0);
+
+        expectBranchSyncCalledWith('origin/main');
+      });
+    });
+
+    describe('tracking guard reads a freshly fetched ref (pre-0.19.7 bug)', () => {
+      it('should fetch the upstream ref BEFORE reading local divergence', async () => {
+        // getTrackingDivergence() compares purely local refs. Before this fix
+        // nothing fetched the upstream, so a stale @{u} level with HEAD read as
+        // {0,0} and pre-commit printed "up to date with remote" — silently
+        // missing the exact case the guard exists for (someone else pushed).
+        setupSuccessfulPreCommit();
+
+        await runPreCommit(env, 0);
+
+        const fetchOrder = vi.mocked(git.fetchRemoteRefs).mock.invocationCallOrder[0];
+        const divergenceOrder = vi.mocked(git.getTrackingDivergence).mock.invocationCallOrder[0];
+        expect(fetchOrder).toBeDefined();
+        expect(fetchOrder).toBeLessThan(divergenceOrder);
+      });
+
+      it('should fetch the upstream branch, not the base branch, for the tracking guard', async () => {
+        // Guard #3's fetch only ever refreshed origin/<main>. Refreshing that
+        // says nothing about whether someone pushed to origin/<your-branch>.
+        setupSuccessfulPreCommit();
+
+        await runPreCommit(env, 0);
+
+        const [refs] = vi.mocked(git.fetchRemoteRefs).mock.calls[0];
+        expect(refs).toContainEqual(UPSTREAM_REF);
+      });
+    });
+
+    describe('modes', () => {
+      it('should warn but allow the commit when behind the base branch (default)', async () => {
+        setupSuccessfulPreCommit();
+        vi.mocked(git.checkBranchSync).mockResolvedValue(
+          createBranchSyncResult({ isUpToDate: false, behindBy: 4 })
+        );
+
+        await runPreCommit(env, 0);
+
+        expectWarnContains('Branch is behind origin/main by 4 commit(s)');
+        expectWarnContains('git merge origin/main');
+        expectValidationRan();
+      });
+
+      it('should block the commit when behind the base branch and branchSync is block', async () => {
+        vi.mocked(configLoader.loadConfig).mockResolvedValue(
+          createConfigWithSyncGuards({ branchSync: 'block' })
+        );
+        setupBranchBehind(4, false);
+
+        await runPreCommitExpectError(env, 1);
+
+        expectErrorContains('Branch is behind origin/main');
+        expectValidationNotRan();
+      });
+
+      it('should warn but allow the commit when behind the tracking branch (default)', async () => {
+        setupSuccessfulPreCommit();
+        vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 2 });
+
+        await runPreCommit(env, 0);
+
+        expectWarnContains('behind its remote tracking branch by 2 commit(s)');
+        expectWarnContains('git pull --rebase');
+        expectValidationRan();
+      });
+
+      it('should block the commit when behind the tracking branch and trackingSync is block', async () => {
+        vi.mocked(configLoader.loadConfig).mockResolvedValue(
+          createConfigWithSyncGuards({ trackingSync: 'block' })
+        );
+        setupBranchBehind(2, true);
+
+        await runPreCommitExpectError(env, 1);
+
+        expectErrorContains('Current branch is behind its remote tracking branch');
+        expectValidationNotRan();
+      });
+
+      it('should say nothing about a guard that is off, even when behind', async () => {
+        setupSuccessfulPreCommit(
+          createConfigWithSyncGuards({ branchSync: 'off', trackingSync: 'off' })
+        );
+        vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 9 });
+        vi.mocked(git.checkBranchSync).mockResolvedValue(
+          createBranchSyncResult({ isUpToDate: false, behindBy: 9 })
+        );
+
+        await runPreCommit(env, 0);
+
+        expect(consoleOutput('warn')).not.toContain('behind');
+        expect(consoleOutput('error')).not.toContain('behind');
+      });
+
+      it('should report up to date without warning when neither guard is behind', async () => {
+        setupSuccessfulPreCommit();
+
+        await runPreCommit(env, 0);
+
+        expectLogContains('Current branch is up to date with remote');
+        expectLogContains('Branch is up to date with origin/main');
+        expect(consoleOutput('warn')).not.toContain('behind');
+      });
+    });
+
+    describe('offline degradation', () => {
+      it('should not block on the base branch when the fetch failed, even in block mode', async () => {
+        // Offline commits pass, deliberately. A "behind" verdict computed from
+        // refs we could not refresh is not evidence of anything.
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ branchSync: 'block' }));
+        vi.mocked(git.fetchRemoteRefs).mockReturnValue(noRefsFresh());
+        vi.mocked(git.checkBranchSync).mockResolvedValue(
+          createBranchSyncResult({ isUpToDate: false, behindBy: 5 })
+        );
+
+        await runPreCommit(env, 0);
+
+        expectLogContains('Could not refresh origin/main');
+        expectValidationRan();
+      });
+
+      it('should not block on the tracking branch when the fetch failed, even in block mode', async () => {
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ trackingSync: 'block' }));
+        vi.mocked(git.fetchRemoteRefs).mockReturnValue(noRefsFresh());
+        vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 5 });
+
+        await runPreCommit(env, 0);
+
+        expectLogContains('Could not refresh the remote tracking branch');
+        expectValidationRan();
+      });
+
+      it('should not claim either branch is up to date when the fetch failed', async () => {
+        // The pre-0.19.7 failure mode in a new coat: a reassuring green line
+        // that is not evidence of anything. The local refs may well read
+        // "level" — that is exactly what a stale ref looks like.
+        setupSuccessfulPreCommit();
+        vi.mocked(git.fetchRemoteRefs).mockReturnValue(noRefsFresh());
+
+        await runPreCommit(env, 0);
+
+        expect(consoleOutput('log')).not.toContain('Current branch is up to date with remote');
+        expect(consoleOutput('log')).not.toContain('Branch is up to date with origin/main');
+      });
+
+      it('should report "no remote" rather than "offline" for a repo with no remote', async () => {
+        // A repo with no remote fails the fetch too, but that is a permanent
+        // benign state, not a network problem — saying "offline?" would be a
+        // scary line on every commit in a local-only repo.
+        setupSuccessfulPreCommit();
+        vi.mocked(git.getUpstreamRef).mockReturnValue(null);
+        vi.mocked(git.fetchRemoteRefs).mockReturnValue(noRefsFresh());
+        vi.mocked(git.checkBranchSync).mockResolvedValue(
+          createBranchSyncResult({ hasRemote: false })
+        );
+        vi.mocked(git.getTrackingDivergence).mockReturnValue(null);
+
+        await runPreCommit(env, 0);
+
+        expectLogContains('No remote tracking branch');
+        expect(consoleOutput('log')).not.toContain('offline?');
+      });
+
+      it('should keep the base guard working when only the upstream ref is unfetchable', async () => {
+        // The common case: a PR merges, GitHub deletes the remote branch, and
+        // branch.<name>.merge survives the deletion. git aborts the whole
+        // combined fetch over that one dead ref — but origin is reachable and
+        // origin/main refreshed fine, so the base guard must still render a
+        // verdict rather than going permanently silent.
+        vi.mocked(configLoader.loadConfig).mockResolvedValue(
+          createConfigWithSyncGuards({ branchSync: 'block' })
+        );
+        setupBranchBehind(4, true);
+        vi.mocked(git.fetchRemoteRefs).mockReturnValue({
+          [git.refKey(BASE_REF)]: { ok: true },
+          [git.refKey(UPSTREAM_REF)]: { ok: false, error: "couldn't find remote ref feature/test" },
+        });
+
+        await runPreCommitExpectError(env, 1);
+
+        // Tracking guard: no opinion, its ref is stale.
+        expect(consoleOutput('log')).toContain('Could not refresh the remote tracking branch');
+        // Base guard: unaffected, still blocks.
+        expectErrorContains('Branch is behind origin/main');
+      });
+
+      it('should track freshness per guard when the two use different remotes', async () => {
+        // Fork workflow: your branch tracks your fork, the base branch lives on
+        // upstream. One being unreachable must not silence the other.
+        const forkRef = { remote: 'fork', branch: 'feature/test' };
+        setupSuccessfulPreCommit(createConfigWithGit('main', 'upstream'));
+        vi.mocked(git.getUpstreamRef).mockReturnValue(forkRef);
+        vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 2 });
+        vi.mocked(git.checkBranchSync).mockResolvedValue(
+          createBranchSyncResult({ isUpToDate: false, behindBy: 7 })
+        );
+        vi.mocked(git.fetchRemoteRefs).mockReturnValue({
+          'upstream/main': { ok: true },
+          [git.refKey(forkRef)]: { ok: false, error: 'fork unreachable' },
+        });
+
+        await runPreCommit(env, 0);
+
+        // Base guard on the reachable remote still reports.
+        expectWarnContains('Branch is behind upstream/main by 7 commit(s)');
+        // Tracking guard on the unreachable remote does not.
+        expect(consoleOutput('warn')).not.toContain('behind its remote tracking branch');
+        expect(consoleOutput('log')).toContain('Could not refresh the remote tracking branch');
+      });
+
+      it('should still judge a guard whose ref never needed fetching', async () => {
+        // "Nothing to fetch" is not the same as "stale". A branch tracking a
+        // local branch has no remote ref to refresh, and its local comparison
+        // is the whole truth.
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ branchSync: 'off' }));
+        vi.mocked(git.getUpstreamRef).mockReturnValue(null);
+        vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 3 });
+
+        await runPreCommit(env, 0);
+
+        expect(git.fetchRemoteRefs).not.toHaveBeenCalled();
+        expectWarnContains('behind its remote tracking branch by 3 commit(s)');
+      });
+    });
+
+    describe('--skip-sync flag', () => {
+      it('should turn off the base branch guard', async () => {
+        setupSuccessfulPreCommit();
+
+        await runPreCommit(env, 0, ['--skip-sync']);
+
+        expect(git.checkBranchSync).not.toHaveBeenCalled();
+        expectFetchedRefs([UPSTREAM_REF]);
+      });
+
+      it('should leave the tracking guard running', async () => {
+        // --skip-sync has always meant the base-branch check specifically.
+        setupSuccessfulPreCommit();
+        vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 2 });
+
+        await runPreCommit(env, 0, ['--skip-sync']);
+
+        expect(git.getTrackingDivergence).toHaveBeenCalled();
+        expectWarnContains('behind its remote tracking branch by 2 commit(s)');
+      });
     });
   });
 
@@ -751,26 +1195,52 @@ describe('pre-commit command', () => {
     });
 
     it('should show recovery instructions with snapshot hash when branch is behind tracking', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+      // Recovery framing belongs to 'block' mode only — it exists because a
+      // merge/pull is about to be demanded. In 'warn' mode nothing is about to
+      // happen to your work, so there is nothing to protect it from.
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        createConfigWithSyncGuards({ trackingSync: 'block' })
+      );
       setupBranchBehind(3, true);
 
       await runPreCommit(env, 1);
 
       // Snapshot should have been created before the error
       expect(git.getGitTreeHash).toHaveBeenCalled();
+      expectErrorContains('Work protected by snapshot: abc123def456');
+      expectErrorContains('git pull');
     });
 
     it('should show recovery instructions with snapshot hash when branch is behind origin/main', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        createConfigWithSyncGuards({ branchSync: 'block' })
+      );
       setupBranchBehind(2, false); // No tracking branch
 
       await runPreCommit(env, 1);
 
       // Snapshot should have been created before the error
       expect(git.getGitTreeHash).toHaveBeenCalled();
+      expectErrorContains('Work protected by snapshot: abc123def456');
+      expectErrorContains('git merge origin/main');
 
       // And before sync check (using invocationCallOrder)
       expectSnapshotBeforeSync();
+    });
+
+    it('should NOT show recovery framing when a guard only warns', async () => {
+      // The snapshot hash + "safe to run" instructions imply something is about
+      // to destroy work. A warning destroys nothing; printing the recovery
+      // ceremony anyway would train people to ignore it.
+      setupSuccessfulPreCommit();
+      setupBranchBehind(3, true);
+      setupCacheMiss('abc123def456');
+
+      await runPreCommit(env, 0);
+
+      expect(consoleOutput('error')).not.toContain('Work protected by snapshot');
+      expect(consoleOutput('warn')).not.toContain('Work protected by snapshot');
+      expectWarnContains('behind its remote tracking branch by 3 commit(s)');
     });
 
     it('should handle snapshot creation failure gracefully', async () => {

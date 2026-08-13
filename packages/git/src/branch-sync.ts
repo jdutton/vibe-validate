@@ -27,6 +27,17 @@ export type GitExecutor = (_args: string[]) => Promise<{ stdout: string; stderr:
 export interface SyncCheckOptions {
   remoteBranch?: string;  // Default: 'origin/main'
   gitExecutor?: GitExecutor;  // Inject custom executor for testing
+  /**
+   * Skip the internal `git fetch` before comparing (default: false).
+   *
+   * Set this when the caller has already refreshed the ref. `pre-commit` does
+   * one combined fetch covering both of its sync guards, so re-fetching here
+   * would be a second network round-trip for refs already up to date.
+   *
+   * The comparison itself is unchanged — with a stale ref it simply answers
+   * from stale data, so only set this when the ref really was just fetched.
+   */
+  skipFetch?: boolean;
 }
 
 /**
@@ -59,10 +70,12 @@ function execGit(args: string[]): Promise<{ stdout: string; stderr: string }> {
 export class BranchSyncChecker {
   private readonly remoteBranch: string;
   private readonly gitExecutor: GitExecutor;
+  private readonly skipFetch: boolean;
 
   constructor(options: SyncCheckOptions = {}) {
     this.remoteBranch = options.remoteBranch ?? 'origin/main';
     this.gitExecutor = options.gitExecutor ?? execGit;
+    this.skipFetch = options.skipFetch ?? false;
   }
 
   /**
@@ -87,8 +100,10 @@ export class BranchSyncChecker {
         };
       }
 
-      // Fetch latest from remote
-      await this.fetchRemote();
+      // Fetch latest from remote (unless the caller already did)
+      if (!this.skipFetch) {
+        await this.fetchRemote();
+      }
 
       // Check how many commits behind
       const behindBy = await this.getCommitsBehind();
@@ -134,8 +149,12 @@ export class BranchSyncChecker {
 
   private async fetchRemote(): Promise<void> {
     try {
-      // eslint-disable-next-line local/no-hardcoded-path-split -- Git remote/branch format, not a file path
-      const [remote, branch] = this.remoteBranch.split('/');
+      // Split on the FIRST separator only: remote names cannot contain '/',
+      // but branch names routinely do. A naive split turned
+      // `origin/release/2.0` into `git fetch origin release`, which fails.
+      const separatorIndex = this.remoteBranch.indexOf('/');
+      const remote = this.remoteBranch.slice(0, separatorIndex);
+      const branch = this.remoteBranch.slice(separatorIndex + 1);
       await this.gitExecutor(['fetch', '--quiet', remote, branch]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

@@ -30,7 +30,7 @@ export interface CommanderTestEnv {
  *
  * Creates a fresh Commander instance with:
  * - exitOverride() enabled (prevents process.exit from killing tests)
- * - console.log and console.error mocked
+ * - console.log, console.warn and console.error mocked
  * - process.exit mocked to throw instead of exiting
  *
  * Call this in beforeEach() and use the cleanup function in afterEach().
@@ -64,6 +64,7 @@ export function setupCommanderTest(): CommanderTestEnv {
 
   // Spy on console methods to capture output
   vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   vi.spyOn(process.stderr, 'write').mockImplementation(() => true);

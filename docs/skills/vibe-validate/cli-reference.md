@@ -125,7 +125,7 @@ Run branch sync check + validation (recommended before commit). Spawned steps ru
 
 **Options:**
 
-- `--skip-sync` - Skip branch sync check
+- `--skip-sync` - Skip the base-branch sync check and its network fetch (same as hooks.preCommit.branchSync: off)
 - `-v, --verbose` - Show detailed progress and output
 
 **Error recovery:**
@@ -148,7 +148,7 @@ vibe-validate pre-commit  # Retry
 
 ```bash
 vibe-validate pre-commit  # Standard pre-commit workflow
-vibe-validate pre-commit --skip-sync  # Skip sync check (not recommended)
+vibe-validate pre-commit --skip-sync  # Skip the base-branch sync check and its fetch
 ```
 
 ---

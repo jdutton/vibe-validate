@@ -9,13 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.19.7] - 2026-08-13
 
+### Changed
+
+- **`vv pre-commit` now warns instead of blocking when your branch is behind.** Both sync checks — behind the base branch (`origin/main`), and behind your own remote branch — printed an error and exited 1. Neither is a correctness condition: being behind `origin/main` is the *normal* mid-PR state, and nothing about it makes the code you are committing wrong. The failure mode was self-defeating — a commit blocked for a non-correctness reason routes people to `git commit --no-verify`, which skips **everything**: secret scanning, validation, and partially-staged-file detection. A guard whose friction makes users bypass all the other guards is net negative.
+
+  Both are now configurable, defaulting to `warn`:
+
+  ```yaml
+  hooks:
+    preCommit:
+      branchSync: warn      # behind the base branch (origin/main)
+      trackingSync: warn    # behind your own remote branch (someone else pushed)
+  ```
+
+  `warn` checks and reports but lets the commit through; `block` is the previous behaviour; `off` skips the check **and its network fetch**. Set `block` on either to restore the old hard stop. `warn` still fetches — a sync notice computed from a stale ref is worth nothing, so freshness is the entire point of the warning; only `off` skips the network call. If the remote is unreachable, both guards degrade to no opinion and the commit proceeds, even in `block` mode.
+
+  Two things are deliberately unchanged. **The partially-staged-files check still blocks** — that one *is* a correctness guard: validation runs against the full file while git commits only the staged hunk, so a pass could certify code that isn't what lands. And **`vv sync-check` keeps its exit-1 semantics**; hard enforcement belongs in CI, which is where it already lives. This change moves only the commit path off the gate.
+
+  `--skip-sync` is unchanged in scope (the base-branch check only) and is now equivalent to `branchSync: off` for one run; its help text no longer calls it "not recommended", since skipping a warning is not a transgression.
+
 ### Fixed
 
-- **`pnpm bump-version` no longer silently skips the root `package.json` outside a directory named `vibe-validate`.** It identified the root package by checking whether the path ended with `vibe-validate/package.json`, which is true of the ordinary checkout but false in a git worktree or any clone into a differently-named folder. Because the root package is `"private": true`, an unrecognised root was then skipped as private — leaving the nine workspace packages bumped and the root behind, an invalid release state caught only later by `validate-repo-structure`. The root is now identified by resolved path. (Contributor tooling; no effect on published packages.)
+- **The "behind your own remote branch" check could not detect the case it exists for.** It compared `HEAD...@{u}` using purely local refs and nothing ever fetched the upstream — the only fetch on the commit path refreshed `origin/<main>`, and it ran *after* this check anyway. So if a teammate (or another machine, or another agent) pushed to your PR branch and you had not fetched since, the local `@{u}` was stale, divergence read `0/0`, and pre-commit printed a reassuring **"✅ Current branch is up to date with remote"** — silently missing exactly the scenario the check was built for. It only ever caught divergence you already knew about. `pre-commit` now refreshes the upstream ref before reading divergence, in the same `git fetch` that refreshes the base branch when both checks are active — so the fix costs no extra network round-trip. A ref that cannot be refreshed disables only its own check: git treats an unresolvable refspec as fatal for the whole `git fetch`, so a deleted upstream branch (the state a local branch is left in after its PR merges) would otherwise have taken the base-branch check down with it.
+
+- **`vv sync-check` now works with a base branch whose name contains a slash.** It split `origin/release/2.0` on every separator and fetched `git fetch origin release`, which does not exist — so the command failed with exit 2 for anyone whose `git.mainBranch` is a path-style name. It now splits on the first separator only (remote names cannot contain one; branch names routinely do).
+
+- **`vv pre-commit` no longer reports "no remote tracking branch" partway through a rebase.** Mid-rebase HEAD is detached, so the tracking lookup found nothing and said so — on every commit during a conflict resolution, and inconsistently with the explicit "rebase in progress" line the base-branch check printed immediately after. The tracking check is now skipped during a rebase, like the base-branch one.
 
 - **The "report this extraction issue" prompt no longer nags on repeat.** It was tied to the failure footer, so once replayed failures started carrying that footer it would re-ask on every commit attempt against an unchanged tree — for a run that executed exactly once. It is now shown only for a freshly computed failure. Its link also pointed at a repository that does not exist (`anthropics/vibe-validate`); it now points at `jdutton/vibe-validate`.
 
 - **A replayed validation failure now says it was replayed, and how to re-run it.** When the working tree is unchanged, a previous FAILURE is served straight from cache — but the output was indistinguishable from a failure computed just now, and it silently dropped the "view error details" / "to retry" footer that fresh failures get. If you fixed the cause and the fix lived somewhere the cache key cannot see, you got the identical stale verdict with no next step and no hint that nothing had re-run. Cached failures now disclose their provenance (`Replayed from <timestamp> on branch <branch> (not re-run just now)`), keep the full actionable footer, and state what the key covers plus the `--force` escape hatch. Cached passes are unchanged — the happy path gets no new noise. ([#169](https://github.com/jdutton/vibe-validate/issues/169))
+
+- **`pnpm bump-version` no longer silently skips the root `package.json` outside a directory named `vibe-validate`.** It identified the root package by checking whether the path ended with `vibe-validate/package.json`, which is true of the ordinary checkout but false in a git worktree or any clone into a differently-named folder. Because the root package is `"private": true`, an unrecognised root was then skipped as private — leaving the nine workspace packages bumped and the root behind, an invalid release state caught only later by `validate-repo-structure`. The root is now identified by resolved path. (Contributor tooling; no effect on published packages.)
+
+- **The generated config JSON Schema shipped with the `setting-up-projects` skill is now written by the build.** It was a hand-synced copy of `packages/config/config.schema.json` and could silently fall behind the schema it documents. (Contributor tooling.)
 
 ### Documentation
 

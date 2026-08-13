@@ -133,6 +133,50 @@ describe('BranchSyncChecker', () => {
       });
     });
 
+    it('should skip its own fetch when skipFetch is set', async () => {
+      // pre-commit does one combined fetch for both of its sync guards, so a
+      // second fetch here would be a wasted network round-trip on every commit.
+      const executor = setupMockExecutor([
+        { stdout: 'feature/test\n', stderr: '' },  // rev-parse --abbrev-ref HEAD
+        { stdout: 'abc123\n', stderr: '' },        // rev-parse --verify origin/main
+        { stdout: '2\n', stderr: '' },             // rev-list --count HEAD..origin/main
+      ]);
+      const checker = new BranchSyncChecker({ gitExecutor: executor, skipFetch: true });
+
+      const result = await checker.checkSync();
+
+      expect(result.behindBy).toBe(2);
+      expect(executor).not.toHaveBeenCalledWith(
+        expect.arrayContaining(['fetch'])
+      );
+    });
+
+    it('should fetch by default when skipFetch is not set', async () => {
+      const executor = setupMockExecutor(createSyncCheckResponses());
+      const checker = createChecker(executor);
+
+      await checker.checkSync();
+
+      expect(executor).toHaveBeenCalledWith(['fetch', '--quiet', 'origin', 'main']);
+    });
+
+    it('should fetch a base branch whose name contains a slash', async () => {
+      // Remote names cannot contain '/', but branch names routinely do.
+      // Splitting on every separator turned `origin/release/2.0` into
+      // `git fetch origin release`, which fails and made sync-check exit 2.
+      const executor = setupMockExecutor([
+        { stdout: 'feature/test\n', stderr: '' },
+        { stdout: 'abc123\n', stderr: '' },
+        { stdout: '', stderr: '' },
+        { stdout: '0\n', stderr: '' },
+      ]);
+      const checker = createChecker(executor, 'origin/release/2.0');
+
+      await checker.checkSync();
+
+      expect(executor).toHaveBeenCalledWith(['fetch', '--quiet', 'origin', 'release/2.0']);
+    });
+
     it('should handle missing remote branch gracefully', async () => {
       const executor = setupMockExecutor([
         { stdout: 'feature/test\n', stderr: '' },
@@ -225,10 +269,11 @@ describe('BranchSyncChecker', () => {
       // The key is that each argument is separate - the shell cannot interpret "; rm -rf /"
       expect(executor).toHaveBeenCalledWith(['rev-parse', '--verify', maliciousBranch]);
 
-      // When the branch is split by '/', both parts are still separate arguments
-      // The shell will receive: ['fetch', '--quiet', 'origin', 'main; rm -rf ']
+      // The remote/branch split takes only the FIRST '/', so the branch name
+      // arrives intact rather than truncated at the '/' inside the payload.
+      // The shell will receive: ['fetch', '--quiet', 'origin', 'main; rm -rf /']
       // NOT: 'fetch --quiet origin main; rm -rf /' (which would execute rm -rf)
-      expect(executor).toHaveBeenCalledWith(['fetch', '--quiet', 'origin', 'main; rm -rf ']);
+      expect(executor).toHaveBeenCalledWith(['fetch', '--quiet', 'origin', 'main; rm -rf /']);
     });
   });
 

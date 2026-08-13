@@ -263,7 +263,7 @@ function showComprehensiveHelp(program: Command): void {
       },
       examples: [
         'vibe-validate pre-commit  # Standard pre-commit workflow',
-        'vibe-validate pre-commit --skip-sync  # Skip sync check (not recommended)'
+        'vibe-validate pre-commit --skip-sync  # Skip the base-branch sync check and its fetch'
       ]
     },
     state: {
