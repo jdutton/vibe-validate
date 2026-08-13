@@ -63,7 +63,7 @@ A superset of `vv validate` that adds two branch-sync checks (behind `origin/mai
 vv pre-commit                 # sync notices + full validation + secret scan
 ```
 
-Both sync checks **warn by default; they do not block the commit.** Being behind is not a correctness condition, and a commit blocked for a non-correctness reason just routes people to `git commit --no-verify`, which skips validation and secret scanning too. Hard enforcement lives in CI (`vv sync-check`, which exits 1). Set `hooks.preCommit.branchSync: block` / `trackingSync: block` to restore a hard stop, or `off` to skip the check and its network fetch entirely.
+Both sync checks **warn by default; they do not block the commit.** Being behind is not a correctness condition, and a commit blocked for a non-correctness reason just routes people to `git commit --no-verify`, which skips validation and secret scanning too. Hard enforcement lives in CI (`vv sync-check`, which exits 1). Set `hooks.preCommit.baseBranchSync: block` / `trackingBranchSync: block` to restore a hard stop, or `off` to skip the check and its network fetch entirely.
 
 When it warns "branch behind origin":
 

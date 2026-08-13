@@ -564,7 +564,7 @@ git commit -m "test commit"
 ```
 
 **What happens:**
-- ✅ Branch sync checks run first (warn by default — see `hooks.preCommit.branchSync` / `trackingSync`)
+- ✅ Branch sync checks run first (warn by default — see `hooks.preCommit.baseBranchSync` / `trackingBranchSync`)
 - ✅ Validation runs with caching
 - ✅ Commit allowed if validation passes
 - ❌ Commit blocked if validation fails, secrets are detected, or files are partially staged

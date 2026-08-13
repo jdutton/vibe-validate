@@ -14,7 +14,7 @@ All top-level configuration keys at a glance:
 | `git` | `object` | `{ mainBranch: 'main', remoteOrigin: 'origin', autoSync: false }` | Branch and remote settings |
 | `validation` | `object` | — | Pipeline phases, steps, and failFast behavior |
 | `ci` | `object` | — | CI workflow generation (Node versions, OS matrix, etc.) |
-| `hooks` | `object` | `{ preCommit: { enabled: true, branchSync: 'warn', trackingSync: 'warn' } }` | Pre-commit hook configuration, including the two sync guards |
+| `hooks` | `object` | `{ preCommit: { enabled: true, baseBranchSync: 'warn', trackingBranchSync: 'warn' } }` | Pre-commit hook configuration, including the two sync guards |
 | `locking` | `object` | `{ enabled: true, concurrencyScope: 'directory' }` | Concurrency control — see [Locking Configuration](#locking-configuration) |
 | `extractors` | `object` | — | Error extraction plugins (builtins, local, external) |
 
@@ -854,7 +854,7 @@ hooks:
     command: 'pnpm vibe-validate pre-commit'  # Use pnpm instead of npx
 ```
 
-### `hooks.preCommit.branchSync` (optional)
+### `hooks.preCommit.baseBranchSync` (optional)
 
 What `vibe-validate pre-commit` does when your branch is behind the **base branch** (e.g. `origin/main`).
 
@@ -872,10 +872,10 @@ Being behind the base branch is the normal mid-PR state, not an error, so this w
 ```yaml
 hooks:
   preCommit:
-    branchSync: block  # restore the pre-0.19.7 hard stop
+    baseBranchSync: block  # restore the pre-0.19.7 hard stop
 ```
 
-### `hooks.preCommit.trackingSync` (optional)
+### `hooks.preCommit.trackingBranchSync` (optional)
 
 What `vibe-validate pre-commit` does when your branch is behind **its own remote tracking branch** — someone else, another machine, or another agent pushed to your branch.
 
@@ -883,13 +883,13 @@ What `vibe-validate pre-commit` does when your branch is behind **its own remote
 
 **Default**: `'warn'`
 
-Same three modes as `branchSync`. Only a branch that is *purely* behind triggers this; a diverged branch (the post-rebase shape, both ahead and behind) always passes with an informational notice.
+Same three modes as `baseBranchSync`. Only a branch that is *purely* behind triggers this; a diverged branch (the post-rebase shape, both ahead and behind) always passes with an informational notice.
 
 **Example**:
 ```yaml
 hooks:
   preCommit:
-    trackingSync: off  # solo branches, never pushed to by anyone else
+    trackingBranchSync: off  # solo branches, never pushed to by anyone else
 ```
 
 ### Sync guards and the network
@@ -898,7 +898,7 @@ hooks:
 
 If a ref cannot be refreshed, the guard that depends on it degrades to no opinion and the commit proceeds — even in `block` mode. A "behind" verdict from a ref that could not be refreshed is not evidence of anything, and neither is an "up to date" one. Degradation is per guard, not per remote: a branch whose upstream was deleted (the state a local branch is left in once its PR merges) silences only the tracking guard, while the base-branch guard keeps working.
 
-The `--skip-sync` flag is equivalent to `branchSync: off` for a single run. It does not affect `trackingSync`.
+The `--skip-sync` flag is equivalent to `baseBranchSync: off` for a single run. It does not affect `trackingBranchSync`.
 
 **Note:** the partially-staged-files check is *not* configurable and always blocks. Validation runs against the full file while git commits only the staged hunk, so a pass could certify code that isn't what lands — that one is a correctness guard, not a notification.
 
@@ -908,8 +908,8 @@ hooks:
   preCommit:
     enabled: true
     command: 'npx vibe-validate pre-commit'
-    branchSync: warn
-    trackingSync: warn
+    baseBranchSync: warn
+    trackingBranchSync: warn
 ```
 
 ## Locking Configuration

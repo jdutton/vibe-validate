@@ -162,7 +162,7 @@ function createConfigWithSecretScanning(
  * Omitted guards fall back to the shipped default ('warn').
  */
 function createConfigWithSyncGuards(
-  guards: { branchSync?: SyncGuardMode; trackingSync?: SyncGuardMode }
+  guards: { baseBranchSync?: SyncGuardMode; trackingBranchSync?: SyncGuardMode }
 ): VibeValidateConfig {
   return createConfig({
     hooks: {
@@ -789,7 +789,7 @@ describe('pre-commit command', () => {
     });
   });
 
-  describe('sync guards (branchSync / trackingSync)', () => {
+  describe('sync guards (baseBranchSync / trackingBranchSync)', () => {
     describe('fetch policy', () => {
       it('should refresh both guards refs in a single call when both are active', async () => {
         setupSuccessfulPreCommit();
@@ -801,8 +801,8 @@ describe('pre-commit command', () => {
         expectFetchedRefs([BASE_REF, UPSTREAM_REF]);
       });
 
-      it('should fetch only the base branch ref when trackingSync is off', async () => {
-        setupSuccessfulPreCommit(createConfigWithSyncGuards({ trackingSync: 'off' }));
+      it('should fetch only the base branch ref when trackingBranchSync is off', async () => {
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ trackingBranchSync: 'off' }));
 
         await runPreCommit(env, 0);
 
@@ -810,8 +810,8 @@ describe('pre-commit command', () => {
         expect(git.getTrackingDivergence).not.toHaveBeenCalled();
       });
 
-      it('should fetch only the upstream ref when branchSync is off', async () => {
-        setupSuccessfulPreCommit(createConfigWithSyncGuards({ branchSync: 'off' }));
+      it('should fetch only the upstream ref when baseBranchSync is off', async () => {
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ baseBranchSync: 'off' }));
 
         await runPreCommit(env, 0);
 
@@ -821,7 +821,7 @@ describe('pre-commit command', () => {
 
       it('should make no network call at all when both guards are off', async () => {
         setupSuccessfulPreCommit(
-          createConfigWithSyncGuards({ branchSync: 'off', trackingSync: 'off' })
+          createConfigWithSyncGuards({ baseBranchSync: 'off', trackingBranchSync: 'off' })
         );
 
         await runPreCommit(env, 0);
@@ -836,7 +836,7 @@ describe('pre-commit command', () => {
         // Rejected alternative: skip the fetch when only warning. A notice
         // computed from a stale ref is worth nothing — freshness IS the warning.
         setupSuccessfulPreCommit(
-          createConfigWithSyncGuards({ branchSync: 'warn', trackingSync: 'warn' })
+          createConfigWithSyncGuards({ baseBranchSync: 'warn', trackingBranchSync: 'warn' })
         );
 
         await runPreCommit(env, 0);
@@ -939,9 +939,9 @@ describe('pre-commit command', () => {
         expectValidationRan();
       });
 
-      it('should block the commit when behind the base branch and branchSync is block', async () => {
+      it('should block the commit when behind the base branch and baseBranchSync is block', async () => {
         vi.mocked(configLoader.loadConfig).mockResolvedValue(
-          createConfigWithSyncGuards({ branchSync: 'block' })
+          createConfigWithSyncGuards({ baseBranchSync: 'block' })
         );
         setupBranchBehind(4, false);
 
@@ -962,9 +962,9 @@ describe('pre-commit command', () => {
         expectValidationRan();
       });
 
-      it('should block the commit when behind the tracking branch and trackingSync is block', async () => {
+      it('should block the commit when behind the tracking branch and trackingBranchSync is block', async () => {
         vi.mocked(configLoader.loadConfig).mockResolvedValue(
-          createConfigWithSyncGuards({ trackingSync: 'block' })
+          createConfigWithSyncGuards({ trackingBranchSync: 'block' })
         );
         setupBranchBehind(2, true);
 
@@ -976,7 +976,7 @@ describe('pre-commit command', () => {
 
       it('should say nothing about a guard that is off, even when behind', async () => {
         setupSuccessfulPreCommit(
-          createConfigWithSyncGuards({ branchSync: 'off', trackingSync: 'off' })
+          createConfigWithSyncGuards({ baseBranchSync: 'off', trackingBranchSync: 'off' })
         );
         vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 9 });
         vi.mocked(git.checkBranchSync).mockResolvedValue(
@@ -1004,7 +1004,7 @@ describe('pre-commit command', () => {
       it('should not block on the base branch when the fetch failed, even in block mode', async () => {
         // Offline commits pass, deliberately. A "behind" verdict computed from
         // refs we could not refresh is not evidence of anything.
-        setupSuccessfulPreCommit(createConfigWithSyncGuards({ branchSync: 'block' }));
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ baseBranchSync: 'block' }));
         vi.mocked(git.fetchRemoteRefs).mockReturnValue(noRefsFresh());
         vi.mocked(git.checkBranchSync).mockResolvedValue(
           createBranchSyncResult({ isUpToDate: false, behindBy: 5 })
@@ -1017,7 +1017,7 @@ describe('pre-commit command', () => {
       });
 
       it('should not block on the tracking branch when the fetch failed, even in block mode', async () => {
-        setupSuccessfulPreCommit(createConfigWithSyncGuards({ trackingSync: 'block' }));
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ trackingBranchSync: 'block' }));
         vi.mocked(git.fetchRemoteRefs).mockReturnValue(noRefsFresh());
         vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 5 });
 
@@ -1065,7 +1065,7 @@ describe('pre-commit command', () => {
         // origin/main refreshed fine, so the base guard must still render a
         // verdict rather than going permanently silent.
         vi.mocked(configLoader.loadConfig).mockResolvedValue(
-          createConfigWithSyncGuards({ branchSync: 'block' })
+          createConfigWithSyncGuards({ baseBranchSync: 'block' })
         );
         setupBranchBehind(4, true);
         vi.mocked(git.fetchRemoteRefs).mockReturnValue({
@@ -1109,7 +1109,7 @@ describe('pre-commit command', () => {
         // "Nothing to fetch" is not the same as "stale". A branch tracking a
         // local branch has no remote ref to refresh, and its local comparison
         // is the whole truth.
-        setupSuccessfulPreCommit(createConfigWithSyncGuards({ branchSync: 'off' }));
+        setupSuccessfulPreCommit(createConfigWithSyncGuards({ baseBranchSync: 'off' }));
         vi.mocked(git.getUpstreamRef).mockReturnValue(null);
         vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 3 });
 
@@ -1199,7 +1199,7 @@ describe('pre-commit command', () => {
       // merge/pull is about to be demanded. In 'warn' mode nothing is about to
       // happen to your work, so there is nothing to protect it from.
       vi.mocked(configLoader.loadConfig).mockResolvedValue(
-        createConfigWithSyncGuards({ trackingSync: 'block' })
+        createConfigWithSyncGuards({ trackingBranchSync: 'block' })
       );
       setupBranchBehind(3, true);
 
@@ -1213,7 +1213,7 @@ describe('pre-commit command', () => {
 
     it('should show recovery instructions with snapshot hash when branch is behind origin/main', async () => {
       vi.mocked(configLoader.loadConfig).mockResolvedValue(
-        createConfigWithSyncGuards({ branchSync: 'block' })
+        createConfigWithSyncGuards({ baseBranchSync: 'block' })
       );
       setupBranchBehind(2, false); // No tracking branch
 

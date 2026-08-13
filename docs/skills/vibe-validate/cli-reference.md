@@ -125,7 +125,7 @@ Run branch sync check + validation (recommended before commit). Spawned steps ru
 
 **Options:**
 
-- `--skip-sync` - Skip the base-branch sync check and its network fetch (same as hooks.preCommit.branchSync: off)
+- `--skip-sync` - Skip the base-branch sync check and its network fetch (same as hooks.preCommit.baseBranchSync: off)
 - `-v, --verbose` - Show detailed progress and output
 
 **Error recovery:**

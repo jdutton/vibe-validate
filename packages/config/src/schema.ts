@@ -280,13 +280,13 @@ export const HooksConfigSchema = z.object({
      * Behaviour when the branch is behind the base branch, e.g. `origin/main`
      * (default: 'warn'). Being behind the base is the normal mid-PR state.
      */
-    branchSync: SyncGuardModeSchema.default(DEFAULT_SYNC_GUARD_MODE),
+    baseBranchSync: SyncGuardModeSchema.default(DEFAULT_SYNC_GUARD_MODE),
 
     /**
      * Behaviour when the branch is behind its own remote tracking branch —
      * someone else, or another machine, pushed to your branch (default: 'warn').
      */
-    trackingSync: SyncGuardModeSchema.default(DEFAULT_SYNC_GUARD_MODE),
+    trackingBranchSync: SyncGuardModeSchema.default(DEFAULT_SYNC_GUARD_MODE),
 
     /** Secret scanning configuration (optional) */
     secretScanning: SecretScanningSchema.optional(),

@@ -166,13 +166,13 @@ function reportTrackingDivergence(
     showWorkProtectionMessage(treeHash, 'git pull', programName);
 
     console.error(chalk.gray('\n   Alternative: git pull --rebase'));
-    console.error(chalk.gray('\n   Skip this check with: hooks.preCommit.trackingSync: off'));
+    console.error(chalk.gray('\n   Skip this check with: hooks.preCommit.trackingBranchSync: off'));
     return true;
   }
 
   console.warn(chalk.yellow(`⚠️  Current branch is behind its remote tracking branch by ${divergence.behind} commit(s)`));
   console.warn(chalk.gray('   Someone else has pushed changes to this branch. To sync: git pull --rebase'));
-  console.warn(chalk.gray('   (warning only - set hooks.preCommit.trackingSync: block to make this a hard stop)'));
+  console.warn(chalk.gray('   (warning only - set hooks.preCommit.trackingBranchSync: block to make this a hard stop)'));
   return false;
 }
 
@@ -224,7 +224,7 @@ async function reportBaseBranchSync(
 
   console.warn(chalk.yellow(`⚠️  Branch is behind ${remoteBranch} by ${syncResult.behindBy} commit(s)`));
   console.warn(chalk.gray(`   To sync: git merge ${remoteBranch}`));
-  console.warn(chalk.gray('   (warning only - set hooks.preCommit.branchSync: block to make this a hard stop)'));
+  console.warn(chalk.gray('   (warning only - set hooks.preCommit.baseBranchSync: block to make this a hard stop)'));
   return false;
 }
 
@@ -267,7 +267,7 @@ export function preCommitCommand(program: Command): void {
   const cmd = program
     .command('pre-commit')
     .description('Run branch sync check + validation (recommended before commit). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).')
-    .option('--skip-sync', 'Skip the base-branch sync check and its network fetch (same as hooks.preCommit.branchSync: off)')
+    .option('--skip-sync', 'Skip the base-branch sync check and its network fetch (same as hooks.preCommit.baseBranchSync: off)')
     .option('-v, --verbose', 'Show detailed progress and output');
 
   // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 47 acceptable for pre-commit workflow orchestration (coordinates git sync, config loading, validation, and error handling)
@@ -334,12 +334,12 @@ export function preCommitCommand(program: Command): void {
         // which skips every other guard too. Set 'block' to opt back into a hard
         // stop; hard enforcement otherwise belongs in CI (`vv sync-check`).
         const preCommitConfig = config.hooks?.preCommit;
-        const trackingMode: SyncGuardMode = preCommitConfig?.trackingSync ?? DEFAULT_SYNC_GUARD_MODE;
+        const trackingMode: SyncGuardMode = preCommitConfig?.trackingBranchSync ?? DEFAULT_SYNC_GUARD_MODE;
         // --skip-sync predates the config and has always meant the base-branch
         // guard specifically, so it stays scoped to that one.
         const branchMode: SyncGuardMode = options.skipSync
           ? 'off'
-          : (preCommitConfig?.branchSync ?? DEFAULT_SYNC_GUARD_MODE);
+          : (preCommitConfig?.baseBranchSync ?? DEFAULT_SYNC_GUARD_MODE);
 
         const remoteBranch = getRemoteBranch(config.git);
 
@@ -514,8 +514,8 @@ Each guard takes \`warn\` (default), \`block\`, or \`off\`:
 \`\`\`yaml
 hooks:
   preCommit:
-    branchSync: warn      # behind the base branch (origin/main)
-    trackingSync: warn    # behind your own remote branch (someone else pushed)
+    baseBranchSync: warn      # behind the base branch (origin/main)
+    trackingBranchSync: warn  # behind your own remote branch (someone else pushed)
 \`\`\`
 
 - \`warn\` — check, print a notice, allow the commit
@@ -528,7 +528,7 @@ For hard enforcement, use \`vibe-validate sync-check\` in CI — it still exits 
 
 ## Options
 
-- \`--skip-sync\` - Skip the base-branch sync check and its network fetch (equivalent to \`branchSync: off\`; does not affect \`trackingSync\`)
+- \`--skip-sync\` - Skip the base-branch sync check and its network fetch (equivalent to \`baseBranchSync: off\`; does not affect \`trackingBranchSync\`)
 - \`-v, --verbose\` - Show detailed progress and output
 
 ## Exit Codes

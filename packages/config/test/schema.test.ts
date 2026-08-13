@@ -348,37 +348,37 @@ describe('HooksConfigSchema', () => {
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.hooks?.preCommit?.branchSync).toBe('warn');
-    expect(result.data?.hooks?.preCommit?.trackingSync).toBe('warn');
+    expect(result.data?.hooks?.preCommit?.baseBranchSync).toBe('warn');
+    expect(result.data?.hooks?.preCommit?.trackingBranchSync).toBe('warn');
   });
 
   it('should default both sync guards to warn when hooks is omitted entirely', () => {
     const result = expectValidConfig(createBaseConfig({}));
 
-    expect(result.data?.hooks?.preCommit?.branchSync).toBe('warn');
-    expect(result.data?.hooks?.preCommit?.trackingSync).toBe('warn');
+    expect(result.data?.hooks?.preCommit?.baseBranchSync).toBe('warn');
+    expect(result.data?.hooks?.preCommit?.trackingBranchSync).toBe('warn');
   });
 
   it.each(['warn', 'block', 'off'] as const)('should accept sync guard mode %s', (mode) => {
     const config = createBaseConfig({
       hooks: {
         preCommit: {
-          branchSync: mode,
-          trackingSync: mode
+          baseBranchSync: mode,
+          trackingBranchSync: mode
         }
       }
     });
 
     const result = expectValidConfig(config);
-    expect(result.data?.hooks?.preCommit?.branchSync).toBe(mode);
-    expect(result.data?.hooks?.preCommit?.trackingSync).toBe(mode);
+    expect(result.data?.hooks?.preCommit?.baseBranchSync).toBe(mode);
+    expect(result.data?.hooks?.preCommit?.trackingBranchSync).toBe(mode);
   });
 
   it('should reject an unknown sync guard mode', () => {
     const config = createBaseConfig({
       hooks: {
         preCommit: {
-          branchSync: 'sometimes'
+          baseBranchSync: 'sometimes'
         }
       }
     });

@@ -238,7 +238,7 @@
                   "type": "string",
                   "default": "npx vibe-validate pre-commit"
                 },
-                "branchSync": {
+                "baseBranchSync": {
                   "type": "string",
                   "enum": [
                     "warn",
@@ -247,7 +247,7 @@
                   ],
                   "default": "warn"
                 },
-                "trackingSync": {
+                "trackingBranchSync": {
                   "type": "string",
                   "enum": [
                     "warn",
