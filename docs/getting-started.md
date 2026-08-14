@@ -297,22 +297,24 @@ $ npx vibe-validate validate
 ✅ Validation cached (< 1s)
 ```
 
-**Cache key calculation**:
-1. `git add --intent-to-add .` - Mark untracked files (no actual staging)
-2. `git write-tree` - Generate content-based hash
-3. `git reset` - Restore index to clean state
+**Cache key calculation** (all against a temporary copy of the index):
+1. Copy `.git/index` to a temp index and point `GIT_INDEX_FILE` at it
+2. `git add --all` - Stage tracked edits and untracked files into the temp index
+3. `git write-tree` - Generate content-based hash
+4. Delete the temp index
 
 **Why it works**:
 - Content-based (not timestamp-based)
-- Includes untracked files (but not `.gitignore`d ones)
+- Includes untracked files, but **not ignored paths** (`.gitignore`,
+  `.git/info/exclude`, or your global excludes file)
 - Deterministic (same code = same hash)
-- No side effects (index restored after calculation)
+- No side effects (your real index is never touched, so nothing needs restoring)
 
 ### When Cache is Invalidated
 
 Cache is invalidated when:
-- ✅ **Any file content changes** (tracked or untracked)
-- ✅ **New files are added**
+- ✅ **Any non-ignored file's content changes** (tracked or untracked)
+- ✅ **New files are added** (unless they are ignored)
 - ✅ **Files are deleted**
 - ✅ **Git tree structure changes**
 

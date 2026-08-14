@@ -248,17 +248,20 @@ function showComprehensiveHelp(program: Command): void {
     },
     'pre-commit': {
       whatItDoes: [
-        '1. Runs sync-check (fails if branch behind origin/main)',
-        '2. Runs validate (with caching)',
-        '3. Reports git status (warns about unstaged files)'
+        '1. Checks for partially staged files (fails if detected)',
+        '2. Checks if the branch is behind its remote tracking branch (warns by default)',
+        '3. Checks if the branch is behind the base branch, e.g. origin/main (warns by default)',
+        '4. Runs secret scanning (if enabled in config)',
+        '5. Runs validate (with caching)'
       ],
       exitCodes: {
-        0: 'Sync OK and validation passed',
-        1: 'Sync failed OR validation failed'
+        0: 'Validation passed (and no sync guard set to `block` was violated)',
+        1: 'Validation failed, secrets detected, files partially staged, or a `block` sync guard was violated'
       },
-      whenToUse: 'Run before every commit to ensure code is synced and validated',
+      whenToUse: 'Run before every commit to ensure code is validated and in sync',
       errorGuidance: {
-        'sync failed': ['git fetch origin', 'git merge origin/main', 'Resolve conflicts if any', RETRY_PRE_COMMIT],
+        'branch behind': ['git merge origin/main', 'Or set hooks.preCommit.baseBranchSync: off to skip the check', RETRY_PRE_COMMIT],
+        'partially staged files': ['git add <file>  # stage the whole file', 'Or unstage it — validation sees the full file, git commits only the hunk', RETRY_PRE_COMMIT],
         'validation failed': ['Fix errors shown in output', RETRY_PRE_COMMIT]
       },
       examples: [
@@ -549,10 +552,13 @@ function showComprehensiveHelp(program: Command): void {
   console.log('| `2` | Error (git command failed, file system error) |\n');
 
   console.log('## Caching\n');
-  console.log('- **Cache key**: Git tree hash of working directory (includes untracked files)');
+  console.log('- **Cache key**: Git tree hash of your tracked + untracked files');
   console.log('- **Cache hit**: Validation skipped (sub-second)');
   console.log('- **Cache miss**: Full validation runs (~60-90s)');
-  console.log('- **Invalidation**: Any file change (tracked or untracked)\n');
+  console.log('- **Invalidation**: Any change to a file the key covers');
+  console.log('- **Not covered**: ignored paths (.gitignore, .git/info/exclude, or your global');
+  console.log('  excludes file) and state outside the repo. Changing those does NOT invalidate');
+  console.log('  the cache — re-run with `vibe-validate validate --force`.\n');
 
   console.log('---\n');
   console.log('For more details: https://github.com/jdutton/vibe-validate');

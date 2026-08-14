@@ -1118,6 +1118,30 @@ describe('pre-commit command', () => {
         expect(git.fetchRemoteRefs).not.toHaveBeenCalled();
         expectWarnContains('behind its remote tracking branch by 3 commit(s)');
       });
+
+      it('should treat a ref with no reported outcome as stale, not fresh', async () => {
+        // A ref we asked about but got no answer for must degrade to no
+        // opinion. Defaulting the other way would let a guard render a
+        // confident verdict from a ref that was never actually refreshed.
+        setupSuccessfulPreCommit(
+          createConfigWithSyncGuards({ baseBranchSync: 'block', trackingBranchSync: 'block' })
+        );
+        vi.mocked(git.fetchRemoteRefs).mockReturnValue({});
+        vi.mocked(git.checkBranchSync).mockResolvedValue({
+          isUpToDate: false,
+          behindBy: 4,
+          currentBranch: 'feature/test',
+          hasRemote: true,
+        });
+        vi.mocked(git.getTrackingDivergence).mockReturnValue({ ahead: 0, behind: 2 });
+
+        // Both guards are 'block', yet the commit proceeds: neither ref was
+        // confirmed fresh, so neither guard has grounds to stop it.
+        await runPreCommit(env, 0);
+
+        expect(consoleOutput('log')).toContain('Could not refresh');
+        expect(consoleOutput('error')).not.toContain('Branch is behind');
+      });
     });
 
     describe('--skip-sync flag', () => {

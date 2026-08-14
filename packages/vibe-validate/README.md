@@ -61,7 +61,7 @@ Built for **agentic coding workflows** with AI assistants like [Claude Code](htt
 - **Git tree hash caching** - Content-based, deterministic
 - **Parallel execution** - Run checks simultaneously
 - **Agent-optimized output** - Auto-detects Claude Code, Cursor, Aider, Continue
-- **Branch sync enforcement** - Pre-commit hook ensures branches stay current
+- **Branch sync checking** - Pre-commit hook notices when your branch falls behind (warns by default; `block` or `off` on request)
 
 ## License
 

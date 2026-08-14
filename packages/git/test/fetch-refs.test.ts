@@ -190,6 +190,31 @@ describe('fetchRemoteRefs', () => {
     expect(outcomes['origin/main'].ok).toBe(false);
     expect(outcomes['origin/main'].error).toBe('git fetch origin failed');
   });
+
+  // The two tests below pin "failure is reported, never thrown". Callers treat
+  // an unfetchable ref as "no opinion" and let the commit through; if this
+  // module threw instead, being offline would abort pre-commit outright.
+  it('should ask the executor not to throw on a failed fetch', () => {
+    mockFetchResult(true);
+
+    fetchRemoteRefs([{ remote: 'origin', branch: 'main' }]);
+
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledWith(
+      ['fetch', '--quiet', 'origin', 'main'],
+      expect.objectContaining({ ignoreErrors: true })
+    );
+  });
+
+  it('should report a failure rather than throw when the executor throws', () => {
+    vi.mocked(gitExecutor.executeGitCommand).mockImplementation(() => {
+      throw new Error('spawn git ENOENT');
+    });
+
+    const outcomes = fetchRemoteRefs([{ remote: 'origin', branch: 'main' }]);
+
+    expect(outcomes['origin/main'].ok).toBe(false);
+    expect(outcomes['origin/main'].error).toContain('ENOENT');
+  });
 });
 
 describe('refKey', () => {

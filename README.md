@@ -15,7 +15,7 @@ Never commit or push code with test failures, lint violations, or leaked secrets
 - ✅ Pre-commit hooks ensure validation has run before every commit (with smart caching)
 - 🔐 Secret scanning detects credentials before they're pushed (Gitleaks integration)
 - 🔒 Dependency lock check prevents cache poisoning from stale dependencies
-- 🔄 Branch sync enforcement keeps you current with main
+- 🔄 Branch sync checking keeps you current with main
 - 🎯 CI passes because local validation is identical
 
 **Impact:** Stop the "push → wait for CI → fix → repeat" cycle. Catch problems in seconds, not minutes.

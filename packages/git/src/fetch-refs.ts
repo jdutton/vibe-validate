@@ -65,10 +65,23 @@ function toOutcome(result: { success: boolean; stdout: string; stderr: string },
 }
 
 function runFetch(remote: string, branches: string[]) {
-  return executeGitCommand(
-    ['fetch', '--quiet', remote, ...branches],
-    { timeout: FETCH_TIMEOUT, ignoreErrors: true }
-  );
+  // `ignoreErrors` keeps a failed fetch out of the throw path, and the catch
+  // makes that structural rather than incidental. Callers treat an unfetchable
+  // ref as "no opinion" and commit anyway; a throw escaping this module would
+  // instead abort the whole pre-commit run, turning "you are offline" into a
+  // blocked commit — the exact inversion of the intended behaviour.
+  try {
+    return executeGitCommand(
+      ['fetch', '--quiet', remote, ...branches],
+      { timeout: FETCH_TIMEOUT, ignoreErrors: true }
+    );
+  } catch (error) {
+    return {
+      success: false,
+      stdout: '',
+      stderr: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 /**

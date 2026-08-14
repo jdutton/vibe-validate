@@ -239,15 +239,15 @@ describe('bin.ts - CLI entry point', () => {
       const sections: Record<string, readonly string[]> = {
         'Markdown headers': ['# vibe-validate CLI Reference', '> Agent-friendly validation framework', '## Usage', '## Commands'],
         'exit codes for all commands': ['**Exit codes:**', '- `0` - Validation passed (or cached pass)', '- `1` - Validation failed', '- `2` - Configuration error', '- `0` - Configuration created successfully', '- `0` - Up to date or no remote tracking', '- `1` - Branch is behind (needs merge)'],
-        '"What it does" sections': ['What it does:', 'Calculates git tree hash of working directory', 'Checks if hash matches cached state', 'Creates vibe-validate.config.yaml in project root', 'Runs sync-check', 'Runs validate'],
+        '"What it does" sections': ['What it does:', 'Calculates git tree hash of working directory', 'Checks if hash matches cached state', 'Creates vibe-validate.config.yaml in project root', 'Checks for partially staged files (fails if detected)', 'Runs validate'],
         'file locations created/modified': ['Creates/modifies:', 'Git notes under refs/notes/vibe-validate/validate', 'vibe-validate.config.yaml (always)', '.husky/pre-commit (with --setup-hooks)', '.github/workflows/validate.yml'],
         'examples for commands': ['Examples:', 'vibe-validate validate              # Use cache if available', 'vibe-validate validate --force      # Always run validation', 'vibe-validate init --template typescript-nodejs', 'vibe-validate doctor         # Run diagnostics'],
-        'error recovery guidance': ['**Error recovery:**', 'If **sync failed**:', 'git fetch origin', 'git merge origin/main', 'If **validation failed**:', 'Fix errors shown in output'],
-        '"When to use" guidance': ['When to use:', 'Run before every commit to ensure code is synced and validated', 'Debug why validation is cached/not cached', 'Diagnose setup issues or verify environment'],
+        'error recovery guidance': ['**Error recovery:**', 'If **branch behind**:', 'git merge origin/main', 'If **validation failed**:', 'Fix errors shown in output'],
+        '"When to use" guidance': ['When to use:', 'Run before every commit to ensure code is validated and in sync', 'Debug why validation is cached/not cached', 'Diagnose setup issues or verify environment'],
         'FILES section': ['## Files', 'vibe-validate.config.yaml', 'refs/notes/vibe-validate/validate', '.github/workflows/validate.yml', '.husky/pre-commit'],
         'COMMON WORKFLOWS section': ['## Common Workflows', '### First-time setup', 'vibe-validate init --template typescript-nodejs --setup-workflow', '### Before every commit (recommended)', 'vibe-validate pre-commit', '### After PR merge', 'vibe-validate cleanup', '### Check validation state', 'vibe-validate state --verbose', '### Force re-validation', 'vibe-validate validate --force'],
         'EXIT CODES section': ['## Exit Codes', '| `0` | Success |', '| `1` | Failure (validation failed, sync check failed, invalid config) |', '| `2` | Error (git command failed, file system error) |'],
-        'CACHING section': ['## Caching', '**Cache key**: Git tree hash of working directory (includes untracked files)', '**Cache hit**: Validation skipped (sub-second)', '**Cache miss**: Full validation runs (~60-90s)', '**Invalidation**: Any file change (tracked or untracked)'],
+        'CACHING section': ['## Caching', '**Cache key**: Git tree hash of your tracked + untracked files', '**Cache hit**: Validation skipped (sub-second)', '**Cache miss**: Full validation runs (~60-90s)', '**Invalidation**: Any change to a file the key covers', '**Not covered**: ignored paths'],
         'repository link': ['For more details: https://github.com/jdutton/vibe-validate'],
       };
 

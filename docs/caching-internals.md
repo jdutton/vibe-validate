@@ -18,11 +18,19 @@ A **tree hash** is git's way of creating a deterministic fingerprint of your wor
 ### How vibe-validate uses tree hashes
 
 ```bash
-# Behind the scenes on every validation:
-git add --intent-to-add .        # Stage untracked files
+# Behind the scenes on every validation, against a COPY of the index
+# (your real .git/index is never touched):
+cp .git/index "$GIT_DIR/vibe-validate-temp-index-$$"
+export GIT_INDEX_FILE="$GIT_DIR/vibe-validate-temp-index-$$"
+git add --all                     # Stage tracked edits + untracked files
 git write-tree                    # Generate tree hash
 # Returns: abc123def456... (40-character SHA-1)
 ```
+
+`--all` is required here, not `--intent-to-add`: intent-to-add records an empty
+placeholder that `git write-tree` skips, so unstaged modifications would silently
+drop out of the key. Working against a temp index is what keeps your real index
+untouched — there is no `git reset` to undo afterwards.
 
 This tree hash becomes the **cache key** for validation results.
 
@@ -78,10 +86,10 @@ $ vv validate
 ```
 
 1. **Calculate tree hash**: `git write-tree` → `abc123`
-2. **Check cache**: Look for `refs/notes/vibe-validate/validation/abc123`
+2. **Check cache**: Look for `refs/notes/vibe-validate/validate/abc123`
 3. **Cache miss**: No notes found
 4. **Execute validation**: Run all phases (90 seconds)
-5. **Store result**: Save to `refs/notes/vibe-validate/validation/abc123`
+5. **Store result**: Save to `refs/notes/vibe-validate/validate/abc123`
 
 ### Second Run (Cache Hit)
 
@@ -90,7 +98,7 @@ $ vv validate
 ```
 
 1. **Calculate tree hash**: `git write-tree` → `abc123` (same!)
-2. **Check cache**: Look for `refs/notes/vibe-validate/validation/abc123`
+2. **Check cache**: Look for `refs/notes/vibe-validate/validate/abc123`
 3. **Cache hit!**: Found notes with previous result
 4. **Return cached result**: No execution needed (288ms)
 
@@ -102,10 +110,10 @@ $ vv validate
 ```
 
 1. **Calculate tree hash**: `git write-tree` → `def456` (different!)
-2. **Check cache**: Look for `refs/notes/vibe-validate/validation/def456`
+2. **Check cache**: Look for `refs/notes/vibe-validate/validate/def456`
 3. **Cache miss**: No notes found for new tree hash
 4. **Execute validation**: Run all phases again
-5. **Store result**: Save to `refs/notes/vibe-validate/validation/def456`
+5. **Store result**: Save to `refs/notes/vibe-validate/validate/def456`
 
 ## Cache Storage: Git Notes
 
@@ -113,10 +121,10 @@ vibe-validate uses **git notes** for cache storage:
 
 ```bash
 # View validation cache
-git notes --ref=refs/notes/vibe-validate/validation list
+git notes --ref=refs/notes/vibe-validate/validate list
 
 # View specific cached result
-git notes --ref=refs/notes/vibe-validate/validation show <tree-hash>
+git notes --ref=refs/notes/vibe-validate/validate show <tree-hash>
 ```
 
 ### Why git notes?
@@ -334,18 +342,24 @@ vv doctor
 ### Tree hash calculation
 
 ```typescript
-// Simplified implementation
+// Simplified implementation - see packages/git/src/tree-hash.ts
 function getTreeHash(): string {
-  // Stage untracked files (intent-to-add, doesn't change index)
-  execSync('git add --intent-to-add .');
+  // Work against a COPY of the index, so the real one is never modified
+  // and there is nothing to undo afterwards.
+  const tempIndex = join(gitDir, `vibe-validate-temp-index-${process.pid}`);
+  copyFileSync(join(gitDir, 'index'), tempIndex);
+  const env = { ...process.env, GIT_INDEX_FILE: tempIndex };
 
-  // Generate tree hash from current index
-  const treeHash = execSync('git write-tree').toString().trim();
+  try {
+    // `--all`, NOT `--intent-to-add`: intent-to-add records an empty
+    // placeholder that `git write-tree` skips, which would drop unstaged
+    // modifications out of the key entirely.
+    safeExecSync('git', ['add', '--all'], { cwd: repoRoot, env });
 
-  // Unstage (cleanup)
-  execSync('git reset');
-
-  return treeHash;
+    return safeExecSync('git', ['write-tree'], { cwd: repoRoot, env }).trim();
+  } finally {
+    unlinkSync(tempIndex);
+  }
 }
 ```
 
@@ -353,7 +367,7 @@ function getTreeHash(): string {
 
 ```typescript
 function getCachedValidation(treeHash: string): ValidationResult | null {
-  const notesRef = `refs/notes/vibe-validate/validation`;
+  const notesRef = `refs/notes/vibe-validate/validate`;
 
   try {
     const cached = execSync(
@@ -371,7 +385,7 @@ function getCachedValidation(treeHash: string): ValidationResult | null {
 
 ```typescript
 function cacheValidation(treeHash: string, result: ValidationResult): void {
-  const notesRef = `refs/notes/vibe-validate/validation`;
+  const notesRef = `refs/notes/vibe-validate/validate`;
   const data = JSON.stringify(result);
 
   execSync(`git notes --ref=${notesRef} add -f -m '${data}' ${treeHash}`);
