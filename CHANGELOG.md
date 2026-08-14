@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.7] - 2026-08-13
+
+### Changed
+
+- **`vv pre-commit` now warns instead of blocking when your branch is behind.** Both sync checks — behind the base branch (`origin/main`), and behind your own remote branch — printed an error and exited 1. Neither is a correctness condition: being behind `origin/main` is the *normal* mid-PR state, and nothing about it makes the code you are committing wrong. The failure mode was self-defeating — a commit blocked for a non-correctness reason routes people to `git commit --no-verify`, which skips **everything**: secret scanning, validation, and partially-staged-file detection. A guard whose friction makes users bypass all the other guards is net negative.
+
+  Both are now configurable, defaulting to `warn`:
+
+  ```yaml
+  hooks:
+    preCommit:
+      baseBranchSync: warn      # behind the base branch (origin/main)
+      trackingBranchSync: warn  # behind your own remote branch (someone else pushed)
+  ```
+
+  `warn` checks and reports but lets the commit through; `block` is the previous behaviour; `off` skips the check **and its network fetch**. Set `block` on either to restore the old hard stop. `warn` still fetches — a sync notice computed from a stale ref is worth nothing, so freshness is the entire point of the warning; only `off` skips the network call. If a ref cannot be refreshed, the guard that depends on it degrades to no opinion and the commit proceeds, even in `block` mode — a verdict either way from a ref you could not refresh is not evidence of anything.
+
+  Two things are deliberately unchanged. **The partially-staged-files check still blocks** — that one *is* a correctness guard: validation runs against the full file while git commits only the staged hunk, so a pass could certify code that isn't what lands. And **`vv sync-check` keeps its exit-1 semantics**; hard enforcement belongs in CI, which is where it already lives. This change moves only the commit path off the gate.
+
+  `--skip-sync` is unchanged in scope (the base-branch check only) and is now equivalent to `baseBranchSync: off` for one run; its help text no longer calls it "not recommended", since skipping a warning is not a transgression.
+
+- **`vv validate` now exits 1 when it replays a cached failure.** It printed `❌ Validation failed for this code` and then exited **0**, because the exit path was skipped for every cache hit regardless of the verdict. Anything reading the exit code rather than the text — `vv validate && git push`, a CI step, a shell wrapper — treated a stored failure as a pass. `vv pre-commit` was never affected (it exits 1 on the same result), so the two commands disagreed about the same cached run. A replayed failure is still a failure: whether the verdict was just computed or read back from a note changes how it is *reported*, never what it means. Cached passes still exit 0, and caching behaviour is otherwise untouched. If you have a script relying on the old exit code, it was relying on a failure being reported as success.
+
+### Fixed
+
+- **The "behind your own remote branch" check could not detect the case it exists for.** It compared `HEAD...@{u}` using purely local refs and nothing ever fetched the upstream — the only fetch on the commit path refreshed `origin/<main>`, and it ran *after* this check anyway. So if a teammate (or another machine, or another agent) pushed to your PR branch and you had not fetched since, the local `@{u}` was stale, divergence read `0/0`, and pre-commit printed a reassuring **"✅ Current branch is up to date with remote"** — silently missing exactly the scenario the check was built for. It only ever caught divergence you already knew about. `pre-commit` now refreshes the upstream ref before reading divergence, in the same `git fetch` that refreshes the base branch when both checks are active — so the fix costs no extra network round-trip. A ref that cannot be refreshed disables only its own check: git treats an unresolvable refspec as fatal for the whole `git fetch`, so a deleted upstream branch (the state a local branch is left in after its PR merges) would otherwise have taken the base-branch check down with it.
+
+- **`vv sync-check` now works with a base branch whose name contains a slash.** It split `origin/release/2.0` on every separator and fetched `git fetch origin release`, which does not exist — so the command failed with exit 2 for anyone whose `git.mainBranch` is a path-style name. It now splits on the first separator only (remote names cannot contain one; branch names routinely do).
+
+- **`vv pre-commit` no longer reports "no remote tracking branch" partway through a rebase.** Mid-rebase HEAD is detached, so the tracking lookup found nothing and said so — on every commit during a conflict resolution, and inconsistently with the explicit "rebase in progress" line the base-branch check printed immediately after. The tracking check is now skipped during a rebase, like the base-branch one.
+
+- **The "report this extraction issue" prompt no longer nags on repeat.** It was tied to the failure footer, so once replayed failures started carrying that footer it would re-ask on every commit attempt against an unchanged tree — for a run that executed exactly once. It is now shown only for a freshly computed failure. Its link also pointed at a repository that does not exist (`anthropics/vibe-validate`); it now points at `jdutton/vibe-validate`.
+
+- **A replayed validation failure now says it was replayed, and how to re-run it.** When the working tree is unchanged, a previous FAILURE is served straight from cache — but the output was indistinguishable from a failure computed just now, and it silently dropped the "view error details" / "to retry" footer that fresh failures get. If you fixed the cause and the fix lived somewhere the cache key cannot see, you got the identical stale verdict with no next step and no hint that nothing had re-run. Cached failures now disclose their provenance (`Replayed from <timestamp> on branch <branch> (not re-run just now)`), keep the full actionable footer, and state what the key covers plus the `--force` escape hatch. Cached passes are unchanged — the happy path gets no new noise. ([#169](https://github.com/jdutton/vibe-validate/issues/169))
+
+- **`pnpm bump-version` no longer silently skips the root `package.json` outside a directory named `vibe-validate`.** It identified the root package by checking whether the path ended with `vibe-validate/package.json`, which is true of the ordinary checkout but false in a git worktree or any clone into a differently-named folder. Because the root package is `"private": true`, an unrecognised root was then skipped as private — leaving the nine workspace packages bumped and the root behind, an invalid release state caught only later by `validate-repo-structure`. The root is now identified by resolved path. (Contributor tooling; no effect on published packages.)
+
+- **The generated config JSON Schema shipped with the `setting-up-projects` skill is now written by the build.** It was a hand-synced copy of `packages/config/config.schema.json` and could silently fall behind the schema it documents. (Contributor tooling.)
+
+### Documentation
+
+- **The cache key documentation no longer contradicts the implementation.** `validate --help --verbose` claimed the key "includes **all files** (tracked + untracked)" and that "ANY file change" invalidates it. Both are untrue for ignored paths, which are deliberately excluded so that secrets and per-developer build artifacts are never checksummed and the cache stays shareable across developers whose ignored files differ. ("Ignored" means by any source — `.gitignore`, `.git/info/exclude`, or your global excludes file — since the key is built with `git add --all`.) The help text, `docs/caching-internals.md`, `docs/getting-started.md`, `docs/work-protection.md`, `docs/work-recovery.md`, and `packages/cli/README.md` now state the exclusion and its one sharp consequence: a step that inspects ignored working-tree state can record a result that cleaning up that state will not invalidate. The same two claims also survived in the *top-level* `vibe-validate --help --verbose` block — the shorter, more discoverable command — where a test was pinning them in place; both are corrected. Reported with a precise diagnosis and suggested wording by [@ryshah73](https://github.com/ryshah73). ([#169](https://github.com/jdutton/vibe-validate/issues/169))
+
+- **The documented tree-hash algorithm is now the one that actually runs.** `docs/caching-internals.md`, `docs/getting-started.md`, `packages/git/README.md`, and `getGitTreeHash`'s own JSDoc all described `git add --intent-to-add .` followed by `git reset`. The implementation does neither: it copies `.git/index` to a temporary index and runs `git add --all` against that, precisely *because* `--intent-to-add` records empty placeholders that `git write-tree` skips — which would drop unstaged modifications out of the key. Anyone reproducing the documented commands got a hash that ignores working-tree edits, and concluded the cache key was broken. The temp-index approach is also why there is no index to restore afterwards.
+
+- **`vibe-validate pre-commit --help` no longer describes the removed blocking behaviour.** The top-level help still listed "Runs sync-check (fails if branch behind origin/main)" and gave exit code 1 as "Sync failed OR validation failed", contradicting both the release's headline change and `pre-commit`'s own verbose help. Because the shipped skill reference (`docs/skills/vibe-validate/cli-reference.md`) is generated from this block, an adopter's agent was being told the commit would be blocked. It now lists the real sequence, including the partially-staged-files check that genuinely does block.
+
+- **The git notes ref in the caching docs was wrong.** They named `refs/notes/vibe-validate/validation`; the real ref is `refs/notes/vibe-validate/validate`. Anyone debugging a suspected stale replay by running the documented `git notes --ref=... show <tree-hash>` got `error: no note found` and reasonably concluded the cache entry did not exist.
+
+- **The README no longer promises "branch sync enforcement".** Both the top-level README and the umbrella package's README still described the pre-commit hook as ensuring branches stay current, which stopped being true when the guards became warnings by default.
+
 ## [0.19.6] - 2026-05-12
 
 ### Fixed

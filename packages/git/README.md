@@ -64,9 +64,11 @@ console.log(`Deleted ${result.branchesDeleted.length} merged branches`);
 Returns a deterministic content-based hash of the working tree.
 
 **Implementation Details:**
-- Uses `git add --intent-to-add .` to mark untracked files (without staging)
+- Runs `git add --all` against a temporary copy of the index, so your real
+  `.git/index` is never modified and nothing needs restoring afterwards
 - Uses `git write-tree` for content-based hashing (no timestamps)
-- Resets index after hash calculation
+- Covers tracked and untracked files, but **not ignored paths** (`.gitignore`,
+  `.git/info/exclude`, or your global excludes file)
 - Falls back to `HEAD^{tree}` if no changes exist
 
 **Returns:** `Promise<string>` - Git tree SHA-1 hash
@@ -97,24 +99,28 @@ Class for post-merge cleanup operations.
 
 **Problem**: `git stash create` includes timestamps, making hashes non-deterministic.
 
-**Solution**: Use `git write-tree` with intent-to-add for untracked files:
+**Solution**: Use `git write-tree` against a temporary index:
 
-```typescript
-// Old approach (non-deterministic - includes timestamps)
-git stash create  // Different hash on each run even with same content
+```bash
+# Old approach (non-deterministic - includes timestamps)
+git stash create            # Different hash on each run even with same content
 
-// New approach (deterministic - content-based only)
-git add --intent-to-add .  // Mark untracked files (no staging)
-git write-tree              // Content-based hash (no timestamps)
-git reset                   // Restore index to clean state
+# New approach (deterministic - content-based only)
+cp .git/index "$GIT_DIR/vibe-validate-temp-index-$$"
+export GIT_INDEX_FILE="$GIT_DIR/vibe-validate-temp-index-$$"
+git add --all               # Tracked edits + untracked files
+git write-tree              # Content-based hash (no timestamps)
 ```
+
+`--all` is deliberate: `--intent-to-add` records empty placeholders that
+`git write-tree` skips, which would drop unstaged modifications from the hash.
 
 **Benefits:**
 - Same content always produces same hash
 - Enables reliable validation state caching
-- Includes all files (staged, unstaged, untracked)
-- No side effects (index restored after hash)
-- Automatic work protection (all files stored as git objects)
+- Covers tracked and untracked files (ignored paths are excluded by design)
+- No side effects (the real index is never touched)
+- Automatic work protection (hashed files stored as git objects)
 - Recoverable snapshots of uncommitted work
 
 ### Safe Branch Sync

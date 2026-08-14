@@ -26,7 +26,7 @@ The cache key is a **git tree hash**: a deterministic SHA-1 of the working tree 
 - Excludes `.gitignore`'d files (so secrets and build artifacts don't leak into the key).
 - Computed against a *temporary* git index so it never touches the real index or staging area.
 
-Validation results are stored as **git notes** keyed by that tree hash (`refs/notes/vibe-validate/validation/<tree-hash>`). Git notes are built into git, survive branch switches, and are content-addressable — perfect for a validation cache.
+Validation results are stored as **git notes** keyed by that tree hash (`refs/notes/vibe-validate/validate/<tree-hash>`). Git notes are built into git, survive branch switches, and are content-addressable — perfect for a validation cache.
 
 ### Invariants
 
@@ -83,7 +83,7 @@ Low-level (rarely needed):
 
 ```bash
 git write-tree                                          # Current tree hash
-git notes --ref=refs/notes/vibe-validate/validation list  # All cached entries
+git notes --ref=refs/notes/vibe-validate/validate list  # All cached entries
 ```
 
 ## Concurrency locking

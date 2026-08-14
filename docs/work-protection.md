@@ -2,11 +2,11 @@
 
 ## Overview
 
-Every time you run vibe-validate, you're automatically creating a recoverable snapshot of ALL your files - no user action required. This invisible safety net protects you from accidental file loss, bad refactoring decisions, and editor crashes.
+Every time you run vibe-validate, you're automatically creating a recoverable snapshot of your files - no user action required. This invisible safety net protects you from accidental file loss, bad refactoring decisions, and editor crashes.
 
 **Key Benefits:**
 - **Automatic**: No manual steps - protection happens during normal validation
-- **Comprehensive**: Captures staged, unstaged, AND untracked files
+- **Comprehensive**: Captures staged, unstaged, AND untracked files (`.gitignore`d paths are excluded, so they are not recoverable this way)
 - **Zero overhead**: Git deduplicates identical content automatically
 - **Simple recovery**: Standard git commands - no proprietary tools
 - **Historical timeline**: Every validation creates a timestamped snapshot
@@ -16,7 +16,7 @@ Every time you run vibe-validate, you're automatically creating a recoverable sn
 
 ### Technical Explanation
 
-When vibe-validate calculates the git tree hash for caching, it uses a temporary git index to create git objects for every file in your working directory:
+When vibe-validate calculates the git tree hash for caching, it uses a temporary git index to create git objects for the files in your working directory (ignored paths excluded):
 
 ```bash
 # 1. Create temporary index
@@ -43,10 +43,10 @@ rm "$TEMP_INDEX"
 - Tracked files with staged changes
 - Tracked files with unstaged modifications
 - Untracked files (new files you just created)
-- All file content in your working directory
+- The full content of each of the above
 
 ❌ **Not protected** (security by design):
-- Files in `.gitignore` (secrets, API keys, credentials, .env files)
+- Ignored files — via `.gitignore`, `.git/info/exclude`, or your global excludes file (secrets, API keys, credentials, .env files)
 - Build artifacts (dist/, node_modules/, target/)
 - Temporary files (*.tmp, *.swp, *.bak)
 - System files (.DS_Store)

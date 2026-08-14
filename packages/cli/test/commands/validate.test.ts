@@ -315,6 +315,41 @@ async function parseCommandExpectingExit(
 }
 
 /**
+ * Parse a command and require that it exited with the given code.
+ *
+ * Unlike {@link parseCommandExpectingExit}, a command that returns *without*
+ * exiting fails the test rather than passing silently. Use this wherever the
+ * exit code itself is the thing under test — a tolerant assertion there cannot
+ * tell "exited 1" apart from "never exited at all", which is how a cached
+ * failure came to exit 0 unnoticed.
+ *
+ * @param env - Commander test environment
+ * @param args - Command arguments to parse
+ * @param expectedExitCode - Exit code the command must produce
+ */
+async function parseCommandRequiringExit(
+  env: CommanderTestEnv,
+  args: string[],
+  expectedExitCode: number
+): Promise<void> {
+  let observedExitCode: number | undefined;
+  try {
+    await env.program.parseAsync(args, { from: 'user' });
+  } catch (err: unknown) {
+    // Two shapes reach here: Commander's exitOverride error, and the
+    // process.exit spy from setupCommanderTest, which throws `process.exit(N)`.
+    if (err && typeof err === 'object' && 'exitCode' in err) {
+      observedExitCode = Number(err.exitCode);
+    } else if (err instanceof Error && /^process\.exit\((\d+)\)$/.test(err.message)) {
+      observedExitCode = Number(/^process\.exit\((\d+)\)$/.exec(err.message)?.[1]);
+    } else {
+      throw err;
+    }
+  }
+  expect(observedExitCode).toBe(expectedExitCode);
+}
+
+/**
  * Setup config loader with mock config
  * @param testDir - Test directory path
  * @param config - Config to return (defaults to createMockConfig())
@@ -1016,12 +1051,58 @@ describe('validate command', () => {
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Tree hash: abc123def456')
       );
+      // A replayed failure must say so - it was not re-run (issue #169)
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validated: 2025-10-22T00:00:00.000Z on branch main')
+        expect.stringContaining('Replayed from 2025-10-22T00:00:00.000Z on branch main (not re-run just now)')
       );
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Phases: 1, Steps: 1 (5.0s)')
       );
+      // ...and must carry the same actionable footer a fresh failure gets
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('View error details'),
+        expect.anything()
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('validate --force')
+      );
+    });
+
+    it('should exit 1 when replaying a cached failure', async () => {
+      // A replayed failure is still a failure. `vv validate && git push` must
+      // not treat a stored failure as success just because it came from a note.
+      setupMockConfig(testDir);
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+        hash: 'abc123def456' as any
+      });
+      vi.mocked(history.findCachedValidation).mockResolvedValue(
+        createMockHistoryNote({ passed: false, failedStep: 'Test Step' }).runs[0]
+      );
+
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate'], 1);
+
+      expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('should not exit non-zero when replaying a cached pass', async () => {
+      // The counterpart direction: a cached pass must stay a success, so the
+      // exit-code fix above cannot be satisfied by simply always exiting 1.
+      setupMockConfig(testDir);
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({
+        hash: 'abc123def456' as any
+      });
+      vi.mocked(history.findCachedValidation).mockResolvedValue(
+        createMockHistoryNote({ passed: true }).runs[0]
+      );
+
+      validateCommand(env.program);
+
+      // Returns normally; Commander exits 0 on its own.
+      await env.program.parseAsync(['validate'], { from: 'user' });
+
+      expect(core.runValidation).not.toHaveBeenCalled();
     });
 
     it('should display cached validation result', async () => {

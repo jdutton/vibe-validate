@@ -15,7 +15,7 @@ Never commit or push code with test failures, lint violations, or leaked secrets
 - ✅ Pre-commit hooks ensure validation has run before every commit (with smart caching)
 - 🔐 Secret scanning detects credentials before they're pushed (Gitleaks integration)
 - 🔒 Dependency lock check prevents cache poisoning from stale dependencies
-- 🔄 Branch sync enforcement keeps you current with main
+- 🔄 Branch sync checking keeps you current with main
 - 🎯 CI passes because local validation is identical
 
 **Impact:** Stop the "push → wait for CI → fix → repeat" cycle. Catch problems in seconds, not minutes.
@@ -49,12 +49,12 @@ Extract actionable failures from verbose test logs. AI agents get structured YAM
 ---
 
 ### 4. **Tools Optimized for Agents Speed Debugging and Development**
-Built-in tools for AI agents and developers: health diagnostics, PR monitoring, branch sync enforcement, validation history, and automatic work protection.
+Built-in tools for AI agents and developers: health diagnostics, PR monitoring, branch sync checking, validation history, and automatic work protection.
 
 **How it works:**
 - 🩺 `vv doctor` - diagnose setup issues before they block you
 - 👀 `vv watch-pr` - monitor PR checks with error extraction (matrix + non-matrix modes), history analysis, and auto-YAML on failure
-- 🔄 Automatic branch sync enforcement during pre-commit
+- 🔄 Automatic branch sync notices during pre-commit (warn by default, `block` or `off` on request)
 - 🎯 `vv history` - view validation timeline and debug trends
 - 🛡️ Automatic git snapshots of your worktree with every validation
 - ⏱️ Recover lost work or compare state when tests passed vs. failed

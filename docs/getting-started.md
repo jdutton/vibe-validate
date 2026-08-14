@@ -117,7 +117,7 @@ npm run pre-commit
 
 ### Bonus: Your Work is Now Protected
 
-Congratulations! By running your first validation, you've created a safety snapshot of all your files.
+Congratulations! By running your first validation, you've created a safety snapshot of your files (everything except ignored paths).
 
 If you accidentally delete or modify files, you can recover them:
 
@@ -128,7 +128,7 @@ vv history list
 # Shows something like:
 # 2025-12-02 15:30:45  abc123def  main  ✓ PASSED
 
-# That tree hash (abc123def) contains all your files
+# That tree hash (abc123def) contains your files (ignored paths excluded)
 # You can view any file from that point:
 git cat-file -p abc123def:src/index.ts
 
@@ -297,22 +297,24 @@ $ npx vibe-validate validate
 ✅ Validation cached (< 1s)
 ```
 
-**Cache key calculation**:
-1. `git add --intent-to-add .` - Mark untracked files (no actual staging)
-2. `git write-tree` - Generate content-based hash
-3. `git reset` - Restore index to clean state
+**Cache key calculation** (all against a temporary copy of the index):
+1. Copy `.git/index` to a temp index and point `GIT_INDEX_FILE` at it
+2. `git add --all` - Stage tracked edits and untracked files into the temp index
+3. `git write-tree` - Generate content-based hash
+4. Delete the temp index
 
 **Why it works**:
 - Content-based (not timestamp-based)
-- Includes untracked files
+- Includes untracked files, but **not ignored paths** (`.gitignore`,
+  `.git/info/exclude`, or your global excludes file)
 - Deterministic (same code = same hash)
-- No side effects (index restored after calculation)
+- No side effects (your real index is never touched, so nothing needs restoring)
 
 ### When Cache is Invalidated
 
 Cache is invalidated when:
-- ✅ **Any file content changes** (tracked or untracked)
-- ✅ **New files are added**
+- ✅ **Any non-ignored file's content changes** (tracked or untracked)
+- ✅ **New files are added** (unless they are ignored)
 - ✅ **Files are deleted**
 - ✅ **Git tree structure changes**
 
@@ -321,6 +323,9 @@ Cache is NOT invalidated by:
 - ❌ Git commit history
 - ❌ Git branch changes
 - ❌ Environment variables
+- ❌ **Changes to `.gitignore`d paths** — they are excluded from the key by
+  design, so secrets and per-developer build artifacts are never checksummed.
+  Use `vv validate --force` when you need to re-run regardless.
 
 ### Performance Tips
 

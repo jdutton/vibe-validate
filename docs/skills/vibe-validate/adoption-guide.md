@@ -322,10 +322,10 @@ git commit -m "test commit"
 ```
 
 **Hook workflow**:
-1. Check if branch is behind origin/main
+1. Check if the branch is behind origin/main or its own remote branch (warns by default; configurable to `block` or `off`)
 2. Run validation (uses cache if code unchanged)
 3. Allow commit if validation passes
-4. Block commit if validation fails
+4. Block commit if validation fails, secrets are detected, or files are partially staged
 
 ---
 

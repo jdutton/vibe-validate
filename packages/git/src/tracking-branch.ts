@@ -106,6 +106,79 @@ export function getTrackingDivergence(): TrackingDivergence | null {
 }
 
 /**
+ * The remote and branch name that the current branch tracks.
+ *
+ * - `remote`: remote name as configured, e.g. `origin`
+ * - `branch`: branch name **on the remote**, e.g. `feature/foo`
+ */
+export interface UpstreamRef {
+  remote: string;
+  branch: string;
+}
+
+const REFS_HEADS_PREFIX = 'refs/heads/';
+
+/**
+ * Resolve which remote ref the current branch tracks, so a caller can fetch it.
+ *
+ * {@link getTrackingDivergence} compares purely local refs and never touches the
+ * network. That is deliberate — it keeps the comparison fast and testable — but
+ * it means the answer is only as fresh as the last fetch. Callers that need a
+ * trustworthy answer (pre-commit's tracking guard) must fetch this ref first.
+ *
+ * Read from `branch.<name>.remote` / `branch.<name>.merge` rather than parsing
+ * `@{u}`, because `@{u}` renders as `<remote>/<branch>` and branch names may
+ * themselves contain slashes — splitting that string is ambiguous.
+ *
+ * @returns The upstream remote and branch, or `null` when there is nothing
+ *          fetchable: detached HEAD, no upstream configured, or an upstream
+ *          that tracks another local branch (`branch.<name>.remote = .`).
+ */
+export function getUpstreamRef(): UpstreamRef | null {
+  try {
+    const branchResult = executeGitCommand(
+      ['rev-parse', '--abbrev-ref', 'HEAD'],
+      { timeout: GIT_TIMEOUT, ignoreErrors: true }
+    );
+
+    const currentBranch = branchResult.stdout.trim();
+    // 'HEAD' means detached — there is no branch config to read.
+    if (!branchResult.success || !currentBranch || currentBranch === 'HEAD') {
+      return null;
+    }
+
+    const remoteResult = executeGitCommand(
+      ['config', '--get', `branch.${currentBranch}.remote`],
+      { timeout: GIT_TIMEOUT, ignoreErrors: true }
+    );
+    const mergeResult = executeGitCommand(
+      ['config', '--get', `branch.${currentBranch}.merge`],
+      { timeout: GIT_TIMEOUT, ignoreErrors: true }
+    );
+
+    const remote = remoteResult.stdout.trim();
+    const mergeRef = mergeResult.stdout.trim();
+    if (!remoteResult.success || !mergeResult.success || !remote || !mergeRef) {
+      return null;
+    }
+
+    // '.' is git's notation for "tracks a branch in this same repository".
+    // Nothing to fetch, and `git fetch .` would be meaningless here.
+    if (remote === '.') {
+      return null;
+    }
+
+    const branch = mergeRef.startsWith(REFS_HEADS_PREFIX)
+      ? mergeRef.slice(REFS_HEADS_PREFIX.length)
+      : mergeRef;
+
+    return branch ? { remote, branch } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Check if the current branch is behind its remote tracking branch.
  *
  * @deprecated Prefer {@link getTrackingDivergence}, which distinguishes

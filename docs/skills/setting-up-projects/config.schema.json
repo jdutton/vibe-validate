@@ -238,6 +238,24 @@
                   "type": "string",
                   "default": "npx vibe-validate pre-commit"
                 },
+                "baseBranchSync": {
+                  "type": "string",
+                  "enum": [
+                    "warn",
+                    "block",
+                    "off"
+                  ],
+                  "default": "warn"
+                },
+                "trackingBranchSync": {
+                  "type": "string",
+                  "enum": [
+                    "warn",
+                    "block",
+                    "off"
+                  ],
+                  "default": "warn"
+                },
                 "secretScanning": {
                   "type": "object",
                   "properties": {

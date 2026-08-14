@@ -78,12 +78,16 @@ export function validateCommand(program: Command): void {
           }
         );
 
-        // Only call process.exit for non-cached results
-        // Cache hits return early without calling process.exit (to support testing)
-        if (!result.isCachedResult) {
+        // A replayed failure is still a failure. Whether the verdict was just
+        // computed or read back from a note changes how it is *reported*, never
+        // what it means — `vv validate && git push` has to see a non-zero exit
+        // either way, and `pre-commit` already exits 1 on this same result.
+        //
+        // Cached PASSES return normally so Commander exits 0 on its own; that
+        // also keeps the happy path free of a process.exit for tests to trap.
+        if (!result.isCachedResult || !result.passed) {
           process.exit(result.passed ? 0 : 1);
         }
-        // For cache hits, return normally and let Commander exit with code 0
       } catch (error) {
         // Re-throw process.exit errors (for testing)
         if (error instanceof Error && error.message.startsWith('process.exit')) {
@@ -109,7 +113,7 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 
 ## How It Works
 
-1. **Calculates git tree hash** of working directory (includes all tracked and untracked files)
+1. **Calculates git tree hash** of working directory (tracked and untracked files; ignored paths excluded)
 2. **Checks if hash matches cached state** (from previous run)
 3. **If match:** Exits immediately with cached result (sub-second)
 4. **If no match:** Runs validation pipeline (~60-90s depending on your project)
@@ -167,7 +171,11 @@ Both flags bypass the cached result, but they differ in scope:
 
 ### Cache Key
 - Based on **git tree hash** (not commit SHA)
-- Includes **all files** (tracked + untracked)
+- Covers **tracked and untracked files** in the working tree
+- **Excludes ignored paths**, by design: secrets and per-developer build
+  artifacts are never checksummed, and the cache stays shareable between
+  developers whose ignored files differ. "Ignored" means by any source —
+  \`.gitignore\`, \`.git/info/exclude\`, or your global excludes file
 - Deterministic: same content = same hash
 
 ### Cache Hit
@@ -181,9 +189,15 @@ Both flags bypass the cached result, but they differ in scope:
 - Typical duration: 60-90s
 
 ### Cache Invalidation
-- ANY file change (content or path)
-- Adding/removing files
+- Any change to a tracked or untracked file (content or path)
+- Adding/removing those files
 - Modifying .gitignore
+
+Changing an ignored path does **not** invalidate the cache, since those paths
+are not part of the key. So a step that inspects ignored working-tree
+state can produce a result that cleaning up that state will not invalidate.
+Re-run it explicitly with \`--force\` (everything) or \`--retry-failed\` (failed
+steps only).
 
 ## YAML Output Mode
 

@@ -134,7 +134,8 @@ function cleanupStaleIndexes(gitDir: string): void {
  * Implementation:
  * 1. Create temporary index file (doesn't affect real index)
  * 2. Copy current index to temporary index
- * 3. Mark untracked files with --intent-to-add in temp index
+ * 3. Stage tracked edits and untracked files with `git add --all` into the
+ *    temp index (NOT --intent-to-add; see the note at the call site)
  * 4. Calculate tree hash with git write-tree using temp index
  * 5. Detect and process git submodules (recursive)
  * 6. Return parent hash + optional submodule hashes

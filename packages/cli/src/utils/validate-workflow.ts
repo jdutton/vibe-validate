@@ -21,8 +21,9 @@ import { runDependencyCheck } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import { stringify as yamlStringify } from 'yaml';
 
+import { getCommandName } from './command-name.js';
 import type { AgentContext } from './context-detector.js';
-import { displayCachedResult } from './display-cached-result.js';
+import { displayCachedFailureHint, displayCachedResult } from './display-cached-result.js';
 import { detectFlakiness } from './flakiness-detector.js';
 import { formatWorktreeDisplay } from './format-worktree.js';
 import { createPerfTimer } from './logger.js';
@@ -232,10 +233,15 @@ async function recordHistory(
  *
  * @param result - Validation result (failed)
  * @param config - Vibe validate configuration
+ * @param isReplay - True when this result was served from cache. Suppresses the
+ *   extraction-quality prompt: it asks the user to go report something, and a
+ *   replay can be served many times for a single actual run, so repeating the
+ *   ask on every commit attempt would nag about work already offered once.
  * @internal
  */
-function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig): void {
-  console.error(chalk.blue('\n📋 View error details:'), chalk.white('vibe-validate state'));
+function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig, isReplay = false): void {
+  const cmd = getCommandName();
+  console.error(chalk.blue('\n📋 View error details:'), chalk.white(`${cmd} state`));
 
   // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
   const failedStep = result.phases
@@ -247,7 +253,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   }
 
   // Context-aware extraction quality feedback (only when developerFeedback is enabled)
-  if (config.developerFeedback) {
+  if (config.developerFeedback && !isReplay) {
     const poorExtractionSteps = result.phases
       ?.flatMap(phase => phase.steps)
       .filter(step => !step.passed && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
@@ -265,7 +271,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
         console.error(chalk.gray('   See packages/extractors/test/samples/ for how to add test cases'));
       } else {
         console.error(chalk.yellow('   💡 Help improve vibe-validate by reporting this extraction issue'));
-        console.error(chalk.gray('   https://github.com/anthropics/vibe-validate/issues/new?template=extractor-improvement.yml'));
+        console.error(chalk.gray('   https://github.com/jdutton/vibe-validate/issues/new?template=extractor-improvement.yml'));
       }
     }
   }
@@ -442,17 +448,26 @@ export async function runValidateWorkflow(
       await outputYamlResult(result);
     } else {
       // Human-readable mode
+      const isReplay = Boolean(cachedRun);
+
       if (cachedRun && treeHashBefore) {
         // Show cached result message
         displayCachedResult(cachedRun, treeHashBefore);
-      } else if (!result.passed) {
-        // Show failure info for fresh failures
-        displayFailureInfo(result, config);
       }
 
-      // Auto-output YAML on failure (cached or fresh) to stderr
-      // This ensures agents see error details immediately
       if (!result.passed) {
+        // Every failure gets the actionable footer. A replayed failure previously
+        // lost it, leaving a stale verdict with no next step (issue #169).
+        displayFailureInfo(result, config, isReplay);
+
+        // Only a REPLAY can be out of step with the working tree - a fresh failure
+        // was just computed, so re-running it would change nothing.
+        if (isReplay) {
+          displayCachedFailureHint();
+        }
+
+        // Auto-output YAML on failure (cached or fresh) to stderr
+        // This ensures agents see error details immediately
         // Small delay to ensure human-readable message is flushed first
         await new Promise(resolve => setTimeout(resolve, 10));
 

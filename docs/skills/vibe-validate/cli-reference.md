@@ -112,29 +112,37 @@ Run branch sync check + validation (recommended before commit). Spawned steps ru
 
 **What it does:**
 
-1. Runs sync-check (fails if branch behind origin/main)
-2. Runs validate (with caching)
-3. Reports git status (warns about unstaged files)
+1. Checks for partially staged files (fails if detected)
+2. Checks if the branch is behind its remote tracking branch (warns by default)
+3. Checks if the branch is behind the base branch, e.g. origin/main (warns by default)
+4. Runs secret scanning (if enabled in config)
+5. Runs validate (with caching)
 
 **Exit codes:**
 
-- `0` - Sync OK and validation passed
-- `1` - Sync failed OR validation failed
+- `0` - Validation passed (and no sync guard set to `block` was violated)
+- `1` - Validation failed, secrets detected, files partially staged, or a `block` sync guard was violated
 
-**When to use:** Run before every commit to ensure code is synced and validated
+**When to use:** Run before every commit to ensure code is validated and in sync
 
 **Options:**
 
-- `--skip-sync` - Skip branch sync check
+- `--skip-sync` - Skip the base-branch sync check and its network fetch (same as hooks.preCommit.baseBranchSync: off)
 - `-v, --verbose` - Show detailed progress and output
 
 **Error recovery:**
 
-If **sync failed**:
+If **branch behind**:
 ```bash
-git fetch origin
 git merge origin/main
-Resolve conflicts if any
+Or set hooks.preCommit.baseBranchSync: off to skip the check
+vibe-validate pre-commit  # Retry
+```
+
+If **partially staged files**:
+```bash
+git add <file>  # stage the whole file
+Or unstage it — validation sees the full file, git commits only the hunk
 vibe-validate pre-commit  # Retry
 ```
 
@@ -148,7 +156,7 @@ vibe-validate pre-commit  # Retry
 
 ```bash
 vibe-validate pre-commit  # Standard pre-commit workflow
-vibe-validate pre-commit --skip-sync  # Skip sync check (not recommended)
+vibe-validate pre-commit --skip-sync  # Skip the base-branch sync check and its fetch
 ```
 
 ---
@@ -572,10 +580,13 @@ vibe-validate validate --force
 
 ## Caching
 
-- **Cache key**: Git tree hash of working directory (includes untracked files)
+- **Cache key**: Git tree hash of your tracked + untracked files
 - **Cache hit**: Validation skipped (sub-second)
 - **Cache miss**: Full validation runs (~60-90s)
-- **Invalidation**: Any file change (tracked or untracked)
+- **Invalidation**: Any change to a file the key covers
+- **Not covered**: ignored paths (.gitignore, .git/info/exclude, or your global
+  excludes file) and state outside the repo. Changing those does NOT invalidate
+  the cache — re-run with `vibe-validate validate --force`.
 
 ---
 

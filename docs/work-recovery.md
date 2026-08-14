@@ -2,7 +2,7 @@
 
 ## Overview
 
-vibe-validate automatically creates **recoverable snapshots** of your work during validation. Every time you run `vv validate`, `vv pre-commit`, or `vv run`, a git tree hash is created that captures your complete working directory state - including untracked files.
+vibe-validate automatically creates **recoverable snapshots** of your work during validation. Every time you run `vv validate`, `vv pre-commit`, or `vv run`, a git tree hash is created that captures your working directory state - including untracked files, but excluding `.gitignore`d paths.
 
 ## What Gets Protected
 
@@ -21,7 +21,7 @@ Automatic snapshots happen during:
 - `vv pre-commit` - Pre-commit workflow
 - `vv run <command>` - Individual command execution (v0.15.0+)
 
-Each creates a tree hash in git objects that captures complete working directory state at that moment.
+Each creates a tree hash in git objects that captures your working directory state at that moment, excluding ignored paths.
 
 ## View Validation Snapshots
 

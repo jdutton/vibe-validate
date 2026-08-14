@@ -335,6 +335,58 @@ describe('HooksConfigSchema', () => {
     expect(result.data?.hooks?.preCommit?.secretScanning).toBeUndefined();
   });
 
+  it('should default both sync guards to warn', () => {
+    // Neither guard is a correctness condition, so the shipped default informs
+    // rather than gates. Changing these defaults changes commit behaviour for
+    // every adopter who has not set them.
+    const config = createBaseConfig({
+      hooks: {
+        preCommit: {
+          enabled: true
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.hooks?.preCommit?.baseBranchSync).toBe('warn');
+    expect(result.data?.hooks?.preCommit?.trackingBranchSync).toBe('warn');
+  });
+
+  it('should default both sync guards to warn when hooks is omitted entirely', () => {
+    const result = expectValidConfig(createBaseConfig({}));
+
+    expect(result.data?.hooks?.preCommit?.baseBranchSync).toBe('warn');
+    expect(result.data?.hooks?.preCommit?.trackingBranchSync).toBe('warn');
+  });
+
+  it.each(['warn', 'block', 'off'] as const)('should accept sync guard mode %s', (mode) => {
+    const config = createBaseConfig({
+      hooks: {
+        preCommit: {
+          baseBranchSync: mode,
+          trackingBranchSync: mode
+        }
+      }
+    });
+
+    const result = expectValidConfig(config);
+    expect(result.data?.hooks?.preCommit?.baseBranchSync).toBe(mode);
+    expect(result.data?.hooks?.preCommit?.trackingBranchSync).toBe(mode);
+  });
+
+  it('should reject an unknown sync guard mode', () => {
+    const config = createBaseConfig({
+      hooks: {
+        preCommit: {
+          baseBranchSync: 'sometimes'
+        }
+      }
+    });
+
+    const result = safeValidateConfig(config);
+    expect(result.success).toBe(false);
+  });
+
   it('should allow secretScanning enabled without scanCommand (autodetect)', () => {
     const config = createBaseConfig({
       hooks: {

@@ -19,7 +19,7 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
 import semver from 'semver';
 
@@ -197,8 +197,16 @@ function updatePackageVersion(filePath: string, newVersion: string, skipPrivate 
       return { skipped: true, reason: 'no-version', name: pkg.name };
     }
 
-    // Skip private packages unless root package.json
-    const isRootPackage = filePath.endsWith(join(VIBE_VALIDATE_PKG_NAME, PACKAGE_JSON_FILENAME));
+    // Skip private packages unless root package.json.
+    //
+    // Identify the root by path, not by directory name. Matching on a
+    // "vibe-validate/package.json" suffix only worked when the checkout
+    // directory happened to be named `vibe-validate`: in a git worktree (or any
+    // clone into a differently-named folder) the root went unrecognised, and
+    // because the root package is `"private": true` it was then silently skipped
+    // - leaving the workspace packages bumped and the root behind, which is an
+    // invalid release that only `validate-repo-structure` catches.
+    const isRootPackage = resolve(filePath) === resolve(join(PROJECT_ROOT, PACKAGE_JSON_FILENAME));
     if (skipPrivate && !isRootPackage && pkg.private === true) {
       return { skipped: true, reason: 'private', name: pkg.name, version: oldVersion };
     }

@@ -5,14 +5,24 @@
  * This is the recommended workflow before committing code.
  */
 
-import { getRemoteBranch } from '@vibe-validate/config';
+import {
+  getRemoteBranch,
+  getRemoteOrigin,
+  getMainBranch,
+  DEFAULT_SYNC_GUARD_MODE,
+  type SyncGuardMode
+} from '@vibe-validate/config';
 import {
   checkBranchSync,
+  fetchRemoteRefs,
   getPartiallyStagedFiles,
   getTrackingDivergence,
+  getUpstreamRef,
   getGitTreeHash,
   isMergeInProgress,
-  isRebaseInProgress
+  isRebaseInProgress,
+  refKey,
+  type RemoteRef
 } from '@vibe-validate/git';
 import { isToolAvailable } from '@vibe-validate/utils';
 import chalk from 'chalk';
@@ -48,6 +58,174 @@ function showWorkProtectionMessage(treeHash: string | null, recoveryCommand: str
     console.error(chalk.yellow('   To fix, run:'));
     console.error(chalk.gray(`     ${recoveryCommand}`));
   }
+}
+
+/**
+ * Refresh exactly the refs the active sync guards depend on.
+ *
+ * Both guards compare local refs against remote-tracking refs, so an answer is
+ * only as truthful as the last fetch. `off` must cost nothing, so the rule is a
+ * disjunction: fetch when *either* guard is active, and fetch only that guard's
+ * ref. Grouping into one call means both-active still costs a single
+ * round-trip.
+ *
+ * @returns Whether each guard's local ref can be trusted. "Fresh" means the ref
+ *          is safe to judge on: either it was just fetched, or there was
+ *          nothing to fetch (no upstream, guard disabled) and the local ref is
+ *          all the truth there is. Only an *attempted and failed* fetch marks a
+ *          ref stale, so the caller degrades that guard to no opinion.
+ */
+function fetchSyncRefs(
+  baseRef: RemoteRef | null,
+  upstreamRef: RemoteRef | null,
+  verbose: boolean
+): { baseFresh: boolean; upstreamFresh: boolean } {
+  const refs = [baseRef, upstreamRef].filter((ref): ref is RemoteRef => ref !== null);
+  if (refs.length === 0) {
+    return { baseFresh: true, upstreamFresh: true };
+  }
+
+  console.log(chalk.blue('🔄 Fetching latest refs from remote...'));
+  const outcomes = fetchRemoteRefs(refs);
+
+  if (verbose) {
+    for (const [remote, outcome] of Object.entries(outcomes)) {
+      if (!outcome.ok) {
+        console.warn(chalk.gray(`   Fetch from ${remote} failed: ${outcome.error ?? 'unknown error'}`));
+      }
+    }
+  }
+
+  // Per ref, not per remote: a deleted upstream branch aborts the combined
+  // fetch, and must not be read as "origin is unreachable" and take the
+  // base-branch guard down with it.
+  const isFresh = (ref: RemoteRef | null): boolean =>
+    ref === null || (outcomes[refKey(ref)]?.ok ?? false);
+
+  return { baseFresh: isFresh(baseRef), upstreamFresh: isFresh(upstreamRef) };
+}
+
+/**
+ * Guard: is the branch behind its own remote tracking branch?
+ *
+ * This means someone else — or another machine, or another agent — pushed to
+ * your branch. `git push` would tell you eventually; this just tells you sooner.
+ *
+ * @param isFresh - Whether the upstream ref was successfully fetched. When
+ *                  false the local ref is stale, so this guard has no opinion:
+ *                  reporting "up to date" from a stale ref is worse than
+ *                  silence, and blocking on one is worse still.
+ * @returns true when the commit must be blocked.
+ */
+function reportTrackingDivergence(
+  mode: SyncGuardMode,
+  isFresh: boolean,
+  treeHash: string | null,
+  programName: string
+): boolean {
+  console.log(chalk.blue('🔍 Checking divergence from remote tracking branch...'));
+  const divergence = getTrackingDivergence();
+
+  if (divergence === null) {
+    console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or not pushed yet)'));
+    return false;
+  }
+
+  // Before any verdict: a stale ref cannot support one. "Up to date" from a ref
+  // we failed to refresh is the same reassuring lie as a missed "behind".
+  if (!isFresh) {
+    console.log(chalk.gray('ℹ️  Could not refresh the remote tracking branch - skipping this check'));
+    console.log(chalk.gray('   (deleted upstream branch, or offline)'));
+    return false;
+  }
+
+  if (divergence.behind === 0) {
+    if (divergence.ahead === 0) {
+      console.log(chalk.green('✅ Current branch is up to date with remote'));
+    } else {
+      // Purely ahead: local unpushed commits. Normal mid-PR state.
+      console.log(chalk.green(`✅ Local branch is ahead of remote by ${divergence.ahead} commit(s) (unpushed)`));
+    }
+    return false;
+  }
+
+  if (divergence.ahead > 0) {
+    // Diverged: history rewritten (typically a rebase). Pass with notice.
+    console.log(chalk.blue('ℹ️  Local branch has rewritten history vs remote tracking branch.'));
+    console.log(chalk.gray(`   Ahead by ${divergence.ahead} commit(s), behind by ${divergence.behind} commit(s) (rebased history).`));
+    console.log(chalk.gray('   When ready to push: git push --force-with-lease'));
+    return false;
+  }
+
+  // Purely behind: someone else pushed.
+  if (mode === 'block') {
+    console.error(chalk.red(`❌ Current branch is behind its remote tracking branch`));
+    console.error(chalk.yellow(`   Behind by ${divergence.behind} commit(s)`));
+    console.error(chalk.yellow('   Someone else has pushed changes to this branch.'));
+
+    showWorkProtectionMessage(treeHash, 'git pull', programName);
+
+    console.error(chalk.gray('\n   Alternative: git pull --rebase'));
+    console.error(chalk.gray('\n   Skip this check with: hooks.preCommit.trackingBranchSync: off'));
+    return true;
+  }
+
+  console.warn(chalk.yellow(`⚠️  Current branch is behind its remote tracking branch by ${divergence.behind} commit(s)`));
+  console.warn(chalk.gray('   Someone else has pushed changes to this branch. To sync: git pull --rebase'));
+  console.warn(chalk.gray('   (warning only - set hooks.preCommit.trackingBranchSync: block to make this a hard stop)'));
+  return false;
+}
+
+/**
+ * Guard: is the branch behind the base branch (e.g. origin/main)?
+ *
+ * @param isFresh - Whether the base ref was successfully fetched; see
+ *                  {@link reportTrackingDivergence}.
+ * @returns true when the commit must be blocked.
+ */
+async function reportBaseBranchSync(
+  mode: SyncGuardMode,
+  remoteBranch: string,
+  isFresh: boolean,
+  treeHash: string | null,
+  programName: string
+): Promise<boolean> {
+  console.log(chalk.blue(`🔄 Checking branch sync with ${remoteBranch}...`));
+
+  // The fetch already happened in fetchSyncRefs (one round-trip for both
+  // guards), so don't pay for a second one here.
+  const syncResult = await checkBranchSync({ remoteBranch, skipFetch: true });
+
+  // Checked before freshness: a repo with no remote is a benign, permanent
+  // state, not a failed fetch, and shouldn't be reported as one.
+  if (!syncResult.hasRemote) {
+    console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or no remote)'));
+    return false;
+  }
+
+  if (!isFresh) {
+    console.log(chalk.gray(`ℹ️  Could not refresh ${remoteBranch} - skipping this check (offline?)`));
+    return false;
+  }
+
+  if (syncResult.isUpToDate) {
+    console.log(chalk.green(`✅ Branch is up to date with ${remoteBranch}`));
+    return false;
+  }
+
+  if (mode === 'block') {
+    console.error(chalk.red(`❌ Branch is behind ${remoteBranch}`));
+    console.error(chalk.yellow(`   Behind by ${syncResult.behindBy} commit(s)`));
+
+    showWorkProtectionMessage(treeHash, `git merge ${remoteBranch}`, programName);
+
+    return true;
+  }
+
+  console.warn(chalk.yellow(`⚠️  Branch is behind ${remoteBranch} by ${syncResult.behindBy} commit(s)`));
+  console.warn(chalk.gray(`   To sync: git merge ${remoteBranch}`));
+  console.warn(chalk.gray('   (warning only - set hooks.preCommit.baseBranchSync: block to make this a hard stop)'));
+  return false;
 }
 
 /**
@@ -89,7 +267,7 @@ export function preCommitCommand(program: Command): void {
   const cmd = program
     .command('pre-commit')
     .description('Run branch sync check + validation (recommended before commit). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).')
-    .option('--skip-sync', 'Skip branch sync check')
+    .option('--skip-sync', 'Skip the base-branch sync check and its network fetch (same as hooks.preCommit.baseBranchSync: off)')
     .option('-v, --verbose', 'Show detailed progress and output');
 
   // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 47 acceptable for pre-commit workflow orchestration (coordinates git sync, config loading, validation, and error handling)
@@ -145,76 +323,61 @@ export function preCommitCommand(program: Command): void {
         }
         console.log(chalk.green('✅ No partially staged files'));
 
-        // Step 3: Check how current branch diverges from its remote tracking branch
-        console.log(chalk.blue('🔍 Checking divergence from remote tracking branch...'));
-        const divergence = getTrackingDivergence();
+        // Step 4: Verbose mode is ONLY enabled via explicit --verbose flag
+        const verbose = options.verbose ?? false;
 
-        if (divergence === null) {
-          console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or not pushed yet)'));
-        } else if (divergence.ahead === 0 && divergence.behind === 0) {
-          console.log(chalk.green('✅ Current branch is up to date with remote'));
-        } else if (divergence.ahead === 0 && divergence.behind > 0) {
-          // Purely behind: someone else pushed. Legitimate fail.
-          console.error(chalk.red(`❌ Current branch is behind its remote tracking branch`));
-          console.error(chalk.yellow(`   Behind by ${divergence.behind} commit(s)`));
-          console.error(chalk.yellow('   Someone else has pushed changes to this branch.'));
+        // Step 5: Sync guards.
+        //
+        // Neither guard is a correctness condition, so both default to 'warn':
+        // check, say something useful, let the commit through. Blocking here for
+        // a non-correctness reason routes people to `git commit --no-verify`,
+        // which skips every other guard too. Set 'block' to opt back into a hard
+        // stop; hard enforcement otherwise belongs in CI (`vv sync-check`).
+        const preCommitConfig = config.hooks?.preCommit;
+        const trackingMode: SyncGuardMode = preCommitConfig?.trackingBranchSync ?? DEFAULT_SYNC_GUARD_MODE;
+        // --skip-sync predates the config and has always meant the base-branch
+        // guard specifically, so it stays scoped to that one.
+        const branchMode: SyncGuardMode = options.skipSync
+          ? 'off'
+          : (preCommitConfig?.baseBranchSync ?? DEFAULT_SYNC_GUARD_MODE);
 
-          showWorkProtectionMessage(treeHash, 'git pull', programName);
+        const remoteBranch = getRemoteBranch(config.git);
 
-          console.error(chalk.gray('\n   Alternative: git pull --rebase'));
-          console.error(chalk.gray('\n   Skip this check with: --skip-sync (not recommended)'));
+        // The base-branch guard is meaningless while a merge or rebase is
+        // mid-flight. During a merge, being behind origin/main is expected - the
+        // merge commit resolves it. During a rebase, HEAD is transiently
+        // rewinding. Decided here so we don't fetch a ref nothing will read.
+        const mergeInProgress = isMergeInProgress();
+        const rebaseInProgress = isRebaseInProgress();
+        const baseGuardActive = branchMode !== 'off' && !mergeInProgress && !rebaseInProgress;
+        // Mid-rebase HEAD is detached, so there is no upstream to compare
+        // against - the tracking guard would report "no remote tracking branch",
+        // which is false and alarming during every conflict resolution.
+        const trackingGuardActive = trackingMode !== 'off' && !rebaseInProgress;
+
+        const upstreamRef = trackingGuardActive ? getUpstreamRef() : null;
+        const baseRef: RemoteRef | null = baseGuardActive
+          ? { remote: getRemoteOrigin(config.git), branch: getMainBranch(config.git) }
+          : null;
+
+        const { baseFresh, upstreamFresh } = fetchSyncRefs(baseRef, upstreamRef, verbose);
+
+        if (trackingGuardActive
+          && reportTrackingDivergence(trackingMode, upstreamFresh, treeHash, programName)) {
           process.exit(1);
-        } else if (divergence.ahead > 0 && divergence.behind === 0) {
-          // Purely ahead: local unpushed commits. Normal mid-PR state.
-          console.log(chalk.green(`✅ Local branch is ahead of remote by ${divergence.ahead} commit(s) (unpushed)`));
-        } else {
-          // Diverged: history rewritten (typically a rebase). Pass with notice.
-          console.log(chalk.blue('ℹ️  Local branch has rewritten history vs remote tracking branch.'));
-          console.log(chalk.gray(`   Ahead by ${divergence.ahead} commit(s), behind by ${divergence.behind} commit(s) (rebased history).`));
-          console.log(chalk.gray('   When ready to push: git push --force-with-lease'));
         }
 
-        // Step 4: Check branch sync (unless skipped, mid-merge, or mid-rebase)
-        if (!options.skipSync) {
-          // Construct remote branch reference using helper
-          const remoteBranch = getRemoteBranch(config.git);
-
-          // Skip the base-branch sync check while a merge or rebase is mid-flight.
-          // During a merge, being behind origin/main is expected - the merge commit
-          // will resolve it. During a rebase, HEAD is transiently rewinding and
-          // checking sync would produce misleading results.
-          if (isMergeInProgress()) {
+        if (branchMode !== 'off') {
+          if (mergeInProgress) {
             console.log(chalk.blue(`🔄 Merge in progress - skipping branch sync check`));
             console.log(chalk.gray(`   (This merge commit will sync with ${remoteBranch})`));
-          } else if (isRebaseInProgress()) {
+          } else if (rebaseInProgress) {
             console.log(chalk.blue(`🔄 Rebase in progress - skipping branch sync check`));
             console.log(chalk.gray(`   (Sync state will settle once the rebase completes)`));
-          } else {
-            console.log(chalk.blue(`🔄 Checking branch sync with ${remoteBranch}...`));
-
-            const syncResult = await checkBranchSync({
-              remoteBranch,
-            });
-
-            if (!syncResult.isUpToDate && syncResult.hasRemote) {
-              console.error(chalk.red(`❌ Branch is behind ${remoteBranch}`));
-              console.error(chalk.yellow(`   Behind by ${syncResult.behindBy} commit(s)`));
-
-              showWorkProtectionMessage(treeHash, `git merge ${remoteBranch}`, programName);
-
-              process.exit(1);
-            }
-
-            if (syncResult.hasRemote) {
-              console.log(chalk.green(`✅ Branch is up to date with ${remoteBranch}`));
-            } else {
-              console.log(chalk.gray('ℹ️  No remote tracking branch (new branch or no remote)'));
-            }
+          } else if (await reportBaseBranchSync(branchMode, remoteBranch, baseFresh, treeHash, programName)) {
+            process.exit(1);
           }
         }
-
-        // Step 5: Verbose mode is ONLY enabled via explicit --verbose flag
-        const verbose = options.verbose ?? false;
 
         // Step 6: Run secret scanning if enabled
         const secretScanning = config.hooks?.preCommit?.secretScanning;
@@ -296,7 +459,7 @@ export function preCommitCommand(program: Command): void {
           }
         );
 
-        // Step 9: Report results
+        // Step 8: Report results
         if (result.passed) {
           console.log(chalk.green('\n✅ Pre-commit checks passed!'));
           console.log(chalk.gray('   Safe to commit.'));
@@ -331,24 +494,47 @@ The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure yo
 
 ## How It Works
 
-1. Checks for partially staged files (fails if detected)
-2. Checks if current branch is behind its remote tracking branch (fails if detected)
-3. Runs sync-check (fails if branch behind origin/main, skipped during merge)
-4. Runs secret scanning (if enabled in config)
-5. Runs validate (with caching)
-6. Reports git status (warns about unstaged files)
+1. Checks for partially staged files (**fails** if detected)
+2. Fetches only the refs the enabled sync guards need (one round-trip; skipped entirely when both are \`off\`)
+3. Checks if the current branch is behind its remote tracking branch (**warns** by default)
+4. Checks if the current branch is behind the base branch, e.g. origin/main (**warns** by default; skipped during a merge or rebase)
+5. Runs secret scanning (if enabled in config)
+6. Runs validate (with caching)
 
-**Note:** When completing a merge commit (MERGE_HEAD exists), the branch sync check is automatically skipped since the merge commit itself resolves the out-of-sync state.
+**Note:** When completing a merge commit (MERGE_HEAD exists), or partway through a rebase, the base-branch sync check is automatically skipped — the merge commit itself resolves the out-of-sync state, and a mid-rebase HEAD gives a misleading answer.
+
+## Sync Guards
+
+The two sync checks are **warnings, not gates**. Being behind a branch does not make the code you are committing wrong, and blocking a commit for a non-correctness reason pushes people to \`git commit --no-verify\` — which skips secret scanning, validation and partial-stage detection too.
+
+The partially-staged-files check is different, and stays a hard block: validation runs against the full file while git commits only the staged hunk, so a pass could certify code that isn't what lands.
+
+Each guard takes \`warn\` (default), \`block\`, or \`off\`:
+
+\`\`\`yaml
+hooks:
+  preCommit:
+    baseBranchSync: warn      # behind the base branch (origin/main)
+    trackingBranchSync: warn  # behind your own remote branch (someone else pushed)
+\`\`\`
+
+- \`warn\` — check, print a notice, allow the commit
+- \`block\` — check and fail the commit (the pre-0.19.7 behaviour)
+- \`off\` — skip the check entirely, **including its network fetch**
+
+\`off\` is the only setting that makes \`pre-commit\` skip the fetch. \`warn\` still fetches, because a sync notice computed from a stale ref is worth nothing. If a ref cannot be refreshed — offline, or an upstream branch deleted after its PR merged — the guard that depends on that ref degrades to no opinion and the commit proceeds. Degradation is per guard, not per remote.
+
+For hard enforcement, use \`vibe-validate sync-check\` in CI — it still exits 1 when the branch is behind.
 
 ## Options
 
-- \`--skip-sync\` - Skip branch sync check (not recommended)
+- \`--skip-sync\` - Skip the base-branch sync check and its network fetch (equivalent to \`baseBranchSync: off\`; does not affect \`trackingBranchSync\`)
 - \`-v, --verbose\` - Show detailed progress and output
 
 ## Exit Codes
 
-- \`0\` - Sync OK and validation passed
-- \`1\` - Sync failed OR validation failed
+- \`0\` - Validation passed (and no sync guard set to \`block\` was violated)
+- \`1\` - Validation failed, secrets detected, files partially staged, or a \`block\` sync guard was violated
 
 ## Examples
 
@@ -356,7 +542,7 @@ The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure yo
 # Standard pre-commit workflow
 vibe-validate pre-commit
 
-# Skip sync check (not recommended)
+# Skip the base-branch sync check and its fetch
 vibe-validate pre-commit --skip-sync
 \`\`\`
 
@@ -475,7 +661,9 @@ hooks:
 
 ## Error Recovery
 
-### If sync check fails
+### If a sync guard blocks the commit
+
+Only reachable when a guard is set to \`block\` — with the default \`warn\` you get a notice and the commit proceeds.
 
 **Branch is behind origin/main:**
 \`\`\`bash
