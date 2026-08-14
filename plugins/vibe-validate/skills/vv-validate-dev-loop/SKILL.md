@@ -57,19 +57,23 @@ For why validation re-ran (or didn't), see `vibe-validate:caching-and-locking`.
 
 ## `vv pre-commit` — branch-synced validation
 
-A superset of `vv validate` that adds a branch-sync check (is the branch behind `origin/main`?) and, if configured, a staged-secret scan. It's **one natural place to put the checkpoint** — wired as a git pre-commit hook — but the same result is available from `vv validate` + `vv sync-check` invoked anywhere in the workflow.
+A superset of `vv validate` that adds two branch-sync checks (behind `origin/main`? behind your own remote branch?) and, if configured, a staged-secret scan. It's **one natural place to put the checkpoint** — wired as a git pre-commit hook — but the same result is available from `vv validate` + `vv sync-check` invoked anywhere in the workflow.
 
 ```bash
-vv pre-commit                 # branch sync + full validation + secret scan
+vv pre-commit                 # sync notices + full validation + secret scan
 ```
 
-If it fails with "branch behind origin":
+Both sync checks **warn by default; they do not block the commit.** Being behind is not a correctness condition, and a commit blocked for a non-correctness reason just routes people to `git commit --no-verify`, which skips validation and secret scanning too. Hard enforcement lives in CI (`vv sync-check`, which exits 1). Set `hooks.preCommit.baseBranchSync: block` / `trackingBranchSync: block` to restore a hard stop, or `off` to skip the check and its network fetch entirely.
+
+When it warns "branch behind origin":
 
 ```bash
 git fetch origin
 git merge origin/main         # or: git rebase origin/main
 vv pre-commit                 # re-run (cached where possible)
 ```
+
+What *does* block: partially staged files (validation sees the whole file, git commits only the staged hunk), detected secrets, and validation failures.
 
 Equally valid alternatives to `vv pre-commit`:
 
@@ -188,7 +192,7 @@ Many adopter repos wire project wrapper scripts (e.g., `pnpm validate`, `npm run
 
 ## Common failure patterns
 
-- **"Branch behind origin/main" from `vv pre-commit`.** Merge or rebase from `origin/main`, then re-run. Cached validation results for the pre-merge tree still apply to unchanged files.
+- **"Branch behind origin/main" from `vv pre-commit`.** A warning by default, not a block — the commit proceeds. Merge or rebase from `origin/main` when convenient, then re-run. Cached validation results for the pre-merge tree still apply to unchanged files.
 
 - **Validation appears to re-run every time on unchanged code.** Usually uncommitted build artifacts (`dist/`, `coverage/`, `.tsbuildinfo`) are changing the tree hash. Add them to `.gitignore`. For deeper diagnostics (tree-hash mismatch, ignored-file leakage, locking conflicts), see `vibe-validate:caching-and-locking`.
 
