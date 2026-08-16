@@ -9,8 +9,13 @@
 # selector such as `"minimatch@9": "9.0.7"`, so coexisting majors are still
 # fixable without an ignore entry).
 #
-# osv-scanner is installed via `go install` (deterministic module path + pinned
-# version) rather than a marketplace action, to avoid action-ref drift.
+# osv-scanner is installed by downloading the pinned release binary and checking
+# it against a SHA256 recorded here in git, rather than via a marketplace action
+# (action-ref drift) or `go install` (which resolves the scanner's own transitive
+# module graph at build time, so the bytes that end up auditing our supply chain
+# are not themselves reproducible). To upgrade: bump OSV_SCANNER_VERSION and
+# replace the checksum with the matching line from that release's
+# osv-scanner_SHA256SUMS.
 name: Dependency Audit
 
 on:
@@ -29,6 +34,11 @@ on:
 permissions:
   contents: read
 
+env:
+  OSV_SCANNER_VERSION: v2.4.0
+  # osv-scanner_linux_amd64 from that release's osv-scanner_SHA256SUMS.
+  OSV_SCANNER_SHA256: 15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0
+
 jobs:
   osv-scan:
     name: OSV-Scanner (pnpm-lock.yaml)
@@ -36,13 +46,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Install OSV-Scanner
-        run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.4.0
+      - name: Install OSV-Scanner (pinned, checksum-verified)
+        run: |
+          curl -fsSL --retry 3 \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+            -o /usr/local/bin/osv-scanner
+          echo "${OSV_SCANNER_SHA256}  /usr/local/bin/osv-scanner" | sha256sum --check --strict -
+          chmod +x /usr/local/bin/osv-scanner
+          osv-scanner --version
 
       - name: Scan lockfile against accepted-risk register
         run: osv-scanner scan source --lockfile=pnpm-lock.yaml --config=osv-scanner.toml
