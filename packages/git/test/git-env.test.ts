@@ -69,6 +69,12 @@ describe('stripGitEnv', () => {
       GIT_CONFIG_SYSTEM: '/empty',
       GIT_CONFIG_NOSYSTEM: '1',
       GIT_CONFIG_COUNT: '2',
+      // Git sets this one ITSELF on every hook — it carries the outer
+      // invocation's `-c` flags — so unlike its siblings it is present in
+      // practice rather than only when a user opts in. Measured: injecting
+      // `core.excludesFile` through it changes which paths
+      // `ls-files --others --exclude-standard` reports.
+      GIT_CONFIG_PARAMETERS: "'core.excludesFile'='/tmp/evil'",
       GIT_CONFIG_KEY_0: 'user.email',
       GIT_CONFIG_VALUE_0: 'evil@example.com',
       GIT_CONFIG_KEY_1: 'core.autocrlf',
@@ -80,6 +86,7 @@ describe('stripGitEnv', () => {
     expect(result.GIT_CONFIG_SYSTEM).toBeUndefined();
     expect(result.GIT_CONFIG_NOSYSTEM).toBeUndefined();
     expect(result.GIT_CONFIG_COUNT).toBeUndefined();
+    expect(result.GIT_CONFIG_PARAMETERS).toBeUndefined();
     expect(result.GIT_CONFIG_KEY_0).toBeUndefined();
     expect(result.GIT_CONFIG_VALUE_0).toBeUndefined();
     expect(result.GIT_CONFIG_KEY_1).toBeUndefined();

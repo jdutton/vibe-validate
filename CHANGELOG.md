@@ -20,7 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Unlike `getGitTreeHash()` it takes a path, so it also strips the git environment a hook exports — otherwise it would describe the outer commit's repository instead of the directory you handed it. Same guarantees as the tree hash: unstaged edits included, your index and working tree untouched, gitignored paths out, deterministic. Returns `null` if git could not answer, which is distinct from an empty tree. Check `mode` against `GIT_MODE_SYMLINK`: git stores a symlink's *target string* as its blob, so following links without excluding those collapses two different files onto one OID.
 
-- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`, and also strips `GIT_PREFIX` and `GIT_INDEX_VERSION`. Existing imports are unchanged.
+- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`, and also strips `GIT_CONFIG_PARAMETERS`, `GIT_PREFIX` and `GIT_INDEX_VERSION`. Existing imports are unchanged.
+
+  `GIT_CONFIG_PARAMETERS` is the notable one: it carries the `-c key=value` flags of the current git invocation, git exports it to **every hook**, and injecting `core.excludesFile` through it measurably changes which paths a child's `ls-files --exclude-standard` reports. Its siblings (`GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_*`, `GIT_CONFIG_VALUE_*`) were already stripped; this is the one git sets by itself.
 
 - **`executeGitCommand` takes a `maxBuffer` option** (default 10 MiB, unchanged) for commands whose output scales with the size of the repository.
 

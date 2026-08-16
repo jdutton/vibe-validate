@@ -106,8 +106,10 @@ const LS_FILES_STAGED = /^(\d{6}) ([0-9a-f]{40,64}) (\d)\t(.*)$/s;
  *
  * @param stdout - NUL-separated staged-format records
  * @returns One entry per well-formed record; malformed records are skipped
+ *
+ * @internal Exported for testing
  */
-function parseStagedEntries(stdout: string): GitTreeEntry[] {
+export function parseStagedEntries(stdout: string): GitTreeEntry[] {
   const entries: GitTreeEntry[] = [];
   for (const record of stdout.split('\0')) {
     if (record.length === 0) continue;
@@ -163,12 +165,13 @@ export function getGitTreeSnapshot(options: GitTreeSnapshotOptions): GitTreeSnap
       // already runs us there, which is what makes the listing complete as well
       // as correctly spelled.
       // The output scales with the tree — measured at ~104 bytes per path on an
-      // ordinary monorepo, and ~270 with deep paths. Node's spawnSync default of
-      // 1 MiB is reached at a few thousand files, and exceeding maxBuffer KILLS
-      // the child rather than truncating, so the whole call would fail — and
-      // fail as `null`, indistinguishable from "not a git repository". The cap
-      // has to be far above any plausible repository, not merely above a typical
-      // one; this one is roughly a million paths.
+      // ordinary monorepo, and ~270 with deep paths — so spawnSync's 1 MiB
+      // default is exhausted at a few thousand files. Overrunning it never
+      // yields a short but honest answer: it either kills the child or leaves a
+      // truncated stdout behind an exit code of 0, and this call then reports
+      // `null`, indistinguishable from "not a git repository". The cap has to
+      // sit far above any plausible repository rather than above a typical one;
+      // this is roughly a million paths.
       const staged = runGit(['ls-files', '-s', '-z', '--full-name'], {
         maxBuffer: 256 * 1024 * 1024,
       }).stdout;

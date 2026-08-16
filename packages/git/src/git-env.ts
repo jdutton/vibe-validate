@@ -45,6 +45,14 @@ const DANGEROUS_GIT_ENV_KEYS: ReadonlySet<string> = new Set([
   'GIT_CONFIG_SYSTEM',
   'GIT_CONFIG_NOSYSTEM',
   'GIT_CONFIG_COUNT',
+  // The `-c key=value` flags of the CURRENT git invocation, which git exports to
+  // every child. This is the one config-redirection variable git sets by itself
+  // rather than a user having to: a pre-commit hook is launched with the outer
+  // `git commit`'s `-c` flags already in the environment. Left in place, an
+  // injected `core.excludesFile` silently changes which paths a child's
+  // `ls-files --exclude-standard` reports — a different population, reported as
+  // the whole one.
+  'GIT_CONFIG_PARAMETERS',
   // Would steer vv's own notes-based cache to a different ref
   'GIT_NOTES_REF',
   // Alter history view
