@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`executeGitCommand` accepts `maxBuffer`** (default 10 MiB, unchanged) and returns `error` when the command could not run. Raise `maxBuffer` for commands whose output grows with the repository, such as `ls-files` and `log`.
 
+- **`executeGitCommand` accepts `trimOutput`** (default `true`, unchanged). Pass `false` for NUL-delimited (`-z`) listings and for file content, where trimming is lossy: a path beginning with a space sorts first in `ls-files -z` and comes back renamed.
+
 ### Fixed
 
 - **A git command whose output exceeded `maxBuffer` could return a truncated result marked successful.** It now fails, and names the cause. If you enumerate with `executeGitCommand`, raise `maxBuffer` rather than relying on the default.

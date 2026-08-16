@@ -349,6 +349,32 @@ describe('getGitTreeSnapshot - integration tests', () => {
       .toThrow(/ENOBUFS/);
   });
 
+  it('does not trim a NUL-delimited listing, whose first path may begin with a space', () => {
+    // git sorts by byte value and 0x20 sorts below every printable character, so
+    // a name starting with a space is listed FIRST — exactly where a trim can
+    // reach it. The result is not an error but a path that does not exist, so
+    // every lookup against it reads as "the file is not there".
+    //
+    // `getGitTreeSnapshot` is immune because `ls-files -s` puts the mode at
+    // position 0; this is about the plain `-z` listing a consumer writes itself,
+    // which is how it was found.
+    const leadingSpace = ' leading-space.md';
+    writeFileSync(join(root, leadingSpace), 'x\n');
+    writeFileSync(join(root, 'zulu.md'), 'y\n');
+    commitAll(root, 'add a path that sorts first');
+
+    const raw = executeGitCommand(['ls-files', '-z'], { cwd: root, trimOutput: false });
+    expect(raw.stdout.split('\0').filter(Boolean)).toContain(leadingSpace);
+
+    // The control: the default is still to trim, because every existing caller
+    // reads one line as a value and compares it against an untrimmed string.
+    const trimmed = executeGitCommand(['ls-files', '-z'], { cwd: root });
+    expect(trimmed.stdout.split('\0').filter(Boolean)).not.toContain(leadingSpace);
+    expect(executeGitCommand(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: root }).stdout).not.toMatch(
+      /\s$/,
+    );
+  });
+
   it.skipIf(!SYMLINKS_AVAILABLE)(
     'reports a symlink under mode 120000, whose blob is the TARGET STRING',
     () => {

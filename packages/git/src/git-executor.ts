@@ -99,6 +99,27 @@ export interface GitExecutionOptions {
    * @default 10485760 (10 MiB)
    */
   maxBuffer?: number;
+
+  /**
+   * Trim surrounding whitespace from `stdout` and `stderr`.
+   *
+   * **Set this to `false` for NUL-delimited (`-z`) listings and for byte-exact
+   * content**, where the trim is not cosmetic but lossy. Measured on git 2.50.1:
+   *
+   * - `git ls-files -z` in a tree containing `" leading-space.md"` returns that
+   *   path first, because git sorts by byte value and 0x20 sorts below every
+   *   printable character. Trimmed, it comes back as `"leading-space.md"` — a
+   *   path that does not exist, so every lookup against it reads as "not there".
+   *   (`ls-files -s -z` is unaffected: the mode occupies position 0.)
+   * - `git show HEAD:file` returns the blob without its trailing newline.
+   *
+   * Left on by default because almost every git command here returns one line
+   * meant to be read as a value, and every existing caller compares it against
+   * an untrimmed string.
+   *
+   * @default true
+   */
+  trimOutput?: boolean;
 }
 
 /**
@@ -138,6 +159,24 @@ export interface GitCommandError extends Error {
   stderr: string;
   /** Standard output */
   stdout: string;
+}
+
+/**
+ * Decode `spawnSync`'s output buffers into strings, trimming both or neither.
+ *
+ * Extracted so the trim decision is spelled once rather than twice inline, and
+ * so it cannot drift between the two streams: a caller reading a `-z` listing
+ * from `stdout` needs `stderr` decoded the same way to report what went wrong.
+ * See {@link GitExecutionOptions.trimOutput} for why trimming is lossy.
+ */
+function decodeOutput(
+  result: { stdout?: string | Buffer | null; stderr?: string | Buffer | null },
+  trimOutput: boolean
+): { stdout: string; stderr: string } {
+  const stdout = result.stdout?.toString() ?? '';
+  const stderr = result.stderr?.toString() ?? '';
+
+  return trimOutput ? { stdout: stdout.trim(), stderr: stderr.trim() } : { stdout, stderr };
 }
 
 /**
@@ -181,6 +220,7 @@ export function executeGitCommand(
     cwd,
     scrubGitEnv = false,
     maxBuffer = 10 * 1024 * 1024, // 10MB buffer
+    trimOutput = true,
   } = options;
 
   // Validate arguments
@@ -214,8 +254,7 @@ export function executeGitCommand(
   // eslint-disable-next-line sonarjs/no-os-command-from-path -- git is a standard system command
   const result = spawnSync('git', args, spawnOptions);
 
-  const stdout = (result.stdout?.toString() || '').trim();
-  const stderr = (result.stderr?.toString() || '').trim();
+  const { stdout, stderr } = decodeOutput(result, trimOutput);
   const exitCode = result.status ?? 1;
 
   // A spawn-level error makes the result untrustworthy EVEN WHEN THE CHILD
