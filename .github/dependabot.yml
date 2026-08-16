@@ -1,0 +1,73 @@
+# Dependabot version updates.
+#
+# This is the *proactive* half of dependency hygiene: it opens PRs to move
+# dependencies forward on a schedule. The *reactive* half is Dependabot security
+# alerts (a repository setting, not this file) plus the Dependency Audit
+# workflow (.github/workflows/dependency-audit.yml), which fails CI on any
+# advisory not triaged in osv-scanner.toml.
+#
+# Grouping keeps the PR volume sane: one PR per ecosystem per week for routine
+# bumps, but security-relevant updates are separated so they can be reviewed and
+# merged on their own.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    groups:
+      # Security fixes travel alone — never bundled with routine churn.
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
+      # Dev tooling churns most and carries the least consumer risk.
+      dev-tooling:
+        applies-to: version-updates
+        patterns:
+          - '@typescript-eslint/*'
+          - 'eslint'
+          - 'eslint-plugin-*'
+          - 'vitest'
+          - '@vitest/*'
+          - 'turbo'
+          - 'typescript'
+          - 'tsx'
+      npm-production:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        exclude-patterns:
+          - '@typescript-eslint/*'
+          - 'eslint'
+          - 'eslint-plugin-*'
+          - 'vitest'
+          - '@vitest/*'
+          - 'turbo'
+          - 'typescript'
+          - 'tsx'
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Workflow actions are a supply-chain surface of their own — a compromised or
+  # abandoned action runs with repository credentials.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: chore
+      include: scope

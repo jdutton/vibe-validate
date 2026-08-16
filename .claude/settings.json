@@ -138,16 +138,10 @@
       "mcp__github__list_issues"
     ],
     "deny": [
-      "Skill(superpowers:using-git-worktrees)",
-      "Bash(sed *)",
-      "Bash(sed)",
-      "Bash(awk *)",
-      "Bash(awk)"
     ],
     "ask": [
       "Bash(gh run list *)",
       "Bash(gh run view *)",
-      "Bash(git commit *)",
       "Bash(*jscpd-update-baseline*)"
     ]
   },

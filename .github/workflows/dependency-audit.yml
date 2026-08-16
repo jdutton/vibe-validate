@@ -1,0 +1,80 @@
+# Dependency Audit — fails on any advisory not in the osv-scanner.toml register.
+#
+# Complements the main Validation Pipeline (validate.yml). This job scans the
+# committed pnpm-lock.yaml with OSV-Scanner and enforces the accepted-risk
+# register at ./osv-scanner.toml: a green run means "zero un-triaged
+# vulnerabilities". To accept a new advisory, add a documented `[[IgnoredVulns]]`
+# entry to that file; to fix one, bump the dependency or pin a patched version
+# in the root package.json `pnpm.overrides` block (pnpm supports a per-major
+# selector such as `"minimatch@9": "9.0.7"`, so coexisting majors are still
+# fixable without an ignore entry).
+#
+# osv-scanner is installed by downloading the pinned release binary and checking
+# it against a SHA256 recorded here in git, rather than via a marketplace action
+# (action-ref drift) or `go install` (which resolves the scanner's own transitive
+# module graph at build time, so the bytes that end up auditing our supply chain
+# are not themselves reproducible). To upgrade: bump OSV_SCANNER_VERSION and
+# replace the checksum with the matching line from that release's
+# osv-scanner_SHA256SUMS.
+name: Dependency Audit
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly, Monday 06:00 UTC — catches newly-disclosed advisories against the
+    # existing lockfile even when no code changes land.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OSV_SCANNER_VERSION: v2.4.0
+  # osv-scanner_linux_amd64 from that release's osv-scanner_SHA256SUMS.
+  OSV_SCANNER_SHA256: 15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0
+
+jobs:
+  osv-scan:
+    name: OSV-Scanner (pnpm-lock.yaml)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install OSV-Scanner (pinned, checksum-verified)
+        run: |
+          curl -fsSL --retry 3 --proto '=https' --tlsv1.2 \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+            -o /usr/local/bin/osv-scanner
+          echo "${OSV_SCANNER_SHA256}  /usr/local/bin/osv-scanner" | sha256sum --check --strict -
+          chmod +x /usr/local/bin/osv-scanner
+          osv-scanner --version
+
+      - name: Scan lockfile against accepted-risk register
+        run: osv-scanner scan source --lockfile=pnpm-lock.yaml --config=osv-scanner.toml
+
+  # Second line of defence, PR-only: GitHub's Dependency Review diffs the
+  # dependency graph of the PR against the base branch and fails when the PR
+  # *introduces* a vulnerable or badly-licensed package. OSV-Scanner above
+  # answers "is the lockfile clean today"; this answers "does this PR make it
+  # worse", which is the question that actually blocks a bad merge.
+  dependency-review:
+    name: Dependency Review (PR diff)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: on-failure
