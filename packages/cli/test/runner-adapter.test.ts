@@ -77,6 +77,20 @@ function expectRunnerBehavior(
   expect(runnerConfig.env).toBeDefined();
 }
 
+/**
+ * Assert all four lifecycle callbacks are wired.
+ *
+ * Verbose and quiet contexts install different implementations but the same
+ * four hooks, so every context test asks this identical question.
+ * @param runnerConfig - Runner config to validate
+ */
+function expectLifecycleCallbacks(runnerConfig: RunnerConfig) {
+  expect(runnerConfig.onPhaseStart).toBeDefined();
+  expect(runnerConfig.onPhaseComplete).toBeDefined();
+  expect(runnerConfig.onStepStart).toBeDefined();
+  expect(runnerConfig.onStepComplete).toBeDefined();
+}
+
 describe('runner-adapter', () => {
   let originalEnv: NodeJS.ProcessEnv;
 
@@ -181,10 +195,7 @@ describe('runner-adapter', () => {
     it('should include verbose callbacks when verbose=true', () => {
       const { runnerConfig } = setupRunnerTest([]);
 
-      expect(runnerConfig.onPhaseStart).toBeDefined();
-      expect(runnerConfig.onPhaseComplete).toBeDefined();
-      expect(runnerConfig.onStepStart).toBeDefined();
-      expect(runnerConfig.onStepComplete).toBeDefined();
+      expectLifecycleCallbacks(runnerConfig);
     });
 
     it('should include minimal callbacks when verbose=false', () => {
@@ -194,10 +205,7 @@ describe('runner-adapter', () => {
         false
       );
 
-      expect(runnerConfig.onPhaseStart).toBeDefined();
-      expect(runnerConfig.onPhaseComplete).toBeDefined();
-      expect(runnerConfig.onStepStart).toBeDefined();
-      expect(runnerConfig.onStepComplete).toBeDefined();
+      expectLifecycleCallbacks(runnerConfig);
     });
 
     it('should include minimal callbacks for CI context (verbose=false)', () => {
@@ -207,10 +215,7 @@ describe('runner-adapter', () => {
         false
       );
 
-      expect(runnerConfig.onPhaseStart).toBeDefined();
-      expect(runnerConfig.onPhaseComplete).toBeDefined();
-      expect(runnerConfig.onStepStart).toBeDefined();
-      expect(runnerConfig.onStepComplete).toBeDefined();
+      expectLifecycleCallbacks(runnerConfig);
     });
   });
 

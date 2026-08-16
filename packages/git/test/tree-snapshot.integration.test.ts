@@ -59,6 +59,56 @@ const STATUS_PORCELAIN = ['status', '--porcelain'];
 /** The git vars a hook exports, which this function must ignore. */
 const HOOK_ENV_KEYS = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX'] as const;
 
+/** A document only the decoy repository holds. */
+const DECOY_DOC = 'elsewhere.md';
+
+/**
+ * Run `probe` under the git environment a pre-commit hook exports, pointed at a
+ * SECOND repository the subject is never told about.
+ *
+ * The decoy is what makes the two repositories distinguishable, which is the
+ * whole point: it holds a file `root` does not, so an implementation that
+ * followed the inherited `GIT_DIR` returns `elsewhere.md` and no `doc.md`.
+ * Asserting that the subject's own corpus looks right would pass in both worlds.
+ *
+ * The environment is cleared before `verify` runs, because those assertions call
+ * git too and one confused by the same variables would prove nothing.
+ *
+ * @param root - The repository the subject is handed
+ * @param probe - Runs while the hook environment is exported
+ * @param verify - Assertions, run with the environment already restored
+ */
+function withDecoyHookEnv<T>(
+  root: string,
+  probe: () => T,
+  verify: (result: T, decoy: string) => void,
+): void {
+  const decoy = mkdtempSync(join(normalizedTmpdir(), 'vv-outer-repo-'));
+  try {
+    createGitRepo(decoy);
+    writeFileSync(join(decoy, DECOY_DOC), 'not ours\n');
+    commitAll(decoy, 'outer');
+
+    writeFileSync(join(root, DOC), 'ours\n');
+    commitAll(root, 'ours');
+
+    // Exactly what git sets when it runs a hook, including the empty
+    // GIT_PREFIX that means "invoked at the top level".
+    process.env.GIT_DIR = join(decoy, '.git');
+    process.env.GIT_WORK_TREE = decoy;
+    process.env.GIT_INDEX_FILE = join(decoy, '.git', 'index');
+    process.env.GIT_PREFIX = '';
+
+    const result = probe();
+
+    for (const key of HOOK_ENV_KEYS) delete process.env[key];
+    verify(result, decoy);
+  } finally {
+    for (const key of HOOK_ENV_KEYS) delete process.env[key];
+    rmSync(decoy, { recursive: true, force: true });
+  }
+}
+
 /**
  * Whether this machine can create symlinks at all.
  *
@@ -225,41 +275,18 @@ describe('getGitTreeSnapshot - integration tests', () => {
     // GIT_PREFIX into hooks. A child that inherits them snapshots the OUTER
     // commit's repository instead of the path it was handed -- silently, with a
     // well-formed answer.
-    //
-    // The fixture makes the two repositories distinguishable, which is the whole
-    // point: `other` holds a file `root` does not, so an implementation that
-    // followed the inherited GIT_DIR returns `elsewhere.md` and no `doc.md`.
-    const other = mkdtempSync(join(normalizedTmpdir(), 'vv-outer-repo-'));
-    try {
-      createGitRepo(other);
-      writeFileSync(join(other, 'elsewhere.md'), 'not ours\n');
-      commitAll(other, 'outer');
+    withDecoyHookEnv(
+      root,
+      () => pathsOf(getGitTreeSnapshot({ cwd: root })),
+      (paths, decoy) => {
+        expect(paths).toContain(DOC);
+        expect(paths).not.toContain(DECOY_DOC);
 
-      writeFileSync(join(root, DOC), 'ours\n');
-      commitAll(root, 'ours');
-
-      // Exactly what git sets when it runs a hook, including the empty
-      // GIT_PREFIX that means "invoked at the top level".
-      process.env.GIT_DIR = join(other, '.git');
-      process.env.GIT_WORK_TREE = other;
-      process.env.GIT_INDEX_FILE = join(other, '.git', 'index');
-      process.env.GIT_PREFIX = '';
-
-      const paths = pathsOf(getGitTreeSnapshot({ cwd: root }));
-
-      // Restore before asserting: the verification calls below run git too, and
-      // an assertion confused by the same variables would prove nothing.
-      for (const key of HOOK_ENV_KEYS) delete process.env[key];
-
-      expect(paths).toContain(DOC);
-      expect(paths).not.toContain('elsewhere.md');
-
-      // And the outer repository's real index is still untouched, which is the
-      // failure that would actually corrupt someone's commit.
-      expect(gitOut(STATUS_PORCELAIN, other)).toBe('');
-    } finally {
-      rmSync(other, { recursive: true, force: true });
-    }
+        // And the decoy's real index is still untouched, which is the failure
+        // that would actually corrupt someone's commit.
+        expect(gitOut(STATUS_PORCELAIN, decoy)).toBe('');
+      },
+    );
   });
 
   it('protects a caller who supplies cwd and forgets to ask for the scrub', () => {
@@ -268,32 +295,18 @@ describe('getGitTreeSnapshot - integration tests', () => {
     // a future third caller would most plausibly get it wrong. The rule "an
     // explicit cwd scrubs" lived only in a JSDoc sentence, and a rule that a
     // caller can decline by omission is a convention, not a guarantee.
-    const other = mkdtempSync(join(normalizedTmpdir(), 'vv-outer-repo-'));
-    try {
-      createGitRepo(other);
-      writeFileSync(join(other, 'elsewhere.md'), 'not ours\n');
-      commitAll(other, 'outer');
-
-      writeFileSync(join(root, DOC), 'ours\n');
-      commitAll(root, 'ours');
-
-      process.env.GIT_DIR = join(other, '.git');
-      process.env.GIT_WORK_TREE = other;
-      process.env.GIT_INDEX_FILE = join(other, '.git', 'index');
-      process.env.GIT_PREFIX = '';
-
+    withDecoyHookEnv(
+      root,
       // No `scrubGitEnv` — the point of the test.
-      const listing = withStagedTempIndex({ cwd: root }, ({ runGit }) =>
-        runGit(['ls-files', '--full-name']).stdout,
-      );
-
-      for (const key of HOOK_ENV_KEYS) delete process.env[key];
-
-      expect(listing).toContain(DOC);
-      expect(listing).not.toContain('elsewhere.md');
-    } finally {
-      rmSync(other, { recursive: true, force: true });
-    }
+      () =>
+        withStagedTempIndex({ cwd: root }, ({ runGit }) =>
+          runGit(['ls-files', '--full-name']).stdout,
+        ),
+      (listing) => {
+        expect(listing).toContain(DOC);
+        expect(listing).not.toContain(DECOY_DOC);
+      },
+    );
   });
 
   it('never reports a maxBuffer-truncated listing as a successful one', () => {
