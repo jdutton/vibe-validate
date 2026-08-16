@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`getGitTreeSnapshot({ cwd })` in `@vibe-validate/git` — the tree hash, plus the per-path detail behind it.** `getGitTreeHash()` answers "has anything in this working tree changed", which is the only question vv's own cache asks. A tool built on top of vv often needs the next question down — *which* paths changed, and what are their blob OIDs — so it can key per-file work off git instead of re-hashing every file itself. That information already exists inside the tree-hash computation and was being thrown away.
+
+  ```typescript
+  import { getGitTreeSnapshot, GIT_MODE_SYMLINK } from '@vibe-validate/git';
+
+  const snapshot = getGitTreeSnapshot({ cwd: projectRoot });
+  if (snapshot !== null) {
+    snapshot.hash;     // same value getGitTreeHash() returns for this tree
+    snapshot.entries;  // [{ path: 'src/a.ts', oid: '…', mode: '100644' }, …]
+  }
+  ```
+
+  Two differences from `getGitTreeHash()` are the point of the new function. It **takes a path**, so a process that scans several project roots can say which one it means — `getGitTreeHash()` is ambient by design and has no way to express that. And because it takes a caller-supplied path, it **strips the git environment** before every subprocess: inside a hook, git exports `GIT_DIR` / `GIT_INDEX_FILE` / `GIT_PREFIX` into every child, and a child that inherits them describes the outer commit's repository instead of the directory it was handed — silently, with a well-formed answer. Under `git worktree` the two disagree by construction.
+
+  Both functions share one throwaway-index implementation, so the properties that make the tree hash trustworthy hold for the snapshot too: unstaged edits are included (a dirty file's OID names the bytes on disk, not the committed ones), the real index and working tree are never written, gitignored paths stay out, and the hash has no timestamp in it. Paths are relative to the repository root even when called from a subdirectory. Failure of any kind returns `null` rather than an empty snapshot — "could not ask" must not be spelled the same way as "asked, and the answer is nothing".
+
+  Note `mode`: git stores a symlink as a blob containing the **target string**, so two links with the same target share an OID while a consumer that follows them reads two different files. Compare against the exported `GIT_MODE_SYMLINK` / `GIT_MODE_GITLINK` to exclude those rather than discover it downstream.
+
+- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`. Knowing which `GIT_*` variables can redirect a child `git` is git knowledge, so it now lives with the rest of it; `core` re-exports it and existing imports are unchanged. Two variables joined the list: `GIT_PREFIX` (exported into every hook, and prepended when git interprets a pathspec — an inherited value silently re-scopes `add --all` and `ls-files` in a child that runs at the repository root) and `GIT_INDEX_VERSION`.
+
 ## [0.19.7] - 2026-08-13
 
 ### Changed

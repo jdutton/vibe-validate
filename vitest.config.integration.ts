@@ -45,6 +45,7 @@ export default defineConfig({
 
       // Integration tests (component integration)
       'packages/git/test/tree-hash.integration.test.ts',
+      'packages/git/test/tree-snapshot.integration.test.ts',
       'packages/cli/test/integration/history-recording.test.ts',
       'packages/cli/test/integration/cache-manager.integration.test.ts',
       'packages/cli/test/integration/watch-pr-extraction.integration.test.ts',

@@ -15,6 +15,8 @@
 
 import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
 
+import { stripGitEnv } from './git-env.js';
+
 /**
  * Standard options for git command execution
  */
@@ -55,6 +57,28 @@ export interface GitExecutionOptions {
    * Merged with process.env
    */
   env?: NodeJS.ProcessEnv;
+
+  /**
+   * Remove inherited git redirection vars from `process.env` before merging
+   * `env` on top of it.
+   *
+   * **Set this whenever the command must target a caller-supplied `cwd` rather
+   * than the ambient repository.** Inside a git hook — and vv itself runs as
+   * one — git exports `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_PREFIX` and friends into
+   * every child, and those override `cwd` outright. The child then answers
+   * confidently about the outer commit's repository instead of the path it was
+   * handed. See {@link "./git-env".stripGitEnv}.
+   *
+   * `env` is merged *after* the scrub and is deliberately not filtered: a caller
+   * that sets `GIT_INDEX_FILE` on purpose (as the tree-hash and tree-snapshot
+   * paths do) must still be able to.
+   *
+   * Left off by default: commands that mean "the repository I am in" — which is
+   * most of this package — are correct to honour the ambient environment.
+   *
+   * @default false
+   */
+  scrubGitEnv?: boolean;
 
   /**
    * Working directory for git command execution
@@ -128,6 +152,7 @@ export function executeGitCommand(
     suppressStderr = false,
     env,
     cwd,
+    scrubGitEnv = false,
   } = options;
 
   // Validate arguments
@@ -135,12 +160,17 @@ export function executeGitCommand(
     throw new Error('Git command arguments must be a non-empty array');
   }
 
+  // The scrub applies to the INHERITED base only. Spreading a scrubbed env back
+  // over `process.env` would re-inject every variable it just removed — removal
+  // here is by omission, not by an explicit unset — so the order matters.
+  const baseEnv = scrubGitEnv ? stripGitEnv(process.env) : process.env;
+
   // Build spawn options
   const spawnOptions: SpawnSyncOptions = {
     encoding,
     timeout,
     maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-    env: env ? { ...process.env, ...env } : process.env,
+    env: env ? { ...baseEnv, ...env } : baseEnv,
     cwd,
   };
 

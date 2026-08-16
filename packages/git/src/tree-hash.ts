@@ -9,137 +9,28 @@
  * CRITICAL FIX: Uses git write-tree instead of git stash create for determinism.
  * git stash create includes timestamps, making hashes non-deterministic.
  * git write-tree produces content-based hashes only (no timestamps).
+ *
+ * The throwaway-index mechanism this relies on lives in `./temp-index.js` and is
+ * shared with {@link "./tree-snapshot".getGitTreeSnapshot}.
  */
 
-import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { isProcessRunning } from '@vibe-validate/utils';
-
 import { executeGitCommand } from './git-executor.js';
+import { withStagedTempIndex } from './temp-index.js';
 import type { TreeHash, TreeHashResult } from './types.js';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
 /**
- * Minimum age (milliseconds) before cleaning up stale temp index files
- *
- * Rationale: 5 minutes balances:
- * - Avoiding false positives (very slow validations in progress)
- * - Timely cleanup (don't accumulate too many stale files)
- * - Typical validation duration (< 2 minutes in most projects)
- */
-const STALE_INDEX_AGE_MS = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Try to clean up a legacy temp index file (no PID suffix)
- * @param gitDir - Git directory path
- */
-function tryCleanupLegacyTempIndex(gitDir: string): void {
-  try {
-    const filePath = join(gitDir, 'vibe-validate-temp-index');
-    const stats = statSync(filePath);
-    const ageMs = Date.now() - stats.mtimeMs;
-
-    if (ageMs >= STALE_INDEX_AGE_MS) {
-      unlinkSync(filePath);
-      console.warn(`⚠️  Cleaned up legacy temp index (${Math.round(ageMs/1000)}s old)`);
-    }
-  } catch {
-    // Ignore cleanup errors (file may not exist or be in use)
-  }
-}
-
-/**
- * Try to clean up a PID-suffixed temp index file if it's stale
- * @param gitDir - Git directory path
- * @param file - Filename to check
- * @param pid - Process ID from filename
- */
-function tryCleanupPidTempIndex(gitDir: string, file: string, pid: number): void {
-  try {
-    const filePath = join(gitDir, file);
-    const stats = statSync(filePath);
-    const ageMs = Date.now() - stats.mtimeMs;
-
-    // Skip if younger than threshold
-    if (ageMs < STALE_INDEX_AGE_MS) return;
-
-    // Skip if process is still running
-    if (isProcessRunning(pid)) return;
-
-    // Stale file - clean it up
-    try {
-      unlinkSync(filePath);
-      const ageSec = Math.round(ageMs / 1000);
-      console.warn(`⚠️  Cleaned up stale temp index from PID ${pid} (${ageSec}s old, process not running)`);
-    } catch (err) {
-      const error = err as Error;
-      console.warn(`⚠️  Failed to clean up stale temp index ${file}: ${error.message}`);
-    }
-  } catch {
-    // Ignore errors reading file stats (file may have been deleted)
-  }
-}
-
-/**
- * Clean up stale temp index files from crashed processes
- *
- * Scans git directory for temp index files and removes those that are:
- * - Older than 5 minutes AND
- * - Process no longer running
- *
- * Warns to stderr when cleanup occurs (bug detection canary).
- * Fails gracefully if cleanup fails (warn and continue).
- */
-function cleanupStaleIndexes(gitDir: string): void {
-  const pattern = /^vibe-validate-temp-index-(\d+)$/;
-
-  try {
-    const files = readdirSync(gitDir);
-
-    for (const file of files) {
-      // Handle legacy temp index (no PID suffix)
-      if (file === 'vibe-validate-temp-index') {
-        tryCleanupLegacyTempIndex(gitDir);
-        continue;
-      }
-
-      // Handle PID-suffixed temp index
-      const match = pattern.exec(file);
-      if (!match) continue;
-
-      const pid = Number.parseInt(match[1], 10);
-      tryCleanupPidTempIndex(gitDir, file, pid);
-    }
-  } catch (error) {
-    // Expected errors (fail-safe, no action needed):
-    // - ENOENT: .git directory doesn't exist (fresh repo)
-    // - ENOTDIR: gitDir points to a file, not directory
-    const err = error as NodeJS.ErrnoException;
-    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {
-      return; // Expected failure - skip cleanup
-    }
-
-    // Unexpected errors (should warn for debugging)
-    console.warn(`⚠️  Unexpected error during temp index cleanup: ${err.message}`);
-    console.warn(`   Git dir: ${gitDir}`);
-    console.warn(`   This may indicate a bug - please report if you see this often`);
-  }
-}
-
-/**
  * Get deterministic git tree hash representing current working tree state
  *
  * Implementation:
- * 1. Create temporary index file (doesn't affect real index)
- * 2. Copy current index to temporary index
- * 3. Stage tracked edits and untracked files with `git add --all` into the
- *    temp index (NOT --intent-to-add; see the note at the call site)
- * 4. Calculate tree hash with git write-tree using temp index
- * 5. Detect and process git submodules (recursive)
- * 6. Return parent hash + optional submodule hashes
- * 7. Clean up temp index file
+ * 1. Stage the whole working tree into a throwaway index (see `./temp-index.js`)
+ * 2. Calculate tree hash with git write-tree using that index
+ * 3. Detect and process git submodules (recursive)
+ * 4. Return parent hash + optional submodule hashes
  *
  * Why this is better than git stash create:
  * - git stash create: includes timestamps in commit → different hash each time
@@ -162,7 +53,11 @@ function cleanupStaleIndexes(gitDir: string): void {
  * - Repos with submodules: Use parent hash + submodule metadata
  * - Result structure stored in git notes for state reconstruction
  *
- * CRITICAL: Uses GIT_INDEX_FILE to avoid corrupting real index during git commit hooks
+ * AMBIENT BY CONTRACT: this function takes no path, so it means "the repository
+ * I am in" — and inside a git hook the exported `GIT_DIR` *is* the repository
+ * the caller is in. It therefore honours the inherited git environment rather
+ * than scrubbing it. A caller that has a specific path in mind wants
+ * {@link "./tree-snapshot".getGitTreeSnapshot}, which takes a `cwd` and scrubs.
  *
  * @returns TreeHashResult containing:
  *   - hash: Parent repository tree hash (Git SHA-1, 40 hex chars)
@@ -185,132 +80,49 @@ function cleanupStaleIndexes(gitDir: string): void {
  *
  * @throws Error if not in a git repository or git command fails
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 18 acceptable for main orchestration function (git operations + submodule handling + cleanup + error handling)
 export async function getGitTreeHash(): Promise<TreeHashResult> {
   try {
-    // Check if we're in a git repository
-    executeGitCommand(['rev-parse', '--is-inside-work-tree'], { timeout: GIT_TIMEOUT });
+    // Content-based, no timestamps. The throwaway index is created, used and
+    // removed entirely within this call.
+    const parentHash = withStagedTempIndex(
+      {},
+      ({ runGit }) => runGit(['write-tree']).stdout.trim() as TreeHash,
+    );
 
-    // Get git directory and repository root
-    // CRITICAL: Use --absolute-git-dir instead of --git-dir for cross-platform consistency
-    // --git-dir returns relative paths (.git vs ../.git) on Windows depending on cwd
-    // --absolute-git-dir ensures same path regardless of subdirectory (Issue #127)
-    const gitDir = executeGitCommand(['rev-parse', '--absolute-git-dir'], { timeout: GIT_TIMEOUT }).stdout.trim();
+    // Detect submodules
+    const submodules = getSubmodules();
 
-    // Get repository root (working tree top level)
-    // CRITICAL: git add --all must run from repo root, not subdirectory
-    // Running from subdirectory only stages files in that subdirectory (Issue #127)
-    const repoRoot = executeGitCommand(['rev-parse', '--show-toplevel'], { timeout: GIT_TIMEOUT }).stdout.trim();
+    // No submodules - simple case (0.18.x compatible)
+    if (submodules.length === 0) {
+      return { hash: parentHash };
+    }
 
-    cleanupStaleIndexes(gitDir);
-    const tempIndexFile = `${gitDir}/vibe-validate-temp-index-${process.pid}`;
+    // Build submodule hashes record
+    const submoduleHashes: Record<string, TreeHash> = {};
 
-    try {
-      // Step 1: Copy current index to temp index (if it exists)
-      const currentIndex = `${gitDir}/index`;
-
-      // CRITICAL: In fresh repos (git init, no commits), .git/index doesn't exist yet
-      // Only copy if index exists; git add will create temp index if it doesn't
-      if (existsSync(currentIndex)) {
-        // SECURITY: Use Node.js fs.copyFileSync instead of shell cp command
-        // Prevents potential command injection if gitDir contains malicious characters
-        copyFileSync(currentIndex, tempIndexFile);
+    // Add submodule hashes (sorted by path for determinism)
+    const sortedSubmodules = submodules.toSorted((a, b) => a.path.localeCompare(b.path));
+    for (const sub of sortedSubmodules) {
+      // Skip uninitialized submodules (status '-')
+      if (sub.status === '-') {
+        continue;
       }
 
-      // Step 2: Use temp index for all operations (doesn't affect real index)
-      const tempIndexEnv = {
-        ...process.env,
-        GIT_INDEX_FILE: tempIndexFile
-      };
-
-      // Step 3: Stage all changes (tracked + untracked) in temp index
-      // CRITICAL: Must use `git add --all` (NOT `--intent-to-add` or `--force`)
-      //
-      // Why NOT --intent-to-add:
-      //   - Only adds empty placeholders, not actual file content
-      //   - git write-tree skips intent-to-add entries (treats as non-existent)
-      //   - Result: unstaged modifications NOT included in tree hash
-      //
-      // Why NOT --force:
-      //   - Includes files in .gitignore (secrets, build artifacts, etc.)
-      //   - Security risk: checksums API keys, passwords, credentials
-      //   - Non-deterministic: different devs have different ignored files
-      //   - Breaks cache sharing: same code produces different hashes
-      //
-      // CRITICAL: Run from repo root, not subdirectory (Issue #127)
-      // Running from subdirectory only stages files in that subdirectory on Windows
-      // We need actual content staged so git write-tree includes working directory changes
-      const addResult = executeGitCommand(['add', '--all'], {
-        timeout: GIT_TIMEOUT,
-        env: tempIndexEnv,
-        cwd: repoRoot,
-        ignoreErrors: true
-      });
-
-      // If git add fails and it's not "nothing to add", throw error
-      if (!addResult.success && !addResult.stderr.includes('nothing')) {
-        // Real error - throw with details
-        throw new Error(`git add failed: ${addResult.stderr}`);
-      }
-
-      // Step 4: Get tree hash using temp index (content-based, no timestamps)
-      // Run from repo root for consistency with git add --all
-      const treeHash = executeGitCommand(['write-tree'], {
-        timeout: GIT_TIMEOUT,
-        env: tempIndexEnv,
-        cwd: repoRoot
-      }).stdout.trim();
-
-      // Calculate main repo tree hash
-      const parentHash = treeHash as TreeHash;
-
-      // Detect submodules
-      const submodules = getSubmodules();
-
-      // No submodules - simple case (0.18.x compatible)
-      if (submodules.length === 0) {
-        return { hash: parentHash };
-      }
-
-      // Build submodule hashes record
-      const submoduleHashes: Record<string, TreeHash> = {};
-
-      // Add submodule hashes (sorted by path for determinism)
-      const sortedSubmodules = submodules.toSorted((a, b) => a.path.localeCompare(b.path));
-      for (const sub of sortedSubmodules) {
-        // Skip uninitialized submodules (status '-')
-        if (sub.status === '-') {
-          continue;
-        }
-
-        try {
-          const subResult = await getSubmoduleTreeHash(sub.path);
-          // Store the submodule's hash in the record
-          submoduleHashes[sub.path] = subResult.hash;
-        } catch (error) {
-          // Log warning but continue with other submodules
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          console.warn(`⚠️  Failed to hash submodule ${sub.path}: ${errorMsg}`);
-        }
-      }
-
-      return {
-        hash: parentHash,
-        submoduleHashes,
-      };
-
-    } finally {
-      // Step 5: Always clean up temp index file
       try {
-        // SECURITY: Use Node.js fs.unlinkSync instead of shell rm command
-        // Prevents potential command injection if tempIndexFile contains malicious characters
-        unlinkSync(tempIndexFile);
-      } catch {
-        // Ignore cleanup errors - temp file cleanup is best effort
-        // unlinkSync throws if file doesn't exist (same as rm -f behavior)
+        const subResult = await getSubmoduleTreeHash(sub.path);
+        // Store the submodule's hash in the record
+        submoduleHashes[sub.path] = subResult.hash;
+      } catch (error) {
+        // Log warning but continue with other submodules
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.warn(`⚠️  Failed to hash submodule ${sub.path}: ${errorMsg}`);
       }
     }
 
+    return {
+      hash: parentHash,
+      submoduleHashes,
+    };
   } catch (error) {
     // Handle not-in-git-repo case
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -467,4 +279,3 @@ export async function getSubmoduleTreeHash(submodulePath: string): Promise<TreeH
     process.chdir(originalCwd);
   }
 }
-
