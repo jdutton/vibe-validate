@@ -75,7 +75,28 @@ function tryCleanupPidTempIndex(gitDir: string, file: string, pid: number): void
     // Skip if younger than threshold
     if (ageMs < STALE_INDEX_AGE_MS) return;
 
-    // Skip if process is still running
+    // Skip if process is still running.
+    //
+    // This is manual PID liveness, the strategy `packages/cli/src/utils/pid-lock.ts`
+    // records migrating away from ("99.9% vs ~40% reliability") — so why is it
+    // acceptable here? Because the two failure directions are not symmetric, and
+    // neither one costs correctness at this call site:
+    //
+    // - False "running" (PID reuse): we skip a cleanup. The stale file survives
+    //   another cycle. Wasteful, not wrong.
+    // - False "not running": we unlink a live run's temp index. Only reachable
+    //   on Windows, where `tasklist` being unavailable is caught as `false`
+    //   (Unix maps EPERM/EACCES back to "running", so its only false is ESRCH —
+    //   the process really is gone). And even then the loser rebuilds: the index
+    //   is a throwaway populated by `git add --all`, which stages
+    //   `tracked ∪ (untracked ∧ ¬ignored)` from an empty index exactly as it
+    //   would from a copied one. Same tree, same hash — the copy above is an
+    //   optimisation, not a source of truth.
+    //
+    // The lock this resembles guards a mutex whose loser corrupts shared state.
+    // This guards a scratch file whose loser regenerates it. Revisit if that
+    // ever stops being true — in particular if anything starts *reading* the
+    // temp index as authoritative rather than rewriting it.
     if (isProcessRunning(pid)) return;
 
     // Stale file - clean it up
@@ -172,11 +193,19 @@ export interface StagedIndexOptions {
   /**
    * Drop inherited git redirection vars before running anything.
    *
-   * **Must be true whenever `cwd` was supplied by a caller**, and must stay
-   * false for ambient callers. See
-   * {@link "./git-executor".GitExecutionOptions.scrubGitEnv}.
+   * **Derived from `cwd` rather than defaulted**, because the rule "a
+   * caller-supplied path must scrub" was previously enforced only by this
+   * sentence. Two independent optional fields meant the next caller could pass
+   * a `cwd` and omit the scrub — it compiles, it runs, and it silently reports
+   * on the repository named by an inherited `GIT_DIR` instead of the path it
+   * was handed, which is the exact bug this module exists to prevent.
    *
-   * @default false
+   * Set it explicitly only to say something the `cwd` does not: ambient callers
+   * that have moved the process themselves (a `chdir`) pass `true` with no
+   * `cwd`, because standing somewhere new does not change what the environment
+   * says.
+   *
+   * @default `cwd !== undefined`
    */
   scrubGitEnv?: boolean;
 }
@@ -210,10 +239,22 @@ export function withStagedTempIndex<T>(
   options: StagedIndexOptions,
   fn: (context: StagedIndexContext) => T,
 ): T {
-  const { cwd, scrubGitEnv = false } = options;
+  const { cwd } = options;
+  // Not `?? false`: a caller-supplied path is itself the statement that the
+  // ambient environment must not be trusted, so the pairing is derived here
+  // instead of being restated correctly at every call site.
+  const scrubGitEnv = options.scrubGitEnv ?? cwd !== undefined;
   const discovery = { timeout: GIT_TIMEOUT, cwd, scrubGitEnv };
 
-  // Check we're in a git repository
+  // Raw `rev-parse` rather than `git-commands.ts`'s `isGitRepository()` /
+  // `getRepositoryRoot()`, which wrap these same arguments. Not an oversight,
+  // and not yet fixable: neither forwards `cwd`/`scrubGitEnv`, and there is no
+  // wrapper at all for `--absolute-git-dir` — `getGitDir()` uses plain
+  // `--git-dir`, the relative-path answer the note below says this file exists
+  // to avoid. Consolidating means extending both with an options passthrough
+  // first. Flagged so that whoever does it finds the split named rather than
+  // rediscovering it: two paths answering "is this a repo" can drift in error
+  // semantics if only one changes.
   executeGitCommand(['rev-parse', '--is-inside-work-tree'], discovery);
 
   // Get git directory and repository root

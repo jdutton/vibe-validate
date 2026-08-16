@@ -238,7 +238,25 @@ export function listNoteObjects(notesRef: NotesRef): TreeHash[] {
   const objectsResult = executeGitCommand(['notes', `--ref=${notesRef}`, 'list'], {
     ignoreErrors: true,
     suppressStderr: true,
+    // `notes list` emits "<note-sha> <object-sha>\n" — 82 bytes per note, so the
+    // 10 MiB default is exhausted at roughly 127,000 notes. This ref gains one
+    // note per validated working-tree state rather than one per commit, so that
+    // ceiling is reachable on a long-lived repository. Matches the ceiling the
+    // tree listing uses, for the same reason: an enumerating command must not
+    // be the place where output silently stops.
+    maxBuffer: 256 * 1024 * 1024,
   });
+
+  // A spawn-level failure is not an empty ref. Collapsing the two here would
+  // tell `history` and `health-check` there is no validation history — a clean
+  // slate rather than an unanswered question — which is the same "silently
+  // missing from the list" failure this package fixed for `ls-files`.
+  if (objectsResult.error) {
+    console.warn(
+      `⚠️  Could not list notes on ${notesRef}, reporting none: ${objectsResult.stderr}`
+    );
+    return [];
+  }
 
   if (!objectsResult.success || !objectsResult.stdout) {
     return [];

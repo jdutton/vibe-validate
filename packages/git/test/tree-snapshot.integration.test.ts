@@ -16,6 +16,7 @@ import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { executeGitCommand } from '../src/git-executor.js';
+import { withStagedTempIndex } from '../src/temp-index.js';
 import {
   commitTestChanges,
   stageTestFiles,
@@ -261,6 +262,40 @@ describe('getGitTreeSnapshot - integration tests', () => {
     }
   });
 
+  it('protects a caller who supplies cwd and forgets to ask for the scrub', () => {
+    // `getGitTreeSnapshot` passes both, so it would pass this test no matter
+    // what — the subject here is deliberately the layer BELOW it, called the way
+    // a future third caller would most plausibly get it wrong. The rule "an
+    // explicit cwd scrubs" lived only in a JSDoc sentence, and a rule that a
+    // caller can decline by omission is a convention, not a guarantee.
+    const other = mkdtempSync(join(normalizedTmpdir(), 'vv-outer-repo-'));
+    try {
+      createGitRepo(other);
+      writeFileSync(join(other, 'elsewhere.md'), 'not ours\n');
+      commitAll(other, 'outer');
+
+      writeFileSync(join(root, DOC), 'ours\n');
+      commitAll(root, 'ours');
+
+      process.env.GIT_DIR = join(other, '.git');
+      process.env.GIT_WORK_TREE = other;
+      process.env.GIT_INDEX_FILE = join(other, '.git', 'index');
+      process.env.GIT_PREFIX = '';
+
+      // No `scrubGitEnv` — the point of the test.
+      const listing = withStagedTempIndex({ cwd: root }, ({ runGit }) =>
+        runGit(['ls-files', '--full-name']).stdout,
+      );
+
+      for (const key of HOOK_ENV_KEYS) delete process.env[key];
+
+      expect(listing).toContain(DOC);
+      expect(listing).not.toContain('elsewhere.md');
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
+  });
+
   it('never reports a maxBuffer-truncated listing as a successful one', () => {
     writeFileSync(join(root, DOC), 'committed\n');
     commitAll(root, 'add doc');
@@ -278,6 +313,16 @@ describe('getGitTreeSnapshot - integration tests', () => {
       { cwd: root, maxBuffer: 8, ignoreErrors: true },
     );
     expect(truncated.success).toBe(false);
+
+    // …and the reason travels WITH the result, not only with a thrown error.
+    // `ignoreErrors` exists for callers that inspect instead of catching, and
+    // those are the ones that most need to tell a truncated listing from an
+    // ordinary non-zero exit — the two mean opposite things and only one is an
+    // answer. Until 0.19.8 this path returned `success: false` with an empty
+    // stderr and no cause at all, so `withStagedTempIndex` reported its own
+    // `git add` failures as the empty sentence `git add failed: `.
+    expect(truncated.error).toBeDefined();
+    expect(truncated.stderr).toMatch(/ENOBUFS/);
 
     // Same command, same repository, a cap that fits — so the assertion above is
     // about the cap and nothing else.

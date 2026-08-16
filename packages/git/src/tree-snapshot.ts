@@ -179,7 +179,34 @@ export function getGitTreeSnapshot(options: GitTreeSnapshotOptions): GitTreeSnap
       if (hash.length === 0) return null;
       return { hash, entries: parseStagedEntries(staged) };
     });
-  } catch {
+  } catch (error) {
+    // `null` is a documented, ordinary outcome — "this is not a repository I can
+    // answer about" — so an unconditional catch would give a future defect in
+    // our own code (a TypeError in the parser, say) the same shape as the
+    // expected case, at every call site, with no trace anywhere. The contract
+    // is unchanged; what changes is that only the anticipated failures stay
+    // silent.
+    if (!isNotARepository(error)) {
+      const detail = error instanceof Error ? error.message : String(error);
+      console.warn(`⚠️  getGitTreeSnapshot failed unexpectedly at ${options.cwd}: ${detail}`);
+    }
     return null;
   }
+}
+
+/**
+ * Whether a thrown error is git declining to answer rather than a fault here.
+ *
+ * Matched on the message because that is all `executeGitCommand` carries out —
+ * git's own `fatal:` text for a non-repository, plus the spawn-level ENOENT a
+ * missing directory produces before git is even reached.
+ *
+ * @param error - The value caught
+ * @returns true when the cause is "there is no repository here"
+ */
+function isNotARepository(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /not a git repository|must be run in a work tree|not a git work tree|ENOENT|no such file or directory/i.test(
+    error.message,
+  );
 }

@@ -62,35 +62,48 @@ describe('stripGitEnv', () => {
     expect(result.PATH).toBe('/usr/bin');
   });
 
-  it('strips alternate-config vars including numbered GIT_CONFIG_KEY_/VALUE_ groups', () => {
+  it('strips GIT_CONFIG_PARAMETERS, the config channel git fills in itself', () => {
+    // Git sets this one on every hook — it carries the outer invocation's `-c`
+    // flags — so unlike its siblings it is present whether or not anyone asked.
+    // Measured: injecting `core.excludesFile` through it changes which paths
+    // `ls-files --others --exclude-standard` reports.
+    const result = stripGitEnv({
+      GIT_CONFIG_PARAMETERS: "'core.excludesFile'='/tmp/evil'",
+      PATH: '/usr/bin',
+    });
+    expect(result.GIT_CONFIG_PARAMETERS).toBeUndefined();
+    expect(result.PATH).toBe('/usr/bin');
+  });
+
+  it('KEEPS the config vars only an operator can have set', () => {
+    // These were stripped until 0.19.8. Measured on git 2.50.1 — plain repo and
+    // linked worktree, with and without `-c` flags — git sets none of them and
+    // never folds `-c` into the numbered channel, so their presence is always a
+    // deliberate act. They are git's documented env-only config channel
+    // (>= 2.31): how CI points github.com at an internal mirror, or supplies a
+    // credential without writing a file. Removing them overrode the operator
+    // and sent a clone that should have reached a mirror to the network.
     const result = stripGitEnv({
       GIT_CONFIG: '/custom/.gitconfig',
       GIT_CONFIG_GLOBAL: '/empty',
       GIT_CONFIG_SYSTEM: '/empty',
       GIT_CONFIG_NOSYSTEM: '1',
       GIT_CONFIG_COUNT: '2',
-      // Git sets this one ITSELF on every hook — it carries the outer
-      // invocation's `-c` flags — so unlike its siblings it is present in
-      // practice rather than only when a user opts in. Measured: injecting
-      // `core.excludesFile` through it changes which paths
-      // `ls-files --others --exclude-standard` reports.
-      GIT_CONFIG_PARAMETERS: "'core.excludesFile'='/tmp/evil'",
-      GIT_CONFIG_KEY_0: 'user.email',
-      GIT_CONFIG_VALUE_0: 'evil@example.com',
+      GIT_CONFIG_KEY_0: 'url.https://mirror.internal/.insteadOf',
+      GIT_CONFIG_VALUE_0: 'https://github.com/',
       GIT_CONFIG_KEY_1: 'core.autocrlf',
       GIT_CONFIG_VALUE_1: 'true',
       PATH: '/usr/bin',
     });
-    expect(result.GIT_CONFIG).toBeUndefined();
-    expect(result.GIT_CONFIG_GLOBAL).toBeUndefined();
-    expect(result.GIT_CONFIG_SYSTEM).toBeUndefined();
-    expect(result.GIT_CONFIG_NOSYSTEM).toBeUndefined();
-    expect(result.GIT_CONFIG_COUNT).toBeUndefined();
-    expect(result.GIT_CONFIG_PARAMETERS).toBeUndefined();
-    expect(result.GIT_CONFIG_KEY_0).toBeUndefined();
-    expect(result.GIT_CONFIG_VALUE_0).toBeUndefined();
-    expect(result.GIT_CONFIG_KEY_1).toBeUndefined();
-    expect(result.GIT_CONFIG_VALUE_1).toBeUndefined();
+    expect(result.GIT_CONFIG).toBe('/custom/.gitconfig');
+    expect(result.GIT_CONFIG_GLOBAL).toBe('/empty');
+    expect(result.GIT_CONFIG_SYSTEM).toBe('/empty');
+    expect(result.GIT_CONFIG_NOSYSTEM).toBe('1');
+    expect(result.GIT_CONFIG_COUNT).toBe('2');
+    expect(result.GIT_CONFIG_KEY_0).toBe('url.https://mirror.internal/.insteadOf');
+    expect(result.GIT_CONFIG_VALUE_0).toBe('https://github.com/');
+    expect(result.GIT_CONFIG_KEY_1).toBe('core.autocrlf');
+    expect(result.GIT_CONFIG_VALUE_1).toBe('true');
     expect(result.PATH).toBe('/usr/bin');
   });
 

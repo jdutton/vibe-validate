@@ -113,6 +113,48 @@ describe('runner-adapter', () => {
       expect(runnerConfig.env?.TEST_VAR).toBe('test-value');
     });
 
+    it('should strip the git redirection vars a hook exports, for every step', () => {
+      // This env reaches USER-DEFINED validation steps, not just this package's
+      // own git calls, so the blacklist's contents are a contract with third-party
+      // step authors rather than an internal detail. GIT_PREFIX, GIT_INDEX_VERSION
+      // and GIT_CONFIG_PARAMETERS joined it in 0.19.8; a step shelling out to git
+      // under `git commit -c …` no longer inherits those, which is the point —
+      // an injected core.excludesFile would otherwise change which paths the
+      // step sees.
+      process.env.GIT_DIR = '/elsewhere/.git';
+      process.env.GIT_INDEX_FILE = '/elsewhere/.git/index';
+      process.env.GIT_PREFIX = 'packages/cli/';
+      process.env.GIT_INDEX_VERSION = '4';
+      process.env.GIT_CONFIG_PARAMETERS = String.raw`'core.excludesFile'='/tmp/evil'`;
+
+      const { runnerConfig } = setupRunnerTest([]);
+
+      expect(runnerConfig.env?.GIT_DIR).toBeUndefined();
+      expect(runnerConfig.env?.GIT_INDEX_FILE).toBeUndefined();
+      expect(runnerConfig.env?.GIT_PREFIX).toBeUndefined();
+      expect(runnerConfig.env?.GIT_INDEX_VERSION).toBeUndefined();
+      expect(runnerConfig.env?.GIT_CONFIG_PARAMETERS).toBeUndefined();
+      // Negative control: an unrelated variable still reaches the step, so this
+      // passes for a scrub and not for an empty env.
+      expect(runnerConfig.env?.TEST_VAR).toBe('test-value');
+    });
+
+    it('should pass through the config vars an operator set themselves', () => {
+      // The other half of the contract, and the half that changed in 0.19.8:
+      // these are git's env-only config channel, which CI uses to point
+      // github.com at an internal mirror. Stripping them made a step's clone
+      // bypass the mirror silently.
+      process.env.GIT_CONFIG_COUNT = '1';
+      process.env.GIT_CONFIG_KEY_0 = 'url.https://mirror.internal/.insteadOf';
+      process.env.GIT_CONFIG_VALUE_0 = 'https://github.com/';
+
+      const { runnerConfig } = setupRunnerTest([]);
+
+      expect(runnerConfig.env?.GIT_CONFIG_COUNT).toBe('1');
+      expect(runnerConfig.env?.GIT_CONFIG_KEY_0).toBe('url.https://mirror.internal/.insteadOf');
+      expect(runnerConfig.env?.GIT_CONFIG_VALUE_0).toBe('https://github.com/');
+    });
+
     // Note: forceRun tests removed in v0.12.0 - force flag now handled at CLI layer via git notes
 
     it('should filter out undefined environment variables', () => {

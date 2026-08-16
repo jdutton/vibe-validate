@@ -113,6 +113,19 @@ export interface GitExecutionResult {
   exitCode: number;
   /** Whether the command succeeded */
   success: boolean;
+  /**
+   * The spawn-level failure, when git could not run, was killed, or overran
+   * `maxBuffer`. Present **independently of `exitCode`** — an ENOBUFS can leave
+   * `exitCode: 0` beside a truncated stdout.
+   *
+   * Reaches the caller on **both** paths, `ignoreErrors` included. Without that,
+   * the only way to learn why a command failed was to let it throw, so a caller
+   * that inspects the result — which is what `ignoreErrors` is for — could not
+   * tell "git is not installed" from "exit 1 is the answer" from "your listing
+   * was silently truncated". Those need different handling, and the last one is
+   * the reason this field exists at all.
+   */
+  error?: Error;
 }
 
 /**
@@ -217,16 +230,6 @@ export function executeGitCommand(
   const spawnError = result.error;
   const success = exitCode === 0 && spawnError === undefined;
 
-  // Handle errors
-  if (success || ignoreErrors) {
-    return {
-      stdout,
-      stderr,
-      exitCode,
-      success,
-    };
-  }
-
   // A spawn-level failure produces no stderr — git never ran, or was killed
   // before it could speak — so without its message the caller cannot tell
   // "git is not installed" (ENOENT) from "output exceeded maxBuffer" (ENOBUFS)
@@ -234,6 +237,23 @@ export function executeGitCommand(
   // the truncated stdout is non-empty and would otherwise become the message.
   // Not `??` — every candidate here is an empty string when absent, not null.
   const spawnMessage = spawnError === undefined ? '' : spawnError.message;
+
+  // Handle errors
+  if (success || ignoreErrors) {
+    return {
+      stdout,
+      // Substituted only when git said nothing itself, so a real stderr is never
+      // overwritten. This is what makes the diagnostic reach callers that format
+      // the failure from `stderr` alone — `withStagedTempIndex` below throws
+      // `git add failed: ${stderr}`, which was an empty sentence on exactly the
+      // spawn errors this function exists to detect.
+      stderr: stderr || spawnMessage,
+      exitCode,
+      success,
+      ...(spawnError === undefined ? {} : { error: spawnError }),
+    };
+  }
+
   const errorMessage = spawnMessage || stderr || stdout || 'Git command failed';
   const error = new Error(`Git command failed: git ${args.join(' ')}\n${errorMessage}`) as GitCommandError;
   error.exitCode = exitCode;

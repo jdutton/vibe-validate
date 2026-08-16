@@ -11,26 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`getGitTreeSnapshot({ cwd })` in `@vibe-validate/git`** — the tree hash *plus* the per-path detail behind it, for tools that need to key work off individual files rather than the whole tree.
+- **`getGitTreeSnapshot({ cwd })` in `@vibe-validate/git`** — the tree hash plus the per-path detail behind it, for keying work off individual files rather than the whole tree.
 
   ```typescript
   const snapshot = getGitTreeSnapshot({ cwd: projectRoot });
   // { hash, entries: [{ path: 'src/a.ts', oid: '…', mode: '100644' }, …] }
   ```
 
-  Unlike `getGitTreeHash()` it takes a path, so it also strips the git environment a hook exports — otherwise it would describe the outer commit's repository instead of the directory you handed it. Same guarantees as the tree hash: unstaged edits included, your index and working tree untouched, gitignored paths out, deterministic. Returns `null` if git could not answer, which is distinct from an empty tree. Check `mode` against `GIT_MODE_SYMLINK`: git stores a symlink's *target string* as its blob, so following links without excluding those collapses two different files onto one OID.
+  Returns `null` when git could not answer, which is not the same as an empty tree. If you resolve entries to file contents, skip `mode === GIT_MODE_SYMLINK` — a symlink's blob is its target string, not a file.
 
-- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`, and also strips `GIT_CONFIG_PARAMETERS`, `GIT_PREFIX` and `GIT_INDEX_VERSION`. Existing imports are unchanged.
+- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`. Existing imports are unchanged.
 
-  `GIT_CONFIG_PARAMETERS` is the notable one: it carries the `-c key=value` flags of the current git invocation, git exports it to **every hook**, and injecting `core.excludesFile` through it measurably changes which paths a child's `ls-files --exclude-standard` reports. Its siblings (`GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_*`, `GIT_CONFIG_VALUE_*`) were already stripped; this is the one git sets by itself.
-
-- **`executeGitCommand` takes a `maxBuffer` option** (default 10 MiB, unchanged) for commands whose output scales with the size of the repository.
+- **`executeGitCommand` accepts `maxBuffer`** (default 10 MiB, unchanged) and returns `error` when the command could not run. Raise `maxBuffer` for commands whose output grows with the repository, such as `ls-files` and `log`.
 
 ### Fixed
 
-- **A git command whose output exceeded `maxBuffer` could return a truncated result marked successful.** Node raises `ENOBUFS` and, when the output was small enough to arrive before the child finished, leaves the exit code at `0` — so keying on the exit code alone handed back a partial answer with `success: true`. For an enumerating command that is files silently missing from the list, which reads downstream as "not there" rather than "not asked". Any spawn-level error now fails the command regardless of exit code, and the thrown error names the cause, so `ENOENT` (git not installed), `ENOBUFS` and `ETIMEDOUT` are no longer all reported as a bare "Git command failed".
+- **A git command whose output exceeded `maxBuffer` could return a truncated result marked successful.** It now fails, and names the cause. If you enumerate with `executeGitCommand`, raise `maxBuffer` rather than relying on the default.
 
-- **Tests no longer fail when `FORCE_COLOR` is set in your environment.** Node colorizes `console.log` of a non-string when it believes colour is wanted, so `node -e 'console.log(123)'` returned an ANSI-wrapped value and three command-runner assertions failed — for anyone running under a colourising wrapper, including several AI coding harnesses.
+- **A repository with submodules could get a cached pass it never earned, when validating from inside a git hook.** Fixed; no action needed. Cache entries written before the upgrade simply stop matching.
+
+- **`git notes list` and `git submodule status` reported a truncated listing as an empty one** — "no validation history" and "no submodules exist" respectively. Fixed; no action needed.
+
+- **`stripGitEnv()` no longer removes git configuration you set yourself.** `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT` and the numbered `GIT_CONFIG_KEY_*`/`GIT_CONFIG_VALUE_*` groups are inherited again, so an env-configured mirror or credential now reaches the git commands vv runs. `GIT_CONFIG_PARAMETERS` is still stripped, along with `GIT_PREFIX` and `GIT_INDEX_VERSION` — git sets those itself on every hook. **If you relied on vv discarding the operator's `GIT_CONFIG_*`, it no longer does.**
+
+- **`getGitTreeSnapshot` logs an unexpected internal error instead of returning `null`** as though the directory were not a repository. The contract is unchanged.
 
 ## [0.19.7] - 2026-08-13
 

@@ -21,6 +21,25 @@ import { executeGitCommand } from './git-executor.js';
 import { withStagedTempIndex } from './temp-index.js';
 import type { TreeHash, TreeHashResult } from './types.js';
 
+/**
+ * Opt out of inheriting the ambient git environment.
+ *
+ * The functions here take no path and therefore mean "the repository this
+ * process is standing in", for which inheriting is correct — inside a hook the
+ * exported `GIT_DIR` *is* that repository. The exception is a caller that has
+ * moved the process itself (`getSubmoduleTreeHash`'s `chdir`): standing
+ * somewhere new does not change what the environment says, so from there the
+ * inherited value points at the repository the caller just left.
+ */
+interface AmbientOverride {
+  /**
+   * Remove the inherited git redirection variables before each subprocess.
+   *
+   * @default false
+   */
+  scrubGitEnv?: boolean;
+}
+
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
 /**
@@ -80,17 +99,19 @@ const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
  *
  * @throws Error if not in a git repository or git command fails
  */
-export async function getGitTreeHash(): Promise<TreeHashResult> {
+export async function getGitTreeHash(options: AmbientOverride = {}): Promise<TreeHashResult> {
+  const { scrubGitEnv = false } = options;
+
   try {
     // Content-based, no timestamps. The throwaway index is created, used and
     // removed entirely within this call.
     const parentHash = withStagedTempIndex(
-      {},
+      { scrubGitEnv },
       ({ runGit }) => runGit(['write-tree']).stdout.trim() as TreeHash,
     );
 
     // Detect submodules
-    const submodules = getSubmodules();
+    const submodules = getSubmodules({ scrubGitEnv });
 
     // No submodules - simple case (0.18.x compatible)
     if (submodules.length === 0) {
@@ -204,32 +225,58 @@ export interface SubmoduleInfo {
  *
  * @internal Exported for testing
  */
-export function getSubmodules(): SubmoduleInfo[] {
-  // Fast path: if .gitmodules doesn't exist, there are no submodules
-  // Avoids 684ms git submodule status call in repos without submodules
+/**
+ * Whether the repository provably has no submodules, cheaply.
+ *
+ * Avoids a ~684ms `git submodule status` in the overwhelmingly common case.
+ * Answers `false` for "could not tell" as well as "there are some", so the
+ * caller always falls through to the authoritative check.
+ *
+ * @param scrubGitEnv - Whether to drop the inherited git environment first
+ * @returns true only when `.gitmodules` is known to be absent
+ */
+function hasNoSubmodulesFastPath(scrubGitEnv: boolean): boolean {
   try {
     const repoRoot = executeGitCommand(['rev-parse', '--show-toplevel'], {
       timeout: 5000,
       ignoreErrors: true,
+      scrubGitEnv,
     });
-    if (repoRoot.success) {
-      const gitmodulesPath = join(repoRoot.stdout.trim(), '.gitmodules');
-      if (!existsSync(gitmodulesPath)) {
-        return [];
-      }
-    }
+    if (!repoRoot.success) return false;
+    return !existsSync(join(repoRoot.stdout.trim(), '.gitmodules'));
   } catch (error) {
     // Fall through to git submodule status
     // Only log in debug mode to avoid noise
     if (process.env.VV_DEBUG === '1') {
       console.error('[vv debug] .gitmodules fast-path check failed:', error instanceof Error ? error.message : String(error));
     }
+    return false;
   }
+}
+
+export function getSubmodules(options: AmbientOverride = {}): SubmoduleInfo[] {
+  const { scrubGitEnv = false } = options;
+
+  if (hasNoSubmodulesFastPath(scrubGitEnv)) return [];
 
   const result = executeGitCommand(['submodule', 'status'], {
     ignoreErrors: true,
-    timeout: GIT_TIMEOUT
+    timeout: GIT_TIMEOUT,
+    scrubGitEnv,
+    // ~60 bytes per submodule, so the 10 MiB default only runs out somewhere
+    // past 100,000 of them — no real repository — but a listing truncated into
+    // `[]` reads as "no submodules exist", and that answer feeds a cache key.
+    // Cheap enough not to leave the one enumerating call unraised.
+    maxBuffer: 256 * 1024 * 1024
   });
+
+  if (result.error) {
+    // Distinguishable from an ordinary non-zero exit, which here legitimately
+    // means "no submodules". Silence would make a truncated listing look like
+    // an empty one.
+    console.warn(`⚠️  Could not list submodules, reporting none: ${result.stderr}`);
+    return [];
+  }
 
   if (!result.success) {
     return []; // No submodules or error
@@ -273,8 +320,19 @@ export async function getSubmoduleTreeHash(submodulePath: string): Promise<TreeH
   const originalCwd = process.cwd();
   try {
     process.chdir(submodulePath);
-    // Recursive! If submodule has submodules, they'll be included
-    return await getGitTreeHash();
+    // Recursive! If submodule has submodules, they'll be included.
+    //
+    // Scrubbed, because `chdir` moves where the process stands but not what the
+    // environment says. Inside a worktree's hook `GIT_DIR` names the repository
+    // being committed as an absolute path, and it outranks the cwd — so the
+    // ambient call would hash the PARENT repo and store the answer under the
+    // submodule's name. That is not merely a wrong number: submodule hashes go
+    // into the composite cache key, so two different submodule states would key
+    // the same and a later run would replay a pass for a tree it never
+    // validated. The `getGitTreeHash()` docstring's "no arguments means the
+    // repository I am in" still holds for its ordinary caller; it stops holding
+    // the moment someone moves the floor underneath it.
+    return await getGitTreeHash({ scrubGitEnv: true });
   } finally {
     process.chdir(originalCwd);
   }
