@@ -85,6 +85,20 @@ export interface GitExecutionOptions {
    * @default process.cwd()
    */
   cwd?: string;
+
+  /**
+   * Maximum bytes of stdout/stderr to capture.
+   *
+   * Exceeding it never yields a short but honest answer. Node raises ENOBUFS and
+   * either kills the child (`status: null`) or, when the output was small enough
+   * to arrive first, leaves `status: 0` next to a **truncated** stdout — which is
+   * why this function treats any spawn-level error as failure regardless of the
+   * exit code. Raise it for commands whose output scales with the size of the
+   * tree (`ls-files`, `log`), not for commands that return a hash.
+   *
+   * @default 10485760 (10 MiB)
+   */
+  maxBuffer?: number;
 }
 
 /**
@@ -153,6 +167,7 @@ export function executeGitCommand(
     env,
     cwd,
     scrubGitEnv = false,
+    maxBuffer = 10 * 1024 * 1024, // 10MB buffer
   } = options;
 
   // Validate arguments
@@ -169,7 +184,7 @@ export function executeGitCommand(
   const spawnOptions: SpawnSyncOptions = {
     encoding,
     timeout,
-    maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+    maxBuffer,
     env: env ? { ...baseEnv, ...env } : baseEnv,
     cwd,
   };
@@ -189,7 +204,18 @@ export function executeGitCommand(
   const stdout = (result.stdout?.toString() || '').trim();
   const stderr = (result.stderr?.toString() || '').trim();
   const exitCode = result.status ?? 1;
-  const success = exitCode === 0;
+
+  // A spawn-level error makes the result untrustworthy EVEN WHEN THE CHILD
+  // EXITED 0. Node reports a maxBuffer overrun as `error: ENOBUFS`, and for
+  // output small enough to arrive before the child finishes it leaves
+  // `status: 0` alongside a TRUNCATED stdout. Keying on the exit code alone
+  // therefore returns a partial answer marked successful — for an enumerating
+  // command that is files silently missing from the list, which every caller
+  // downstream reads as "not there" rather than "not asked". Larger overruns
+  // kill the child and surface as `status: null`, so the same fault reports two
+  // different ways; this collapses both onto "failed".
+  const spawnError = result.error;
+  const success = exitCode === 0 && spawnError === undefined;
 
   // Handle errors
   if (success || ignoreErrors) {
@@ -201,7 +227,14 @@ export function executeGitCommand(
     };
   }
 
-  const errorMessage = stderr || stdout || 'Git command failed';
+  // A spawn-level failure produces no stderr — git never ran, or was killed
+  // before it could speak — so without its message the caller cannot tell
+  // "git is not installed" (ENOENT) from "output exceeded maxBuffer" (ENOBUFS)
+  // from "it timed out" (ETIMEDOUT). It is checked FIRST because on an ENOBUFS
+  // the truncated stdout is non-empty and would otherwise become the message.
+  // Not `??` — every candidate here is an empty string when absent, not null.
+  const spawnMessage = spawnError === undefined ? '' : spawnError.message;
+  const errorMessage = spawnMessage || stderr || stdout || 'Git command failed';
   const error = new Error(`Git command failed: git ${args.join(' ')}\n${errorMessage}`) as GitCommandError;
   error.exitCode = exitCode;
   error.stderr = stderr;

@@ -7,27 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.8] - 2026-08-16
+
 ### Added
 
-- **`getGitTreeSnapshot({ cwd })` in `@vibe-validate/git` — the tree hash, plus the per-path detail behind it.** `getGitTreeHash()` answers "has anything in this working tree changed", which is the only question vv's own cache asks. A tool built on top of vv often needs the next question down — *which* paths changed, and what are their blob OIDs — so it can key per-file work off git instead of re-hashing every file itself. That information already exists inside the tree-hash computation and was being thrown away.
+- **`getGitTreeSnapshot({ cwd })` in `@vibe-validate/git`** — the tree hash *plus* the per-path detail behind it, for tools that need to key work off individual files rather than the whole tree.
 
   ```typescript
-  import { getGitTreeSnapshot, GIT_MODE_SYMLINK } from '@vibe-validate/git';
-
   const snapshot = getGitTreeSnapshot({ cwd: projectRoot });
-  if (snapshot !== null) {
-    snapshot.hash;     // same value getGitTreeHash() returns for this tree
-    snapshot.entries;  // [{ path: 'src/a.ts', oid: '…', mode: '100644' }, …]
-  }
+  // { hash, entries: [{ path: 'src/a.ts', oid: '…', mode: '100644' }, …] }
   ```
 
-  Two differences from `getGitTreeHash()` are the point of the new function. It **takes a path**, so a process that scans several project roots can say which one it means — `getGitTreeHash()` is ambient by design and has no way to express that. And because it takes a caller-supplied path, it **strips the git environment** before every subprocess: inside a hook, git exports `GIT_DIR` / `GIT_INDEX_FILE` / `GIT_PREFIX` into every child, and a child that inherits them describes the outer commit's repository instead of the directory it was handed — silently, with a well-formed answer. Under `git worktree` the two disagree by construction.
+  Unlike `getGitTreeHash()` it takes a path, so it also strips the git environment a hook exports — otherwise it would describe the outer commit's repository instead of the directory you handed it. Same guarantees as the tree hash: unstaged edits included, your index and working tree untouched, gitignored paths out, deterministic. Returns `null` if git could not answer, which is distinct from an empty tree. Check `mode` against `GIT_MODE_SYMLINK`: git stores a symlink's *target string* as its blob, so following links without excluding those collapses two different files onto one OID.
 
-  Both functions share one throwaway-index implementation, so the properties that make the tree hash trustworthy hold for the snapshot too: unstaged edits are included (a dirty file's OID names the bytes on disk, not the committed ones), the real index and working tree are never written, gitignored paths stay out, and the hash has no timestamp in it. Paths are relative to the repository root even when called from a subdirectory. Failure of any kind returns `null` rather than an empty snapshot — "could not ask" must not be spelled the same way as "asked, and the answer is nothing".
+- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`, and also strips `GIT_PREFIX` and `GIT_INDEX_VERSION`. Existing imports are unchanged.
 
-  Note `mode`: git stores a symlink as a blob containing the **target string**, so two links with the same target share an OID while a consumer that follows them reads two different files. Compare against the exported `GIT_MODE_SYMLINK` / `GIT_MODE_GITLINK` to exclude those rather than discover it downstream.
+- **`executeGitCommand` takes a `maxBuffer` option** (default 10 MiB, unchanged) for commands whose output scales with the size of the repository.
 
-- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`. Knowing which `GIT_*` variables can redirect a child `git` is git knowledge, so it now lives with the rest of it; `core` re-exports it and existing imports are unchanged. Two variables joined the list: `GIT_PREFIX` (exported into every hook, and prepended when git interprets a pathspec — an inherited value silently re-scopes `add --all` and `ls-files` in a child that runs at the repository root) and `GIT_INDEX_VERSION`.
+### Fixed
+
+- **A git command whose output exceeded `maxBuffer` could return a truncated result marked successful.** Node raises `ENOBUFS` and, when the output was small enough to arrive before the child finished, leaves the exit code at `0` — so keying on the exit code alone handed back a partial answer with `success: true`. For an enumerating command that is files silently missing from the list, which reads downstream as "not there" rather than "not asked". Any spawn-level error now fails the command regardless of exit code, and the thrown error names the cause, so `ENOENT` (git not installed), `ENOBUFS` and `ETIMEDOUT` are no longer all reported as a bare "Git command failed".
+
+- **Tests no longer fail when `FORCE_COLOR` is set in your environment.** Node colorizes `console.log` of a non-string when it believes colour is wanted, so `node -e 'console.log(123)'` returned an ANSI-wrapped value and three command-runner assertions failed — for anyone running under a colourising wrapper, including several AI coding harnesses.
 
 ## [0.19.7] - 2026-08-13
 

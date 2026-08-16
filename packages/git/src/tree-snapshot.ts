@@ -138,10 +138,9 @@ function parseStagedEntries(stdout: string): GitTreeEntry[] {
  * silently, with a well-formed answer. Under `git worktree` the two disagree by
  * construction. See {@link "./git-env".stripGitEnv}.
  *
- * ⚠️ **Ceiling:** `ls-files` output is captured through a 10 MiB buffer, which
- * runs out somewhere north of ~140,000 tracked paths. Past that the child is
- * killed and this returns `null` — the safe direction (a caller falls back to
- * its own enumeration) but not a distinguishable one.
+ * ⚠️ **Ceiling:** the listing is captured through a 256 MiB buffer — roughly a
+ * million paths. Past that the child is killed and this returns `null`, which a
+ * caller cannot distinguish from "not a git repository".
  *
  * @param options - Where to look; see {@link GitTreeSnapshotOptions.cwd}
  * @returns The snapshot, or null if git could not answer
@@ -163,7 +162,16 @@ export function getGitTreeSnapshot(options: GitTreeSnapshotOptions): GitTreeSnap
       // --full-name spells them from the repository root; withStagedTempIndex
       // already runs us there, which is what makes the listing complete as well
       // as correctly spelled.
-      const staged = runGit(['ls-files', '-s', '-z', '--full-name']).stdout;
+      // The output scales with the tree — measured at ~104 bytes per path on an
+      // ordinary monorepo, and ~270 with deep paths. Node's spawnSync default of
+      // 1 MiB is reached at a few thousand files, and exceeding maxBuffer KILLS
+      // the child rather than truncating, so the whole call would fail — and
+      // fail as `null`, indistinguishable from "not a git repository". The cap
+      // has to be far above any plausible repository, not merely above a typical
+      // one; this one is roughly a million paths.
+      const staged = runGit(['ls-files', '-s', '-z', '--full-name'], {
+        maxBuffer: 256 * 1024 * 1024,
+      }).stdout;
       const hash = runGit(['write-tree']).stdout.trim() as TreeHash;
       if (hash.length === 0) return null;
       return { hash, entries: parseStagedEntries(staged) };

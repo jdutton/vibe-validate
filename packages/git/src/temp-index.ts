@@ -150,10 +150,14 @@ export interface StagedIndexContext {
    * Run one git command at {@link repoRoot} against the throwaway index.
    *
    * @param args - Git arguments after the binary
-   * @param options - `ignoreErrors` returns a failed result instead of throwing
+   * @param options - `ignoreErrors` returns a failed result instead of throwing;
+   *   `maxBuffer` raises the output cap for commands that enumerate
    * @returns The command result
    */
-  runGit(args: string[], options?: { ignoreErrors?: boolean }): GitExecutionResult;
+  runGit(
+    args: string[],
+    options?: { ignoreErrors?: boolean; maxBuffer?: number },
+  ): GitExecutionResult;
 }
 
 /** How to find the repository, and whether to trust the ambient environment. */

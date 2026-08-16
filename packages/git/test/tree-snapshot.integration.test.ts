@@ -261,6 +261,36 @@ describe('getGitTreeSnapshot - integration tests', () => {
     }
   });
 
+  it('never reports a maxBuffer-truncated listing as a successful one', () => {
+    writeFileSync(join(root, DOC), 'committed\n');
+    commitAll(root, 'add doc');
+
+    // This is why the listing call asks for a large cap, and it is not the
+    // failure you would guess. Node reports a maxBuffer overrun as ENOBUFS, and
+    // when the output is small enough to arrive before the child finishes it
+    // leaves `status: 0` next to a TRUNCATED stdout — so keying on the exit code
+    // alone hands back a partial listing marked successful. For an enumerating
+    // command that is files silently missing, which reads downstream as "not
+    // there" rather than "not asked". A tiny cap reproduces it without needing a
+    // repository large enough to hit the real one.
+    const truncated = executeGitCommand(
+      ['ls-files', '-s', '-z'],
+      { cwd: root, maxBuffer: 8, ignoreErrors: true },
+    );
+    expect(truncated.success).toBe(false);
+
+    // Same command, same repository, a cap that fits — so the assertion above is
+    // about the cap and nothing else.
+    const generous = executeGitCommand(['ls-files', '-s', '-z'], { cwd: root, maxBuffer: 1024 * 1024 });
+    expect(generous.success).toBe(true);
+    expect(generous.stdout.length).toBeGreaterThan(8);
+
+    // And without `ignoreErrors` the reason is named, not swallowed into a bare
+    // "Git command failed".
+    expect(() => executeGitCommand(['ls-files', '-s', '-z'], { cwd: root, maxBuffer: 8 }))
+      .toThrow(/ENOBUFS/);
+  });
+
   it.skipIf(!SYMLINKS_AVAILABLE)(
     'reports a symlink under mode 120000, whose blob is the TARGET STRING',
     () => {
