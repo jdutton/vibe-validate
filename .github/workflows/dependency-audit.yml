@@ -1,0 +1,69 @@
+# Dependency Audit — fails on any advisory not in the osv-scanner.toml register.
+#
+# Complements the main Validation Pipeline (validate.yml). This job scans the
+# committed pnpm-lock.yaml with OSV-Scanner and enforces the accepted-risk
+# register at ./osv-scanner.toml: a green run means "zero un-triaged
+# vulnerabilities". To accept a new advisory, add a documented `[[IgnoredVulns]]`
+# entry to that file; to fix one, bump the dependency or pin a patched version
+# in the root package.json `pnpm.overrides` block (pnpm supports a per-major
+# selector such as `"minimatch@9": "9.0.7"`, so coexisting majors are still
+# fixable without an ignore entry).
+#
+# osv-scanner is installed via `go install` (deterministic module path + pinned
+# version) rather than a marketplace action, to avoid action-ref drift.
+name: Dependency Audit
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly, Monday 06:00 UTC — catches newly-disclosed advisories against the
+    # existing lockfile even when no code changes land.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  osv-scan:
+    name: OSV-Scanner (pnpm-lock.yaml)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Install OSV-Scanner
+        run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.4.0
+
+      - name: Scan lockfile against accepted-risk register
+        run: osv-scanner scan source --lockfile=pnpm-lock.yaml --config=osv-scanner.toml
+
+  # Second line of defence, PR-only: GitHub's Dependency Review diffs the
+  # dependency graph of the PR against the base branch and fails when the PR
+  # *introduces* a vulnerable or badly-licensed package. OSV-Scanner above
+  # answers "is the lockfile clean today"; this answers "does this PR make it
+  # worse", which is the question that actually blocks a bad merge.
+  dependency-review:
+    name: Dependency Review (PR diff)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: on-failure

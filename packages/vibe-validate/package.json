@@ -14,9 +14,13 @@
   ],
   "vat": {
     "version": "1.0",
-    "skills": ["vibe-validate"],
+    "skills": [
+      "vibe-validate"
+    ],
     "replaces": {
-      "flatSkills": ["vibe-validate"]
+      "flatSkills": [
+        "vibe-validate"
+      ]
     }
   },
   "keywords": [
@@ -59,12 +63,12 @@
   "dependencies": {
     "@vibe-validate/cli": "workspace:*",
     "@vibe-validate/utils": "workspace:*",
-    "vibe-agent-toolkit": "^0.1.33"
+    "vibe-agent-toolkit": "^0.1.42"
   },
   "devDependencies": {
     "@types/node": "^20.19.26",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.9"
+    "vitest": "^3.2.6"
   },
   "scripts": {
     "test": "vitest run",

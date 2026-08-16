@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **The dependency tree is now scanned, and it is clean.** `osv-scanner` reported **126 advisories across 35 package instances** in the committed lockfile — 1 critical, dozens high — and nothing in CI was looking. All 126 are gone. The single largest source was one line in `packages/vibe-validate/package.json`: `vibe-agent-toolkit` is a **production** dependency (its `postinstall` runs `vat claude plugin install`), so every `npm install vibe-validate` pulled the whole agent-toolkit tree — MCP SDK, `hono`, `undici`, `tar`, plus the native `sharp` and `onnxruntime`/`protobufjs@6` embedding backend — into the consumer's install. Roughly 80 of the 126 advisories entered through that one edge. Bumping it to `^0.1.42` removed the `@xenova/transformers → onnxruntime-web → onnx-proto → protobufjs@6` chain and the native backends outright; the rest are pinned to patched versions in the root `pnpm.overrides` block, and `turbo` (2.7.3, one 9.8 advisory) and `vitest` (2.1.9/3.2.4, one 9.8) were bumped in the declared devDependencies.
+
+- **New `Dependency Audit` workflow keeps it that way.** `.github/workflows/dependency-audit.yml` runs OSV-Scanner against `pnpm-lock.yaml` on every push and PR, plus weekly on a schedule so a newly-disclosed advisory against an unchanged lockfile still turns CI red. It enforces an accepted-risk register at `osv-scanner.toml`: the build fails on any advisory **not** listed there, so a green run means "zero un-triaged vulnerabilities". The register currently ships **empty** — every advisory was resolved with a real fix rather than an exception. A second, PR-only job runs GitHub's Dependency Review to fail any PR that *introduces* a vulnerable or badly-licensed package, and `.github/dependabot.yml` opens grouped weekly update PRs for both npm and the workflow actions themselves.
+
+### Fixed
+
+- **`packages/cli` command-runner tests no longer fail on machines with `FORCE_COLOR` set.** The tests compared child-process output against bare strings, but `console.log(42)` in the child runs through `util.inspect`, which colorizes numbers whenever colors are enabled. Colors are off in CI and on in many local shells and agent harnesses, so three tests passed in CI and failed for those developers. The assertions now strip ANSI first — these tests are about command *parsing*, not color handling.
+
+- **Two broken documentation links in `.github/CONTRIBUTING.md`.** `docs/local-development.md` and `docs/` were written relative to the repository root but resolve relative to `.github/`, and the first had additionally moved to `docs/contributing/`. Surfaced by the `vibe-agent-toolkit` upgrade, whose link validator catches what the previous version missed.
+
 ## [0.19.7] - 2026-08-13
 
 ### Changed
