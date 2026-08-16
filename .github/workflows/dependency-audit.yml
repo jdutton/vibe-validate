@@ -48,7 +48,7 @@ jobs:
 
       - name: Install OSV-Scanner (pinned, checksum-verified)
         run: |
-          curl -fsSL --retry 3 \
+          curl -fsSL --retry 3 --proto '=https' --tlsv1.2 \
             "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
             -o /usr/local/bin/osv-scanner
           echo "${OSV_SCANNER_SHA256}  /usr/local/bin/osv-scanner" | sha256sum --check --strict -
