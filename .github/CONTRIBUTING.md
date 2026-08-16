@@ -263,7 +263,7 @@ pnpm will automatically resolve to the local workspace.
 4. **Run validation**: Ensure vibe-validate validates itself
 5. **Run tests**: Verify test coverage maintained
 
-For detailed setup instructions, see [docs/local-development.md](docs/local-development.md).
+For detailed setup instructions, see [docs/contributing/local-development.md](../docs/contributing/local-development.md).
 
 ## Contributing Extractor Improvements
 
@@ -706,7 +706,7 @@ chore: update dependencies
 
 - **Issues**: [GitHub Issues](https://github.com/jdutton/vibe-validate/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jdutton/vibe-validate/discussions)
-- **Documentation**: [docs/](docs/)
+- **Documentation**: [docs/](../docs/)
 
 ## License
 

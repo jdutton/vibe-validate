@@ -1,0 +1,36 @@
+# OSV-Scanner accepted-risk register
+# ---------------------------------------------------------------------------
+# Every advisory listed here is a KNOWN, TRIAGED, and ACCEPTED risk. The
+# dependency-audit CI job (.github/workflows/dependency-audit.yml) runs
+# `osv-scanner scan source --lockfile=pnpm-lock.yaml` and FAILS on any advisory
+# that is NOT in this register. So: a green audit means "zero un-triaged
+# vulnerabilities", not "zero vulnerabilities".
+#
+# Rules for adding an entry (keep this register honest):
+#   1. Prefer a real fix first — bump the declared dependency, or pin a patched
+#      version in the root package.json `pnpm.overrides` block. Only fall back
+#      to an IgnoredVulns entry when a fix is genuinely unavailable or unsafe.
+#   2. pnpm overrides accept a per-major selector (`"minimatch@9": "9.0.7"`), so
+#      "multiple majors coexist" is NOT a reason to accept an advisory here —
+#      pin each major separately instead.
+#   3. Every entry MUST have a `reason` explaining WHY it is safe to defer.
+#   4. Re-evaluate on every dependency bump; delete entries once a fix lands.
+#
+# Current state: the register is EMPTY. The lockfile scans clean — every
+# advisory that osv-scanner previously reported was resolved by a real fix:
+#
+#   * `vibe-agent-toolkit` bumped 0.1.33 -> ^0.1.42. The published 0.1.33 tree
+#     still carried the @xenova/transformers@2 -> onnxruntime-web@1.14 ->
+#     onnx-proto -> protobufjs@6 chain (11 advisories incl. a 9.8) plus the
+#     native sharp@0.32 and adm-zip backends. 0.1.42 replaced that embedding
+#     backend, which removed the whole subtree.
+#   * ~20 transitive packages pinned to patched versions in `pnpm.overrides`.
+#   * `turbo` 2.7.3 -> ^2.10.5 and `vitest` 2.1.9/3.2.4 -> ^3.2.6 in the
+#     declared devDependencies (both had a 9.8 advisory).
+#
+# Keep it empty if you can. An entry here is a debt, not a resolution.
+# ---------------------------------------------------------------------------
+
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# reason = "Why this is safe to defer, and what would let us delete this entry."
