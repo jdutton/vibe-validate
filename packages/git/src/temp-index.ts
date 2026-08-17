@@ -22,7 +22,7 @@
  * @packageDocumentation
  */
 
-import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, lstatSync, unlinkSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { isProcessRunning } from '@vibe-validate/utils';
@@ -40,6 +40,34 @@ const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
  * - Typical validation duration (< 2 minutes in most projects)
  */
 const STALE_INDEX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Refuse to write to a destination that is a symbolic link.
+ *
+ * `copyFileSync` resolves a symlink at the destination and writes through it, so
+ * a link planted at our PID-named temp path would redirect index bytes onto its
+ * target — an arbitrary-overwrite primitive for anyone who can already write
+ * into `.git`. `lstatSync` is what makes this checkable: it describes the link
+ * itself where `statSync` would describe what it points at.
+ *
+ * @param filePath - Absolute path about to be written
+ * @throws When the path exists and is a symbolic link
+ */
+function refuseSymlinkDestination(filePath: string): void {
+  try {
+    if (lstatSync(filePath).isSymbolicLink()) {
+      throw new Error(
+        `refusing to write the temp index through a symlink at ${filePath}`,
+      );
+    }
+  } catch (error) {
+    // Absent is the ordinary case. Rethrow only our own refusal — an ENOENT
+    // here means there is nothing to write through, which is what we wanted.
+    if (error instanceof Error && error.message.startsWith('refusing to write')) {
+      throw error;
+    }
+  }
+}
 
 /**
  * Try to clean up a legacy temp index file (no PID suffix)
@@ -87,16 +115,24 @@ function tryCleanupPidTempIndex(gitDir: string, file: string, pid: number): void
     // - False "not running": we unlink a live run's temp index. Only reachable
     //   on Windows, where `tasklist` being unavailable is caught as `false`
     //   (Unix maps EPERM/EACCES back to "running", so its only false is ESRCH —
-    //   the process really is gone). And even then the loser rebuilds: the index
-    //   is a throwaway populated by `git add --all`, which stages
-    //   `tracked ∪ (untracked ∧ ¬ignored)` from an empty index exactly as it
-    //   would from a copied one. Same tree, same hash — the copy above is an
-    //   optimisation, not a source of truth.
+    //   the process really is gone).
     //
-    // The lock this resembles guards a mutex whose loser corrupts shared state.
-    // This guards a scratch file whose loser regenerates it. Revisit if that
-    // ever stops being true — in particular if anything starts *reading* the
-    // temp index as authoritative rather than rewriting it.
+    // ⚠️ That second direction is NOT harmless, and an earlier version of this
+    // comment claimed it was — "the loser rebuilds", on the reasoning that the
+    // index is a throwaway `git add --all` repopulates. That holds only when the
+    // unlink lands BEFORE the loser's `add`. Land it in the window between the
+    // loser's `add` and its `write-tree` and nothing rebuilds anything: git
+    // writes a fresh empty index and `write-tree` returns the empty-tree OID
+    // (4b825dc6…) with exit 0. That constant is identical in every repository on
+    // earth, so it is the worst possible value to produce spuriously — and it is
+    // a legitimate answer for a genuinely empty repository, which is what stops
+    // the consumer rejecting it on sight.
+    //
+    // The window is now detected rather than argued away: `withStagedTempIndex`
+    // re-checks that the index still exists after staging and throws if it does
+    // not (see below). This branch stays as-is because widening liveness
+    // detection belongs in `isProcessRunning`, which conflates "not running"
+    // with "could not tell" for every caller, not just this one.
     if (isProcessRunning(pid)) return;
 
     // Stale file - clean it up
@@ -276,9 +312,26 @@ export function withStagedTempIndex<T>(
 
     // CRITICAL: In fresh repos (git init, no commits), .git/index doesn't exist yet
     // Only copy if index exists; git add will create temp index if it doesn't
-    if (existsSync(currentIndex)) {
+    // Whether this repository had an index of its own. A repository that has one
+    // has content, and content means the temp index below MUST exist once
+    // staging succeeds — which is what makes its later absence detectable rather
+    // than merely unlikely. A fresh `git init` legitimately has neither, and
+    // `git add --all` with nothing to stage writes no index file at all
+    // (verified, not assumed): treating THAT as a fault would reject the empty
+    // repository whose empty snapshot is a correct answer.
+    const hadRealIndex = existsSync(currentIndex);
+
+    if (hadRealIndex) {
       // SECURITY: Use Node.js fs.copyFileSync instead of shell cp command
       // Prevents potential command injection if gitDir contains malicious characters
+      //
+      // `copyFileSync` FOLLOWS a symlink at the destination, writing index bytes
+      // through it into whatever it points at, and the `finally` below would
+      // then unlink the link and leave the damage. The temp name carries our own
+      // PID, so a symlink sitting there was placed deliberately. Refuse rather
+      // than clear it: this path has no legitimate reason to encounter one, and
+      // a tool that quietly repairs a planted file teaches nobody anything.
+      refuseSymlinkDestination(tempIndexFile);
       copyFileSync(currentIndex, tempIndexFile);
     }
 
@@ -308,10 +361,42 @@ export function withStagedTempIndex<T>(
     //   - Breaks cache sharing: same code produces different hashes
     const addResult = runGit(['add', '--all'], { ignoreErrors: true });
 
-    // If git add fails and it's not "nothing to add", throw error
-    if (!addResult.success && !addResult.stderr.includes('nothing')) {
-      // Real error - throw with details
+    // A failed `add` must throw, because the alternative is the exact wrong
+    // answer this module exists to prevent: an empty temp index still yields a
+    // valid `write-tree`, so the caller receives the COMMITTED tree wearing the
+    // name of the working tree, and vv's cache key does not move when the code
+    // does.
+    //
+    // This deliberately does NOT forgive any particular stderr text. It used to
+    // exempt anything containing "nothing" — intended for a hypothetical
+    // "nothing to add", but a substring match against the whole of stderr, and
+    // git echoes PATHS into its errors. A repository holding a file whose name
+    // contains "nothing" plus any unaddable file (a permissions error, or on
+    // Windows a file locked by another process — an ordinary
+    // `error: unable to index file`) took this branch and reported the
+    // committed tree as a confident wrong answer. Modern `git add --all` on a
+    // clean tree exits 0 silently, so the exemption was protecting nothing.
+    if (!addResult.success) {
       throw new Error(`git add failed: ${addResult.stderr}`);
+    }
+
+    // A repository that had an index must still have a temp one. If the
+    // stale-index reaper (or a PID collision across containers on a bind-mounted
+    // repo) unlinked it while we were staging, git silently starts a fresh empty
+    // one and `write-tree` returns the empty-tree OID with exit 0 — a
+    // valid-looking hash that is the same constant in every repository on earth
+    // and describes none of this one's content. Throwing converts that into the
+    // documented `null`, which callers already handle, instead of a confident
+    // wrong cache key.
+    //
+    // Gated on `hadRealIndex` so the fresh-`git init` case, which legitimately
+    // produces no index file and whose empty tree is the right answer, is not
+    // swept up.
+    if (hadRealIndex && !existsSync(tempIndexFile)) {
+      throw new Error(
+        `temp index disappeared while staging: ${tempIndexFile} — ` +
+          `refusing to report a tree built from an empty index`,
+      );
     }
 
     return fn({ gitDir, repoRoot, runGit });

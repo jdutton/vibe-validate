@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.19.8] - 2026-08-16
+## [0.20.0] - 2026-08-17
 
 ### Added
 
@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
   Returns `null` when git could not answer, which is not the same as an empty tree. If you resolve entries to file contents, skip `mode === GIT_MODE_SYMLINK` — a symlink's blob is its target string, not a file.
+
+  **Point it only at repositories you would `git add` in by hand.** Taking a snapshot runs `git add --all` against a throwaway index in the target repository: it writes loose objects into that repo's `.git/objects`, and it executes that repo's `filter.*.clean` filters and `post-index-change` hook as you. The real index, HEAD, refs and working tree are not written.
+
+  `hash` does not cover submodule content — a file edited inside a submodule leaves it unchanged. Use `getGitTreeHash`'s `submoduleHashes`, or snapshot each submodule, if you key a cache on it.
 
 - **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`. Existing imports are unchanged.
 
@@ -34,9 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`git notes list` and `git submodule status` reported a truncated listing as an empty one** — "no validation history" and "no submodules exist" respectively. Fixed; no action needed.
 
-- **`stripGitEnv()` no longer removes git configuration you set yourself.** `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT` and the numbered `GIT_CONFIG_KEY_*`/`GIT_CONFIG_VALUE_*` groups are inherited again, so an env-configured mirror or credential now reaches the git commands vv runs. `GIT_CONFIG_PARAMETERS` is still stripped, along with `GIT_PREFIX` and `GIT_INDEX_VERSION` — git sets those itself on every hook. **If you relied on vv discarding the operator's `GIT_CONFIG_*`, it no longer does.**
+- **BREAKING (behaviour): `stripGitEnv()` no longer removes git configuration you set yourself.** This is why the release is `0.20.0` rather than a patch — `stripGitEnv` is exported from `@vibe-validate/core`, and `vv` builds the environment for **every** spawned validation step from it, so the change reaches every step subprocess on upgrade. `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT` and the numbered `GIT_CONFIG_KEY_*`/`GIT_CONFIG_VALUE_*` groups are inherited again, so an env-configured mirror or credential now reaches the git commands vv runs. `GIT_CONFIG_PARAMETERS` is still stripped, along with `GIT_PREFIX` and `GIT_INDEX_VERSION` — git sets those itself on every hook. **If you relied on vv discarding the operator's `GIT_CONFIG_*`, it no longer does.**
 
-- **`getGitTreeSnapshot` logs an unexpected internal error instead of returning `null`** as though the directory were not a repository. The contract is unchanged.
+- **`vv pre-commit` could report no partially staged files when it had failed to ask.** A spawn-level failure listing staged or unstaged files — including output past the buffer limit on a large changeset — was indistinguishable from a clean result. It now warns and the listing limit is raised.
 
 - **`packages/cli` command-runner tests no longer fail on machines with `FORCE_COLOR` set.** The tests compared child-process output against bare strings, but `console.log(42)` in the child runs through `util.inspect`, which colorizes numbers whenever colors are enabled. Colors are off in CI and on in many local shells and agent harnesses, so three tests passed in CI and failed for those developers. The assertions now strip ANSI first — these tests are about command *parsing*, not color handling.
 

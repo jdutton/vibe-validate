@@ -20,12 +20,15 @@ Everything else `GIT_*` (identity, editor, SSH/credentials, tracing, pager) is i
 - **Repository / index / worktree redirect:** `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`
 - **Ref namespace:** `GIT_NAMESPACE`
 - **Discovery behavior:** `GIT_CEILING_DIRECTORIES`, `GIT_DISCOVERY_ACROSS_FILESYSTEM`
-- **Alternate config:** `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT`, plus all numbered `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`
+- **The current invocation's `-c` flags:** `GIT_CONFIG_PARAMETERS` — git folds `git -c key=value commit`'s flags into this and exports it to every hook and every hook's child. An inherited `core.excludesFile` silently changes which paths a child's `ls-files --exclude-standard` reports: a different population, returned as though it were the whole one.
+- **Pathspec re-scoping:** `GIT_PREFIX` — the subdirectory `git commit` was invoked from. Git prepends it when interpreting a pathspec, so an inherited value silently re-scopes `git add --all` in a child running at the repository root.
+- **Index format:** `GIT_INDEX_VERSION` — a child writing a throwaway index should use the repository's own default, not the outer process's.
 - **Notes redirect:** `GIT_NOTES_REF` (would steer vv's own cache to a different ref)
 - **History alteration:** `GIT_SHALLOW_FILE`, `GIT_GRAFT_FILE`
 
 ### Preserved (everything else)
 
+- **Your own git configuration:** `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT`, and the numbered `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` groups. **These were stripped before v0.20.0 and are not any more.** Measured on git 2.50.1 against real pre-commit hooks — plain repository and linked worktree, with and without `-c` flags — git never sets any of them, and never folds `-c` into the numbered channel. They appear only because *you* exported them, and they are git's documented env-only configuration channel (git ≥ 2.31): how CI points `github.com` at an internal mirror, or supplies credentials without writing a file. Stripping them defended against nothing git does, and made vv the one tool on the machine that ignores your git configuration. The measured casualty was a clone that should have reached a mirror and went to the public network instead, silently.
 - **Identity:** `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_AUTHOR_DATE`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`, `GIT_COMMITTER_DATE`
 - **Editor / UI:** `GIT_EDITOR`, `GIT_SEQUENCE_EDITOR`, `GIT_PAGER`
 - **SSH / network / credentials:** `GIT_SSH`, `GIT_SSH_COMMAND`, `GIT_SSH_VARIANT`, `GIT_ASKPASS`, `GIT_TERMINAL_PROMPT`, `GIT_HTTP_USER_AGENT`, `GIT_HTTP_LOW_SPEED_LIMIT`, `GIT_HTTP_LOW_SPEED_TIME`, `GIT_PROXY_COMMAND`
@@ -58,11 +61,13 @@ In the rare case a step legitimately needs a stripped `GIT_*` var (e.g., a relea
 phases:
   - name: Special
     steps:
-      - name: needs-alternate-config
+      - name: needs-inherited-git-dir
         command: pnpm test:that-needs-it
         env:
-          GIT_CONFIG_GLOBAL: "/path/to/test-only-config"
+          GIT_DIR: "/path/to/test-only-repo/.git"
 ```
+
+You do **not** need this for `GIT_CONFIG_GLOBAL` or the numbered `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` channel — as of v0.20.0 those are inherited normally.
 
 Per-step `env:` always wins over the scrub.
 

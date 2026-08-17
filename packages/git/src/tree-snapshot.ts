@@ -58,7 +58,26 @@ export interface GitTreeEntry {
    */
   path: string;
   /**
-   * The blob OID for this path's **on-disk** bytes.
+   * The blob OID for this path's **on-disk** bytes, as git would store them.
+   *
+   * "As git would store them" is the qualification that matters, and it is not
+   * a technicality:
+   *
+   * - Under `core.autocrlf` / `.gitattributes` line-ending normalization, CRLF
+   *   on disk and LF on disk produce the SAME OID — a line-ending change is
+   *   invisible here. The converse also holds: identical bytes hash differently
+   *   for two developers configured differently, so this is not portable
+   *   between machines.
+   *   *(Measured, git 2.50.1: CRLF with `core.autocrlf=input` and LF with no
+   *   config both yield tree `196228cf…`.)*
+   * - Under a clean filter (git-lfs and friends) the OID names the POINTER
+   *   blob, so `cat-file` returns pointer text rather than file content.
+   * - In a sparse checkout, entries are returned for paths that are not
+   *   materialized on disk at all — a well-formed entry whose file is ENOENT.
+   *
+   * A consumer asking "have these bytes changed since I last read them?" is
+   * well served. A consumer treating this as a content hash of the file it will
+   * subsequently open is not.
    *
    * For {@link GIT_MODE_SYMLINK} this names the target string, and for
    * {@link GIT_MODE_GITLINK} it is a commit rather than a blob — see the module
@@ -74,13 +93,23 @@ export interface GitTreeSnapshot {
   /**
    * `git write-tree`'s output — a deterministic key for the whole snapshot.
    *
-   * The same value {@link "./tree-hash".getGitTreeHash} returns for the same
-   * working tree, and usable as a cache-invalidation key for the same reason:
-   * byte-identical content always produces it, because a tree object has no
-   * timestamp field. (A `git stash create` implementation would not: a stash is
-   * a commit, and two calls over identical content agree only when both land in
-   * the same wall-clock second — intermittent nondeterminism, which reads as a
-   * flake rather than as a mechanism.)
+   * Usable as a cache-invalidation key: byte-identical content always produces
+   * it, because a tree object has no timestamp field. (A `git stash create`
+   * implementation would not: a stash is a commit, and two calls over identical
+   * content agree only when both land in the same wall-clock second —
+   * intermittent nondeterminism, which reads as a flake rather than as a
+   * mechanism.)
+   *
+   * ## ⚠️ It does NOT cover submodule content
+   *
+   * This is the same value {@link "./tree-hash".getGitTreeHash} computes for the
+   * repository itself, but that function additionally returns `submoduleHashes`
+   * and this one does not. A submodule is one {@link GIT_MODE_GITLINK} entry
+   * naming a commit, so **editing a file inside a submodule's working tree
+   * leaves this hash byte-identical** *(measured: `cfa5dc8c…` before and
+   * after)*. Keying a cache on it alone reproduces exactly the "cached pass
+   * nobody earned" defect `getGitTreeHash` grew `submoduleHashes` to fix. A
+   * consumer with submodules takes a snapshot per submodule and combines.
    */
   hash: TreeHash;
   /** Every path in the snapshot, in git's own order. */
@@ -140,9 +169,41 @@ export function parseStagedEntries(stdout: string): GitTreeEntry[] {
  * silently, with a well-formed answer. Under `git worktree` the two disagree by
  * construction. See {@link "./git-env".stripGitEnv}.
  *
+ * ## ⚠️ This is a WRITE against the repository you point it at
+ *
+ * The name says snapshot and the shape says read, but taking one runs
+ * `git add --all` against a throwaway index in the target repository. Three
+ * consequences, none of which a caller can opt out of:
+ *
+ * 1. **It writes loose objects** into that repository's `.git/objects` for any
+ *    content git has not already stored *(measured: `git count-objects`
+ *    0 → 2 for a single untracked file)*. They are unreferenced and `git gc`
+ *    reclaims them, but the directory grows until it runs.
+ * 2. **It runs that repository's configured code.** `git add` executes the
+ *    repo's `filter.*.clean` filters and its `post-index-change` hook — the
+ *    latter twice per snapshot — and honours `core.hooksPath`, so the
+ *    executable need not be in `.git/hooks`. All of it runs as the calling
+ *    user. Point this only at repositories you would `git add` in by hand;
+ *    a tree that arrived by any route other than `git clone` (an unpacked
+ *    archive, an image layer, a copied directory, a vendored nested `.git`)
+ *    carries its own config and hooks with it.
+ * 3. **Under `core.splitIndex` it writes a `.git/sharedindex.<sha>`** into the
+ *    real git directory — not an object, and not reclaimed by `gc` on the
+ *    object path. With the non-default `splitIndex.sharedIndexExpire=now` it
+ *    can additionally expire the shared index the REAL index still references,
+ *    leaving that repository's `git status` failing until the user rebuilds it.
+ *
+ * The real index, HEAD, refs and the working tree are never written by this
+ * code — verified mid-merge and mid-rebase — but points 2 and 3 are why that
+ * sentence is about this code rather than about the whole operation.
+ *
  * ⚠️ **Ceiling:** the listing is captured through a 256 MiB buffer — roughly a
- * million paths. Past that the child is killed and this returns `null`, which a
- * caller cannot distinguish from "not a git repository".
+ * million paths, and about 1 GB of resident memory to reach it, since a decoded
+ * listing costs several times its byte size. On a constrained CI container the
+ * process is OOM-killed before the cap is reached, and an OOM kill is not
+ * catchable — so at that extreme the "every way of failing returns `null`"
+ * contract above does not hold. Below it, the child is killed and this returns
+ * `null`, which a caller cannot distinguish from "not a git repository".
  *
  * @param options - Where to look; see {@link GitTreeSnapshotOptions.cwd}
  * @returns The snapshot, or null if git could not answer
@@ -206,7 +267,16 @@ export function getGitTreeSnapshot(options: GitTreeSnapshotOptions): GitTreeSnap
  */
 function isNotARepository(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  return /not a git repository|must be run in a work tree|not a git work tree|ENOENT|no such file or directory/i.test(
+  // `not a git repository` is deliberately NOT matched bare. Git uses that same
+  // phrasing for a genuine fault in a perfectly valid repository: when
+  // `.git/modules/<name>` is missing, `git add --all` fails with
+  // `fatal: not a git repository: sub/../.git/modules/sub` — a broken submodule,
+  // not an absent repository. Matched bare, that returned `null` with no
+  // warning, in a repo whose `write-tree` would have succeeded. The parenthetical
+  // is what git appends only when discovery itself came up empty, so keying on it
+  // separates "you are not in a repository" from "something inside this one is
+  // broken".
+  return /not a git repository \(or any of the parent directories\)|must be run in a work tree|not a git work tree|ENOENT|no such file or directory/i.test(
     error.message,
   );
 }

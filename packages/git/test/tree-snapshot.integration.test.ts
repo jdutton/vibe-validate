@@ -9,7 +9,7 @@
  * assumptions back to it.
  */
 
-import { mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
@@ -212,12 +212,68 @@ describe('getGitTreeSnapshot - integration tests', () => {
     writeFileSync(join(root, UNTRACKED), 'new\n');
 
     const before = gitOut(STATUS_PORCELAIN, root);
+    // `gitOut` returns '' when git could not run at all, so comparing two of
+    // them proves nothing unless at least one is known to be non-empty. Without
+    // this the whole test passes as '' === ''.
+    expect(before).toContain(DOC);
 
-    getGitTreeSnapshot({ cwd: root });
+    const snapshot = getGitTreeSnapshot({ cwd: root });
+    // A snapshot that threw and returned null would leave everything below
+    // trivially satisfied, since doing nothing also touches nothing.
+    expect(snapshot).not.toBeNull();
 
     // If GIT_INDEX_FILE were not honoured, `git add --all` would have staged
     // both files and this string would change from ` M`/`??` to `M `/`A `.
     expect(gitOut(STATUS_PORCELAIN, root)).toBe(before);
+
+    // Status reports the XY letters and the path -- it does NOT hash content,
+    // so the "working tree" half of this test's own name was unpinned by it. A
+    // mutation that rewrote the file's bytes kept status identical and passed.
+    expect(readFileSync(join(root, DOC), 'utf8')).toBe('edited on disk\n');
+    expect(readFileSync(join(root, UNTRACKED), 'utf8')).toBe('new\n');
+  });
+
+  it('reports an empty repository as an empty snapshot, not as a missing one', () => {
+    // The contract `getGitTreeSnapshot` states most emphatically: an empty
+    // `entries` is a real answer and must stay distinguishable from "could not
+    // ask". Every other fixture here commits a file, so nothing observed the
+    // zero-entry case and `if (entries.length === 0) return null` was a free
+    // mutation.
+    const empty = mkdtempSync(join(normalizedTmpdir(), 'vv-empty-repo-'));
+    try {
+      executeGitCommand(['init', '-q', '.'], { cwd: empty });
+
+      const snapshot = getGitTreeSnapshot({ cwd: empty });
+
+      expect(snapshot).not.toBeNull();
+      expect(snapshot?.entries).toEqual([]);
+      // Git's universal empty-tree OID. Asserted by value because it is also
+      // what a REAPED temp index produces, and the two must not be reachable by
+      // the same route -- see the symlink/absent-index guards in temp-index.ts.
+      expect(snapshot?.hash).toBe('4b825dc642cb6eb9a060e54bf8d69288fbee4904');
+    } finally {
+      rmSync(empty, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to write the temp index through a planted symlink', () => {
+    writeFileSync(join(root, DOC), 'committed\n');
+    commitAll(root, 'add doc');
+
+    // `copyFileSync` follows a symlink at the DESTINATION, so a link left at our
+    // own PID-named temp path redirects index bytes onto whatever it names --
+    // and the `finally` unlink then removes the link, leaving only the damage.
+    const victim = join(root, 'VICTIM.txt');
+    writeFileSync(victim, 'ORIGINAL');
+    symlinkSync(victim, join(root, '.git', `vibe-validate-temp-index-${process.pid}`));
+
+    // The refusal surfaces as the documented `null`, not as a throw at the call
+    // site: callers already handle "git could not answer".
+    expect(getGitTreeSnapshot({ cwd: root })).toBeNull();
+
+    // The assertion that actually matters. Without the guard this file holds
+    // git index bytes instead of its own.
+    expect(readFileSync(victim, 'utf8')).toBe('ORIGINAL');
   });
 
   it('is deterministic across calls on identical content', () => {

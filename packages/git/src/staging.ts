@@ -97,8 +97,23 @@ export function getPartiallyStagedFiles(): string[] {
     // Get list of files with staged changes
     const stagedResult = executeGitCommand(['diff', GIT_NAME_ONLY_FLAG, '--cached'], {
       timeout: GIT_TIMEOUT,
-      ignoreErrors: true
+      ignoreErrors: true,
+      // Enumerating commands do not get to stop silently: at the 10 MiB default
+      // a large staged changeset comes back truncated, and the shortfall reads
+      // as "these files are not partially staged". Same ceiling and same reason
+      // as the tree listing and the notes listing.
+      maxBuffer: 256 * 1024 * 1024
     });
+
+    // A spawn-level failure is not an empty changeset. Collapsing them tells the
+    // pre-commit gate there is nothing partially staged -- a clean bill of health
+    // derived from a question that was never answered.
+    if (stagedResult.error) {
+      console.warn(
+        `⚠️  Could not list staged files, reporting none partially staged: ${stagedResult.stderr}`
+      );
+      return [];
+    }
 
     if (!stagedResult.success) {
       return [];
@@ -117,8 +132,16 @@ export function getPartiallyStagedFiles(): string[] {
     // Get list of files with unstaged changes
     const unstagedResult = executeGitCommand(['diff', GIT_NAME_ONLY_FLAG], {
       timeout: GIT_TIMEOUT,
-      ignoreErrors: true
+      ignoreErrors: true,
+      maxBuffer: 256 * 1024 * 1024
     });
+
+    if (unstagedResult.error) {
+      console.warn(
+        `⚠️  Could not list unstaged files, reporting none partially staged: ${unstagedResult.stderr}`
+      );
+      return [];
+    }
 
     if (!unstagedResult.success) {
       return [];

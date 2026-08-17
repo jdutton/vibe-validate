@@ -28,12 +28,17 @@
  * primitive, and silently dropping the former breaks real setups.
  *
  * **The membership rule, which is what keeps this from being a list of
- * accidents:** a variable belongs here when **git sets it for you**. Those cost
- * nothing to remove, because nobody chose them — git exports `GIT_DIR`,
- * `GIT_INDEX_FILE`, `GIT_PREFIX`, `GIT_AUTHOR_*` and `GIT_CONFIG_PARAMETERS`
- * into every hook and every hook's children. A variable an *operator* exported
- * does not belong here, however capable of redirection it looks: removing it
- * overrides a deliberate instruction, and does so silently.
+ * accidents:** a variable belongs here when git sets it for you **and** it
+ * redirects where an operation lands. Both halves are load-bearing, and the
+ * second is easy to drop when reading quickly. Git also exports `GIT_AUTHOR_*`,
+ * `GIT_EDITOR` and `GIT_EXEC_PATH` into every hook, and every one of those is
+ * deliberately KEPT — they say who you are and where git's own binaries live,
+ * not which repository is being written to. Stripping `GIT_EXEC_PATH` on the
+ * git-sets-it half alone would break exec resolution outright.
+ *
+ * The other half is equally load-bearing in the other direction: a variable an
+ * *operator* exported does not belong here, however capable of redirection it
+ * looks. Removing it overrides a deliberate instruction, and does so silently.
  *
  * That rule is also the answer to "how do we know this list is complete?" — it
  * is not a judgement about which variables are dangerous, which can only ever
