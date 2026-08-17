@@ -83,6 +83,31 @@ function mockFailedCommand(stderr = '', exitCode = 1): void {
 }
 
 /**
+ * Make `git notes list` come back unsuccessful, and capture warnings.
+ *
+ * A spawn-level failure and a genuinely empty ref both parse to `[]`, so the
+ * return value cannot tell them apart -- the difference is carried entirely by
+ * `error`, and observed entirely through `console.warn`. Which arm you get is
+ * decided by the one argument, so the two tests using this cannot drift apart.
+ *
+ * @param spawnError - Present for a spawn-level failure (the command could not
+ *   run); absent for an ordinary non-zero exit, meaning the ref is empty
+ * @returns The `console.warn` spy, for the caller to assert on and restore
+ */
+function mockFailedNotesList(spawnError?: Error): ReturnType<typeof vi.spyOn> {
+  mockSuccessfulValidation();
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
+    success: false,
+    stdout: '',
+    stderr: spawnError?.message ?? '',
+    exitCode: 1,
+    ...(spawnError ? { error: spawnError } : {}),
+  });
+  return warn;
+}
+
+/**
  * Mock a conflict scenario (note already exists)
  */
 function mockConflictResult(): void {
@@ -550,17 +575,14 @@ runs:
   });
 
   describe('listNoteObjects', () => {
-    it('should return empty array when no notes exist', () => {
-      mockSuccessfulValidation();
-      vi.mocked(gitExecutor.executeGitCommand).mockReturnValue({
-        success: false,
-        stdout: '',
-        stderr: '',
-        exitCode: 1,
-      });
+    it('should return empty array, and stay silent, when no notes exist', () => {
+      const warn = mockFailedNotesList();
 
-      const result = listNoteObjects(TEST_REF);
-      expect(result).toEqual([]);
+      expect(listNoteObjects(TEST_REF)).toEqual([]);
+      // The silent half of the pair below: an ordinary non-zero exit means the
+      // ref is empty, and must NOT warn, or `history` warns on every clean run.
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
     });
 
     it('should return array of tree hashes that have notes', () => {
@@ -590,6 +612,19 @@ runs:
 
       const result = listNoteObjects(TEST_REF);
       expect(result).toEqual(['abc123def456789012345678901234567890abcd']);
+    });
+
+    // Pairs with the silent case above. Both yield `[]`, so the return value
+    // cannot tell them apart -- which is the whole defect this branch fixes. The
+    // warning is the only observable: `history` must not be told "no validation
+    // history" when the real answer is "the question was never answered".
+    it('warns rather than reporting an empty history when the spawn itself failed', () => {
+      const warn = mockFailedNotesList(new Error('stdout maxBuffer length exceeded'));
+
+      expect(listNoteObjects(TEST_REF)).toEqual([]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]?.[0]).toContain(TEST_REF);
+      warn.mockRestore();
     });
   });
 

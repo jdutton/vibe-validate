@@ -17,6 +17,21 @@ export {
   hasWorkingTreeChanges
 } from './tree-hash.js';
 
+// Per-path tree snapshot for a caller-supplied directory
+export {
+  getGitTreeSnapshot,
+  GIT_MODE_SYMLINK,
+  GIT_MODE_GITLINK,
+  type GitTreeEntry,
+  type GitTreeSnapshot,
+  type GitTreeSnapshotOptions
+} from './tree-snapshot.js';
+
+// Git environment hazard handling (recursive-git / pre-commit-hook safety)
+export {
+  stripGitEnv
+} from './git-env.js';
+
 // Branch sync checking (safe, no auto-merge)
 export {
   BranchSyncChecker,

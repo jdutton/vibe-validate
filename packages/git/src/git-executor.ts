@@ -15,6 +15,8 @@
 
 import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
 
+import { stripGitEnv } from './git-env.js';
+
 /**
  * Standard options for git command execution
  */
@@ -57,10 +59,67 @@ export interface GitExecutionOptions {
   env?: NodeJS.ProcessEnv;
 
   /**
+   * Remove inherited git redirection vars from `process.env` before merging
+   * `env` on top of it.
+   *
+   * **Set this whenever the command must target a caller-supplied `cwd` rather
+   * than the ambient repository.** Inside a git hook — and vv itself runs as
+   * one — git exports `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_PREFIX` and friends into
+   * every child, and those override `cwd` outright. The child then answers
+   * confidently about the outer commit's repository instead of the path it was
+   * handed. See {@link "./git-env".stripGitEnv}.
+   *
+   * `env` is merged *after* the scrub and is deliberately not filtered: a caller
+   * that sets `GIT_INDEX_FILE` on purpose (as the tree-hash and tree-snapshot
+   * paths do) must still be able to.
+   *
+   * Left off by default: commands that mean "the repository I am in" — which is
+   * most of this package — are correct to honour the ambient environment.
+   *
+   * @default false
+   */
+  scrubGitEnv?: boolean;
+
+  /**
    * Working directory for git command execution
    * @default process.cwd()
    */
   cwd?: string;
+
+  /**
+   * Maximum bytes of stdout/stderr to capture.
+   *
+   * Exceeding it never yields a short but honest answer. Node raises ENOBUFS and
+   * either kills the child (`status: null`) or, when the output was small enough
+   * to arrive first, leaves `status: 0` next to a **truncated** stdout — which is
+   * why this function treats any spawn-level error as failure regardless of the
+   * exit code. Raise it for commands whose output scales with the size of the
+   * tree (`ls-files`, `log`), not for commands that return a hash.
+   *
+   * @default 10485760 (10 MiB)
+   */
+  maxBuffer?: number;
+
+  /**
+   * Trim surrounding whitespace from `stdout` and `stderr`.
+   *
+   * **Set this to `false` for NUL-delimited (`-z`) listings and for byte-exact
+   * content**, where the trim is not cosmetic but lossy. Measured on git 2.50.1:
+   *
+   * - `git ls-files -z` in a tree containing `" leading-space.md"` returns that
+   *   path first, because git sorts by byte value and 0x20 sorts below every
+   *   printable character. Trimmed, it comes back as `"leading-space.md"` — a
+   *   path that does not exist, so every lookup against it reads as "not there".
+   *   (`ls-files -s -z` is unaffected: the mode occupies position 0.)
+   * - `git show HEAD:file` returns the blob without its trailing newline.
+   *
+   * Left on by default because almost every git command here returns one line
+   * meant to be read as a value, and every existing caller compares it against
+   * an untrimmed string.
+   *
+   * @default true
+   */
+  trimOutput?: boolean;
 }
 
 /**
@@ -75,6 +134,19 @@ export interface GitExecutionResult {
   exitCode: number;
   /** Whether the command succeeded */
   success: boolean;
+  /**
+   * The spawn-level failure, when git could not run, was killed, or overran
+   * `maxBuffer`. Present **independently of `exitCode`** — an ENOBUFS can leave
+   * `exitCode: 0` beside a truncated stdout.
+   *
+   * Reaches the caller on **both** paths, `ignoreErrors` included. Without that,
+   * the only way to learn why a command failed was to let it throw, so a caller
+   * that inspects the result — which is what `ignoreErrors` is for — could not
+   * tell "git is not installed" from "exit 1 is the answer" from "your listing
+   * was silently truncated". Those need different handling, and the last one is
+   * the reason this field exists at all.
+   */
+  error?: Error;
 }
 
 /**
@@ -87,6 +159,24 @@ export interface GitCommandError extends Error {
   stderr: string;
   /** Standard output */
   stdout: string;
+}
+
+/**
+ * Decode `spawnSync`'s output buffers into strings, trimming both or neither.
+ *
+ * Extracted so the trim decision is spelled once rather than twice inline, and
+ * so it cannot drift between the two streams: a caller reading a `-z` listing
+ * from `stdout` needs `stderr` decoded the same way to report what went wrong.
+ * See {@link GitExecutionOptions.trimOutput} for why trimming is lossy.
+ */
+function decodeOutput(
+  result: { stdout?: string | Buffer | null; stderr?: string | Buffer | null },
+  trimOutput: boolean
+): { stdout: string; stderr: string } {
+  const stdout = result.stdout?.toString() ?? '';
+  const stderr = result.stderr?.toString() ?? '';
+
+  return trimOutput ? { stdout: stdout.trim(), stderr: stderr.trim() } : { stdout, stderr };
 }
 
 /**
@@ -128,6 +218,9 @@ export function executeGitCommand(
     suppressStderr = false,
     env,
     cwd,
+    scrubGitEnv = false,
+    maxBuffer = 10 * 1024 * 1024, // 10MB buffer
+    trimOutput = true,
   } = options;
 
   // Validate arguments
@@ -135,12 +228,17 @@ export function executeGitCommand(
     throw new Error('Git command arguments must be a non-empty array');
   }
 
+  // The scrub applies to the INHERITED base only. Spreading a scrubbed env back
+  // over `process.env` would re-inject every variable it just removed — removal
+  // here is by omission, not by an explicit unset — so the order matters.
+  const baseEnv = scrubGitEnv ? stripGitEnv(process.env) : process.env;
+
   // Build spawn options
   const spawnOptions: SpawnSyncOptions = {
     encoding,
     timeout,
-    maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-    env: env ? { ...process.env, ...env } : process.env,
+    maxBuffer,
+    env: env ? { ...baseEnv, ...env } : baseEnv,
     cwd,
   };
 
@@ -156,22 +254,46 @@ export function executeGitCommand(
   // eslint-disable-next-line sonarjs/no-os-command-from-path -- git is a standard system command
   const result = spawnSync('git', args, spawnOptions);
 
-  const stdout = (result.stdout?.toString() || '').trim();
-  const stderr = (result.stderr?.toString() || '').trim();
+  const { stdout, stderr } = decodeOutput(result, trimOutput);
   const exitCode = result.status ?? 1;
-  const success = exitCode === 0;
+
+  // A spawn-level error makes the result untrustworthy EVEN WHEN THE CHILD
+  // EXITED 0. Node reports a maxBuffer overrun as `error: ENOBUFS`, and for
+  // output small enough to arrive before the child finishes it leaves
+  // `status: 0` alongside a TRUNCATED stdout. Keying on the exit code alone
+  // therefore returns a partial answer marked successful — for an enumerating
+  // command that is files silently missing from the list, which every caller
+  // downstream reads as "not there" rather than "not asked". Larger overruns
+  // kill the child and surface as `status: null`, so the same fault reports two
+  // different ways; this collapses both onto "failed".
+  const spawnError = result.error;
+  const success = exitCode === 0 && spawnError === undefined;
+
+  // A spawn-level failure produces no stderr — git never ran, or was killed
+  // before it could speak — so without its message the caller cannot tell
+  // "git is not installed" (ENOENT) from "output exceeded maxBuffer" (ENOBUFS)
+  // from "it timed out" (ETIMEDOUT). It is checked FIRST because on an ENOBUFS
+  // the truncated stdout is non-empty and would otherwise become the message.
+  // Not `??` — every candidate here is an empty string when absent, not null.
+  const spawnMessage = spawnError === undefined ? '' : spawnError.message;
 
   // Handle errors
   if (success || ignoreErrors) {
     return {
       stdout,
-      stderr,
+      // Substituted only when git said nothing itself, so a real stderr is never
+      // overwritten. This is what makes the diagnostic reach callers that format
+      // the failure from `stderr` alone — `withStagedTempIndex` below throws
+      // `git add failed: ${stderr}`, which was an empty sentence on exactly the
+      // spawn errors this function exists to detect.
+      stderr: stderr || spawnMessage,
       exitCode,
       success,
+      ...(spawnError === undefined ? {} : { error: spawnError }),
     };
   }
 
-  const errorMessage = stderr || stdout || 'Git command failed';
+  const errorMessage = spawnMessage || stderr || stdout || 'Git command failed';
   const error = new Error(`Git command failed: git ${args.join(' ')}\n${errorMessage}`) as GitCommandError;
   error.exitCode = exitCode;
   error.stderr = stderr;

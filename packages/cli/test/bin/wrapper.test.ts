@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, it, expect } from 'vitest';
@@ -15,7 +15,18 @@ import { executeWrapperSync, type WrapperResultSync } from '../helpers/test-comm
  */
 
 // Test constants
-const EXPECTED_VERSION = '0.19.7'; // BUMP_VERSION_UPDATE
+//
+// Read from the manifest rather than hardcoded. A literal here has to be
+// updated by hand on every release -- it carried a `BUMP_VERSION_UPDATE` marker
+// for exactly that reason -- and it silently rots the moment a version lands by
+// any route the marker does not cover, failing three tests for a reason that has
+// nothing to do with the wrapper. Deriving it means the assertion still checks
+// that `--version` reports THIS checkout's version, with nothing to maintain.
+const EXPECTED_VERSION = (
+  JSON.parse(
+    readFileSync(join(__dirname, '../../package.json'), 'utf8'),
+  ) as { version: string }
+).version;
 const REPO_ROOT = join(__dirname, '../../../..');
 const PACKAGES_CORE = join(__dirname, '../../../core');
 

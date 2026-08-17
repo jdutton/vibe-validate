@@ -60,6 +60,10 @@ TODO*.md
 docs/plans/
 docs/superpowers/
 .worktrees/
+# Claude Code's `EnterWorktree` puts worktrees here, INSIDE the working tree —
+# so without this line a `git add -A` in the main checkout stages an entire
+# second checkout, node_modules and all.
+.claude/worktrees/
 
 # At this point, top level markdown files are usually status, summary, or undesirable artifacts from agentic coding tools, so ignore all top-level *.md files that don't already exist
 /*.md

@@ -69,9 +69,38 @@ Returns a deterministic content-based hash of the working tree.
 - Uses `git write-tree` for content-based hashing (no timestamps)
 - Covers tracked and untracked files, but **not ignored paths** (`.gitignore`,
   `.git/info/exclude`, or your global excludes file)
-- Falls back to `HEAD^{tree}` if no changes exist
 
-**Returns:** `Promise<string>` - Git tree SHA-1 hash
+**Returns:** `TreeHashResult` — the tree hash plus `submoduleHashes`, synchronously.
+
+### `getGitTreeSnapshot({ cwd })`
+
+The same tree hash, plus the per-path detail behind it, for a repository you
+name rather than the one the process happens to be standing in. Use it to key
+work off individual files.
+
+```typescript
+import { getGitTreeSnapshot, GIT_MODE_SYMLINK } from '@vibe-validate/git';
+
+const snapshot = getGitTreeSnapshot({ cwd: projectRoot });
+// { hash, entries: [{ path: 'src/a.ts', oid: '…', mode: '100644' }, …] }
+```
+
+- Returns `null` when git could not answer. That is **not** the same as an empty
+  `entries`, which is a real answer for an initialized repository with no files.
+- Paths are spelled from the **repository root**, and cover the whole
+  repository — not just the subtree you named.
+- `oid` is the blob OID of the bytes on disk *as git would store them*: under
+  line-ending normalization or a clean filter (git-lfs) it will not match a hash
+  you compute yourself from the file.
+- `hash` does **not** cover submodule content. Editing a file inside a submodule
+  leaves it unchanged.
+- Skip `mode === GIT_MODE_SYMLINK` if you resolve entries to file contents — a
+  symlink's blob is its target string.
+
+⚠️ **It writes to the repository you point it at.** See "Storage and side
+effects" below. Point it only at repositories you would `git add` in by hand.
+
+**Returns:** `GitTreeSnapshot | null`
 
 ### `BranchSyncChecker`
 
@@ -119,7 +148,7 @@ git write-tree              # Content-based hash (no timestamps)
 - Same content always produces same hash
 - Enables reliable validation state caching
 - Covers tracked and untracked files (ignored paths are excluded by design)
-- No side effects (the real index is never touched)
+- Your real `.git/index`, HEAD, refs and working tree are never written
 - Automatic work protection (hashed files stored as git objects)
 - Recoverable snapshots of uncommitted work
 
@@ -146,7 +175,7 @@ A valuable side benefit of the deterministic tree hash calculation is automatic 
 ### Technical Implementation
 
 When `getGitTreeHash()` runs, it:
-1. Creates temporary index: `.git/vibe-validate-temp-index`
+1. Creates temporary index: `.git/vibe-validate-temp-index-<pid>`
 2. Copies current index to temp index
 3. Runs `git add --all` in temp index (stages everything)
 4. Runs `git write-tree` (creates git objects for all files)
@@ -164,9 +193,23 @@ Every file in your working directory (respecting .gitignore):
 **Not protected** (by design):
 - ❌ Files in .gitignore (secrets, credentials, build artifacts)
 
-### Storage Overhead
+### Storage and side effects
 
-**Zero additional overhead**: Git's content-addressable storage automatically deduplicates identical file content. If a file hasn't changed between validations, no additional storage is used.
+Git's content-addressable storage deduplicates identical content, so a file that
+has not changed between validations costs nothing to re-hash. **New or modified
+content does cost something**: each `write-tree` pass writes loose objects into
+`.git/objects` for content git has not already stored. They are unreferenced and
+`git gc` reclaims them, but the directory grows until it runs. That is the same
+trade that makes the recovery examples above possible — the objects are the
+snapshot.
+
+Two further effects worth knowing before pointing `getGitTreeSnapshot` at a
+repository you did not create:
+
+- `git add --all` runs that repository's configured `filter.*.clean` filters and
+  its `post-index-change` hook, as the calling user, honouring `core.hooksPath`.
+- Under `core.splitIndex` it writes a `.git/sharedindex.<sha>` into the real git
+  directory, which `gc` does not reclaim on the object path.
 
 ### Recovery Examples
 

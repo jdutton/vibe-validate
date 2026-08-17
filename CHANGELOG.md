@@ -7,17 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-08-17
+
+### Added
+
+- **`getGitTreeSnapshot({ cwd })` in `@vibe-validate/git`** — the tree hash plus the per-path detail behind it, for keying work off individual files rather than the whole tree.
+
+  ```typescript
+  const snapshot = getGitTreeSnapshot({ cwd: projectRoot });
+  // { hash, entries: [{ path: 'src/a.ts', oid: '…', mode: '100644' }, …] }
+  ```
+
+  Returns `null` when git could not answer, which is not the same as an empty tree. If you resolve entries to file contents, skip `mode === GIT_MODE_SYMLINK` — a symlink's blob is its target string, not a file.
+
+  **Point it only at repositories you would `git add` in by hand.** Taking a snapshot runs `git add --all` against a throwaway index in the target repository: it writes loose objects into that repo's `.git/objects`, and it executes that repo's `filter.*.clean` filters and `post-index-change` hook as you. The real index, HEAD, refs and working tree are not written.
+
+  `hash` does not cover submodule content — a file edited inside a submodule leaves it unchanged. Use `getGitTreeHash`'s `submoduleHashes`, or snapshot each submodule, if you key a cache on it.
+
+- **`stripGitEnv()` is now exported from `@vibe-validate/git`** as well as `@vibe-validate/core`. Existing imports are unchanged.
+
+- **`executeGitCommand` accepts `maxBuffer`** (default 10 MiB, unchanged) and returns `error` when the command could not run. Raise `maxBuffer` for commands whose output grows with the repository, such as `ls-files` and `log`.
+
+- **`executeGitCommand` accepts `trimOutput`** (default `true`, unchanged). Pass `false` for NUL-delimited (`-z`) listings and for file content, where trimming is lossy: a path beginning with a space sorts first in `ls-files -z` and comes back renamed.
+
+### Fixed
+
+- **A git command whose output exceeded `maxBuffer` could return a truncated result marked successful.** It now fails, and names the cause. If you enumerate with `executeGitCommand`, raise `maxBuffer` rather than relying on the default.
+
+- **A repository with submodules could get a cached pass it never earned, when validating from inside a git hook.** Fixed; no action needed. Cache entries written before the upgrade simply stop matching.
+
+- **`git notes list` and `git submodule status` reported a truncated listing as an empty one** — "no validation history" and "no submodules exist" respectively. Fixed; no action needed.
+
+- **BREAKING (behaviour): `stripGitEnv()` no longer removes git configuration you set yourself.** This is why the release is `0.20.0` rather than a patch — `stripGitEnv` is exported from `@vibe-validate/core`, and `vv` builds the environment for **every** spawned validation step from it, so the change reaches every step subprocess on upgrade. `GIT_CONFIG`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_COUNT` and the numbered `GIT_CONFIG_KEY_*`/`GIT_CONFIG_VALUE_*` groups are inherited again, so an env-configured mirror or credential now reaches the git commands vv runs. `GIT_CONFIG_PARAMETERS` is still stripped, along with `GIT_PREFIX` and `GIT_INDEX_VERSION` — git sets those itself on every hook. **If you relied on vv discarding the operator's `GIT_CONFIG_*`, it no longer does.**
+
+- **`vv pre-commit` could report no partially staged files when it had failed to ask.** A spawn-level failure listing staged or unstaged files — including output past the buffer limit on a large changeset — was indistinguishable from a clean result. It now warns and the listing limit is raised.
+
+- **`packages/cli` command-runner tests no longer fail on machines with `FORCE_COLOR` set.** The tests compared child-process output against bare strings, but `console.log(42)` in the child runs through `util.inspect`, which colorizes numbers whenever colors are enabled. Colors are off in CI and on in many local shells and agent harnesses, so three tests passed in CI and failed for those developers. The assertions now strip ANSI first — these tests are about command *parsing*, not color handling.
+
+- **Two broken documentation links in `.github/CONTRIBUTING.md`.** `docs/local-development.md` and `docs/` were written relative to the repository root but resolve relative to `.github/`, and the first had additionally moved to `docs/contributing/`. Surfaced by the `vibe-agent-toolkit` upgrade, whose link validator catches what the previous version missed.
+
 ### Security
 
 - **The dependency tree is now scanned, and it is clean.** `osv-scanner` reported **126 advisories across 35 package instances** in the committed lockfile — 1 critical, dozens high — and nothing in CI was looking. All 126 are gone. The single largest source was one line in `packages/vibe-validate/package.json`: `vibe-agent-toolkit` is a **production** dependency (its `postinstall` runs `vat claude plugin install`), so every `npm install vibe-validate` pulled the whole agent-toolkit tree — MCP SDK, `hono`, `undici`, `tar`, plus the native `sharp` and `onnxruntime`/`protobufjs@6` embedding backend — into the consumer's install. Roughly 80 of the 126 advisories entered through that one edge. Bumping it to `^0.1.42` removed the `@xenova/transformers → onnxruntime-web → onnx-proto → protobufjs@6` chain and the native backends outright; the rest are pinned to patched versions in the root `pnpm.overrides` block, and `turbo` (2.7.3, one 9.8 advisory) and `vitest` (2.1.9/3.2.4, one 9.8) were bumped in the declared devDependencies.
 
 - **New `Dependency Audit` workflow keeps it that way.** `.github/workflows/dependency-audit.yml` runs OSV-Scanner against `pnpm-lock.yaml` on every push and PR, plus weekly on a schedule so a newly-disclosed advisory against an unchanged lockfile still turns CI red. It enforces an accepted-risk register at `osv-scanner.toml`: the build fails on any advisory **not** listed there, so a green run means "zero un-triaged vulnerabilities". The register currently ships **empty** — every advisory was resolved with a real fix rather than an exception. A second, PR-only job runs GitHub's Dependency Review to fail any PR that *introduces* a vulnerable or badly-licensed package, and `.github/dependabot.yml` opens grouped weekly update PRs for both npm and the workflow actions themselves.
-
-### Fixed
-
-- **`packages/cli` command-runner tests no longer fail on machines with `FORCE_COLOR` set.** The tests compared child-process output against bare strings, but `console.log(42)` in the child runs through `util.inspect`, which colorizes numbers whenever colors are enabled. Colors are off in CI and on in many local shells and agent harnesses, so three tests passed in CI and failed for those developers. The assertions now strip ANSI first — these tests are about command *parsing*, not color handling.
-
-- **Two broken documentation links in `.github/CONTRIBUTING.md`.** `docs/local-development.md` and `docs/` were written relative to the repository root but resolve relative to `.github/`, and the first had additionally moved to `docs/contributing/`. Surfaced by the `vibe-agent-toolkit` upgrade, whose link validator catches what the previous version missed.
 
 ## [0.19.7] - 2026-08-13
 

@@ -820,6 +820,9 @@ describe('getSubmodules', () => {
   });
 
   it('should fall back to git submodule status when fast path check fails', () => {
+    // Also the SILENT half of the warn/silent pair at the end of this describe:
+    // an ordinary non-zero exit here means "no submodules", and must not warn.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Mock rev-parse to fail
     vi.mocked(gitExecutor.executeGitCommand)
       .mockReturnValueOnce({
@@ -850,5 +853,36 @@ describe('getSubmodules', () => {
       ['submodule', 'status'],
       expect.any(Object)
     );
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  // A truncated listing and a repository with no submodules both parse to `[]`,
+  // and that empty array feeds a cache key -- so "no submodules exist" would be
+  // committed to on the strength of a question that was never answered. The
+  // return value cannot carry the difference, so the warning is the only
+  // observable. Pairs with the silent direction asserted in the fast-path
+  // fallback test above.
+  it('warns rather than reporting no submodules when the spawn itself failed', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({
+        success: false,
+        stdout: '',
+        stderr: 'not a git repository',
+        exitCode: 128,
+      })
+      .mockReturnValueOnce({
+        success: false,
+        stdout: '',
+        stderr: 'stdout maxBuffer length exceeded',
+        exitCode: 1,
+        error: new Error('stdout maxBuffer length exceeded'),
+      });
+
+    expect(getSubmodules()).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain('Could not list submodules');
+    warn.mockRestore();
   });
 });
