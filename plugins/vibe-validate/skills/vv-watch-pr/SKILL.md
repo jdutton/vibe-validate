@@ -1,6 +1,8 @@
 ---
 name: vv-watch-pr
-description: Use when monitoring PR/CI status after pushing, diagnosing CI failures, investigating flakes, or cleaning up merged branches. Triggers on watch-pr, CI checks, CI debug, PR status, merged-branch cleanup.
+description: Use when monitoring PR/CI status after pushing, diagnosing CI
+  failures, investigating flakes, or cleaning up merged branches. Triggers on
+  watch-pr, CI checks, CI debug, PR status, merged-branch cleanup.
 ---
 
 # vv-watch-pr

@@ -1,6 +1,8 @@
 ---
 name: setting-up-projects
-description: Use when bootstrapping vibe-validate in a new repo, adjusting the config, or diagnosing setup. Covers vv init, vv doctor, vv config, templates, heterogeneous-language setup, generate-workflow, and dependency-lock-check.
+description: Use when bootstrapping vibe-validate in a new repo, adjusting the
+  config, or diagnosing setup. Covers vv init, vv doctor, vv config, templates,
+  heterogeneous-language setup, generate-workflow, and dependency-lock-check.
 ---
 
 # setting-up-projects

@@ -1,6 +1,8 @@
 ---
 name: authoring-extractors
-description: Use when validation fails but no errors are extracted, or when writing a custom error extractor for a tool vibe-validate does not recognize. Covers built-in extractors, vv create-extractor, and the plugin system.
+description: Use when validation fails but no errors are extracted, or when
+  writing a custom error extractor for a tool vibe-validate does not recognize.
+  Covers built-in extractors, vv create-extractor, and the plugin system.
 ---
 
 # authoring-extractors

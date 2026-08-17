@@ -1,6 +1,8 @@
 ---
 name: vibe-validate
-description: Use when starting vibe-validate work or picking a sub-skill. Router for the validate/fix loop, project setup, cache and locking, work recovery, extractor authoring, PR/CI monitoring, and non-Claude agent integration.
+description: Use when starting vibe-validate work or picking a sub-skill. Router
+  for the validate/fix loop, project setup, cache and locking, work recovery,
+  extractor authoring, PR/CI monitoring, and non-Claude agent integration.
 ---
 
 # vibe-validate

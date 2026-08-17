@@ -1,6 +1,9 @@
 ---
 name: recovering-work
-description: Use when recovering lost work — accidentally deleted file, git restore wiped changes, failed rebase, editor crash, or branch switch lost untracked files. Covers vv history, vv snapshot, tree-hash recovery with git cat-file and git checkout.
+description: Use when recovering lost work — accidentally deleted file, git
+  restore wiped changes, failed rebase, editor crash, or branch switch lost
+  untracked files. Covers vv history, vv snapshot, tree-hash recovery with git
+  cat-file and git checkout.
 ---
 
 # recovering-work

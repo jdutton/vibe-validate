@@ -1,6 +1,8 @@
 ---
 name: caching-and-locking
-description: Use when debugging cache misses, unexpected cache hits, or concurrency lock conflicts. Covers the git tree hash caching model, lock scopes, --no-lock, --no-wait, and the vv cleanup-temp maintenance utility.
+description: Use when debugging cache misses, unexpected cache hits, or
+  concurrency lock conflicts. Covers the git tree hash caching model, lock
+  scopes, --no-lock, --no-wait, and the vv cleanup-temp maintenance utility.
 ---
 
 # caching-and-locking
