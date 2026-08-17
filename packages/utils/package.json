@@ -45,10 +45,10 @@
     "access": "public"
   },
   "dependencies": {
-    "which": "^5.0.0"
+    "which": "^7.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.19.2",
+    "@types/node": "^26.2.0",
     "@types/which": "^3.0.4",
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"

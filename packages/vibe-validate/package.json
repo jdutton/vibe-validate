@@ -66,7 +66,7 @@
     "vibe-agent-toolkit": "^0.1.42"
   },
   "devDependencies": {
-    "@types/node": "^20.19.26",
+    "@types/node": "^26.2.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"
   },

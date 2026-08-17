@@ -47,13 +47,13 @@
     "@vibe-validate/extractors": "workspace:*",
     "@vibe-validate/git": "workspace:*",
     "@vibe-validate/utils": "workspace:*",
-    "strip-ansi": "^7.1.2",
-    "yaml": "^2.8.2",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.0"
+    "strip-ansi": "^7.2.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@types/node": "^20.19.26",
+    "@types/node": "^26.2.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"
   }
