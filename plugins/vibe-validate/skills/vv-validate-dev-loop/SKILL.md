@@ -1,6 +1,8 @@
 ---
 name: vv-validate-dev-loop
-description: Use when running validation during day-to-day coding — vv validate, vv pre-commit, vv state, vv run. Covers the iterate-fix-revalidate loop, cached state queries, and command wrapping for LLM-optimized error extraction.
+description: Use when running validation during day-to-day coding — vv validate,
+  vv pre-commit, vv state, vv run. Covers the iterate-fix-revalidate loop,
+  cached state queries, and command wrapping for LLM-optimized error extraction.
 ---
 
 # vv-validate-dev-loop

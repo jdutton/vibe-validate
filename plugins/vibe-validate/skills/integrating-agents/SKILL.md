@@ -1,6 +1,8 @@
 ---
 name: integrating-agents
-description: Use when wiring vibe-validate into a non-Claude AI coding assistant (Cursor, Aider, Continue, or any other tool). Covers system-prompt additions, command wrappers, and output routing for agentic workflows.
+description: Use when wiring vibe-validate into a non-Claude AI coding assistant
+  (Cursor, Aider, Continue, or any other tool). Covers system-prompt additions,
+  command wrappers, and output routing for agentic workflows.
 ---
 
 # integrating-agents
