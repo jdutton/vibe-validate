@@ -44,7 +44,7 @@ jobs:
     name: OSV-Scanner (pnpm-lock.yaml)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install OSV-Scanner (pinned, checksum-verified)
         run: |
@@ -71,10 +71,10 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
           comment-summary-in-pr: on-failure
