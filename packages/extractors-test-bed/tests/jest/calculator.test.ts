@@ -67,9 +67,9 @@ describe('Calculator (Jest)', () => {
 
   describe('Timeout', () => {
     it('should complete within timeout', async () => {
-      // INTENTIONAL FAILURE: Timeout
+      // INTENTIONAL FAILURE: Timeout (expect() races Jest's 10ms limit)
       jest.setTimeout(10); // 10ms timeout
-      await new Promise(resolve => setTimeout(resolve, 100)); // Takes 100ms
+      await expect(new Promise(resolve => setTimeout(resolve, 100))).resolves.toBeUndefined(); // Takes 100ms
     });
   });
 

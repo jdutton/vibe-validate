@@ -40,7 +40,8 @@ test.describe('Playwright Vibe-Validate Integration Failures', () => {
     // 3. Element Not Found Error
     test('should fail when element not found', async ({ page }) => {
       await page.goto(TEST_APP_PATH);
-      await page.click('#nonexistentButton'); // Element doesn't exist
+      // INTENTIONAL FAILURE: element doesn't exist, so this times out
+      await expect(page.locator('#nonexistentButton')).toBeVisible({ timeout: 100 });
     });
 
     // 4. Visibility Assertion Failure
@@ -55,8 +56,8 @@ test.describe('Playwright Vibe-Validate Integration Failures', () => {
       test.setTimeout(2000); // Set very short timeout
       await page.goto(TEST_APP_PATH);
       await page.click('#timeoutBtn');
-      // This will take 5 seconds but we only allow 2 seconds
-      await page.waitForSelector('#output:has-text("Finally done!")'); // Will timeout
+      // INTENTIONAL FAILURE: takes 5 seconds but we only wait 2 seconds
+      await expect(page.locator('#output')).toContainText('Finally done!', { timeout: 2000 });
     });
 
     // 6. Text Content Mismatch
@@ -77,8 +78,11 @@ test.describe('Playwright Vibe-Validate Integration Failures', () => {
 
     // 8. Navigation Error
     test('should fail with navigation error', async ({ page }) => {
-      // Try to navigate to non-existent file
-      await page.goto('file:///nonexistent/path/to/file.html');
+      // INTENTIONAL FAILURE: navigation throws, but the message we assert
+      // against is wrong on purpose (same pattern as the other tests above)
+      await expect(page.goto('file:///nonexistent/path/to/file.html')).rejects.toThrow(
+        'this does not match the real navigation error'
+      );
     });
 
     // 9. Input Value Assertion Failure

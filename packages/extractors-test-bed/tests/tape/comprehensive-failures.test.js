@@ -7,6 +7,9 @@
  *
  * This suite demonstrates all 10 failure categories using actual
  * vibe-validate packages to create realistic errors with complex stack traces.
+ *
+ * NOSONAR below (rule S2699): SonarCloud's assertion detector doesn't know
+ * Tape's t.equal/t.ok/t.fail/t.pass, so it can't see the assertions below.
  */
 
 import test from 'tape';
@@ -16,7 +19,7 @@ import { readFileSync } from 'node:fs';
 // REAL VIBE-VALIDATE USAGE (80%)
 // ============================================================================
 
-test('Extractors › Assertion Errors › should extract TypeScript errors correctly', async (t) => {
+test('Extractors › Assertion Errors › should extract TypeScript errors correctly', async (t) => { // NOSONAR
   // FAILURE TYPE 1: Assertion Error
   // INTENTIONAL FAILURE: Test extractor against known output, expect wrong count
   const { extractTypeScriptErrors } = await import('@vibe-validate/extractors');
@@ -29,7 +32,7 @@ test('Extractors › Assertion Errors › should extract TypeScript errors corre
   t.end();
 });
 
-test('Extractors › Assertion Errors › should parse ESLint errors from real output', async (t) => {
+test('Extractors › Assertion Errors › should parse ESLint errors from real output', async (t) => { // NOSONAR
   // FAILURE TYPE 1: Assertion Error (continued)
   // INTENTIONAL FAILURE: Wrong expected summary
   const { extractESLintErrors } = await import('@vibe-validate/extractors');
@@ -41,7 +44,7 @@ test('Extractors › Assertion Errors › should parse ESLint errors from real o
   t.end();
 });
 
-test('Config › Type Errors › should fail when passing invalid config type', async (t) => {
+test('Config › Type Errors › should fail when passing invalid config type', async (t) => { // NOSONAR
   // FAILURE TYPE 2: TypeScript Type Errors
   // INTENTIONAL FAILURE: TypeScript type error - passing wrong type
   const { loadConfigFromFile } = await import('@vibe-validate/config');
@@ -56,7 +59,7 @@ test('Config › Type Errors › should fail when passing invalid config type', 
   t.end();
 });
 
-test('Core › Runtime Type Errors › should fail when calling method on undefined', async (t) => {
+test('Core › Runtime Type Errors › should fail when calling method on undefined', async (t) => { // NOSONAR
   // FAILURE TYPE 4: Runtime TypeError
   // INTENTIONAL FAILURE: Runtime TypeError
   const { autoDetectAndExtract } = await import('@vibe-validate/extractors');
@@ -71,7 +74,7 @@ test('Core › Runtime Type Errors › should fail when calling method on undefi
   t.end();
 });
 
-test('Core › File System › should fail when reading non-existent file', (t) => {
+test('Core › File System › should fail when reading non-existent file', (t) => { // NOSONAR
   // FAILURE TYPE 3: Runtime Error (ENOENT)
   // INTENTIONAL FAILURE: Try to read non-existent file
   try {
@@ -83,7 +86,7 @@ test('Core › File System › should fail when reading non-existent file', (t) 
   t.end();
 });
 
-test('Git › Timeout simulation › should timeout waiting for git command', (t) => {
+test('Git › Timeout simulation › should timeout waiting for git command', (t) => { // NOSONAR
   // FAILURE TYPE 5: Timeout
   // INTENTIONAL FAILURE: Simulate timeout with long-running operation
 
@@ -98,7 +101,7 @@ test('Git › Timeout simulation › should timeout waiting for git command', (t
   }, 1000); // Takes 1 second (will timeout at 50ms)
 });
 
-test('Extractors › Import Error › should fail when importing non-existent module', async (t) => {
+test('Extractors › Import Error › should fail when importing non-existent module', async (t) => { // NOSONAR
   // FAILURE TYPE 8: Import Error
   // INTENTIONAL FAILURE: Import non-existent module
   try {
@@ -114,14 +117,14 @@ test('Extractors › Import Error › should fail when importing non-existent mo
 // SIMPLE EDGE CASES (20%)
 // ============================================================================
 
-test('Edge Cases › Nested describe blocks › Level 1 › Level 2 › should handle deep nesting', (t) => {
+test('Edge Cases › Nested describe blocks › Level 1 › Level 2 › should handle deep nesting', (t) => { // NOSONAR
   // FAILURE TYPE 10: Nested Describe Blocks
   // INTENTIONAL FAILURE: Simple assertion
   t.equal(2 + 2, 5, '2+2 should equal 5');
   t.end();
 });
 
-test('Edge Cases › Multiple assertions › should fail on second assertion', (t) => {
+test('Edge Cases › Multiple assertions › should fail on second assertion', (t) => { // NOSONAR
   // FAILURE TYPE 9: Multiple Failures
   // INTENTIONAL FAILURE: Multiple assertions, second one fails
   t.equal(1 + 1, 2, 'first assertion passes');
@@ -130,7 +133,7 @@ test('Edge Cases › Multiple assertions › should fail on second assertion', (
   t.end();
 });
 
-test('Edge Cases › Async rejections › should handle promise rejection', async (t) => {
+test('Edge Cases › Async rejections › should handle promise rejection', async (t) => { // NOSONAR
   // FAILURE TYPE 7: Async Rejection
   // INTENTIONAL FAILURE: Unhandled promise rejection
   try {
@@ -142,7 +145,7 @@ test('Edge Cases › Async rejections › should handle promise rejection', asyn
   t.end();
 });
 
-test('Edge Cases › Null pointer › should fail when accessing property on null', (t) => {
+test('Edge Cases › Null pointer › should fail when accessing property on null', (t) => { // NOSONAR
   // FAILURE TYPE 4: Runtime TypeError (additional)
   // INTENTIONAL FAILURE: Null pointer
   try {

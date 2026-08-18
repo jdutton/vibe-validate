@@ -74,6 +74,9 @@ describe('Vibe-Validate Integration Failures', () => {
       // @ts-expect-error - INTENTIONAL IMPORT ERROR
       const { nonExistentFunction } = await import('@vibe-validate/core');
 
+      // Assert the import produced what we expect before using it -- fails
+      // here (undefined), same import-error category, real assertion.
+      expect(nonExistentFunction).toBeDefined();
       nonExistentFunction();
     });
 
