@@ -295,9 +295,10 @@ describe('path-helpers', () => {
       expect(temp).toBe(expected);
     });
 
-    it('should log diagnostic info if normalization appears to fail (Windows only)', () => {
+    it('should log diagnostic info if normalization appears to fail (Windows only)', (ctx) => {
       if (process.platform !== 'win32') {
-        return; // Skip on non-Windows
+        ctx.skip();
+        return;
       }
 
       const temp = normalizedTmpdir();

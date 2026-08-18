@@ -38,7 +38,7 @@ const JSCPD_ARGS = [
   '--min-tokens', '50',
   '--reporters', 'json',
   '--format', 'typescript,javascript',
-  '--ignore', '**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md',
+  '--ignore', '**/node_modules/**,**/dist/**,**/coverage/**,**/.turbo/**,**/jscpd-report/**,**/*.json,**/*.yaml,**/*.md,**/.claude/worktrees/**',
   '--output', JSCPD_OUTPUT_DIR
 ];
 

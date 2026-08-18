@@ -51,6 +51,14 @@ updates:
           - 'turbo'
           - 'typescript'
           - 'tsx'
+    # Majors routinely break the build (breaking API changes, dropped native
+    # binaries, incompatible peer plugins) and can't be merged on a weekly
+    # cadence without real migration work. Excluding them keeps the grouped
+    # PRs green and mergeable; major bumps need a deliberate, separately
+    # scheduled upgrade instead of showing up as an unmergeable weekly PR.
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: chore
       include: scope
@@ -68,6 +76,9 @@ updates:
       github-actions:
         patterns:
           - '*'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: chore
       include: scope

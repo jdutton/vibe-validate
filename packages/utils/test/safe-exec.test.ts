@@ -88,12 +88,13 @@ describe('safeExecSync', () => {
     expect(result.trim()).toBe('arg1 arg2 arg3');
   });
 
-  it('should not interpret shell metacharacters', () => {
+  it('should not interpret shell metacharacters', (ctx) => {
     // NOTE: This test is skipped on Windows because safeExecSync uses shell:true
     // for node commands on Windows (see safe-exec.ts:96-100).
     // On Windows, shell metacharacters in arguments are interpreted by the shell.
     if (process.platform === 'win32') {
-      return; // Skip test on Windows
+      ctx.skip();
+      return;
     }
 
     // This would execute 'ls' if shell was enabled
