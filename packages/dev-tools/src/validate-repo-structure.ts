@@ -10,7 +10,7 @@
  *      tsx packages/dev-tools/src/validate-repo-structure.ts
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PROJECT_ROOT, colors, log } from './common.js';
@@ -60,6 +60,22 @@ function getPackageDirs(): string[] {
     .sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * A nested git worktree (e.g. `.claude/worktrees/<name>`) has a `.git` regular
+ * file at its root pointing back at the main repo's `.git/worktrees/<name>`,
+ * unlike a normal repo checkout where `.git` is a directory. Its contents are
+ * a different branch/commit entirely, so structure rules for this tree
+ * shouldn't apply to it.
+ */
+function isGitWorktreeRoot(dirPath: string): boolean {
+  const gitPath = join(dirPath, '.git');
+  try {
+    return statSync(gitPath).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function walkDirectory(
   dir: string,
   relativePath: string,
@@ -77,7 +93,7 @@ function walkDirectory(
     const relPath = join(relativePath, entry.name);
 
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
+      if (SKIP_DIRS.has(entry.name) || isGitWorktreeRoot(fullPath)) continue;
       handler({ name: entry.name, fullPath, relPath, isDir: true });
       walkDirectory(fullPath, relPath, handler);
     } else if (entry.isFile()) {

@@ -527,9 +527,10 @@ describe('CacheManager', () => {
       expect(fetcher).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle permission errors gracefully', async () => {
+    it('should handle permission errors gracefully', async (ctx) => {
       // Skip this test on Windows or as root
       if (process.platform === 'win32' || process.getuid?.() === 0) {
+        ctx.skip();
         return;
       }
 

@@ -211,9 +211,10 @@ describe('Smart Wrapper (vibe-validate/vv)', () => {
   });
 
   describe('Cross-Platform Compatibility', () => {
-    it('should work on Unix-like systems', () => {
+    it('should work on Unix-like systems', (ctx) => {
       // Skip on Windows
       if (process.platform === 'win32') {
+        ctx.skip();
         return;
       }
 
