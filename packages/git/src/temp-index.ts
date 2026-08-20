@@ -246,6 +246,79 @@ export interface StagedIndexOptions {
   scrubGitEnv?: boolean;
 }
 
+/** Where the repository lives, as git itself spells it. */
+interface RepositoryLocation {
+  /** Absolute path to the git directory (`--absolute-git-dir`). */
+  gitDir: string;
+  /** Absolute path to the working tree's top level (`--show-toplevel`). */
+  repoRoot: string;
+}
+
+/**
+ * Ask git where the repository is — in ONE spawn where git allows it.
+ *
+ * `git rev-parse` accepts several queries at once and answers them in the order
+ * given, one per line, so the three questions this module has always asked cost
+ * one process instead of three. That matters far more than it looks: every git
+ * call in this package goes through `spawnSync`, so they are strictly serial and
+ * nothing overlaps, and process creation on Windows is roughly an order of
+ * magnitude dearer than on Unix. Three spawns to learn three constants was a
+ * third of the fixed cost of taking a snapshot at all.
+ *
+ * `--is-inside-work-tree` is asked purely for its failure: outside a repository
+ * `rev-parse` exits non-zero and {@link executeGitCommand} throws, which is the
+ * contract {@link withStagedTempIndex} documents. Combining does not weaken it —
+ * a combined invocation fails as a whole — and its "true" line is discarded here
+ * exactly as its stdout was discarded before.
+ *
+ * ## Why the line count is checked rather than assumed
+ *
+ * `rev-parse` writes paths raw and separates them with newlines, so a repository
+ * whose own path CONTAINS a newline makes the joined output ambiguous — three
+ * answers arriving as four or more lines, with no way to tell which break was
+ * git's. Splitting blind would hand back a truncated `gitDir`, and the temp index
+ * would then be created somewhere other than the repository. Three separate
+ * spawns have no such ambiguity, because each answer is the whole of its own
+ * stdout. So the fast path is taken only when the shape is unambiguous, and the
+ * pathological repository silently keeps the behaviour it has today.
+ *
+ * @param discovery - Timeout, `cwd` and env-scrub policy, as the callers build it
+ * @returns The git directory and working-tree root
+ * @throws When git cannot answer — not a repository, or not a work tree
+ */
+function discoverRepository(
+  discovery: { timeout: number; cwd: string | undefined; scrubGitEnv: boolean },
+): RepositoryLocation {
+  // CRITICAL: `--absolute-git-dir`, never plain `--git-dir`, which returns a
+  // path relative to the cwd (`.git` vs `../.git`) and so differs between a
+  // repository root and a subdirectory of it (Issue #127).
+  const combined = executeGitCommand(
+    ['rev-parse', '--is-inside-work-tree', '--absolute-git-dir', '--show-toplevel'],
+    discovery,
+  );
+
+  const lines = combined.stdout.split('\n').map((line) => line.trim());
+  if (lines.length === 3) {
+    // Index 0 is the `--is-inside-work-tree` answer, deliberately unread.
+    return { gitDir: lines[1] ?? '', repoRoot: lines[2] ?? '' };
+  }
+
+  // Ambiguous output (see above). Re-ask one question at a time, which is what
+  // this function did before it was collapsed.
+  //
+  // Raw `rev-parse` rather than `git-commands.ts`'s `isGitRepository()` /
+  // `getRepositoryRoot()`, which wrap these same arguments. Not an oversight,
+  // and not yet fixable: neither forwards `cwd`/`scrubGitEnv`, and there is no
+  // wrapper at all for `--absolute-git-dir`. Consolidating means extending both
+  // with an options passthrough first. Flagged so that whoever does it finds the
+  // split named rather than rediscovering it: two paths answering "is this a
+  // repo" can drift in error semantics if only one changes.
+  return {
+    gitDir: executeGitCommand(['rev-parse', '--absolute-git-dir'], discovery).stdout.trim(),
+    repoRoot: executeGitCommand(['rev-parse', '--show-toplevel'], discovery).stdout.trim(),
+  };
+}
+
 /**
  * Stage the whole working tree into a throwaway index, then run `fn` against it.
  *
@@ -282,26 +355,7 @@ export function withStagedTempIndex<T>(
   const scrubGitEnv = options.scrubGitEnv ?? cwd !== undefined;
   const discovery = { timeout: GIT_TIMEOUT, cwd, scrubGitEnv };
 
-  // Raw `rev-parse` rather than `git-commands.ts`'s `isGitRepository()` /
-  // `getRepositoryRoot()`, which wrap these same arguments. Not an oversight,
-  // and not yet fixable: neither forwards `cwd`/`scrubGitEnv`, and there is no
-  // wrapper at all for `--absolute-git-dir` — `getGitDir()` uses plain
-  // `--git-dir`, the relative-path answer the note below says this file exists
-  // to avoid. Consolidating means extending both with an options passthrough
-  // first. Flagged so that whoever does it finds the split named rather than
-  // rediscovering it: two paths answering "is this a repo" can drift in error
-  // semantics if only one changes.
-  executeGitCommand(['rev-parse', '--is-inside-work-tree'], discovery);
-
-  // Get git directory and repository root
-  // CRITICAL: Use --absolute-git-dir instead of --git-dir for cross-platform consistency
-  // --git-dir returns relative paths (.git vs ../.git) on Windows depending on cwd
-  // --absolute-git-dir ensures same path regardless of subdirectory (Issue #127)
-  const gitDir = executeGitCommand(['rev-parse', '--absolute-git-dir'], discovery).stdout.trim();
-
-  // Get repository root (working tree top level) — see the note above on why
-  // every subsequent call is pinned to it.
-  const repoRoot = executeGitCommand(['rev-parse', '--show-toplevel'], discovery).stdout.trim();
+  const { gitDir, repoRoot } = discoverRepository(discovery);
 
   cleanupStaleIndexes(gitDir);
   const tempIndexFile = `${gitDir}/vibe-validate-temp-index-${process.pid}`;

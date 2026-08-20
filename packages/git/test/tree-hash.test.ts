@@ -68,14 +68,19 @@ const mockStatSync = statSync as ReturnType<typeof vi.fn>;
 const mockIsProcessRunning = utils.isProcessRunning as ReturnType<typeof vi.fn>;
 
 /**
- * Helper to mock initial git commands (repo check, git dir, add)
+ * The three repository questions arrive as ONE `rev-parse`, one answer per line:
+ * `--is-inside-work-tree`, `--absolute-git-dir`, `--show-toplevel`. Named rather
+ * than inlined so that collapsing or re-splitting them again touches one line.
+ */
+const DISCOVERY_STDOUT = 'true\n.git\n/repo/root';
+
+/**
+ * Helper to mock initial git commands (repo discovery, add)
  * Reduces duplication in test setup
  */
 function mockInitialGitCommands() {
   return vi.mocked(gitExecutor.executeGitCommand)
-    .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree
-    .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --absolute-git-dir
-    .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel
+    .mockReturnValueOnce({ success: true, stdout: DISCOVERY_STDOUT, stderr: '', exitCode: 0 })  // git rev-parse (combined discovery)
     .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 });  // git add
 }
 
@@ -116,22 +121,10 @@ describe('getGitTreeHash', () => {
     vi.mocked(gitExecutor.executeGitCommand)
       .mockReturnValueOnce({
         success: true,
-        stdout: '',
+        stdout: DISCOVERY_STDOUT,
         stderr: '',
         exitCode: 0,
-      })  // git rev-parse --is-inside-work-tree
-      .mockReturnValueOnce({
-        success: true,
-        stdout: '.git',
-        stderr: '',
-        exitCode: 0,
-      })  // git rev-parse --absolute-git-dir
-      .mockReturnValueOnce({
-        success: true,
-        stdout: '/repo/root',
-        stderr: '',
-        exitCode: 0,
-      })  // git rev-parse --show-toplevel
+      })  // git rev-parse (combined: is-inside-work-tree, absolute-git-dir, show-toplevel)
       .mockReturnValueOnce({
         success: true,
         stdout: '',
@@ -162,8 +155,17 @@ describe('getGitTreeHash', () => {
     expect(result.hash).toBe('abc123def456');
     expect(result.submoduleHashes).toBeUndefined();
 
-    // Verify correct git commands were called (7 times: is-inside-work-tree, absolute-git-dir, show-toplevel, add, write-tree, show-toplevel (getSubmodules), submodule status)
-    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(7);
+    // 5 times: rev-parse (combined discovery), add, write-tree, show-toplevel
+    // (getSubmodules fast path), submodule status.
+    //
+    // ⭐ This count is the POINT of the assertion, not incidental bookkeeping.
+    // Every git call in this package is `spawnSync`, so they are strictly serial
+    // and process creation — far dearer on Windows than on Unix — is a fixed
+    // per-spawn tax. It was 7 while three of those spawns asked `rev-parse` three
+    // separate questions it answers in one invocation. If this number rises,
+    // something re-split them or added a spawn, and the pinned Nth-call
+    // assertions below say which.
+    expect(gitExecutor.executeGitCommand).toHaveBeenCalledTimes(5);
 
     // Verify fs.copyFileSync was called (SECURITY: replaces cp shell command)
     expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
@@ -175,21 +177,11 @@ describe('getGitTreeHash', () => {
     // Verify correct git commands were called
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       1,
-      ['rev-parse', '--is-inside-work-tree'],
+      ['rev-parse', '--is-inside-work-tree', '--absolute-git-dir', '--show-toplevel'],
       expect.any(Object)
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       2,
-      ['rev-parse', '--absolute-git-dir'],
-      expect.any(Object)
-    );
-    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
-      3,
-      ['rev-parse', '--show-toplevel'],
-      expect.any(Object)
-    );
-    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
-      4,
       ['add', '--all'],
       expect.objectContaining({
         env: expect.objectContaining({
@@ -199,7 +191,7 @@ describe('getGitTreeHash', () => {
       })
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
-      5,
+      3,
       ['write-tree'],
       expect.objectContaining({
         env: expect.objectContaining({
@@ -216,19 +208,52 @@ describe('getGitTreeHash', () => {
     );
   });
 
+  it('re-asks one question at a time when the combined rev-parse output is ambiguous', async () => {
+    // A repository whose own path contains a newline makes the combined output
+    // unsplittable: three answers arrive as more than three lines and nothing
+    // marks which break was git's. Splitting blind would truncate `gitDir` and
+    // the temp index would be created outside the repository — so the collapsed
+    // fast path must DECLINE here and fall back to one spawn per question, which
+    // is unambiguous because each answer is the whole of its own stdout.
+    vi.mocked(gitExecutor.executeGitCommand)
+      .mockReturnValueOnce({ success: true, stdout: 'true\n/od\nd/.git\n/od\nd', stderr: '', exitCode: 0 })  // 5 lines, not 3
+      .mockReturnValueOnce({ success: true, stdout: '/od\nd/.git', stderr: '', exitCode: 0 })  // rev-parse --absolute-git-dir
+      .mockReturnValueOnce({ success: true, stdout: '/od\nd', stderr: '', exitCode: 0 })  // rev-parse --show-toplevel
+      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add
+      .mockReturnValueOnce({ success: true, stdout: 'oddHash\n', stderr: '', exitCode: 0 })  // git write-tree
+      .mockReturnValueOnce({ success: true, stdout: '/od\nd', stderr: '', exitCode: 0 })  // getSubmodules fast path
+      .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status
+
+    const result = await getGitTreeHash();
+
+    expect(result.hash).toBe('oddHash');
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
+      2,
+      ['rev-parse', '--absolute-git-dir'],
+      expect.any(Object)
+    );
+    expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
+      3,
+      ['rev-parse', '--show-toplevel'],
+      expect.any(Object)
+    );
+    // The temp index is named from the RECOVERED git dir, which is the whole
+    // point of declining: the truncated `/od` would have put it elsewhere.
+    expect(mockCopyFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('/od\nd/.git'),
+      expect.stringContaining('/od\nd/.git/vibe-validate-temp-index')
+    );
+  });
+
   it('should return same hash for identical content', async () => {
     // Simulate running twice with same content
     vi.mocked(gitExecutor.executeGitCommand)
-      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (1st run)
-      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --absolute-git-dir (1st run)
-      .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (1st run)
+      .mockReturnValueOnce({ success: true, stdout: DISCOVERY_STDOUT, stderr: '', exitCode: 0 })  // git rev-parse (combined discovery, 1st run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (1st run)
       .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (1st run)
       .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (getSubmodules, 1st run)
       .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 })  // git submodule status (1st run, no submodules)
-      .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git rev-parse --is-inside-work-tree (2nd run)
-      .mockReturnValueOnce({ success: true, stdout: '.git', stderr: '', exitCode: 0 })  // git rev-parse --absolute-git-dir (2nd run)
-      .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (2nd run)
+      .mockReturnValueOnce({ success: true, stdout: DISCOVERY_STDOUT, stderr: '', exitCode: 0 })  // git rev-parse (combined discovery, 2nd run)
       .mockReturnValueOnce({ success: true, stdout: '', stderr: '', exitCode: 0 })  // git add (2nd run)
       .mockReturnValueOnce({ success: true, stdout: 'sameHash123\n', stderr: '', exitCode: 0 })  // git write-tree (2nd run)
       .mockReturnValueOnce({ success: true, stdout: '/repo/root', stderr: '', exitCode: 0 })  // git rev-parse --show-toplevel (getSubmodules, 2nd run)
