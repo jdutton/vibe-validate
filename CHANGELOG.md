@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Taking a tree hash or a tree snapshot now spawns git two fewer times.** `withStagedTempIndex` asked `rev-parse` for `--is-inside-work-tree`, `--absolute-git-dir` and `--show-toplevel` as three separate invocations; git answers all three in a single call, one per line.
+
+  No behaviour change. The collapsed output is used only when it splits into exactly three lines — a repository whose own path contains a newline makes the joined output ambiguous, so that case falls back to asking one question at a time, as before.
+
+  Measured on an 8,548-file repository, a warm crawl that takes a snapshot spawned git 8 times; this removes 2 of them. Every git call in this package goes through `spawnSync`, so they are strictly serial, and process creation is roughly an order of magnitude dearer on Windows than on Unix — which is where this is worth having.
+
 ## [0.20.0] - 2026-08-17
 
 ### Added
