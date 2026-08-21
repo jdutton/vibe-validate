@@ -188,9 +188,9 @@ Plugin includes 3 built-in samples:
 
 ## Related Files
 
-- `../../types.ts` - ExtractorPlugin interface, DetectionResult, ErrorExtractorResult
-- `../../result-schema.ts` - MAX_ERRORS_IN_ARRAY constant (token limit)
-- `../../extractor-registry.ts` - Registration point (DO NOT MODIFY per user instruction)
+- [`../../types.ts`](../../types.ts) - ExtractorPlugin interface, DetectionResult, ErrorExtractorResult
+- [`../../result-schema.ts`](../../result-schema.ts) - MAX_ERRORS_IN_ARRAY constant (token limit)
+- [`../../extractor-registry.ts`](../../extractor-registry.ts) - Registration point (DO NOT MODIFY per user instruction)
 
 ## Edge Cases Handled
 

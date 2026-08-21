@@ -696,5 +696,24 @@ vibe-validate state
 # Retry pre-commit
 vibe-validate pre-commit
 \`\`\`
+
+### If the same failure repeats after you fixed it
+
+A validation result is cached against a git tree hash covering your tracked and
+untracked files. Ignored paths (.gitignore, .git/info/exclude, your global
+excludes file) and state outside the repo are deliberately excluded, so a fix
+confined to those does not change the key and the stored failure replays. The
+output says \`Replayed from …\` when this happens.
+
+\`\`\`bash
+# Re-run just the failed step, keeping the passed steps cached (cheapest)
+vibe-validate validate --retry-failed
+
+# Or re-run everything
+vibe-validate validate --force
+
+# Or bypass the cache for a single commit, without leaving the commit path
+VV_FORCE_EXECUTION=1 git commit -m "your message"
+\`\`\`
 `);
 }

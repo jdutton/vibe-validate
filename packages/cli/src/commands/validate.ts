@@ -196,8 +196,8 @@ Both flags bypass the cached result, but they differ in scope:
 Changing an ignored path does **not** invalidate the cache, since those paths
 are not part of the key. So a step that inspects ignored working-tree
 state can produce a result that cleaning up that state will not invalidate.
-Re-run it explicitly with \`--force\` (everything) or \`--retry-failed\` (failed
-steps only).
+Re-run it explicitly with \`--force\` (everything), or — when the stale result
+was a failure — \`--retry-failed\` (failed steps only).
 
 ## YAML Output Mode
 

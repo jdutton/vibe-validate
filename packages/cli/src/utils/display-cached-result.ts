@@ -60,6 +60,12 @@ export function displayCachedResult(cachedRun: ValidationRun, treeHash: string):
  * observe (gitignored working-tree state, or state outside the repo) rather than
  * suggesting the cache is unreliable in general. See issue #169.
  *
+ * --retry-failed leads because it is the cheaper of two working escapes: it
+ * re-runs only the failed step and replays the passed steps from the previous
+ * run. --force re-runs every step. Issue #169's reporter was blocked precisely
+ * by the cost of a full revalidation (>10 minutes), so leading with --force sent
+ * them to the expensive option. Both are listed; only the order changed.
+ *
  * @param write - Where to emit. Defaults to stderr, alongside displayFailureInfo,
  *   which keeps the whole "what now" block on one stream - and is the stream
  *   agents capture for the YAML failure dump. Callers that write their report to
@@ -70,5 +76,7 @@ export function displayCachedFailureHint(write: (message: string) => void = cons
   write(chalk.gray('\n   Keyed on your tracked + untracked files; ignored paths are excluded'));
   write(chalk.gray('   (.gitignore, .git/info/exclude, or your global excludes file).'));
   write(chalk.gray('   If your fix was to an ignored path or to state outside the repo, this'));
-  write(chalk.gray(`   result can't see it. Re-run with: ${cmd} validate --force`));
+  write(chalk.gray("   result can't see it. Re-run the failed step(s):"));
+  write(chalk.gray(`       ${cmd} validate --retry-failed`));
+  write(chalk.gray(`   Or re-run everything: ${cmd} validate --force`));
 }

@@ -153,7 +153,7 @@ When adding support for new output formats:
 
 ### Sample Format
 
-All samples must follow `test/samples/sample-schema.json`:
+All samples must follow [`test/samples/sample-schema.json`](./test/samples/sample-schema.json):
 
 ```yaml
 $schema: ../sample-schema.json

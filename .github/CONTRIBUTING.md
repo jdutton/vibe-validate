@@ -368,10 +368,12 @@ Quality is auto-calculated by comparing extracted data to expected values.
 If you want to improve the extractor code itself:
 
 **Files:**
-- `packages/extractors/src/vitest-extractor.ts` - Vitest test failures
-- `packages/extractors/src/typescript-extractor.ts` - TypeScript errors
-- `packages/extractors/src/eslint-extractor.ts` - ESLint violations
-- `packages/extractors/src/smart-extractor.ts` - Auto-detection logic
+- [`packages/extractors/src/extractors/vitest/index.ts`](../packages/extractors/src/extractors/vitest/index.ts) - Vitest test failures
+- [`packages/extractors/src/extractors/typescript/index.ts`](../packages/extractors/src/extractors/typescript/index.ts) - TypeScript errors
+- [`packages/extractors/src/extractors/eslint/index.ts`](../packages/extractors/src/extractors/eslint/index.ts) - ESLint violations
+- [`packages/extractors/src/smart-extractor.ts`](../packages/extractors/src/smart-extractor.ts) - Auto-detection logic
+
+Each extractor lives in its own directory under `packages/extractors/src/extractors/`, alongside its tests and a `CLAUDE.md` describing the format it parses.
 
 **Process:**
 
@@ -402,9 +404,9 @@ pnpm --filter @vibe-validate/extractors test:regression
 - ✅ **Appreciated** by developers and LLMs worldwide! 🙏
 
 For detailed sample format specification, see:
-- `packages/extractors/test/samples/README.md`
-- `packages/extractors/test/samples/SAMPLE_FORMAT.md`
-- `packages/extractors/test/samples/sample-schema.json`
+- [`packages/extractors/test/samples/README.md`](../packages/extractors/test/samples/README.md)
+- [`packages/extractors/test/samples/SAMPLE_FORMAT.md`](../packages/extractors/test/samples/SAMPLE_FORMAT.md)
+- [`packages/extractors/test/samples/sample-schema.json`](../packages/extractors/test/samples/sample-schema.json)
 
 ## Code Quality Standards
 
@@ -623,10 +625,10 @@ Before submitting code that touches git operations:
 
 ### Resources
 
-- **Git executor**: `packages/git/src/git-executor.ts`
-- **Security tests**: `packages/git/test/git-executor.test.ts`
-- **Branded types**: `packages/git/src/types.ts`
-- **Logger utility**: `packages/cli/src/utils/logger.ts`
+- **Git executor**: [`packages/git/src/git-executor.ts`](../packages/git/src/git-executor.ts)
+- **Security tests**: [`packages/git/test/git-executor.test.ts`](../packages/git/test/git-executor.test.ts)
+- **Branded types**: [`packages/git/src/types.ts`](../packages/git/src/types.ts)
+- **Logger utility**: [`packages/cli/src/utils/logger.ts`](../packages/cli/src/utils/logger.ts)
 
 ## Submitting Changes
 

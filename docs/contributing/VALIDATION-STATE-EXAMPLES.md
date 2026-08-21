@@ -48,7 +48,7 @@ validation:
 ## Schema Validation
 
 All examples tagged with `:example` are automatically validated:
-- **Test file**: `packages/core/test/markdown-examples-validation.test.ts`
+- **Test file**: [`packages/core/test/markdown-examples-validation.test.ts`](../../packages/core/test/markdown-examples-validation.test.ts)
 - **Runs on**: Every build (`pnpm test`)
 - **Validates**: All `*.md` files in the repository
 
@@ -189,9 +189,9 @@ failedStep: "TypeScript"
 ## Schema Validation
 
 All examples tagged with `validation-result:example` are automatically validated against the JSON Schema:
-- **Schema location**: `packages/core/validate-result.schema.json`
-- **Validation test**: `packages/core/test/result-schema.test.ts`
-- **Documentation test**: `packages/core/test/markdown-examples-validation.test.ts`
+- **Schema location**: [`packages/core/validate-result.schema.json`](../../packages/core/validate-result.schema.json)
+- **Validation test**: [`packages/core/test/result-schema-strict.test.ts`](../../packages/core/test/result-schema-strict.test.ts)
+- **Documentation test**: [`packages/core/test/markdown-examples-validation.test.ts`](../../packages/core/test/markdown-examples-validation.test.ts)
 
 ### Schema URLs
 

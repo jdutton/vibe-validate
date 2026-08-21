@@ -20,7 +20,7 @@ This guide provides context-specific testing patterns for the vibe-validate CLI 
 
 ### Commander.js Testing
 
-**Setup Pattern** (see `helpers/commander-test-setup.js`):
+**Setup Pattern** (see [`helpers/commander-test-setup.ts`](./helpers/commander-test-setup.ts)):
 ```typescript
 import { setupCommanderTest } from '../helpers/commander-test-setup.js';
 
@@ -87,7 +87,7 @@ const tmpDir = '/tmp/test';
 
 ## Available Test Helpers
 
-### CLI Execution Helpers (`helpers/test-command-runner.ts`) **[MANDATORY]**
+### CLI Execution Helpers ([`helpers/test-command-runner.ts`](./helpers/test-command-runner.ts)) **[MANDATORY]**
 
 **CRITICAL: Always use these helpers instead of raw spawn/spawnSync calls**
 
@@ -133,7 +133,7 @@ const result = executeCommand('npx vitest test.test.ts', {
 - ✅ **DRY**: Single source of truth for CLI execution
 - ✅ **Consistent**: Same environment handling everywhere
 
-### Validate Command Helpers (`commands/validate-test-helpers.ts`)
+### Validate Command Helpers ([`commands/validate-test-helpers.ts`](./commands/validate-test-helpers.ts))
 
 **When to Use:**
 - ✅ Replacing 48-line mock objects
@@ -383,10 +383,10 @@ pnpm test validate.test.ts --watch  # Auto-rerun on changes
 
 ## References
 
-- **Commander.js Testing:** `helpers/commander-test-setup.ts`
-- **Validate Helpers:** `commands/validate-test-helpers.ts`
-- **Security Patterns:** `../../packages/utils/src/safe-exec.ts` (never use execSync directly)
-- **Cross-Platform Paths:** `../../packages/utils/src/path-utils.ts`
+- **Commander.js Testing:** [`helpers/commander-test-setup.ts`](./helpers/commander-test-setup.ts)
+- **Validate Helpers:** [`commands/validate-test-helpers.ts`](./commands/validate-test-helpers.ts)
+- **Security Patterns:** [`packages/utils/src/safe-exec.ts`](../../utils/src/safe-exec.ts) (never use execSync directly)
+- **Cross-Platform Paths:** [`packages/utils/src/path-helpers.ts`](../../utils/src/path-helpers.ts)
 
 ## Key Takeaways
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-08-21
+
 ### Changed
 
 - **Taking a tree hash or a tree snapshot now spawns git two fewer times.** `withStagedTempIndex` asked `rev-parse` for `--is-inside-work-tree`, `--absolute-git-dir` and `--show-toplevel` as three separate invocations; git answers all three in a single call, one per line.
@@ -14,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   No behaviour change. The collapsed output is used only when it splits into exactly three lines — a repository whose own path contains a newline makes the joined output ambiguous, so that case falls back to asking one question at a time, as before.
 
   Measured on an 8,548-file repository, a warm crawl that takes a snapshot spawned git 8 times; this removes 2 of them. Every git call in this package goes through `spawnSync`, so they are strictly serial, and process creation is roughly an order of magnitude dearer on Windows than on Unix — which is where this is worth having.
+
+- **Escaping a replayed cached failure no longer costs a full revalidation.** When a stored failure replays because your fix was to an ignored path or to state outside the repo, the explanation now offers `vv validate --retry-failed` first — it re-runs only the failed step and reuses the cached passes. `vv validate --force` is still offered when you want everything re-run.
+
+### Documentation
+
+- **How to bypass the cache from the commit path.** If a stale failure replays at `git commit`, `VV_FORCE_EXECUTION=1 git commit` re-runs validation for that one commit — useful because git hooks accept no flags of their own. Covered in `pre-commit --help --verbose` and the caching guide.
 
 ## [0.20.0] - 2026-08-17
 

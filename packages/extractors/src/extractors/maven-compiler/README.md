@@ -67,7 +67,7 @@ Converts absolute Maven paths to relative project paths:
 → src/main/java/Foo.java
 ```
 
-Uses shared utility: `packages/extractors/src/maven-utils.ts`
+Uses shared utility: [`packages/extractors/src/maven-utils.ts`](../../maven-utils.ts)
 
 ### Deduplication
 

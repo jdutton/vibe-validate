@@ -50,6 +50,7 @@ export default defineConfig({
       'packages/cli/test/integration/cache-manager.integration.test.ts',
       'packages/cli/test/integration/watch-pr-extraction.integration.test.ts',
       'packages/cli/test/integration/nested-passthrough.integration.test.ts',
+      'packages/cli/test/integration/cached-failure-escape.integration.test.ts',
       'packages/cli/test/commands/run.integration.test.ts',
     ],
     testTimeout: 60000, // 60 seconds per test (increased for Windows CI resource constraints)

@@ -38,7 +38,7 @@ This extractor follows the **ExtractorPlugin** interface:
 - `CLAUDE.md` - This file (LLM-specific guidance)
 
 ### Shared Utilities
-- `../../maven-utils.ts` - `extractRelativePath()` function (shared by all Maven extractors)
+- [`../../maven-utils.ts`](../../maven-utils.ts) - `extractRelativePath()` function (shared by all Maven extractors)
 
 ## Detection Logic
 
@@ -120,7 +120,7 @@ key = `${file}:${line}:${column}:${rule}`;
 - Format 1: Use `extractRelativePath()` from `maven-utils.ts` to find `src/` and extract from there
 - Format 2: Already relative, use as-is
 
-**Shared utility:** `extractRelativePath()` in `../../maven-utils.ts`
+**Shared utility:** `extractRelativePath()` in [`../../maven-utils.ts`](../../maven-utils.ts)
 
 ### Column Number Optional (Format 2 only)
 
@@ -329,8 +329,8 @@ mvn checkstyle:check 2>&1 | tee samples/maven-checkstyle-violations.txt
 ## Questions or Issues?
 
 - Review `README.md` for user-facing documentation
-- Check `../../types.ts` for ExtractorPlugin interface
-- See `../../extractor-registry.ts` for how extractors are registered
+- Check [`../../types.ts`](../../types.ts) for ExtractorPlugin interface
+- See [`../../extractor-registry.ts`](../../extractor-registry.ts) for how extractors are registered
 - Reference `../maven-compiler/` for similar Maven extractor pattern
 
 ## Checkstyle Output Evolution

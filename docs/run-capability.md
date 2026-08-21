@@ -219,11 +219,11 @@ vv init
 # Now `vv validate` runs full validation suite with caching
 ```
 
-See: **resources/configure-project.md** for full adoption workflow.
+See [`docs/configure-project.md`](./configure-project.md) for the full adoption workflow.
 
 ## Related Documentation
 
-- **Main docs:** `docs/error-extractors-guide.md` (comprehensive extractor documentation)
-- **CLI reference:** `docs/skills/vibe-validate/cli-reference.md`
-- **Extending extraction:** `resources/extending-extraction.md` (if errors not captured)
-- **Project configuration:** `resources/configure-project.md` (adopt for team)
+- **Main docs:** [`docs/error-extractors-guide.md`](./error-extractors-guide.md) (comprehensive extractor documentation)
+- **CLI reference:** [`docs/skills/vibe-validate/cli-reference.md`](./skills/vibe-validate/cli-reference.md)
+- **Extending extraction:** [`docs/extending-extraction.md`](./extending-extraction.md) (if errors not captured)
+- **Project configuration:** [`docs/configure-project.md`](./configure-project.md) (adopt for team)

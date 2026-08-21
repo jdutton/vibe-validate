@@ -126,10 +126,10 @@ Plugin includes 2 built-in samples:
 
 ## Related Files
 
-- `../../types.ts` - ExtractorPlugin interface
-- `../../utils/test-framework-utils.ts` - Shared test failure processing
-- `../../result-schema.ts` - MAX_ERRORS_IN_ARRAY constant
-- `../../extractor-registry.ts` - Registration point
+- [`../../types.ts`](../../types.ts) - ExtractorPlugin interface
+- [`../../utils/test-framework-utils.ts`](../../utils/test-framework-utils.ts) - Shared test failure processing
+- [`../../result-schema.ts`](../../result-schema.ts) - MAX_ERRORS_IN_ARRAY constant
+- [`../../extractor-registry.ts`](../../extractor-registry.ts) - Registration point
 
 ## Performance Notes
 

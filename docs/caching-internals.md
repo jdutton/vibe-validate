@@ -73,8 +73,20 @@ the directory looking for stray files) can record a result that cleaning up that
 state will not invalidate — the key cannot see the change. Re-run explicitly:
 
 ```bash
+vv validate --retry-failed   # re-run only the failed steps (passed steps stay cached)
 vv validate --force          # re-run everything
-vv validate --retry-failed   # re-run only the failed steps
+```
+
+Prefer `--retry-failed`: it replays the previously passed steps from history and
+re-executes only what failed, so escaping a stale failure does not cost a full
+revalidation.
+
+If the failure is surfacing at `git commit` and you want to bypass the cache
+without leaving the commit path, `VV_FORCE_EXECUTION=1` does for `pre-commit`
+what `--force` does for `validate` (git hooks accept no flags of their own):
+
+```bash
+VV_FORCE_EXECUTION=1 git commit -m "your message"
 ```
 
 ## How Caching Works: Step by Step

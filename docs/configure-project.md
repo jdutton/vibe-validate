@@ -120,7 +120,8 @@ vv validate --yaml || exit 1
 ## Complete Documentation
 
 See main project documentation:
-- **Getting Started:** `docs/getting-started.md`
-- **Configuration Reference:** `docs/skills/setting-up-projects/configuration-reference.md`
-- **CLI Reference:** `docs/skills/vibe-validate/cli-reference.md`
-- **CI/CD Integration:** `docs/ci-cd-integration.md`
+- **Getting Started:** [`docs/getting-started.md`](./getting-started.md)
+- **Configuration Reference:** [`docs/skills/setting-up-projects/configuration-reference.md`](./skills/setting-up-projects/configuration-reference.md)
+- **CLI Reference:** [`docs/skills/vibe-validate/cli-reference.md`](./skills/vibe-validate/cli-reference.md)
+- **CI/CD Integration:** the "CI/CD Integration" section of this guide, plus [`docs/getting-started.md`](./getting-started.md)
+- **CI Debugging:** [`docs/ci-debugging.md`](./ci-debugging.md)

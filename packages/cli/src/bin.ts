@@ -558,7 +558,7 @@ function showComprehensiveHelp(program: Command): void {
   console.log('- **Invalidation**: Any change to a file the key covers');
   console.log('- **Not covered**: ignored paths (.gitignore, .git/info/exclude, or your global');
   console.log('  excludes file) and state outside the repo. Changing those does NOT invalidate');
-  console.log('  the cache — re-run with `vibe-validate validate --force`.\n');
+  console.log('  the cache — re-run with `vibe-validate validate --force` to bypass it.\n');
 
   console.log('---\n');
   console.log('For more details: https://github.com/jdutton/vibe-validate');

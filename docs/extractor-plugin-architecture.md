@@ -519,7 +519,7 @@ export default {
 4. Provide starter templates
 
 **Deliverables**:
-- `packages/extractors/src/plugin-loader.ts`
+- [`packages/extractors/src/plugin-loader.ts`](../packages/extractors/src/plugin-loader.ts)
 - `docs/building-custom-extractors.md`
 - `examples/custom-extractors/` directory with templates
 - Tests for plugin loading

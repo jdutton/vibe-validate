@@ -163,7 +163,7 @@ Assuming typical validation with 10 extractor calls:
 
 **Implementation Steps:**
 
-#### 1. Create Sandbox Module (`packages/extractors/src/sandbox.ts`)
+#### 1. Create Sandbox Module ([`packages/extractors/src/sandbox.ts`](../../packages/extractors/src/sandbox.ts))
 
 ```typescript
 import ivm from 'isolated-vm';
@@ -390,7 +390,7 @@ extractors:
 ## Migration Plan
 
 ### Step 1: Implement Sandbox Module (2-3 days)
-- Create `packages/extractors/src/sandbox.ts`
+- Create [`packages/extractors/src/sandbox.ts`](../../packages/extractors/src/sandbox.ts)
 - Add `isolated-vm` dependency
 - Write comprehensive tests
 - Document API
