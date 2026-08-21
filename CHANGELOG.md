@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-08-21
+
 ### Changed
 
 - **Escaping a replayed cached failure no longer costs a full revalidation.** When a stored failure replays because your fix was to an ignored path or to state outside the repo, the explanation now offers `vv validate --retry-failed` first — it re-runs only the failed step and reuses the cached passes. `vv validate --force` is still offered when you want everything re-run.
