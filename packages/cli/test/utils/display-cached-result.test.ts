@@ -148,4 +148,24 @@ describe('displayCachedFailureHint', () => {
 
     expect(output).toContain('validate --force');
   });
+
+  it('should offer --retry-failed as well as --force', () => {
+    const output = renderFailureHint();
+
+    // Both resolve issue #169; --retry-failed re-runs only the failed step and
+    // replays the rest from cache, so a user with a slow suite is not forced
+    // into a full revalidation to escape a stale failure.
+    expect(output).toContain('validate --retry-failed');
+    expect(output).toContain('validate --force');
+  });
+
+  it('should lead with the cheaper escape hatch', () => {
+    const output = renderFailureHint();
+
+    // Ordering is the whole point of this hint's revision: issue #169's reporter
+    // was blocked by the cost of a full revalidation (>10 min), so --force must
+    // not be the first thing they are told to reach for.
+    expect(output.indexOf('--retry-failed')).toBeGreaterThan(-1);
+    expect(output.indexOf('--retry-failed')).toBeLessThan(output.indexOf('--force'));
+  });
 });

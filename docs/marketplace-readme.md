@@ -22,7 +22,7 @@ claude plugin install vibe-validate@vibe-validate
 
 ### For your project (shared with team)
 
-Add `--scope project` to write to `.claude/settings.json` (committed to git). Team members who clone the repo will be prompted to install the marketplace automatically.
+Add `--scope project` to write to [`.claude/settings.json`](../.claude/settings.json) (committed to git). Team members who clone the repo will be prompted to install the marketplace automatically.
 
 ```bash
 claude plugin marketplace add jdutton/vibe-validate#claude-marketplace --scope project

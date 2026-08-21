@@ -156,9 +156,9 @@ const limitedErrors = errors.slice(0, MAX_ERRORS_IN_ARRAY);
 
 ## Related Files
 
-- `../../types.ts` - ExtractorPlugin interface definition
-- `../../result-schema.ts` - MAX_ERRORS_IN_ARRAY constant (10)
-- `../../extractor-registry.ts` - Registration point (not modified yet)
+- [`../../types.ts`](../../types.ts) - ExtractorPlugin interface definition
+- [`../../result-schema.ts`](../../result-schema.ts) - MAX_ERRORS_IN_ARRAY constant (10)
+- [`../../extractor-registry.ts`](../../extractor-registry.ts) - Registration point (not modified yet)
 
 ## Performance Notes
 

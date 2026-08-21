@@ -287,7 +287,7 @@ Or from within a Claude Code session:
 /plugin install vibe-validate@vibe-validate
 ```
 
-**For project-scope** (shared with team via `.claude/settings.json`), add `--scope project`:
+**For project-scope** (shared with team via [`.claude/settings.json`](.claude/settings.json)), add `--scope project`:
 
 ```bash
 claude plugin marketplace add jdutton/vibe-validate#claude-marketplace --scope project

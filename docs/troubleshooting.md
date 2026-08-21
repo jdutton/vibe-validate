@@ -62,4 +62,4 @@ vv run <command>
 
 ## Complete Troubleshooting Guide
 
-See: `docs/troubleshooting.md` in the main documentation
+See: [`docs/troubleshooting.md`](./troubleshooting.md) in the main documentation

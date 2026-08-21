@@ -162,9 +162,9 @@ Plugin includes 3 built-in samples:
 
 ## Related Files
 
-- `../../types.ts` - ExtractorPlugin interface, FormattedError types
-- `../../result-schema.ts` - MAX_ERRORS_IN_ARRAY constant (10)
-- `../../extractor-registry.ts` - Registration point
+- [`../../types.ts`](../../types.ts) - ExtractorPlugin interface, FormattedError types
+- [`../../result-schema.ts`](../../result-schema.ts) - MAX_ERRORS_IN_ARRAY constant (10)
+- [`../../extractor-registry.ts`](../../extractor-registry.ts) - Registration point
 
 ## Performance Notes
 

@@ -586,7 +586,8 @@ vibe-validate validate --force
 - **Invalidation**: Any change to a file the key covers
 - **Not covered**: ignored paths (.gitignore, .git/info/exclude, or your global
   excludes file) and state outside the repo. Changing those does NOT invalidate
-  the cache — re-run with `vibe-validate validate --force`.
+  the cache — re-run with `vibe-validate validate --retry-failed` (failed steps
+  only) or `vibe-validate validate --force` (everything).
 
 ---
 

@@ -38,7 +38,7 @@ This extractor follows the **ExtractorPlugin** interface:
 - `CLAUDE.md` - This file (LLM-specific guidance)
 
 ### Shared Utilities
-- `../../maven-utils.ts` - `extractRelativePath()` function (shared by all Maven extractors)
+- [`../../maven-utils.ts`](../../maven-utils.ts) - `extractRelativePath()` function (shared by all Maven extractors)
 
 ## Detection Logic
 
@@ -97,7 +97,7 @@ Maven compiler errors span multiple lines:
 
 **Logic:** Find first occurrence of `src/` and extract from there (Maven convention)
 
-**Shared utility:** `extractRelativePath()` in `../../maven-utils.ts`
+**Shared utility:** `extractRelativePath()` in [`../../maven-utils.ts`](../../maven-utils.ts)
 
 ### Column Number Optional
 
@@ -216,6 +216,6 @@ Can be safely loaded in:
 ## Questions or Issues?
 
 - Review `README.md` for user-facing documentation
-- Check `../../types.ts` for ExtractorPlugin interface
-- See `../../extractor-registry.ts` for how extractors are registered
+- Check [`../../types.ts`](../../types.ts) for ExtractorPlugin interface
+- See [`../../extractor-registry.ts`](../../extractor-registry.ts) for how extractors are registered
 - Reference other extractors in `../` for patterns

@@ -223,7 +223,7 @@ See: **resources/configure-project.md** for full adoption workflow.
 
 ## Related Documentation
 
-- **Main docs:** `docs/error-extractors-guide.md` (comprehensive extractor documentation)
-- **CLI reference:** `docs/skills/vibe-validate/cli-reference.md`
+- **Main docs:** [`docs/error-extractors-guide.md`](./error-extractors-guide.md) (comprehensive extractor documentation)
+- **CLI reference:** [`docs/skills/vibe-validate/cli-reference.md`](./skills/vibe-validate/cli-reference.md)
 - **Extending extraction:** `resources/extending-extraction.md` (if errors not captured)
 - **Project configuration:** `resources/configure-project.md` (adopt for team)

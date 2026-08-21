@@ -310,7 +310,7 @@ npx vibe-validate generate-workflow --check
 
 **What it generates:**
 
-Creates `.github/workflows/validate.yml` with:
+Creates [`.github/workflows/validate.yml`](../../.github/workflows/validate.yml) with:
 - Matrix strategy for multi-OS and multi-Node.js testing
 - Automatic pnpm/npm detection
 - Validation state artifact upload on failure

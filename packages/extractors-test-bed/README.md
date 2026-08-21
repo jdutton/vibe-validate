@@ -248,7 +248,7 @@ FORCE_COLOR=1 yarn jest > stdout.txt 2> stderr.txt
 - Example corruption: `m FAIL test.ts2m` instead of `FAIL test.ts`
 
 **vibe-validate's Protection**:
-- `packages/core/src/runner.ts` captures stdout and stderr independently
+- [`packages/core/src/runner.ts`](../core/src/runner.ts) captures stdout and stderr independently
 - ANSI stripping happens on each stream separately (no interleaving)
 - Streams are concatenated AFTER cleaning (no corruption)
 
@@ -381,4 +381,4 @@ Traditional extractor testing approaches:
 
 - `../extractors/src/` - Extractor implementations
 - `../extractors/test/samples/` - Generated samples (output of this package)
-- `../extractors/test-generic-baseline.ts` - Generic extractor quality test
+- [`../extractors/test-generic-baseline.ts`](../extractors/test-generic-baseline.ts) - Generic extractor quality test

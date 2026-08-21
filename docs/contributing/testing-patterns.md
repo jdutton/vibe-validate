@@ -57,9 +57,9 @@ const resultWithPhases = createValidationResult({
 ```
 
 **Real examples from codebase:**
-- `createMockConfig()` - `packages/cli/test/commands/pre-commit.test.ts`
-- `createValidationRun()` - `packages/cli/test/helpers/validation-test-helpers.ts`
-- `createPRData()` - `packages/cli/test/services/github-fetcher.test.ts`
+- `createMockConfig()` - [`packages/cli/test/commands/pre-commit.test.ts`](../../packages/cli/test/commands/pre-commit.test.ts)
+- `createValidationRun()` - [`packages/cli/test/helpers/validation-test-helpers.ts`](../../packages/cli/test/helpers/validation-test-helpers.ts)
+- `createPRData()` - [`packages/cli/test/services/github-fetcher.test.ts`](../../packages/cli/test/services/github-fetcher.test.ts)
 
 ### 2. Setup Functions - `setup*()`
 
@@ -87,9 +87,9 @@ const { mockConfig } = setupTestEnvironment({ phases: [] });
 ```
 
 **Real examples from codebase:**
-- `setupSuccessfulPreCommit()` - `packages/cli/test/commands/pre-commit.test.ts`
-- `setupPostMergeTest()` - `packages/git/test/post-merge-cleanup.test.ts`
-- `setupRunnerTest()` - `packages/cli/test/runner-adapter.test.ts`
+- `setupSuccessfulPreCommit()` - [`packages/cli/test/commands/pre-commit.test.ts`](../../packages/cli/test/commands/pre-commit.test.ts)
+- `setupPostMergeTest()` - [`packages/git/test/post-merge-cleanup.test.ts`](../../packages/git/test/post-merge-cleanup.test.ts)
+- `setupRunnerTest()` - [`packages/cli/test/runner-adapter.test.ts`](../../packages/cli/test/runner-adapter.test.ts)
 
 ### 3. Assertion Helpers - `expect*()`
 
@@ -119,9 +119,9 @@ expectValidationResult(result, { passed: false, errorCount: 2 });
 ```
 
 **Real examples from codebase:**
-- `expectCleanupBehavior()` - `packages/git/test/post-merge-cleanup.test.ts`
-- `expectConsoleOutput()` - `packages/cli/test/helpers/validation-test-helpers.ts`
-- `expectSingleError()` - `packages/extractors/test/helpers/sandboxed-extractor-helpers.ts`
+- `expectCleanupBehavior()` - [`packages/git/test/post-merge-cleanup.test.ts`](../../packages/git/test/post-merge-cleanup.test.ts)
+- `expectConsoleOutput()` - [`packages/cli/test/helpers/validation-test-helpers.ts`](../../packages/cli/test/helpers/validation-test-helpers.ts)
+- `expectSingleError()` - [`packages/extractors/test/helpers/sandboxed-extractor-helpers.ts`](../../packages/extractors/test/helpers/sandboxed-extractor-helpers.ts)
 
 ### 4. Execution Helpers - `run*()` / `execute*()`
 
@@ -151,8 +151,8 @@ const { exitCode, stdout } = await executeCommand(cliPath, ['validate']);
 ```
 
 **Real examples from codebase:**
-- `runPreCommit()` - `packages/cli/test/commands/pre-commit.test.ts`
-- `executeStateCommand()` - `packages/cli/test/commands/state.test.ts`
+- `runPreCommit()` - [`packages/cli/test/commands/pre-commit.test.ts`](../../packages/cli/test/commands/pre-commit.test.ts)
+- `executeStateCommand()` - [`packages/cli/test/commands/state.test.ts`](../../packages/cli/test/commands/state.test.ts)
 - `executeCommand()` - Multiple test files
 
 ## Helper Location Strategy
@@ -216,8 +216,8 @@ packages/cli/
 - Utilities that don't belong in inline helpers
 
 **Examples from codebase:**
-- `packages/cli/test/helpers/validation-test-helpers.ts` - Used across multiple validation tests
-- `packages/extractors/test/helpers/sandboxed-extractor-helpers.ts` - Complex sandbox test utilities
+- [`packages/cli/test/helpers/validation-test-helpers.ts`](../../packages/cli/test/helpers/validation-test-helpers.ts) - Used across multiple validation tests
+- [`packages/extractors/test/helpers/sandboxed-extractor-helpers.ts`](../../packages/extractors/test/helpers/sandboxed-extractor-helpers.ts) - Complex sandbox test utilities
 
 ### What NOT to Create
 
@@ -484,6 +484,58 @@ it('should extract single error', async () => {
 
 **Impact:** 25 lines → 7 lines (72% reduction)
 
+## Testing Advice We Print to Users
+
+When code tells a user what to run — an error hint, a recovery footer, a
+`--help` block — the obvious test mirrors the string:
+
+```typescript
+// Weak: passes for ANY advice, including advice that is wrong.
+expect(output).toContain('validate --force');
+```
+
+That assertion cannot fail for the reason you care about. It re-states the
+implementation's choice, so it confirms the text is *stable*, never that it is
+*right*. Reviewers read it as coverage and move on.
+
+Issue #169 is the worked example. The stale-cache hint told users to run
+`vv validate --force`, which re-runs every step, when `vv validate
+--retry-failed` fixes the same situation by re-running only what failed. The
+reporter had been blocked by the cost of a full revalidation, so the hint named
+the expensive escape. Unit tests, an adversarial review, and a four-reviewer
+panel all passed — none of them ran the advice.
+
+**Assert the property the advice must have, by executing it.** See
+[`packages/cli/test/integration/cached-failure-escape.integration.test.ts`](../../packages/cli/test/integration/cached-failure-escape.integration.test.ts):
+
+```typescript
+// Read the advice out of real output, so the guard follows the text if it moves.
+const recommended = [...stuck.output.matchAll(/validate ((?:--[A-Za-z][\w-]*[ \t]*)+)/g)];
+
+// Then RUN each one against a genuinely stuck repo and assert what must be true.
+for (const flags of recommended) {
+  await seedStuckFailure();
+  const escape = await executeVibeValidateCommand(['validate', ...flags], { cwd, env });
+  expect(escape.exitCode, `hint recommends "${flags}" but it left the user stuck`).toBe(0);
+}
+```
+
+One caveat that decides whether this is worth the effort. "Does the advice
+work?" would **not** have caught #169 — `--force` does work. What caught it was
+a test for the property that actually mattered:
+
+```typescript
+// At least one offered escape must not re-run already-passed steps.
+expect(cheapEscapeOffered).toBe(true);
+```
+
+Both guards were verified by mutation: the hint was reverted to its shipped
+wording, and only the cost-based one failed. So name the property the user
+needs — cheap, reachable from where they are stuck, actually resolving — rather
+than the command you happened to write. Reach for this whenever a string tells
+a user to do something; a plain `toContain` is enough for text that only has to
+stay stable.
+
 ## Summary
 
 Following these patterns ensures:
@@ -500,8 +552,9 @@ Following these patterns ensures:
 4. Document all helpers with JSDoc
 5. Add explicit `expect()` for ESLint
 6. Update baseline after refactoring
+7. Test advice you print to users by executing it, not by mirroring its text
 
 **See actual implementations in:**
-- `packages/cli/test/commands/pre-commit.test.ts` (25 helpers)
-- `packages/cli/test/helpers/validation-test-helpers.ts` (shared helpers)
-- `packages/extractors/test/helpers/sandboxed-extractor-helpers.ts` (complex helpers)
+- [`packages/cli/test/commands/pre-commit.test.ts`](../../packages/cli/test/commands/pre-commit.test.ts) (25 helpers)
+- [`packages/cli/test/helpers/validation-test-helpers.ts`](../../packages/cli/test/helpers/validation-test-helpers.ts) (shared helpers)
+- [`packages/extractors/test/helpers/sandboxed-extractor-helpers.ts`](../../packages/extractors/test/helpers/sandboxed-extractor-helpers.ts) (complex helpers)

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The stale-cache hint now leads with `--retry-failed` instead of `--force`.** When a cached failure is replayed, the hint explaining that ignored paths are outside the cache key offered only `vv validate --force`, which re-runs every step. `vv validate --retry-failed` resolves the same situation by re-running just the failed step and replaying the passed steps from the previous run — verified by side-effect counters: `--retry-failed` re-executed the failed step only, `--force` re-executed everything.
+
+  This matters because the cost of a full revalidation is what makes a stale failure painful in the first place — the reporter of issue #169 was looking at more than ten minutes. Both commands are still shown; only the order changed, and the same correction was applied to the `Caching` section of `validate --help --verbose`.
+
+### Fixed
+
+- **Stale documentation pointers, and the reason they went unnoticed.** `vat resources validate` checks markdown *link* integrity, but most cross-references in this repo were written as backticked paths — inline code, which carries no link semantics, so a link checker cannot see it. Three pointers in `CLAUDE.md` were dead as a result, including `docs/cli-reference.md` in the rule "never manually edit" — a file that does not exist, so the rule named the wrong target and gave no route to the real generated file.
+
+  95 backticked cross-references that resolve to real files are now markdown links, which puts them under the link checker (318 → 413 links validated). Only spans that are entirely a path were converted, and only where the target exists today: examples, planned files, and historical `CHANGELOG` entries stay as inline code, because they are not cross-references and linkifying them would break validation on text that is correct as written. Content under `docs/skills/` is likewise unchanged — its authoring rules require prose references, since VAT's packager transcludes linked markdown into the bundle.
+
+### Documented
+
+- **`VV_FORCE_EXECUTION=1` as the cache bypass for the commit path.** Issue #169 asked for a cache-bypass flag on `pre-commit`; git hooks accept no flags of their own, but the environment variable that `--force` sets internally has always been read on the way in, so `VV_FORCE_EXECUTION=1 git commit` already bypasses the cache for that one commit. Verified end-to-end against a replaying cached failure. No behaviour changed — it was simply documented nowhere user-facing. Now covered in `pre-commit --help --verbose` and `docs/caching-internals.md`.
+
 ## [0.20.0] - 2026-08-17
 
 ### Added

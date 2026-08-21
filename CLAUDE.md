@@ -71,7 +71,7 @@ vibe-validate history   # View validation history
 pnpm pre-commit         # Branch sync + validation + secret scanning
 ```
 
-**State Management**: Validation state tracked via git notes. See `docs/git-validation-tracking.md` for architecture.
+**State Management**: Validation state tracked via git notes. See [`docs/git-validation-tracking.md`](./docs/git-validation-tracking.md) for architecture.
 
 ## Turborepo Integration
 
@@ -156,7 +156,7 @@ Updates all package.json files + Claude Code plugin manifest.
 
 **IMPORTANT**: CHANGELOG `[Unreleased]` → `[X.Y.Z]` updates are ONLY for full releases, NEVER for pre-releases (rc, beta, alpha). The `bump-version` script enforces this automatically.
 
-See `docs/automated-publishing.md` for RC vs stable behavior, troubleshooting.
+See [`docs/contributing/automated-publishing.md`](./docs/contributing/automated-publishing.md) for RC vs stable behavior, troubleshooting.
 
 ## Security Requirements
 
@@ -199,7 +199,7 @@ See `docs/automated-publishing.md` for RC vs stable behavior, troubleshooting.
 - **DRY enforcement**: < 3% duplication (monitored by `jscpd`)
   - Create helpers: `create*()`, `setup*()`, `expect*()` patterns
   - Module scope only (never inside describe blocks)
-  - See `docs/testing-patterns.md` for details
+  - See [`docs/contributing/testing-patterns.md`](./docs/contributing/testing-patterns.md) for details
 - **Cross-platform**: Use `spawn('node', [command, ...])` pattern for CLI tests (Windows compatibility)
 - **ESLint enforcement**: Custom rules enforce security (safeExec*) and architecture (git/gh via @vibe-validate/git)
 
@@ -209,7 +209,7 @@ Use `getCommandName()` in error messages to match user's invocation (`vv` or `vi
 ### Documentation
 - JSDoc for public APIs
 - Auto-generate CLI docs: `pnpm generate-cli-docs`
-- **Never manually edit** `docs/cli-reference.md`
+- **Never manually edit** [`docs/skills/vibe-validate/cli-reference.md`](./docs/skills/vibe-validate/cli-reference.md) (generated)
 
 ## Development Workflow
 

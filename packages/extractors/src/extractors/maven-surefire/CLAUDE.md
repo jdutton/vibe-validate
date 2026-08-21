@@ -271,6 +271,6 @@ Can be safely loaded in:
 ## Questions or Issues?
 
 - Review `README.md` for user-facing documentation
-- Check `../../types.ts` for ExtractorPlugin interface
-- See `../../extractor-registry.ts` for how extractors are registered
+- Check [`../../types.ts`](../../types.ts) for ExtractorPlugin interface
+- See [`../../extractor-registry.ts`](../../extractor-registry.ts) for how extractors are registered
 - Reference other extractors in `../` for patterns
