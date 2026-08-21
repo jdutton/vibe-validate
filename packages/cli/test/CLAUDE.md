@@ -20,7 +20,7 @@ This guide provides context-specific testing patterns for the vibe-validate CLI 
 
 ### Commander.js Testing
 
-**Setup Pattern** (see `helpers/commander-test-setup.js`):
+**Setup Pattern** (see [`helpers/commander-test-setup.ts`](./helpers/commander-test-setup.ts)):
 ```typescript
 import { setupCommanderTest } from '../helpers/commander-test-setup.js';
 
@@ -385,8 +385,8 @@ pnpm test validate.test.ts --watch  # Auto-rerun on changes
 
 - **Commander.js Testing:** [`helpers/commander-test-setup.ts`](./helpers/commander-test-setup.ts)
 - **Validate Helpers:** [`commands/validate-test-helpers.ts`](./commands/validate-test-helpers.ts)
-- **Security Patterns:** `../../packages/utils/src/safe-exec.ts` (never use execSync directly)
-- **Cross-Platform Paths:** `../../packages/utils/src/path-utils.ts`
+- **Security Patterns:** [`packages/utils/src/safe-exec.ts`](../../utils/src/safe-exec.ts) (never use execSync directly)
+- **Cross-Platform Paths:** [`packages/utils/src/path-helpers.ts`](../../utils/src/path-helpers.ts)
 
 ## Key Takeaways
 

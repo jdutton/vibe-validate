@@ -190,7 +190,7 @@ failedStep: "TypeScript"
 
 All examples tagged with `validation-result:example` are automatically validated against the JSON Schema:
 - **Schema location**: [`packages/core/validate-result.schema.json`](../../packages/core/validate-result.schema.json)
-- **Validation test**: `packages/core/test/result-schema.test.ts`
+- **Validation test**: [`packages/core/test/result-schema-strict.test.ts`](../../packages/core/test/result-schema-strict.test.ts)
 - **Documentation test**: [`packages/core/test/markdown-examples-validation.test.ts`](../../packages/core/test/markdown-examples-validation.test.ts)
 
 ### Schema URLs

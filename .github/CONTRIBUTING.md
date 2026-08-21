@@ -368,10 +368,12 @@ Quality is auto-calculated by comparing extracted data to expected values.
 If you want to improve the extractor code itself:
 
 **Files:**
-- `packages/extractors/src/vitest-extractor.ts` - Vitest test failures
-- `packages/extractors/src/typescript-extractor.ts` - TypeScript errors
-- `packages/extractors/src/eslint-extractor.ts` - ESLint violations
+- [`packages/extractors/src/extractors/vitest/index.ts`](../packages/extractors/src/extractors/vitest/index.ts) - Vitest test failures
+- [`packages/extractors/src/extractors/typescript/index.ts`](../packages/extractors/src/extractors/typescript/index.ts) - TypeScript errors
+- [`packages/extractors/src/extractors/eslint/index.ts`](../packages/extractors/src/extractors/eslint/index.ts) - ESLint violations
 - [`packages/extractors/src/smart-extractor.ts`](../packages/extractors/src/smart-extractor.ts) - Auto-detection logic
+
+Each extractor lives in its own directory under `packages/extractors/src/extractors/`, alongside its tests and a `CLAUDE.md` describing the format it parses.
 
 **Process:**
 

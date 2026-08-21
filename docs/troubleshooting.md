@@ -47,7 +47,7 @@ vv run <command>
 # If "generic" → need custom extractor
 ```
 
-**Solution:** Create custom extractor (see `resources/extending-extraction.md`)
+**Solution:** Create custom extractor (see [`docs/extending-extraction.md`](./extending-extraction.md))
 
 ### Command Always Fails
 
@@ -62,4 +62,4 @@ vv run <command>
 
 ## Complete Troubleshooting Guide
 
-See: [`docs/troubleshooting.md`](./troubleshooting.md) in the main documentation
+You are reading it — this file is the complete guide.

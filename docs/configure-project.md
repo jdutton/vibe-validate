@@ -26,7 +26,7 @@ vv validate
 The `vv init` command generates:
 - `vibe-validate.config.yaml` - Validation configuration
 - `.husky/pre-commit` - Pre-commit hook (optional)
-- [`.github/workflows/validate.yml`](../.github/workflows/validate.yml) - CI workflow (optional)
+- `.github/workflows/validate.yml` - CI workflow (optional)
 
 ## Configuration Example
 
@@ -123,4 +123,5 @@ See main project documentation:
 - **Getting Started:** [`docs/getting-started.md`](./getting-started.md)
 - **Configuration Reference:** [`docs/skills/setting-up-projects/configuration-reference.md`](./skills/setting-up-projects/configuration-reference.md)
 - **CLI Reference:** [`docs/skills/vibe-validate/cli-reference.md`](./skills/vibe-validate/cli-reference.md)
+- **CI/CD Integration:** the "CI/CD Integration" section of this guide, plus [`docs/getting-started.md`](./getting-started.md)
 - **CI Debugging:** [`docs/ci-debugging.md`](./ci-debugging.md)
