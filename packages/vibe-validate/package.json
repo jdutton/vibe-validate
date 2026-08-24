@@ -68,7 +68,7 @@
   "devDependencies": {
     "@types/node": "^20.19.26",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.7"
   },
   "scripts": {
     "test": "vitest run",
