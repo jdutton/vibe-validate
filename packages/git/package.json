@@ -44,10 +44,10 @@
   },
   "dependencies": {
     "@vibe-validate/utils": "workspace:*",
-    "yaml": "^2.8.2"
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@types/node": "^22.19.2",
+    "@types/node": "^20.19.43",
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"
   }
