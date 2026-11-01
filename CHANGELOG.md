@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A parallel phase now blames the step that actually failed.** When one step in a `parallel: true` phase failed, fail-fast stopped its still-running siblings — and the result then reported the first *stopped* step in config order as the failure. A long ESLint run listed first would be reported as `ESLint failed` with the extraction "Process stopped (fail-fast)", while the real failure sat further down the list. `failedStep` and `summary` now name the step whose own command failed.
+
+  Siblings that fail-fast stopped are recorded as stopped, not failed: their step result carries `stoppedByFailFast: true` and the extraction `Stopped by fail-fast after <step> failed`; the console prints `⏹️ STOPPED` for them instead of `❌ FAILED`, and the log file labels them `STOPPED (fail-fast)`. `vv validate --check`, flakiness warnings and nested `vv validate` output all skip stopped steps when they look for "the failed step". A stopped step still has `passed: false` — even when it handled the stop signal and exited 0 — so it is never cached as a pass and `--retry-failed` re-runs it.
+
+- **A step that fails without printing anything is no longer reported as stopped by fail-fast.** Its extraction now reads `Exited with code <n> and produced no output`. Previously any failing step with under 50 characters of output was assumed to have been killed.
+
+- **A phase's `failFast` setting now takes effect.** The config accepted `failFast` on each phase but the runner ignored it, so every phase was fail-fast. A phase with `failFast: false` now runs every step to completion and reports each failure; phases that leave it unset behave as before (fail-fast).
+
+### Changed
+
+- **Validation hashes the worktree fewer times.** Before running any step, `pre-commit` computed the same git tree hash three times (snapshot, validation lock, runner) and `vv validate` twice (lock, runner). Each is now computed once and handed on. The hash taken after validation, which detects files changing mid-run, is unchanged, and a run that had to wait for another validation's lock hashes the worktree again after the wait. On a large repository each hash costs from half a second to two seconds on a loaded machine.
+
+- **`VV_DEBUG=1 vv pre-commit` prints where the hook's own time goes** — config load, snapshot, partially-staged check, sync-guard setup, the network fetch, each sync guard and secret scanning — before validation starts. If the fetch dominates, `hooks.preCommit.baseBranchSync: off` and `trackingBranchSync: off` remove it (and the checks that depend on it) entirely. Validation itself also reports the time spent in the dependency lock check: by default (and with `runOn: pre-commit` or `validate`), every commit that misses the cache runs a frozen-lockfile install before any step starts — set `runOn: disabled` or `VV_SKIP_DEPENDENCY_CHECK=1` if that cost is not worth it.
+
 ## [0.20.1] - 2026-08-21
 
 ### Changed

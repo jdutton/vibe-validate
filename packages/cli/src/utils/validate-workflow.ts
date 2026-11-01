@@ -390,8 +390,11 @@ export async function runValidateWorkflow(
 
       if (shouldRunDependencyCheck(depCheckConfig, isPreCommit)) {
         const depCheckFailure = await runDependencyLockCheck(config, verbose);
+        // A package-manager install: often the costliest thing before the steps run
+        timer.mark('dependency lock check');
         if (depCheckFailure) {
           // Dependency check failed - return failure result
+          timer.done();
           return depCheckFailure;
         }
       }
@@ -406,6 +409,8 @@ export async function runValidateWorkflow(
       result = await runValidation({
         ...runnerConfig,
         previousRun: previousRunForRetry,
+        // Hashed once above for the cache lookup; don't hash the worktree again
+        ...(treeHashBefore ? { treeHash: treeHashBefore } : {}),
       });
 
       // Record validation history (if in git repo)

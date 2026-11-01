@@ -218,8 +218,8 @@ Agents should expect ALL fields from the schema, but only these fields are guara
 
 **Optional fields (present on failure):**
 - `summary` (string) - one-line description
-- `failedStep` (string) - name of failed step
-- `phases` (array) - detailed breakdown with step-level extraction
+- `failedStep` (string) - name of the step whose own command failed (never a step fail-fast stopped)
+- `phases` (array) - detailed breakdown with step-level extraction; a step that fail-fast stopped has `passed: false` and `stoppedByFailFast: true` and is not a failure to fix
 
 **Optional fields (always):**
 - `isCachedResult` (boolean) - true if from cache (v0.15.0+)

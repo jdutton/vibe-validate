@@ -37,6 +37,12 @@ export interface ValidationLockOptions {
   waitTimeout?: number;
   /** Whether in YAML output mode (suppresses display output) */
   yaml?: boolean;
+  /**
+   * Tree hash the caller already computed for this same worktree state (e.g.
+   * pre-commit's snapshot). Reused instead of hashing the worktree a second
+   * time — on a large repo each hash is seconds on the commit path.
+   */
+  treeHashResult?: TreeHashResult;
 }
 
 /**
@@ -205,6 +211,11 @@ export async function withValidationLock<T>(
     const shouldWait = options.waitEnabled !== false;
     const yamlMode = options.yaml ?? false;
 
+    // A hash the caller took before this point describes the worktree as it was
+    // then. A lock wait can last minutes, so after one the worktree is hashed
+    // again. (Shorter gaps are covered by the post-run stability check.)
+    let treeHashResult: TreeHashResult | undefined = options.treeHashResult;
+
     // Handle wait mode (default: wait for running validation to complete)
     if (shouldWait) {
       // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
@@ -224,16 +235,17 @@ export async function withValidationLock<T>(
         timer.markWithThreshold('waitForLock', 5000);
 
         displayWaitResult(waitResult.timedOut, yamlMode);
+        treeHashResult = undefined;
       }
       // If no lock exists, proceed normally
     }
 
     // Handle lock mode (single-instance execution)
-    let treeHashResult: TreeHashResult | undefined;
     if (shouldLock) {
       // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
-      treeHashResult = await getGitTreeHash();
-      timer.markWithThreshold('getGitTreeHash (lock)', 2000);
+      const reused = treeHashResult !== undefined;
+      treeHashResult ??= await getGitTreeHash();
+      timer.markWithThreshold(reused ? 'getGitTreeHash (lock, reused)' : 'getGitTreeHash (lock)', 2000);
       const treeHash = treeHashResult.hash;
 
       const lockResult = await acquireLock(configDir, treeHash, lockOptions);

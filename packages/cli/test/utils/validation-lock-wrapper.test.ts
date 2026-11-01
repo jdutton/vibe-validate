@@ -205,6 +205,24 @@ describe('withValidationLock', () => {
       expect(checkLockExists()).toBe(false);
     });
 
+    it('reuses a tree hash the caller already computed instead of hashing the worktree again', async () => {
+      const git = await import('@vibe-validate/git');
+      const precomputed = await git.getGitTreeHash();
+      const hashSpy = vi.spyOn(git, 'getGitTreeHash');
+      let received: unknown;
+
+      await withValidationLock(
+        { lockEnabled: true, treeHashResult: precomputed },
+        async ({ treeHashResult }) => {
+          received = treeHashResult;
+        }
+      );
+
+      expect(hashSpy).not.toHaveBeenCalled();
+      expect(received).toBe(precomputed);
+      hashSpy.mockRestore();
+    });
+
     it('should release lock even if callback throws', async () => {
       await expect(
         withValidationLock(
@@ -289,6 +307,32 @@ validation:
         await lockResult.release?.();
       }
     });
+
+    it('hashes the worktree again after waiting on another validation, ignoring the caller\'s earlier hash', async () => {
+      const { acquireLock } = await import('../../src/utils/pid-lock.js');
+      const git = await import('@vibe-validate/git');
+      const current = await git.getGitTreeHash();
+      // Keyed by the directory the wrapper resolves (cwd is the realpath'd fixture)
+      const lockResult = await acquireLock(process.cwd(), current.hash);
+      const stale = { ...current, hash: 'stale-hash-from-before-the-wait' } as typeof current;
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      let received: unknown;
+
+      try {
+        await withValidationLock(
+          { lockEnabled: true, waitEnabled: true, waitTimeout: 1, treeHashResult: stale },
+          async ({ treeHashResult }) => {
+            received = treeHashResult?.hash;
+          }
+        );
+      } finally {
+        await lockResult.release?.();
+      }
+
+      // The wait really happened — otherwise this test proves nothing
+      expect(consoleLogSpy.mock.calls.flat().join('\n')).toContain('Waiting for running validation');
+      expect(received).toBe(current.hash);
+    }, 60_000);
 
     it('should not wait when waitEnabled is false', async () => {
       // This test verifies that waitEnabled: false skips the wait logic

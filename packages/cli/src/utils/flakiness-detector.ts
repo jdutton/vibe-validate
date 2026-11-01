@@ -5,7 +5,7 @@
  * Helps identify flaky tests that pass/fail on the same code.
  */
 
-import type { ValidationResult, StepResult } from '@vibe-validate/core';
+import { isOwnStepFailure, type ValidationResult, type StepResult } from '@vibe-validate/core';
 import type { HistoryNote } from '@vibe-validate/history';
 
 /**
@@ -101,8 +101,8 @@ function findFlakySteps(
         continue;
       }
 
-      // Flaky: failed before, passed now
-      if (!previousStep.passed && step.passed) {
+      // Flaky: failed on its own before (not stopped by fail-fast), passed now
+      if (isOwnStepFailure(previousStep) && step.passed) {
         flakySteps.push({
           name: step.name,
           failedTimestamp,

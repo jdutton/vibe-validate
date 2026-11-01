@@ -187,6 +187,9 @@
                     "passed": {
                       "type": "boolean"
                     },
+                    "stoppedByFailFast": {
+                      "type": "boolean"
+                    },
                     "isCachedResult": {
                       "type": "boolean"
                     },

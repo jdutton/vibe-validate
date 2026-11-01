@@ -12,6 +12,7 @@ import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+import { ensureDir } from '../src/fs-utils.js';
 import {
   buildStepEnv,
   parseFailures,
@@ -47,20 +48,18 @@ vi.mock('@vibe-validate/git', async (importOriginal) => {
   };
 });
 
+// Wrap ensureDir so a test can make step output-file creation fail
+vi.mock('../src/fs-utils.js', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Dynamic import in mock
+  const actual = await importOriginal<typeof import('../src/fs-utils.js')>();
+  return { ...actual, ensureDir: vi.fn(actual.ensureDir) };
+});
+
 /**
- * Helper to mock getGitTreeHash that fails on subsequent calls
+ * Helper to make the next step output-file creation fail
  */
-function mockFailingGitTreeHash(errorMessage: string): () => void {
-  const originalMock = vi.mocked(getGitTreeHash);
-  let callCount = 0;
-  vi.mocked(getGitTreeHash).mockImplementation(async () => {
-    callCount++;
-    if (callCount > 1) {
-      throw new Error(errorMessage);
-    }
-    return { hash: 'test-tree-hash' as any };
-  });
-  return () => vi.mocked(getGitTreeHash).mockImplementation(originalMock);
+function mockFailingOutputFiles(errorMessage: string): void {
+  vi.mocked(ensureDir).mockRejectedValueOnce(new Error(errorMessage));
 }
 
 /**
@@ -155,6 +154,30 @@ function expectParentContext(
   // Advertised ParentContext.outputDir must match where the outer-captured
   // step output files actually live (Task 3 / I1: alignment).
   expect(toForwardSlash(result.stdoutPath).startsWith(toForwardSlash(result.parsed.outputDir))).toBe(true);
+}
+
+/** These tests spawn node and wait on fail-fast kills; a loaded machine needs headroom. */
+const SPAWN_TEST_TIMEOUT = 30_000;
+
+/**
+ * A step that prints a realistic amount of output, then runs for `ms` before
+ * passing — the shape of a long ESLint run that a fail-fast kill interrupts.
+ */
+function makeLongRunningStep(name: string, ms: number): ValidationStep {
+  const script = `console.log('Linting 412 files across 9 packages with the project config...'); setTimeout(() => process.exit(0), ${ms})`;
+  return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+/** A step that fails on its own after `ms`, with a recognisable error line. */
+function makeFailingStep(name: string, ms: number, exitCode = 1): ValidationStep {
+  const script = `setTimeout(() => { console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(${exitCode}); }, ${ms})`;
+  return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+function findStepResult(result: Awaited<ReturnType<typeof runValidation>>, name: string) {
+  const step = result.phases?.flatMap(p => p.steps).find(s => s.name === name);
+  if (!step) throw new Error(`expected a step result for ${name}`);
+  return step;
 }
 
 describe('runner', () => {
@@ -399,11 +422,12 @@ describe('runner', () => {
       expect(killedStep).toBeDefined();
       expect(killedStep!.passed).toBe(false);
       expect(killedStep!.exitCode).not.toBe(0);
+      expect(killedStep!.stoppedByFailFast).toBe(true);
+      expect(result.failedStep?.name).toBe('Fast Fail');
 
       // Should have meaningful extraction, not "0 errors"
       expect(killedStep!.extraction).toBeDefined();
-      expect(killedStep!.extraction!.summary).toContain('stopped');
-      expect(killedStep!.extraction!.summary).toContain('fail-fast');
+      expect(killedStep!.extraction!.summary).toBe('Stopped by fail-fast after Fast Fail failed');
       expect(killedStep!.extraction!.guidance).toBeDefined();
       expect(killedStep!.extraction!.guidance).toContain('terminated');
     });
@@ -530,7 +554,6 @@ describe('runner', () => {
           {
             name: 'Fail',
             parallel: true,
-            // Use output >50 chars to avoid fail-fast heuristic (see runner.ts:711)
             steps: [{ name: 'Bad', command: 'node -e "console.log(\'This is an error message with enough content to trigger extraction properly\'); process.exit(1)"' }],
           },
         ],
@@ -570,6 +593,183 @@ describe('runner', () => {
       const logContent = readFileSync(logFile, 'utf8');
       expect(logContent).toContain('output1');
       expect(logContent).toContain('output2');
+    });
+  });
+
+  describe('precomputed tree hash', () => {
+    it.each([true, false])('never hashes the worktree when the caller supplied the hash, even for failing steps (parallel: %s)', async (parallel) => {
+      vi.mocked(getGitTreeHash).mockClear();
+
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          failFast: false,
+          steps: [{ name: 'Ok', command: 'node -e "console.log(\'ok\')"' }, makeFailingStep('Bad', 0)],
+        }],
+        treeHash: 'caller-tree-hash',
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(getGitTreeHash).not.toHaveBeenCalled();
+      expect(result.treeHash).toBe('caller-tree-hash');
+      expect(findStepResult(result, 'Bad').outputFiles?.combined).toContain('caller');
+    }, SPAWN_TEST_TIMEOUT);
+  });
+
+  describe('fail-fast attribution (parallel phases)', { timeout: SPAWN_TEST_TIMEOUT }, () => {
+    it('names the step whose own command failed, not the first sibling it stopped', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 300)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.failedStep).toBe('Typecheck');
+      expect(result.summary).toBe('Typecheck failed');
+
+      const failed = findStepResult(result, 'Typecheck');
+      expect(failed.passed).toBe(false);
+      expect(failed.stoppedByFailFast).toBeUndefined();
+      expect(failed.extraction?.summary).not.toContain('fail-fast');
+
+      const stopped = findStepResult(result, 'ESLint');
+      expect(stopped.passed).toBe(false);
+      expect(stopped.stoppedByFailFast).toBe(true);
+      expect(stopped.extraction?.summary).toBe('Stopped by fail-fast after Typecheck failed');
+      expect(stopped.extraction?.totalErrors).toBe(0);
+    });
+
+    it('marks the stopped sibling in the log file, and only the real failure as FAILED', async () => {
+      const logFile = join(testDir, 'log.txt');
+      await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 300)],
+        }],
+        enableFailFast: true,
+        logPath: logFile,
+      });
+
+      const logContent = readFileSync(logFile, 'utf8');
+      expect(logContent).toContain('Typecheck - FAILED');
+      expect(logContent).toContain('ESLint - STOPPED (fail-fast)');
+      expect(logContent).not.toContain('ESLint - FAILED');
+    });
+
+    it.each([true, false])('names the exit code of a real failure with no output (parallel: %s)', async (parallel) => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          steps: [{ name: 'Silent Failure', command: 'node -e "process.exit(3)"' }],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      const step = findStepResult(result, 'Silent Failure');
+      expect(step.stoppedByFailFast).toBeUndefined();
+      expect(step.extraction?.summary).toBe('Exited with code 3 and produced no output');
+    });
+
+    it('does not count a stopped sibling as passed when it exits 0 on SIGTERM', async () => {
+      const graceful = `process.on('SIGTERM', () => process.exit(0)); console.log('watching for changes...'); setInterval(() => {}, 1000)`;
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [{ name: 'Graceful', command: `node -e ${JSON.stringify(graceful)}` }, makeFailingStep('Typecheck', 300)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      const stopped = findStepResult(result, 'Graceful');
+      expect(stopped.stoppedByFailFast).toBe(true);
+      expect(stopped.passed).toBe(false);
+      expect(result.failedStep).toBe('Typecheck');
+    });
+  });
+
+  describe('per-phase failFast', { timeout: SPAWN_TEST_TIMEOUT }, () => {
+    it('runs every parallel step to completion and reports each failure when the phase sets failFast: false', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          failFast: false,
+          steps: [makeFailingStep('Slow Failure', 600), makeFailingStep('Fast Failure', 50), makeLongRunningStep('Passes', 300)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.failedStep).toBe('Slow Failure');
+      for (const name of ['Slow Failure', 'Fast Failure']) {
+        const step = findStepResult(result, name);
+        expect(step.passed).toBe(false);
+        expect(step.stoppedByFailFast).toBeUndefined();
+        expect(step.extraction?.errorSummary).toContain(`${name} found a real problem`);
+      }
+      expect(findStepResult(result, 'Passes').passed).toBe(true);
+
+      const logContent = readFileSync(join(testDir, 'log.txt'), 'utf8');
+      expect(logContent).toContain('Slow Failure - FAILED');
+      expect(logContent).toContain('Fast Failure - FAILED');
+      expect(logContent).not.toContain('Passes - FAILED');
+    });
+
+    it('runs every sequential step when the phase sets failFast: false', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Ordered',
+          parallel: false,
+          failFast: false,
+          steps: [makeFailingStep('First', 0), makeLongRunningStep('Second', 0)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.failedStep).toBe('First');
+      expect(findStepResult(result, 'Second').passed).toBe(true);
+    });
+
+    it('keeps fail-fast when the phase leaves failFast unset and the run enables it', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 100)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(findStepResult(result, 'ESLint').stoppedByFailFast).toBe(true);
+    });
+
+    it('lets a phase turn fail-fast on when the run leaves it off', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          failFast: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 100)],
+        }],
+        enableFailFast: false,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(findStepResult(result, 'ESLint').stoppedByFailFast).toBe(true);
     });
   });
 
@@ -1402,23 +1602,22 @@ rawOutput: |
 
   describe('async error handling', () => {
     it('should handle errors in async close handler', async () => {
-      const restore = mockFailingGitTreeHash('Git tree hash failed');
+      mockFailingOutputFiles('Output directory unavailable');
 
       const result = await runValidation(createAsyncErrorConfig());
 
       expect(result.passed).toBe(false);
-      restore();
+      expect(result.failedStep).toBe('Failing Step');
     });
 
     it('should log warning when output file creation fails', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log');
-      const restore = mockFailingGitTreeHash('Simulated async error');
+      mockFailingOutputFiles('Simulated async error');
 
       await runValidation(createAsyncErrorConfig({ verbose: true }));
 
       const logOutput = consoleLogSpy.mock.calls.map(call => call.join(' ')).join('\n');
       expect(logOutput).toContain('Could not create output files');
-      restore();
     });
   });
 
@@ -1669,6 +1868,21 @@ rawOutput: |
 
         const result = shouldUseCachedResult(previousStep, true);
         expect(result).toBe(false);
+      });
+
+      it('should return false when fail-fast stopped the step even though it exited 0', async () => {
+        const { shouldUseCachedResult } = await import('../src/runner.js');
+
+        const previousStep = {
+          name: 'Watcher',
+          command: 'npm run watch',
+          exitCode: 0,
+          durationSecs: 2.5,
+          passed: false,
+          stoppedByFailFast: true,
+        };
+
+        expect(shouldUseCachedResult(previousStep, true)).toBe(false);
       });
     });
 

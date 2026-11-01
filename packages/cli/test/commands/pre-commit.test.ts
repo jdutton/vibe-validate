@@ -724,6 +724,16 @@ describe('pre-commit command', () => {
       // Verify runValidation WAS called on cache miss
       expect(core.runValidation).toHaveBeenCalledOnce();
     });
+
+    it('hashes the worktree once: the snapshot feeds the lock, the cache lookup and the runner', async () => {
+      setupSuccessfulPreCommit(createConfigWithPhases());
+      setupCacheMiss('abc123def456');
+
+      await runPreCommit(env, 0);
+
+      expect(git.getGitTreeHash).toHaveBeenCalledOnce();
+      expect(core.runValidation).toHaveBeenCalledWith(expect.objectContaining({ treeHash: 'abc123def456' }));
+    });
   });
 
   // Note: Autodetect mode behavior (scanCommand omitted) is tested in

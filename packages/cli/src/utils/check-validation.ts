@@ -6,6 +6,7 @@
  */
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
+import { isOwnStepFailure, type ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { findCachedValidation } from '@vibe-validate/history';
 import chalk from 'chalk';
@@ -23,16 +24,19 @@ const VALIDATE_COMMAND = 'npx vibe-validate validate';
  *
  * @param phases - The validation phases from result
  */
-function displayFailedPhaseInfo(phases: Array<{ name: string; passed: boolean; steps?: Array<{ name: string; passed: boolean }> }> | undefined): void {
+function displayFailedPhaseInfo(result: Pick<ValidationResult, 'failedStep' | 'phases'> | undefined): void {
+  const phases = result?.phases;
   if (!phases) return;
 
   const failedPhase = phases.find(p => !p.passed);
   if (!failedPhase) return;
 
   console.log(chalk.red(`\n   Failed phase: ${failedPhase.name}`));
-  const failedStep = failedPhase.steps?.find(s => !s.passed);
-  if (failedStep) {
-    console.log(chalk.red(`   Failed step: ${failedStep.name}`));
+  // The run's failedStep is the authority; a parallel phase lists its step
+  // results in completion order, so the first failed one can be another step.
+  const failedStepName = result.failedStep ?? failedPhase.steps.find(isOwnStepFailure)?.name;
+  if (failedStepName) {
+    console.log(chalk.red(`   Failed step: ${failedStepName}`));
   }
 }
 
@@ -126,7 +130,7 @@ export async function checkValidationStatus(_config: VibeValidateConfig, yaml = 
       displayCachedResult(cachedRun, treeHashResult.hash);
 
       // Show which phase/step failed (actionable info)
-      displayFailedPhaseInfo(cachedRun.result?.phases);
+      displayFailedPhaseInfo(cachedRun.result);
 
       const cmd = getCommandName();
       console.log(chalk.blue('\n📋 View full error details:'), chalk.white(`${cmd} state`));

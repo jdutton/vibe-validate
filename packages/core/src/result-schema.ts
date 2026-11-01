@@ -92,8 +92,15 @@ export const StepResultSchema = CommandExecutionSchema.extend({
   /** Step name */
   name: z.string(),
 
-  /** Did the step pass? (derived from exitCode === 0) */
+  /** Did the step pass? (exitCode === 0 and not stopped by fail-fast) */
   passed: z.boolean(),
+
+  /**
+   * Set when fail-fast terminated this step because a sibling in the same
+   * parallel phase failed. The step did not fail on its own: `passed` is false
+   * because it never finished, and the run's `failedStep` names the sibling.
+   */
+  stoppedByFailFast: z.boolean().optional(),
 
   /** Was this result retrieved from cache? (v0.15.0+) */
   isCachedResult: z.boolean().optional(),
@@ -194,6 +201,17 @@ export type OutputFiles = z.infer<typeof OutputFilesSchema>;
 export type StepResult = z.infer<typeof StepResultSchema>;
 export type PhaseResult = z.infer<typeof PhaseResultSchema>;
 export type ValidationResult = z.infer<typeof ValidationResultSchema>;
+
+/**
+ * Did this step fail on its own?
+ *
+ * A step fail-fast stopped also has `passed: false`, but it is not a failure:
+ * anything that picks "the failed step" from a result's steps must use this,
+ * never `!step.passed`, or it blames a sibling that was merely interrupted.
+ */
+export function isOwnStepFailure(step: { passed: boolean; stoppedByFailFast?: boolean }): boolean {
+  return !step.passed && step.stoppedByFailFast !== true;
+}
 
 /**
  * Safe validation function (uses shared utility)

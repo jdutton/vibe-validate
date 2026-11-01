@@ -81,6 +81,28 @@ function createValidationRunFromNote(options: Parameters<typeof createValidation
   };
 }
 
+/** Report a cached failed run of one parallel phase; return the logged lines. */
+async function reportCachedFailure(
+  steps: Array<{ name: string; passed: boolean; stoppedByFailFast?: boolean; durationSecs: number }>,
+  config: VibeValidateConfig,
+  failedStep?: string
+): Promise<string[]> {
+  const failedRun = createValidationRunFromNote({
+    passed: false,
+    phases: [createPhaseResult({ name: 'Checks', passed: false, steps })],
+  });
+  if (failedStep) {
+    failedRun.result = { ...failedRun.result, failedStep };
+  }
+
+  mockTreeHash();
+  vi.mocked(history.findCachedValidation).mockResolvedValue(failedRun);
+
+  await expect(checkValidationStatus(config)).rejects.toThrow(expectProcessExit(1));
+
+  return vi.mocked(console.log).mock.calls.map(call => call.join(' '));
+}
+
 describe('checkValidationStatus', () => {
   let mockConfig: VibeValidateConfig;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -217,6 +239,26 @@ describe('checkValidationStatus', () => {
       expect(allLogCalls.some(call => call.includes('View full error details'))).toBe(true);
       expect(allLogCalls.some(call => call.includes('vibe-validate state'))).toBe(true);
       expect(allLogCalls.some(call => call.includes('Fix errors and run validation'))).toBe(true);
+    });
+
+    it('names the step that failed, not a sibling fail-fast stopped ahead of it', async () => {
+      const allLogCalls = await reportCachedFailure([
+        { name: 'ESLint', passed: false, stoppedByFailFast: true, durationSecs: 0.4 },
+        { name: 'Typecheck', passed: false, durationSecs: 0.3 },
+      ], mockConfig);
+
+      expect(allLogCalls.some(call => call.includes('Failed step: Typecheck'))).toBe(true);
+      expect(allLogCalls.some(call => call.includes('Failed step: ESLint'))).toBe(false);
+    });
+
+    it('names the run\'s failedStep when several steps failed, whatever order their results finished in', async () => {
+      const allLogCalls = await reportCachedFailure([
+        { name: 'Fast Failure', passed: false, durationSecs: 0.1 },
+        { name: 'Slow Failure', passed: false, durationSecs: 0.6 },
+      ], mockConfig, 'Slow Failure');
+
+      expect(allLogCalls.some(call => call.includes('Failed step: Slow Failure'))).toBe(true);
+      expect(allLogCalls.some(call => call.includes('Failed step: Fast Failure'))).toBe(false);
     });
 
     it('should output YAML when --yaml flag is used with cached failure', async () => {
