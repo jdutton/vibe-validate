@@ -39,6 +39,14 @@ import { HistorySummaryBuilder } from './history-summary-builder.js';
 /**
  * WatchPROrchestrator - Build complete WatchPRResult
  */
+/**
+ * Run `step` on each item in order, each one starting only after the previous
+ * one settled. For work that must not overlap (gh calls sharing a rate limit).
+ */
+function runInSequence<T>(items: readonly T[], step: (_item: T) => Promise<void>): Promise<void> {
+  return items.reduce<Promise<void>>((previous, item) => previous.then(() => step(item)), Promise.resolve());
+}
+
 export class WatchPROrchestrator {
   private readonly fetcher: GitHubFetcher;
   private readonly historyBuilder: HistorySummaryBuilder;
@@ -88,6 +96,7 @@ export class WatchPROrchestrator {
 
     // Classify checks into GitHub Actions vs external
     const githubActions: GitHubActionCheck[] = [];
+    const failedGitHubActions: Array<{ check: GitHubActionCheck; runId: number; jobId?: number }> = [];
     const rawExternalChecks: ExternalCheck[] = [];
 
     for (const check of checks) {
@@ -113,9 +122,9 @@ export class WatchPROrchestrator {
           duration: check.duration,
         };
 
-        // Try to extract errors if check failed
+        // Extract errors from failed checks once classification is done
         if (check.conclusion === 'failure' && check.run_id) {
-          await this.processFailedCheck(actionCheck, check.run_id, check.job_id);
+          failedGitHubActions.push({ check: actionCheck, runId: check.run_id, jobId: check.job_id });
         }
 
         githubActions.push(actionCheck);
@@ -134,6 +143,10 @@ export class WatchPROrchestrator {
         });
       }
     }
+
+    // One failed check's logs at a time: each download may retry with backoff,
+    // and parallel gh log downloads compete for the same API rate limit
+    await runInSequence(failedGitHubActions, ({ check, runId, jobId }) => this.processFailedCheck(check, runId, jobId));
 
     // Extract details from external checks (all at once)
     const externalChecks = await this.externalCheckExtractor.extractAll(rawExternalChecks);
@@ -524,26 +537,27 @@ export class WatchPROrchestrator {
    * @param maxRetries - Maximum number of retry attempts (default: 3)
    * @returns Log content, or null if all retries failed
    */
-  private async fetchLogsWithRetry(runId: number, jobId?: number, maxRetries = 3): Promise<string | null> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await this.fetcher.fetchRunLogs(runId, jobId);
-      } catch {
-        // Intentionally suppress error (Issue #4 fix: no noisy output)
-        // If this was the last attempt, break without sleeping
-        if (attempt === maxRetries) {
-          break;
-        }
+  private fetchLogsWithRetry(runId: number, jobId?: number, maxRetries = 3): Promise<string | null> {
+    return this.fetchLogsAttempt(runId, jobId, 1, maxRetries);
+  }
 
-        // Exponential backoff: 2s, 4s, 8s
-        const delayMs = Math.pow(2, attempt) * 1000;
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+  /** One attempt of fetchLogsWithRetry; on failure it waits, then tries the next */
+  private async fetchLogsAttempt(runId: number, jobId: number | undefined, attempt: number, maxRetries: number): Promise<string | null> {
+    try {
+      return await this.fetcher.fetchRunLogs(runId, jobId);
+    } catch {
+      // Intentionally suppress error (Issue #4 fix: no noisy output)
+      // All retries failed - return null (graceful degradation)
+      // Logs can be inspected with debug mode if needed
+      if (attempt >= maxRetries) {
+        return null;
       }
-    }
 
-    // All retries failed - return null (graceful degradation)
-    // Logs can be inspected with debug mode if needed
-    return null;
+      // Exponential backoff: 2s, 4s, 8s
+      const delayMs = Math.pow(2, attempt) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      return this.fetchLogsAttempt(runId, jobId, attempt + 1, maxRetries);
+    }
   }
 
   /**

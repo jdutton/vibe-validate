@@ -27,13 +27,13 @@ vi.mock('@vibe-validate/git', async () => {
 });
 
 /** A GitHub Actions log of a validate step that printed `yamlLines` as its result document */
-function ciLogWithResult(yamlLines: string[]): string {
-  return ['', ...['---', ...yamlLines, '---'].map(line => `Run validation\tRun validation\t2025-10-22T12:37:45.000Z ${line}`), ''].join('\n');
+function ciLogWithResult(yaml: string): string {
+  return ['', ...['---', ...yaml.split('\n'), '---'].map(line => `Run validation\tRun validation\t2025-10-22T12:37:45.000Z ${line}`), ''].join('\n');
 }
 
-/** extractErrorSummary over a CI log carrying `yamlLines` */
-function extractSummaryFromYaml(yamlLines: string[]): unknown {
-  return (new GitHubActionsProvider() as any).extractErrorSummary(ciLogWithResult(yamlLines));
+/** extractErrorSummary over a CI log carrying the validation result `yaml` */
+function extractSummaryFromYaml(yaml: string): unknown {
+  return (new GitHubActionsProvider() as any).extractErrorSummary(ciLogWithResult(yaml));
 }
 
 describe('GitHubActionsProvider', () => {
@@ -471,50 +471,50 @@ Run validation\tRun validation\t2025-10-22T12:37:45.008Z ---
     });
 
     it('reruns the failing step, skipping empty step entries and a passing step of the same name', () => {
-      const result = extractSummaryFromYaml([
-        'passed: false',
-        'failedStep: build',
-        'phases:',
-        '  - name: Prepare',
-        '    passed: true',
-        '    steps:',
-        '      -',
-        '      - name: build',
-        '        command: pnpm build:deps',
-        '        passed: true',
-        '  - name: Package',
-        '    passed: false',
-        '    steps:',
-        '      - name: build',
-        '        command: pnpm build',
-        '        passed: false',
-      ]);
+      const result = extractSummaryFromYaml(`
+passed: false
+failedStep: build
+phases:
+  - name: Prepare
+    passed: true
+    steps:
+      -
+      - name: build
+        command: pnpm build:deps
+        passed: true
+  - name: Package
+    passed: false
+    steps:
+      - name: build
+        command: pnpm build
+        passed: false
+`.trim());
 
       expect(result).toBe('Failed step: build\nRerun: pnpm build');
     });
 
     it('names failedStep without crashing when a phase\'s steps are not a list', () => {
-      const result = extractSummaryFromYaml([
-        'passed: false',
-        'failedStep: build',
-        'phases:',
-        '  - name: Package',
-        '    steps: truncated',
-      ]);
+      const result = extractSummaryFromYaml(`
+passed: false
+failedStep: build
+phases:
+  - name: Package
+    steps: truncated
+`.trim());
 
       expect(result).toBe('Failed step: build\nRerun: see full logs');
     });
 
     it('keeps the recorded failedStep name when the failing step entry has no name', () => {
-      const result = extractSummaryFromYaml([
-        'passed: false',
-        'failedStep: build',
-        'phases:',
-        '  - name: Package',
-        '    steps:',
-        '      - command: pnpm build',
-        '        passed: false',
-      ]);
+      const result = extractSummaryFromYaml(`
+passed: false
+failedStep: build
+phases:
+  - name: Package
+    steps:
+      - command: pnpm build
+        passed: false
+`.trim());
 
       expect(result).toBe('Failed step: build\nRerun: pnpm build');
     });
