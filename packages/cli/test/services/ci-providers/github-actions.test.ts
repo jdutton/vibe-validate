@@ -488,6 +488,37 @@ Run validation\tRun validation\t2025-10-22T12:37:45.008Z ---
       expect(result).toBe('Failed step: TypeScript Type Check\nRerun: pnpm typecheck');
     });
 
+    it('names the step that failed, not a sibling an older runner blamed after killing it', () => {
+      const logs = `
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z ---
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z passed: false
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z failedStep: ESLint
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z phases:
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z   - name: Checks
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z     passed: false
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z     steps:
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z       - name: Typecheck
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z         command: pnpm typecheck
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z         passed: false
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z         extraction:
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z           summary: 1 type error
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z           totalErrors: 1
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z           errors: []
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z       - name: ESLint
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z         command: pnpm lint
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z         passed: false
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z         extraction:
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z           summary: Process stopped (fail-fast)
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z           totalErrors: 0
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z           errors: []
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z ---
+`;
+
+      const result = (provider as any).extractErrorSummary(logs);
+
+      expect(result).toBe('Failed step: Typecheck\nRerun: pnpm typecheck');
+    });
+
     it('should extract validation result with closing --- separator', () => {
       // New format (v0.17.5+): YAML output with closing --- separator
       const logs = `

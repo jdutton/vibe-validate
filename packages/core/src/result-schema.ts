@@ -202,6 +202,9 @@ export type StepResult = z.infer<typeof StepResultSchema>;
 export type PhaseResult = z.infer<typeof PhaseResultSchema>;
 export type ValidationResult = z.infer<typeof ValidationResultSchema>;
 
+/** The extraction summary a runner that predates stoppedByFailFast gave a step fail-fast killed. */
+const LEGACY_STOPPED_SUMMARY = 'Process stopped (fail-fast)';
+
 /**
  * Did this step fail on its own?
  *
@@ -209,8 +212,13 @@ export type ValidationResult = z.infer<typeof ValidationResultSchema>;
  * anything that picks "the failed step" from a result must use findFailedStepResult (or this),
  * never `!step.passed`, or it blames a sibling that was merely interrupted.
  */
-export function isOwnStepFailure(step: { passed: boolean; stoppedByFailFast?: boolean }): boolean {
-  return !step.passed && step.stoppedByFailFast !== true;
+export function isOwnStepFailure(step: { passed: boolean; stoppedByFailFast?: boolean; extraction?: { summary: string } }): boolean {
+  if (step.passed || step.stoppedByFailFast === true) {
+    return false;
+  }
+  // Results written before stoppedByFailFast existed mark a killed step only
+  // by this summary (and only when it had printed little before the kill).
+  return step.extraction?.summary !== LEGACY_STOPPED_SUMMARY;
 }
 
 /**
@@ -224,7 +232,7 @@ export function isOwnStepFailure(step: { passed: boolean; stoppedByFailFast?: bo
  *
  * @param accept - further narrows the candidates (e.g. "has an extraction")
  */
-export function findFailedStepResult<S extends { name: string; passed: boolean; stoppedByFailFast?: boolean }>(
+export function findFailedStepResult<S extends { name: string; passed: boolean; stoppedByFailFast?: boolean; extraction?: { summary: string } }>(
   result: { failedStep?: string; phases?: ReadonlyArray<{ steps: readonly S[] }> },
   accept: (step: S) => boolean
 ): S | undefined {

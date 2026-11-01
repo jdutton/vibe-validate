@@ -96,6 +96,8 @@ export interface ValidationResultContents {
       command?: string; // v0.15.0+
       exitCode?: number; // v0.15.0+
       passed: boolean;
+      /** Stopped by fail-fast after another step failed — not a failure of its own */
+      stoppedByFailFast?: boolean;
       durationSecs?: number;
       output?: string;
       extraction?: ErrorExtraction; // v0.15.0+

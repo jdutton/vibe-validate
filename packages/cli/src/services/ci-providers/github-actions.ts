@@ -1,3 +1,4 @@
+import { findFailedStepResult } from '@vibe-validate/core';
 import { executeGitCommand, fetchPRDetails, fetchPRChecks } from '@vibe-validate/git';
 import { isToolAvailable, safeExecSync } from '@vibe-validate/utils';
 import { parse as parseYaml } from 'yaml';
@@ -426,12 +427,13 @@ export class GitHubActionsProvider implements CIProvider {
     if (validationResult && !validationResult.passed && validationResult.failedStep) {
       // Show concise summary: just the failed step and how to rerun
       // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
-      const failedStep = validationResult.phases
-        ?.flatMap(phase => phase.steps ?? [])
-        .find(step => step && step.name === validationResult.failedStep);
+      const failedStep = findFailedStepResult(
+        { failedStep: validationResult.failedStep, phases: (validationResult.phases ?? []).map(phase => ({ steps: phase.steps ?? [] })) },
+        () => true
+      );
 
       const rerunCommand = failedStep?.command ?? 'see full logs';
-      return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
+      return `Failed step: ${failedStep?.name ?? validationResult.failedStep}\nRerun: ${rerunCommand}`;
     }
 
     // Fallback: Look for ##[error] lines (for non-validation failures)
