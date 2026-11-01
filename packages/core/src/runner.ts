@@ -286,7 +286,7 @@ interface StepExecutionOptions {
  * @example
  * ```typescript
  * const previousStep = findPreviousStepResult(previousRun, 'TypeCheck');
- * if (previousStep && previousStep.exitCode === 0) {
+ * if (previousStep?.passed) {
  *   // Use cached result
  * }
  * ```
@@ -318,7 +318,7 @@ export function findPreviousStepResult(
  * Returns true only when all conditions are met:
  * - Retry-failed mode is enabled
  * - Previous step exists
- * - Previous step passed (exitCode === 0)
+ * - Previous step passed (`passed`; a step fail-fast stopped never has)
  *
  * @param previousStep - Step result from previous run (or null if not found)
  * @param isRetryFailed - Whether retry-failed mode is enabled
@@ -1184,13 +1184,15 @@ export async function runStepsInParallel(
             const output = stdout + stderr;
             outputs.set(step.name, output);
 
-            // Normalize exit code (null means abnormal termination, treat as failure)
-            const code = exitCode ?? 1;
             // Set only when fail-fast terminated this step because another one failed.
             // Such a step never finished, so it has not passed even if it exited 0
             // (a command that treats SIGTERM as a graceful cancel).
             const stoppedBy = stoppedByFailFast.get(step);
-            const succeeded = code === 0 && !stoppedBy;
+            // Normalize exit code: null means abnormal termination, and a stopped
+            // step is never recorded as 0 — older releases reuse a step on
+            // --retry-failed by exitCode === 0 alone. Both count as failure (1).
+            const code = exitCode === null || (stoppedBy && exitCode === 0) ? 1 : exitCode;
+            const succeeded = code === 0;
 
             log(`      ${formatParallelStepStatus(step.name.padEnd(maxNameLength), succeeded, stoppedBy)} (${durationSecs}s)`);
 

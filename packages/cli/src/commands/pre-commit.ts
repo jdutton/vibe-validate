@@ -22,8 +22,7 @@ import {
   isMergeInProgress,
   isRebaseInProgress,
   refKey,
-  type RemoteRef,
-  type TreeHashResult
+  type RemoteRef
 } from '@vibe-validate/git';
 import { isToolAvailable } from '@vibe-validate/utils';
 import chalk from 'chalk';
@@ -291,14 +290,13 @@ export function preCommitCommand(program: Command): void {
         // Step 2: Create worktree snapshot BEFORE any git operations (CRITICAL for work protection)
         console.log(chalk.blue('📸 Creating worktree snapshot...'));
         let treeHash: string | null = null;
-        // Reused by the validation lock and the run instead of hashing again
-        // (seconds on a big repo). If another writer changes the worktree in
-        // between, the post-run stability check sees it and records nothing.
-        let snapshotTreeHash: TreeHashResult | undefined;
+        // Not reused as the cache key: the fetch, sync guards and secret scan
+        // run before the cache lookup, and the tree can change meanwhile. The
+        // lock hashes again right before the lookup, and that hash feeds the run.
 
         try {
-          snapshotTreeHash = await getGitTreeHash();
-          treeHash = snapshotTreeHash.hash;
+          const treeHashResult = await getGitTreeHash();
+          treeHash = treeHashResult.hash;
           console.log(chalk.gray(`   Snapshot: ${treeHash.slice(0, 12)}...`));
         } catch (error) {
           console.warn(chalk.yellow('⚠️  Could not create snapshot'));
@@ -448,7 +446,6 @@ export function preCommitCommand(program: Command): void {
             waitEnabled: true,  // Always wait for running validation
             waitTimeout: 30,    // Shorter timeout than validate command (30s vs 300s)
             yaml: false,        // Pre-commit uses human-readable output
-            ...(snapshotTreeHash ? { treeHashResult: snapshotTreeHash } : {}),
           },
           async ({ config, configDir, context, treeHashResult: lockTreeHashResult }) => {
             // CRITICAL (Issue #129): Change to project root directory

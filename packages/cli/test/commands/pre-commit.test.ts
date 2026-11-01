@@ -725,14 +725,26 @@ describe('pre-commit command', () => {
       expect(core.runValidation).toHaveBeenCalledOnce();
     });
 
-    it('hashes the worktree once: the snapshot feeds the lock, the cache lookup and the runner', async () => {
+    it('never replays the snapshot tree\'s cached pass when the tree changed before the cache lookup', async () => {
       setupSuccessfulPreCommit(createConfigWithPhases());
-      setupCacheMiss('abc123def456');
+      setupCacheMiss('changed0tree');
+      // The snapshot sees the tree the hook started on; by the cache lookup
+      // (after fetch, sync guards and secret scanning) it has changed.
+      vi.mocked(git.getGitTreeHash)
+        .mockResolvedValueOnce({ hash: 'snapshot0tree' as git.TreeHash })
+        .mockResolvedValue({ hash: 'changed0tree' as git.TreeHash });
+      const passedOnSnapshot = createHistoryNote('snapshot0tree', true).runs[0];
+      vi.mocked(history.findCachedValidation).mockImplementation(async ({ hash }) =>
+        hash === 'snapshot0tree' ? passedOnSnapshot : null
+      );
 
       await runPreCommit(env, 0);
 
-      expect(git.getGitTreeHash).toHaveBeenCalledOnce();
-      expect(core.runValidation).toHaveBeenCalledWith(expect.objectContaining({ treeHash: 'abc123def456' }));
+      expect(history.findCachedValidation).not.toHaveBeenCalledWith(expect.objectContaining({ hash: 'snapshot0tree' }));
+      expect(core.runValidation).toHaveBeenCalledOnce();
+      // The runner reuses the lock's hash rather than hashing again
+      expect(core.runValidation).toHaveBeenCalledWith(expect.objectContaining({ treeHash: 'changed0tree' }));
+      expect(git.getGitTreeHash).toHaveBeenCalledTimes(2);
     });
   });
 

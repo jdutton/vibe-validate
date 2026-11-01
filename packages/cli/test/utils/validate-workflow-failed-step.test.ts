@@ -80,6 +80,8 @@ describe('failed-run footer', () => {
       }],
     }, true);
 
+    // The footer rendered (so the absence below is not vacuous) and blames the real failure
+    expect(stderr).toContain('pnpm typecheck');
     expect(stderr).not.toContain('Poor extraction quality');
   });
 });

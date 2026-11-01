@@ -7,7 +7,7 @@ import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'no
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { ValidationStep } from '@vibe-validate/config';
+import { validateConfig, type ValidationStep } from '@vibe-validate/config';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -694,6 +694,8 @@ describe('runner', () => {
       const stopped = findStepResult(result, 'Graceful');
       expect(stopped.stoppedByFailFast).toBe(true);
       expect(stopped.passed).toBe(false);
+      // vibe-validate <= 0.20.1 reuses a step on --retry-failed when exitCode is 0
+      expect(stopped.exitCode).not.toBe(0);
       expect(result.failedStep).toBe('Typecheck');
     });
   });
@@ -770,6 +772,27 @@ describe('runner', () => {
       });
 
       expect(findStepResult(result, 'ESLint').stoppedByFailFast).toBe(true);
+    });
+
+    it('honours the run-level setting for phases a loaded config leaves unset', async () => {
+      const { validation } = validateConfig({
+        validation: {
+          phases: [{
+            name: 'Checks',
+            parallel: true,
+            steps: [makeLongRunningStep('Slow', 600), makeFailingStep('Typecheck', 100)],
+          }],
+        },
+      });
+
+      const result = await runValidation({
+        phases: validation.phases,
+        enableFailFast: false,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(findStepResult(result, 'Slow').stoppedByFailFast).toBeUndefined();
+      expect(findStepResult(result, 'Slow').passed).toBe(true);
     });
   });
 
