@@ -1736,6 +1736,31 @@ rawOutput: |
       expect(step.extraction?.summary).toContain('extractor blew up');
     });
 
+    it.each([true, false])('records a step whose setup throws before it spawns (parallel: %s)', { timeout: SPAWN_TEST_TIMEOUT }, async (parallel) => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          steps: [
+            { name: 'Escapes', command: 'node -e "process.exit(0)"', cwd: '../'.repeat(40) + 'outside-the-repo' },
+            makeLongRunningStep('Slow', 10_000),
+          ],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.failedStep).toBe('Escapes');
+      const step = findStepResult(result, 'Escapes');
+      expect(step.passed).toBe(false);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toContain('must be within git repository');
+      // Parallel: fail-fast stops the sibling. Sequential: it never starts.
+      const slow = result.phases?.flatMap(p => p.steps).find(s => s.name === 'Slow');
+      expect(slow?.stoppedByFailFast).toBe(parallel ? true : undefined);
+    });
+
     it('should log warning when output file creation fails', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log');
       mockFailingOutputFiles('Simulated async error');

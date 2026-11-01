@@ -48,6 +48,8 @@ export interface StepExit {
   explanation: { summary: string; guidance: string } | null;
 }
 
+const OWN_FAILURE = 'own-failure' satisfies StepExitKind;
+
 /** Signals a process raises on itself when it crashes, rather than receives */
 const CRASH_SIGNALS: ReadonlySet<string> = new Set(['SIGSEGV', 'SIGABRT', 'SIGBUS', 'SIGFPE', 'SIGILL']);
 
@@ -76,7 +78,7 @@ function ownFailure(code: number, hasOutput: boolean, platform: NodeJS.Platform)
   if (shellSignal) {
     const note = `(exit 128+${shellSignal.number}: likely killed by ${shellSignal.signal})`;
     return {
-      kind: 'own-failure',
+      kind: OWN_FAILURE,
       exitCode: code,
       passed: false,
       explanation: {
@@ -86,7 +88,7 @@ function ownFailure(code: number, hasOutput: boolean, platform: NodeJS.Platform)
     };
   }
   return {
-    kind: 'own-failure',
+    kind: OWN_FAILURE,
     exitCode: code,
     passed: false,
     explanation: hasOutput
@@ -137,8 +139,9 @@ export function classifyStepExit({ exitCode, signal, stoppedBy, hasOutput, platf
  * was extracted from its output (if anything).
  *
  * A step whose ending explains it (a signal, or a 128+N exit) keeps its parsed
- * errors, but its summary leads with that explanation and the guidance is its.
- * A stopped step's partial output is never used, and a failure that printed
+ * errors, but its summary leads with that explanation and the guidance is its
+ * (unless a 128+N exit's output parsed into errors: the extractor's guidance
+ * stays, since that exit is only likely a signal). A stopped step's partial output is never used, and a failure that printed
  * nothing has nothing else to say.
  */
 export function explainStepExit(exit: StepExit, extracted?: ErrorExtractorResult): ErrorExtractorResult | undefined {
@@ -146,6 +149,11 @@ export function explainStepExit(exit: StepExit, extracted?: ErrorExtractorResult
     return extracted;
   }
   const { summary, guidance } = exit.explanation;
+  // A 128+N exit is only likely a signal (Mocha and Cypress exit with their
+  // failure count), so parsed errors keep the extractor's own guidance
+  if (exit.kind === OWN_FAILURE && extracted && extracted.totalErrors > 0) {
+    return { ...extracted, summary: `${summary}: ${extracted.summary}` };
+  }
   if (exit.kind !== 'stopped' && extracted) {
     return { ...extracted, summary: `${summary}: ${extracted.summary}`, guidance };
   }

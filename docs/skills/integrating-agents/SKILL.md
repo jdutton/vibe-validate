@@ -119,7 +119,7 @@ An adopter's agent can rely on this shape from `vv state`:
 - Top-level `passed` boolean and `summary` string.
 - `phases[]` array, each with `name`, `passed`, and a `steps[]` array.
 - Each step has `name`, `command`, `exitCode`, `passed`, and (on failure) an `extraction` object with an `errors` array of `{file, line, column, message}` tuples plus a `summary` and `totalErrors`.
-- A step that fail-fast stopped after a sibling failed has `passed: false` and `stoppedByFailFast: true`; its extraction only says it was stopped. It is not a failure to fix. Top-level `failedStep` always names a step whose own command failed.
+- A step that fail-fast stopped after a sibling failed has `passed: false` and `stoppedByFailFast: true`; its extraction only says it was stopped. It is not a failure to fix. Top-level `failedStep` never names a stopped step: it names a step that failed on its own — usually its command failed, but it can also be a step that could not start (a `cwd` outside the repository) or whose command passed but whose result vibe-validate could not process (an extractor plugin threw). In those two cases its extraction summary starts `vibe-validate could not start this step` or `vibe-validate could not process this step's result`, and the console prints a `FAILED` line for it (after `PASSED`, when the command itself passed).
 
 Agents that parse this tree can route errors by step (e.g., send type errors to one sub-prompt and lint errors to another), prioritize by phase, or simply flatten `extraction.errors` and iterate. All three approaches work; pick whichever fits the host tool's prompt budget.
 

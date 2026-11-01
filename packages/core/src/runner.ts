@@ -636,20 +636,28 @@ async function createStepOutputFiles(
 }
 
 /**
- * Result for a step whose output vibe-validate could not process (an extractor
- * plugin threw, say). Shared by the sequential and the parallel runner: the
- * step is recorded as failed either way, so the run's failedStep always names a
- * step its phases hold, and the cause is in its extraction.
+ * Result for a step vibe-validate could not start (`setup`: its cwd is outside
+ * the repository, say) or whose output it could not process (`result`: an
+ * extractor plugin threw). Shared by the sequential and the parallel runner:
+ * the step is recorded as failed either way, so the run's failedStep always
+ * names a step its phases hold, and the cause is in its extraction. Prints a
+ * FAILED line, since a step whose command passed has already printed PASSED.
  */
 function createUnprocessedStepResult(options: {
   step: ValidationStep;
+  stage: 'setup' | 'result';
   exit: StepExit;
   durationSecs: number;
   error: unknown;
   stoppedByFailFast: boolean;
+  log: (_msg: string) => void;
 }): StepResult {
-  const { step, exit, durationSecs, error, stoppedByFailFast } = options;
+  const { step, stage, exit, durationSecs, error, stoppedByFailFast, log } = options;
   const errorMsg = error instanceof Error ? error.message : String(error);
+  const summary = stage === 'setup'
+    ? `vibe-validate could not start this step: ${errorMsg}`
+    : `vibe-validate could not process this step's result: ${errorMsg}`;
+  log(`      ❌ ${step.name} - FAILED (${summary})`);
   return {
     name: step.name,
     command: step.command,
@@ -658,13 +666,18 @@ function createUnprocessedStepResult(options: {
     passed: false,
     ...(stoppedByFailFast ? { stoppedByFailFast: true } : {}),
     extraction: {
-      summary: `vibe-validate could not process this step's result: ${errorMsg}`,
+      summary,
       totalErrors: 0,
       errors: [],
-      guidance: 'Run the command directly to see its result, and report this vibe-validate error.',
+      guidance: stage === 'setup'
+        ? "Check the step's configuration (its cwd, for example), then run again."
+        : 'Run the command directly to see its result, and report this vibe-validate error.',
     },
   };
 }
+
+/** The exit recorded for a step that never ran: an own failure, exit code 1 */
+const NEVER_RAN: StepExit = classifyStepExit({ exitCode: 1, signal: null, stoppedBy: null, hasOutput: true, platform: process.platform });
 
 /**
  * Process step output: parse, extract errors, create output files
@@ -822,26 +835,14 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   log(`   ${commandPrefix}⏳ ${paddedName}  →  ${step.command}`);
 
   const startTime = Date.now();
-  // Resolve cwd relative to git root (if specified)
-  const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
-
-  // Build per-step ParentContext and inject into child env. Reuse the run-level
-  // treeHash/runId when provided by runValidation (avoids extra git calls and
-  // keeps the runId stable across all steps in this validation run).
-  const resolvedTreeHash = treeHash ?? (await getGitTreeHash()).hash;
-  const resolvedRunId = runId ?? makeRunId(resolvedTreeHash);
-  const parent = readParentContext();
-  const { env: stepEnv, outputDir: stepOutputDir } = buildStepEnv({
-    step,
-    baseEnv: env,
-    parent,
-    runId: resolvedRunId,
-    treeHash: resolvedTreeHash,
-    ...(phaseName ? { phaseName } : {}),
-    verbose,
-  });
-
-  const proc = spawnCommand(step.command, { env: stepEnv, cwd: resolvedCwd });
+  let started: Awaited<ReturnType<typeof startSequentialStep>>;
+  try {
+    started = await startSequentialStep({ step, env, verbose, phaseName, treeHash, runId });
+  } catch (error) {
+    const durationSecs = Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1));
+    return { output: '', stepResult: createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs, error, stoppedByFailFast: false, log }) };
+  }
+  const { proc, resolvedTreeHash, stepOutputDir } = started;
 
   // Use object accumulators for mutable references
   const stdoutAccumulator = { value: '' };
@@ -886,11 +887,41 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
       { treeHash: resolvedTreeHash, verbose, debug, log },
       stepOutputDir
     ),
-    verbose,
     log,
   });
 
   return { output, stepResult };
+}
+
+/**
+ * Resolve a sequential step's cwd, tree hash and env, then spawn it. Throws if
+ * it cannot start (a cwd outside the repository, say).
+ */
+async function startSequentialStep(
+  options: Pick<ExecuteSingleStepOptions, 'step' | 'env' | 'verbose' | 'phaseName' | 'treeHash' | 'runId'>
+): Promise<{ proc: ChildProcess; resolvedTreeHash: string; stepOutputDir: string }> {
+  const { step, env, verbose, phaseName, treeHash, runId } = options;
+  // Resolve cwd relative to git root (if specified)
+  const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
+
+  // Build per-step ParentContext and inject into child env. Reuse the run-level
+  // treeHash/runId when provided by runValidation (avoids extra git calls and
+  // keeps the runId stable across all steps in this validation run).
+  const resolvedTreeHash = treeHash ?? (await getGitTreeHash()).hash;
+  const resolvedRunId = runId ?? makeRunId(resolvedTreeHash);
+  const parent = readParentContext();
+  const { env: stepEnv, outputDir: stepOutputDir } = buildStepEnv({
+    step,
+    baseEnv: env,
+    parent,
+    runId: resolvedRunId,
+    treeHash: resolvedTreeHash,
+    ...(phaseName ? { phaseName } : {}),
+    verbose,
+  });
+
+  const proc = spawnCommand(step.command, { env: stepEnv, cwd: resolvedCwd });
+  return { proc, resolvedTreeHash, stepOutputDir };
 }
 
 /**
@@ -902,18 +933,14 @@ async function buildFinishedStepResult(options: {
   exit: StepExit;
   durationSecs: number;
   process: () => ReturnType<typeof processStepOutput>;
-  verbose: boolean;
   log: (_msg: string) => void;
 }): Promise<StepResult> {
-  const { step, exit, durationSecs, verbose, log } = options;
+  const { step, exit, durationSecs, log } = options;
   let processed: Awaited<ReturnType<typeof processStepOutput>>;
   try {
     processed = await options.process();
   } catch (error) {
-    if (verbose) {
-      log(`      ⚠️  Could not process the result of ${step.name}: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    return createUnprocessedStepResult({ step, exit, durationSecs, error, stoppedByFailFast: false });
+    return createUnprocessedStepResult({ step, stage: 'result', exit, durationSecs, error, stoppedByFailFast: false, log });
   }
   const { extraction, isCachedResult, outputFiles } = processed;
   return {
@@ -1167,8 +1194,6 @@ export async function runStepsInParallel(
 
         const startTime = Date.now();
 
-        // Resolve cwd relative to git root (if specified)
-        const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
         const stepEnvEntry = stepEnvs.get(step.name);
         const stepEnv = stepEnvEntry?.env ?? env;
         // Output directory advertised in ParentContext.outputDir; the inline
@@ -1176,10 +1201,26 @@ export async function runStepsInParallel(
         // advertised location matches the actual filesystem location.
         const stepOutputDir =
           stepEnvEntry?.outputDir ?? join(getTempDir('steps'), sharedRunId, slugifyStepName(step.name));
-        const proc = spawnCommand(step.command, {
-          env: stepEnv,
-          cwd: resolvedCwd,
-        });
+        let proc: ChildProcess;
+        try {
+          // Resolve cwd relative to git root (if specified)
+          const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
+          proc = spawnCommand(step.command, {
+            env: stepEnv,
+            cwd: resolvedCwd,
+          });
+        } catch (error) {
+          // The step could not start (a cwd outside the repository, say). Handle
+          // it once every sibling has spawned — this executor runs inside the
+          // synchronous steps.map — so fail-fast can stop them.
+          queueMicrotask(() => {
+            stepResults.push(createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs: 0, error, stoppedByFailFast: false, log }));
+            outputs.set(step.name, '');
+            firstFailure = handleFailFast(enableFailFast, firstFailure, step, '', processes, stoppedByFailFast, log);
+            reject(error);
+          });
+          return;
+        }
 
         // Track process for potential kill
         processes.push({ proc, step });
@@ -1382,11 +1423,17 @@ export async function runStepsInParallel(
             const stoppedBy = stoppedByFailFast.get(step);
             stepResults.push(createUnprocessedStepResult({
               step,
+              stage: 'result',
               exit: classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: false, platform: process.platform }),
               durationSecs: Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
               error,
               stoppedByFailFast: stoppedBy !== undefined,
+              log,
             }));
+            // A step whose command passed did not trigger fail-fast above
+            if (!stoppedBy) {
+              firstFailure = handleFailFast(enableFailFast, firstFailure, step, outputs.get(step.name) ?? '', processes, stoppedByFailFast, log);
+            }
             // Reject with error to fail validation
             reject(new Error(`Close handler error: ${errorMsg}`));
           }); // Close async IIFE

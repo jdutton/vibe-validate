@@ -146,6 +146,20 @@ describe('explainStepExit', () => {
     expect(result?.errors).toEqual(parsed.errors);
   });
 
+  // Mocha and Cypress exit with their failure count: 139 failures is not a SIGSEGV
+  it('keeps the extractor guidance for a 128+N exit when errors were parsed', () => {
+    const exit = classifyStepExit({ exitCode: 139, signal: null, stoppedBy: null, hasOutput: true, platform: 'linux' });
+    const result = explainStepExit(exit, parsed);
+    expect(result?.guidance).toBe(parsed.guidance);
+    expect(result?.summary).toBe('Exited with code 139 (exit 128+11: likely killed by SIGSEGV): 2 type errors');
+  });
+
+  it('uses the signal guidance for a 128+N exit when nothing was parsed', () => {
+    const exit = classifyStepExit({ exitCode: 137, signal: null, stoppedBy: null, hasOutput: true, platform: 'linux' });
+    const result = explainStepExit(exit, { summary: 'Command failed - see output', totalErrors: 0, errors: [], guidance: 'Check the output' });
+    expect(result?.guidance).toContain('Something outside the command sent it SIGKILL');
+  });
+
   it('explains a signal-killed step that printed nothing', () => {
     const exit = classifyStepExit({ exitCode: null, signal: 'SIGKILL', stoppedBy: null, hasOutput: false, platform: 'linux' });
     expect(explainStepExit(exit)).toMatchObject({ summary: 'Terminated by SIGKILL and produced no output', totalErrors: 0, errors: [] });
