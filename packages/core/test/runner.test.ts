@@ -3,7 +3,7 @@
  
  
 import type { ChildProcess } from 'node:child_process';
-import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
+import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -73,12 +73,12 @@ function mockFailingOutputFiles(errorMessage: string): void {
 /**
  * Helper to create validation config for async error tests
  */
-function createAsyncErrorConfig(options: { verbose?: boolean } = {}): ValidationConfig {
+function createAsyncErrorConfig(options: { verbose?: boolean; parallel?: boolean } = {}): ValidationConfig {
   return {
     phases: [
       {
         name: 'Test Phase',
-        parallel: true,
+        parallel: options.parallel ?? true,
         steps: [
           {
             name: 'Failing Step',
@@ -182,27 +182,32 @@ function makeFailingStep(name: string, ms: number, exitCode = 1): ValidationStep
   return { name, command: `node -e ${JSON.stringify(script)}` };
 }
 
-/** How long a step holds after the marker: the parent handles the writer's close well within it */
-const HOLD_AFTER_MARKER_MS = 1000;
-
-/** A step that fails on its own, writing `marker` just before it exits 1. */
-function makeFailingStepWithMarker(name: string, marker: string): ValidationStep {
-  const script = `require('fs').writeFileSync('${toForwardSlash(marker)}', ''); console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(1)`;
-  return { name, command: `node -e ${JSON.stringify(script)}` };
-}
-
 /**
- * A step still running when the step that writes `marker` fails: it waits for
- * the marker, then holds `HOLD_AFTER_MARKER_MS` before it passes (or fails on
- * its own). A fail-fast stop triggered by that failure always lands while it
- * runs, however late either process starts.
+ * A step still running when another step's failure is handled: it waits for
+ * `marker`, which writeMarkerOnceFailed writes only after the runner has
+ * handled that failure, then passes (or fails on its own). A fail-fast stop
+ * triggered by that failure therefore always lands while it runs.
  */
 function makeStepAfterMarker(name: string, marker: string, outcome: 'passes' | 'fails'): ValidationStep {
   const finish = outcome === 'fails'
     ? `console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(1)`
     : 'process.exit(0)';
-  const script = `const fs = require('fs'); console.log('Waiting for the build to settle...'); const t = setInterval(() => { if (fs.existsSync('${toForwardSlash(marker)}')) { clearInterval(t); setTimeout(() => { ${finish}; }, ${HOLD_AFTER_MARKER_MS}); } }, 20)`;
+  const script = `const fs = require('fs'); console.log('Waiting for the build to settle...'); const t = setInterval(() => { if (fs.existsSync('${toForwardSlash(marker)}')) { clearInterval(t); ${finish}; } }, 20)`;
   return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+/**
+ * Write `marker` once the runner has logged `stepName` as FAILED. The runner
+ * applies fail-fast synchronously right after that log line, and the marker is
+ * written on a later turn, so by then any stop has already been recorded.
+ */
+function writeMarkerOnceFailed(stepName: string, marker: string): void {
+  vi.mocked(console.log).mockImplementation((msg?: unknown) => {
+    const line = String(msg);
+    if (line.includes(stepName) && line.includes('- FAILED')) {
+      setImmediate(() => writeFileSync(marker, ''));
+    }
+  });
 }
 
 function findStepResult(result: Awaited<ReturnType<typeof runValidation>>, name: string) {
@@ -785,6 +790,7 @@ describe('runner', () => {
 
   describe('per-phase failFast', { timeout: SPAWN_TEST_TIMEOUT }, () => {
     it('runs every parallel step to completion and reports each failure when the phase sets failFast: false', async () => {
+      writeMarkerOnceFailed('Fast Failure', join(testDir, 'fast-failed'));
       const result = await runValidation({
         phases: [{
           name: 'Checks',
@@ -792,7 +798,7 @@ describe('runner', () => {
           failFast: false,
           steps: [
             makeStepAfterMarker('Slow Failure', join(testDir, 'fast-failed'), 'fails'),
-            makeFailingStepWithMarker('Fast Failure', join(testDir, 'fast-failed')),
+            makeFailingStep('Fast Failure', 0),
             makeStepAfterMarker('Passes', join(testDir, 'fast-failed'), 'passes'),
           ],
         }],
@@ -862,6 +868,7 @@ describe('runner', () => {
     });
 
     it('honours the run-level setting for phases a loaded config leaves unset', async () => {
+      writeMarkerOnceFailed('Typecheck', join(testDir, 'typecheck-failed'));
       const { validation } = validateConfig({
         validation: {
           phases: [{
@@ -869,7 +876,7 @@ describe('runner', () => {
             parallel: true,
             steps: [
               makeStepAfterMarker('Slow', join(testDir, 'typecheck-failed'), 'passes'),
-              makeFailingStepWithMarker('Typecheck', join(testDir, 'typecheck-failed')),
+              makeFailingStep('Typecheck', 0),
             ],
           }],
         },
@@ -1714,12 +1721,12 @@ rawOutput: |
   });
 
   describe('async error handling', () => {
-    it('records the step when the async close handler throws', async () => {
+    it.each([true, false])('records the step when processing its result throws (parallel: %s)', async (parallel) => {
       vi.mocked(autoDetectAndExtract).mockImplementationOnce(() => {
         throw new Error('extractor blew up');
       });
 
-      const result = await runValidation(createAsyncErrorConfig());
+      const result = await runValidation(createAsyncErrorConfig({ parallel }));
 
       expect(result.passed).toBe(false);
       expect(result.failedStep).toBe('Failing Step');
@@ -1727,15 +1734,6 @@ rawOutput: |
       expect(step.passed).toBe(false);
       expect(step.exitCode).toBe(1);
       expect(step.extraction?.summary).toContain('extractor blew up');
-    });
-
-    it('still names the step when its output files cannot be written', async () => {
-      mockFailingOutputFiles('Output directory unavailable');
-
-      const result = await runValidation(createAsyncErrorConfig());
-
-      expect(result.passed).toBe(false);
-      expect(result.failedStep).toBe('Failing Step');
     });
 
     it('should log warning when output file creation fails', async () => {

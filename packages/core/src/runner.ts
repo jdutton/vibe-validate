@@ -636,6 +636,37 @@ async function createStepOutputFiles(
 }
 
 /**
+ * Result for a step whose output vibe-validate could not process (an extractor
+ * plugin threw, say). Shared by the sequential and the parallel runner: the
+ * step is recorded as failed either way, so the run's failedStep always names a
+ * step its phases hold, and the cause is in its extraction.
+ */
+function createUnprocessedStepResult(options: {
+  step: ValidationStep;
+  exit: StepExit;
+  durationSecs: number;
+  error: unknown;
+  stoppedByFailFast: boolean;
+}): StepResult {
+  const { step, exit, durationSecs, error, stoppedByFailFast } = options;
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  return {
+    name: step.name,
+    command: step.command,
+    exitCode: exit.passed ? 1 : exit.exitCode,
+    durationSecs,
+    passed: false,
+    ...(stoppedByFailFast ? { stoppedByFailFast: true } : {}),
+    extraction: {
+      summary: `vibe-validate could not process this step's result: ${errorMsg}`,
+      totalErrors: 0,
+      errors: [],
+      guidance: 'Run the command directly to see its result, and report this vibe-validate error.',
+    },
+  };
+}
+
+/**
  * Process step output: parse, extract errors, create output files
  */
 async function processStepOutput(
@@ -835,41 +866,66 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   const output = stdout + stderr;
 
   // Sequential steps are never stopped by a sibling
-  const exit = classifyStepExit({ exitCode, signal, stoppedBy: null, hasOutput: output.trim() !== '' });
+  const exit = classifyStepExit({ exitCode, signal, stoppedBy: null, hasOutput: output.trim() !== '', platform: process.platform });
 
   const status = exit.passed ? '✅' : '❌';
   const result = exit.passed ? 'PASSED' : 'FAILED';
   log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
   // Process output: parse, extract, create files
-  const { extraction, isCachedResult, outputFiles } = await processStepOutput(
-    step.name,
+  const stepResult = await buildFinishedStepResult({
+    step,
     exit,
-    stdout,
-    stderr,
-    combinedLines,
-    { treeHash: resolvedTreeHash, verbose, debug, log },
-    stepOutputDir
-  );
+    durationSecs,
+    process: () => processStepOutput(
+      step.name,
+      exit,
+      stdout,
+      stderr,
+      combinedLines,
+      { treeHash: resolvedTreeHash, verbose, debug, log },
+      stepOutputDir
+    ),
+    verbose,
+    log,
+  });
 
-  // Create step result (build without type annotation to let TS infer)
-  const stepResultBase = {
+  return { output, stepResult };
+}
+
+/**
+ * The result of a finished sequential step. If processing its output throws,
+ * the step is still recorded, as createUnprocessedStepResult describes.
+ */
+async function buildFinishedStepResult(options: {
+  step: ValidationStep;
+  exit: StepExit;
+  durationSecs: number;
+  process: () => ReturnType<typeof processStepOutput>;
+  verbose: boolean;
+  log: (_msg: string) => void;
+}): Promise<StepResult> {
+  const { step, exit, durationSecs, verbose, log } = options;
+  let processed: Awaited<ReturnType<typeof processStepOutput>>;
+  try {
+    processed = await options.process();
+  } catch (error) {
+    if (verbose) {
+      log(`      ⚠️  Could not process the result of ${step.name}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return createUnprocessedStepResult({ step, exit, durationSecs, error, stoppedByFailFast: false });
+  }
+  const { extraction, isCachedResult, outputFiles } = processed;
+  return {
     name: step.name,
     command: step.command,
     passed: exit.passed,
     durationSecs,
     exitCode: exit.exitCode,
-  };
-
-  // Add optional fields if present
-  const stepResult: StepResult = {
-    ...stepResultBase,
     ...(extraction ? { extraction } : {}),
     ...(isCachedResult === undefined ? {} : { isCachedResult }),
     ...(outputFiles ? { outputFiles } : {}),
   } as StepResult;
-
-  return { output, stepResult };
 }
 
 /**
@@ -1157,7 +1213,7 @@ export async function runStepsInParallel(
             // Such a step never finished, so it has not passed even if it exited 0
             // (a command that treats SIGTERM as a graceful cancel).
             const stoppedBy = stoppedByFailFast.get(step);
-            const exit = classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: output.trim() !== '' });
+            const exit = classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: output.trim() !== '', platform: process.platform });
             const succeeded = exit.passed;
 
             log(`      ${formatParallelStepStatus(step.name.padEnd(maxNameLength), succeeded, stoppedBy)} (${durationSecs}s)`);
@@ -1324,21 +1380,13 @@ export async function runStepsInParallel(
             // phases hold. The push above is the handler's last fallible statement,
             // so reaching here means the step has no result yet.
             const stoppedBy = stoppedByFailFast.get(step);
-            const exit = classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: false });
-            stepResults.push({
-              name: step.name,
-              command: step.command,
-              exitCode: exit.passed ? 1 : exit.exitCode,
+            stepResults.push(createUnprocessedStepResult({
+              step,
+              exit: classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: false, platform: process.platform }),
               durationSecs: Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
-              passed: false,
-              ...(stoppedBy ? { stoppedByFailFast: true } : {}),
-              extraction: {
-                summary: `vibe-validate could not process this step's result: ${errorMsg}`,
-                totalErrors: 0,
-                errors: [],
-                guidance: 'Run the command directly to see its result, and report this vibe-validate error.',
-              },
-            });
+              error,
+              stoppedByFailFast: stoppedBy !== undefined,
+            }));
             // Reject with error to fail validation
             reject(new Error(`Close handler error: ${errorMsg}`));
           }); // Close async IIFE
