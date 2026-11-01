@@ -433,7 +433,9 @@ export class GitHubActionsProvider implements CIProvider {
       );
 
       const rerunCommand = typeof failedStep?.raw.command === 'string' ? failedStep.raw.command : 'see full logs';
-      return `Failed step: ${failedStep?.name ?? validationResult.failedStep}\nRerun: ${rerunCommand}`;
+      // An unnamed step (malformed YAML) falls back to the name the result recorded
+      const stepName = failedStep && failedStep.name.length > 0 ? failedStep.name : validationResult.failedStep;
+      return `Failed step: ${stepName}\nRerun: ${rerunCommand}`;
     }
 
     // Fallback: Look for ##[error] lines (for non-validation failures)
