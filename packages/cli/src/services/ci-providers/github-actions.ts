@@ -428,7 +428,7 @@ export class GitHubActionsProvider implements CIProvider {
       // Show concise summary: just the failed step and how to rerun
       // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
       const failedStep = findFailedStepResult(
-        { failedStep: validationResult.failedStep, phases: (validationResult.phases ?? []).map(phase => ({ steps: phase.steps ?? [] })) },
+        { failedStep: validationResult.failedStep, phases: (validationResult.phases ?? []).map(phase => ({ steps: (phase?.steps ?? []).filter(Boolean) })) },
         () => true
       );
 

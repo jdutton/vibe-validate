@@ -133,6 +133,29 @@ phases:
       expectExtraction(result, { summary: '1 type error', totalErrors: 1, errorCount: 1 });
     });
 
+    it('still finds the extraction when steps omit passed and the list holds an empty entry', async () => {
+      const check = createTestCheck();
+
+      const logs = `
+---
+passed: false
+phases:
+  - name: Checks
+    steps:
+      -
+      - name: Tests
+        extraction:
+          summary: 2 test failure(s)
+          totalErrors: 2
+          errors: []
+---
+`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expectExtraction(result, { summary: '2 test failure(s)', totalErrors: 2, errorCount: 0 });
+    });
+
     it('should handle matrix mode with nested YAML', async () => {
       const check = createTestCheck({ name: 'CI / Lint', run_id: 12346, duration: '1m15s' });
 

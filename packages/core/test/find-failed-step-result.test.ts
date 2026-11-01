@@ -57,13 +57,13 @@ describe('findFailedStepResult', () => {
     expect(blame('A', [{ name: 'A', passed: false, stoppedByFailFast: true }])).toBeUndefined();
   });
 
-  // A runner older than stoppedByFailFast set failedStep in config order, which
-  // could be a sibling it killed; it marked that sibling only by this summary.
-  it('does not blame a step an older runner marked as killed, even when failedStep names it', () => {
-    expect(blame('ESLint', [
-      { name: 'Typecheck', passed: false, extraction: { summary: '1 type error' } },
-      { name: 'ESLint', passed: false, extraction: { summary: 'Process stopped (fail-fast)' } },
-    ])).toBe('Typecheck');
+  // Runners older than stoppedByFailFast gave this summary to ANY failure that
+  // printed little (a silent `git diff --quiet` included), so it proves nothing.
+  it('blames a silent real failure from an older runner that failedStep names', () => {
+    expect(blame('Guard', [
+      { name: 'Lint', passed: false, extraction: { summary: '2 lint errors' } },
+      { name: 'Guard', passed: false, extraction: { summary: 'Process stopped (fail-fast)' } },
+    ])).toBe('Guard');
   });
 });
 
@@ -72,8 +72,6 @@ describe('isOwnStepFailure', () => {
     [{ passed: true }, false],
     [{ passed: false }, true],
     [{ passed: false, stoppedByFailFast: true }, false],
-    [{ passed: false, extraction: { summary: 'Process stopped (fail-fast)' } }, false],
-    [{ passed: false, extraction: { summary: '2 errors' } }, true],
   ])('%j -> %s', (step, expected) => {
     expect(isOwnStepFailure(step)).toBe(expected);
   });
