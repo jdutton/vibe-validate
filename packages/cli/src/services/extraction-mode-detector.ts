@@ -10,7 +10,7 @@
  * @packageDocumentation
  */
 
-import { findFailedStepResult } from '@vibe-validate/core';
+import { findFailedStepResult, readLoosePhases } from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import YAML from 'yaml';
@@ -181,38 +181,11 @@ export class ExtractionModeDetector {
    * @returns ErrorExtractorResult or null
    */
   private extractFromPhases(phases: unknown[], failedStep: unknown): ErrorExtractorResult | null {
-    const parsedPhases = phases.map(phase => ({ steps: this.parsePhaseSteps(phase) }));
     const step = findFailedStepResult(
-      { failedStep: typeof failedStep === 'string' ? failedStep : undefined, phases: parsedPhases },
-      candidate => candidate.extraction !== undefined
+      { failedStep: typeof failedStep === 'string' ? failedStep : undefined, phases: readLoosePhases(phases) },
+      candidate => this.validateExtraction(candidate.raw.extraction) !== null
     );
-    return step?.extraction ?? null;
-  }
-
-  /**
-   * Read a phase's steps from untyped YAML, validating each extraction.
-   * A step without a boolean `passed` is treated as failed, so output that
-   * predates the field still yields its extraction.
-   *
-   * @param phase - Phase object
-   * @returns Steps with their validated extraction (omitted when absent or invalid)
-   */
-  private parsePhaseSteps(phase: unknown): Array<{ name: string; passed: boolean; stoppedByFailFast?: boolean; extraction?: ErrorExtractorResult }> {
-    if (!phase || typeof phase !== 'object' || !('steps' in phase) || !Array.isArray(phase.steps)) {
-      return [];
-    }
-
-    return phase.steps
-      .filter((step): step is Record<string, unknown> => !!step && typeof step === 'object')
-      .map(step => {
-        const extraction = 'extraction' in step ? this.validateExtraction(step.extraction) : null;
-        return {
-          name: typeof step.name === 'string' ? step.name : '',
-          passed: step.passed === true,
-          stoppedByFailFast: step.stoppedByFailFast === true,
-          ...(extraction ? { extraction } : {}),
-        };
-      });
+    return step ? this.validateExtraction(step.raw.extraction) : null;
   }
 
   /**

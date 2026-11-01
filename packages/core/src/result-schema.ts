@@ -236,6 +236,42 @@ export function findFailedStepResult<S extends { name: string; passed: boolean; 
   return candidates.find(step => step.name === result.failedStep) ?? candidates[0];
 }
 
+/** A step read from untyped validation YAML (a CI log, nested output). */
+export interface LooseStepResult {
+  name: string;
+  /** Only an explicit `passed: true` counts as passed */
+  passed: boolean;
+  stoppedByFailFast: boolean;
+  /** The step as parsed, for fields the caller validates itself */
+  raw: Record<string, unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Read the phases of an untyped validation result for findFailedStepResult —
+ * the one tolerant reader, so YAML no schema has checked never crashes a caller.
+ * Anything that is not a list of phases with a list of step objects reads as empty.
+ */
+export function readLoosePhases(phases: unknown): Array<{ steps: LooseStepResult[] }> {
+  if (!Array.isArray(phases)) {
+    return [];
+  }
+  return phases.map(phase => {
+    const steps = isRecord(phase) && Array.isArray(phase.steps) ? phase.steps.filter(isRecord) : [];
+    return {
+      steps: steps.map(step => ({
+        name: typeof step.name === 'string' ? step.name : '',
+        passed: step.passed === true,
+        stoppedByFailFast: step.stoppedByFailFast === true,
+        raw: step,
+      })),
+    };
+  });
+}
+
 /**
  * Safe validation function (uses shared utility)
  */

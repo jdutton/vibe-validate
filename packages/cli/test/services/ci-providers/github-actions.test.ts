@@ -515,6 +515,22 @@ Run validation\tRun validation\t2025-10-22T12:37:45.000Z ---
       expect(result).toBe('Failed step: build\nRerun: pnpm build');
     });
 
+    it('names failedStep without crashing when a phase\'s steps are not a list', () => {
+      const logs = `
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z ---
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z passed: false
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z failedStep: build
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z phases:
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z   - name: Package
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z     steps: truncated
+Run validation\tRun validation\t2025-10-22T12:37:45.000Z ---
+`;
+
+      const result = (provider as any).extractErrorSummary(logs);
+
+      expect(result).toBe('Failed step: build\nRerun: see full logs');
+    });
+
     it('should extract validation result with closing --- separator', () => {
       // New format (v0.17.5+): YAML output with closing --- separator
       const logs = `

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { findFailedStepResult, isOwnStepFailure } from '../src/result-schema.js';
+import { findFailedStepResult, isOwnStepFailure, readLoosePhases } from '../src/result-schema.js';
 
 interface TestStep {
   name: string;
@@ -64,6 +64,39 @@ describe('findFailedStepResult', () => {
       { name: 'Lint', passed: false, extraction: { summary: '2 lint errors' } },
       { name: 'Guard', passed: false, extraction: { summary: 'Process stopped (fail-fast)' } },
     ])).toBe('Guard');
+  });
+});
+
+describe('readLoosePhases', () => {
+  it.each([
+    ['missing', undefined],
+    ['a string', 'truncated'],
+    ['a mapping', { steps: [] }],
+  ])('reads phases that are %s as no phases', (_label, phases) => {
+    expect(readLoosePhases(phases)).toEqual([]);
+  });
+
+  it.each([
+    ['a string', 'truncated'],
+    ['a number', 3],
+    ['a mapping', {}],
+    ['missing', undefined],
+  ])('reads steps that are %s as no steps', (_label, steps) => {
+    expect(readLoosePhases([{ name: 'P', steps }])).toEqual([{ steps: [] }]);
+  });
+
+  it('skips empty and non-object step entries and reads a missing passed as failed', () => {
+    const [phase] = readLoosePhases([{ steps: [null, 'x', { name: 'Tests', command: 'pnpm test' }, { passed: true, stoppedByFailFast: 'yes' }] }]);
+    expect(phase?.steps.map(({ name, passed, stoppedByFailFast }) => ({ name, passed, stoppedByFailFast }))).toEqual([
+      { name: 'Tests', passed: false, stoppedByFailFast: false },
+      { name: '', passed: true, stoppedByFailFast: false },
+    ]);
+    expect(phase?.steps[0]?.raw.command).toBe('pnpm test');
+  });
+
+  it('feeds findFailedStepResult from untyped YAML', () => {
+    const phases = readLoosePhases([null, { steps: [{ name: 'A', passed: false, stoppedByFailFast: true }, { name: 'B' }] }]);
+    expect(findFailedStepResult({ failedStep: 'A', phases }, anyStep)?.name).toBe('B');
   });
 });
 

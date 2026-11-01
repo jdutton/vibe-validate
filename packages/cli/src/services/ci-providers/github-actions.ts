@@ -1,4 +1,4 @@
-import { findFailedStepResult } from '@vibe-validate/core';
+import { findFailedStepResult, readLoosePhases } from '@vibe-validate/core';
 import { executeGitCommand, fetchPRDetails, fetchPRChecks } from '@vibe-validate/git';
 import { isToolAvailable, safeExecSync } from '@vibe-validate/utils';
 import { parse as parseYaml } from 'yaml';
@@ -428,11 +428,11 @@ export class GitHubActionsProvider implements CIProvider {
       // Show concise summary: just the failed step and how to rerun
       // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
       const failedStep = findFailedStepResult(
-        { failedStep: validationResult.failedStep, phases: (validationResult.phases ?? []).map(phase => ({ steps: (phase?.steps ?? []).filter(Boolean) })) },
+        { failedStep: validationResult.failedStep, phases: readLoosePhases(validationResult.phases) },
         () => true
       );
 
-      const rerunCommand = failedStep?.command ?? 'see full logs';
+      const rerunCommand = typeof failedStep?.raw.command === 'string' ? failedStep.raw.command : 'see full logs';
       return `Failed step: ${failedStep?.name ?? validationResult.failedStep}\nRerun: ${rerunCommand}`;
     }
 
