@@ -92,8 +92,15 @@ export const StepResultSchema = CommandExecutionSchema.extend({
   /** Step name */
   name: z.string(),
 
-  /** Did the step pass? (derived from exitCode === 0) */
+  /** Did the step pass? (exitCode === 0 and not stopped by fail-fast) */
   passed: z.boolean(),
+
+  /**
+   * Set when fail-fast terminated this step because a sibling in the same
+   * parallel phase failed. The step did not fail on its own: `passed` is false
+   * because it never finished, and the run's `failedStep` names the sibling.
+   */
+  stoppedByFailFast: z.boolean().optional(),
 
   /** Was this result retrieved from cache? (v0.15.0+) */
   isCachedResult: z.boolean().optional(),
@@ -194,6 +201,76 @@ export type OutputFiles = z.infer<typeof OutputFilesSchema>;
 export type StepResult = z.infer<typeof StepResultSchema>;
 export type PhaseResult = z.infer<typeof PhaseResultSchema>;
 export type ValidationResult = z.infer<typeof ValidationResultSchema>;
+
+/**
+ * Did this step fail on its own?
+ *
+ * A step fail-fast stopped also has `passed: false`, but it is not a failure:
+ * anything that picks "the failed step" from a result must use findFailedStepResult (or this),
+ * never `!step.passed`, or it blames a sibling that was merely interrupted.
+ */
+export function isOwnStepFailure(step: { passed: boolean; stoppedByFailFast?: boolean }): boolean {
+  return !step.passed && step.stoppedByFailFast !== true;
+}
+
+/**
+ * The step a validation result blames — the one place that answers "which
+ * step failed?" for a stored or parsed result.
+ *
+ * The run's `failedStep` is the authority, but a parallel phase lists step
+ * results in completion order, and step names need not be unique across
+ * phases, so the name only selects among steps that failed on their own.
+ * Without a `failedStep`, the first such step is blamed.
+ *
+ * Results written before `stoppedByFailFast` existed cannot say which steps
+ * fail-fast killed (their "Process stopped" summary also marked any real
+ * failure that printed little), so for them `failedStep` is taken as written.
+ *
+ * @param accept - further narrows the candidates (e.g. "has an extraction")
+ */
+export function findFailedStepResult<S extends { name: string; passed: boolean; stoppedByFailFast?: boolean }>(
+  result: { failedStep?: string; phases?: ReadonlyArray<{ steps: readonly S[] }> },
+  accept: (step: S) => boolean
+): S | undefined {
+  const candidates = (result.phases ?? []).flatMap(phase => phase.steps).filter(step => isOwnStepFailure(step) && accept(step));
+  return candidates.find(step => step.name === result.failedStep) ?? candidates[0];
+}
+
+/** A step read from untyped validation YAML (a CI log, nested output). */
+export interface LooseStepResult {
+  name: string;
+  /** Only an explicit `passed: true` counts as passed */
+  passed: boolean;
+  stoppedByFailFast: boolean;
+  /** The step as parsed, for fields the caller validates itself */
+  raw: Record<string, unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Read the phases of an untyped validation result for findFailedStepResult —
+ * the one tolerant reader, so YAML no schema has checked never crashes a caller.
+ * Anything that is not a list of phases with a list of step objects reads as empty.
+ */
+export function readLoosePhases(phases: unknown): Array<{ steps: LooseStepResult[] }> {
+  if (!Array.isArray(phases)) {
+    return [];
+  }
+  return phases.map(phase => {
+    const steps = isRecord(phase) && Array.isArray(phase.steps) ? phase.steps.filter(isRecord) : [];
+    return {
+      steps: steps.map(step => ({
+        name: typeof step.name === 'string' ? step.name : '',
+        passed: step.passed === true,
+        stoppedByFailFast: step.stoppedByFailFast === true,
+        raw: step,
+      })),
+    };
+  });
+}
 
 /**
  * Safe validation function (uses shared utility)

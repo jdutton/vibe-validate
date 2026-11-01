@@ -109,7 +109,7 @@ do {
   // Extract errors from failed steps
   errors = result.phases
     .flatMap(phase => phase.steps)
-    .filter(step => !step.passed)
+    .filter(step => !step.passed && !step.stoppedByFailFast) // skip siblings fail-fast stopped
     .flatMap(step => step.extraction?.errors || [])
 
   fixes = suggest_fixes(errors)
@@ -588,7 +588,7 @@ if not state['passed']:
     failed_steps = [
         step for phase in state['phases']
         for step in phase['steps']
-        if not step['passed']
+        if not step['passed'] and not step.get('stoppedByFailFast')  # skip siblings fail-fast stopped
     ]
 
     for step in failed_steps:
@@ -626,7 +626,7 @@ if (!state.passed) {
   // Extract errors from failed steps
   const failedSteps = state.phases
     .flatMap(phase => phase.steps)
-    .filter(step => !step.passed);
+    .filter(step => !step.passed && !step.stoppedByFailFast); // skip siblings fail-fast stopped
 
   for (const step of failedSteps) {
     console.log(`Failed step: ${step.name}`);
@@ -814,7 +814,7 @@ async function fixErrorsProgressively() {
     // Extract errors from failed steps
     const errors = state.phases
       .flatMap(phase => phase.steps)
-      .filter(step => !step.passed)
+      .filter(step => !step.passed && !step.stoppedByFailFast) // skip siblings fail-fast stopped
       .flatMap(step => step.extraction?.errors || []);
 
     // Sort by priority (TypeScript errors first)

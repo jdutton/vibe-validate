@@ -15,7 +15,7 @@ import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import { extractYamlContent } from '@vibe-validate/git';
 import { parse as parseYaml } from 'yaml';
 
-import type { OutputFiles } from './result-schema.js';
+import { findFailedStepResult, readLoosePhases, type OutputFiles } from './result-schema.js';
 
 /**
  * Parsed vibe-validate output result
@@ -122,27 +122,13 @@ function parseRunResult(parsed: Record<string, unknown>): ParsedVibeValidateOutp
  * Extracts errors from failed steps in validation phases.
  */
 function parseValidationResult(parsed: Record<string, unknown>): ParsedVibeValidateOutput {
-  const phases = parsed.phases as Array<{
-    steps: Array<{
-      passed: boolean;
-      extraction?: ErrorExtractorResult;
-    }>;
-  }>;
-
-  // Find first failed step with extraction
-  let extraction: ErrorExtractorResult | undefined;
-  for (const phase of phases) {
-    for (const step of phase.steps) {
-      if (!step.passed && step.extraction) {
-        extraction = step.extraction;
-        break;
-      }
-    }
-    if (extraction) break;
-  }
+  const failedStep = findFailedStepResult(
+    { failedStep: parsed.failedStep as string | undefined, phases: readLoosePhases(parsed.phases) },
+    step => typeof step.raw.extraction === 'object' && step.raw.extraction !== null
+  );
 
   // Fallback if no extraction found (shouldn't happen in practice)
-  extraction ??= {
+  const extraction: ErrorExtractorResult = (failedStep?.raw.extraction as ErrorExtractorResult | undefined) ?? {
     summary: 'Validation failed',
     totalErrors: 0,
     errors: [],

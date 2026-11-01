@@ -36,12 +36,14 @@ import {
   serializeForEnv,
 } from './parent-context.js';
 import { stopProcessGroup, spawnCommand, resolveGitRelativePath } from './process-utils.js';
-import type {
-  ValidationResult,
-  StepResult,
-  PhaseResult,
+import {
+  isOwnStepFailure,
+  type ValidationResult,
+  type StepResult,
+  type PhaseResult,
 } from './result-schema.js';
 import { parseVibeValidateOutput } from './run-output-parser.js';
+import { classifyStepExit, explainStepExit, type StepExit } from './step-exit.js';
 
 /**
  * Convert a step name into a filesystem-safe slug for output directory paths.
@@ -165,6 +167,13 @@ export interface ValidationConfig {
   /** Path to log file (default: os.tmpdir()/validation-{timestamp}.log) */
   logPath?: string;
 
+  /**
+   * Git tree hash the caller already computed for this worktree (the CLI
+   * computes one for its cache lookup). Reused instead of hashing again;
+   * computed here when absent.
+   */
+  treeHash?: string;
+
   /** Enable fail-fast (stop on first failure) */
   enableFailFast?: boolean;
 
@@ -223,6 +232,8 @@ export interface ValidationConfig {
  * Options for processing step output
  */
 interface ProcessOutputOptions {
+  /** The run's tree hash, used to name output files (never re-hashed per step) */
+  treeHash: string;
   /** Show verbose output */
   verbose: boolean;
   /** Enable debug mode (create output files for all steps) */
@@ -230,6 +241,14 @@ interface ProcessOutputOptions {
   /** Logging function */
   log: (_msg: string) => void;
 }
+
+/**
+ * Outcome of running one phase's steps. A failed phase always names the step
+ * that failed, so a caller can never read "failed" without a step to blame.
+ */
+export type StepsOutcome =
+  | { success: true; failedStep?: never; outputs: Map<string, string>; stepResults: StepResult[] }
+  | { success: false; failedStep: ValidationStep; outputs: Map<string, string>; stepResults: StepResult[] };
 
 /**
  * Options for step execution (sequential or parallel)
@@ -268,7 +287,7 @@ interface StepExecutionOptions {
  * @example
  * ```typescript
  * const previousStep = findPreviousStepResult(previousRun, 'TypeCheck');
- * if (previousStep && previousStep.exitCode === 0) {
+ * if (previousStep?.passed) {
  *   // Use cached result
  * }
  * ```
@@ -300,7 +319,7 @@ export function findPreviousStepResult(
  * Returns true only when all conditions are met:
  * - Retry-failed mode is enabled
  * - Previous step exists
- * - Previous step passed (exitCode === 0)
+ * - Previous step passed (`passed`; a step fail-fast stopped never has)
  *
  * @param previousStep - Step result from previous run (or null if not found)
  * @param isRetryFailed - Whether retry-failed mode is enabled
@@ -324,8 +343,9 @@ export function shouldUseCachedResult(
     return false;
   }
 
-  // Use cache only if step passed (exitCode === 0)
-  return previousStep.exitCode === 0;
+  // Use cache only if the step ran to completion and passed. `passed` is the
+  // verdict: a step fail-fast stopped can have exited 0 without finishing.
+  return previousStep.passed;
 }
 
 /**
@@ -438,8 +458,9 @@ function processDeveloperFeedback(
  * @param step - The failed step
  * @param output - Output from failed step
  * @param processes - Array of all running processes
+ * @param stoppedByFailFast - Records each sibling this call stops, keyed by its
+ *   name, with the name of the step whose failure stopped it
  * @param log - Logging function for output
- * @param ignoreStopErrors - Callback to ignore already-stopped process errors
  * @returns Updated firstFailure reference
  *
  * @internal
@@ -450,8 +471,8 @@ function handleFailFast(
   step: ValidationStep,
   output: string,
   processes: Array<{ proc: ChildProcess; step: ValidationStep }>,
-  log: (_msg: string) => void,
-  ignoreStopErrors: () => void
+  stoppedByFailFast: Map<ValidationStep, string>,
+  log: (_msg: string) => void
 ): { step: ValidationStep; output: string } | null {
   // RACE CONDITION SAFE: While multiple processes could fail simultaneously,
   // JavaScript's single-threaded event loop ensures atomic assignment.
@@ -460,10 +481,14 @@ function handleFailFast(
     const failure = { step, output };
     log(`\n⚠️  Fail-fast enabled: Killing remaining processes...`);
 
-    // Kill all other running processes
+    // Kill all other running processes. Record each one BEFORE signalling it, so
+    // its close handler reports "stopped" rather than a failure of its own.
+    // A process killed by a signal has exitCode null but signalCode set: it has
+    // already ended on its own and must keep its own result.
     for (const { proc: otherProc, step: otherStep } of processes) {
-      if (otherStep !== step && otherProc.exitCode === null) {
-        stopProcessGroup(otherProc, otherStep.name).catch(ignoreStopErrors);
+      if (otherStep !== step && otherProc.exitCode === null && otherProc.signalCode === null) {
+        stoppedByFailFast.set(otherStep, step.name);
+        stopProcessGroup(otherProc, otherStep.name).catch(() => { /* Process may have already exited */ });
       }
     }
     return failure;
@@ -564,7 +589,7 @@ function parseAndLogCacheStatus(
  * Create output files for step.
  *
  * Writes the captured stdout/stderr/combined streams under `outputDir`.
- * The caller is responsible for resolving `outputDir` (typically the same
+ * The caller is responsible for resolving `location.outputDir` (typically the same
  * directory advertised in `ParentContext.outputDir`), so a nested child
  * process can predict where its outer-captured files will live.
  */
@@ -575,11 +600,10 @@ async function createStepOutputFiles(
   combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
   verbose: boolean,
   log: (_msg: string) => void,
-  outputDir: string
+  location: { outputDir: string; treeHash: string }
 ): Promise<{ stdout?: string; stderr?: string; combined?: string } | undefined> {
+  const { outputDir, treeHash } = location;
   try {
-    const treeHashResult = await getGitTreeHash();
-    const treeHash = treeHashResult.hash;
     await ensureDir(outputDir);
 
     // Generate unique filenames with tree hash and timestamp
@@ -612,11 +636,60 @@ async function createStepOutputFiles(
 }
 
 /**
+ * Result for a step vibe-validate could not start (`setup`: its cwd is outside
+ * the repository, say) or whose output it could not process (`result`: an
+ * extractor plugin threw). Shared by the sequential and the parallel runner:
+ * the step is recorded as failed either way, so the run's failedStep always
+ * names a step its phases hold, and the cause is in its extraction. Prints a
+ * FAILED line when nothing else will say it failed: the step never ran, or
+ * its command passed and printed PASSED. A failed or stopped command has
+ * already printed its FAILED or STOPPED line.
+ */
+function createUnprocessedStepResult(options: {
+  step: ValidationStep;
+  stage: 'setup' | 'result';
+  exit: StepExit;
+  durationSecs: number;
+  error: unknown;
+  stoppedByFailFast: boolean;
+  maxNameLength: number;
+  log: (_msg: string) => void;
+}): StepResult {
+  const { step, stage, exit, durationSecs, error, stoppedByFailFast, maxNameLength, log } = options;
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  const summary = stage === 'setup'
+    ? `vibe-validate could not start this step: ${errorMsg}`
+    : `vibe-validate could not process this step's result: ${errorMsg}`;
+  if ((stage === 'setup' || exit.passed) && !stoppedByFailFast) {
+    log(`      ❌ ${step.name.padEnd(maxNameLength)} - FAILED (${durationSecs}s) — ${summary}`);
+  }
+  return {
+    name: step.name,
+    command: step.command,
+    exitCode: exit.passed ? 1 : exit.exitCode,
+    durationSecs,
+    passed: false,
+    ...(stoppedByFailFast ? { stoppedByFailFast: true } : {}),
+    extraction: {
+      summary,
+      totalErrors: 0,
+      errors: [],
+      guidance: stage === 'setup'
+        ? "Check the step's configuration (its cwd, for example), then run again."
+        : 'Run the command directly to see its result, and report this vibe-validate error.',
+    },
+  };
+}
+
+/** The exit recorded for a step that never ran: an own failure, exit code 1 */
+const NEVER_RAN: StepExit = classifyStepExit({ exitCode: 1, signal: null, stoppedBy: null, hasOutput: true, platform: process.platform });
+
+/**
  * Process step output: parse, extract errors, create output files
  */
 async function processStepOutput(
   stepName: string,
-  exitCode: number,
+  exit: StepExit,
   stdout: string,
   stderr: string,
   combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
@@ -632,24 +705,20 @@ async function processStepOutput(
   let isCachedResult: boolean | undefined;
   let outputFiles: { stdout?: string; stderr?: string; combined?: string } | undefined;
 
-  // Process failed steps
-  // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer
-  if (exitCode !== 0 && output && output.trim()) {
-    extraction = extractFromFailedOutput(output);
-    const result = parseAndLogCacheStatus(output, options.verbose, options.log);
-    isCachedResult = result.isCachedResult;
-    outputFiles = result.outputFiles;
-  } else if (output?.trim()) {
-    // Process passing steps - check if cached
+  if (output.trim()) {
+    if (!exit.passed) {
+      extraction = extractFromFailedOutput(output);
+    }
     const result = parseAndLogCacheStatus(output, options.verbose, options.log);
     isCachedResult = result.isCachedResult;
     outputFiles = result.outputFiles;
   }
+  extraction = explainStepExit(exit, extraction);
 
   // Create output files if needed
-  const shouldCreateFiles = exitCode !== 0 || options.debug;
+  const shouldCreateFiles = !exit.passed || options.debug;
   if (shouldCreateFiles && !outputFiles) {
-    outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, options.verbose, options.log, outputDir);
+    outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, options.verbose, options.log, { outputDir, treeHash: options.treeHash });
   }
 
   return { extraction, isCachedResult, outputFiles };
@@ -771,6 +840,73 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   log(`   ${commandPrefix}⏳ ${paddedName}  →  ${step.command}`);
 
   const startTime = Date.now();
+  let started: Awaited<ReturnType<typeof startSequentialStep>>;
+  try {
+    started = await startSequentialStep({ step, env, verbose, phaseName, treeHash, runId });
+  } catch (error) {
+    const durationSecs = Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1));
+    return { output: '', stepResult: createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs, error, stoppedByFailFast: false, maxNameLength, log }) };
+  }
+  const { proc, resolvedTreeHash, stepOutputDir } = started;
+
+  // Use object accumulators for mutable references
+  const stdoutAccumulator = { value: '' };
+  const stderrAccumulator = { value: '' };
+  const combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }> = [];
+
+  // Setup stream handlers
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+  proc.stdout!.on('data', createStreamHandler('stdout', stdoutAccumulator, combinedLines, verbose, yaml));
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
+  proc.stderr!.on('data', createStreamHandler('stderr', stderrAccumulator, combinedLines, verbose, yaml));
+
+  // Wait for process to complete
+  const { exitCode, signal } = await new Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }>(resolve => {
+    proc.on('close', (code, closeSignal) => resolve({ exitCode: code, signal: closeSignal }));
+  });
+
+  const durationMs = Date.now() - startTime;
+  const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
+  const stdout = stdoutAccumulator.value;
+  const stderr = stderrAccumulator.value;
+  const output = stdout + stderr;
+
+  // Sequential steps are never stopped by a sibling
+  const exit = classifyStepExit({ exitCode, signal, stoppedBy: null, hasOutput: output.trim() !== '', platform: process.platform });
+
+  const status = exit.passed ? '✅' : '❌';
+  const result = exit.passed ? 'PASSED' : 'FAILED';
+  log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
+
+  // Process output: parse, extract, create files
+  const stepResult = await buildFinishedStepResult({
+    step,
+    exit,
+    durationSecs,
+    process: () => processStepOutput(
+      step.name,
+      exit,
+      stdout,
+      stderr,
+      combinedLines,
+      { treeHash: resolvedTreeHash, verbose, debug, log },
+      stepOutputDir
+    ),
+    maxNameLength,
+    log,
+  });
+
+  return { output, stepResult };
+}
+
+/**
+ * Resolve a sequential step's cwd, tree hash and env, then spawn it. Throws if
+ * it cannot start (a cwd outside the repository, say).
+ */
+async function startSequentialStep(
+  options: Pick<ExecuteSingleStepOptions, 'step' | 'env' | 'verbose' | 'phaseName' | 'treeHash' | 'runId'>
+): Promise<{ proc: ChildProcess; resolvedTreeHash: string; stepOutputDir: string }> {
+  const { step, env, verbose, phaseName, treeHash, runId } = options;
   // Resolve cwd relative to git root (if specified)
   const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
 
@@ -791,65 +927,39 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   });
 
   const proc = spawnCommand(step.command, { env: stepEnv, cwd: resolvedCwd });
+  return { proc, resolvedTreeHash, stepOutputDir };
+}
 
-  // Use object accumulators for mutable references
-  const stdoutAccumulator = { value: '' };
-  const stderrAccumulator = { value: '' };
-  const combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }> = [];
-
-  // Setup stream handlers
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-  proc.stdout!.on('data', createStreamHandler('stdout', stdoutAccumulator, combinedLines, verbose, yaml));
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
-  proc.stderr!.on('data', createStreamHandler('stderr', stderrAccumulator, combinedLines, verbose, yaml));
-
-  // Wait for process to complete
-  const exitCode = await new Promise<number | null>(resolve => {
-    proc.on('close', code => resolve(code));
-  });
-
-  const durationMs = Date.now() - startTime;
-  const durationSecs = Number.parseFloat((durationMs / 1000).toFixed(1));
-  const stdout = stdoutAccumulator.value;
-  const stderr = stderrAccumulator.value;
-  const output = stdout + stderr;
-
-  // Normalize exit code (null means abnormal termination, treat as failure)
-  const code = exitCode ?? 1;
-
-  const status = code === 0 ? '✅' : '❌';
-  const result = code === 0 ? 'PASSED' : 'FAILED';
-  log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
-
-  // Process output: parse, extract, create files
-  const { extraction, isCachedResult, outputFiles } = await processStepOutput(
-    step.name,
-    code,
-    stdout,
-    stderr,
-    combinedLines,
-    { verbose, debug, log },
-    stepOutputDir
-  );
-
-  // Create step result (build without type annotation to let TS infer)
-  const stepResultBase = {
+/**
+ * The result of a finished sequential step. If processing its output throws,
+ * the step is still recorded, as createUnprocessedStepResult describes.
+ */
+async function buildFinishedStepResult(options: {
+  step: ValidationStep;
+  exit: StepExit;
+  durationSecs: number;
+  process: () => ReturnType<typeof processStepOutput>;
+  maxNameLength: number;
+  log: (_msg: string) => void;
+}): Promise<StepResult> {
+  const { step, exit, durationSecs, maxNameLength, log } = options;
+  let processed: Awaited<ReturnType<typeof processStepOutput>>;
+  try {
+    processed = await options.process();
+  } catch (error) {
+    return createUnprocessedStepResult({ step, stage: 'result', exit, durationSecs, error, stoppedByFailFast: false, maxNameLength, log });
+  }
+  const { extraction, isCachedResult, outputFiles } = processed;
+  return {
     name: step.name,
     command: step.command,
-    passed: code === 0,
+    passed: exit.passed,
     durationSecs,
-    exitCode: code,
-  };
-
-  // Add optional fields if present
-  const stepResult: StepResult = {
-    ...stepResultBase,
+    exitCode: exit.exitCode,
     ...(extraction ? { extraction } : {}),
     ...(isCachedResult === undefined ? {} : { isCachedResult }),
     ...(outputFiles ? { outputFiles } : {}),
   } as StepResult;
-
-  return { output, stepResult };
 }
 
 /**
@@ -886,12 +996,7 @@ export async function runStepsSequentially(
   steps: ValidationStep[],
   phaseName: string,
   options: StepExecutionOptions = {}
-): Promise<{
-  success: boolean;
-  failedStep?: ValidationStep;
-  outputs: Map<string, string>;
-  stepResults: StepResult[];
-}> {
+): Promise<StepsOutcome> {
   const {
     enableFailFast = true,
     env = {},
@@ -943,16 +1048,12 @@ export async function runStepsSequentially(
     }
   }
 
-  // Check if any step failed (for non-fail-fast mode)
-  const hasFailures = stepResults.some(r => !r.passed);
-  const failedStep = hasFailures ? stepResults.find(r => !r.passed) : undefined;
-
-  return {
-    success: !hasFailures,
-    failedStep: failedStep ? steps.find(s => s.name === failedStep.name) : undefined,
-    outputs,
-    stepResults,
-  };
+  // Check if any step failed (for non-fail-fast mode). One result is pushed per
+  // step, in order, so a result's index is its step's index.
+  const failedStep = steps[stepResults.findIndex(r => !r.passed)];
+  return failedStep
+    ? { success: false, failedStep, outputs, stepResults }
+    : { success: true, outputs, stepResults };
 }
 
 /**
@@ -989,12 +1090,7 @@ export async function runStepsInParallel(
   steps: ValidationStep[],
   phaseName: string,
   options: StepExecutionOptions = {}
-): Promise<{
-  success: boolean;
-  failedStep?: ValidationStep;
-  outputs: Map<string, string>;
-  stepResults: StepResult[];
-}> {
+): Promise<StepsOutcome> {
   const {
     enableFailFast = false,
     env = {},
@@ -1018,12 +1114,12 @@ export async function runStepsInParallel(
   const stepResults: StepResult[] = [];
   const processes: Array<{ proc: ChildProcess; step: ValidationStep }> = [];
   let firstFailure: { step: ValidationStep; output: string } | null = null;
+  // Siblings that fail-fast terminated → the step whose failure stopped them
+  const stoppedByFailFast = new Map<ValidationStep, string>();
 
   // Helper functions (extracted to reduce nesting depth)
   const isWarning = (e: { severity?: string }) => e.severity === 'warning';
   const isNotWarning = (e: { severity?: string }) => e.severity !== 'warning';
-
-  const ignoreStopErrors = () => { /* Process may have already exited */ };
 
   // Pre-compute per-step ParentContext env so the spawn executor below stays synchronous.
   // Reuse run-level treeHash/runId when provided by runValidation; otherwise fall back
@@ -1105,8 +1201,6 @@ export async function runStepsInParallel(
 
         const startTime = Date.now();
 
-        // Resolve cwd relative to git root (if specified)
-        const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
         const stepEnvEntry = stepEnvs.get(step.name);
         const stepEnv = stepEnvEntry?.env ?? env;
         // Output directory advertised in ParentContext.outputDir; the inline
@@ -1114,10 +1208,26 @@ export async function runStepsInParallel(
         // advertised location matches the actual filesystem location.
         const stepOutputDir =
           stepEnvEntry?.outputDir ?? join(getTempDir('steps'), sharedRunId, slugifyStepName(step.name));
-        const proc = spawnCommand(step.command, {
-          env: stepEnv,
-          cwd: resolvedCwd,
-        });
+        let proc: ChildProcess;
+        try {
+          // Resolve cwd relative to git root (if specified)
+          const resolvedCwd = step.cwd ? resolveGitRelativePath(step.cwd) : undefined;
+          proc = spawnCommand(step.command, {
+            env: stepEnv,
+            cwd: resolvedCwd,
+          });
+        } catch (error) {
+          // The step could not start (a cwd outside the repository, say). Handle
+          // it once every sibling has spawned — this executor runs inside the
+          // synchronous steps.map — so fail-fast can stop them.
+          queueMicrotask(() => {
+            stepResults.push(createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs: 0, error, stoppedByFailFast: false, maxNameLength, log }));
+            outputs.set(step.name, '');
+            firstFailure = handleFailFast(enableFailFast, firstFailure, step, '', processes, stoppedByFailFast, log);
+            reject(error);
+          });
+          return;
+        }
 
         // Track process for potential kill
         processes.push({ proc, step });
@@ -1136,7 +1246,7 @@ export async function runStepsInParallel(
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
         proc.stderr!.on('data', createStreamHandler('stderr', stderrAccumulator, combinedLines, verbose, yaml));
 
-        proc.on('close', exitCode => {
+        proc.on('close', (exitCode, signal) => {
           // Wrap in async IIFE to handle file creation
           // eslint-disable-next-line sonarjs/no-nested-functions, sonarjs/cognitive-complexity -- IIFE required for async/await in sync close handler; inherits complexity from step completion logic
           (async () => {
@@ -1147,12 +1257,20 @@ export async function runStepsInParallel(
             const output = stdout + stderr;
             outputs.set(step.name, output);
 
-            // Normalize exit code (null means abnormal termination, treat as failure)
-            const code = exitCode ?? 1;
+            // Set only when fail-fast terminated this step because another one failed.
+            // Such a step never finished, so it has not passed even if it exited 0
+            // (a command that treats SIGTERM as a graceful cancel).
+            const stoppedBy = stoppedByFailFast.get(step);
+            const exit = classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: output.trim() !== '', platform: process.platform });
+            const succeeded = exit.passed;
 
-            const status = code === 0 ? '✅' : '❌';
-            const result = code === 0 ? 'PASSED' : 'FAILED';
-            log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
+            log(`      ${formatParallelStepStatus(step.name.padEnd(maxNameLength), succeeded, stoppedBy)} (${durationSecs}s)`);
+
+            // A step that failed on its own stops its siblings now, before the
+            // extraction and file writes below, so they are not left running meanwhile.
+            if (!succeeded && !stoppedBy) {
+              firstFailure = handleFailFast(enableFailFast, firstFailure, step, output, processes, stoppedByFailFast, log);
+            }
 
           // Extract errors ONLY from FAILED steps (code !== 0)
           // Rationale: Passing tests have no failures to extract. Including empty extraction
@@ -1162,20 +1280,10 @@ export async function runStepsInParallel(
           let outputFiles;
           let outputFilesFromNestedCommand = false; // Track if outputFiles came from nested vv run
 
-          // Handle killed/stopped processes (fail-fast scenario)
-          // When output is empty or very short AND exit code is non-zero, the process was likely killed
-          const minimalOutput = !output || output.trim().length < 50;
-          if (code !== 0 && minimalOutput) {
-            // Process was killed/stopped - provide meaningful message instead of "0 errors"
-            extraction = {
-              summary: 'Process stopped (fail-fast)',
-              totalErrors: 0,
-              errors: [],
-              guidance: 'This step was terminated when another step failed. Check the failed step above for the root cause.',
-            };
-          }
-          // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
-          else if (code !== 0 && output && output.trim()) {
+          // A sibling fail-fast terminated: whatever it printed before the kill
+          // is partial, so do not extract "errors" from it (explainStepExit below
+          // gives it the stopped extraction).
+          if (exit.kind !== 'stopped' && !succeeded && output.trim()) {
             // Try parsing vibe-validate YAML output (from nested run commands)
             // Uses shared parser that handles both RunResult and ValidationResult formats
             const parsed = parseVibeValidateOutput(output);
@@ -1206,8 +1314,8 @@ export async function runStepsInParallel(
                 ...(rawExtraction.metadata ? { metadata: rawExtraction.metadata } : {}),
               };
             }
-          } else if (output?.trim()) {
-            // Passing step (code === 0) - check if it was cached
+          } else if (succeeded && output.trim()) {
+            // Passing step - check if it was cached
             const parsed = parseVibeValidateOutput(output);
             if (parsed) {
               isCachedResult = parsed.isCachedResult;
@@ -1220,16 +1328,19 @@ export async function runStepsInParallel(
               }
             }
           }
-          // If passing step (code === 0), extraction remains undefined (token optimization)
+          // How the step ended may be the whole explanation (stopped, signal,
+          // no output); a passing step stays without one (token optimization)
+          extraction = explainStepExit(exit, extraction);
 
           // Create output files for failing steps or when debug mode is enabled
           // This provides full debugging context when needed
-            const shouldCreateFiles = code !== 0 || debug;
+            const shouldCreateFiles = !succeeded || debug;
             if (shouldCreateFiles && !outputFiles) {
               // Only create files if not already provided by nested vibe-validate command
               try {
-                const treeHashResult = await getGitTreeHash();
-                const treeHash = treeHashResult.hash;
+                // The run's tree hash, not a fresh one: hashing a large worktree per
+                // failed (or stopped) step costs seconds each
+                const treeHash = sharedTreeHash;
                 // Use the same outputDir we advertised in ParentContext.outputDir
                 // so the advertised location matches where the files actually live.
                 await ensureDir(stepOutputDir);
@@ -1279,28 +1390,27 @@ export async function runStepsInParallel(
           const stepResult: StepResult = {
             name: step.name,
             command: step.command,
-            exitCode: code,
+            exitCode: exit.exitCode,
             durationSecs,
-            passed: code === 0,
+            passed: succeeded,
+            ...(stoppedBy ? { stoppedByFailFast: true } : {}),
             ...(isCachedResult === undefined ? {} : { isCachedResult }), // Include cache status if available
             ...(extraction ? { extraction } : {}), // Conditionally include extraction
-            ...((outputFiles && (outputFilesFromNestedCommand || code !== 0 || debug)) ? { outputFiles } : {}), // Always show for nested commands, or when step failed/debug enabled (v0.15.0+)
+            ...((outputFiles && (outputFilesFromNestedCommand || !succeeded || debug)) ? { outputFiles } : {}), // Always show for nested commands, or when step failed/debug enabled (v0.15.0+)
           };
 
           // Only include extraction quality metrics when developerFeedback is enabled
           // Skip if extraction already has metadata (from smart extractors) - that's more accurate
           // This is for vibe-validate contributors to identify extraction improvement opportunities
-          if (developerFeedback && extraction && !extraction.metadata) {
+          if (developerFeedback && extraction && !extraction.metadata && !stoppedBy) {
             processDeveloperFeedback(stepResult, extraction, log, isWarning, isNotWarning);
           }
 
             stepResults.push(stepResult);
 
-            if (code === 0) {
+            if (succeeded) {
               resolve({ step, output, durationSecs });
             } else {
-              // On first failure, kill other processes if fail-fast enabled
-              firstFailure = handleFailFast(enableFailFast, firstFailure, step, output, processes, log, ignoreStopErrors);
               const error = new Error(`Validation step failed: ${step.name}`) as Error & { step: ValidationStep; output: string; durationSecs: number };
               error.step = step;
               error.output = output;
@@ -1314,6 +1424,24 @@ export async function runStepsInParallel(
             if (verbose) {
               log(`      ⚠️  Error in close handler: ${errorMsg}`);
             }
+            // Record the step anyway, so the run's failedStep names a step its
+            // phases hold. The push above is the handler's last fallible statement,
+            // so reaching here means the step has no result yet.
+            const stoppedBy = stoppedByFailFast.get(step);
+            stepResults.push(createUnprocessedStepResult({
+              step,
+              stage: 'result',
+              exit: classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: false, platform: process.platform }),
+              durationSecs: Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
+              error,
+              stoppedByFailFast: stoppedBy !== undefined,
+              maxNameLength,
+              log,
+            }));
+            // A step whose command passed did not trigger fail-fast above
+            if (!stoppedBy) {
+              firstFailure = handleFailFast(enableFailFast, firstFailure, step, outputs.get(step.name) ?? '', processes, stoppedByFailFast, log);
+            }
             // Reject with error to fail validation
             reject(new Error(`Close handler error: ${errorMsg}`));
           }); // Close async IIFE
@@ -1322,15 +1450,27 @@ export async function runStepsInParallel(
     )
   );
 
-  // Check for failures
-  for (const result of results) {
-    if (result.status === 'rejected') {
-      const { step } = result.reason;
-      return { success: false, failedStep: step, outputs, stepResults };
-    }
-  }
+  // The failed step is the first, in config order, that failed on its own. A
+  // sibling fail-fast stopped is not a failure of its own, so it never wins —
+  // even when it is listed first. A step that stops siblings always rejects and
+  // is never stopped itself, so `?? rejected[0]` cannot fire today; it keeps a
+  // rejected phase from ever reporting success if that changes.
+  const rejected = steps.filter((_step, index) => results[index]?.status === 'rejected');
+  const failedStep = rejected.find(step => !stoppedByFailFast.has(step)) ?? rejected[0];
+  return failedStep
+    ? { success: false, failedStep, outputs, stepResults }
+    : { success: true, outputs, stepResults };
+}
 
-  return { success: true, outputs, stepResults };
+/**
+ * Status column for one finished parallel step: PASSED, FAILED, or STOPPED for
+ * a sibling fail-fast terminated after `stoppedBy` failed.
+ */
+function formatParallelStepStatus(paddedName: string, succeeded: boolean, stoppedBy: string | undefined): string {
+  if (stoppedBy) {
+    return `⏹️  ${paddedName} - STOPPED (fail-fast after ${stoppedBy} failed)`;
+  }
+  return succeeded ? `✅ ${paddedName} - PASSED` : `❌ ${paddedName} - FAILED`;
 }
 
 /**
@@ -1339,11 +1479,19 @@ export async function runStepsInParallel(
 function appendStepOutputsToLog(
   logPath: string,
   outputs: Map<string, string>,
-  failedStepName?: string
+  stepResults: StepResult[]
 ): void {
+  const failedStepNames = new Set(stepResults.filter(isOwnStepFailure).map(r => r.name));
+  const stoppedStepNames = new Set(stepResults.filter(r => r.stoppedByFailFast).map(r => r.name));
   for (const [stepName, output] of outputs) {
+    let label = '';
+    if (failedStepNames.has(stepName)) {
+      label = ' - FAILED';
+    } else if (stoppedStepNames.has(stepName)) {
+      label = ' - STOPPED (fail-fast)';
+    }
     appendFileSync(logPath, `\n${'='.repeat(60)}\n`);
-    appendFileSync(logPath, `${stepName}${failedStepName === stepName ? ' - FAILED' : ''}\n`);
+    appendFileSync(logPath, `${stepName}${label}\n`);
     appendFileSync(logPath, `${'='.repeat(60)}\n`);
     appendFileSync(logPath, output);
   }
@@ -1428,8 +1576,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
   } = config;
 
   // Get current working tree hash (deterministic, content-based)
-  const treeHashResult = await getGitTreeHash();
-  const currentTreeHash = treeHashResult.hash;
+  const currentTreeHash = config.treeHash ?? (await getGitTreeHash()).hash;
   // Stable per-validation-run identifier (used for ParentContext.runId / outputDir layout)
   const runId = makeRunId(currentTreeHash);
 
@@ -1481,7 +1628,8 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       phase.steps,
       phase.name,
       {
-        enableFailFast,
+        // A phase's own failFast wins; the run-level setting covers phases that leave it unset
+        enableFailFast: phase.failFast ?? enableFailFast,
         env,
         verbose: config.verbose ?? false,
         yaml: config.yaml ?? false,
@@ -1496,7 +1644,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     const durationSecs = Number.parseFloat((phaseDurationMs / 1000).toFixed(1));
 
     // Append all outputs to log file
-    appendStepOutputsToLog(logPath, result.outputs, result.failedStep?.name);
+    appendStepOutputsToLog(logPath, result.outputs, result.stepResults);
 
     // Record phase result
     const phaseResult: PhaseResult = {
@@ -1513,7 +1661,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     }
 
     // If phase failed, stop here and return failure result
-    if (!result.success && result.failedStep) {
+    if (!result.success) {
       return createFailedValidationResult(
         result.failedStep,
         currentTreeHash,

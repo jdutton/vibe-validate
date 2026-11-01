@@ -62,8 +62,8 @@ export const ValidationPhaseSchema = z.object({
   /** Optional: Default timeout for all steps (milliseconds, default: 300000 = 5min) */
   timeout: z.number().positive().optional().default(300000),
 
-  /** Optional: Fail fast - stop on first error (default: true) */
-  failFast: z.boolean().optional().default(true),
+  /** Optional: Fail fast - stop on first error (unset: the run's setting, which the CLI makes true) */
+  failFast: z.boolean().optional(),
 }).strict();
 
 // Use input type (before defaults applied) to maintain optional field semantics

@@ -21,7 +21,7 @@ describe('Extraction Pipeline Integration', () => {
 	const detector = new ExtractionModeDetector();
 
 	describe('Matrix Mode Extraction (validate YAML)', () => {
-		it('should extract errors from real PR #90 validate YAML logs', async () => {
+		it('should extract errors from real PR #90 validate YAML logs', () => {
 			// Load real logs from PR #90 (matrix mode with validate)
 			const logs = readFileSync(
 				path.join(FIXTURES_DIR, 'pr-90/run-20275187200.log'),
@@ -29,7 +29,7 @@ describe('Extraction Pipeline Integration', () => {
 			);
 
 			// Detect and extract
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Validation Pipeline'),
 				logs,
 			);
@@ -56,39 +56,28 @@ describe('Extraction Pipeline Integration', () => {
 	});
 
 	describe('Non-Matrix Mode Extraction (raw test output)', () => {
-		it('should extract TypeScript errors from Docker Build logs', async () => {
-			// Load real Docker Build logs with TypeScript errors
-			const logs = readFileSync(
-				path.join(FIXTURES_DIR, 'pr-104/run-19754182675-docker.log'),
-				'utf-8',
-			);
+		// Real logs whose failure one extractor owns: it must find structured errors
+		it.each([
+			{ tool: 'TypeScript', fixture: 'pr-104/run-19754182675-docker.log', check: 'Docker Build', summary: 'type error', extractor: 'typescript', fields: {} },
+			{ tool: 'ESLint', fixture: 'pr-104/run-19742892857-eslint.log', check: 'Validation Pipeline', summary: 'ESLint', extractor: 'eslint', fields: { severity: expect.stringMatching(/error|warning/) } },
+		])('should extract $tool errors from $check logs', ({ fixture, check, summary, extractor, fields }) => {
+			const logs = readFileSync(path.join(FIXTURES_DIR, fixture), 'utf-8');
 
-			// Detect and extract
-			const extraction = await detector.detectAndExtract(
-				createMockCheck('Docker Build'),
-				logs,
-			);
+			const extraction = detector.detectAndExtract(createMockCheck(check), logs);
 
-			// Should successfully extract TypeScript errors
-			expect(extraction).toBeDefined();
-			if (extraction) {
-				expect(extraction.errors.length).toBeGreaterThan(0);
-				expect(extraction.summary).toContain('type error');
-
-				// Verify first error has proper structure
-				const firstError = extraction.errors[0];
-				expect(firstError).toMatchObject({
-					file: expect.any(String),
-					line: expect.any(Number),
-					message: expect.any(String),
-				});
-
-				// Verify metadata indicates TypeScript detection
-				expect(extraction.metadata?.detection?.extractor).toBe('typescript');
-			}
+			expect(extraction).not.toBeNull();
+			expect(extraction!.errors.length).toBeGreaterThan(0);
+			expect(extraction!.summary).toContain(summary);
+			expect(extraction!.errors[0]).toMatchObject({
+				file: expect.any(String),
+				line: expect.any(Number),
+				message: expect.any(String),
+				...fields,
+			});
+			expect(extraction!.metadata?.detection?.extractor).toBe(extractor);
 		});
 
-		it('should extract Vitest errors from Validation Pipeline logs', async () => {
+		it('should extract Vitest errors from Validation Pipeline logs', () => {
 			// Load real Validation Pipeline logs with Vitest test failures
 			const logs = readFileSync(
 				path.join(FIXTURES_DIR, 'pr-104/run-19744677825-vitest.log'),
@@ -96,7 +85,7 @@ describe('Extraction Pipeline Integration', () => {
 			);
 
 			// Detect and extract
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Validation Pipeline'),
 				logs,
 			);
@@ -122,43 +111,10 @@ describe('Extraction Pipeline Integration', () => {
 				expect(true).toBe(true);
 			}
 		});
-
-		it('should extract ESLint errors from Validation Pipeline logs', async () => {
-			// Load real Validation Pipeline logs with ESLint errors
-			const logs = readFileSync(
-				path.join(FIXTURES_DIR, 'pr-104/run-19742892857-eslint.log'),
-				'utf-8',
-			);
-
-			// Detect and extract
-			const extraction = await detector.detectAndExtract(
-				createMockCheck('Validation Pipeline'),
-				logs,
-			);
-
-			// Should successfully extract ESLint errors
-			expect(extraction).toBeDefined();
-			if (extraction) {
-				expect(extraction.errors.length).toBeGreaterThan(0);
-				expect(extraction.summary).toContain('ESLint');
-
-				// Verify errors have proper structure
-				const firstError = extraction.errors[0];
-				expect(firstError).toMatchObject({
-					file: expect.any(String),
-					line: expect.any(Number),
-					message: expect.any(String),
-					severity: expect.stringMatching(/error|warning/),
-				});
-
-				// Verify metadata indicates ESLint detection
-				expect(extraction.metadata?.detection?.extractor).toBe('eslint');
-			}
-		});
 	});
 
 	describe('Mode Detection Fallback', () => {
-		it('should try matrix mode first, then fall back to non-matrix', async () => {
+		it('should try matrix mode first, then fall back to non-matrix', () => {
 			// Logs without YAML should fall back to non-matrix mode
 			const plainLogs = `
 FAIL test/example.test.ts:10:5
@@ -166,7 +122,7 @@ FAIL test/example.test.ts:10:5
     Error: Test failed
 			`;
 
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Tests'),
 				plainLogs,
 			);
@@ -180,10 +136,10 @@ FAIL test/example.test.ts:10:5
 			}
 		});
 
-		it('should return null for logs with no extractable content', async () => {
+		it('should return null for logs with no extractable content', () => {
 			const emptyLogs = 'Some logs with no errors or test failures';
 
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Unknown'),
 				emptyLogs,
 			);

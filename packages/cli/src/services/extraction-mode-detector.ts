@@ -10,6 +10,7 @@
  * @packageDocumentation
  */
 
+import { findFailedStepResult, readLoosePhases } from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import YAML from 'yaml';
@@ -29,20 +30,20 @@ export class ExtractionModeDetector {
    * @param logs - Raw log output
    * @returns ErrorExtractorResult or null if extraction failed
    */
-  async detectAndExtract(check: GitHubActionCheck, logs: string): Promise<ErrorExtractorResult | null> {
+  detectAndExtract(check: GitHubActionCheck, logs: string): ErrorExtractorResult | null {
     // Handle empty logs
     if (!logs || logs.trim().length === 0) {
       return null;
     }
 
     // Try matrix mode first
-    const matrixResult = await this.extractFromMatrixMode(logs);
+    const matrixResult = this.extractFromMatrixMode(logs);
     if (matrixResult) {
       return matrixResult;
     }
 
     // Fall back to non-matrix mode
-    return await this.extractFromNonMatrixMode(check.name, logs);
+    return this.extractFromNonMatrixMode(check.name, logs);
   }
 
   /**
@@ -53,7 +54,7 @@ export class ExtractionModeDetector {
    * @param logs - Raw log output
    * @returns ErrorExtractorResult or null if not matrix mode
    */
-  private async extractFromMatrixMode(logs: string): Promise<ErrorExtractorResult | null> {
+  private extractFromMatrixMode(logs: string): ErrorExtractorResult | null {
     // Strip GitHub Actions log prefixes from each line
     // Format: <job-name>\t<step-name>\t[BOM]<timestamp> <content>
     // Where BOM is optional UTF-8 BOM (U+FEFF)
@@ -101,7 +102,7 @@ export class ExtractionModeDetector {
    * @param logs - Raw log output
    * @returns ErrorExtractorResult or null if extraction failed
    */
-  private async extractFromNonMatrixMode(_checkName: string, logs: string): Promise<ErrorExtractorResult | null> {
+  private extractFromNonMatrixMode(_checkName: string, logs: string): ErrorExtractorResult | null {
     try {
       // Strip GitHub Actions log prefixes (same cleaning as matrix mode)
       const cleanedLogs = logs
@@ -162,49 +163,29 @@ export class ExtractionModeDetector {
 
     // Check if extraction is nested in phases/steps (vibe-validate validate output)
     if ('phases' in parsed && Array.isArray(parsed.phases)) {
-      return this.extractFromPhases(parsed.phases);
+      return this.extractFromPhases(parsed.phases, parsed.failedStep);
     }
 
     return null;
   }
 
   /**
-   * Extract ErrorExtractorResult from phases array (validate output)
+   * Extract the failed step's ErrorExtractorResult from a phases array (validate output)
+   *
+   * A step that fail-fast stopped carries an extraction too, and a parallel
+   * phase lists steps in completion order, so the first extraction found can
+   * belong to a sibling that was merely interrupted.
    *
    * @param phases - Phases array
+   * @param failedStep - The run's failedStep, if present
    * @returns ErrorExtractorResult or null
    */
-  private extractFromPhases(phases: unknown[]): ErrorExtractorResult | null {
-    for (const phase of phases) {
-      const extraction = this.extractFromPhaseSteps(phase);
-      if (extraction) {
-        return extraction;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Extract ErrorExtractorResult from a single phase's steps
-   *
-   * @param phase - Phase object
-   * @returns ErrorExtractorResult or null
-   */
-  private extractFromPhaseSteps(phase: unknown): ErrorExtractorResult | null {
-    if (!phase || typeof phase !== 'object' || !('steps' in phase) || !Array.isArray(phase.steps)) {
-      return null;
-    }
-
-    for (const step of phase.steps) {
-      if (step && typeof step === 'object' && 'extraction' in step) {
-        const extraction = this.validateExtraction(step.extraction);
-        if (extraction) {
-          // Return first extraction found (usually the failed step)
-          return extraction;
-        }
-      }
-    }
-    return null;
+  private extractFromPhases(phases: unknown[], failedStep: unknown): ErrorExtractorResult | null {
+    const step = findFailedStepResult(
+      { failedStep: typeof failedStep === 'string' ? failedStep : undefined, phases: readLoosePhases(phases) },
+      candidate => this.validateExtraction(candidate.raw.extraction) !== null
+    );
+    return step ? this.validateExtraction(step.raw.extraction) : null;
   }
 
   /**

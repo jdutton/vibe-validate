@@ -249,10 +249,11 @@ function showComprehensiveHelp(program: Command): void {
     'pre-commit': {
       whatItDoes: [
         '1. Checks for partially staged files (fails if detected)',
-        '2. Checks if the branch is behind its remote tracking branch (warns by default)',
-        '3. Checks if the branch is behind the base branch, e.g. origin/main (warns by default)',
-        '4. Runs secret scanning (if enabled in config)',
-        '5. Runs validate (with caching)'
+        '2. Fetches only the refs the enabled sync guards need (skipped when both are off)',
+        '3. Checks if the branch is behind its remote tracking branch (warns by default)',
+        '4. Checks if the branch is behind the base branch, e.g. origin/main (warns by default)',
+        '5. Runs secret scanning (if enabled in config)',
+        '6. Runs validate (with caching); a cache miss first runs the dependency lock check (a frozen-lockfile install). VV_DEBUG=1 prints how long each step took'
       ],
       exitCodes: {
         0: 'Validation passed (and no sync guard set to `block` was violated)',

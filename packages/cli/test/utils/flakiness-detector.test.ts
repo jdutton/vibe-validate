@@ -221,6 +221,20 @@ describe('detectFlakiness', () => {
     expect(warning).not.toContain('Unit Tests'); // Consistently passed
   });
 
+  it('does not call a step flaky when fail-fast stopped it in the failed run', async () => {
+    const allSteps = ['Typecheck', 'ESLint'];
+    const previousRun = createFailedRun('2026-02-12T10:00:00Z', allSteps, allSteps);
+    const stoppedStep = previousRun.result.phases?.[0]?.steps.find((s) => s.name === 'ESLint');
+    if (!stoppedStep) throw new Error('fixture: expected an ESLint step');
+    stoppedStep.stoppedByFailFast = true;
+    const currentResult = createPassedResult('2026-02-12T10:05:00Z', allSteps, allSteps);
+
+    const warning = await expectFlakinessDetection([previousRun], currentResult, true);
+
+    expect(warning).toContain('Typecheck');
+    expect(warning).not.toContain('ESLint');
+  });
+
   it('should handle multiple flaky steps', async () => {
     const allSteps = ['E2E Tests', 'Integration Tests'];
     const previousRun = createFailedRun('2026-02-12T10:00:00Z', allSteps, allSteps);

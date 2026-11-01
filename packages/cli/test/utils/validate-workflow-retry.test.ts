@@ -101,6 +101,15 @@ describe('validate-workflow retry-failed', () => {
       // findCachedValidation called once for normal cache check
       expect(findCachedValidation).toHaveBeenCalledTimes(1);
     });
+
+    it('hands the runner the tree hash it already computed, so the worktree is hashed once', async () => {
+      setupFindCachedValidationMock(null);
+
+      await expectValidationRun({ retryFailed: false, treeHashResult: MOCK_TREE_HASH_RESULT });
+
+      const runValidation = await getRunValidationMock();
+      expect(runValidation).toHaveBeenCalledWith(expect.objectContaining({ treeHash: MOCK_TREE_HASH }));
+    });
   });
 
   describe('retryFailed=true with no previous validation', () => {

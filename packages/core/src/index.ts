@@ -62,6 +62,7 @@ export type {
 // Export runtime types (from runner.ts - non-serializable)
 export type {
   ValidationConfig,
+  StepsOutcome,
 } from './runner.js';
 
 // Export core runner functions
@@ -108,6 +109,10 @@ export {
   PhaseResultStrictSchema,
   safeValidateResult,
   validateResult,
+  isOwnStepFailure,
+  findFailedStepResult,
+  readLoosePhases,
+  type LooseStepResult,
 } from './result-schema.js';
 
 // Export shared schema utilities (re-exported from @vibe-validate/config)

@@ -7,7 +7,7 @@
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationResult } from '@vibe-validate/core';
-import { runValidation } from '@vibe-validate/core';
+import { findFailedStepResult, isOwnStepFailure, runValidation } from '@vibe-validate/core';
 import { getGitTreeHash, getRepositoryRoot, type TreeHashResult } from '@vibe-validate/git';
 import {
   recordValidationHistory,
@@ -244,9 +244,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   console.error(chalk.blue('\n📋 View error details:'), chalk.white(`${cmd} state`));
 
   // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
-  const failedStep = result.phases
-    ?.flatMap(phase => phase.steps)
-    .find(step => step.name === result.failedStep);
+  const failedStep = findFailedStepResult(result, () => true);
 
   if (failedStep?.command) {
     console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));
@@ -256,7 +254,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   if (config.developerFeedback && !isReplay) {
     const poorExtractionSteps = result.phases
       ?.flatMap(phase => phase.steps)
-      .filter(step => !step.passed && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
+      .filter(step => isOwnStepFailure(step) && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
 
     if (poorExtractionSteps && poorExtractionSteps.length > 0) {
       // VV_CONTEXT is set by the smart wrapper (vibe-validate/vv)
@@ -390,8 +388,11 @@ export async function runValidateWorkflow(
 
       if (shouldRunDependencyCheck(depCheckConfig, isPreCommit)) {
         const depCheckFailure = await runDependencyLockCheck(config, verbose);
+        // A package-manager install: often the costliest thing before the steps run
+        timer.mark('dependency lock check');
         if (depCheckFailure) {
           // Dependency check failed - return failure result
+          timer.done();
           return depCheckFailure;
         }
       }
@@ -406,6 +407,8 @@ export async function runValidateWorkflow(
       result = await runValidation({
         ...runnerConfig,
         previousRun: previousRunForRetry,
+        // Hashed once above for the cache lookup; don't hash the worktree again
+        ...(treeHashBefore ? { treeHash: treeHashBefore } : {}),
       });
 
       // Record validation history (if in git repo)

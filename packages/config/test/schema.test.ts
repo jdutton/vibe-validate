@@ -181,7 +181,7 @@ describe('ValidationPhaseSchema', () => {
     const result = ValidationPhaseSchema.parse(phase);
     expect(result.parallel).toBe(false);
     expect(result.timeout).toBe(300000);
-    expect(result.failFast).toBe(true);
+    expect(result.failFast).toBeUndefined();
   });
 
   it('should require at least one step', () => {

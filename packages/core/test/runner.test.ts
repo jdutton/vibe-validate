@@ -3,15 +3,17 @@
  
  
 import type { ChildProcess } from 'node:child_process';
-import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync } from 'node:fs';
+import { readFileSync, unlinkSync, existsSync, readdirSync, rmdirSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { ValidationStep } from '@vibe-validate/config';
+import { validateConfig, type ValidationStep } from '@vibe-validate/config';
+import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+import { ensureDir } from '../src/fs-utils.js';
 import {
   buildStepEnv,
   parseFailures,
@@ -47,31 +49,36 @@ vi.mock('@vibe-validate/git', async (importOriginal) => {
   };
 });
 
+// Wrap ensureDir so a test can make step output-file creation fail
+vi.mock('../src/fs-utils.js', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Dynamic import in mock
+  const actual = await importOriginal<typeof import('../src/fs-utils.js')>();
+  return { ...actual, ensureDir: vi.fn(actual.ensureDir) };
+});
+
+// Wrap autoDetectAndExtract so a test can make the parallel close handler throw
+vi.mock('@vibe-validate/extractors', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Dynamic import in mock
+  const actual = await importOriginal<typeof import('@vibe-validate/extractors')>();
+  return { ...actual, autoDetectAndExtract: vi.fn(actual.autoDetectAndExtract) };
+});
+
 /**
- * Helper to mock getGitTreeHash that fails on subsequent calls
+ * Helper to make the next step output-file creation fail
  */
-function mockFailingGitTreeHash(errorMessage: string): () => void {
-  const originalMock = vi.mocked(getGitTreeHash);
-  let callCount = 0;
-  vi.mocked(getGitTreeHash).mockImplementation(async () => {
-    callCount++;
-    if (callCount > 1) {
-      throw new Error(errorMessage);
-    }
-    return { hash: 'test-tree-hash' as any };
-  });
-  return () => vi.mocked(getGitTreeHash).mockImplementation(originalMock);
+function mockFailingOutputFiles(errorMessage: string): void {
+  vi.mocked(ensureDir).mockRejectedValueOnce(new Error(errorMessage));
 }
 
 /**
  * Helper to create validation config for async error tests
  */
-function createAsyncErrorConfig(options: { verbose?: boolean } = {}): ValidationConfig {
+function createAsyncErrorConfig(options: { verbose?: boolean; parallel?: boolean } = {}): ValidationConfig {
   return {
     phases: [
       {
         name: 'Test Phase',
-        parallel: true,
+        parallel: options.parallel ?? true,
         steps: [
           {
             name: 'Failing Step',
@@ -155,6 +162,149 @@ function expectParentContext(
   // Advertised ParentContext.outputDir must match where the outer-captured
   // step output files actually live (Task 3 / I1: alignment).
   expect(toForwardSlash(result.stdoutPath).startsWith(toForwardSlash(result.parsed.outputDir))).toBe(true);
+}
+
+/** These tests spawn node and wait on fail-fast kills; a loaded machine needs headroom. */
+const SPAWN_TEST_TIMEOUT = 30_000;
+
+/**
+ * A step that prints a realistic amount of output, then runs for `ms` before
+ * passing — the shape of a long ESLint run that a fail-fast kill interrupts.
+ */
+function makeLongRunningStep(name: string, ms: number): ValidationStep {
+  const script = `console.log('Linting 412 files across 9 packages with the project config...'); setTimeout(() => process.exit(0), ${ms})`;
+  return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+/** A step that fails on its own after `ms`, with a recognisable error line. */
+function makeFailingStep(name: string, ms: number, exitCode = 1): ValidationStep {
+  const script = `setTimeout(() => { console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(${exitCode}); }, ${ms})`;
+  return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+/**
+ * A step still running when another step's failure is handled: it waits for
+ * `marker`, which writeMarkerOnceFailed writes only after the runner has
+ * handled that failure, then passes (or fails on its own). A fail-fast stop
+ * triggered by that failure therefore always lands while it runs.
+ */
+function makeStepAfterMarker(name: string, marker: string, outcome: 'passes' | 'fails'): ValidationStep {
+  const finish = outcome === 'fails'
+    ? `console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(1)`
+    : 'process.exit(0)';
+  const script = `const fs = require('fs'); console.log('Waiting for the build to settle...'); const t = setInterval(() => { if (fs.existsSync('${toForwardSlash(marker)}')) { clearInterval(t); ${finish}; } }, 20)`;
+  return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+/**
+ * Write `marker` once the runner has logged `stepName` as FAILED. The runner
+ * applies fail-fast synchronously right after that log line, and the marker is
+ * written on a later turn, so by then any stop has already been recorded.
+ */
+function writeMarkerOnceFailed(stepName: string, marker: string): void {
+  vi.mocked(console.log).mockImplementation((msg?: unknown) => {
+    const line = String(msg);
+    if (line.includes(stepName) && line.includes('- FAILED')) {
+      setImmediate(() => writeFileSync(marker, ''));
+    }
+  });
+}
+
+/** Lines the runner printed through the (spied) console.log */
+function loggedLines(): string[] {
+  return vi.mocked(console.log).mock.calls.map(call => String(call[0]));
+}
+
+function findStepResult(result: Awaited<ReturnType<typeof runValidation>>, name: string) {
+  const step = result.phases?.flatMap(p => p.steps).find(s => s.name === name);
+  if (!step) throw new Error(`expected a step result for ${name}`);
+  return step;
+}
+
+/** Run `command` as a fail-fast phase's only step; it must fail as itself, not be stopped */
+async function runKilledStep(testDir: string, command: string, parallel: boolean) {
+  const result = await runValidation({
+    phases: [{ name: 'Checks', parallel, steps: [{ name: 'Killed', command }] }],
+    enableFailFast: true,
+    logPath: join(testDir, 'log.txt'),
+  });
+  const step = findStepResult(result, 'Killed');
+  expect(step.stoppedByFailFast).toBeUndefined();
+  expect(step.passed).toBe(false);
+  return step;
+}
+
+/** Run one failing step whose output is exactly `output` */
+function runStepPrinting(name: string, output: string) {
+  return runValidation({
+    phases: [
+      {
+        name: 'Test Phase',
+        // JSON.stringify quotes and escapes the script for shell:true
+        steps: [{ name, command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(output)}); process.exit(1)`) }],
+      },
+    ],
+    env: {},
+    enableFailFast: false,
+  });
+}
+
+/** Run one parallel step that prints and exits `exitCode` */
+function runOneDebugStep(exitCode: number, debug: boolean) {
+  return runValidation({
+    phases: [
+      {
+        name: 'Test Phase',
+        parallel: true,
+        steps: [{ name: 'Only Step', command: `node -e "console.log('output'); process.exit(${exitCode})"` }],
+      },
+    ],
+    env: {},
+    enableFailFast: false,
+    debug,
+  });
+}
+
+type StoredRun = NonNullable<ValidationConfig['previousRun']>;
+type StoredStep = NonNullable<StoredRun['result']['phases']>[number]['steps'][number];
+
+const CACHED_OUTPUT_FILES = {
+  // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+  stdout: '/tmp/stdout.log',
+  // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+  stderr: '/tmp/stderr.log',
+  // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
+  combined: '/tmp/combined.jsonl',
+};
+
+/** A stored step that took 2.5s and passed only when it exited 0 */
+function storedStep(name: string, command: string, exitCode: number): StoredStep {
+  return { name, command, exitCode, durationSecs: 2.5, passed: exitCode === 0 };
+}
+
+/** A stored run whose result holds one phase made of `steps` */
+function previousRunOf(runPassed: boolean, phaseName: string, steps: StoredStep[]): StoredRun {
+  const timestamp = '2026-02-12T10:00:00Z';
+  return {
+    id: 'run-123',
+    timestamp,
+    duration: 5000,
+    passed: runPassed,
+    branch: 'main',
+    headCommit: 'abc123',
+    uncommittedChanges: false,
+    result: {
+      passed: runPassed,
+      timestamp,
+      treeHash: 'tree-abc',
+      phases: [{
+        name: phaseName,
+        passed: steps.every(step => step.passed),
+        durationSecs: steps.reduce((total, step) => total + step.durationSecs, 0),
+        steps,
+      }],
+    },
+  };
 }
 
 describe('runner', () => {
@@ -399,11 +549,12 @@ describe('runner', () => {
       expect(killedStep).toBeDefined();
       expect(killedStep!.passed).toBe(false);
       expect(killedStep!.exitCode).not.toBe(0);
+      expect(killedStep!.stoppedByFailFast).toBe(true);
+      expect(result.failedStep?.name).toBe('Fast Fail');
 
       // Should have meaningful extraction, not "0 errors"
       expect(killedStep!.extraction).toBeDefined();
-      expect(killedStep!.extraction!.summary).toContain('stopped');
-      expect(killedStep!.extraction!.summary).toContain('fail-fast');
+      expect(killedStep!.extraction!.summary).toBe('Stopped by fail-fast after Fast Fail failed');
       expect(killedStep!.extraction!.guidance).toBeDefined();
       expect(killedStep!.extraction!.guidance).toContain('terminated');
     });
@@ -530,7 +681,6 @@ describe('runner', () => {
           {
             name: 'Fail',
             parallel: true,
-            // Use output >50 chars to avoid fail-fast heuristic (see runner.ts:711)
             steps: [{ name: 'Bad', command: 'node -e "console.log(\'This is an error message with enough content to trigger extraction properly\'); process.exit(1)"' }],
           },
         ],
@@ -570,6 +720,255 @@ describe('runner', () => {
       const logContent = readFileSync(logFile, 'utf8');
       expect(logContent).toContain('output1');
       expect(logContent).toContain('output2');
+    });
+  });
+
+  describe('precomputed tree hash', () => {
+    it.each([true, false])('never hashes the worktree when the caller supplied the hash, even for failing steps (parallel: %s)', async (parallel) => {
+      vi.mocked(getGitTreeHash).mockClear();
+
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          failFast: false,
+          steps: [{ name: 'Ok', command: 'node -e "console.log(\'ok\')"' }, makeFailingStep('Bad', 0)],
+        }],
+        treeHash: 'caller-tree-hash',
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(getGitTreeHash).not.toHaveBeenCalled();
+      expect(result.treeHash).toBe('caller-tree-hash');
+      expect(findStepResult(result, 'Bad').outputFiles?.combined).toContain('caller');
+    }, SPAWN_TEST_TIMEOUT);
+  });
+
+  describe('fail-fast attribution (parallel phases)', { timeout: SPAWN_TEST_TIMEOUT }, () => {
+    it('names the step whose own command failed, not the first sibling it stopped', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 300)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.failedStep).toBe('Typecheck');
+      expect(result.summary).toBe('Typecheck failed');
+
+      const failed = findStepResult(result, 'Typecheck');
+      expect(failed.passed).toBe(false);
+      expect(failed.stoppedByFailFast).toBeUndefined();
+      expect(failed.extraction?.summary).not.toContain('fail-fast');
+
+      const stopped = findStepResult(result, 'ESLint');
+      expect(stopped.passed).toBe(false);
+      expect(stopped.stoppedByFailFast).toBe(true);
+      expect(stopped.extraction?.summary).toBe('Stopped by fail-fast after Typecheck failed');
+      expect(stopped.extraction?.totalErrors).toBe(0);
+    });
+
+    it('marks the stopped sibling in the log file, and only the real failure as FAILED', async () => {
+      const logFile = join(testDir, 'log.txt');
+      await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 300)],
+        }],
+        enableFailFast: true,
+        logPath: logFile,
+      });
+
+      const logContent = readFileSync(logFile, 'utf8');
+      expect(logContent).toContain('Typecheck - FAILED');
+      expect(logContent).toContain('ESLint - STOPPED (fail-fast)');
+      expect(logContent).not.toContain('ESLint - FAILED');
+    });
+
+    it.each([true, false])('names the exit code of a real failure with no output (parallel: %s)', async (parallel) => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          steps: [{ name: 'Silent Failure', command: 'node -e "process.exit(3)"' }],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      const step = findStepResult(result, 'Silent Failure');
+      expect(step.stoppedByFailFast).toBeUndefined();
+      expect(step.extraction?.summary).toBe('Exited with code 3 and produced no output');
+    });
+
+    // Windows has no SIGTERM handler for the step to exit 0 from
+    it.skipIf(process.platform === 'win32')('does not count a stopped sibling as passed when it exits 0 on SIGTERM', async () => {
+      const ready = toForwardSlash(join(testDir, 'graceful-ready'));
+      const stoppedGracefully = toForwardSlash(join(testDir, 'graceful-stopped'));
+      // The handler is installed before the ready marker, and the failing sibling
+      // waits for that marker, so the stop always takes the exit-0 path.
+      const graceful = `const fs = require('fs'); process.on('SIGTERM', () => { fs.writeFileSync('${stoppedGracefully}', ''); process.exit(0); }); fs.writeFileSync('${ready}', ''); console.log('watching for changes...'); setInterval(() => {}, 1000)`;
+      const failsOnceReady = `const fs = require('fs'); const t = setInterval(() => { if (fs.existsSync('${ready}')) { clearInterval(t); console.error('Error: Typecheck found a real problem in src/index.ts'); process.exit(1); } }, 20)`;
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [
+            { name: 'Graceful', command: `node -e ${JSON.stringify(graceful)}` },
+            { name: 'Typecheck', command: `node -e ${JSON.stringify(failsOnceReady)}` },
+          ],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      const stopped = findStepResult(result, 'Graceful');
+      expect(stopped.stoppedByFailFast).toBe(true);
+      expect(stopped.passed).toBe(false);
+      expect(existsSync(stoppedGracefully)).toBe(true);
+      // vibe-validate <= 0.20.1 reuses a step on --retry-failed when exitCode is 0
+      expect(stopped.exitCode).not.toBe(0);
+      expect(result.failedStep).toBe('Typecheck');
+    });
+
+    // A signal from outside (OOM killer, CI timeout) is neither a fail-fast stop nor exit 1.
+    // `exec` makes the killed process the one the runner spawned on every POSIX sh:
+    // Ubuntu's dash keeps itself alive around the last command and exits 137 instead.
+    it.skipIf(process.platform === 'win32').each([true, false])('names the signal that killed a step with no output (parallel: %s)', async (parallel) => {
+      const step = await runKilledStep(testDir, `exec node -e "process.kill(process.pid, 'SIGKILL')"`, parallel);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toBe('Terminated by SIGKILL and produced no output');
+    });
+
+    it.skipIf(process.platform === 'win32').each([true, false])('names the signal that killed a step after it printed (parallel: %s)', async (parallel) => {
+      // Kill only once the write is flushed: a pipe write is asynchronous on macOS
+      const script = String.raw`process.stderr.write('Error: Killed found a real problem in src/index.ts\n', () => process.kill(process.pid, 'SIGKILL'))`;
+      const step = await runKilledStep(testDir, `exec node -e ${JSON.stringify(script)}`, parallel);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toMatch(/^Terminated by SIGKILL: /);
+      expect(step.extraction?.guidance).toContain('Something outside the command sent it SIGKILL');
+      // The parsed errors survive the signal summary
+      expect(step.extraction?.errorSummary).toContain('Killed found a real problem');
+    });
+
+    // A shell between the runner and the killed process (a compound command, a
+    // pnpm script) hides the signal and exits 128+N; the command is not its last,
+    // so no sh execs it
+    it.skipIf(process.platform === 'win32').each([true, false])('notes the likely signal when a shell reports 128+N (parallel: %s)', async (parallel) => {
+      const step = await runKilledStep(testDir, `node -e "process.kill(process.pid, 'SIGKILL')"; exit $?`, parallel);
+      expect(step.exitCode).toBe(137);
+      expect(step.extraction?.summary).toContain('likely killed by SIGKILL');
+      expect(step.extraction?.guidance).toContain('Something outside the command sent it SIGKILL');
+    });
+  });
+
+  describe('per-phase failFast', { timeout: SPAWN_TEST_TIMEOUT }, () => {
+    it('runs every parallel step to completion and reports each failure when the phase sets failFast: false', async () => {
+      writeMarkerOnceFailed('Fast Failure', join(testDir, 'fast-failed'));
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          failFast: false,
+          steps: [
+            makeStepAfterMarker('Slow Failure', join(testDir, 'fast-failed'), 'fails'),
+            makeFailingStep('Fast Failure', 0),
+            makeStepAfterMarker('Passes', join(testDir, 'fast-failed'), 'passes'),
+          ],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.failedStep).toBe('Slow Failure');
+      for (const name of ['Slow Failure', 'Fast Failure']) {
+        const step = findStepResult(result, name);
+        expect(step.passed).toBe(false);
+        expect(step.stoppedByFailFast).toBeUndefined();
+        expect(step.extraction?.errorSummary).toContain(`${name} found a real problem`);
+      }
+      expect(findStepResult(result, 'Passes').passed).toBe(true);
+
+      const logContent = readFileSync(join(testDir, 'log.txt'), 'utf8');
+      expect(logContent).toContain('Slow Failure - FAILED');
+      expect(logContent).toContain('Fast Failure - FAILED');
+      expect(logContent).not.toContain('Passes - FAILED');
+    });
+
+    it('runs every sequential step when the phase sets failFast: false', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Ordered',
+          parallel: false,
+          failFast: false,
+          steps: [makeFailingStep('First', 0), makeLongRunningStep('Second', 0)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.failedStep).toBe('First');
+      expect(findStepResult(result, 'Second').passed).toBe(true);
+    });
+
+    it('keeps fail-fast when the phase leaves failFast unset and the run enables it', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 100)],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(findStepResult(result, 'ESLint').stoppedByFailFast).toBe(true);
+    });
+
+    it('lets a phase turn fail-fast on when the run leaves it off', async () => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel: true,
+          failFast: true,
+          steps: [makeLongRunningStep('ESLint', 10_000), makeFailingStep('Typecheck', 100)],
+        }],
+        enableFailFast: false,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(findStepResult(result, 'ESLint').stoppedByFailFast).toBe(true);
+    });
+
+    it('honours the run-level setting for phases a loaded config leaves unset', async () => {
+      writeMarkerOnceFailed('Typecheck', join(testDir, 'typecheck-failed'));
+      const { validation } = validateConfig({
+        validation: {
+          phases: [{
+            name: 'Checks',
+            parallel: true,
+            steps: [
+              makeStepAfterMarker('Slow', join(testDir, 'typecheck-failed'), 'passes'),
+              makeFailingStep('Typecheck', 0),
+            ],
+          }],
+        },
+      });
+
+      const result = await runValidation({
+        phases: validation.phases,
+        enableFailFast: false,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(findStepResult(result, 'Slow').stoppedByFailFast).toBeUndefined();
+      expect(findStepResult(result, 'Slow').passed).toBe(true);
     });
   });
 
@@ -729,24 +1128,7 @@ extraction:
 rawOutput: ""
 `.trim();
 
-        const config: ValidationConfig = {
-          phases: [
-            {
-              name: 'Test Phase',
-              steps: [
-                {
-                  name: 'ESLint with YAML',
-                  // Use single quotes for -e (works with shell:true on all platforms)
-                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(yamlOutput)}); process.exit(1)`),
-                },
-              ],
-            },
-          ],
-          env: {},
-          enableFailFast: false,
-        };
-
-        const result = await runValidation(config);
+        const result = await runStepPrinting('ESLint with YAML', yamlOutput);
 
         // Verify: Validation failed
         expect(result.passed).toBe(false);
@@ -783,24 +1165,7 @@ invalid indentation
   bad structure
 `.trim();
 
-        const config: ValidationConfig = {
-          phases: [
-            {
-              name: 'Test Phase',
-              steps: [
-                {
-                  name: 'Invalid YAML',
-                  // Use JSON.stringify to properly quote and escape for shell:true
-                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(invalidYamlOutput)}); process.exit(1)`),
-                },
-              ],
-            },
-          ],
-          env: {},
-          enableFailFast: false,
-        };
-
-        const result = await runValidation(config);
+        const result = await runStepPrinting('Invalid YAML', invalidYamlOutput);
 
         // Should still run (fallback to generic extractor)
         expect(result.passed).toBe(false);
@@ -827,24 +1192,7 @@ invalid indentation
           'rawOutput: ""',
         ].join('\r\n');
 
-        const config: ValidationConfig = {
-          phases: [
-            {
-              name: 'Test Phase',
-              steps: [
-                {
-                  name: 'Windows YAML',
-                  // Use JSON.stringify to properly quote and escape for shell:true
-                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(windowsYamlOutput)}); process.exit(1)`),
-                },
-              ],
-            },
-          ],
-          env: {},
-          enableFailFast: false,
-        };
-
-        const result = await runValidation(config);
+        const result = await runStepPrinting('Windows YAML', windowsYamlOutput);
 
         // Should parse Windows line endings correctly
         expect(result.passed).toBe(false);
@@ -867,24 +1215,7 @@ Not YAML frontmatter
 /path/to/file.ts:42:10: error Something bad happened
 `.trim();
 
-        const config: ValidationConfig = {
-          phases: [
-            {
-              name: 'Test Phase',
-              steps: [
-                {
-                  name: 'Dashes in error',
-                  // Use JSON.stringify to properly quote and escape for shell:true
-                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(outputWithDashesInError)}); process.exit(1)`),
-                },
-              ],
-            },
-          ],
-          env: {},
-          enableFailFast: false,
-        };
-
-        const result = await runValidation(config);
+        const result = await runStepPrinting('Dashes in error', outputWithDashesInError);
 
         // Should use autoDetectAndExtract (not try to parse as YAML)
         expect(result.passed).toBe(false);
@@ -915,24 +1246,7 @@ rawOutput: |
   but these should be ignored
 `.trim();
 
-        const config: ValidationConfig = {
-          phases: [
-            {
-              name: 'Test Phase',
-              steps: [
-                {
-                  name: 'Multiple separators',
-                  // Use JSON.stringify to properly quote and escape for shell:true
-                  command: 'node -e ' + JSON.stringify(`console.log(${JSON.stringify(multipleYamlOutput)}); process.exit(1)`),
-                },
-              ],
-            },
-          ],
-          env: {},
-          enableFailFast: false,
-        };
-
-        const result = await runValidation(config);
+        const result = await runStepPrinting('Multiple separators', multipleYamlOutput);
 
         // Should parse using first --- separator
         expect(result.passed).toBe(false);
@@ -1174,123 +1488,26 @@ rawOutput: |
   });
 
   describe('ValidationResult outputFiles (top-level)', () => {
-    it('should include top-level outputFiles with debug mode enabled (passing)', async () => {
-      const config: ValidationConfig = {
-        phases: [
-          {
-            name: 'Test Phase',
-            parallel: true,
-            steps: [
-              {
-                name: 'Passing Step',
-                command: 'node -e "console.log(\'success\'); process.exit(0)"',
-              },
-            ],
-          },
-        ],
-        env: {},
-        enableFailFast: false,
-        debug: true, // Enable debug mode
-      };
+    const outcomes = [
+      { outcome: 'passing', exitCode: 0, passed: true },
+      { outcome: 'failing', exitCode: 1, passed: false },
+    ];
 
-      const result = await runValidation(config);
+    it.each(outcomes)('should include top-level outputFiles with debug mode enabled ($outcome)', async ({ exitCode, passed }) => {
+      const result = await runOneDebugStep(exitCode, true);
 
-      expect(result.passed).toBe(true);
+      expect(result.passed).toBe(passed);
       expect(result.outputFiles).toBeDefined();
       expect(result.outputFiles?.combined).toBeDefined();
-      // Normalize path separators for Windows (\ -> /)
-      // eslint-disable-next-line unicorn/prefer-string-replace-all -- Using replace for ES2020 compatibility
-      const normalizedPath1 = result.outputFiles?.combined?.replace(/\\/g, '/');
-      expect(normalizedPath1).toContain('/validation-');
+      expect(toForwardSlash(result.outputFiles!.combined)).toContain('/validation-');
       expect(result.outputFiles?.combined).toContain('.log');
-
-      // Verify file exists
-      const { existsSync } = await import('node:fs');
       expect(existsSync(result.outputFiles!.combined)).toBe(true);
     });
 
-    it('should include top-level outputFiles with debug mode enabled (failing)', async () => {
-      const config: ValidationConfig = {
-        phases: [
-          {
-            name: 'Test Phase',
-            parallel: true,
-            steps: [
-              {
-                name: 'Failing Step',
-                command: 'node -e "console.log(\'error\'); process.exit(1)"',
-              },
-            ],
-          },
-        ],
-        env: {},
-        enableFailFast: false,
-        debug: true, // Enable debug mode
-      };
+    it.each(outcomes)('should NOT include top-level outputFiles without debug mode ($outcome)', async ({ exitCode, passed }) => {
+      const result = await runOneDebugStep(exitCode, false);
 
-      const result = await runValidation(config);
-
-      expect(result.passed).toBe(false);
-      expect(result.outputFiles).toBeDefined();
-      expect(result.outputFiles?.combined).toBeDefined();
-      // Normalize path separators for Windows (\ -> /)
-      // eslint-disable-next-line unicorn/prefer-string-replace-all -- Using replace for ES2020 compatibility
-      const normalizedPath2 = result.outputFiles?.combined?.replace(/\\/g, '/');
-      expect(normalizedPath2).toContain('/validation-');
-      expect(result.outputFiles?.combined).toContain('.log');
-
-      // Verify file exists
-      const { existsSync } = await import('node:fs');
-      expect(existsSync(result.outputFiles!.combined)).toBe(true);
-    });
-
-    it('should NOT include top-level outputFiles without debug mode (passing)', async () => {
-      const config: ValidationConfig = {
-        phases: [
-          {
-            name: 'Test Phase',
-            parallel: true,
-            steps: [
-              {
-                name: 'Passing Step',
-                command: 'node -e "console.log(\'success\'); process.exit(0)"',
-              },
-            ],
-          },
-        ],
-        env: {},
-        enableFailFast: false,
-        debug: false, // Debug mode off
-      };
-
-      const result = await runValidation(config);
-
-      expect(result.passed).toBe(true);
-      expect(result.outputFiles).toBeUndefined();
-    });
-
-    it('should NOT include top-level outputFiles without debug mode (failing)', async () => {
-      const config: ValidationConfig = {
-        phases: [
-          {
-            name: 'Test Phase',
-            parallel: true,
-            steps: [
-              {
-                name: 'Failing Step',
-                command: 'node -e "console.log(\'error\'); process.exit(1)"',
-              },
-            ],
-          },
-        ],
-        env: {},
-        enableFailFast: false,
-        debug: false, // Debug mode off
-      };
-
-      const result = await runValidation(config);
-
-      expect(result.passed).toBe(false);
+      expect(result.passed).toBe(passed);
       expect(result.outputFiles).toBeUndefined();
     });
   });
@@ -1401,24 +1618,58 @@ rawOutput: |
   });
 
   describe('async error handling', () => {
-    it('should handle errors in async close handler', async () => {
-      const restore = mockFailingGitTreeHash('Git tree hash failed');
+    it.each([true, false])('records the step when processing its result throws (parallel: %s)', async (parallel) => {
+      vi.mocked(autoDetectAndExtract).mockImplementationOnce(() => {
+        throw new Error('extractor blew up');
+      });
 
-      const result = await runValidation(createAsyncErrorConfig());
+      const result = await runValidation(createAsyncErrorConfig({ parallel }));
 
       expect(result.passed).toBe(false);
-      restore();
+      expect(result.failedStep).toBe('Failing Step');
+      const step = findStepResult(result, 'Failing Step');
+      expect(step.passed).toBe(false);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toContain('extractor blew up');
+      // Its command already printed FAILED: no second line for it
+      expect(loggedLines().filter(line => line.includes('Failing Step') && line.includes('FAILED'))).toHaveLength(1);
+    });
+
+    it.each([true, false])('records a step whose setup throws before it spawns (parallel: %s)', { timeout: SPAWN_TEST_TIMEOUT }, async (parallel) => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          steps: [
+            { name: 'Escapes', command: 'node -e "process.exit(0)"', cwd: '../'.repeat(40) + 'outside-the-repo' },
+            makeLongRunningStep('Slow', 10_000),
+          ],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.failedStep).toBe('Escapes');
+      const step = findStepResult(result, 'Escapes');
+      expect(step.passed).toBe(false);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toContain('must be within git repository');
+      // Parallel: fail-fast stops the sibling. Sequential: it never starts.
+      const slow = result.phases?.flatMap(p => p.steps).find(s => s.name === 'Slow');
+      expect(slow ? slow.stoppedByFailFast : 'never started').toBe(parallel ? true : 'never started');
+      // A step that never ran prints its own status line, padded and timed like the others
+      expect(loggedLines().some(line => /❌ Escapes +- FAILED \([\d.]+s\) — vibe-validate could not start this step/.test(line))).toBe(true);
     });
 
     it('should log warning when output file creation fails', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log');
-      const restore = mockFailingGitTreeHash('Simulated async error');
+      mockFailingOutputFiles('Simulated async error');
 
       await runValidation(createAsyncErrorConfig({ verbose: true }));
 
       const logOutput = consoleLogSpy.mock.calls.map(call => call.join(' ')).join('\n');
       expect(logOutput).toContain('Could not create output files');
-      restore();
     });
   });
 
@@ -1670,47 +1921,26 @@ rawOutput: |
         const result = shouldUseCachedResult(previousStep, true);
         expect(result).toBe(false);
       });
+
+      it('should return false when fail-fast stopped the step even though it exited 0', async () => {
+        const { shouldUseCachedResult } = await import('../src/runner.js');
+
+        const previousStep = {
+          name: 'Watcher',
+          command: 'npm run watch',
+          exitCode: 0,
+          durationSecs: 2.5,
+          passed: false,
+          stoppedByFailFast: true,
+        };
+
+        expect(shouldUseCachedResult(previousStep, true)).toBe(false);
+      });
     });
 
     describe('runValidation with previousRun (cache logic integration)', () => {
       it('should use cached result for passed steps when retryFailed enabled', async () => {
-        const previousRun = {
-          id: 'run-123',
-          timestamp: '2026-02-12T10:00:00Z',
-          duration: 5000,
-          passed: false,
-          branch: 'main',
-          headCommit: 'abc123',
-          uncommittedChanges: false,
-          result: {
-            passed: false,
-            timestamp: '2026-02-12T10:00:00Z',
-            treeHash: 'tree-abc',
-            phases: [
-              {
-                name: 'Test Phase',
-                passed: false,
-                durationSecs: 5,
-                steps: [
-                  {
-                    name: 'Quick Step',
-                    command: 'node -e "console.log(\'cached\')"',
-                    exitCode: 0,
-                    durationSecs: 2.5,
-                    passed: true,
-                  },
-                  {
-                    name: 'Failing Step',
-                    command: 'node -e "process.exit(1)"',
-                    exitCode: 1,
-                    durationSecs: 2.5,
-                    passed: false,
-                  },
-                ],
-              },
-            ],
-          },
-        };
+        const previousRun = previousRunOf(false, 'Test Phase', [storedStep('Quick Step', 'node -e "console.log(\'cached\')"', 0), storedStep('Failing Step', 'node -e "process.exit(1)"', 1)]);
 
         const config: ValidationConfig = {
           phases: [
@@ -1750,36 +1980,7 @@ rawOutput: |
       });
 
       it('should execute all steps when previous run had no matching step', async () => {
-        const previousRun = {
-          id: 'run-123',
-          timestamp: '2026-02-12T10:00:00Z',
-          duration: 5000,
-          passed: false,
-          branch: 'main',
-          headCommit: 'abc123',
-          uncommittedChanges: false,
-          result: {
-            passed: false,
-            timestamp: '2026-02-12T10:00:00Z',
-            treeHash: 'tree-abc',
-            phases: [
-              {
-                name: 'Old Phase',
-                passed: true,
-                durationSecs: 2.5,
-                steps: [
-                  {
-                    name: 'Old Step',
-                    command: 'node -e "console.log(\'old\')"',
-                    exitCode: 0,
-                    durationSecs: 2.5,
-                    passed: true,
-                  },
-                ],
-              },
-            ],
-          },
-        };
+        const previousRun = previousRunOf(false, 'Old Phase', [storedStep('Old Step', 'node -e "console.log(\'old\')"', 0)]);
 
         const config: ValidationConfig = {
           phases: [
@@ -1803,44 +2004,9 @@ rawOutput: |
       });
 
       it('should copy extraction and outputFiles from cached step', async () => {
-        const previousRun = {
-          id: 'run-123',
-          timestamp: '2026-02-12T10:00:00Z',
-          duration: 5000,
-          passed: true,
-          branch: 'main',
-          headCommit: 'abc123',
-          uncommittedChanges: false,
-          result: {
-            passed: true,
-            timestamp: '2026-02-12T10:00:00Z',
-            treeHash: 'tree-abc',
-            phases: [
-              {
-                name: 'Test Phase',
-                passed: true,
-                durationSecs: 2.5,
-                steps: [
-                  {
-                    name: 'Step With Output',
-                    command: 'node -e "console.log(\'output\')"',
-                    exitCode: 0,
-                    durationSecs: 2.5,
-                    passed: true,
-                    outputFiles: {
-                      // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
-                      stdout: '/tmp/stdout.log',
-                      // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
-                      stderr: '/tmp/stderr.log',
-                      // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
-                      combined: '/tmp/combined.jsonl',
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        };
+        const previousRun = previousRunOf(true, 'Test Phase', [
+          { ...storedStep('Step With Output', 'node -e "console.log(\'output\')"', 0), outputFiles: CACHED_OUTPUT_FILES },
+        ]);
 
         const config: ValidationConfig = {
           phases: [
@@ -1862,47 +2028,11 @@ rawOutput: |
         const step = result.phases![0].steps[0];
 
         expect(step.isCachedResult).toBe(true);
-        expect(step.outputFiles).toEqual({
-          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
-          stdout: '/tmp/stdout.log',
-          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
-          stderr: '/tmp/stderr.log',
-          // eslint-disable-next-line sonarjs/publicly-writable-directories -- Test fixture data only
-          combined: '/tmp/combined.jsonl',
-        });
+        expect(step.outputFiles).toEqual(CACHED_OUTPUT_FILES);
       });
 
       it('should log cache usage with timestamp in verbose mode', async () => {
-        const previousRun = {
-          id: 'run-123',
-          timestamp: '2026-02-12T10:00:00Z',
-          duration: 5000,
-          passed: false,
-          branch: 'main',
-          headCommit: 'abc123',
-          uncommittedChanges: false,
-          result: {
-            passed: false,
-            timestamp: '2026-02-12T10:00:00Z',
-            treeHash: 'tree-abc',
-            phases: [
-              {
-                name: 'Test Phase',
-                passed: true,
-                durationSecs: 2.5,
-                steps: [
-                  {
-                    name: 'Cached Step',
-                    command: 'node -e "console.log(\'cached\')"',
-                    exitCode: 0,
-                    durationSecs: 2.5,
-                    passed: true,
-                  },
-                ],
-              },
-            ],
-          },
-        };
+        const previousRun = previousRunOf(false, 'Test Phase', [storedStep('Cached Step', 'node -e "console.log(\'cached\')"', 0)]);
 
         // eslint-disable-next-line sonarjs/no-nested-functions -- Test spy mock function
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
@@ -1935,43 +2065,7 @@ rawOutput: |
       });
 
       it('should show retry indicator for failed steps being re-executed', async () => {
-        const previousRun = {
-          id: 'run-123',
-          timestamp: '2026-02-12T10:00:00Z',
-          duration: 5000,
-          passed: false,
-          branch: 'main',
-          headCommit: 'abc123',
-          uncommittedChanges: false,
-          result: {
-            passed: false,
-            timestamp: '2026-02-12T10:00:00Z',
-            treeHash: 'tree-abc',
-            phases: [
-              {
-                name: 'Test Phase',
-                passed: false,
-                durationSecs: 5,
-                steps: [
-                  {
-                    name: 'Failed Step',
-                    command: 'node -e "console.log(\'fail\'); process.exit(1)"',
-                    exitCode: 1,
-                    durationSecs: 2.5,
-                    passed: false,
-                  },
-                  {
-                    name: 'Passed Step',
-                    command: 'node -e "console.log(\'pass\')"',
-                    exitCode: 0,
-                    durationSecs: 2.5,
-                    passed: true,
-                  },
-                ],
-              },
-            ],
-          },
-        };
+        const previousRun = previousRunOf(false, 'Test Phase', [storedStep('Failed Step', 'node -e "console.log(\'fail\'); process.exit(1)"', 1), storedStep('Passed Step', 'node -e "console.log(\'pass\')"', 0)]);
 
         // eslint-disable-next-line sonarjs/no-nested-functions -- Test spy mock function
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);

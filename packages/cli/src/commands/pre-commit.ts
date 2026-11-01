@@ -30,6 +30,7 @@ import type { Command } from 'commander';
 
 import { getCommandName } from '../utils/command-name.js';
 import { loadConfig } from '../utils/config-loader.js';
+import { createPerfTimer } from '../utils/logger.js';
 import {
   selectToolsToRun,
   runSecretScan,
@@ -273,10 +274,12 @@ export function preCommitCommand(program: Command): void {
   // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 47 acceptable for pre-commit workflow orchestration (coordinates git sync, config loading, validation, and error handling)
   cmd.action(async (options) => {
     const programName = program.name();
+    // Where the hook's own time goes before validation starts (VV_DEBUG=1 prints it)
+    const timer = createPerfTimer('pre-commit');
       try {
         // Step 1: Load configuration (needed for git settings)
-        // Note: Config loading is now handled by withValidationLock wrapper
         const config = await loadConfig();
+        timer.mark('loadConfig');
         if (!config) {
           const cmd = getCommandName();
           console.error(chalk.red('❌ No configuration found'));
@@ -287,6 +290,9 @@ export function preCommitCommand(program: Command): void {
         // Step 2: Create worktree snapshot BEFORE any git operations (CRITICAL for work protection)
         console.log(chalk.blue('📸 Creating worktree snapshot...'));
         let treeHash: string | null = null;
+        // Not reused as the cache key: the fetch, sync guards and secret scan
+        // run before the cache lookup, and the tree can change meanwhile. The
+        // lock hashes again right before the lookup, and that hash feeds the run.
 
         try {
           const treeHashResult = await getGitTreeHash();
@@ -299,6 +305,7 @@ export function preCommitCommand(program: Command): void {
             console.warn(chalk.gray(`   ${errorMessage}`));
           }
         }
+        timer.mark('snapshot (getGitTreeHash)');
         console.log(''); // Blank line for readability
 
         // Step 3: Check for partially staged files
@@ -319,9 +326,11 @@ export function preCommitCommand(program: Command): void {
           console.error(chalk.gray(`   • Stage all changes:   git add ${partiallyStagedFiles.join(' ')}`));
           console.error(chalk.gray(`   • Unstage all changes: git restore --staged ${partiallyStagedFiles.join(' ')}`));
           console.error(chalk.gray('   • Skip validation:     git commit --no-verify (not recommended)'));
+          timer.done(); // the breakdown still matters when the hook stops early
           process.exit(1);
         }
         console.log(chalk.green('✅ No partially staged files'));
+        timer.mark('partially staged check');
 
         // Step 4: Verbose mode is ONLY enabled via explicit --verbose flag
         const verbose = options.verbose ?? false;
@@ -359,13 +368,17 @@ export function preCommitCommand(program: Command): void {
         const baseRef: RemoteRef | null = baseGuardActive
           ? { remote: getRemoteOrigin(config.git), branch: getMainBranch(config.git) }
           : null;
+        timer.mark('sync guard setup (merge/rebase/upstream)');
 
         const { baseFresh, upstreamFresh } = fetchSyncRefs(baseRef, upstreamRef, verbose);
+        timer.mark('fetch (network)');
 
         if (trackingGuardActive
           && reportTrackingDivergence(trackingMode, upstreamFresh, treeHash, programName)) {
+          timer.done();
           process.exit(1);
         }
+        timer.mark('tracking-branch guard');
 
         if (branchMode !== 'off') {
           if (mergeInProgress) {
@@ -375,9 +388,11 @@ export function preCommitCommand(program: Command): void {
             console.log(chalk.blue(`🔄 Rebase in progress - skipping branch sync check`));
             console.log(chalk.gray(`   (Sync state will settle once the rebase completes)`));
           } else if (await reportBaseBranchSync(branchMode, remoteBranch, baseFresh, treeHash, programName)) {
+            timer.done();
             process.exit(1);
           }
         }
+        timer.mark('base-branch guard');
 
         // Step 6: Run secret scanning if enabled
         const secretScanning = config.hooks?.preCommit?.secretScanning;
@@ -405,6 +420,7 @@ export function preCommitCommand(program: Command): void {
             const failedScans = results.filter(r => !r.passed && !r.skipped);
             if (failedScans.length > 0) {
               showSecretsDetectedError(failedScans);
+              timer.done();
               process.exit(1);
             }
 
@@ -418,6 +434,9 @@ export function preCommitCommand(program: Command): void {
           }
         }
 
+        timer.mark('secret scanning');
+        timer.done();
+
         // Step 7: Run validation with caching AND locking
         console.log(chalk.blue('\n🔄 Running validation...'));
 
@@ -426,7 +445,7 @@ export function preCommitCommand(program: Command): void {
             lockEnabled: true,  // Always enable locking for pre-commit
             waitEnabled: true,  // Always wait for running validation
             waitTimeout: 30,    // Shorter timeout than validate command (30s vs 300s)
-            yaml: false         // Pre-commit uses human-readable output
+            yaml: false,        // Pre-commit uses human-readable output
           },
           async ({ config, configDir, context, treeHashResult: lockTreeHashResult }) => {
             // CRITICAL (Issue #129): Change to project root directory
@@ -499,7 +518,9 @@ The \`pre-commit\` command runs a comprehensive pre-commit workflow to ensure yo
 3. Checks if the current branch is behind its remote tracking branch (**warns** by default)
 4. Checks if the current branch is behind the base branch, e.g. origin/main (**warns** by default; skipped during a merge or rebase)
 5. Runs secret scanning (if enabled in config)
-6. Runs validate (with caching)
+6. Runs validate (with caching). On a cache miss it first runs the dependency lock check — a frozen-lockfile install with your package manager, which can touch the network. It is on by default for pre-commit; skip it with \`ci.dependencyLockCheck.runOn: disabled\` or \`VV_SKIP_DEPENDENCY_CHECK=1\`
+
+Run with \`VV_DEBUG=1\` to see how long each of these took.
 
 **Note:** When completing a merge commit (MERGE_HEAD exists), or partway through a rebase, the base-branch sync check is automatically skipped — the merge commit itself resolves the out-of-sync state, and a mid-rebase HEAD gives a misleading answer.
 

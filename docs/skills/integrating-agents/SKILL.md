@@ -37,7 +37,7 @@ Regardless of which tool hosts the agent, the same loop is what produces clean c
 
 1. Make edits.
 2. Run `vv validate`. If exit 0, done.
-3. On non-zero exit, run `vv state` and read the YAML. Each failed step under `phases[].steps[]` carries an `extraction.errors` array of `{file, line, column, message}` entries.
+3. On non-zero exit, run `vv state` and read the YAML. `failedStep` names the step that failed; each failed step under `phases[].steps[]` carries an `extraction.errors` array of `{file, line, column, message}` entries. Skip steps with `stoppedByFailFast: true` — fail-fast stopped them after another step failed, so they have nothing to fix.
 4. Fix the top few errors (ordering by phase first, then file, keeps related fixes batched).
 5. Re-run `vv validate`. Cache hits make iterations 2+ near-instant when only a few files changed.
 6. Repeat until passing; cap at a sensible iteration count (8–10) to avoid thrash.
@@ -119,6 +119,7 @@ An adopter's agent can rely on this shape from `vv state`:
 - Top-level `passed` boolean and `summary` string.
 - `phases[]` array, each with `name`, `passed`, and a `steps[]` array.
 - Each step has `name`, `command`, `exitCode`, `passed`, and (on failure) an `extraction` object with an `errors` array of `{file, line, column, message}` tuples plus a `summary` and `totalErrors`.
+- A step that fail-fast stopped after a sibling failed has `passed: false` and `stoppedByFailFast: true`; its extraction only says it was stopped. It is not a failure to fix. Top-level `failedStep` never names a stopped step: it names a step that failed on its own — usually its command failed, but it can also be a step that could not start (a `cwd` outside the repository) or whose command passed but whose result vibe-validate could not process (an extractor plugin threw). In those two cases its extraction summary starts `vibe-validate could not start this step` or `vibe-validate could not process this step's result`, and the console prints a `FAILED` line for it (after `PASSED`, when the command itself passed).
 
 Agents that parse this tree can route errors by step (e.g., send type errors to one sub-prompt and lint errors to another), prioritize by phase, or simply flatten `extraction.errors` and iterate. All three approaches work; pick whichever fits the host tool's prompt budget.
 

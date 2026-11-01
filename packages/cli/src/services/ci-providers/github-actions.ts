@@ -1,3 +1,4 @@
+import { findFailedStepResult, readLoosePhases } from '@vibe-validate/core';
 import { executeGitCommand, fetchPRDetails, fetchPRChecks } from '@vibe-validate/git';
 import { isToolAvailable, safeExecSync } from '@vibe-validate/utils';
 import { parse as parseYaml } from 'yaml';
@@ -19,10 +20,38 @@ import type {
  * - gh CLI installed and authenticated
  * - Git repository with github.com remote
  */
+/**
+ * Run synchronous work behind a promise-returning interface method: a throw
+ * becomes a rejection, as it would from an async function.
+ */
+function runSync<T>(work: () => T): Promise<T> {
+  try {
+    return Promise.resolve(work());
+  } catch (error) {
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
 export class GitHubActionsProvider implements CIProvider {
   readonly name = 'github-actions';
 
-  async isAvailable(): Promise<boolean> {
+  isAvailable(): Promise<boolean> {
+    return runSync(() => this.checkAvailable());
+  }
+
+  detectPullRequest(): Promise<PullRequest | null> {
+    return runSync(() => this.readPullRequest());
+  }
+
+  fetchCheckStatus(prId: number | string): Promise<CheckStatus> {
+    return runSync(() => this.readCheckStatus(prId));
+  }
+
+  fetchFailureLogs(jobId: string): Promise<FailureLogs> {
+    return runSync(() => this.readFailureLogs(jobId));
+  }
+
+  private checkAvailable(): boolean {
     try {
       // Check if gh CLI is available
       if (!isToolAvailable('gh')) {
@@ -37,7 +66,7 @@ export class GitHubActionsProvider implements CIProvider {
     }
   }
 
-  async detectPullRequest(): Promise<PullRequest | null> {
+  private readPullRequest(): PullRequest | null {
     try {
       const prData = fetchPRDetails(0, undefined, undefined, ['number', 'title', 'url', 'headRefName']);
 
@@ -52,7 +81,7 @@ export class GitHubActionsProvider implements CIProvider {
     }
   }
 
-  async fetchCheckStatus(prId: number | string): Promise<CheckStatus> {
+  private readCheckStatus(prId: number | string): CheckStatus {
     const prNumber = typeof prId === 'string' ? Number.parseInt(prId, 10) : prId;
 
     const prData = fetchPRDetails(prNumber, undefined, undefined, ['number', 'title', 'url', 'headRefName']);
@@ -75,7 +104,7 @@ export class GitHubActionsProvider implements CIProvider {
     };
   }
 
-  async fetchFailureLogs(jobId: string): Promise<FailureLogs> {
+  private readFailureLogs(jobId: string): FailureLogs {
     // Get job details to find the check name
     let checkName = 'Unknown';
     try {
@@ -426,12 +455,15 @@ export class GitHubActionsProvider implements CIProvider {
     if (validationResult && !validationResult.passed && validationResult.failedStep) {
       // Show concise summary: just the failed step and how to rerun
       // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
-      const failedStep = validationResult.phases
-        ?.flatMap(phase => phase.steps ?? [])
-        .find(step => step && step.name === validationResult.failedStep);
+      const failedStep = findFailedStepResult(
+        { failedStep: validationResult.failedStep, phases: readLoosePhases(validationResult.phases) },
+        () => true
+      );
 
-      const rerunCommand = failedStep?.command ?? 'see full logs';
-      return `Failed step: ${validationResult.failedStep}\nRerun: ${rerunCommand}`;
+      const rerunCommand = typeof failedStep?.raw.command === 'string' ? failedStep.raw.command : 'see full logs';
+      // An unnamed step (malformed YAML) falls back to the name the result recorded
+      const stepName = failedStep && failedStep.name.length > 0 ? failedStep.name : validationResult.failedStep;
+      return `Failed step: ${stepName}\nRerun: ${rerunCommand}`;
     }
 
     // Fallback: Look for ##[error] lines (for non-validation failures)
