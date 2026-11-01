@@ -66,7 +66,7 @@ describe('ExtractionModeDetector', () => {
   });
 
   describe('matrix mode detection', () => {
-    it('should detect matrix mode with validate YAML output', async () => {
+    it('should detect matrix mode with validate YAML output', () => {
       const check = createTestCheck();
 
       const logs = `
@@ -92,13 +92,13 @@ describe('ExtractionModeDetector', () => {
 2025-12-16T10:01:02.000Z ##[endgroup]
 `;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expectExtraction(result, { summary: '2 test failure(s)', totalErrors: 2, errorCount: 2 });
       expect(result?.guidance).toBe('Fix the failing tests');
     });
 
-    it('surfaces the step that failed, not a sibling fail-fast stopped and listed ahead of it', async () => {
+    it('surfaces the step that failed, not a sibling fail-fast stopped and listed ahead of it', () => {
       const check = createTestCheck();
 
       const logs = `
@@ -128,12 +128,12 @@ phases:
 ---
 `;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expectExtraction(result, { summary: '1 type error', totalErrors: 1, errorCount: 1 });
     });
 
-    it('still finds the extraction when steps omit passed and the list holds an empty entry', async () => {
+    it('still finds the extraction when steps omit passed and the list holds an empty entry', () => {
       const check = createTestCheck();
 
       const logs = `
@@ -151,12 +151,12 @@ phases:
 ---
 `;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expectExtraction(result, { summary: '2 test failure(s)', totalErrors: 2, errorCount: 0 });
     });
 
-    it('should handle matrix mode with nested YAML', async () => {
+    it('should handle matrix mode with nested YAML', () => {
       const check = createTestCheck({ name: 'CI / Lint', run_id: 12346, duration: '1m15s' });
 
       const logs = `
@@ -179,14 +179,14 @@ extraction:
 ---
 `;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.summary).toBe('3 ESLint error(s)');
       expect(result?.errors).toHaveLength(2);
     });
 
-    it('should return null if no YAML markers found', async () => {
+    it('should return null if no YAML markers found', () => {
       const check = createTestCheck({ run_id: 12347 });
 
       const logs = `
@@ -202,13 +202,13 @@ Done.
         errors: [{ message: 'Test 2 failed' }],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(autoDetectAndExtract).toHaveBeenCalled();
     });
 
-    it('should handle malformed YAML gracefully', async () => {
+    it('should handle malformed YAML gracefully', () => {
       const check = createTestCheck({ run_id: 12348 });
 
       const logs = `
@@ -221,7 +221,7 @@ extraction:
 
       setupNonMatrixFallback('1 error');
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       // Should fall back to non-matrix mode
       expectNonMatrixFallbackUsed(result);
@@ -229,7 +229,7 @@ extraction:
   });
 
   describe('GitHub Actions log format parsing', () => {
-    it('should extract YAML from GitHub Actions logs with job/step prefix', async () => {
+    it('should extract YAML from GitHub Actions logs with job/step prefix', () => {
       const check = createTestCheck({
         name: 'Validation Pipeline',
         run_id: 20275187200,
@@ -255,7 +255,7 @@ Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16
 Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1222877Z   guidance: Fix the failing tests
 Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16:33:10.1223303Z ---`;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.summary).toBe('2 test failure(s)');
@@ -266,7 +266,7 @@ Run vibe-validate validation (windows-latest, 22)\tRun validation\t2025-12-16T16
       expect(result?.guidance).toBe('Fix the failing tests');
     });
 
-    it('should extract YAML from GitHub Actions logs with UTF-8 BOM', async () => {
+    it('should extract YAML from GitHub Actions logs with UTF-8 BOM', () => {
       const check = createTestCheck({ run_id: 12361 });
 
       // Log with UTF-8 BOM (U+FEFF) after second tab
@@ -281,14 +281,14 @@ Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z     - message: Test failed
 Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z   guidance: Fix test
 Run CI Test\tSetup\t\uFEFF2025-12-16T10:01:01.000Z ---`;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.summary).toBe('1 test failure(s)');
       expect(result?.totalErrors).toBe(1);
     });
 
-    it('should handle GitHub Actions logs with varying timestamp precision', async () => {
+    it('should handle GitHub Actions logs with varying timestamp precision', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12362, duration: '1m00s' });
 
       // Some logs have millisecond precision, others have microseconds
@@ -301,13 +301,13 @@ Job Name\tStep Name\t2025-12-16T10:01:00.1Z     - message: Failed
 Job Name\tStep Name\t2025-12-16T10:01:00.12Z   guidance: Fix it
 Job Name\tStep Name\t2025-12-16T10:01:00.123Z ---`;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.totalErrors).toBe(1);
     });
 
-    it('should handle mixed format logs (GitHub Actions + plain timestamps)', async () => {
+    it('should handle mixed format logs (GitHub Actions + plain timestamps)', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12363, duration: '1m30s' });
 
       // Some lines have GitHub Actions prefix, others just timestamps
@@ -320,13 +320,13 @@ Job\tStep\t2025-12-16T10:01:01.000Z   errors:
 Job\tStep\t2025-12-16T10:01:01.000Z   guidance: Fix
 2025-12-16T10:01:01.000Z ---`;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.summary).toBe('Mixed format');
     });
 
-    it('should extract from nested validate output (phases/steps)', async () => {
+    it('should extract from nested validate output (phases/steps)', () => {
       const check = createTestCheck({
         name: 'Validation Pipeline',
         run_id: 12365,
@@ -354,7 +354,7 @@ Job\tStep\t2025-12-16T10:01:00.000Z               message: Test failed
 Job\tStep\t2025-12-16T10:01:00.000Z           guidance: Fix the tests
 Job\tStep\t2025-12-16T10:01:00.000Z ---`;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.summary).toBe('4 test failure(s)');
@@ -364,7 +364,7 @@ Job\tStep\t2025-12-16T10:01:00.000Z ---`;
       expect(result?.guidance).toBe('Fix the tests');
     });
 
-    it('should extract from second YAML block when first block fails to parse', async () => {
+    it('should extract from second YAML block when first block fails to parse', () => {
       const check = createTestCheck({
         name: 'Run vibe-validate validation (windows-latest, 24)',
         run_id: 22003731703,
@@ -408,7 +408,7 @@ Job\tStep\t2025-12-16T10:01:02.000Z ---`;
         errors: [],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.summary).toBe('1 test failure(s)');
@@ -420,7 +420,7 @@ Job\tStep\t2025-12-16T10:01:02.000Z ---`;
       expect(autoDetectAndExtract).not.toHaveBeenCalled();
     });
 
-    it('should preserve indentation when stripping prefixes', async () => {
+    it('should preserve indentation when stripping prefixes', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12364, duration: '1m00s' });
 
       // YAML requires correct indentation
@@ -435,7 +435,7 @@ Job\tStep\t2025-12-16T10:01:00.000Z   summary: Test
 Job\tStep\t2025-12-16T10:01:00.000Z   totalErrors: 1
 Job\tStep\t2025-12-16T10:01:00.000Z ---`;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.errors[0].file).toBe('test.ts');
@@ -444,7 +444,7 @@ Job\tStep\t2025-12-16T10:01:00.000Z ---`;
   });
 
   describe('non-matrix mode detection', () => {
-    it('should detect vitest from check name', async () => {
+    it('should detect vitest from check name', () => {
       const check = createTestCheck({ name: 'Test (vitest)', run_id: 12349 });
 
       const logs = `
@@ -459,13 +459,13 @@ RUN  v1.0.0
         errors: [{ file: 'test/example.test.ts', message: 'Expected 5 to equal 6' }],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(autoDetectAndExtract).toHaveBeenCalledWith(logs);
     });
 
-    it('should detect jest from check name', async () => {
+    it('should detect jest from check name', () => {
       const check = createTestCheck({ name: 'Test (jest)', run_id: 12350 });
 
       const logs = `
@@ -480,13 +480,13 @@ RUN  v1.0.0
         errors: [{ file: 'test/example.test.ts', message: 'expect(received).toBe(expected)' }],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(autoDetectAndExtract).toHaveBeenCalled();
     });
 
-    it('should detect eslint from check name', async () => {
+    it('should detect eslint from check name', () => {
       const check = createTestCheck({ name: 'Lint (ESLint)', run_id: 12351, duration: '1m15s' });
 
       const logs = `
@@ -500,13 +500,13 @@ src/example.ts
         errors: [{ file: 'src/example.ts', line: 5, column: 10, message: 'Unexpected console statement' }],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(autoDetectAndExtract).toHaveBeenCalled();
     });
 
-    it('should detect typescript from check name', async () => {
+    it('should detect typescript from check name', () => {
       const check = createTestCheck({ name: 'TypeCheck', run_id: 12352, duration: '30s' });
 
       const logs = `
@@ -519,13 +519,13 @@ src/example.ts:5:10 - error TS2322: Type 'number' is not assignable to type 'str
         errors: [{ file: 'src/example.ts', line: 5, column: 10, message: "Type 'number' is not assignable to type 'string'" }],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(autoDetectAndExtract).toHaveBeenCalled();
     });
 
-    it('should detect extractor from VIBE_VALIDATE_COMMAND marker in logs', async () => {
+    it('should detect extractor from VIBE_VALIDATE_COMMAND marker in logs', () => {
       const check = createTestCheck({ run_id: 12353 });
 
       const logs = `
@@ -540,13 +540,13 @@ RUN  v1.0.0
         errors: [{ message: 'Test failed' }],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(autoDetectAndExtract).toHaveBeenCalled();
     });
 
-    it('should use generic extractor if no specific extractor detected', async () => {
+    it('should use generic extractor if no specific extractor detected', () => {
       const check = createTestCheck({ name: 'Unknown Check', run_id: 12354, duration: '1m00s' });
 
       const logs = `
@@ -560,7 +560,7 @@ Failed to execute command
         errors: [{ message: 'Something went wrong' }],
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(autoDetectAndExtract).toHaveBeenCalled();
@@ -568,7 +568,7 @@ Failed to execute command
   });
 
   describe('integration tests with real output', () => {
-    it('should extract from real vitest output', async () => {
+    it('should extract from real vitest output', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12355 });
 
       const logs = `
@@ -592,13 +592,13 @@ Failed to execute command
         guidance: 'Fix the failing test',
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expect(result).toBeDefined();
       expect(result?.summary).toBeDefined();
     });
 
-    it('should extract from real validate YAML output', async () => {
+    it('should extract from real validate YAML output', () => {
       const check = createTestCheck({ name: 'Validate', run_id: 12356, duration: '5m00s' });
 
       const logs = `
@@ -623,35 +623,35 @@ extraction:
 ---
 `;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       expectExtraction(result, { summary: '2 test failure(s)', totalErrors: 2, errorCount: 2 });
     });
   });
 
   describe('edge cases', () => {
-    it('should handle empty logs', async () => {
+    it('should handle empty logs', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12357, duration: '1s' });
 
-      const result = await detector.detectAndExtract(check, '');
+      const result = detector.detectAndExtract(check, '');
 
       expect(result).toBeNull();
     });
 
-    it('should handle successful checks (no extraction needed)', async () => {
+    it('should handle successful checks (no extraction needed)', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12358, conclusion: 'success' });
 
       const logs = `
 All tests passed!
 `;
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       // Should still try to extract (might find warnings)
       expect(result).toBeDefined();
     });
 
-    it('should handle extractor errors gracefully', async () => {
+    it('should handle extractor errors gracefully', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12359 });
 
       const logs = `Some logs`;
@@ -660,13 +660,13 @@ All tests passed!
         throw new Error('Extractor error');
       });
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       // Should return null on error, not throw
       expect(result).toBeNull();
     });
 
-    it('should handle missing extraction field in YAML', async () => {
+    it('should handle missing extraction field in YAML', () => {
       const check = createTestCheck({ name: 'Test', run_id: 12360 });
 
       const logs = `
@@ -678,7 +678,7 @@ exitCode: 1
 
       setupNonMatrixFallback('Generic error');
 
-      const result = await detector.detectAndExtract(check, logs);
+      const result = detector.detectAndExtract(check, logs);
 
       // Should fall back to non-matrix mode
       expectNonMatrixFallbackUsed(result);

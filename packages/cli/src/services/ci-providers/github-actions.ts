@@ -20,10 +20,38 @@ import type {
  * - gh CLI installed and authenticated
  * - Git repository with github.com remote
  */
+/**
+ * Run synchronous work behind a promise-returning interface method: a throw
+ * becomes a rejection, as it would from an async function.
+ */
+function runSync<T>(work: () => T): Promise<T> {
+  try {
+    return Promise.resolve(work());
+  } catch (error) {
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
 export class GitHubActionsProvider implements CIProvider {
   readonly name = 'github-actions';
 
-  async isAvailable(): Promise<boolean> {
+  isAvailable(): Promise<boolean> {
+    return runSync(() => this.checkAvailable());
+  }
+
+  detectPullRequest(): Promise<PullRequest | null> {
+    return runSync(() => this.readPullRequest());
+  }
+
+  fetchCheckStatus(prId: number | string): Promise<CheckStatus> {
+    return runSync(() => this.readCheckStatus(prId));
+  }
+
+  fetchFailureLogs(jobId: string): Promise<FailureLogs> {
+    return runSync(() => this.readFailureLogs(jobId));
+  }
+
+  private checkAvailable(): boolean {
     try {
       // Check if gh CLI is available
       if (!isToolAvailable('gh')) {
@@ -38,7 +66,7 @@ export class GitHubActionsProvider implements CIProvider {
     }
   }
 
-  async detectPullRequest(): Promise<PullRequest | null> {
+  private readPullRequest(): PullRequest | null {
     try {
       const prData = fetchPRDetails(0, undefined, undefined, ['number', 'title', 'url', 'headRefName']);
 
@@ -53,7 +81,7 @@ export class GitHubActionsProvider implements CIProvider {
     }
   }
 
-  async fetchCheckStatus(prId: number | string): Promise<CheckStatus> {
+  private readCheckStatus(prId: number | string): CheckStatus {
     const prNumber = typeof prId === 'string' ? Number.parseInt(prId, 10) : prId;
 
     const prData = fetchPRDetails(prNumber, undefined, undefined, ['number', 'title', 'url', 'headRefName']);
@@ -76,7 +104,7 @@ export class GitHubActionsProvider implements CIProvider {
     };
   }
 
-  async fetchFailureLogs(jobId: string): Promise<FailureLogs> {
+  private readFailureLogs(jobId: string): FailureLogs {
     // Get job details to find the check name
     let checkName = 'Unknown';
     try {

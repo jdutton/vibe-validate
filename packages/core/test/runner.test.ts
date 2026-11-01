@@ -750,13 +750,15 @@ describe('runner', () => {
       expect(result.failedStep).toBe('Typecheck');
     });
 
-    // A signal from outside (OOM killer, CI timeout) is neither a fail-fast stop nor exit 1
+    // A signal from outside (OOM killer, CI timeout) is neither a fail-fast stop nor exit 1.
+    // `exec` makes the killed process the one the runner spawned on every POSIX sh:
+    // Ubuntu's dash keeps itself alive around the last command and exits 137 instead.
     it.skipIf(process.platform === 'win32').each([true, false])('names the signal that killed a step with no output (parallel: %s)', async (parallel) => {
       const result = await runValidation({
         phases: [{
           name: 'Checks',
           parallel,
-          steps: [{ name: 'Killed', command: `node -e "process.kill(process.pid, 'SIGKILL')"` }],
+          steps: [{ name: 'Killed', command: `exec node -e "process.kill(process.pid, 'SIGKILL')"` }],
         }],
         enableFailFast: true,
         logPath: join(testDir, 'log.txt'),
@@ -776,7 +778,7 @@ describe('runner', () => {
         phases: [{
           name: 'Checks',
           parallel,
-          steps: [{ name: 'Killed', command: `node -e ${JSON.stringify(script)}` }],
+          steps: [{ name: 'Killed', command: `exec node -e ${JSON.stringify(script)}` }],
         }],
         enableFailFast: true,
         logPath: join(testDir, 'log.txt'),
@@ -790,6 +792,28 @@ describe('runner', () => {
       expect(step.extraction?.guidance).toContain('Something outside the command sent it SIGKILL');
       // The parsed errors survive the signal summary
       expect(step.extraction?.errorSummary).toContain('Killed found a real problem');
+    });
+
+    // A shell between the runner and the killed process (a compound command, a
+    // pnpm script) hides the signal and exits 128+N; the command is not its last,
+    // so no sh execs it
+    it.skipIf(process.platform === 'win32').each([true, false])('notes the likely signal when a shell reports 128+N (parallel: %s)', async (parallel) => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          steps: [{ name: 'Killed', command: `node -e "process.kill(process.pid, 'SIGKILL')"; exit $?` }],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      const step = findStepResult(result, 'Killed');
+      expect(step.stoppedByFailFast).toBeUndefined();
+      expect(step.passed).toBe(false);
+      expect(step.exitCode).toBe(137);
+      expect(step.extraction?.summary).toContain('likely killed by SIGKILL');
+      expect(step.extraction?.guidance).toContain('Something outside the command sent it SIGKILL');
     });
   });
 

@@ -257,7 +257,7 @@ export class WatchPROrchestrator {
       return;
     }
 
-    const extraction = await this.extractionDetector.detectAndExtract(check, logs);
+    const extraction = this.extractionDetector.detectAndExtract(check, logs);
     if (extraction) {
       // Strip metadata before storing
       check.extraction = this.stripExtractorMetadata(extraction);

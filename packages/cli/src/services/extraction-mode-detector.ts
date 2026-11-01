@@ -30,20 +30,20 @@ export class ExtractionModeDetector {
    * @param logs - Raw log output
    * @returns ErrorExtractorResult or null if extraction failed
    */
-  async detectAndExtract(check: GitHubActionCheck, logs: string): Promise<ErrorExtractorResult | null> {
+  detectAndExtract(check: GitHubActionCheck, logs: string): ErrorExtractorResult | null {
     // Handle empty logs
     if (!logs || logs.trim().length === 0) {
       return null;
     }
 
     // Try matrix mode first
-    const matrixResult = await this.extractFromMatrixMode(logs);
+    const matrixResult = this.extractFromMatrixMode(logs);
     if (matrixResult) {
       return matrixResult;
     }
 
     // Fall back to non-matrix mode
-    return await this.extractFromNonMatrixMode(check.name, logs);
+    return this.extractFromNonMatrixMode(check.name, logs);
   }
 
   /**
@@ -54,7 +54,7 @@ export class ExtractionModeDetector {
    * @param logs - Raw log output
    * @returns ErrorExtractorResult or null if not matrix mode
    */
-  private async extractFromMatrixMode(logs: string): Promise<ErrorExtractorResult | null> {
+  private extractFromMatrixMode(logs: string): ErrorExtractorResult | null {
     // Strip GitHub Actions log prefixes from each line
     // Format: <job-name>\t<step-name>\t[BOM]<timestamp> <content>
     // Where BOM is optional UTF-8 BOM (U+FEFF)
@@ -102,7 +102,7 @@ export class ExtractionModeDetector {
    * @param logs - Raw log output
    * @returns ErrorExtractorResult or null if extraction failed
    */
-  private async extractFromNonMatrixMode(_checkName: string, logs: string): Promise<ErrorExtractorResult | null> {
+  private extractFromNonMatrixMode(_checkName: string, logs: string): ErrorExtractorResult | null {
     try {
       // Strip GitHub Actions log prefixes (same cleaning as matrix mode)
       const cleanedLogs = logs

@@ -21,7 +21,7 @@ describe('Extraction Pipeline Integration', () => {
 	const detector = new ExtractionModeDetector();
 
 	describe('Matrix Mode Extraction (validate YAML)', () => {
-		it('should extract errors from real PR #90 validate YAML logs', async () => {
+		it('should extract errors from real PR #90 validate YAML logs', () => {
 			// Load real logs from PR #90 (matrix mode with validate)
 			const logs = readFileSync(
 				path.join(FIXTURES_DIR, 'pr-90/run-20275187200.log'),
@@ -29,7 +29,7 @@ describe('Extraction Pipeline Integration', () => {
 			);
 
 			// Detect and extract
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Validation Pipeline'),
 				logs,
 			);
@@ -56,7 +56,7 @@ describe('Extraction Pipeline Integration', () => {
 	});
 
 	describe('Non-Matrix Mode Extraction (raw test output)', () => {
-		it('should extract TypeScript errors from Docker Build logs', async () => {
+		it('should extract TypeScript errors from Docker Build logs', () => {
 			// Load real Docker Build logs with TypeScript errors
 			const logs = readFileSync(
 				path.join(FIXTURES_DIR, 'pr-104/run-19754182675-docker.log'),
@@ -64,7 +64,7 @@ describe('Extraction Pipeline Integration', () => {
 			);
 
 			// Detect and extract
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Docker Build'),
 				logs,
 			);
@@ -88,7 +88,7 @@ describe('Extraction Pipeline Integration', () => {
 			}
 		});
 
-		it('should extract Vitest errors from Validation Pipeline logs', async () => {
+		it('should extract Vitest errors from Validation Pipeline logs', () => {
 			// Load real Validation Pipeline logs with Vitest test failures
 			const logs = readFileSync(
 				path.join(FIXTURES_DIR, 'pr-104/run-19744677825-vitest.log'),
@@ -96,7 +96,7 @@ describe('Extraction Pipeline Integration', () => {
 			);
 
 			// Detect and extract
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Validation Pipeline'),
 				logs,
 			);
@@ -123,7 +123,7 @@ describe('Extraction Pipeline Integration', () => {
 			}
 		});
 
-		it('should extract ESLint errors from Validation Pipeline logs', async () => {
+		it('should extract ESLint errors from Validation Pipeline logs', () => {
 			// Load real Validation Pipeline logs with ESLint errors
 			const logs = readFileSync(
 				path.join(FIXTURES_DIR, 'pr-104/run-19742892857-eslint.log'),
@@ -131,7 +131,7 @@ describe('Extraction Pipeline Integration', () => {
 			);
 
 			// Detect and extract
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Validation Pipeline'),
 				logs,
 			);
@@ -158,7 +158,7 @@ describe('Extraction Pipeline Integration', () => {
 	});
 
 	describe('Mode Detection Fallback', () => {
-		it('should try matrix mode first, then fall back to non-matrix', async () => {
+		it('should try matrix mode first, then fall back to non-matrix', () => {
 			// Logs without YAML should fall back to non-matrix mode
 			const plainLogs = `
 FAIL test/example.test.ts:10:5
@@ -166,7 +166,7 @@ FAIL test/example.test.ts:10:5
     Error: Test failed
 			`;
 
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Tests'),
 				plainLogs,
 			);
@@ -180,10 +180,10 @@ FAIL test/example.test.ts:10:5
 			}
 		});
 
-		it('should return null for logs with no extractable content', async () => {
+		it('should return null for logs with no extractable content', () => {
 			const emptyLogs = 'Some logs with no errors or test failures';
 
-			const extraction = await detector.detectAndExtract(
+			const extraction = detector.detectAndExtract(
 				createMockCheck('Unknown'),
 				emptyLogs,
 			);
