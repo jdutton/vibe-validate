@@ -641,7 +641,9 @@ async function createStepOutputFiles(
  * extractor plugin threw). Shared by the sequential and the parallel runner:
  * the step is recorded as failed either way, so the run's failedStep always
  * names a step its phases hold, and the cause is in its extraction. Prints a
- * FAILED line, since a step whose command passed has already printed PASSED.
+ * FAILED line when nothing else will say it failed: the step never ran, or
+ * its command passed and printed PASSED. A failed or stopped command has
+ * already printed its FAILED or STOPPED line.
  */
 function createUnprocessedStepResult(options: {
   step: ValidationStep;
@@ -650,14 +652,17 @@ function createUnprocessedStepResult(options: {
   durationSecs: number;
   error: unknown;
   stoppedByFailFast: boolean;
+  maxNameLength: number;
   log: (_msg: string) => void;
 }): StepResult {
-  const { step, stage, exit, durationSecs, error, stoppedByFailFast, log } = options;
+  const { step, stage, exit, durationSecs, error, stoppedByFailFast, maxNameLength, log } = options;
   const errorMsg = error instanceof Error ? error.message : String(error);
   const summary = stage === 'setup'
     ? `vibe-validate could not start this step: ${errorMsg}`
     : `vibe-validate could not process this step's result: ${errorMsg}`;
-  log(`      ❌ ${step.name} - FAILED (${summary})`);
+  if ((stage === 'setup' || exit.passed) && !stoppedByFailFast) {
+    log(`      ❌ ${step.name.padEnd(maxNameLength)} - FAILED (${durationSecs}s) — ${summary}`);
+  }
   return {
     name: step.name,
     command: step.command,
@@ -840,7 +845,7 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
     started = await startSequentialStep({ step, env, verbose, phaseName, treeHash, runId });
   } catch (error) {
     const durationSecs = Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1));
-    return { output: '', stepResult: createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs, error, stoppedByFailFast: false, log }) };
+    return { output: '', stepResult: createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs, error, stoppedByFailFast: false, maxNameLength, log }) };
   }
   const { proc, resolvedTreeHash, stepOutputDir } = started;
 
@@ -887,6 +892,7 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
       { treeHash: resolvedTreeHash, verbose, debug, log },
       stepOutputDir
     ),
+    maxNameLength,
     log,
   });
 
@@ -933,14 +939,15 @@ async function buildFinishedStepResult(options: {
   exit: StepExit;
   durationSecs: number;
   process: () => ReturnType<typeof processStepOutput>;
+  maxNameLength: number;
   log: (_msg: string) => void;
 }): Promise<StepResult> {
-  const { step, exit, durationSecs, log } = options;
+  const { step, exit, durationSecs, maxNameLength, log } = options;
   let processed: Awaited<ReturnType<typeof processStepOutput>>;
   try {
     processed = await options.process();
   } catch (error) {
-    return createUnprocessedStepResult({ step, stage: 'result', exit, durationSecs, error, stoppedByFailFast: false, log });
+    return createUnprocessedStepResult({ step, stage: 'result', exit, durationSecs, error, stoppedByFailFast: false, maxNameLength, log });
   }
   const { extraction, isCachedResult, outputFiles } = processed;
   return {
@@ -1214,7 +1221,7 @@ export async function runStepsInParallel(
           // it once every sibling has spawned — this executor runs inside the
           // synchronous steps.map — so fail-fast can stop them.
           queueMicrotask(() => {
-            stepResults.push(createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs: 0, error, stoppedByFailFast: false, log }));
+            stepResults.push(createUnprocessedStepResult({ step, stage: 'setup', exit: NEVER_RAN, durationSecs: 0, error, stoppedByFailFast: false, maxNameLength, log }));
             outputs.set(step.name, '');
             firstFailure = handleFailFast(enableFailFast, firstFailure, step, '', processes, stoppedByFailFast, log);
             reject(error);
@@ -1428,6 +1435,7 @@ export async function runStepsInParallel(
               durationSecs: Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
               error,
               stoppedByFailFast: stoppedBy !== undefined,
+              maxNameLength,
               log,
             }));
             // A step whose command passed did not trigger fail-fast above

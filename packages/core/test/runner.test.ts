@@ -210,6 +210,11 @@ function writeMarkerOnceFailed(stepName: string, marker: string): void {
   });
 }
 
+/** Lines the runner printed through the (spied) console.log */
+function loggedLines(): string[] {
+  return vi.mocked(console.log).mock.calls.map(call => String(call[0]));
+}
+
 function findStepResult(result: Awaited<ReturnType<typeof runValidation>>, name: string) {
   const step = result.phases?.flatMap(p => p.steps).find(s => s.name === name);
   if (!step) throw new Error(`expected a step result for ${name}`);
@@ -1734,6 +1739,8 @@ rawOutput: |
       expect(step.passed).toBe(false);
       expect(step.exitCode).toBe(1);
       expect(step.extraction?.summary).toContain('extractor blew up');
+      // Its command already printed FAILED: no second line for it
+      expect(loggedLines().filter(line => line.includes('Failing Step') && line.includes('FAILED'))).toHaveLength(1);
     });
 
     it.each([true, false])('records a step whose setup throws before it spawns (parallel: %s)', { timeout: SPAWN_TEST_TIMEOUT }, async (parallel) => {
@@ -1758,7 +1765,9 @@ rawOutput: |
       expect(step.extraction?.summary).toContain('must be within git repository');
       // Parallel: fail-fast stops the sibling. Sequential: it never starts.
       const slow = result.phases?.flatMap(p => p.steps).find(s => s.name === 'Slow');
-      expect(slow?.stoppedByFailFast).toBe(parallel ? true : undefined);
+      expect(slow ? slow.stoppedByFailFast : 'never started').toBe(parallel ? true : 'never started');
+      // A step that never ran prints its own status line, padded and timed like the others
+      expect(loggedLines().some(line => /❌ Escapes +- FAILED \([\d.]+s\) — vibe-validate could not start this step/.test(line))).toBe(true);
     });
 
     it('should log warning when output file creation fails', async () => {

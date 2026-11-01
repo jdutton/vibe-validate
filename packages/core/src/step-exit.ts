@@ -152,7 +152,7 @@ export function explainStepExit(exit: StepExit, extracted?: ErrorExtractorResult
   // A 128+N exit is only likely a signal (Mocha and Cypress exit with their
   // failure count), so parsed errors keep the extractor's own guidance
   if (exit.kind === OWN_FAILURE && extracted && extracted.totalErrors > 0) {
-    return { ...extracted, summary: `${summary}: ${extracted.summary}` };
+    return { ...extracted, summary: `${summary}: ${extracted.summary}`, guidance: extracted.guidance?.trim() ? extracted.guidance : guidance };
   }
   if (exit.kind !== 'stopped' && extracted) {
     return { ...extracted, summary: `${summary}: ${extracted.summary}`, guidance };

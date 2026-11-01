@@ -154,6 +154,12 @@ describe('explainStepExit', () => {
     expect(result?.summary).toBe('Exited with code 139 (exit 128+11: likely killed by SIGSEGV): 2 type errors');
   });
 
+  it.each([undefined, '', '  '])('falls back to the signal guidance for parsed errors whose extractor gave none (%j)', (extractorGuidance) => {
+    const exit = classifyStepExit({ exitCode: 139, signal: null, stoppedBy: null, hasOutput: true, platform: 'linux' });
+    const result = explainStepExit(exit, { ...parsed, guidance: extractorGuidance });
+    expect(result?.guidance).toContain('The command crashed with SIGSEGV');
+  });
+
   it('uses the signal guidance for a 128+N exit when nothing was parsed', () => {
     const exit = classifyStepExit({ exitCode: 137, signal: null, stoppedBy: null, hasOutput: true, platform: 'linux' });
     const result = explainStepExit(exit, { summary: 'Command failed - see output', totalErrors: 0, errors: [], guidance: 'Check the output' });
