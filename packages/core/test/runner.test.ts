@@ -679,13 +679,22 @@ describe('runner', () => {
       expect(step.extraction?.summary).toBe('Exited with code 3 and produced no output');
     });
 
-    it('does not count a stopped sibling as passed when it exits 0 on SIGTERM', async () => {
-      const graceful = `process.on('SIGTERM', () => process.exit(0)); console.log('watching for changes...'); setInterval(() => {}, 1000)`;
+    // Windows has no SIGTERM handler for the step to exit 0 from
+    it.skipIf(process.platform === 'win32')('does not count a stopped sibling as passed when it exits 0 on SIGTERM', async () => {
+      const ready = toForwardSlash(join(testDir, 'graceful-ready'));
+      const stoppedGracefully = toForwardSlash(join(testDir, 'graceful-stopped'));
+      // The handler is installed before the ready marker, and the failing sibling
+      // waits for that marker, so the stop always takes the exit-0 path.
+      const graceful = `const fs = require('fs'); process.on('SIGTERM', () => { fs.writeFileSync('${stoppedGracefully}', ''); process.exit(0); }); fs.writeFileSync('${ready}', ''); console.log('watching for changes...'); setInterval(() => {}, 1000)`;
+      const failsOnceReady = `const fs = require('fs'); const t = setInterval(() => { if (fs.existsSync('${ready}')) { clearInterval(t); console.error('Error: Typecheck found a real problem in src/index.ts'); process.exit(1); } }, 20)`;
       const result = await runValidation({
         phases: [{
           name: 'Checks',
           parallel: true,
-          steps: [{ name: 'Graceful', command: `node -e ${JSON.stringify(graceful)}` }, makeFailingStep('Typecheck', 300)],
+          steps: [
+            { name: 'Graceful', command: `node -e ${JSON.stringify(graceful)}` },
+            { name: 'Typecheck', command: `node -e ${JSON.stringify(failsOnceReady)}` },
+          ],
         }],
         enableFailFast: true,
         logPath: join(testDir, 'log.txt'),
@@ -694,9 +703,29 @@ describe('runner', () => {
       const stopped = findStepResult(result, 'Graceful');
       expect(stopped.stoppedByFailFast).toBe(true);
       expect(stopped.passed).toBe(false);
+      expect(existsSync(stoppedGracefully)).toBe(true);
       // vibe-validate <= 0.20.1 reuses a step on --retry-failed when exitCode is 0
       expect(stopped.exitCode).not.toBe(0);
       expect(result.failedStep).toBe('Typecheck');
+    });
+
+    // A signal from outside (OOM killer, CI timeout) is neither a fail-fast stop nor exit 1
+    it.skipIf(process.platform === 'win32').each([true, false])('names the signal that killed a step with no output (parallel: %s)', async (parallel) => {
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          steps: [{ name: 'Killed', command: `node -e "process.kill(process.pid, 'SIGKILL')"` }],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      const step = findStepResult(result, 'Killed');
+      expect(step.stoppedByFailFast).toBeUndefined();
+      expect(step.passed).toBe(false);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toBe('Terminated by SIGKILL and produced no output');
     });
   });
 

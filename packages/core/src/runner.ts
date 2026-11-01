@@ -233,6 +233,8 @@ export interface ValidationConfig {
 interface ProcessOutputOptions {
   /** The run's tree hash, used to name output files (never re-hashed per step) */
   treeHash: string;
+  /** The signal that terminated the step, or null if it exited */
+  signal: NodeJS.Signals | null;
   /** Show verbose output */
   verbose: boolean;
   /** Enable debug mode (create output files for all steps) */
@@ -564,7 +566,17 @@ function extractFromFailedOutput(output: string): ErrorExtractorResult | undefin
  * Extraction for a failed step that printed nothing, so the result names the
  * exit code instead of an unexplained "0 errors".
  */
-function createNoOutputExtraction(exitCode: number): ErrorExtractorResult {
+function createNoOutputExtraction(exitCode: number, signal: NodeJS.Signals | null): ErrorExtractorResult {
+  if (signal) {
+    // Killed from outside (out-of-memory killer, CI timeout, external kill):
+    // it never exited, so there is no exit cause to hunt for in the command
+    return {
+      summary: `Terminated by ${signal} and produced no output`,
+      totalErrors: 0,
+      errors: [],
+      guidance: `Something outside the command sent it ${signal} — often running out of memory or a CI timeout. Check the machine or CI job, then run it directly.`,
+    };
+  }
   return {
     summary: `Exited with code ${exitCode} and produced no output`,
     totalErrors: 0,
@@ -694,7 +706,7 @@ async function processStepOutput(
     isCachedResult = result.isCachedResult;
     outputFiles = result.outputFiles;
   } else if (exitCode !== 0) {
-    extraction = createNoOutputExtraction(exitCode);
+    extraction = createNoOutputExtraction(exitCode, options.signal);
   }
 
   // Create output files if needed
@@ -855,8 +867,8 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   proc.stderr!.on('data', createStreamHandler('stderr', stderrAccumulator, combinedLines, verbose, yaml));
 
   // Wait for process to complete
-  const exitCode = await new Promise<number | null>(resolve => {
-    proc.on('close', code => resolve(code));
+  const { exitCode, signal } = await new Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }>(resolve => {
+    proc.on('close', (code, closeSignal) => resolve({ exitCode: code, signal: closeSignal }));
   });
 
   const durationMs = Date.now() - startTime;
@@ -879,7 +891,7 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
     stdout,
     stderr,
     combinedLines,
-    { treeHash: resolvedTreeHash, verbose, debug, log },
+    { treeHash: resolvedTreeHash, signal, verbose, debug, log },
     stepOutputDir
   );
 
@@ -1173,7 +1185,7 @@ export async function runStepsInParallel(
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spawnCommand always pipes stdout/stderr
         proc.stderr!.on('data', createStreamHandler('stderr', stderrAccumulator, combinedLines, verbose, yaml));
 
-        proc.on('close', exitCode => {
+        proc.on('close', (exitCode, signal) => {
           // Wrap in async IIFE to handle file creation
           // eslint-disable-next-line sonarjs/no-nested-functions, sonarjs/cognitive-complexity -- IIFE required for async/await in sync close handler; inherits complexity from step completion logic
           (async () => {
@@ -1261,7 +1273,7 @@ export async function runStepsInParallel(
               }
             }
           } else if (code !== 0) {
-            extraction = createNoOutputExtraction(code);
+            extraction = createNoOutputExtraction(code, signal);
           }
           // If passing step (code === 0), extraction remains undefined (token optimization)
 
