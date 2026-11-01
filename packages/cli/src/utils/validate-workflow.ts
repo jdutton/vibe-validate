@@ -7,7 +7,7 @@
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationResult } from '@vibe-validate/core';
-import { runValidation } from '@vibe-validate/core';
+import { findFailedStepResult, isOwnStepFailure, runValidation } from '@vibe-validate/core';
 import { getGitTreeHash, getRepositoryRoot, type TreeHashResult } from '@vibe-validate/git';
 import {
   recordValidationHistory,
@@ -244,9 +244,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   console.error(chalk.blue('\n📋 View error details:'), chalk.white(`${cmd} state`));
 
   // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
-  const failedStep = result.phases
-    ?.flatMap(phase => phase.steps)
-    .find(step => step.name === result.failedStep);
+  const failedStep = findFailedStepResult(result, () => true);
 
   if (failedStep?.command) {
     console.error(chalk.blue('🔄 To retry:'), chalk.white(failedStep.command));
@@ -256,7 +254,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   if (config.developerFeedback && !isReplay) {
     const poorExtractionSteps = result.phases
       ?.flatMap(phase => phase.steps)
-      .filter(step => !step.passed && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
+      .filter(step => isOwnStepFailure(step) && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
 
     if (poorExtractionSteps && poorExtractionSteps.length > 0) {
       // VV_CONTEXT is set by the smart wrapper (vibe-validate/vv)

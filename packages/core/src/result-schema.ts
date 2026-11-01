@@ -206,11 +206,30 @@ export type ValidationResult = z.infer<typeof ValidationResultSchema>;
  * Did this step fail on its own?
  *
  * A step fail-fast stopped also has `passed: false`, but it is not a failure:
- * anything that picks "the failed step" from a result's steps must use this,
+ * anything that picks "the failed step" from a result must use findFailedStepResult (or this),
  * never `!step.passed`, or it blames a sibling that was merely interrupted.
  */
 export function isOwnStepFailure(step: { passed: boolean; stoppedByFailFast?: boolean }): boolean {
   return !step.passed && step.stoppedByFailFast !== true;
+}
+
+/**
+ * The step a validation result blames — the one place that answers "which
+ * step failed?" for a stored or parsed result.
+ *
+ * The run's `failedStep` is the authority, but a parallel phase lists step
+ * results in completion order, and step names need not be unique across
+ * phases, so the name only selects among steps that failed on their own.
+ * Without a `failedStep` (older results), the first such step is blamed.
+ *
+ * @param accept - further narrows the candidates (e.g. "has an extraction")
+ */
+export function findFailedStepResult<S extends { name: string; passed: boolean; stoppedByFailFast?: boolean }>(
+  result: { failedStep?: string; phases?: ReadonlyArray<{ steps: readonly S[] }> },
+  accept: (step: S) => boolean
+): S | undefined {
+  const candidates = (result.phases ?? []).flatMap(phase => phase.steps).filter(step => isOwnStepFailure(step) && accept(step));
+  return candidates.find(step => step.name === result.failedStep) ?? candidates[0];
 }
 
 /**

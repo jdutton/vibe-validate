@@ -10,6 +10,7 @@
  * @packageDocumentation
  */
 
+import { findFailedStepResult } from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import YAML from 'yaml';
@@ -162,49 +163,53 @@ export class ExtractionModeDetector {
 
     // Check if extraction is nested in phases/steps (vibe-validate validate output)
     if ('phases' in parsed && Array.isArray(parsed.phases)) {
-      return this.extractFromPhases(parsed.phases);
+      return this.extractFromPhases(parsed.phases, parsed.failedStep);
     }
 
     return null;
   }
 
   /**
-   * Extract ErrorExtractorResult from phases array (validate output)
+   * Extract the failed step's ErrorExtractorResult from a phases array (validate output)
+   *
+   * A step that fail-fast stopped carries an extraction too, and a parallel
+   * phase lists steps in completion order, so the first extraction found can
+   * belong to a sibling that was merely interrupted.
    *
    * @param phases - Phases array
+   * @param failedStep - The run's failedStep, if present
    * @returns ErrorExtractorResult or null
    */
-  private extractFromPhases(phases: unknown[]): ErrorExtractorResult | null {
-    for (const phase of phases) {
-      const extraction = this.extractFromPhaseSteps(phase);
-      if (extraction) {
-        return extraction;
-      }
-    }
-    return null;
+  private extractFromPhases(phases: unknown[], failedStep: unknown): ErrorExtractorResult | null {
+    const parsedPhases = phases.map(phase => ({ steps: this.parsePhaseSteps(phase) }));
+    const step = findFailedStepResult(
+      { failedStep: typeof failedStep === 'string' ? failedStep : undefined, phases: parsedPhases },
+      candidate => candidate.extraction !== null
+    );
+    return step?.extraction ?? null;
   }
 
   /**
-   * Extract ErrorExtractorResult from a single phase's steps
+   * Read a phase's steps from untyped YAML, validating each extraction.
+   * A step without a boolean `passed` is treated as failed, so output that
+   * predates the field still yields its extraction.
    *
    * @param phase - Phase object
-   * @returns ErrorExtractorResult or null
+   * @returns Steps with their validated extraction (null when absent or invalid)
    */
-  private extractFromPhaseSteps(phase: unknown): ErrorExtractorResult | null {
+  private parsePhaseSteps(phase: unknown): Array<{ name: string; passed: boolean; stoppedByFailFast?: boolean; extraction: ErrorExtractorResult | null }> {
     if (!phase || typeof phase !== 'object' || !('steps' in phase) || !Array.isArray(phase.steps)) {
-      return null;
+      return [];
     }
 
-    for (const step of phase.steps) {
-      if (step && typeof step === 'object' && 'extraction' in step) {
-        const extraction = this.validateExtraction(step.extraction);
-        if (extraction) {
-          // Return first extraction found (usually the failed step)
-          return extraction;
-        }
-      }
-    }
-    return null;
+    return phase.steps
+      .filter((step): step is Record<string, unknown> => !!step && typeof step === 'object')
+      .map(step => ({
+        name: typeof step.name === 'string' ? step.name : '',
+        passed: step.passed === true,
+        stoppedByFailFast: step.stoppedByFailFast === true,
+        extraction: 'extraction' in step ? this.validateExtraction(step.extraction) : null,
+      }));
   }
 
   /**

@@ -110,6 +110,7 @@ export {
   safeValidateResult,
   validateResult,
   isOwnStepFailure,
+  findFailedStepResult,
 } from './result-schema.js';
 
 // Export shared schema utilities (re-exported from @vibe-validate/config)

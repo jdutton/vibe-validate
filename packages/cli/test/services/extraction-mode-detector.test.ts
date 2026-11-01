@@ -20,7 +20,8 @@ import { ExtractionModeDetector } from '../../src/services/extraction-mode-detec
 import { createTestCheck } from '../helpers/watch-pr-fixtures.js';
 
 // Mock autoDetectAndExtract
-vi.mock('@vibe-validate/extractors', () => ({
+vi.mock('@vibe-validate/extractors', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   autoDetectAndExtract: vi.fn(),
 }));
 
@@ -95,6 +96,41 @@ describe('ExtractionModeDetector', () => {
 
       expectExtraction(result, { summary: '2 test failure(s)', totalErrors: 2, errorCount: 2 });
       expect(result?.guidance).toBe('Fix the failing tests');
+    });
+
+    it('surfaces the step that failed, not a sibling fail-fast stopped and listed ahead of it', async () => {
+      const check = createTestCheck();
+
+      const logs = `
+---
+passed: false
+failedStep: Typecheck
+phases:
+  - name: Checks
+    passed: false
+    steps:
+      - name: ESLint
+        passed: false
+        stoppedByFailFast: true
+        extraction:
+          summary: Stopped by fail-fast after Typecheck failed
+          totalErrors: 0
+          errors: []
+      - name: Typecheck
+        passed: false
+        extraction:
+          summary: 1 type error
+          totalErrors: 1
+          errors:
+            - file: src/a.ts
+              line: 3
+              message: Type 'string' is not assignable to type 'number'
+---
+`;
+
+      const result = await detector.detectAndExtract(check, logs);
+
+      expectExtraction(result, { summary: '1 type error', totalErrors: 1, errorCount: 1 });
     });
 
     it('should handle matrix mode with nested YAML', async () => {

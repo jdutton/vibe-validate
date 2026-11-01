@@ -15,7 +15,7 @@ import type { ErrorExtractorResult } from '@vibe-validate/extractors';
 import { extractYamlContent } from '@vibe-validate/git';
 import { parse as parseYaml } from 'yaml';
 
-import { isOwnStepFailure, type OutputFiles } from './result-schema.js';
+import { findFailedStepResult, type OutputFiles } from './result-schema.js';
 
 /**
  * Parsed vibe-validate output result
@@ -131,13 +131,10 @@ function parseValidationResult(parsed: Record<string, unknown>): ParsedVibeValid
     }>;
   }>;
 
-  // The run's failedStep is the authority on which step failed; step results of
-  // a parallel phase are in completion order, so "first failed" can name another.
-  // Fall back to the first step that failed on its own for results without it.
-  // Step names need not be unique across phases, so match a failed step only.
-  const steps = phases.flatMap(phase => phase.steps).filter(step => isOwnStepFailure(step) && step.extraction);
-  const failedStepName = parsed.failedStep as string | undefined;
-  const failedStep = steps.find(step => step.name === failedStepName) ?? steps[0];
+  const failedStep = findFailedStepResult(
+    { failedStep: parsed.failedStep as string | undefined, phases },
+    step => step.extraction !== undefined
+  );
 
   // Fallback if no extraction found (shouldn't happen in practice)
   const extraction: ErrorExtractorResult = failedStep?.extraction ?? {

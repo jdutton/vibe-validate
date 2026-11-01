@@ -6,7 +6,7 @@
  */
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
-import { isOwnStepFailure, type ValidationResult } from '@vibe-validate/core';
+import { findFailedStepResult, type ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { findCachedValidation } from '@vibe-validate/history';
 import chalk from 'chalk';
@@ -32,9 +32,7 @@ function displayFailedPhaseInfo(result: Pick<ValidationResult, 'failedStep' | 'p
   if (!failedPhase) return;
 
   console.log(chalk.red(`\n   Failed phase: ${failedPhase.name}`));
-  // The run's failedStep is the authority; a parallel phase lists its step
-  // results in completion order, so the first failed one can be another step.
-  const failedStepName = result.failedStep ?? failedPhase.steps.find(isOwnStepFailure)?.name;
+  const failedStepName = findFailedStepResult(result, () => true)?.name ?? result.failedStep;
   if (failedStepName) {
     console.log(chalk.red(`   Failed step: ${failedStepName}`));
   }
