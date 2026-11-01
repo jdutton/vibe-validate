@@ -43,6 +43,7 @@ import {
   type PhaseResult,
 } from './result-schema.js';
 import { parseVibeValidateOutput } from './run-output-parser.js';
+import { classifyStepExit, explainStepExit, type StepExit } from './step-exit.js';
 
 /**
  * Convert a step name into a filesystem-safe slug for output directory paths.
@@ -233,8 +234,6 @@ export interface ValidationConfig {
 interface ProcessOutputOptions {
   /** The run's tree hash, used to name output files (never re-hashed per step) */
   treeHash: string;
-  /** The signal that terminated the step, or null if it exited */
-  signal: NodeJS.Signals | null;
   /** Show verbose output */
   verbose: boolean;
   /** Enable debug mode (create output files for all steps) */
@@ -563,42 +562,6 @@ function extractFromFailedOutput(output: string): ErrorExtractorResult | undefin
 }
 
 /**
- * Extraction for a failed step that printed nothing, so the result names the
- * exit code instead of an unexplained "0 errors".
- */
-function createNoOutputExtraction(exitCode: number, signal: NodeJS.Signals | null): ErrorExtractorResult {
-  if (signal) {
-    // Killed from outside (out-of-memory killer, CI timeout, external kill):
-    // it never exited, so there is no exit cause to hunt for in the command
-    return {
-      summary: `Terminated by ${signal} and produced no output`,
-      totalErrors: 0,
-      errors: [],
-      guidance: `Something outside the command sent it ${signal} — often running out of memory or a CI timeout. Check the machine or CI job, then run it directly.`,
-    };
-  }
-  return {
-    summary: `Exited with code ${exitCode} and produced no output`,
-    totalErrors: 0,
-    errors: [],
-    guidance: 'The command failed without printing anything. Run it directly to see why it exited non-zero.',
-  };
-}
-
-/**
- * Extraction for a parallel sibling that fail-fast terminated. It did not fail
- * on its own, so the extraction points at the step that did.
- */
-function createStoppedExtraction(triggerStepName: string): ErrorExtractorResult {
-  return {
-    summary: `Stopped by fail-fast after ${triggerStepName} failed`,
-    totalErrors: 0,
-    errors: [],
-    guidance: `This step did not fail on its own: it was terminated when ${triggerStepName} failed. Fix ${triggerStepName} first.`,
-  };
-}
-
-/**
  * Parse output and log cache status if verbose
  */
 function parseAndLogCacheStatus(
@@ -677,7 +640,7 @@ async function createStepOutputFiles(
  */
 async function processStepOutput(
   stepName: string,
-  exitCode: number,
+  exit: StepExit,
   stdout: string,
   stderr: string,
   combinedLines: Array<{ ts: string; stream: 'stdout' | 'stderr'; line: string }>,
@@ -693,24 +656,18 @@ async function processStepOutput(
   let isCachedResult: boolean | undefined;
   let outputFiles: { stdout?: string; stderr?: string; combined?: string } | undefined;
 
-  // Process failed steps
-  // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer
-  if (exitCode !== 0 && output && output.trim()) {
-    extraction = extractFromFailedOutput(output);
+  if (output.trim()) {
+    if (!exit.passed) {
+      extraction = extractFromFailedOutput(output);
+    }
     const result = parseAndLogCacheStatus(output, options.verbose, options.log);
     isCachedResult = result.isCachedResult;
     outputFiles = result.outputFiles;
-  } else if (output?.trim()) {
-    // Process passing steps - check if cached
-    const result = parseAndLogCacheStatus(output, options.verbose, options.log);
-    isCachedResult = result.isCachedResult;
-    outputFiles = result.outputFiles;
-  } else if (exitCode !== 0) {
-    extraction = createNoOutputExtraction(exitCode, options.signal);
   }
+  extraction = explainStepExit(exit, extraction);
 
   // Create output files if needed
-  const shouldCreateFiles = exitCode !== 0 || options.debug;
+  const shouldCreateFiles = !exit.passed || options.debug;
   if (shouldCreateFiles && !outputFiles) {
     outputFiles = await createStepOutputFiles(stepName, stdout, stderr, combinedLines, options.verbose, options.log, { outputDir, treeHash: options.treeHash });
   }
@@ -877,21 +834,21 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   const stderr = stderrAccumulator.value;
   const output = stdout + stderr;
 
-  // Normalize exit code (null means abnormal termination, treat as failure)
-  const code = exitCode ?? 1;
+  // Sequential steps are never stopped by a sibling
+  const exit = classifyStepExit({ exitCode, signal, stoppedBy: null, hasOutput: output.trim() !== '' });
 
-  const status = code === 0 ? '✅' : '❌';
-  const result = code === 0 ? 'PASSED' : 'FAILED';
+  const status = exit.passed ? '✅' : '❌';
+  const result = exit.passed ? 'PASSED' : 'FAILED';
   log(`      ${status} ${step.name.padEnd(maxNameLength)} - ${result} (${durationSecs}s)`);
 
   // Process output: parse, extract, create files
   const { extraction, isCachedResult, outputFiles } = await processStepOutput(
     step.name,
-    code,
+    exit,
     stdout,
     stderr,
     combinedLines,
-    { treeHash: resolvedTreeHash, signal, verbose, debug, log },
+    { treeHash: resolvedTreeHash, verbose, debug, log },
     stepOutputDir
   );
 
@@ -899,9 +856,9 @@ async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ o
   const stepResultBase = {
     name: step.name,
     command: step.command,
-    passed: code === 0,
+    passed: exit.passed,
     durationSecs,
-    exitCode: code,
+    exitCode: exit.exitCode,
   };
 
   // Add optional fields if present
@@ -1200,11 +1157,8 @@ export async function runStepsInParallel(
             // Such a step never finished, so it has not passed even if it exited 0
             // (a command that treats SIGTERM as a graceful cancel).
             const stoppedBy = stoppedByFailFast.get(step);
-            // Normalize exit code: null means abnormal termination, and a stopped
-            // step is never recorded as 0 — older releases reuse a step on
-            // --retry-failed by exitCode === 0 alone. Both count as failure (1).
-            const code = exitCode === null || (stoppedBy && exitCode === 0) ? 1 : exitCode;
-            const succeeded = code === 0;
+            const exit = classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: output.trim() !== '' });
+            const succeeded = exit.passed;
 
             log(`      ${formatParallelStepStatus(step.name.padEnd(maxNameLength), succeeded, stoppedBy)} (${durationSecs}s)`);
 
@@ -1223,12 +1177,9 @@ export async function runStepsInParallel(
           let outputFilesFromNestedCommand = false; // Track if outputFiles came from nested vv run
 
           // A sibling fail-fast terminated: whatever it printed before the kill
-          // is partial, so do not extract "errors" from it.
-          if (stoppedBy) {
-            extraction = createStoppedExtraction(stoppedBy);
-          }
-          // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- Explicit null/undefined/empty check is clearer than optional chaining
-          else if (code !== 0 && output && output.trim()) {
+          // is partial, so do not extract "errors" from it (explainStepExit below
+          // gives it the stopped extraction).
+          if (exit.kind !== 'stopped' && !succeeded && output.trim()) {
             // Try parsing vibe-validate YAML output (from nested run commands)
             // Uses shared parser that handles both RunResult and ValidationResult formats
             const parsed = parseVibeValidateOutput(output);
@@ -1259,8 +1210,8 @@ export async function runStepsInParallel(
                 ...(rawExtraction.metadata ? { metadata: rawExtraction.metadata } : {}),
               };
             }
-          } else if (output?.trim()) {
-            // Passing step (code === 0) - check if it was cached
+          } else if (succeeded && output.trim()) {
+            // Passing step - check if it was cached
             const parsed = parseVibeValidateOutput(output);
             if (parsed) {
               isCachedResult = parsed.isCachedResult;
@@ -1272,10 +1223,10 @@ export async function runStepsInParallel(
                 log(`      ⚡ Step used cached result (${parsed.type} command)`);
               }
             }
-          } else if (code !== 0) {
-            extraction = createNoOutputExtraction(code, signal);
           }
-          // If passing step (code === 0), extraction remains undefined (token optimization)
+          // How the step ended may be the whole explanation (stopped, signal,
+          // no output); a passing step stays without one (token optimization)
+          extraction = explainStepExit(exit, extraction);
 
           // Create output files for failing steps or when debug mode is enabled
           // This provides full debugging context when needed
@@ -1335,7 +1286,7 @@ export async function runStepsInParallel(
           const stepResult: StepResult = {
             name: step.name,
             command: step.command,
-            exitCode: code,
+            exitCode: exit.exitCode,
             durationSecs,
             passed: succeeded,
             ...(stoppedBy ? { stoppedByFailFast: true } : {}),
@@ -1369,6 +1320,25 @@ export async function runStepsInParallel(
             if (verbose) {
               log(`      ⚠️  Error in close handler: ${errorMsg}`);
             }
+            // Record the step anyway, so the run's failedStep names a step its
+            // phases hold. The push above is the handler's last fallible statement,
+            // so reaching here means the step has no result yet.
+            const stoppedBy = stoppedByFailFast.get(step);
+            const exit = classifyStepExit({ exitCode, signal, stoppedBy: stoppedBy ?? null, hasOutput: false });
+            stepResults.push({
+              name: step.name,
+              command: step.command,
+              exitCode: exit.passed ? 1 : exit.exitCode,
+              durationSecs: Number.parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
+              passed: false,
+              ...(stoppedBy ? { stoppedByFailFast: true } : {}),
+              extraction: {
+                summary: `vibe-validate could not process this step's result: ${errorMsg}`,
+                totalErrors: 0,
+                errors: [],
+                guidance: 'Run the command directly to see its result, and report this vibe-validate error.',
+              },
+            });
             // Reject with error to fail validation
             reject(new Error(`Close handler error: ${errorMsg}`));
           }); // Close async IIFE
@@ -1379,8 +1349,9 @@ export async function runStepsInParallel(
 
   // The failed step is the first, in config order, that failed on its own. A
   // sibling fail-fast stopped is not a failure of its own, so it never wins —
-  // even when it is listed first. A rejection without a step of its own (a
-  // close-handler error) is attributed to the step at that index.
+  // even when it is listed first. A step that stops siblings always rejects and
+  // is never stopped itself, so `?? rejected[0]` cannot fire today; it keeps a
+  // rejected phase from ever reporting success if that changes.
   const rejected = steps.filter((_step, index) => results[index]?.status === 'rejected');
   const failedStep = rejected.find(step => !stoppedByFailFast.has(step)) ?? rejected[0];
   return failedStep

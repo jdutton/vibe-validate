@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { validateConfig, type ValidationStep } from '@vibe-validate/config';
+import { autoDetectAndExtract } from '@vibe-validate/extractors';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { mkdirSyncReal, normalizedTmpdir, toForwardSlash } from '@vibe-validate/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -53,6 +54,13 @@ vi.mock('../src/fs-utils.js', async (importOriginal) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Dynamic import in mock
   const actual = await importOriginal<typeof import('../src/fs-utils.js')>();
   return { ...actual, ensureDir: vi.fn(actual.ensureDir) };
+});
+
+// Wrap autoDetectAndExtract so a test can make the parallel close handler throw
+vi.mock('@vibe-validate/extractors', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Dynamic import in mock
+  const actual = await importOriginal<typeof import('@vibe-validate/extractors')>();
+  return { ...actual, autoDetectAndExtract: vi.fn(actual.autoDetectAndExtract) };
 });
 
 /**
@@ -171,6 +179,29 @@ function makeLongRunningStep(name: string, ms: number): ValidationStep {
 /** A step that fails on its own after `ms`, with a recognisable error line. */
 function makeFailingStep(name: string, ms: number, exitCode = 1): ValidationStep {
   const script = `setTimeout(() => { console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(${exitCode}); }, ${ms})`;
+  return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+/** How long a step holds after the marker: the parent handles the writer's close well within it */
+const HOLD_AFTER_MARKER_MS = 1000;
+
+/** A step that fails on its own, writing `marker` just before it exits 1. */
+function makeFailingStepWithMarker(name: string, marker: string): ValidationStep {
+  const script = `require('fs').writeFileSync('${toForwardSlash(marker)}', ''); console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(1)`;
+  return { name, command: `node -e ${JSON.stringify(script)}` };
+}
+
+/**
+ * A step still running when the step that writes `marker` fails: it waits for
+ * the marker, then holds `HOLD_AFTER_MARKER_MS` before it passes (or fails on
+ * its own). A fail-fast stop triggered by that failure always lands while it
+ * runs, however late either process starts.
+ */
+function makeStepAfterMarker(name: string, marker: string, outcome: 'passes' | 'fails'): ValidationStep {
+  const finish = outcome === 'fails'
+    ? `console.error('Error: ${name} found a real problem in src/index.ts'); process.exit(1)`
+    : 'process.exit(0)';
+  const script = `const fs = require('fs'); console.log('Waiting for the build to settle...'); const t = setInterval(() => { if (fs.existsSync('${toForwardSlash(marker)}')) { clearInterval(t); setTimeout(() => { ${finish}; }, ${HOLD_AFTER_MARKER_MS}); } }, 20)`;
   return { name, command: `node -e ${JSON.stringify(script)}` };
 }
 
@@ -727,6 +758,29 @@ describe('runner', () => {
       expect(step.exitCode).toBe(1);
       expect(step.extraction?.summary).toBe('Terminated by SIGKILL and produced no output');
     });
+
+    it.skipIf(process.platform === 'win32').each([true, false])('names the signal that killed a step after it printed (parallel: %s)', async (parallel) => {
+      // Kill only once the write is flushed: a pipe write is asynchronous on macOS
+      const script = String.raw`process.stderr.write('Error: Killed found a real problem in src/index.ts\n', () => process.kill(process.pid, 'SIGKILL'))`;
+      const result = await runValidation({
+        phases: [{
+          name: 'Checks',
+          parallel,
+          steps: [{ name: 'Killed', command: `node -e ${JSON.stringify(script)}` }],
+        }],
+        enableFailFast: true,
+        logPath: join(testDir, 'log.txt'),
+      });
+
+      const step = findStepResult(result, 'Killed');
+      expect(step.stoppedByFailFast).toBeUndefined();
+      expect(step.passed).toBe(false);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toMatch(/^Terminated by SIGKILL: /);
+      expect(step.extraction?.guidance).toContain('Something outside the command sent it SIGKILL');
+      // The parsed errors survive the signal summary
+      expect(step.extraction?.errorSummary).toContain('Killed found a real problem');
+    });
   });
 
   describe('per-phase failFast', { timeout: SPAWN_TEST_TIMEOUT }, () => {
@@ -736,7 +790,11 @@ describe('runner', () => {
           name: 'Checks',
           parallel: true,
           failFast: false,
-          steps: [makeFailingStep('Slow Failure', 600), makeFailingStep('Fast Failure', 50), makeLongRunningStep('Passes', 300)],
+          steps: [
+            makeStepAfterMarker('Slow Failure', join(testDir, 'fast-failed'), 'fails'),
+            makeFailingStepWithMarker('Fast Failure', join(testDir, 'fast-failed')),
+            makeStepAfterMarker('Passes', join(testDir, 'fast-failed'), 'passes'),
+          ],
         }],
         enableFailFast: true,
         logPath: join(testDir, 'log.txt'),
@@ -809,7 +867,10 @@ describe('runner', () => {
           phases: [{
             name: 'Checks',
             parallel: true,
-            steps: [makeLongRunningStep('Slow', 600), makeFailingStep('Typecheck', 100)],
+            steps: [
+              makeStepAfterMarker('Slow', join(testDir, 'typecheck-failed'), 'passes'),
+              makeFailingStepWithMarker('Typecheck', join(testDir, 'typecheck-failed')),
+            ],
           }],
         },
       });
@@ -1653,7 +1714,22 @@ rawOutput: |
   });
 
   describe('async error handling', () => {
-    it('should handle errors in async close handler', async () => {
+    it('records the step when the async close handler throws', async () => {
+      vi.mocked(autoDetectAndExtract).mockImplementationOnce(() => {
+        throw new Error('extractor blew up');
+      });
+
+      const result = await runValidation(createAsyncErrorConfig());
+
+      expect(result.passed).toBe(false);
+      expect(result.failedStep).toBe('Failing Step');
+      const step = findStepResult(result, 'Failing Step');
+      expect(step.passed).toBe(false);
+      expect(step.exitCode).toBe(1);
+      expect(step.extraction?.summary).toContain('extractor blew up');
+    });
+
+    it('still names the step when its output files cannot be written', async () => {
       mockFailingOutputFiles('Output directory unavailable');
 
       const result = await runValidation(createAsyncErrorConfig());
