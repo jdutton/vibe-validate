@@ -6,7 +6,7 @@
 # vulnerabilities". To accept a new advisory, add a documented `[[IgnoredVulns]]`
 # entry to that file; to fix one, bump the dependency or pin a patched version
 # in the root package.json `pnpm.overrides` block (pnpm supports a per-major
-# selector such as `"minimatch@9": "9.0.7"`, so coexisting majors are still
+# selector such as `"picomatch@2": "2.3.2"`, so coexisting majors are still
 # fixable without an ignore entry).
 #
 # osv-scanner is installed by downloading the pinned release binary and checking

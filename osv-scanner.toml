@@ -10,23 +10,210 @@
 #   1. Prefer a real fix first — bump the declared dependency, or pin a patched
 #      version in the root package.json `pnpm.overrides` block. Only fall back
 #      to an IgnoredVulns entry when a fix is genuinely unavailable or unsafe.
-#   2. pnpm overrides accept a per-major selector (`"minimatch@9": "9.0.7"`), so
+#   2. pnpm overrides accept a per-major selector (`"picomatch@2": "2.3.2"`), so
 #      "multiple majors coexist" is NOT a reason to accept an advisory here —
 #      pin each major separately instead.
 #   3. Every entry MUST have a `reason` explaining WHY it is safe to defer.
 #   4. Re-evaluate on every dependency bump; delete entries once a fix lands.
 #
-# Current state: the register is EMPTY. The lockfile scans clean — every
-# advisory that osv-scanner previously reported was resolved by a real fix:
+# Current state: 3 accepted advisories (4 package hits; osv-scanner counts an
+# advisory once per affected package version), below: zod, and 2 from the
+# vitest 3 toolchain that only vitest 4 fixes. Everything else the lockfile
+# carried is fixed. Every entry carries `ignoreUntil`, so the audit goes red
+# again by itself and the entry has to be re-justified or deleted.
 #
-#   * `vibe-agent-toolkit` bumped 0.1.33 -> ^0.1.42. The published 0.1.33 tree
-#     still carried the @xenova/transformers@2 -> onnxruntime-web@1.14 ->
-#     onnx-proto -> protobufjs@6 chain (11 advisories incl. a 9.8) plus the
-#     native sharp@0.32 and adm-zip backends. 0.1.42 replaced that embedding
-#     backend, which removed the whole subtree.
-#   * ~20 transitive packages pinned to patched versions in `pnpm.overrides`.
+# What is enforced. The audit runs on pushes to main, on pull requests, weekly
+# (Monday 06:00 UTC) and on manual dispatch, so a newly published advisory or
+# an expired `ignoreUntil` turns it red without any push. It scans only this
+# repository's lockfile, so the adopter triggers below stay unenforced.
+# `ignoreUntil` is the only re-check trigger in this file that anything
+# enforces. Every other trigger below is a note for whoever next bumps a
+# dependency (not enforced): nothing notices when a parent package catches up.
+#
+# History of real fixes:
+#   * `vibe-agent-toolkit` bumped 0.1.33 -> ^0.1.42 (removed the
+#     @xenova/transformers -> protobufjs@6 subtree, 11 advisories incl. a 9.8).
 #   * `turbo` 2.7.3 -> ^2.10.5 and `vitest` 2.1.9/3.2.4 -> ^3.2.6 in the
 #     declared devDependencies (both had a 9.8 advisory).
+#
+# Overrides ledger. package.json cannot hold comments, so EVERY pin in
+# `pnpm.overrides` is listed here with the advisories it clears (GHSA IDs, or
+# a count where the PR that added the pin lists them). Each pin is a line
+# `#     <key> <version>[, <key> <version>]`, then its note in parentheses.
+# Enforced by packages/dev-tools/test/overrides-ledger.test.ts (unit tier):
+#   * every override is listed here at its version, and every entry here is an
+#     override;
+#   * a pin resolves a package in pnpm-lock.yaml: one that resolves none is
+#     deleted, not kept on standby;
+#   * a pin is not a deprecated release.
+# Each pin is the oldest release that fixes every advisory it clears, is not
+# deprecated, and has no later bug-fix patch on the same line; a line says why
+# wherever a newer one is pinned (not enforced). Delete a pin when the lockfile
+# re-resolved without it (`pnpm update <pkg>`) still scans clean (not
+# enforced: nothing notices when a parent catches up).
+#
+# What pins can and cannot do. Root `pnpm.overrides` are never published:
+# `npm i vibe-validate` resolves each dependency's own ranges. A fresh resolve
+# of vibe-validate 0.20.1 (npm, lockfile-only, 2026-11-02) leaves exactly four
+# advisories on adopters: three through vibe-agent-toolkit 0.1.42, and zod,
+# which VAT (^3.24.1) and five vibe-validate packages (^3.25.76) declare
+# directly:
+#     basic-ftp 5.3.1   GHSA-c475-qrg2-pj4r  (resources -> markdown-link-check
+#                       -> proxy-agent -> pac-proxy-agent -> get-uri 8.0.1,
+#                       which declares basic-ftp ^5.3.1)
+#     glob 10.5.0       GHSA-3g3m-2fjr-6pw4  (agent-skills declares glob ^10.3.10)
+#     minimatch 9.0.9   GHSA-g3hv-75wg-m249  (glob 10 declares minimatch ^9.0.4)
+#     zod 3.25.76       GHSA-mrhx-c7xc-m3w5  (see its register entry)
+# VAT 0.1.42's caret ranges already float everything else it brings (the MCP
+# sdk, hono, @hono/node-server, adm-zip, undici, handlebars, ...) to patched
+# versions on a fresh install, so for adopters those pins change nothing.
+# VAT 0.2.0-rc.12 still carries all four, and still carries adm-zip
+# (@vibe-agent-toolkit/utils declares ^0.6.1). Re-check triggers for adopters
+# (not enforced: nothing re-resolves the published package; repeat the fresh
+# resolve above at each VAT bump):
+#   * glob / minimatch: vibe-validate releases on a VAT version whose
+#     agent-skills declares glob ^14.0.2 or later (or a VAT 0.1.x release
+#     does, which adopters' ^0.1.42 range picks up). VAT main declares ^14.0.3;
+#   * basic-ftp: needs three releases, or VAT dropping the
+#     markdown-link-check -> proxy-agent path. get-uri 8.0.1 (the latest)
+#     declares basic-ftp ^5.3.1, pac-proxy-agent 9.1.0 (the latest) pins
+#     get-uri to exactly 8.0.1, and proxy-agent 8.0.2 (the latest) pins
+#     pac-proxy-agent to exactly 9.1.0. So it clears only with a get-uri
+#     release that declares basic-ftp ^6.2.1 or later, a pac-proxy-agent
+#     release that admits that get-uri, AND a proxy-agent release that admits
+#     that pac-proxy-agent (markdown-link-check declares proxy-agent ^8.0.2);
+#   * zod: vibe-validate releases on a VAT version on zod 4 (or a VAT 0.1.x
+#     release moves to zod 4), and vibe-validate's own packages move too.
+#
+#   Via vibe-agent-toolkit 0.1.42 (a runtime dependency of the published
+#   `vibe-validate` package; its postinstall runs `vat claude plugin install`).
+#   These fix this repo's lockfile only. Re-check each at the next VAT bump:
+#     @modelcontextprotocol/sdk 1.32.0  (GHSA-22jm-h49p-29qw, -46jr-4wx8-v453,
+#                                        -6prh-2h8m-c8cw, -6qxp-vccf-f47h,
+#                                        -f897-62hf-6gxq, -rvq5-wwqv-78pq;
+#                                        via gateway-mcp)
+#     @hono/node-server 2.1.3           (GHSA-rmxm-3fg6-px4f, serveStatic
+#                                        double decode; the sdk declares
+#                                        ^1.19.9 || ^2.0.5)
+#     hono 4.13.11, body-parser 2.4.0, proxy-addr 2.0.8, qs 6.16.1
+#                                       (the sdk's HTTP server stack. hono:
+#                                        GHSA-5r4p-p66f-jhc7, -crvj-82cr-hjcx,
+#                                        -g6gw-c38x-mqfc, -gqvv-2mrq-wpjv,
+#                                        -hxh3-vqpv-xpqv; body-parser:
+#                                        GHSA-27r3-jxmh-p828; proxy-addr:
+#                                        GHSA-jqcg-44mw-7w3h; qs:
+#                                        GHSA-4mjr-xmp4-gh2g, -6pq8-jhm2-2vcw,
+#                                        -x5fp-wj9c-mxmx)
+#     adm-zip 0.6.1                     (GHSA-7q85-xj36-vmfc, -8238-w5pm-2374,
+#                                        -c6fg-446q-cg94, -j5f4-cc29-5x44,
+#                                        -p634-w6r4-rjp2, -rcw4-f5rp-g42v,
+#                                        -vwc7-r8mq-g2x9; via agent-skills.
+#                                        GHSA-vwc7-r8mq-g2x9, symlink-follow on
+#                                        extract, lists no fixed version; its
+#                                        `last_affected: 0.6.0` predates 0.6.1.
+#                                        The fix is in 0.6.1 itself:
+#                                        Utils.assertPathSafe lstat-walks every
+#                                        path component and refuses a symlink;
+#                                        extractEntryTo, extractAllTo and
+#                                        extractAllToAsync all call it.)
+#     basic-ftp 6.2.1                   (GHSA-c475-qrg2-pj4r, quadratic list()
+#                                        parse; via get-uri, which declares
+#                                        ^5.3.1. The Client methods get-uri
+#                                        calls (access, close, downloadTo,
+#                                        lastMod, list) have identical
+#                                        signatures in 6.x. 6.0.0's one breaking
+#                                        change: `allowSeparateTransferHost` now
+#                                        defaults to false, so a PASV reply
+#                                        naming another host is refused.)
+#     handlebars 4.7.10                 (GHSA-8r5x-fm3f-whwj, -p8wg-vrv2-v86f,
+#                                        -xw65-4hp5-5hc7; VAT utils templates)
+#     undici 7.30.1                     (18 advisories, GHSA-2gqq-gqf2-x968
+#                                        through -xjj6-f33q-929c;
+#                                        markdown-link-check, cheerio)
+#     ip-address 10.7.4                 (GHSA-2vr4-cq9g-pvrc, -h3mg-xc3c-68pw,
+#                                        -j6r3-76f7-8jcv, -rpw4-54j3-4h4q,
+#                                        -rxp7-6hxx-x8q5; the proxy-agent path
+#                                        and the sdk's express-rate-limit)
+#     tar 7.5.22                        (GHSA-w8wr-v893-vjvp, -8x88-c5mf-7j5w,
+#                                        -23hp-3jrh-7fpw, -r292-9mhp-454m; VAT
+#                                        cli. 7.5.21 is the oldest fix; 7.5.22
+#                                        is its bug-fix patch)
+#     picomatch@2 2.3.2, picomatch@4 4.0.4
+#                                       (GHSA-3v7f-55p6-f55p, -c2c7-rcm5-vvqj;
+#                                        VAT packages, micromatch, fdir)
+#     yaml 2.8.3                        (GHSA-48c2-rrv3-qjmp; VAT packages,
+#                                        vite, packages/cli)
+#     ajv@6 6.14.0, ajv@8 8.18.0        (GHSA-2g4f-4pwh-qvx6; ESLint, the MCP
+#                                        sdk, secretlint, VAT resources,
+#                                        packages/extractors)
+#     fast-uri 3.1.9                    (10 advisories, GHSA-333x-w4r6-6crp
+#                                        through -xhq7-xmqj-769h; ajv 8)
+#
+#   Dev tooling:
+#     vitest 3.2.6                      (a direct devDependency, ^3.2.6; the
+#                                        pin holds one version for every
+#                                        workspace package. GHSA-5xrq-8626-4rwp,
+#                                        fixed in 3.2.6. Moves to 4.1.12 in the
+#                                        vitest 4 migration PR)
+#     vite 7.3.7, rollup 4.59.0, postcss 8.5.23, nanoid 3.3.18,
+#     source-map-js 1.2.2               (vitest's vite: GHSA-587h-7wmj-h5pm,
+#                                        -698v-4r3x-3vcv, -9jrq-w75r-8gcw,
+#                                        -r825-w8mm-5pxw, -rq7h-c2jc-7f22 vite;
+#                                        GHSA-mw96-cpmx-2vgc rollup;
+#                                        GHSA-fxqj-rqcc-2cmp postcss;
+#                                        GHSA-2v37-7h3g-55p8 nanoid;
+#                                        GHSA-68fv-2mgg-jv7q source-map-js)
+#     @humanfs/node 0.16.8              (GHSA-p498-v437-472g; eslint 9.39)
+#     flatted 3.4.2                     (GHSA-rf6f-7fwh-wjgh; ESLint flat-cache)
+#     lodash 4.18.1                     (GHSA-f23m-r3pf-42rh, -r5fr-rjxr-66jc;
+#                                        secretlint's textlint formatter.
+#                                        4.18.0, the oldest fix, is deprecated
+#                                        as a bad release)
+#     baseline-browser-mapping 2.11.0, browserslist 4.28.7
+#                                       (GHSA-w5vr-8v7q-w6rv; GHSA-73wf-gq98-2v4g,
+#                                        -c83g-rgw3-j3cx; eslint-plugin-unicorn
+#                                        -> core-js-compat)
+#     js-yaml 4.3.2                     (GHSA-2883-xcg3-v3hh; eslint config
+#                                        loading)
+#     brace-expansion@5 5.0.12          (GHSA-6j4f-fj2g-mc7p, -q2hr-2g5m-vwhr,
+#                                        -qhr7-859c-m2p7; minimatch 11's
+#                                        brace-expansion)
+#     tinypool 2.1.2                    (GHSA-5gmw-xhrv-c9v3, fixed in 2.1.1;
+#                                        GHSA-85c8-ppgw-ccpr, fixed in 2.1.2.
+#                                        vitest 3.2.6's worker pool, which
+#                                        declares ^1.1.1; the full gate, unit
+#                                        coverage included, passes on 2.1.2.
+#                                        vitest 4.1.12 does not depend on
+#                                        tinypool, so the vitest 4 migration
+#                                        PR deletes this pin)
+#
+#     glob 14.0.3, minimatch 11.0.3     (GHSA-3g3m-2fjr-6pw4,
+#                                        GHSA-g3hv-75wg-m249)
+#   The oldest fixes are glob 14.0.2 and minimatch 11.0.1; these pins match VAT
+#   main's overrides, so this repo and VAT run one glob and one minimatch.
+#   Neither advisory has a backport to an older major, so every consumer in
+#   this lockfile is forced onto the fixed major (as basic-ftp is onto 6). glob:
+#   test-exclude (coverage), rimraf and VAT's agent-skills call `glob`,
+#   `glob.sync` and `globSync`, all still exported by 14. minimatch: ESLint,
+#   its plugins, @typescript-eslint/typescript-estree and test-exclude.
+#   ESLint's effective config and its full finding set over the
+#   repo (561 files, 1244 messages) are identical under the old pins and
+#   11.0.3. minimatch 11 has no default export, which leaves two hazards.
+#   (1) eslint-plugin-import calls it as a function in `import/order` pathGroups,
+#   `no-extraneous-dependencies` globs, `no-unassigned-import` allow,
+#   `no-namespace` ignore, `no-internal-modules`, `no-import-module-exports`
+#   exceptions and `extensions` pattern options. None is configured today
+#   (`import/order` runs without pathGroups); drop the minimatch pin before
+#   enabling any of them (not enforced, but it fails loudly: lint throws
+#   "(0 , _minimatch2.default) is not a function"). (2) The ESM entry points
+#   of @eslint/config-array and @eslint/eslintrc `import minimatch from
+#   'minimatch'`, so importing either as ESM (for example `import { FlatCompat }
+#   from '@eslint/eslintrc'` in eslint.config.js) fails at load time with "does
+#   not provide an export named 'default'"; ESLint 9 itself loads both through
+#   CommonJS, where they work. Drop the minimatch pin before adding such an
+#   import (not enforced; it also fails loudly). Drop both pins when ESLint's
+#   plugin set and VAT admit glob 14 / minimatch 11 by themselves. For
+#   adopters see the triggers above.
 #
 # Keep it empty if you can. An entry here is a debt, not a resolution.
 # ---------------------------------------------------------------------------
@@ -34,3 +221,30 @@
 # [[IgnoredVulns]]
 # id = "GHSA-xxxx-xxxx-xxxx"
 # reason = "Why this is safe to defer, and what would let us delete this entry."
+
+[[IgnoredVulns]]
+id = "GHSA-mrhx-c7xc-m3w5"
+ignoreUntil = 2027-01-31T00:00:00Z
+reason = """zod 3.25.76: validating an oversized constrained collection can exhaust memory. Fixed only in zod 4.6.6, with no 3.x backport. zod is a runtime dependency (declared ^3.25.76) of config, core, cli, extractors and history, and of vibe-agent-toolkit 0.1.42, whose packages declare zod ^3.24.1, so migrating vibe-validate alone would not remove it from the tree; forcing zod 4 into VAT with an override risks breaking VAT's runtime. Published consumers get zod 3.25.76 either way. Reachability: vibe-validate's zod schemas validate the project's own config file and validation results stored in git notes. Notes are local by default, but `vv history` documents fetching refs/notes/vibe-validate/validate from a shared remote, and reader.ts validates every fetched run with safeValidateResult, so anyone who can push to that notes ref supplies input. The impact stays a local memory denial of service in the process that reads the notes. Re-check trigger: a VAT release on zod 4 that vibe-validate can release on (or a VAT 0.1.x release on zod 4); then migrate vibe-validate to zod 4 (its JSON-schema exports move off zod-to-json-schema) and delete this entry."""
+
+# The vitest 3 toolchain. Both fixes are only in vitest 4 (4.1.11 and 4.1.12),
+# with no 3.x backport, and an override cannot move vitest and its mocker to
+# another major under a vitest 3 install. vitest is a devDependency only;
+# nothing here ships in the published packages. Moving to vitest 4 also changes
+# how v8 branch coverage is counted (4351 -> 4759 branches on this repo,
+# 86.49% -> 78.13%), which puts the 80% branch threshold out of reach without
+# new tests, so the upgrade is its own change. The two advisories are 3 package
+# hits: GHSA-82fw is reported against both @vitest/mocker and vitest, GHSA-qxg6
+# against @vitest/mocker only. Re-check trigger for both: the vitest 4
+# migration PR; delete them there.
+
+[[IgnoredVulns]]
+id = "GHSA-82fw-gwwq-j7x9"
+ignoreUntil = 2027-01-31T00:00:00Z
+reason = """@vitest/mocker and vitest 3.2.6: a redirect mock registered over the dev server's WebSocket can read files outside the project. Unauthenticated only through the public mockerPlugin/interceptorPlugin exports mounted on a third-party Vite dev server; this repo mounts neither and does not use vitest browser mode, so no dev server or mock-registration socket is ever listening. Dev-only. Re-check trigger: the vitest 4 migration PR."""
+
+[[IgnoredVulns]]
+id = "GHSA-qxg6-89mg-rqv8"
+ignoreUntil = 2027-01-31T00:00:00Z
+reason = """@vitest/mocker 3.2.6: a manual mock registered over the same unauthenticated dev-server WebSocket can inject JavaScript. Same caller as GHSA-82fw-gwwq-j7x9 (mockerPlugin/interceptorPlugin on a Vite dev server), which this repo never runs. Dev-only. Re-check trigger: the vitest 4 migration PR."""
+
