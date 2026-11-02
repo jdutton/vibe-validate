@@ -35,32 +35,38 @@ Two rules keep this loop efficient:
 1. **Query `vv state` instead of re-running to read errors.** The last run's result and extracted errors are already cached.
 2. **Re-run validation after every fix before declaring the change complete.** Caching makes this cheap; skipping it misses side effects.
 
-## `vv validate` — full pipeline
+## `vv validate` — the validation pipeline
 
-Runs every validation step defined in `vibe-validate.config.yaml` (typecheck, lint, tests, custom steps), honoring parallelism and dependencies. Result is cached by git tree hash — same content, same cached answer.
+Runs the steps defined in `vibe-validate.config.yaml` (typecheck, lint, tests, custom steps), honoring parallelism and dependencies. Result is cached by git tree hash — same content, same cached answer.
+
+**Levels.** `validation.levels` names ordered, nested levels (e.g. `[commit, full]`); each step names the level that adds it, and a run at a level runs that level's steps plus every earlier level's. `vv validate` runs the **last** level (every step) unless you pass `--level <name>`. A config with no `levels` has one implicit level, so `vv validate` runs every step.
 
 ```bash
-vv validate                   # run full pipeline (cache-aware)
-vv validate --force           # re-run everything, ignore all cache
-vv validate --retry-failed    # re-run only failed steps; keep passed steps cached
-vv validate --check           # exit 0 if already cached passing, 1 otherwise; no execution
+vv validate                   # run the last level (cache-aware)
+vv validate --level commit    # run only the steps up to the commit level
+vv validate --force           # re-run even though a pass is already recorded
+vv validate --retry-failed    # re-run only the steps that failed last time; keep passed steps
+vv validate --check           # report the recorded verdict; exit 0 / 1 / 2; no execution
 ```
+
+**Which run answers.** The runs recorded for this tree are read newest first. A pass at an earlier level than the one asked for is skipped (it never ran the later steps); the first remaining run decides. A pass at the requested level or a later one is a cache hit. A failure at *any* level is a miss: the steps run again, because **a failure is never replayed**.
 
 When to reach for each:
 
-- **Plain `vv validate`** — default. Fast on unchanged code; runs only what changed otherwise.
-- **`--retry-failed`** — a transient failure (network blip, flaky test, resource contention). Keeps passed steps cached; re-runs only the failures. Warns when a step passes on retry with no code change (flaky indicator).
-- **`--force`** — you suspect stale cache or want a clean-room run before pushing a release candidate.
-- **`--check`** — scripting: "is this commit already known-good?" without executing anything.
+- **Plain `vv validate`** — default. Instant when a pass covering the level is recorded for this tree; otherwise the steps run.
+- **`--level <name>`** — a cheaper checkpoint (e.g. the commit level) without the slow steps. A commit-level pass never answers a full request; a full pass answers commit.
+- **`--retry-failed`** — a transient failure (network blip, flaky test, resource contention). It builds on the deciding run only when that run failed at exactly this level, re-running its failed steps and keeping its passed ones; otherwise every step at the level runs. Warns when a step passes on retry with no code change (flaky indicator).
+- **`--force`** (or `VV_FORCE_EXECUTION=1` in a git hook) — the only thing it does is re-run a recorded pass, since a failure already re-runs. Use it when you suspect a green is wrong. If the forced run goes red, that red is now the newest run and overturns the earlier green for every later request until a newer green is recorded.
+- **`--check [--level <name>]`** — scripting: "is this tree known-good at this level?" without executing anything. Exit `0` when the deciding run passed; `1` when it failed (at this level or another — the hint names `vv state --level <the requested level>`, which shows that deciding run); `2` when nothing recorded bears on the level, the history cannot answer, you are not in a git repo, `--level` names an unknown level, or the configuration is missing or invalid.
 
 For why validation re-ran (or didn't), see `vibe-validate:caching-and-locking`.
 
 ## `vv pre-commit` — branch-synced validation
 
-A superset of `vv validate` that adds two branch-sync checks (behind `origin/main`? behind your own remote branch?) and, if configured, a staged-secret scan. It's **one natural place to put the checkpoint** — wired as a git pre-commit hook — but the same result is available from `vv validate` + `vv sync-check` invoked anywhere in the workflow.
+Runs validation at `hooks.preCommit.level` (default: the **first** level) and adds two branch-sync checks (behind `origin/main`? behind your own remote branch?) and, if configured, a staged-secret scan. It's **one natural place to put the checkpoint** — wired as a git pre-commit hook — but the same result is available from `vv validate --level <hook level>` + `vv sync-check` invoked anywhere in the workflow. A `vv validate` pass at the last level answers the hook instantly; a hook pass at an earlier level never answers `vv validate`.
 
 ```bash
-vv pre-commit                 # sync notices + full validation + secret scan
+vv pre-commit                 # sync notices + validation at the hook's level + secret scan
 ```
 
 Both sync checks **warn by default; they do not block the commit.** Being behind is not a correctness condition, and a commit blocked for a non-correctness reason just routes people to `git commit --no-verify`, which skips validation and secret scanning too. Hard enforcement lives in CI (`vv sync-check`, which exits 1). Set `hooks.preCommit.baseBranchSync: block` / `trackingBranchSync: block` to restore a hard stop, or `off` to skip the check and its network fetch entirely.
@@ -79,14 +85,15 @@ Equally valid alternatives to `vv pre-commit`:
 
 - Run `vv validate` manually after each logical change — agent-driven loop.
 - Run `vv validate` on a pre-push hook instead of pre-commit — faster local commits, gate before sharing.
-- Run `vv validate --check` in CI as a belt-and-suspenders layer.
+- Run `vv validate --check` in CI as a belt-and-suspenders layer — only after fetching the notes (`refs/notes/vibe-validate/*`). Notes are local by default, so in a fresh CI clone `--check` exits `2` (nothing recorded).
 
 ## `vv state` — query cached state
 
-Reads the cached result of the last validation run on the current tree. Instant; never executes validation steps. Output is YAML with extracted errors.
+Shows the run deciding one level — `--level <name>`, default the level `vv validate` runs (the last) — exactly what `vv validate --check` reads: the tree's runs newest first, skipping passes whose level does not cover the requested one; the first remaining run. When none decides, it says `exists: false` and lists `levelsWithRuns`. `--runs` (run cache only) cannot be combined with `--level`. Instant; never executes validation steps. Output is YAML with extracted errors.
 
 ```bash
 vv state                      # compact YAML: pass/fail, failed step, extracted errors
+vv state --level commit       # the run deciding the commit level (what --check reads)
 vv state --verbose            # include full failedStepOutput
 ```
 

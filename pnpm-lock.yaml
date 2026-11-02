@@ -318,6 +318,9 @@ importers:
 
   packages/history:
     dependencies:
+      '@vibe-validate/config':
+        specifier: workspace:*
+        version: link:../config
       '@vibe-validate/core':
         specifier: workspace:*
         version: link:../core

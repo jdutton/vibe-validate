@@ -8,7 +8,11 @@
 import { z } from 'zod';
 
 import { GIT_DEFAULTS } from './constants.js';
+import { findHookLevelViolation, findValidationLevelViolations, type LevelViolation } from './levels.js';
 import { createSafeValidator, createStrictValidator } from './schema-utils.js';
+
+const RUN_SCOPE_CI_REMOVED = 'runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level';
+const RUN_SCOPE_LOCAL_REMOVED = 'runScope: local was removed with no replacement; remove the key (or the step)';
 
 /**
  * Validation Step Schema
@@ -37,8 +41,24 @@ export const ValidationStepSchema = z.object({
   /** Optional: Working directory for this step, relative to git root (default: git root) */
   cwd: z.string().optional(),
 
-  /** Optional: Restrict step to run only in CI or only locally */
-  runScope: z.enum(['ci', 'local']).optional(),
+  /**
+   * The lowest validation level that runs this step. Required on every step once
+   * `validation.levels` is declared, and rejected when it is not.
+   */
+  level: z.string().min(1, 'Step level cannot be empty').optional()
+    .describe('The lowest validation level that runs this step: one of validation.levels. Required on every step once validation.levels is declared, and rejected when it is not.'),
+
+  /**
+   * Removed: a strict config would otherwise report only "Unrecognized key".
+   * `ci` became validation levels; `local` has no replacement.
+   */
+  runScope: z.never({
+    errorMap: (_issue, ctx) => ({
+      message: ctx.data === 'local' ? RUN_SCOPE_LOCAL_REMOVED : RUN_SCOPE_CI_REMOVED,
+    }),
+  }).optional().describe(
+    'Removed. Replace runScope: ci with validation.levels (e.g. [commit, full]) and a level on each step; runScope: local has no replacement, so delete the key.'
+  ),
 }).strict();
 
 export type ValidationStep = z.infer<typeof ValidationStepSchema>;
@@ -73,12 +93,50 @@ export type ValidationPhase = z.input<typeof ValidationPhaseSchema>;
  * Validation Config Schema
  */
 export const ValidationConfigSchema = z.object({
+  /**
+   * Optional: ordered validation levels, lowest first (e.g. `[commit, full]`).
+   * Each level contains every level before it. `vv pre-commit` runs the first
+   * level (or `hooks.preCommit.level`); `vv validate` runs the last.
+   */
+  levels: z.array(z.string().regex(
+    /^[A-Za-z0-9][\w-]*$/,
+    'Level name must start with a letter or digit and hold only letters, digits, "_" and "-"'
+  ))
+    .min(1, 'validation.levels must list at least one level')
+    .optional()
+    .describe('Ordered validation levels, lowest first (e.g. [commit, full]); each contains every level before it. Once declared, every step needs a level.'),
+
   /** Validation phases to execute */
   phases: z.array(ValidationPhaseSchema).min(1, 'At least one phase required'),
 
   /** Optional: Fail fast - stop all validation on first phase failure (default: true) */
   failFast: z.boolean().optional().default(true),
-}).strict();
+}).strict().superRefine((validation, ctx) => {
+  for (const violation of [...findDuplicateStepNames(validation.phases), ...findValidationLevelViolations(validation)]) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: violation.path, message: violation.message });
+  }
+});
+
+/**
+ * Report every step whose name an earlier step already used, in any phase
+ *
+ * A step's name is its identity: `--retry-failed` reuses a previous result by
+ * name and flakiness detection compares steps by name, so two steps sharing one
+ * would let the failing one take the other's pass.
+ */
+function findDuplicateStepNames(phases: ReadonlyArray<{ steps: ReadonlyArray<{ name: string }> }>): LevelViolation[] {
+  const seen = new Set<string>();
+  return phases.flatMap((phase, phaseIndex) => phase.steps.flatMap((step, stepIndex) => {
+    if (!seen.has(step.name)) {
+      seen.add(step.name);
+      return [];
+    }
+    return [{
+      path: ['phases', phaseIndex, 'steps', stepIndex, 'name'],
+      message: `Duplicate step name "${step.name}"; step names must be unique across all phases`,
+    }];
+  }));
+}
 
 // Use input type (before defaults applied) to maintain optional field semantics
 export type ValidationConfig = z.input<typeof ValidationConfigSchema>;
@@ -290,6 +348,9 @@ export const HooksConfigSchema = z.object({
 
     /** Secret scanning configuration (optional) */
     secretScanning: SecretScanningSchema.optional(),
+
+    /** Validation level the hook runs (default: the first of validation.levels) */
+    level: z.string().min(1, 'Level name cannot be empty').optional(),
   }).strict().optional().default({
     enabled: true,
     command: DEFAULT_PRE_COMMIT_COMMAND,
@@ -458,7 +519,13 @@ export const VibeValidateConfigSchema = z.object({
    * - Teams wanting to improve validation feedback
    */
   developerFeedback: z.boolean().optional().default(false),
-}).strict();
+}).strict().superRefine((config, ctx) => {
+  // The step and level rules live on ValidationConfigSchema; only the hook's level needs both sections
+  const violation = findHookLevelViolation(config);
+  if (violation) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: violation.path, message: violation.message });
+  }
+});
 
 // Use input type (before defaults applied) to maintain optional field semantics
 export type VibeValidateConfig = z.input<typeof VibeValidateConfigSchema>;

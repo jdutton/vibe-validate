@@ -12,8 +12,9 @@ import type { VibeValidateConfig } from '@vibe-validate/config';
 import { getGitTreeHash, type TreeHashResult } from '@vibe-validate/git';
 import chalk from 'chalk';
 
+import { getCommandName } from './command-name.js';
 import { displayConfigErrors } from './config-error-reporter.js';
-import { loadConfigWithErrors, loadConfigWithDir } from './config-loader.js';
+import { configFileHolds, loadConfigWithErrors, loadConfigWithDir, type ConfigSource } from './config-loader.js';
 import type { AgentContext } from './context-detector.js';
 import { detectContext } from './context-detector.js';
 import { createPerfTimer } from './logger.js';
@@ -24,6 +25,7 @@ import {
   type LockOptions,
 } from './pid-lock.js';
 import { detectProjectId } from './project-id.js';
+import { exitAtStartup, type StartupExit } from './startup-exit.js';
 
 /**
  * Options for validation lock wrapper
@@ -37,6 +39,39 @@ export interface ValidationLockOptions {
   waitTimeout?: number;
   /** Whether in YAML output mode (suppresses display output) */
   yaml?: boolean;
+}
+
+/** A loaded configuration, where it came from, and how its command exits when it cannot start */
+export interface LoadedConfig {
+  config: VibeValidateConfig;
+  configDir: string;
+  source: ConfigSource;
+  startupExit: StartupExit;
+}
+
+/**
+ * Load the configuration, or report why it cannot be loaded and exit
+ *
+ * A command loads it once and hands the result to everything that needs it,
+ * `withValidationLock` included.
+ *
+ * @param exit - The command's startup exit (code, and whether a YAML error document goes to stdout)
+ */
+export async function loadConfigOrExit(exit: StartupExit): Promise<LoadedConfig> {
+  const configResult = await loadConfigWithDir();
+  if (configResult) {
+    return { ...configResult, startupExit: exit };
+  }
+  // Distinguish a config with validation errors from a missing one
+  const configWithErrors = await loadConfigWithErrors();
+  if (configWithErrors.errors && configWithErrors.filePath) {
+    const fileName = basename(configWithErrors.filePath);
+    displayConfigErrors({ fileName, errors: configWithErrors.errors });
+    return exitAtStartup(exit, `Configuration is invalid: ${fileName}`, { errors: configWithErrors.errors });
+  }
+  console.error(chalk.red('❌ No configuration found'));
+  console.error(chalk.gray(`   Run: ${getCommandName()} init`));
+  return exitAtStartup(exit, 'No configuration found');
 }
 
 /**
@@ -107,14 +142,14 @@ function displayExistingLockInfo(
  * Execute a callback with validation lock management
  *
  * This function handles the complete locking workflow:
- * 1. Load configuration with directory detection
- * 2. Detect agent context
- * 3. Determine lock options from config
- * 4. Wait for existing locks (if enabled)
- * 5. Acquire lock (if enabled)
- * 6. Execute callback with context
- * 7. Release lock in finally block
+ * 1. Detect agent context
+ * 2. Determine lock options from config
+ * 3. Wait for existing locks (if enabled)
+ * 4. Acquire lock (if enabled)
+ * 5. Execute callback with context
+ * 6. Release lock in finally block
  *
+ * @param loaded - The command's loaded configuration (from `loadConfigOrExit`)
  * @param options - Lock options
  * @param callback - Function to execute with lock held
  * @returns Result from callback
@@ -122,6 +157,7 @@ function displayExistingLockInfo(
  * @example
  * ```typescript
  * await withValidationLock(
+ *   await loadConfigOrExit({ code: 1, yaml: false }),
  *   { lockEnabled: true, waitEnabled: true },
  *   async ({ config, configDir, context }) => {
  *     // Run validation workflow
@@ -132,6 +168,7 @@ function displayExistingLockInfo(
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 26 acceptable for validation lock wrapper (orchestrates config, context, locking, wait, and acquire logic)
 export async function withValidationLock<T>(
+  loaded: LoadedConfig,
   options: ValidationLockOptions,
   callback: (_ctx: ValidationLockContext) => Promise<T>
 ): Promise<T> {
@@ -139,30 +176,7 @@ export async function withValidationLock<T>(
   const timer = createPerfTimer('withValidationLock');
 
   try {
-    // Load configuration first (needed for lock config)
-    // Use loadConfigWithDir to get config directory for locking
-    const configResult = await loadConfigWithDir();
-    timer.mark('config loaded');
-    if (!configResult) {
-      // Get detailed error information to distinguish between missing file and validation errors
-      const configWithErrors = await loadConfigWithErrors();
-
-      if (configWithErrors.errors && configWithErrors.filePath) {
-        // Config file exists but has validation errors
-        const fileName = basename(configWithErrors.filePath);
-        displayConfigErrors({
-          fileName,
-          errors: configWithErrors.errors
-        });
-      } else {
-        // Config file doesn't exist
-        console.error(chalk.red('❌ No configuration found'));
-      }
-
-      process.exit(1);
-    }
-
-    const { config, configDir } = configResult;
+    const { config, configDir } = loaded;
 
     // Detect context (Claude Code, CI, etc.)
     const context = detectContext();
@@ -228,12 +242,21 @@ export async function withValidationLock<T>(
       // If no lock exists, proceed normally
     }
 
+    // The tree the run is keyed on, hashed after any wait. Outside a git repository
+    // there is none, and the workflow records no history.
+    const treeHashResult = await getGitTreeHash().catch(() => null);
+    timer.markWithThreshold('getGitTreeHash (lock)', 2000);
+    // The config was loaded earlier (in pre-commit, before the sync and secret
+    // checks). A run keyed on this tree must run this tree's config; a change
+    // after the hash is caught by the workflow's stability check.
+    if (!configFileHolds(loaded.source)) {
+      console.error(chalk.red(`❌ ${basename(loaded.source.path)} changed after it was loaded; run again`));
+      await exitAtStartup(loaded.startupExit, `${basename(loaded.source.path)} changed after it was loaded`);
+    }
+
     // Handle lock mode (single-instance execution)
-    let treeHashResult: TreeHashResult | undefined;
-    if (shouldLock) {
+    if (shouldLock && treeHashResult) {
       // Use config directory for lock (not process.cwd()) - ensures same lock regardless of invocation directory
-      treeHashResult = await getGitTreeHash();
-      timer.markWithThreshold('getGitTreeHash (lock)', 2000);
       const treeHash = treeHashResult.hash;
 
       const lockResult = await acquireLock(configDir, treeHash, lockOptions);
@@ -257,7 +280,7 @@ export async function withValidationLock<T>(
     }
 
     // Execute callback with context (pass pre-computed tree hash to avoid redundant computation)
-    const result = await callback({ config, configDir, context, treeHashResult });
+    const result = await callback({ config, configDir, context, ...(treeHashResult ? { treeHashResult } : {}) });
     timer.mark('callback done');
     return result;
   } finally {

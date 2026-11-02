@@ -1,15 +1,15 @@
 /**
- * Tests for how a REPLAYED failure is presented (issue #169)
+ * Tests for how a STORED failure is presented: it never is
  *
- * A cached failure previously lost the actionable footer that fresh failures get
- * ("view details" / "to retry"), leaving the user with a stale verdict and no
- * next step. It must now carry that footer plus the cache-key explanation.
+ * Only a pass is ever served from cache. A failure recorded for this tree is a
+ * record, not a verdict: the steps run again and the output is that of a fresh
+ * run, with no "replayed" wording and no cache-key / --force hint (a replayed
+ * failure, issue #169, could stick until the tree changed).
  */
 
 import './validate-workflow-test-setup.js';
 
 import { runValidation } from '@vibe-validate/core';
-import { findCachedValidation } from '@vibe-validate/history';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -17,6 +17,7 @@ import {
   createMockRun,
   setupConsoleMocks,
   setupGitMock,
+  setupHistoryNote,
   executeWorkflow,
   type ValidateWorkflowOptions,
 } from './validate-workflow-test-helpers.js';
@@ -24,38 +25,31 @@ import {
 const collect = (spy: ReturnType<typeof vi.spyOn>): string =>
   spy.mock.calls.map((call) => call.join(' ')).join('\n');
 
+/** Every phrase the deleted replay presentation printed */
+const REPLAY_WORDING = ['Replayed', 'not re-run', '.gitignore', 'validate --force', 'Validation failed for this code'];
+
 /**
- * Run the workflow and return everything it printed to each stream
+ * Run the workflow over a stored note and a fresh runner result; return what it printed
  */
-async function renderWorkflow(
+async function render(
+  storedRuns: ReturnType<typeof createMockRun>[] | null,
+  freshPassed: boolean,
   overrides: Partial<ValidateWorkflowOptions> = {}
-): Promise<{ stdout: string; stderr: string }> {
+): Promise<{ stdout: string; stderr: string; isCachedResult: boolean | undefined }> {
+  setupHistoryNote(storedRuns);
+  vi.mocked(runValidation).mockResolvedValue(createMockResult(freshPassed));
   const { logSpy, errorSpy } = setupConsoleMocks();
-  await executeWorkflow(overrides);
-  return { stdout: collect(logSpy), stderr: collect(errorSpy) };
+  const result = await executeWorkflow(overrides);
+  return { stdout: collect(logSpy), stderr: collect(errorSpy), isCachedResult: result.isCachedResult };
 }
 
-/**
- * Serve a cached run (a replay - validation does not execute)
- */
-async function renderCachedRun(
-  passed: boolean,
-  overrides: Partial<ValidateWorkflowOptions> = {}
-): Promise<{ stdout: string; stderr: string }> {
-  vi.mocked(findCachedValidation).mockResolvedValue(createMockRun(passed));
-  return renderWorkflow(overrides);
+function expectNoReplayWording(text: string): void {
+  for (const phrase of REPLAY_WORDING) {
+    expect(text).not.toContain(phrase);
+  }
 }
 
-/**
- * Force a cache miss so validation actually runs and produces a fresh result
- */
-async function renderFreshRun(passed: boolean): Promise<{ stdout: string; stderr: string }> {
-  vi.mocked(findCachedValidation).mockResolvedValue(null);
-  vi.mocked(runValidation).mockResolvedValue(createMockResult(passed));
-  return renderWorkflow();
-}
-
-describe('replayed failure presentation', () => {
+describe('a stored failure is never replayed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupGitMock();
@@ -65,47 +59,38 @@ describe('replayed failure presentation', () => {
     vi.restoreAllMocks();
   });
 
-  it('should disclose that a cached failure was replayed rather than re-run', async () => {
-    const { stdout } = await renderCachedRun(false);
+  it('runs the steps again and reports the fresh pass', async () => {
+    const { stdout, stderr, isCachedResult } = await render([createMockRun(false)], true);
 
-    expect(stdout).toContain('Validation failed for this code');
-    expect(stdout).toContain('not re-run just now');
+    expect(runValidation).toHaveBeenCalledTimes(1);
+    expect(isCachedResult).toBeUndefined();
+    // The fresh-run banner, not the cached-pass banner
+    expect(stderr).toContain('Working tree:');
+    expect(stdout).not.toContain('Validation passed for this code');
+    expectNoReplayWording(`${stdout}\n${stderr}`);
   });
 
-  it('should keep the actionable footer that fresh failures get', async () => {
-    const { stderr } = await renderCachedRun(false);
+  it('a fresh failure over a stored failure keeps the actionable footer and no replay text', async () => {
+    const { stdout, stderr } = await render([createMockRun(false)], false);
 
+    expect(runValidation).toHaveBeenCalledTimes(1);
     expect(stderr).toContain('View error details');
     expect(stderr).toContain('To retry');
     // The failed step's own command, so the user can reproduce it directly
     expect(stderr).toContain('npm test');
+    expectNoReplayWording(`${stdout}\n${stderr}`);
   });
 
-  it('should explain the cache key and offer the force escape hatch', async () => {
-    const { stderr } = await renderCachedRun(false);
+  it('YAML mode: a stored failure runs again and no human hint leaks into machine output', async () => {
+    const { stdout, stderr, isCachedResult } = await render([createMockRun(false)], false, { yaml: true });
 
-    expect(stderr).toContain('.gitignore');
-    expect(stderr).toContain('validate --force');
-  });
-
-  it('should not show the cache-key explanation on a cached pass', async () => {
-    const { stdout, stderr } = await renderCachedRun(true);
-
-    expect(stdout).toContain('Validation passed for this code');
-    expect(stdout).not.toContain('not re-run just now');
-    expect(stderr).not.toContain('validate --force');
+    expect(runValidation).toHaveBeenCalledTimes(1);
+    expect(isCachedResult).toBeUndefined();
+    expectNoReplayWording(`${stdout}\n${stderr}`);
   });
 });
 
-/**
- * The hint must be gated on an ACTUAL replay.
- *
- * Emitting it on every failure would teach users - and coding agents especially -
- * to reach for --force reflexively and to blame caching for ordinary broken code.
- * That is a worse failure mode than the one the hint fixes, so these tests exist
- * to kill any mutation that drops or widens the `cachedRun` guard.
- */
-describe('fresh failure presentation', () => {
+describe('fresh and cached-pass presentation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupGitMock();
@@ -115,47 +100,36 @@ describe('fresh failure presentation', () => {
     vi.restoreAllMocks();
   });
 
-  it('should keep the actionable footer on a fresh failure', async () => {
-    const { stderr } = await renderFreshRun(false);
+  it('a fresh failure with no history keeps the actionable footer', async () => {
+    const { stdout, stderr } = await render(null, false);
 
     expect(stderr).toContain('View error details');
     expect(stderr).toContain('To retry');
+    expectNoReplayWording(`${stdout}\n${stderr}`);
   });
 
-  it('should NOT suggest the cache is at fault when the failure was just computed', async () => {
-    const { stdout, stderr } = await renderFreshRun(false);
-    const everything = `${stdout}\n${stderr}`;
+  it('the error-details hint names the level the run was asked for', async () => {
+    // state defaults to validate's level; after a commit-level failure that is the wrong one
+    const { stderr } = await render(null, false, { level: 'commit' });
 
-    expect(everything).not.toContain('.gitignore');
-    expect(everything).not.toContain('validate --force');
-    expect(everything).not.toContain('not re-run just now');
+    expect(stderr).toContain('state --level commit');
   });
 
-  it('should say nothing extra on a fresh pass', async () => {
-    const { stdout, stderr } = await renderFreshRun(true);
+  it('a fresh pass says nothing about errors', async () => {
+    const { stdout, stderr } = await render(null, true);
     const everything = `${stdout}\n${stderr}`;
 
-    expect(everything).not.toContain('validate --force');
     expect(everything).not.toContain('View error details');
-  });
-});
-
-describe('YAML mode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setupGitMock();
+    expect(everything).not.toContain('To retry');
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  it('a stored pass is served from cache with the cached-pass banner and no failure footer', async () => {
+    const { stdout, stderr, isCachedResult } = await render([createMockRun(true)], false);
 
-  it('should not leak the human-readable hint into machine output on a replayed failure', async () => {
-    const { stdout, stderr } = await renderCachedRun(false, { yaml: true });
-    const everything = `${stdout}\n${stderr}`;
-
-    expect(everything).not.toContain('.gitignore');
-    expect(everything).not.toContain('validate --force');
-    expect(everything).not.toContain('Replayed from');
+    expect(runValidation).not.toHaveBeenCalled();
+    expect(isCachedResult).toBe(true);
+    expect(stdout).toContain('Validation passed for this code');
+    expect(stderr).not.toContain('View error details');
+    expectNoReplayWording(stderr);
   });
 });

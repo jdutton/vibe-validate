@@ -7,6 +7,7 @@ import type { TreeHash, TreeHashResult } from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { recordValidationHistory, checkWorktreeStability } from '../src/recorder.js';
+import { VALIDATION_NOTES_REF } from '../src/schemas.js';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
@@ -48,6 +49,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
       phases: [
@@ -69,11 +71,61 @@ describe('recordValidationHistory', () => {
     const { addNote } = await import('@vibe-validate/git');
     const { mergeAppendRuns } = await import('@vibe-validate/git');
     expect(addNote).toHaveBeenCalledWith(
-      'vibe-validate/validate',
+      'vibe-validate/leveled-runs',
       treeHash,
       expect.any(String), // YAML content
       mergeAppendRuns // merge strategy: append runs
     );
+  });
+
+  it('writes only VALIDATION_NOTES_REF, even when a 0.20 config names the old ref', async () => {
+    const treeHash = 'abc123def456' as TreeHash;
+    const result: ValidationResult = {
+      passed: true,
+      level: 'commit',
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash,
+    };
+    // The 0.20 README's config shape; the type no longer has `ref`, so cast past it.
+    const legacyConfig = { gitNotes: { ref: 'vibe-validate/validate' } } as Parameters<
+      typeof recordValidationHistory
+    >[2];
+
+    await recordValidationHistory({ hash: treeHash }, result, legacyConfig);
+
+    const { addNote } = await import('@vibe-validate/git');
+    expect(addNote).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(addNote).mock.calls[0]?.[0]).toBe(VALIDATION_NOTES_REF);
+  });
+
+  it('records the level the result covered on the run', async () => {
+    const { addNote } = await import('@vibe-validate/git');
+    const treeHash = 'abc123def456' as TreeHash;
+
+    await recordValidationHistory({ hash: treeHash }, {
+      passed: true,
+      level: 'commit',
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash,
+    });
+
+    const yamlContent = String(vi.mocked(addNote).mock.calls[0]?.[2]);
+    expect(yamlContent).toMatch(/^ {4}level: commit$/m);
+  });
+
+  it('refuses a result with no level instead of recording a run that answers nothing', async () => {
+    const { addNote } = await import('@vibe-validate/git');
+    const treeHash = 'abc123def456' as TreeHash;
+
+    const recordResult = await recordValidationHistory({ hash: treeHash }, {
+      passed: true,
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash,
+    });
+
+    expect(recordResult.recorded).toBe(false);
+    expect(recordResult.reason).toContain('no level');
+    expect(addNote).not.toHaveBeenCalled();
   });
 
   it('should append to existing note', async () => {
@@ -106,6 +158,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: false,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
     };
@@ -128,6 +181,7 @@ describe('recordValidationHistory', () => {
       timestamp: `2025-10-21T${String(i).padStart(2, '0')}:00:00.000Z`,
       duration: 2000,
       passed: true,
+      level: 'full',
       branch: 'main',
       headCommit: '123abc',
       uncommittedChanges: false,
@@ -145,6 +199,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
     };
@@ -168,6 +223,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
     };
@@ -189,6 +245,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: new Date().toISOString(),
       treeHash: treeHashResult.hash,
       summary: 'Test passed',
@@ -217,7 +274,7 @@ describe('checkWorktreeStability', () => {
 
     vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResult);
 
-    const stability = await checkWorktreeStability(treeHash);
+    const stability = await checkWorktreeStability(treeHashResult);
 
     expect(stability.stable).toBe(true);
     expect(stability.treeHashBefore).toBe(treeHash);
@@ -234,10 +291,21 @@ describe('checkWorktreeStability', () => {
 
     vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResultAfter);
 
-    const stability = await checkWorktreeStability(treeHashBefore);
+    const stability = await checkWorktreeStability({ hash: treeHashBefore });
 
     expect(stability.stable).toBe(false);
     expect(stability.treeHashBefore).toBe(treeHashBefore);
     expect(stability.treeHashAfter).toBe(treeHashAfter);
+  });
+
+  it('should detect a submodule that changed under an unchanged parent tree', async () => {
+    // Editing a file inside a submodule leaves the parent tree hash as it was
+    const { getGitTreeHash } = await import('@vibe-validate/git');
+    const hash = 'abc123def456' as TreeHash;
+    vi.mocked(getGitTreeHash).mockResolvedValue({ hash, submoduleHashes: { 'libs/a': 'bbb' as TreeHash } });
+
+    const stability = await checkWorktreeStability({ hash, submoduleHashes: { 'libs/a': 'aaa' as TreeHash } });
+
+    expect(stability.stable).toBe(false);
   });
 });

@@ -7,6 +7,16 @@
         "validation": {
           "type": "object",
           "properties": {
+            "levels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][\\w-]*$"
+              },
+              "minItems": 1,
+              "description": "Ordered validation levels, lowest first (e.g. [commit, full]); each contains every level before it. Once declared, every step needs a level.",
+              "uniqueItems": true
+            },
             "phases": {
               "type": "array",
               "items": {
@@ -52,12 +62,14 @@
                         "cwd": {
                           "type": "string"
                         },
-                        "runScope": {
+                        "level": {
                           "type": "string",
-                          "enum": [
-                            "ci",
-                            "local"
-                          ]
+                          "minLength": 1,
+                          "description": "The lowest validation level that runs this step: one of validation.levels. Required on every step once validation.levels is declared, and rejected when it is not."
+                        },
+                        "runScope": {
+                          "not": {},
+                          "description": "Removed. Replace runScope: ci with validation.levels (e.g. [commit, full]) and a level on each step; runScope: local has no replacement, so delete the key."
                         }
                       },
                       "required": [
@@ -268,6 +280,10 @@
                     }
                   },
                   "additionalProperties": false
+                },
+                "level": {
+                  "type": "string",
+                  "minLength": 1
                 }
               },
               "additionalProperties": false,

@@ -94,7 +94,7 @@ export function verifyRefOrThrow(ref: string): string {
 
 /**
  * Check if git notes exist for a specific ref
- * @param notesRef - The notes reference to check (e.g., 'refs/notes/vibe-validate/validate')
+ * @param notesRef - The notes reference to check (e.g., 'refs/notes/vibe-validate/leveled-runs')
  * @returns true if the notes ref exists, false otherwise
  */
 export function hasNotesRef(notesRef: string): boolean {

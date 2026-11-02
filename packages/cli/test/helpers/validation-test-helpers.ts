@@ -22,6 +22,9 @@ interface CreateRunOptions {
   headCommit?: string;
   uncommittedChanges?: boolean;
   phases?: PhaseResult[];
+  /** Level the run was recorded at (defaults to the implicit single level, full) */
+  level?: string;
+  submoduleHashes?: Record<string, string>;
 }
 
 /**
@@ -54,19 +57,23 @@ interface CreatePhaseOptions {
 export function createValidationRun(options: CreateRunOptions): ValidationRun {
   const timestamp = options.timestamp ?? '2025-10-21T10:00:00Z';
   const treeHash = 'abc123def456';
+  const level = options.level ?? 'full';
 
   return {
     id: options.id ?? 'run-1',
     timestamp,
     duration: options.duration ?? 5000,
     passed: options.passed,
+    level,
     branch: options.branch ?? 'main',
     headCommit: options.headCommit ?? 'commit123',
     uncommittedChanges: options.uncommittedChanges ?? false,
+    ...(options.submoduleHashes ? { submoduleHashes: options.submoduleHashes } : {}),
     result: {
       passed: options.passed,
       timestamp,
       treeHash,
+      level,
       phases: options.phases,
     },
   };

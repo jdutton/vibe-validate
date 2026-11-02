@@ -26,6 +26,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { executeWrapperSync } from '../helpers/test-command-runner.js';
 
+/** Each test spawns the CLI up to six times in sequence; 5 s is not enough on a loaded machine */
+const CLI_SPAWN_TIMEOUT_MS = 60_000;
+
 /**
  * Helper: Run validation and return result
  * Uses executeWrapperSync for secure, cross-platform execution
@@ -99,10 +102,12 @@ validation:
     const treeHash = getTestTreeHash(testDir);
 
     // Verify first run is recorded
-    const note1Content = readTestNote(testDir, 'refs/notes/vibe-validate/validate', treeHash);
+    const note1Content = readTestNote(testDir, 'refs/notes/vibe-validate/leveled-runs', treeHash);
     expect(note1Content).not.toBeNull();
     expect(note1Content).toContain('runs:');
     expect(note1Content).toContain('- id:');
+    // A config with no validation.levels records its single implicit level
+    expect(note1Content).toMatch(/^ {4}level: full$/m);
 
     // Count runs in first note (should be 1)
     const runs1 = note1Content!.match(/^ {2}- id:/gm) ?? [];
@@ -113,7 +118,7 @@ validation:
     expect(run2.status).toBe(1);
 
     // Verify second run is recorded (THIS WILL FAIL WITH THE BUG)
-    const note2Content = readTestNote(testDir, 'refs/notes/vibe-validate/validate', treeHash);
+    const note2Content = readTestNote(testDir, 'refs/notes/vibe-validate/leveled-runs', treeHash);
     expect(note2Content).not.toBeNull();
 
     // Count runs in second note (should be 2)
@@ -125,13 +130,13 @@ validation:
     expect(run3.status).toBe(0);
 
     // Verify third run is recorded
-    const note3Content = readTestNote(testDir, 'refs/notes/vibe-validate/validate', treeHash);
+    const note3Content = readTestNote(testDir, 'refs/notes/vibe-validate/leveled-runs', treeHash);
     expect(note3Content).not.toBeNull();
 
     // Count runs in third note (should be 3)
     const runs3 = note3Content!.match(/^ {2}- id:/gm) ?? [];
     expect(runs3.length).toBe(3); // ← FAILS: Bug causes only 1 run to be recorded
-  });
+  }, CLI_SPAWN_TIMEOUT_MS);
 
   it('should show most recent cached result', () => {
     // Run 1: Fail
@@ -157,7 +162,7 @@ validation:
     // Check state - should show failed (most recent)
     const state3 = getState(testDir);
     expect(state3.stdout).toContain('passed: false');
-  });
+  }, CLI_SPAWN_TIMEOUT_MS);
 
   it('should detect flaky validations', () => {
     // Run 1: Pass
@@ -174,5 +179,5 @@ validation:
     // const stateResult = getState();
     // const output = stateResult.stdout + stateResult.stderr;
     // expect(output).toMatch(/flak|inconsistent|unstable/i);
-  });
+  }, CLI_SPAWN_TIMEOUT_MS);
 });

@@ -57,11 +57,27 @@ export {
   safeValidateConfig,
 } from './schema.js';
 
+// Validation levels
+export {
+  IMPLICIT_LEVEL,
+  type LevelSource,
+  getLevels,
+  getStepLevel,
+  getLevelIndex,
+  stepRunsAtLevel,
+  levelCovers,
+  getDefaultValidateLevel,
+  getDefaultPreCommitLevel,
+  MissingStepLevelError,
+  UnknownLevelError,
+} from './levels.js';
+
 // Config loading
 export {
   CONFIG_FILE_NAME,
   loadConfigFromFile,
   findAndLoadConfig,
+  parseConfigContent,
 } from './loader.js';
 
 // Git configuration constants and helpers

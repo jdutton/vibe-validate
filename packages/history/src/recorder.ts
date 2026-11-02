@@ -15,6 +15,8 @@ import {
 } from '@vibe-validate/git';
 import { stringify as stringifyYaml } from 'yaml';
 
+import { submoduleHashesMatch } from './lookup.js';
+import { VALIDATION_NOTES_REF } from './schemas.js';
 import { truncateValidationOutput } from './truncate.js';
 import type {
   ValidationRun,
@@ -53,6 +55,18 @@ async function getHeadCommit(): Promise<string> {
 }
 
 /**
+ * The level a result covered; a result without one cannot be a cache entry
+ *
+ * @throws Error when the runner did not record a level
+ */
+function requireLevel(result: ValidationResult): string {
+  if (typeof result.level !== 'string') {
+    throw new TypeError('Validation result has no level; only runner results can be recorded');
+  }
+  return result.level;
+}
+
+/**
  * Record validation result to git notes
  *
  * @param treeHashResult - Git tree hash result with components
@@ -79,7 +93,8 @@ export async function recordValidationHistory(
   };
 
   // Type assertions safe: DEFAULT_HISTORY_CONFIG is Required<HistoryConfig>
-  const notesRef = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as NotesRef;
+  // The ref is not configurable: leveled runs go to VALIDATION_NOTES_REF only.
+  const notesRef = VALIDATION_NOTES_REF as NotesRef;
   const maxOutputBytes = (mergedConfig.gitNotes.maxOutputBytes ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxOutputBytes);
 
   try {
@@ -89,6 +104,7 @@ export async function recordValidationHistory(
       timestamp: new Date().toISOString(),
       duration: 0, // Will be calculated from result if available
       passed: result.passed,
+      level: requireLevel(result),
       branch: await getCurrentBranch(),
       headCommit: await getHeadCommit(),
       uncommittedChanges: await hasWorkingTreeChanges(),
@@ -138,20 +154,22 @@ export async function recordValidationHistory(
 }
 
 /**
- * Check worktree stability (compare tree hash before and after)
+ * Check worktree stability (compare tree and submodule hashes before and after)
  *
- * @param treeHashBefore - Tree hash before validation
+ * A file edited inside a submodule leaves the parent tree hash as it was, so the
+ * submodule hashes are compared too.
+ *
+ * @param before - Tree hash result before validation
  * @returns Stability check result
  */
 export async function checkWorktreeStability(
-  treeHashBefore: string
+  before: TreeHashResult
 ): Promise<StabilityCheck> {
-  const treeHashResult = await getGitTreeHash();
-  const treeHashAfter = treeHashResult.hash;
+  const after = await getGitTreeHash();
 
   return {
-    stable: treeHashBefore === treeHashAfter,
-    treeHashBefore,
-    treeHashAfter,
+    stable: before.hash === after.hash && submoduleHashesMatch(before.submoduleHashes, after.submoduleHashes),
+    treeHashBefore: before.hash,
+    treeHashAfter: after.hash,
   };
 }

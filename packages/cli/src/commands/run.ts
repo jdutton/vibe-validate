@@ -20,7 +20,7 @@ import {
   PARENT_CONTEXT_ENV,
 } from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
-import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
+import { getGitTreeHash, extractYamlWithPreamble, addNote, readNote, removeNotesRefs, type NotesRef, type TreeHashResult } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
 import { normalizePath, toForwardSlash } from '@vibe-validate/utils';
 import chalk from 'chalk';
@@ -30,6 +30,8 @@ import yaml from 'yaml';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import { getCommandName } from '../utils/command-name.js';
 import { logDebug, logWarning } from '../utils/logger.js';
+import { runCacheKeyFor } from '../utils/run-cache-key.js';
+import { parseRunCacheNote } from '../utils/run-cache-note.js';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 
 const NOT_IN_GIT_REPO_ERROR = 'Not in a git repository';
@@ -144,7 +146,7 @@ export function runCommand(program: Command): void {
 
         // Handle --check flag (cache status check only)
         if (actualOptions.check) {
-          const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
+          const cachedResult = await tryGetCachedResult(await findCacheSlot(commandString, actualOptions.cwd));
           if (cachedResult) {
             // Cache hit - output cached result and exit with code 0
             process.stdout.write('---\n');
@@ -165,28 +167,20 @@ export function runCommand(program: Command): void {
 
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || is correct here: force flag can be explicitly false, and we need to check env var as fallback
         const shouldForce = actualOptions.force || process.env.VV_FORCE_EXECUTION === '1';
-        if (shouldForce) {
-          // Force execution - skip cache
+        // Hashed once, before the command runs: the lookup, the store and the
+        // removal all use the tree the command ran on
+        const slot = await findCacheSlot(commandString, actualOptions.cwd);
+        // Try cache first (a forced run skips it)
+        const cachedResult = shouldForce ? null : await tryGetCachedResult(slot);
+        if (cachedResult) {
+          result = cachedResult;
+        } else {
           const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
           result = executeResult.result;
           context = executeResult.context;
 
-          // Update cache with fresh result
-          await storeCacheResult(commandString, result, actualOptions.cwd);
-        } else {
-          // Try cache first
-          const cachedResult = await tryGetCachedResult(commandString, actualOptions.cwd);
-          if (cachedResult) {
-            result = cachedResult;
-          } else {
-            // Cache miss - execute command
-            const executeResult = await executeAndExtract(commandString, actualOptions.cwd);
-            result = executeResult.result;
-            context = executeResult.context;
-
-            // Store result in cache
-            await storeCacheResult(commandString, result, actualOptions.cwd);
-          }
+          // Store a pass in the cache; a failure removes the stored pass
+          await storeCacheResult(slot, commandString, result);
         }
 
         // CRITICAL: Write complete YAML to stdout and flush BEFORE any stderr
@@ -311,41 +305,63 @@ function getWorkingDirectory(explicitCwd?: string): string {
   }
 }
 
-/**
- * Try to get cached result for a command
- * Returns null if no cache hit or if not in a git repository
- */
-async function tryGetCachedResult(commandString: string, explicitCwd?: string): Promise<RunResult | null> {
-  try {
-    // Skip cache lookup if VV_FORCE_EXECUTION is set (propagated from parent)
-    if (process.env.VV_FORCE_EXECUTION === '1') {
-      logDebug('cache', 'Cache lookup skipped: VV_FORCE_EXECUTION=1');
-      return null;
-    }
+/** Where a command's result is cached: the tree it runs on, and the note for its key */
+interface CacheSlot {
+  treeHashResult: TreeHashResult;
+  workdir: string;
+  refPath: NotesRef;
+}
 
-    // Get tree hash
+/**
+ * Find the cache slot for a command on the current tree
+ * Returns null if not in a git repository, or if the tree cannot be hashed
+ */
+async function findCacheSlot(commandString: string, explicitCwd?: string): Promise<CacheSlot | null> {
+  try {
     const treeHashResult = await getGitTreeHash();
     const treeHash = treeHashResult.hash;
 
     // Skip caching if not in git repository
     if (treeHash === 'unknown') {
-      logDebug('cache', 'Cache lookup skipped: not in git repository');
+      logDebug('cache', 'Caching skipped: not in git repository');
       return null;
     }
 
     // Get working directory
     const workdir = getWorkingDirectory(explicitCwd);
 
-    // Encode cache key
-    const cacheKey = encodeRunCacheKey(commandString, workdir);
+    // Encode cache key (it covers the submodule hashes: the parent tree hash does not)
+    const cacheKey = runCacheKeyFor(commandString, workdir, treeHashResult);
 
     // Construct git notes ref path: refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
     const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
+    return { treeHashResult, workdir, refPath };
+  } catch (error) {
+    logWarning('cache', 'Cache key failed - proceeding without the cache', error as Error);
+    return null;
+  }
+}
 
-    logDebug('cache', 'Cache lookup', { treeHash, cacheKey, refPath });
+/**
+ * Try to get cached result for a command
+ * Returns null if no cache hit or if there is no cache slot
+ */
+async function tryGetCachedResult(slot: CacheSlot | null): Promise<RunResult | null> {
+  try {
+    // Skip cache lookup if VV_FORCE_EXECUTION is set (propagated from parent)
+    if (process.env.VV_FORCE_EXECUTION === '1') {
+      logDebug('cache', 'Cache lookup skipped: VV_FORCE_EXECUTION=1');
+      return null;
+    }
+    if (!slot) {
+      return null;
+    }
+
+    const treeHash = slot.treeHashResult.hash;
+    logDebug('cache', 'Cache lookup', { treeHash, refPath: slot.refPath });
 
     // Try to read git note using secure readNote function
-    const noteContent = readNote(refPath, treeHash);
+    const noteContent = readNote(slot.refPath, treeHash);
 
     if (!noteContent) {
       // Cache miss
@@ -353,26 +369,9 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
       return null;
     }
 
-    logDebug('cache', 'Cache hit');
-
-    // Parse cached note
-    const cachedNote = yaml.parse(noteContent) as RunCacheNote;
-
-    // Migration: v0.14.x cached notes used 'duration' (ms), v0.15.0+ uses 'durationSecs' (s)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const durationSecs = cachedNote.durationSecs ?? ((cachedNote as any).duration ? (cachedNote as any).duration / 1000 : 0);
-
-    // Convert to RunResult format (mark as cached)
-    const result: RunResult = {
-      command: cachedNote.command, // Use command from cache (may be unwrapped)
-      exitCode: cachedNote.exitCode,
-      durationSecs,
-      timestamp: cachedNote.timestamp,
-      treeHash: cachedNote.treeHash,
-      extraction: cachedNote.extraction,
-      ...(cachedNote.outputFiles ? { outputFiles: cachedNote.outputFiles } : {}),
-      isCachedResult: true, // Mark as cache hit
-    };
+    // Only a pass is a hit; a note holding a failure is refused
+    const result = parseRunCacheNote(noteContent);
+    logDebug('cache', result ? 'Cache hit' : 'Cache miss: the note holds a failure');
 
     return result;
   } catch (error) {
@@ -382,14 +381,16 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
 }
 
 /**
- * Store result in cache (only successful runs - exitCode === 0)
+ * Store a pass in the cache; a failure removes the pass stored for its key
+ *
+ * A failure is never stored (it may be transient), but it must overturn the
+ * green it re-checked: `vv run --force` going red would otherwise leave the old
+ * green to answer the next run. Both act on the tree the command ran on (the
+ * slot); a pass that changed the tree is not stored.
  */
-async function storeCacheResult(commandString: string, result: RunResult, explicitCwd?: string): Promise<void> {
+async function storeCacheResult(slot: CacheSlot | null, commandString: string, result: RunResult): Promise<void> {
   try {
-    // Only cache successful runs (v0.15.0+)
-    // Failed runs may be transient or environment-specific
-    if (result.exitCode !== 0) {
-      logDebug('cache', 'Skipping cache storage: command failed', { exitCode: result.exitCode });
+    if (!slot) {
       return;
     }
 
@@ -406,26 +407,25 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
       return;
     }
 
-    // Get tree hash
-    const treeHashResult = await getGitTreeHash();
+    const { treeHashResult, workdir, refPath } = slot;
     const treeHash = treeHashResult.hash;
 
-    // Skip caching if not in git repository
-    if (treeHash === 'unknown') {
-      logDebug('cache', 'Cache storage skipped: not in git repository');
+    if (result.exitCode !== 0) {
+      // Deletes the ref itself: `git notes remove` would leave an empty notes ref behind
+      logDebug('cache', 'Command failed: removing any stored pass', { exitCode: result.exitCode, refPath });
+      removeNotesRefs(refPath);
       return;
     }
 
-    // Get working directory
-    const workdir = getWorkingDirectory(explicitCwd);
+    // The same tree (and submodule state) after the run, or the command, or
+    // something beside it, changed what the pass would be stored for
+    const after = await getGitTreeHash();
+    if (after.hash !== treeHash || runCacheKeyFor(commandString, workdir, after) !== runCacheKeyFor(commandString, workdir, treeHashResult)) {
+      logDebug('cache', 'Cache storage skipped: the tree changed while the command ran', { before: treeHash, after: after.hash });
+      return;
+    }
 
-    // Encode cache key (using commandString since we verified it equals result.command above)
-    const cacheKey = encodeRunCacheKey(commandString, workdir);
-
-    // Construct git notes ref path
-    const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
-
-    logDebug('cache', 'Storing cache result', { treeHash, cacheKey, refPath });
+    logDebug('cache', 'Storing cache result', { treeHash, refPath });
 
     // Build cache note (extraction already cleaned in runner)
     // Token optimization: Only include extraction when exitCode !== 0 OR there are actual errors

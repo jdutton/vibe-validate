@@ -160,6 +160,13 @@ export const ValidationResultSchema = OperationMetadataSchema.extend({
   /** Did validation pass? */
   passed: z.boolean(),
 
+  /**
+   * The validation level this run covered (e.g. `commit`, `full`). The runner
+   * always records it; it is absent only on results written before levels
+   * existed (a CI log from an older vv, say).
+   */
+  level: z.string().optional(),
+
   /** One-line summary for LLMs (e.g., "Validation passed" or "TypeScript type check failed") */
   summary: z.string().optional(),
 

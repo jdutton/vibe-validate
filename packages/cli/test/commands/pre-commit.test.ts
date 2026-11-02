@@ -50,12 +50,13 @@ vi.mock('@vibe-validate/git', async () => {
   };
 });
 
-// Mock the history module
+// Mock the history module (I/O only: the cache lookups are the real pure
+// functions, driven through readHistoryNote)
 vi.mock('@vibe-validate/history', async () => {
   const actual = await vi.importActual<typeof history>('@vibe-validate/history');
   return {
     ...actual,
-    findCachedValidation: vi.fn(),
+    readHistoryNote: vi.fn(),
     recordValidationHistory: vi.fn(),
     checkWorktreeStability: vi.fn(),
     checkHistoryHealth: vi.fn(),
@@ -70,6 +71,8 @@ vi.mock('../../src/utils/config-loader.js', async () => {
     loadConfig: vi.fn(),
     loadConfigWithDir: vi.fn(),
     loadConfigWithErrors: vi.fn(),
+    // The mocked loader reads no file; the loaded config is what the file holds
+    configFileHolds: vi.fn(() => true),
   };
 });
 
@@ -239,9 +242,11 @@ function createHistoryNote(treeHash: string, passed: boolean = true) {
     treeHash,
     runs: [
       {
+        id: 'run-1',
         timestamp: '2025-10-23T20:00:00Z',
         duration: 30000,
         passed,
+        level: 'full',
         branch: 'feature/test',
         headCommit: 'abc123',
         uncommittedChanges: false,
@@ -249,6 +254,7 @@ function createHistoryNote(treeHash: string, passed: boolean = true) {
           passed,
           timestamp: '2025-10-23T20:00:00Z',
           treeHash,
+          level: 'full',
           duration: 30000,
           phases: [
             {
@@ -278,12 +284,19 @@ function createCommandError(stdout = '', stderr = ''): Error & { stdout: string;
 // ========================================================================
 
 /**
+ * Setup: Serve `config` as the loaded configuration (pre-commit loads it once,
+ * through loadConfigWithDir)
+ */
+function mockLoadedConfig(config: VibeValidateConfig): void {
+  // Use current directory as configDir (safe since we're already in test directory)
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: process.cwd() });
+}
+
+/**
  * Setup: Configure mocks for successful pre-commit
  */
 function setupSuccessfulPreCommit(config: VibeValidateConfig = createConfig()) {
-  vi.mocked(configLoader.loadConfig).mockResolvedValue(config);
-  // Use current directory as configDir (safe since we're already in test directory)
-  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: process.cwd() });
+  mockLoadedConfig(config);
   vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
   vi.mocked(core.runValidation).mockResolvedValue(createValidationResult());
 }
@@ -314,8 +327,7 @@ function setupCacheHit(treeHash: string) {
   vi.mocked(git.getGitTreeHash).mockResolvedValue({
     hash: treeHash as git.TreeHash,
   });
-  const historyNote = createHistoryNote(treeHash, true);
-  vi.mocked(history.findCachedValidation).mockResolvedValue(historyNote.runs[0]);
+  vi.mocked(history.readHistoryNote).mockResolvedValue(createHistoryNote(treeHash, true));
 }
 
 /**
@@ -326,7 +338,7 @@ function setupCacheMiss(treeHash: string) {
     hash: treeHash as git.TreeHash,
   };
   vi.mocked(git.getGitTreeHash).mockResolvedValue(treeHashResult);
-  vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+  vi.mocked(history.readHistoryNote).mockResolvedValue(null);
   vi.mocked(history.checkWorktreeStability).mockResolvedValue({
     stable: true,
     treeHashBefore: treeHash as git.TreeHash,
@@ -342,7 +354,7 @@ function setupCacheMiss(treeHash: string) {
  * Setup: Configure mocks for merge scenario
  */
 function setupMergeTest(isMerging: boolean) {
-  vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
+  mockLoadedConfig(createConfig());
   vi.mocked(git.isMergeInProgress).mockReturnValue(isMerging);
   vi.mocked(git.checkBranchSync).mockResolvedValue(
     createBranchSyncResult({ isUpToDate: false, behindBy: 3 })
@@ -554,6 +566,9 @@ describe('pre-commit command', () => {
     vi.mocked(utils.isToolAvailable).mockReset();
     vi.mocked(utils.runDependencyCheck).mockReset();
     vi.mocked(configLoader.loadConfig).mockReset();
+    vi.mocked(configLoader.loadConfigWithDir).mockReset();
+    vi.mocked(history.readHistoryNote).mockReset();
+    vi.mocked(history.readHistoryNote).mockResolvedValue(null); // No history by default
 
     // Set default mock values (tests can override)
     vi.mocked(git.getGitTreeHash).mockResolvedValue({
@@ -620,7 +635,7 @@ describe('pre-commit command', () => {
     });
 
     it('should block commit when secret scanning finds secrets', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+      mockLoadedConfig(
         createConfigWithSecretScanning(true, 'exit 1')
       );
       vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
@@ -662,7 +677,7 @@ describe('pre-commit command', () => {
     });
 
     it('should handle missing scan tool gracefully', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+      mockLoadedConfig(
         createConfigWithSecretScanning(true, 'nonexistent-tool --scan')
       );
       vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
@@ -688,7 +703,7 @@ describe('pre-commit command', () => {
     });
 
     it('should provide helpful error message when secrets detected', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+      mockLoadedConfig(
         createConfigWithSecretScanning(true, 'echo "Found: AWS_SECRET_KEY=abc123" && exit 1')
       );
       vi.mocked(git.checkBranchSync).mockResolvedValue(createBranchSyncResult());
@@ -733,18 +748,77 @@ describe('pre-commit command', () => {
       vi.mocked(git.getGitTreeHash)
         .mockResolvedValueOnce({ hash: 'snapshot0tree' as git.TreeHash })
         .mockResolvedValue({ hash: 'changed0tree' as git.TreeHash });
-      const passedOnSnapshot = createHistoryNote('snapshot0tree', true).runs[0];
-      vi.mocked(history.findCachedValidation).mockImplementation(async ({ hash }) =>
-        hash === 'snapshot0tree' ? passedOnSnapshot : null
+      vi.mocked(history.readHistoryNote).mockImplementation(async (hash) =>
+        hash === 'snapshot0tree' ? createHistoryNote('snapshot0tree', true) : null
       );
 
       await runPreCommit(env, 0);
 
-      expect(history.findCachedValidation).not.toHaveBeenCalledWith(expect.objectContaining({ hash: 'snapshot0tree' }));
+      expect(history.readHistoryNote).not.toHaveBeenCalledWith('snapshot0tree');
+      expect(history.readHistoryNote).toHaveBeenCalledWith('changed0tree');
       expect(core.runValidation).toHaveBeenCalledOnce();
       // The runner reuses the lock's hash rather than hashing again
       expect(core.runValidation).toHaveBeenCalledWith(expect.objectContaining({ treeHash: 'changed0tree' }));
       expect(git.getGitTreeHash).toHaveBeenCalledTimes(2);
+    });
+
+    it('never replays a stored failure: the steps run again', async () => {
+      setupSuccessfulPreCommit(createConfigWithPhases());
+      setupCacheMiss('abc123def456');
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createHistoryNote('abc123def456', false));
+
+      await runPreCommit(env, 0);
+
+      expect(core.runValidation).toHaveBeenCalledOnce();
+    });
+
+    it('loads the config once and reads the history note once per hook run', async () => {
+      setupSuccessfulPreCommit(createConfigWithPhases());
+      setupCacheMiss('abc123def456');
+
+      await runPreCommit(env, 0);
+
+      expect(configLoader.loadConfigWithDir).toHaveBeenCalledTimes(1);
+      expect(configLoader.loadConfig).not.toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('validation level', () => {
+    const twoLevels = (preCommitLevel?: string): VibeValidateConfig => createConfig({
+      validation: { levels: ['commit', 'full'], phases: [] },
+      ...(preCommitLevel ? { hooks: { preCommit: { enabled: true, level: preCommitLevel } } } : {}),
+    });
+
+    it('runs the first declared level by default', async () => {
+      setupSuccessfulPreCommit(twoLevels());
+      setupCacheMiss('abc123def456');
+
+      await runPreCommit(env, 0);
+
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({ level: { name: 'commit', levels: ['commit', 'full'] } })
+      );
+    });
+
+    it('runs hooks.preCommit.level when configured', async () => {
+      setupSuccessfulPreCommit(twoLevels('full'));
+      setupCacheMiss('abc123def456');
+
+      await runPreCommit(env, 0);
+
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({ level: { name: 'full', levels: ['commit', 'full'] } })
+      );
+    });
+
+    it('a recorded full pass answers the commit-level hook from cache', async () => {
+      setupSuccessfulPreCommit(twoLevels());
+      setupCacheHit('abc123def456'); // the fixture run is at level full
+
+      await runPreCommit(env, 0);
+
+      expectValidationNotRan();
     });
   });
 
@@ -962,7 +1036,7 @@ describe('pre-commit command', () => {
       });
 
       it('should block the commit when behind the base branch and baseBranchSync is block', async () => {
-        vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        mockLoadedConfig(
           createConfigWithSyncGuards({ baseBranchSync: 'block' })
         );
         setupBranchBehind(4, false);
@@ -985,7 +1059,7 @@ describe('pre-commit command', () => {
       });
 
       it('should block the commit when behind the tracking branch and trackingBranchSync is block', async () => {
-        vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        mockLoadedConfig(
           createConfigWithSyncGuards({ trackingBranchSync: 'block' })
         );
         setupBranchBehind(2, true);
@@ -1086,7 +1160,7 @@ describe('pre-commit command', () => {
         // combined fetch over that one dead ref — but origin is reachable and
         // origin/main refreshed fine, so the base guard must still render a
         // verdict rather than going permanently silent.
-        vi.mocked(configLoader.loadConfig).mockResolvedValue(
+        mockLoadedConfig(
           createConfigWithSyncGuards({ baseBranchSync: 'block' })
         );
         setupBranchBehind(4, true);
@@ -1244,7 +1318,7 @@ describe('pre-commit command', () => {
       // Recovery framing belongs to 'block' mode only — it exists because a
       // merge/pull is about to be demanded. In 'warn' mode nothing is about to
       // happen to your work, so there is nothing to protect it from.
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+      mockLoadedConfig(
         createConfigWithSyncGuards({ trackingBranchSync: 'block' })
       );
       setupBranchBehind(3, true);
@@ -1258,7 +1332,7 @@ describe('pre-commit command', () => {
     });
 
     it('should show recovery instructions with snapshot hash when branch is behind origin/main', async () => {
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(
+      mockLoadedConfig(
         createConfigWithSyncGuards({ baseBranchSync: 'block' })
       );
       setupBranchBehind(2, false); // No tracking branch
@@ -1320,7 +1394,6 @@ describe('pre-commit command', () => {
       mkdirSyncReal(subdir, { recursive: true });
 
       // Setup all necessary mocks for pre-commit to reach validation
-      vi.mocked(configLoader.loadConfig).mockResolvedValue(createConfig());
       vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
         config: createConfig(),
         configDir,

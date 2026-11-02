@@ -92,6 +92,8 @@ $schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 Top-level sections, in rough order of importance:
 
 - `validation.phases` — the heart of the config. Ordered list of phases; each phase has `steps`. Phases run **sequentially**; steps within a phase run sequentially by default or in parallel with `parallel: true`.
+- `validation.levels` — optional ordered, nested level names (e.g. `[commit, full]`). Once declared, every step needs a `level` (the level that adds it) and every level needs at least one step of its own; `level` is rejected without `levels`. `vv validate` runs the last level, `vv pre-commit` runs `hooks.preCommit.level` (default: the first). A pass at a later level answers an earlier one, never the reverse.
+- `hooks.preCommit` — `level`, branch-sync and secret-scan behaviour of `vv pre-commit`.
 - `git` — `mainBranch`, `remoteOrigin`, `autoSync`.
 - `ci` — `nodeVersions`, `packageManager`, `dependencyLockCheck`, `disableWorkflowCheck`.
 - `locking` — concurrency scope and wait behavior (see `vibe-validate:caching-and-locking`).
@@ -126,8 +128,8 @@ validation:
 ### `vv config` — show/validate current config
 
 ```bash
-vv config            # print resolved config as YAML
-vv config --check    # validate schema only; exits non-zero on error
+vv config            # print resolved config as YAML, the levels, and which level pre-commit / validate run
+vv config --validate # validate only; exit 0 if valid, 1 if invalid
 ```
 
 Use `vv config` when:
@@ -239,7 +241,7 @@ Default commands per manager: `npm ci`, `pnpm install --frozen-lockfile`, `yarn 
 
 **"Not in a git repository."** Run `git init` first. vibe-validate uses git tree hashes as cache keys and git notes for validation history — it cannot run outside a repo.
 
-**"Configuration invalid."** Run `vv config --check` for the Zod error message. Most often: a step missing `name` or `command`, a typo in `runOn:` (only `pre-commit`, `validate`, `disabled` are accepted), or a `cwd` with an absolute path or `..` escape.
+**"Configuration invalid."** Run `vv config --validate` for the Zod error message. Most often: a step missing `name` or `command`, a typo in `runOn:` (only `pre-commit`, `validate`, `disabled` are accepted), or a `cwd` with an absolute path or `..` escape.
 
 **"GitHub Actions workflow out of sync."** Two cases. (a) The generator fits your project — regenerate and commit: `vv generate-workflow --output .github/workflows/validate.yml`. (b) The generator doesn't fit (multi-language, custom setup actions) — set `ci.disableWorkflowCheck: true` and hand-maintain the workflow.
 

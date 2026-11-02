@@ -130,7 +130,7 @@ do {
 // Real-time feedback workflow:
 1. User: "Add login feature"
 2. Agent: Implement feature
-3. Agent: Run `vv validate --force`
+3. Agent: Run `vv validate`
 4. Agent: Read validation state
 5. If errors exist:
    - Fix errors proactively
@@ -658,13 +658,14 @@ EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
   echo "Validation passed"
-elif [ $EXIT_CODE -eq 1 ]; then
+else
+  # 1: validation failed, or the configuration is missing or invalid
   echo "Validation failed - fix errors"
   vibe-validate state
-elif [ $EXIT_CODE -eq 2 ]; then
-  echo "Configuration error"
 fi
 ```
+
+Plain `vibe-validate validate` exits only 0 or 1; it never exits 2. Exit code 2 belongs to `vibe-validate validate --check` (nothing runs): 0 = a recorded pass covers the level, 1 = the run that decides the level failed, 2 = it cannot answer (no run bears on the level, an unknown `--level`, or a missing or invalid configuration).
 
 ---
 

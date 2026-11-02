@@ -54,6 +54,16 @@ export const RunCacheNoteSchema = OperationMetadataSchema
   });
 
 /**
+ * Git notes ref (short form) that holds validation runs, one note per tree hash
+ *
+ * Every run in it records the level it covered. Releases before levels wrote
+ * level-less runs to `vibe-validate/validate`; those notes are shared with any
+ * worktree still running such a release, whose reader would take a commit-level
+ * pass for a whole-tree pass, so runs that carry a level never go there.
+ */
+export const VALIDATION_NOTES_REF = 'vibe-validate/leveled-runs';
+
+/**
  * Validation Run Schema
  *
  * Extends ValidationResultSchema with git metadata.
@@ -73,6 +83,12 @@ export const ValidationRunSchema = z.object({
 
   /** Did validation pass? */
   passed: z.boolean(),
+
+  /**
+   * The validation level the run covered. A pass answers requests at this
+   * level and every earlier one; a run without it answers nothing.
+   */
+  level: z.string(),
 
   /** Branch name at time of validation */
   branch: z.string(),
@@ -101,7 +117,7 @@ export const ValidationRunSchema = z.object({
 /**
  * History Note Schema
  *
- * Git note structure stored as YAML in refs/notes/vibe-validate/validate/{treeHash}
+ * Git note structure stored as YAML under refs/notes/{VALIDATION_NOTES_REF}, one note per tree hash
  *
  * Note: treeHash is optional because it's encoded in the git notes ref path.
  * The reader will use the ref path value if not present in the note content.
@@ -122,11 +138,13 @@ export const HistoryConfigSchema = z.object({
   /** Enable history recording */
   enabled: z.boolean().optional(),
 
-  /** Git notes configuration */
+  /**
+   * Git notes configuration
+   *
+   * There is no `ref`: history is always VALIDATION_NOTES_REF, so no config can
+   * steer leveled runs into the pre-levels ref a 0.20.x reader trusts.
+   */
   gitNotes: z.object({
-    /** Git ref namespace */
-    ref: z.string().optional(),
-
     /** Max runs to keep per tree */
     maxRunsPerTree: z.number().positive().optional(),
 
@@ -167,7 +185,6 @@ export type HistoryConfig = z.infer<typeof HistoryConfigSchema>;
 export const DEFAULT_HISTORY_CONFIG = {
   enabled: true,
   gitNotes: {
-    ref: 'vibe-validate/validate',
     maxRunsPerTree: 10,
     maxOutputBytes: 10000,
   },

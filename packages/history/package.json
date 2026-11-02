@@ -42,6 +42,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@vibe-validate/config": "workspace:*",
     "@vibe-validate/core": "workspace:*",
     "@vibe-validate/git": "workspace:*",
     "yaml": "^2.8.2",

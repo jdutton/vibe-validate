@@ -13,6 +13,8 @@ All top-level configuration keys at a glance:
 | `$schema` | `string` | — | JSON Schema URL for IDE autocomplete |
 | `git` | `object` | `{ mainBranch: 'main', remoteOrigin: 'origin', autoSync: false }` | Branch and remote settings |
 | `validation` | `object` | — | Pipeline phases, steps, and failFast behavior |
+| `validation.levels` | `string[]` | — (one implicit level, `full`) | Ordered, nested level names; once declared every step needs a `level` — see [`validation.levels`](#validationlevels) |
+| `hooks.preCommit.level` | `string` | the first of `validation.levels` | Level `vv pre-commit` runs — see [`hooks.preCommit.level`](#hooksprecommitlevel-optional) |
 | `ci` | `object` | — | CI workflow generation (Node versions, OS matrix, etc.) |
 | `hooks` | `object` | `{ preCommit: { enabled: true, baseBranchSync: 'warn', trackingBranchSync: 'warn' } }` | Pre-commit hook configuration, including the two sync guards |
 | `locking` | `object` | `{ enabled: true, concurrencyScope: 'directory' }` | Concurrency control — see [Locking Configuration](#locking-configuration) |
@@ -470,44 +472,55 @@ validation:
 
 **Cache optimization**: Using `cwd` field instead of `cd` commands improves cache hit rates by 30-50% in monorepo scenarios.
 
-#### `runScope` (optional)
+#### `level` (required once `validation.levels` is declared)
 
-Controls whether a validation step runs locally, in CI, or both. Use this when certain steps require CI-specific infrastructure (e.g., private NuGet feeds, specific SDKs) that isn't available on developer machines.
+The level that adds this step. A run at a level runs every step at that level and every earlier one (see [`validation.levels`](#validationlevels)). Every step must name a declared level once `validation.levels` exists, and `level` is rejected when it does not.
 
-**Type**: `'ci' | 'local'`
+**Type**: `string` (one of `validation.levels`)
 
-**Default**: none (runs everywhere)
+### `validation.levels`
 
-**Values**:
-- `ci` — Step runs only in CI (detected via `CI` environment variable). Skipped locally with "skipped (ci-only)" message.
-- `local` — Step runs only on developer machines. Skipped in CI with "skipped (local-only)" message.
+User-named, ordered, nested validation levels, lowest first. Use them to give the pre-commit hook a fast subset of the steps while `vv validate` and CI run all of them.
 
-**Example — .NET steps that need CI-only NuGet auth**:
+**Type**: `string[]` (ordered; at least one; unique; every level must have at least one step of its own — otherwise the schema reports `Level "<name>" has no steps; give it a step or remove it`)
+
+**Default**: none — every step belongs to the single implicit level `full`, and there is nothing to choose.
+
+**Level names** must match `^[A-Za-z0-9][A-Za-z0-9_-]*$` (start with a letter or digit; then letters, digits, `_` and `-`).
+
+**When the level rules are reported**: the level rules (every step names a declared level, every level has a step, no `level` without `validation.levels`) and duplicate step names are checked only after the config's structure parses. Fix the structural errors first (e.g. a removed `runScope`); the level errors appear on the next run. The JSON schema (`config.schema.json`, used by editors) checks shape only — it does not check the level rules or step-name uniqueness; `vv config --validate` does.
+
+<!-- config:example -->
 ```yaml
 validation:
+  levels: [commit, full]
   phases:
-    - name: 'Build & Test'
+    - name: 'Checks'
       steps:
-        - name: 'dotnet build'
-          command: 'dotnet build MyApp.sln --no-restore'
-          runScope: ci
-        - name: 'dotnet test'
-          command: 'dotnet test MyApp.sln --no-build'
-          runScope: ci
-        - name: 'PHI scan'
-          command: 'npx phi-scan'
-          # no runScope — runs everywhere
+        - name: 'Typecheck'
+          command: 'tsc --noEmit'
+          level: commit
+        - name: 'Unit tests'
+          command: 'vitest run'
+          level: commit
+        - name: 'Integration tests'
+          command: 'vitest run --config vitest.integration.config.ts'
+          level: full
+hooks:
+  preCommit:
+    level: commit   # optional; defaults to the first level
 ```
 
-**Skipped steps** appear in validation output as passed with zero duration, so they don't block other steps or fail the pipeline. They are visually distinct in the output:
-```
-   ⏭️  dotnet build  →  skipped (ci-only)
-   ⏭️  dotnet test   →  skipped (ci-only)
-   ⏳  PHI scan      →  npx phi-scan
-      ✅ PHI scan     - PASSED (3.2s)
-```
+**Which level runs**:
+- `vv validate` runs the **last** level (every step) unless `--level <name>` says otherwise.
+- `vv pre-commit` runs `hooks.preCommit.level`, else the **first** level; `--level` overrides.
+- CI is nothing special: the generated workflow runs `vv validate`, so it runs the last level. vibe-validate never reads the `CI` environment variable to choose steps.
 
-**Difference from `continueOnError`**: `continueOnError` runs the step and ignores failure. `runScope` skips the step entirely — the command is never executed.
+**Caching**: a run is recorded with its level. For a request at a level, the runs on this tree are read newest first; a pass at an earlier level is skipped, and the first remaining run decides. A PASS at that level or a later one is a hit (a `full` pass answers the `commit` hook; a `commit` pass never answers `full`). A failure at any level is a miss — it is never replayed. A failure is always recorded (even when the worktree changed during the run), so a forced re-check that goes red overturns the older green; a pass is recorded only when the worktree did not change during the run. On a miss, only the requested level's steps run.
+
+**Output**: only the selected steps appear in the result; a phase left with no steps at the level is omitted. Results, `vv state` and `vv history` name the level, and `vv config` prints the levels and which level `vv pre-commit` and `vv validate` run.
+
+**Migrating from `runScope`**: `runScope` was removed, and the config schema rejects it. For `runScope: ci` the message is `runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level`; for `runScope: local` it is `runScope: local was removed with no replacement; remove the key (or the step)`. Replace `runScope: ci` with a later level (e.g. `levels: [commit, full]` and `level: full` on those steps, `level: commit` on the rest). `runScope: local` has no replacement: a step that should not run in CI does not belong in the validation. Plain `vv validate` now runs every step locally, just as CI does (a `runScope: ci` step used to be skipped outside CI); when a later-level step needs CI-only resources, run `vv validate --level <lower level>` (e.g. `--level commit`) locally.
 
 ### `validation.failFast`
 
@@ -854,6 +867,14 @@ hooks:
     command: 'pnpm vibe-validate pre-commit'  # Use pnpm instead of npx
 ```
 
+### `hooks.preCommit.level` (optional)
+
+The validation level `vv pre-commit` runs. Must be one of `validation.levels`, and is rejected when `validation.levels` is not declared.
+
+**Type**: `string`
+
+**Default**: the first of `validation.levels`
+
 ### `hooks.preCommit.baseBranchSync` (optional)
 
 What `vibe-validate pre-commit` does when your branch is behind the **base branch** (e.g. `origin/main`).
@@ -1057,7 +1078,9 @@ vibe-validate respects these environment variables for agent context detection:
 
 **Note**: All contexts use YAML format (access via `vibe-validate state` command)
 
-**Note**: Use CLI flags for behavior control (e.g., `--force` to bypass cache, `--verbose` for detailed output)
+**Note**: `CI` changes output only; it never selects which steps run (that is `validation.levels` and `--level`).
+
+**Note**: Use CLI flags for behavior control (e.g., `--force` to re-run a recorded pass, `--verbose` for detailed output)
 
 ## Complete Example
 
@@ -1259,7 +1282,7 @@ git:
 
 Validation state is stored in git notes (not files):
 
-- **Storage**: Git notes under `refs/notes/vibe-validate/runs`
+- **Storage**: Git notes under `refs/notes/vibe-validate/leveled-runs` (not configurable). The pre-levels ref `refs/notes/vibe-validate/validate` is never read; `vv doctor` reports it when present. Delete it with `git update-ref -d refs/notes/vibe-validate/validate` once no 0.20.x worktree or clone uses it, and change any notes push/fetch refspec to `refs/notes/vibe-validate/leveled-runs`.
 - **Access**: Use `vibe-validate state` command to view current state
 - **History**: Use `vibe-validate history list` to view all validations
 - **Contents**: Validation results, git tree hash, timestamp, errors

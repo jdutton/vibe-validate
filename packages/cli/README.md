@@ -76,10 +76,14 @@ npx vibe-validate validate [options]
 ```
 
 **Options:**
-- `--force` - Bypass cache and force re-validation
-- `--no-cache` - Disable caching for this run
+- `-l, --level <name>` - Validation level to run (one of `validation.levels`; default: the last)
+- `-f, --force` - Re-run even when a pass is already recorded (a failure is never replayed)
+- `-c, --check` - Report the recorded verdict for the level without running anything (exit codes below)
+- `--retry-failed` - Re-run only the failed steps of the deciding run, when it failed at this level
 - `-v, --verbose` - Show detailed progress and output
-- `--config <path>` - Path to config file (default: `vibe-validate.config.yaml`)
+- `-y, --yaml` - Output the validation result as YAML to stdout
+- `-d, --debug` - Create output files for all steps
+- `--no-lock` / `--no-wait` / `--wait-timeout <seconds>` - Control single-instance locking
 
 **Examples:**
 
@@ -93,14 +97,21 @@ npx vibe-validate validate --force
 # Verbose output (detailed progress indicators)
 npx vibe-validate validate --verbose
 
-# Custom config file
-npx vibe-validate validate --config ./custom-config.yaml
+# Run only the commit level
+npx vibe-validate validate --level commit
+
+# Is this tree already known-good? (no execution)
+npx vibe-validate validate --check
 ```
 
 **Exit Codes:**
-- `0` - Validation passed
-- `1` - Validation failed
-- `2` - Configuration or runtime error
+- `0` - Validation passed (or a recorded pass covers the level)
+- `1` - Validation failed, or the configuration is missing or invalid (an unknown `--level` included). Plain `validate` never exits 2.
+
+With `--check` (nothing runs):
+- `0` - A recorded pass covers the level
+- `1` - The run that decides the level failed
+- `2` - Cannot answer: no run bears on the level, an unknown `--level`, not a git repository, or a missing or invalid configuration
 
 ---
 
@@ -113,7 +124,12 @@ npx vibe-validate state [options]
 ```
 
 **Options:**
+- `-l, --level <name>` - Show the run deciding this level, as `validate --check` reads it (default: the level `validate` runs, the last)
 - `-v, --verbose` - Show full error output without truncation
+- `--runs` - Show only the run cache (`vibe-validate run` results); cannot be combined with `--level`
+- `--all` - Show both validation history and run cache
+
+Output is always YAML. The deciding run: the tree's runs newest first, skipping passes whose level does not cover the requested one; the first remaining run. When none decides, the output says `exists: false` and lists `levelsWithRuns`.
 
 **Examples:**
 
@@ -121,12 +137,15 @@ npx vibe-validate state [options]
 # Minimal YAML output (agent-friendly)
 npx vibe-validate state
 
+# The run deciding the commit level
+npx vibe-validate state --level commit
+
 # Verbose output (includes explanatory text)
 npx vibe-validate state --verbose
 ```
 
 **Output includes:**
-- Last validation result (passed/failed)
+- The deciding run's result (passed/failed)
 - Git tree hash
 - Timestamp
 - Failed step details (if any)
@@ -143,8 +162,8 @@ npx vibe-validate config [options]
 ```
 
 **Options:**
+- `--validate` - Validate configuration only (exit 0 if valid, 1 if invalid)
 - `-v, --verbose` - Show detailed configuration with explanations
-- `--config <path>` - Path to config file
 
 **Examples:**
 
@@ -168,15 +187,18 @@ npx vibe-validate config --verbose
 Run pre-commit workflow (branch sync + validation).
 
 ```bash
-npx vibe-validate pre-commit
+npx vibe-validate pre-commit [--level <name>] [--skip-sync] [--verbose]
 ```
 
 **Workflow:**
-1. Check if branch is behind `origin/main`
-2. If behind → Exit with instructions to merge
-3. If up-to-date → Run validation (with caching)
-4. If validation passes → Allow commit
-5. If validation fails → Block commit with error details
+1. Fail if any file is partially staged
+2. Check if the branch is behind `origin/main` or its tracking branch — warns by default (`hooks.preCommit.baseBranchSync` / `trackingBranchSync`: `warn`, `block` or `off`)
+3. Run secret scanning (if enabled)
+4. Run validation at `hooks.preCommit.level` (default: the first of `validation.levels`; `--level` overrides), with caching
+5. If validation passes → Allow commit
+6. If validation fails → Block commit with error details
+
+**Exit codes:** `0` passed; `1` validation failed, secrets detected, files partially staged, a `block` sync guard was violated, the configuration is missing or invalid, or `--level` names an undeclared level.
 
 **Recommended setup** (`.husky/pre-commit`):
 
@@ -418,10 +440,11 @@ All templates available at: https://github.com/jdutton/vibe-validate/tree/main/p
 vibe-validate uses **git tree hash-based caching** for deterministic, content-based validation:
 
 **How it works:**
-1. Calculate git tree hash of current working tree (includes all changes)
-2. Check if hash matches cached state
-3. If match → Skip validation (instant, < 1s)
-4. If different → Run full validation (~60-90s)
+1. Calculate git tree hash of current working tree (includes all changes, plus submodule hashes)
+2. Find the deciding run for the requested level: the tree's runs newest first, skipping passes whose level does not cover it
+3. If it is a recorded PASS → Skip validation (instant, < 1s)
+4. Otherwise (a failure — never replayed — or nothing recorded) → Run the requested level's steps (~60-90s)
+5. Record the run: a failure always, a pass only if the worktree did not change while it ran
 
 **Performance:**
 - **First run**: ~60-90s (depends on your validation steps)
@@ -431,7 +454,6 @@ vibe-validate uses **git tree hash-based caching** for deterministic, content-ba
 **Cache invalidation:**
 - Automatic when any file changes (via git tree hash)
 - Manual with `--force` flag
-- Disabled with `--no-cache` flag
 
 ## Agent-Friendly Output
 

@@ -16,7 +16,7 @@ import { writeFileSync, appendFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { ValidationPhase, ValidationStep, VibeValidateConfig } from '@vibe-validate/config';
+import { getStepLevel, UnknownLevelError, type ValidationPhase, type ValidationStep, type VibeValidateConfig } from '@vibe-validate/config';
 import { autoDetectAndExtract, type ErrorExtractorResult } from '@vibe-validate/extractors';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { normalizedTmpdir } from '@vibe-validate/utils';
@@ -119,36 +119,36 @@ export function buildStepEnv(args: {
   };
 }
 
-/**
- * Determine if a step should be skipped based on its runScope and the current environment.
- *
- * - `runScope: 'ci'` — only runs in CI, skipped locally
- * - `runScope: 'local'` — only runs locally, skipped in CI
- * - No `runScope` (undefined) — runs everywhere (backwards compatible)
- *
- * @param runScope - The step's runScope setting
- * @param isCI - Whether the current environment is CI
- * @returns true if the step should be skipped
- *
- * @public
- */
-export function shouldSkipByRunScope(runScope: 'ci' | 'local' | undefined, isCI: boolean): boolean {
-  if (!runScope) return false;
-  if (runScope === 'ci' && !isCI) return true;
-  if (runScope === 'local' && isCI) return true;
-  return false;
+/** The level a run executes, with the config's levels in order (lowest first) */
+export interface RunLevel {
+  name: string;
+  levels: readonly string[];
 }
 
 /**
- * Get the human-readable skip reason for a runScope-skipped step.
+ * The phases a run at `level` executes
  *
- * @param runScope - The step's runScope setting
- * @returns Display string for the skip reason
- *
- * @internal
+ * @param phases - Every phase of the config
+ * @param level - The level to run
+ * @returns Phases holding only the steps at or before `level.name`; phases left empty are dropped
+ * @throws UnknownLevelError when the run's level, or a step's, is not one of `level.levels`
  */
-function getRunScopeSkipReason(runScope: 'ci' | 'local' | undefined): string {
-  return runScope === 'ci' ? 'skipped (ci-only)' : 'skipped (local-only)';
+export function selectPhasesForLevel(phases: ValidationPhase[], level: RunLevel): ValidationPhase[] {
+  const runIndex = level.levels.indexOf(level.name);
+  if (runIndex === -1) {
+    throw new UnknownLevelError(level.name, level.levels);
+  }
+  const runsAtLevel = (step: ValidationStep): boolean => {
+    const stepLevel = getStepLevel(step, level.levels);
+    const stepIndex = level.levels.indexOf(stepLevel);
+    if (stepIndex === -1) {
+      throw new UnknownLevelError(stepLevel, level.levels);
+    }
+    return stepIndex <= runIndex;
+  };
+  return phases
+    .map(phase => ({ ...phase, steps: phase.steps.filter(runsAtLevel) }))
+    .filter(phase => phase.steps.length > 0);
 }
 
 /**
@@ -161,8 +161,14 @@ function getRunScopeSkipReason(runScope: 'ci' | 'local' | undefined): string {
  * via git notes. See packages/cli/src/commands/validate.ts and @vibe-validate/history.
  */
 export interface ValidationConfig {
-  /** Validation phases to execute */
+  /** Validation phases to execute (every phase of the config; the runner selects by `level`) */
   phases: ValidationPhase[];
+
+  /**
+   * The level to run and the config's levels in order. Only steps whose level
+   * is at or before `name` run; a phase left with no steps is omitted.
+   */
+  level: RunLevel;
 
   /** Path to log file (default: os.tmpdir()/validation-{timestamp}.log) */
   logPath?: string;
@@ -768,22 +774,6 @@ function formatCacheTimestamp(timestamp: string): string {
  * Execute a single validation step (or use cached result if available)
  */
 /**
- * Build a skipped step result for runScope filtering
- */
-function buildSkippedStepResult(step: ValidationStep): { output: string; stepResult: StepResult } {
-  return {
-    output: '',
-    stepResult: {
-      name: step.name,
-      command: step.command,
-      passed: true,
-      durationSecs: 0,
-      exitCode: 0,
-    },
-  };
-}
-
-/**
  * Try to use a cached result from a previous run. Returns null if no cache hit.
  */
 function tryUseCachedResult(
@@ -819,13 +809,6 @@ function tryUseCachedResult(
 async function executeSingleStep(options: ExecuteSingleStepOptions): Promise<{ output: string; stepResult: StepResult }> {
   const { step, env, verbose, yaml, debug, maxNameLength, log, previousRun, phaseName, treeHash, runId } = options;
   const paddedName = step.name.padEnd(maxNameLength);
-
-  // Check if step should be skipped based on runScope
-  const isCI = Boolean(process.env.CI);
-  if (shouldSkipByRunScope(step.runScope, isCI)) {
-    log(`   ⏭️  ${paddedName}  →  ${getRunScopeSkipReason(step.runScope)}`);
-    return buildSkippedStepResult(step);
-  }
 
   // Check if we can use cached result from previous run
   const cachedResult = tryUseCachedResult(step, paddedName, maxNameLength, previousRun, verbose, log);
@@ -1144,26 +1127,6 @@ export async function runStepsInParallel(
     steps.map(step =>
       new Promise<{ step: ValidationStep; output: string; durationSecs: number }>((resolve, reject) => {
         const paddedName = step.name.padEnd(maxNameLength);
-
-        // Check if step should be skipped based on runScope
-        const isCI = Boolean(process.env.CI);
-        if (shouldSkipByRunScope(step.runScope, isCI)) {
-          const skipReason = getRunScopeSkipReason(step.runScope);
-          log(`   ⏭️  ${paddedName}  →  ${skipReason}`);
-
-          const skippedStepResult: StepResult = {
-            name: step.name,
-            command: step.command,
-            passed: true,
-            durationSecs: 0,
-            exitCode: 0,
-          };
-
-          stepResults.push(skippedStepResult);
-          outputs.set(step.name, '');
-          resolve({ step, output: '', durationSecs: 0 });
-          return;
-        }
 
         // Check if we can use cached result from previous run
         const previousStep = previousRun ? findPreviousStepResult(previousRun, step.name) : null;
@@ -1506,6 +1469,7 @@ function appendStepOutputsToLog(
 function createFailedValidationResult(
   failedStep: ValidationStep,
   currentTreeHash: string,
+  level: string,
   phaseResults: PhaseResult[],
   debug: boolean,
   logPath?: string
@@ -1515,6 +1479,7 @@ function createFailedValidationResult(
     passed: false,
     timestamp: new Date().toISOString(),
     treeHash: currentTreeHash,
+    level,
     summary: `${failedStep.name} failed`,
     failedStep: failedStep.name,
     phases: phaseResults,
@@ -1567,13 +1532,14 @@ function createFailedValidationResult(
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 19 acceptable for main validation orchestration function (plugin loading, caching, phase execution, and result handling)
 export async function runValidation(config: ValidationConfig): Promise<ValidationResult> {
   const {
-    phases,
     logPath = join(normalizedTmpdir(), `validation-${new Date().toISOString().replaceAll(/[:.]/g, '-')}.log`),
     enableFailFast = false,
     env = {},
     onPhaseStart,
     onPhaseComplete,
   } = config;
+  // Before any hashing or logging, so an unknown level fails fast
+  const phases = selectPhasesForLevel(config.phases, config.level);
 
   // Get current working tree hash (deterministic, content-based)
   const currentTreeHash = config.treeHash ?? (await getGitTreeHash()).hash;
@@ -1665,6 +1631,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
       return createFailedValidationResult(
         result.failedStep,
         currentTreeHash,
+        config.level.name,
         phaseResults,
         config.debug ?? false,
         logPath
@@ -1678,6 +1645,7 @@ export async function runValidation(config: ValidationConfig): Promise<Validatio
     passed: true,
     timestamp: new Date().toISOString(),
     treeHash: currentTreeHash,
+    level: config.level.name,
     summary: 'Validation passed',
     phases: phaseResults,
     ...(config.debug ? { outputFiles: { combined: logPath } } : {}),

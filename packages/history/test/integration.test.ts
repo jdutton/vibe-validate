@@ -68,6 +68,7 @@ describe('History Integration', () => {
     // 2. Simulate validation
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: new Date().toISOString(),
       treeHash,
       phases: [
@@ -81,7 +82,7 @@ describe('History Integration', () => {
     };
 
     // 3. Check stability
-    const stability = await checkWorktreeStability(treeHashBefore.hash);
+    const stability = await checkWorktreeStability(treeHashBefore);
     expect(stability.stable).toBe(true);
 
     // 4. Record if stable
@@ -118,7 +119,7 @@ describe('History Integration', () => {
     // };
 
     // 3. Check stability (should detect change)
-    const stability = await checkWorktreeStability(before.hash);
+    const stability = await checkWorktreeStability(before);
     expect(stability.stable).toBe(false);
 
     // 4. Should NOT record
@@ -134,7 +135,7 @@ describe('History Integration', () => {
   });
 
   it('should prune old history', async () => {
-    const pruneResult = await pruneHistoryByAge(90, {}, true); // dry run
+    const pruneResult = await pruneHistoryByAge(90, true); // dry run
 
     expect(pruneResult).toHaveProperty('notesPruned');
     expect(pruneResult).toHaveProperty('runsPruned');

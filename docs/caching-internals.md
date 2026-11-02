@@ -66,28 +66,75 @@ All of the following apply to **non-ignored** files only.
   means ignored by any source: `.gitignore`, `.git/info/exclude`, or your
   global excludes file
 
-### Consequence worth knowing
+### Only a pass is ever a cache hit
 
-A validation step that inspects ignored working-tree state (say, one that walks
-the directory looking for stray files) can record a result that cleaning up that
-state will not invalidate — the key cannot see the change. Re-run explicitly:
+A recorded FAILURE is never replayed — not by `vv validate`, not by the
+pre-commit hook, not by a nested `vv run`, and not at any level. Every run after
+a failure executes the steps again. Failures are still recorded: they feed
+`--retry-failed`, flakiness detection, and `vv history`.
 
-```bash
-vv validate --retry-failed   # re-run only the failed steps (passed steps stay cached)
-vv validate --force          # re-run everything
-```
-
-Prefer `--retry-failed`: it replays the previously passed steps from history and
-re-executes only what failed, so escaping a stale failure does not cost a full
-revalidation.
-
-If the failure is surfacing at `git commit` and you want to bypass the cache
-without leaving the commit path, `VV_FORCE_EXECUTION=1` does for `pre-commit`
-what `--force` does for `validate` (git hooks accept no flags of their own):
+So `--force` (and `VV_FORCE_EXECUTION=1`, its form for git hooks, which accept no
+flags) exists only to re-run a recorded PASS — for example one produced by a step
+that inspects ignored working-tree state, which the key cannot see:
 
 ```bash
+vv validate --force
 VV_FORCE_EXECUTION=1 git commit -m "your message"
 ```
+
+### Levels are part of the key
+
+With `validation.levels` declared (e.g. `[commit, full]`), each run records the
+level it covered. A pass answers a request at its own level or any earlier one,
+so a `vv validate` (last level) pass lets the `commit`-level hook exit instantly,
+but a hook pass never satisfies `vv validate`. The cache key is therefore
+(tree hash, submodule hashes, level).
+
+### The deciding run
+
+A tree's note holds every run recorded for it, oldest first. For a request at
+level L, the runs whose submodule state matches are read **newest first**:
+
+1. A pass whose level does not cover L (an earlier level, which skipped steps L
+   runs) says nothing about L and is skipped.
+2. The first remaining run **decides**. A pass at L or a later level is a cache
+   hit. A failure at ANY level is a miss: the steps run again.
+
+A failure decides even at another level, because a newer red means the tree
+failed since the last green, and the red step may be one L also runs. A
+failure is always recorded, so a `--force` (or `VV_FORCE_EXECUTION=1`) re-check
+that goes red **overturns** the earlier green for every later request on that
+tree until a newer green is recorded.
+
+### What gets recorded
+
+The tree is hashed once, before the run (after any wait for the lock).
+
+- A **pass** is recorded only if the worktree, submodules included, did not
+  change while the steps ran. A pass from an unstable run is reported but not
+  recorded, so it cannot vouch for a tree it never saw.
+- A **failure** is always recorded, under the tree hashed before the run — even
+  when the worktree changed meanwhile, and including a dependency lock check
+  failure. A recorded failure can only cause a re-run; dropping it would leave
+  an older pass answering.
+- If `vibe-validate.config.yaml` changes between being loaded and the tree being
+  hashed, the command exits (with its startup exit code: `1`, or `2` for
+  `--check`) and asks you to run again.
+- On a miss, only the requested level's steps run (that level and the earlier
+  ones).
+
+`--retry-failed` builds only on the deciding run, and only when it failed at
+exactly L: it re-runs that run's failed steps and keeps its passed ones.
+Otherwise (the deciding run passed, failed at another level, or nothing is
+recorded) every step at L runs. An older failure at L is never used — the steps
+it passed may fail now.
+
+`vv validate --check [--level L]` reports the same deciding run without
+executing anything: exit `0` when it passed, `1` when it failed (at L or another
+level; the hint names `vv state --level L`, the requested level, which shows that deciding run), and `2` when nothing
+recorded bears on L, the history cannot answer, the directory is not a git
+repository, `--level` names an unknown level, or the configuration is missing
+or invalid.
 
 ## How Caching Works: Step by Step
 
@@ -98,10 +145,10 @@ $ vv validate
 ```
 
 1. **Calculate tree hash**: `git write-tree` → `abc123`
-2. **Check cache**: Look for `refs/notes/vibe-validate/validate/abc123`
-3. **Cache miss**: No notes found
-4. **Execute validation**: Run all phases (90 seconds)
-5. **Store result**: Save to `refs/notes/vibe-validate/validate/abc123`
+2. **Check cache**: Read the note on `abc123` under `refs/notes/vibe-validate/leveled-runs`
+3. **Cache miss**: No note found
+4. **Execute validation**: Run the steps at the requested level (90 seconds)
+5. **Store result**: Append the run (with its level) to the note on `abc123`
 
 ### Second Run (Cache Hit)
 
@@ -110,8 +157,8 @@ $ vv validate
 ```
 
 1. **Calculate tree hash**: `git write-tree` → `abc123` (same!)
-2. **Check cache**: Look for `refs/notes/vibe-validate/validate/abc123`
-3. **Cache hit!**: Found notes with previous result
+2. **Check cache**: Read the note on `abc123` under `refs/notes/vibe-validate/leveled-runs`
+3. **Cache hit!**: The deciding run (newest, skipping passes at earlier levels) passed
 4. **Return cached result**: No execution needed (288ms)
 
 ### After Code Change (Partial Cache)
@@ -122,10 +169,10 @@ $ vv validate
 ```
 
 1. **Calculate tree hash**: `git write-tree` → `def456` (different!)
-2. **Check cache**: Look for `refs/notes/vibe-validate/validate/def456`
-3. **Cache miss**: No notes found for new tree hash
-4. **Execute validation**: Run all phases again
-5. **Store result**: Save to `refs/notes/vibe-validate/validate/def456`
+2. **Check cache**: Read the note on `def456` under `refs/notes/vibe-validate/leveled-runs`
+3. **Cache miss**: No note found for the new tree hash
+4. **Execute validation**: Run the steps at the requested level again
+5. **Store result**: Append the run to the note on `def456`
 
 ## Cache Storage: Git Notes
 
@@ -133,10 +180,10 @@ vibe-validate uses **git notes** for cache storage:
 
 ```bash
 # View validation cache
-git notes --ref=refs/notes/vibe-validate/validate list
+git notes --ref=refs/notes/vibe-validate/leveled-runs list
 
 # View specific cached result
-git notes --ref=refs/notes/vibe-validate/validate show <tree-hash>
+git notes --ref=refs/notes/vibe-validate/leveled-runs show <tree-hash>
 ```
 
 ### Why git notes?
@@ -167,6 +214,11 @@ cache_key = hash(tree_hash + "npm test")
 ```
 
 Stored in: `refs/notes/vibe-validate/run/<tree-hash>/<command-hash>`
+
+The tree is hashed once, before the command runs. Only a pass is stored, and
+only if the tree is unchanged after the command. A failure is never stored; it
+deletes the stored pass's notes ref for that command, so a `vv run --force`
+that goes red overturns the old green.
 
 ## Leveraging Caching for Speed
 
@@ -220,8 +272,11 @@ vv validate  # Cache hit! (same tree hash as before)
 ```bash
 # Check if validation is cached
 vv validate --check
-# Exit 0: cached (green)
-# Exit 1: not cached (need to run)
+# Exit 0: the deciding run passed (cache hit)
+# Exit 1: the deciding run failed, at this level or another (the steps will run)
+# Exit 2: nothing recorded bears on this level, history unreadable,
+#         not a git repository, an unknown --level, or a missing or
+#         invalid configuration
 
 # Check if run command is cached
 vv run --check "npm test"
@@ -230,7 +285,7 @@ vv run --check "npm test"
 ### Force cache refresh
 
 ```bash
-# Force re-validation (ignore cache)
+# Re-run a recorded pass (failures are never replayed, so this is the only case)
 vv validate --force
 
 # Force re-run (ignore cache)
@@ -309,11 +364,15 @@ git write-tree
 
 # Check if validation cached for current tree
 vv validate --check
-echo $?  # 0 = cached, 1 = not cached
+echo $?  # 0 = cached pass, 1 = deciding run failed, 2 = nothing recorded for this level (or unknown level, missing or invalid config)
 
 # See what's changing
 git status --short
 git diff
+
+# Same tree, still a miss? The deciding run failed (never a hit), or only an
+# earlier level passed (a commit-level pass never answers the last level)
+vv history list
 ```
 
 ### Cache seems stale
@@ -378,18 +437,14 @@ function getTreeHash(): string {
 ### Cache lookup
 
 ```typescript
-function getCachedValidation(treeHash: string): ValidationResult | null {
-  const notesRef = `refs/notes/vibe-validate/validate`;
-
-  try {
-    const cached = execSync(
-      `git notes --ref=${notesRef} show ${treeHash}`
-    ).toString();
-
-    return JSON.parse(cached);
-  } catch {
-    return null; // Cache miss
-  }
+// Simplified - see findDecidingRun in packages/history/src/lookup.ts
+function getCachedValidation(note: HistoryNote, level: string, levels: string[]): ValidationRun | null {
+  // Newest first; a pass at an earlier level says nothing about `level`
+  const deciding = note.runs.toReversed().find(
+    run => !run.passed || levelCovers(run.level, level, levels)
+  );
+  // Only a deciding PASS is a hit; a deciding failure (any level) is a miss
+  return deciding?.passed ? deciding : null;
 }
 ```
 
@@ -397,7 +452,7 @@ function getCachedValidation(treeHash: string): ValidationResult | null {
 
 ```typescript
 function cacheValidation(treeHash: string, result: ValidationResult): void {
-  const notesRef = `refs/notes/vibe-validate/validate`;
+  const notesRef = `refs/notes/vibe-validate/leveled-runs`;
   const data = JSON.stringify(result);
 
   execSync(`git notes --ref=${notesRef} add -f -m '${data}' ${treeHash}`);

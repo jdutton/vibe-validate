@@ -1,8 +1,11 @@
 /**
  * Tests for check-validation utility
  *
- * This module uses git notes instead of state files.
+ * This module uses git notes instead of state files. The note is served through
+ * readHistoryNote; the cache and retry lookups are the real pure functions.
  */
+
+import './validate-workflow-test-setup.js';
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as git from '@vibe-validate/git';
@@ -18,10 +21,6 @@ import {
   expectYamlOutput,
   expectNoConsoleOutput
 } from '../helpers/validation-test-helpers.js';
-
-// Mock dependencies
-vi.mock('@vibe-validate/git');
-vi.mock('@vibe-validate/history');
 
 /**
  * Helper: Mock getGitTreeHash with TreeHashResult
@@ -39,6 +38,20 @@ function mockTreeHash(hash = 'abc123def456', submoduleHashes?: Record<string, st
     ...(typedSubmoduleHashes && { submoduleHashes: typedSubmoduleHashes })
   });
 }
+
+/**
+ * Helper: Serve runs (oldest first) as the tree's history note, or no note at all
+ */
+function serveRuns(runs: Array<ReturnType<typeof createValidationRunFromNote>> | null, treeHash = 'abc123def456'): void {
+  vi.mocked(history.readHistoryNote).mockResolvedValue(runs === null ? null : { treeHash, runs });
+}
+
+/** Every console.log call so far, each call's arguments joined, one line per call */
+function loggedText(): string {
+  return vi.mocked(console.log).mock.calls.map(call => call.join(' ')).join('\n');
+}
+
+const TWO_LEVELS: VibeValidateConfig = { validation: { levels: ['commit', 'full'], phases: [] } };
 
 /**
  * Helper: Create common two-phase test structure (Pre-Qualification + Testing)
@@ -74,9 +87,11 @@ function createValidationRunFromNote(options: Parameters<typeof createValidation
     timestamp: run.timestamp,
     duration: run.duration,
     passed: run.passed,
+    level: run.level,
     branch: run.branch,
     headCommit: run.headCommit,
     uncommittedChanges: run.uncommittedChanges,
+    ...(run.submoduleHashes ? { submoduleHashes: run.submoduleHashes } : {}),
     result: run.result,
   };
 }
@@ -96,9 +111,9 @@ async function reportCachedFailure(
   }
 
   mockTreeHash();
-  vi.mocked(history.findCachedValidation).mockResolvedValue(failedRun);
+  serveRuns([failedRun]);
 
-  await expect(checkValidationStatus(config)).rejects.toThrow(expectProcessExit(1));
+  await expect(checkValidationStatus(config, 'full')).rejects.toThrow(expectProcessExit(1));
 
   return vi.mocked(console.log).mock.calls.map(call => call.join(' '));
 }
@@ -125,44 +140,121 @@ describe('checkValidationStatus', () => {
 
     // Reset mocks
     vi.mocked(git.getGitTreeHash).mockReset();
-    vi.mocked(history.findCachedValidation).mockReset();
+    vi.mocked(history.readHistoryNote).mockReset();
   });
 
   describe('when not in git repository', () => {
     it('should exit with code 2 and show error', async () => {
       vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('Not a git repository'));
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(2));
 
       expectConsoleOutput(consoleLogSpy, ['Not in git repository']);
       expect(processExitSpy).toHaveBeenCalledWith(2);
     });
   });
 
-  describe('when git notes cannot be read', () => {
-    it('should exit with code 2 and show error', async () => {
+  describe('when no validation history exists', () => {
+    it('should exit with code 2 when there is no note', async () => {
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockRejectedValue(new Error('Git notes error'));
+      serveRuns(null);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(2));
 
-      expectConsoleOutput(consoleLogSpy, ['Failed to read validation history']);
+      expectConsoleOutput(consoleLogSpy, [
+        'No validation at level full for current working tree',
+        'Tree hash: abc123def456'
+      ]);
+      expect(processExitSpy).toHaveBeenCalledWith(2);
+    });
+
+    it('should exit with code 2 when the note holds no runs', async () => {
+      mockTreeHash();
+      serveRuns([]);
+
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(2));
+
       expect(processExitSpy).toHaveBeenCalledWith(2);
     });
   });
 
-  describe('when no validation history exists', () => {
-    it('should exit with code 2 when cached validation is null', async () => {
+  describe('levels', () => {
+    it('exits 2 when only an earlier level passed: a commit pass does not answer full', async () => {
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+      serveRuns([createValidationRunFromNote({ passed: true, level: 'commit' })]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(TWO_LEVELS, 'full')).rejects.toThrow(expectProcessExit(2));
 
-      expectConsoleOutput(consoleLogSpy, [
-        'No validation history for current working tree',
-        'Tree hash: abc123def456'
+      expectConsoleOutput(consoleLogSpy, ['No validation at level full for current working tree']);
+    });
+
+    it('exits 0 when a later level passed: a full pass covers commit', async () => {
+      mockTreeHash();
+      serveRuns([createValidationRunFromNote({ passed: true, level: 'full' })]);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'commit')).rejects.toThrow(expectProcessExit(0));
+
+      expectConsoleOutput(consoleLogSpy, ['Validation passed for this code', 'Level: full (covers commit)']);
+    });
+
+    it('exits 1 when the newest run failed at another level, and points at the requested level', async () => {
+      mockTreeHash();
+      serveRuns([createValidationRunFromNote({ passed: false, level: 'full' })]);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'commit')).rejects.toThrow(expectProcessExit(1));
+
+      const logged = loggedText();
+      for (const expected of ['The newest run bearing on level commit failed for this code', 'It ran at level full', 'state --level commit', 'validate --level commit']) {
+        expect(logged).toContain(expected);
+      }
+    });
+
+    it('names the requested level when a newer pass at an earlier level does not decide', async () => {
+      // commit red, then commit green: the green does not cover full, so the red decides full.
+      // `state --level commit` would show the green; `state --level full` shows the red.
+      mockTreeHash();
+      serveRuns([
+        createValidationRunFromNote({ passed: false, level: 'commit', timestamp: '2025-10-21T09:00:00Z' }),
+        createValidationRunFromNote({ passed: true, level: 'commit', timestamp: '2025-10-21T10:00:00Z' }),
       ]);
-      expect(processExitSpy).toHaveBeenCalledWith(2);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'full')).rejects.toThrow(expectProcessExit(1));
+
+      const logged = loggedText();
+      expect(logged).toContain('The newest run bearing on level full failed for this code');
+      expect(logged).toContain('state --level full');
+      expect(logged).not.toContain('state --level commit');
+      expect(logged).not.toContain('Last validation');
+    });
+
+    it('exits 1 when a newer commit-level failure follows a full pass', async () => {
+      mockTreeHash();
+      serveRuns([
+        createValidationRunFromNote({ passed: true, level: 'full', timestamp: '2025-10-21T09:00:00Z' }),
+        createValidationRunFromNote({ passed: false, level: 'commit', timestamp: '2025-10-21T10:00:00Z' }),
+      ]);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'full')).rejects.toThrow(expectProcessExit(1));
+    });
+
+    it('the run-validation hint names a level that is not validate\'s default', async () => {
+      mockTreeHash();
+      serveRuns(null);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'commit')).rejects.toThrow(expectProcessExit(2));
+
+      expect(loggedText()).toContain('validate --level commit');
+    });
+
+    it('YAML: names the requested level when nothing is recorded at it', async () => {
+      const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      mockTreeHash();
+      serveRuns([createValidationRunFromNote({ passed: true, level: 'commit' })]);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'full', true)).rejects.toThrow(expectProcessExit(2));
+
+      expectYamlOutput(stdoutWriteSpy, ['exists: false', 'treeHash: abc123def456', 'level: full']);
+      stdoutWriteSpy.mockRestore();
     });
   });
 
@@ -171,31 +263,35 @@ describe('checkValidationStatus', () => {
       const failedRun = createValidationRunFromNote({ passed: false });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(failedRun);
+      serveRuns([failedRun]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
 
       expectConsoleOutput(consoleLogSpy, [
-        'Validation failed for this code',
+        'The newest run bearing on level full failed for this code',
         'Tree hash: abc123def456',
-        // --check never runs validation, so the verdict is always a replay (issue #169)
-        'Replayed from 2025-10-21T10:00:00Z on branch main (not re-run just now)'
+        'Recorded: 2025-10-21T10:00:00Z on branch main'
       ]);
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
 
-    it('should explain the cache key and the force escape hatch', async () => {
+    it('carries no replayed-failure wording or cache-key hint', async () => {
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(
-        createValidationRunFromNote({ passed: false })
-      );
+      serveRuns([createValidationRunFromNote({ passed: false })]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
 
-      expectConsoleOutput(consoleLogSpy, [
-        '.gitignore',
-        'validate --force'
+      expectNoConsoleOutput(consoleLogSpy, ['Replayed', 'not re-run', '.gitignore', 'validate --force']);
+    });
+
+    it('exits 1 when a newer failure follows an older pass at the level', async () => {
+      mockTreeHash();
+      serveRuns([
+        createValidationRunFromNote({ passed: true, timestamp: '2025-10-21T09:00:00Z' }),
+        createValidationRunFromNote({ passed: false, timestamp: '2025-10-21T10:00:00Z' }),
       ]);
+
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
     });
 
     it('should show the returned run details', async () => {
@@ -207,14 +303,27 @@ describe('checkValidationStatus', () => {
       });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(failedRun);
+      serveRuns([failedRun]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
 
       // Should show the run details
       expectConsoleOutput(consoleLogSpy, [
-        'Replayed from 2025-10-21T10:00:00Z on branch feature-branch'
+        'Recorded: 2025-10-21T10:00:00Z on branch feature-branch'
       ]);
+    });
+
+    it('reports the newest failure when several are recorded', async () => {
+      mockTreeHash();
+      serveRuns([
+        createValidationRunFromNote({ passed: false, timestamp: '2025-10-21T09:00:00Z', branch: 'older' }),
+        createValidationRunFromNote({ passed: false, timestamp: '2025-10-21T10:00:00Z', branch: 'newer' }),
+      ]);
+
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
+
+      expectConsoleOutput(consoleLogSpy, ['on branch newer']);
+      expectNoConsoleOutput(consoleLogSpy, ['on branch older']);
     });
 
     it('should show failed phase and step details when available', async () => {
@@ -224,9 +333,9 @@ describe('checkValidationStatus', () => {
       });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(failedRunWithDetails);
+      serveRuns([failedRunWithDetails]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(1));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
 
       // Should show failed phase and step
       expectConsoleOutput(consoleLogSpy, [
@@ -261,34 +370,58 @@ describe('checkValidationStatus', () => {
       expect(allLogCalls.some(call => call.includes('Failed step: Fast Failure'))).toBe(false);
     });
 
-    it('should output YAML when --yaml flag is used with cached failure', async () => {
+    it('outputs the recorded failure as YAML, not marked as a cached result (a failure is never replayed)', async () => {
       const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
       const failedRun = createValidationRunFromNote({ passed: false });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(failedRun);
+      serveRuns([failedRun]);
 
-      await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(1));
+      await expect(checkValidationStatus(mockConfig, 'full', true)).rejects.toThrow(expectProcessExit(1));
 
       // Should output YAML to stdout (not console.log)
       expectYamlOutput(stdoutWriteSpy, [
         'passed: false',
-        'treeHash: abc123def456'
+        'treeHash: abc123def456',
+        'level: full',
       ]);
+      expect(stdoutWriteSpy.mock.calls.map(call => String(call[0])).join('')).not.toContain('isCachedResult');
 
       stdoutWriteSpy.mockRestore();
     });
   });
 
   describe('when last validation passed', () => {
+    it('should output the stored result as YAML with isCachedResult when --yaml is used', async () => {
+      const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      mockTreeHash();
+      serveRuns([createValidationRunFromNote({ passed: true })]);
+
+      await expect(checkValidationStatus(mockConfig, 'full', true)).rejects.toThrow(expectProcessExit(0));
+
+      expectYamlOutput(stdoutWriteSpy, ['passed: true', 'level: full', 'isCachedResult: true']);
+      expectNoConsoleOutput(consoleLogSpy, ['Validation passed for this code']);
+      stdoutWriteSpy.mockRestore();
+    });
+
+    it('names the level of the pass', async () => {
+      mockTreeHash();
+      serveRuns([createValidationRunFromNote({ passed: true })]);
+
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(0));
+
+      expectConsoleOutput(consoleLogSpy, ['Level: full']);
+      expectNoConsoleOutput(consoleLogSpy, ['covers']);
+    });
+
     it('should exit with code 0 and show success', async () => {
       const passedRun = createValidationRunFromNote({ passed: true });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(passedRun);
+      serveRuns([passedRun]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(0));
 
       expectConsoleOutput(consoleLogSpy, [
         'Validation passed for this code',
@@ -309,9 +442,9 @@ describe('checkValidationStatus', () => {
       });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(passedRun);
+      serveRuns([passedRun]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(0));
 
       // Should show the passed run details
       expectConsoleOutput(consoleLogSpy, [
@@ -327,9 +460,9 @@ describe('checkValidationStatus', () => {
       });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(passedRunWithPhases);
+      serveRuns([passedRunWithPhases]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(0));
 
       expectConsoleOutput(consoleLogSpy, ['Phases: 2, Steps: 3']);
     });
@@ -338,9 +471,9 @@ describe('checkValidationStatus', () => {
       const passedRunNoPhases = createValidationRunFromNote({ passed: true, phases: undefined });
 
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(passedRunNoPhases);
+      serveRuns([passedRunNoPhases]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(0));
 
       // Should not throw, just not show phases/steps line
       expectConsoleOutput(consoleLogSpy, ['Validation passed for this code']);
@@ -353,7 +486,7 @@ describe('checkValidationStatus', () => {
       mockTreeHash(longHash);
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(2));
 
       // Should show first 12 characters
       expectConsoleOutput(consoleLogSpy, [`Tree hash: ${longHash.substring(0, 12)}`]);
@@ -364,7 +497,7 @@ describe('checkValidationStatus', () => {
       mockTreeHash(shortHash);
       vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(2));
 
       // Should show full hash when < 12 chars
       expectConsoleOutput(consoleLogSpy, [`Tree hash: ${shortHash}`]);
@@ -385,7 +518,7 @@ describe('checkValidationStatus', () => {
     it('should output YAML when not in git repository with --yaml flag', async () => {
       vi.mocked(git.getGitTreeHash).mockRejectedValue(new Error('not a git repository'));
 
-      await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full', true)).rejects.toThrow(expectProcessExit(2));
 
       // Should output YAML to stdout (not console.log)
       expectYamlOutput(stdoutWriteSpy, [
@@ -397,28 +530,12 @@ describe('checkValidationStatus', () => {
       expectNoConsoleOutput(consoleLogSpy, ['⚠️']);
     });
 
-    it('should output YAML when failed to read history with --yaml flag', async () => {
-      mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockRejectedValue(new Error('Git notes error'));
-
-      await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(2));
-
-      // Should output YAML to stdout
-      expectYamlOutput(stdoutWriteSpy, [
-        'exists: false',
-        'treeHash: abc123def456',
-        'error:'
-      ]);
-
-      // Should NOT use console.log for human-readable messages
-      expectNoConsoleOutput(consoleLogSpy, ['⚠️']);
-    });
 
     it('should output YAML when no validation history with --yaml flag', async () => {
       mockTreeHash();
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+      serveRuns(null);
 
-      await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full', true)).rejects.toThrow(expectProcessExit(2));
 
       // Should output YAML to stdout
       expectYamlOutput(stdoutWriteSpy, [
@@ -432,7 +549,7 @@ describe('checkValidationStatus', () => {
   });
 
   describe('submodule scenarios', () => {
-    it('should pass tree hash result with submodules to findCachedValidation', async () => {
+    it('should read the note keyed by the worktree tree hash', async () => {
       const treeHash = 'abc123def456';
       const submoduleHashes = {
         'submodules/lib-a': 'sub111222333',
@@ -440,15 +557,12 @@ describe('checkValidationStatus', () => {
       };
 
       mockTreeHash(treeHash, submoduleHashes);
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+      serveRuns(null);
 
-      await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full', true)).rejects.toThrow(expectProcessExit(2));
 
-      // Verify findCachedValidation was called with TreeHashResult including submodules
-      expect(history.findCachedValidation).toHaveBeenCalledWith({
-        hash: treeHash,
-        submoduleHashes
-      });
+      expect(history.readHistoryNote).toHaveBeenCalledTimes(1);
+      expect(history.readHistoryNote).toHaveBeenCalledWith(treeHash);
     });
 
     it('should handle cache hit with matching submodules', async () => {
@@ -463,9 +577,9 @@ describe('checkValidationStatus', () => {
       });
 
       mockTreeHash(treeHash, submoduleHashes);
-      vi.mocked(history.findCachedValidation).mockResolvedValue(passedRun);
+      serveRuns([passedRun]);
 
-      await expect(checkValidationStatus(mockConfig)).rejects.toThrow(expectProcessExit(0));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(0));
 
       expectConsoleOutput(consoleLogSpy, ['Validation passed for this code']);
     });
@@ -479,9 +593,13 @@ describe('checkValidationStatus', () => {
       };
 
       mockTreeHash(treeHash, submoduleHashes);
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+      // A pass and a failure recorded with an older submodule state answer nothing
+      serveRuns([
+        createValidationRunFromNote({ passed: true, submoduleHashes: { 'submodules/lib-a': 'old000000000' } }),
+        createValidationRunFromNote({ passed: false, submoduleHashes: { 'submodules/lib-a': 'old000000000' } }),
+      ]);
 
-      await expect(checkValidationStatus(mockConfig, true)).rejects.toThrow(expectProcessExit(2));
+      await expect(checkValidationStatus(mockConfig, 'full', true)).rejects.toThrow(expectProcessExit(2));
 
       expectYamlOutput(stdoutWriteSpy, [
         'exists: false',

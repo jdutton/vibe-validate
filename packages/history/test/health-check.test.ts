@@ -10,6 +10,7 @@ import * as git from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { checkHistoryHealth } from '../src/health-check.js';
+import { VALIDATION_NOTES_REF } from '../src/schemas.js';
 
 // Mock @vibe-validate/git module
 vi.mock('@vibe-validate/git');
@@ -230,19 +231,18 @@ describe('checkHistoryHealth', () => {
       expect(result.warningMessage).toContain('15 tree hashes');
     });
 
-    it('should use custom notes ref', async () => {
+    it('checks only VALIDATION_NOTES_REF, even when a 0.20 config names the old ref', async () => {
       vi.mocked(git.listNoteObjects).mockReturnValue([]);
       vi.mocked(git.executeGitCommand).mockReturnValue(createFailedGitResult());
 
+      // The 0.20 README's config shape; the type no longer has `ref`, so cast past it.
       await checkHistoryHealth({
-        gitNotes: {
-          ref: 'custom/notes/ref',
-        },
-      });
+        gitNotes: { ref: 'vibe-validate/validate' },
+      } as Parameters<typeof checkHistoryHealth>[0]);
 
-      expect(git.listNoteObjects).toHaveBeenCalledWith('custom/notes/ref');
+      expect(git.listNoteObjects).toHaveBeenCalledWith(VALIDATION_NOTES_REF);
       expect(git.executeGitCommand).toHaveBeenCalledWith(
-        ['log', '-1', '--format=%aI', 'refs/notes/custom/notes/ref'],
+        ['log', '-1', '--format=%aI', `refs/notes/${VALIDATION_NOTES_REF}`],
         expect.objectContaining({ ignoreErrors: true, suppressStderr: true })
       );
     });

@@ -49,11 +49,13 @@ async function displayValidationHistory(treeHash: string, programName: string): 
   if (!mostRecentRun) return;
 
   const passed = mostRecentRun.result.passed;
-  const status = passed ? chalk.green('✅ Passed') : chalk.red('❌ Failed');
+  // Name the level: a pass at an earlier level says nothing about the later steps
+  const { level } = mostRecentRun;
+  const status = passed ? chalk.green(`✅ Passed (level: ${level})`) : chalk.red(`❌ Failed (level: ${level})`);
   console.log(chalk.gray(`  Validation Status: ${status}`));
   console.log(chalk.gray(`  Last validated: ${new Date(mostRecentRun.result.timestamp).toLocaleString()}`));
   if (!passed) {
-    console.log(chalk.yellow(`  Run '${programName} state' for detailed error information`));
+    console.log(chalk.yellow(`  Run '${programName} state --level ${level}' for detailed error information`));
   }
 }
 

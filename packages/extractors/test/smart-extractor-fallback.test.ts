@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
+import { ErrorExtractorResultSchema } from '../src/result-schema.js';
 import { autoDetectAndExtract } from '../src/smart-extractor.js';
 
 describe('Smart Extractor Fallback Strategy', () => {
@@ -224,6 +225,28 @@ Signal: SIGKILL`;
 
       // Should find errors from Maven compiler
       expect(result.totalErrors).toBeGreaterThan(0);
+    });
+  });
+
+  describe('the result always satisfies ErrorExtractorResultSchema', () => {
+    // ESLint prints 0:0 for a file-level problem; a 0 line or column breaks the
+    // schema, and a recorded run that breaks it cannot be read back.
+    const eslintFileLevel = `/repo/src/a.ts
+  0:0  error  File ignored because of a matching ignore pattern  no-ignored
+  3:5  error  'x' is defined but never used  no-unused-vars
+
+✖ 2 problems (2 errors, 0 warnings)`;
+
+    it.each([undefined, 1])('drops a 0 line and column (exit code %s)', exitCode => {
+      const result = autoDetectAndExtract(eslintFileLevel, exitCode);
+
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(ErrorExtractorResultSchema.safeParse(result).success).toBe(true);
+      const fileLevel = result.errors.find(e => e.message.includes('File ignored'));
+      expect(fileLevel).toBeDefined();
+      expect(fileLevel?.line).toBeUndefined();
+      expect(fileLevel?.column).toBeUndefined();
+      expect(result.errors.find(e => e.line === 3)?.column).toBe(5);
     });
   });
 });

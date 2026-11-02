@@ -27,25 +27,44 @@ npm install @vibe-validate/history
 import { recordValidationHistory, checkWorktreeStability } from '@vibe-validate/history';
 import { getGitTreeHash } from '@vibe-validate/git';
 
-// Get tree hash before validation
+// Get tree hash (a TreeHashResult, with submodule hashes) before validation
 const treeHashBefore = await getGitTreeHash();
 
-// Run validation
+// Run validation (the result must carry its level)
 const result = await runValidation(config);
 
-// Check stability (did tree change during validation?)
+// Check stability (did the tree or a submodule change during validation?)
 const stability = await checkWorktreeStability(treeHashBefore);
 
-if (!stability.stable) {
-  console.warn('⚠️  Worktree changed during validation - not caching');
-} else {
-  // Record to git notes
+// A pass is recorded only from a stable run; a failure is always recorded,
+// under the tree hashed before the run, so an older pass stops answering
+if (stability.stable || !result.passed) {
   const recordResult = await recordValidationHistory(treeHashBefore, result);
 
   if (recordResult.recorded) {
     console.log('📝 History recorded');
   }
+} else {
+  console.warn('⚠️  Worktree changed during validation - pass not recorded');
 }
+```
+
+### Cache Lookup
+
+```typescript
+import { readHistoryNote, findCachedValidation, findDecidingRun, findRetryRun } from '@vibe-validate/history';
+import { getGitTreeHash } from '@vibe-validate/git';
+
+const treeHashResult = await getGitTreeHash();
+const note = await readHistoryNote(treeHashResult.hash);
+const request = { level: 'commit', levels: ['commit', 'full'] }; // a LevelRequest
+
+// The run that decides the level: newest first, skipping passes whose level does not cover it
+const deciding = findDecidingRun(note, treeHashResult, request);
+// The deciding run when it passed (a cache hit), else null; a failure is never replayed
+const cached = findCachedValidation(note, treeHashResult, request);
+// The deciding run when it failed at exactly this level (what --retry-failed builds on), else null
+const retry = findRetryRun(note, treeHashResult, request);
 ```
 
 ### Read Validation History
@@ -91,7 +110,7 @@ if (health.shouldWarn) {
 import { pruneHistoryByAge } from '@vibe-validate/history';
 
 // Prune notes older than 90 days (dry run)
-const dryRunResult = await pruneHistoryByAge(90, {}, true);
+const dryRunResult = await pruneHistoryByAge(90, true);
 console.log(`Would prune ${dryRunResult.notesPruned} notes`);
 
 // Actually prune
@@ -109,7 +128,6 @@ const config: HistoryConfig = {
   enabled: true,
 
   gitNotes: {
-    ref: 'vibe-validate/validate',  // Git notes ref namespace (v0.15.0: changed from 'runs')
     maxRunsPerTree: 10,             // Keep last 10 runs per tree
     maxOutputBytes: 10000,          // 10KB max per step output
   },
@@ -121,6 +139,11 @@ const config: HistoryConfig = {
 };
 ```
 
+The notes ref is not configurable. History is always stored under
+`refs/notes/vibe-validate/leveled-runs` (exported as `VALIDATION_NOTES_REF`), so leveled
+runs never land in `refs/notes/vibe-validate/validate`, where a 0.20.x reader would take a
+commit-level pass for a full one.
+
 ## API Reference
 
 ### Types
@@ -131,22 +154,28 @@ const config: HistoryConfig = {
 - **StabilityCheck**: Worktree stability check result
 - **HealthCheckResult**: History health check result
 - **PruneResult**: Result of pruning operation
+- **LevelRequest**: `{ level, levels }` — the level a lookup answers, with the config's levels in order
 
 ### Functions
 
 #### Recording
-- `recordValidationHistory(treeHash, result, config?)`: Record validation to git notes
-- `checkWorktreeStability(treeHashBefore)`: Check if tree changed during validation
+- `recordValidationHistory(treeHashResult, result, config?)`: Record a validation run (the result must carry its level) to git notes
+- `checkWorktreeStability(before)`: Re-hash the worktree and compare it, submodule hashes included, with `before` (the `TreeHashResult` taken before validation)
+
+#### Cache lookup
+- `findDecidingRun(note, treeHashResult, request)`: The run deciding `request.level` — runs with matching submodule state, newest first, skipping passes whose level does not cover the request; the first remaining run (pass or failure), or null
+- `findCachedValidation(note, treeHashResult, request)`: The deciding run when it passed (a cache hit), else null
+- `findRetryRun(note, treeHashResult, request)`: The deciding run when it failed at exactly `request.level`, else null
 
 #### Reading
-- `readHistoryNote(treeHash, notesRef?)`: Read note for specific tree hash
-- `listHistoryTreeHashes(notesRef?)`: List all tree hashes with notes
-- `getAllHistoryNotes(notesRef?)`: Get all history notes
-- `hasHistoryForTree(treeHash, notesRef?)`: Check if history exists
+- `readHistoryNote(treeHash)`: Read note for specific tree hash
+- `listHistoryTreeHashes()`: List all tree hashes with notes
+- `getAllHistoryNotes()`: Get all history notes
+- `hasHistoryForTree(treeHash)`: Check if history exists
 
 #### Pruning
-- `pruneHistoryByAge(olderThanDays, config?, dryRun?)`: Prune by age
-- `pruneAllHistory(config?, dryRun?)`: Prune all history
+- `pruneHistoryByAge(olderThanDays, dryRun?)`: Prune by age
+- `pruneAllHistory(dryRun?)`: Prune all history
 
 #### Health
 - `checkHistoryHealth(config?)`: Check history health
@@ -172,13 +201,14 @@ Git notes caching (this package):
 ### Note Structure
 
 ```yaml
-# Git note: refs/notes/vibe-validate/runs → tree hash abc123
+# Git note: refs/notes/vibe-validate/leveled-runs → tree hash abc123
 treeHash: "abc123def456..."
 runs:
   - id: "run-1729522215123"
     timestamp: "2025-10-21T14:30:15.123Z"
     duration: 2300
     passed: true
+    level: "commit"
     branch: "feature/foo"
     headCommit: "9abc3c4"
     uncommittedChanges: false
@@ -188,25 +218,25 @@ runs:
 
 ### Worktree Stability
 
-Critical safety feature: Verify tree unchanged during validation.
+Critical safety feature: a pass is recorded only if the tree, submodules included, did not change during validation. A failure is always recorded (it can only cause a re-run).
 
 ```typescript
-// Before validation
+// Before validation (TreeHashResult: hash + submodule hashes)
 const treeHashBefore = await getGitTreeHash();
 
 // Run validation (potentially long-running)
 const result = await runValidation();
 
-// After validation - check stability
+// After validation - check stability (compares submodule hashes too)
 const stability = await checkWorktreeStability(treeHashBefore);
 
-if (!stability.stable) {
-  // Tree changed during validation - don't cache
+if (result.passed && !stability.stable) {
+  // Tree changed during a passing run - the pass vouches for nothing
   console.warn('⚠️  Worktree changed during validation');
   return result; // Skip recording
 }
 
-// Safe to cache
+// Record: a stable pass, or any failure (under the tree before the run)
 await recordValidationHistory(treeHashBefore, result);
 ```
 
@@ -279,7 +309,7 @@ git checkout <tree-hash> -- src/
 
 // But history remembers:
 const notes = await readHistoryNote(currentTreeHash);
-console.log(`Last validation: ${notes.runs[0].timestamp}`);
+console.log(`Last validation: ${notes.runs.at(-1).timestamp}`); // runs are oldest first
 console.log(`Tree hash: ${notes.treeHash}`);
 
 // Recover via git:

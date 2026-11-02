@@ -505,8 +505,9 @@ reporter had been blocked by the cost of a full revalidation, so the hint named
 the expensive escape. Unit tests, an adversarial review, and a four-reviewer
 panel all passed — none of them ran the advice.
 
-**Assert the property the advice must have, by executing it.** See
-[`packages/cli/test/integration/cached-failure-escape.integration.test.ts`](../../packages/cli/test/integration/cached-failure-escape.integration.test.ts):
+**Assert the property the advice must have, by executing it.** The guard that
+did this for #169 was retired once failures stopped being replayed (there is no
+stuck state left to escape), but its shape is the pattern:
 
 ```typescript
 // Read the advice out of real output, so the guard follows the text if it moves.

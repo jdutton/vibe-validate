@@ -198,7 +198,7 @@ function decodeOutput(
  *
  * // Add note with stdin
  * executeGitCommand(
- *   ['notes', '--ref=vibe-validate/validate', 'add', '-f', '-F', '-', treeHash],
+ *   ['notes', '--ref=vibe-validate/leveled-runs', 'add', '-f', '-F', '-', treeHash],
  *   { stdin: noteContent }
  * );
  *
@@ -387,7 +387,7 @@ export function validateNotesRef(notesRef: string): void {
   validateGitRef(notesRef);
 
   // Notes refs should follow refs/notes/* pattern or short form
-  // Short form: 'vibe-validate/validate' → 'refs/notes/vibe-validate/validate'
+  // Short form: 'vibe-validate/leveled-runs' → 'refs/notes/vibe-validate/leveled-runs'
   // Short form is valid, but must not contain spaces
   if (!notesRef.startsWith('refs/notes/') && notesRef.includes('/') && /\s/.test(notesRef)) {
     throw new Error(`Invalid notes ref: contains whitespace: ${notesRef}`);

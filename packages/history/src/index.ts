@@ -17,6 +17,7 @@ export type {
 } from './types.js';
 
 export { DEFAULT_HISTORY_CONFIG } from './types.js';
+export { VALIDATION_NOTES_REF } from './schemas.js';
 
 // Recorder
 export {
@@ -33,7 +34,7 @@ export {
 } from './reader.js';
 
 // Cache lookup
-export { findCachedValidation } from './lookup.js';
+export { findCachedValidation, findDecidingRun, findRetryRun, type LevelRequest } from './lookup.js';
 
 // Run cache reader
 export {

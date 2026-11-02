@@ -1112,11 +1112,11 @@ describe('doctor command', () => {
      *
      * FORMATS:
      * - PRE-v0.15.0 (OLD/DEPRECATED): refs/notes/vibe-validate/runs/* (plural "runs")
-     * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/validate (validation history)
+     * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/leveled-runs (validation history)
      * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/run/{tree}/{key} (run cache)
      *
      * The doctor should ONLY warn if the OLD "runs" namespace exists.
-     * It should NOT warn about the current "validate" or "run" refs.
+     * It should NOT warn about the current "leveled-runs" or "run" refs.
      */
 
     beforeEach(async () => {
@@ -1141,7 +1141,7 @@ describe('doctor command', () => {
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
     });
 
-    it('should PASS when only current validation history format exists (refs/notes/vibe-validate/validate)', async () => {
+    it('should PASS when only current validation history format exists (refs/notes/vibe-validate/leveled-runs)', async () => {
       // ARRANGE: Mock git commands to show CURRENT format only (no old refs)
       await mockDoctorGit({
         validationHistoryRefs: []  // No old format refs
@@ -1196,6 +1196,46 @@ describe('doctor command', () => {
       });
       const migrationCheck = findCheck(result, 'Validation history migration');
       expect(migrationCheck.suggestion).toBeUndefined();
+    });
+
+    it('advises (without failing or deleting) when the pre-levels ref refs/notes/vibe-validate/validate exists', async () => {
+      const { executeGitCommand } = await import('@vibe-validate/git');
+      await mockDoctorGit({
+        validationHistoryRefs: ['refs/notes/vibe-validate/validate']
+      });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
+
+      const result = await runDoctor({ verbose: true });
+
+      const migrationCheck = findCheck(result, 'Validation history migration');
+      expect(migrationCheck.passed).toBe(true);
+      expect(migrationCheck.message).not.toContain('Using current validation history format');
+      expect(migrationCheck.message).toContain('refs/notes/vibe-validate/validate');
+      expect(migrationCheck.message).toContain('no longer read');
+      expect(migrationCheck.suggestion).toContain('git update-ref -d refs/notes/vibe-validate/validate');
+      expect(migrationCheck.suggestion).toContain('0.20.x');
+      expect(migrationCheck.suggestion).toContain('refs/notes/vibe-validate/leveled-runs');
+      // Another worktree or clone may still run 0.20.x and read it: never auto-delete it.
+      expect(executeGitCommand).not.toHaveBeenCalledWith(
+        ['update-ref', '-d', 'refs/notes/vibe-validate/validate'],
+        expect.anything()
+      );
+      expect(executeGitCommand).not.toHaveBeenCalledWith(['update-ref', '-d', 'refs/notes/vibe-validate/validate']);
+    });
+
+    it('reports both the pre-0.15 cleanup and the pre-levels advisory when both refs exist', async () => {
+      await mockDoctorGit({
+        validationHistoryRefs: ['refs/notes/vibe-validate/runs', 'refs/notes/vibe-validate/validate']
+      });
+      await mockDoctorEnvironment({}, { vibeVersion: '0.17.0' });
+
+      const result = await runDoctor({ verbose: true });
+
+      const migrationCheck = findCheck(result, 'Validation history migration');
+      expect(migrationCheck.passed).toBe(true);
+      expect(migrationCheck.message).toContain('Automatically removed old validation history format (pre-v0.15.0)');
+      expect(migrationCheck.message).toContain('refs/notes/vibe-validate/validate');
+      expect(migrationCheck.suggestion).toContain('git update-ref -d refs/notes/vibe-validate/validate');
     });
 
     it('should PASS when no git notes exist at all', async () => {

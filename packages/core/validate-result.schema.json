@@ -15,6 +15,9 @@
         "passed": {
           "type": "boolean"
         },
+        "level": {
+          "type": "string"
+        },
         "summary": {
           "type": "string"
         },

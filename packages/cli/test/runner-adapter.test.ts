@@ -58,7 +58,7 @@ function setupRunnerTest(
 ) {
   const config = createMockConfig(configPhases);
   const context = createMockContext(contextOverrides);
-  const runnerConfig = createRunnerConfig(config, { verbose, context });
+  const runnerConfig = createRunnerConfig(config, { level: 'full', verbose, context });
 
   return { config, context, runnerConfig };
 }
@@ -184,12 +184,17 @@ describe('runner-adapter', () => {
       }
     });
 
-    it('should use empty phases array if validation config is missing', () => {
-      const config: VibeValidateConfig = {};
-      const context = createMockContext();
-      const runnerConfig = createRunnerConfig(config, { verbose: true, context });
+    it('hands the runner the implicit single level when the config declares none', () => {
+      const { runnerConfig } = setupRunnerTest([]);
 
-      expect(runnerConfig.phases).toEqual([]);
+      expect(runnerConfig.level).toEqual({ name: 'full', levels: ['full'] });
+    });
+
+    it('hands the runner the requested level and the declared levels in order', () => {
+      const config: VibeValidateConfig = { validation: { levels: ['commit', 'full'], phases: [] } };
+      const runnerConfig = createRunnerConfig(config, { level: 'commit', verbose: true, context: createMockContext() });
+
+      expect(runnerConfig.level).toEqual({ name: 'commit', levels: ['commit', 'full'] });
     });
 
     it('should include verbose callbacks when verbose=true', () => {

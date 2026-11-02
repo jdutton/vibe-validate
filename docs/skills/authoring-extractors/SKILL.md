@@ -268,7 +268,7 @@ Writing an extractor is a tight loop: capture real failure output, edit the plug
 
 ## Interaction with caching
 
-Because validation state is keyed by git tree hash and cached in git notes, the *first* run of a step that fails executes the extractor and writes the extracted errors into the notes entry. Subsequent runs on the same tree hash return the cached entry — the extractor does not run again, and any improvements to the plugin are not reflected until either the tree changes or the cache is invalidated. If you are iterating on an extractor, use `vv validate --force` (or re-run the failing command through `vv run --force`) to bypass the cache while you tune the regexes. Once the plugin is stable, normal cached behavior resumes and the up-to-date extractor is the one that runs on the next cache miss. The caching mechanism itself is covered in vibe-validate:caching-and-locking.
+Validation state is keyed by git tree hash and recorded in git notes, but a failure is never replayed from the cache. A failing step's run is recorded (for `--retry-failed`, flakiness detection and `vv history`), and the next `vv validate` or `vv run` on the same tree executes the step again — so the improved extractor runs on that next invocation without any flag. `--force` (or `VV_FORCE_EXECUTION=1`) is only needed to re-extract a recorded *pass*. The caching mechanism itself is covered in vibe-validate:caching-and-locking.
 
 ## See also
 

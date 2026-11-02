@@ -11,6 +11,13 @@ import {
   getAllHistoryNotes,
   hasHistoryForTree,
 } from '../src/reader.js';
+import { VALIDATION_NOTES_REF } from '../src/schemas.js';
+
+/** The ref 0.20.x and earlier wrote level-less runs to */
+const OLD_REF = 'vibe-validate/validate';
+
+/** Call a reader the way an untyped 0.20 caller would, with a trailing ref */
+type UntypedReader = (...args: unknown[]) => Promise<unknown>;
 
 // Mock @vibe-validate/git
 vi.mock('@vibe-validate/git', () => ({
@@ -32,6 +39,7 @@ runs:
     timestamp: '2025-10-21T10:00:00Z'
     duration: 5000
     passed: true
+    level: commit
     branch: main
     headCommit: commit123
     uncommittedChanges: false
@@ -53,21 +61,47 @@ runs:
       expect(result?.runs[0].passed).toBe(true);
 
       expect(readNote).toHaveBeenCalledWith(
-        'vibe-validate/validate',
+        'vibe-validate/leveled-runs',
         'abc123def456'
       );
     });
 
-    it('should use custom notes ref when provided', async () => {
+    it('reads only VALIDATION_NOTES_REF, whatever ref a caller passes', async () => {
       const mockYaml = 'treeHash: abc123\nruns: []';
       vi.mocked(readNote).mockReturnValue(mockYaml);
 
-      await readHistoryNote('abc123def456', 'custom/notes/ref');
+      await (readHistoryNote as UntypedReader)('abc123def456', OLD_REF);
 
-      expect(readNote).toHaveBeenCalledWith(
-        'custom/notes/ref',
-        'abc123def456'
-      );
+      expect(readNote).toHaveBeenCalledWith(VALIDATION_NOTES_REF, 'abc123def456');
+      expect(readNote).not.toHaveBeenCalledWith(OLD_REF, expect.anything());
+    });
+
+    it('an unreadable run hides every older run, so an older pass cannot answer past it', async () => {
+      const resultYaml = `
+    result:
+      passed: true
+      timestamp: '2025-10-21T10:00:00Z'
+      treeHash: abc123def456
+      phases: []`;
+      const runYaml = (id: string, passedAndLevel: string) => `
+  - id: ${id}
+    timestamp: '2025-10-21T10:00:00Z'
+    duration: 5000
+${passedAndLevel}
+    branch: main
+    headCommit: commit123
+    uncommittedChanges: false${resultYaml}`;
+      const mockYaml = `
+treeHash: abc123def456
+runs:${runYaml('run-old-pass', '    passed: true\n    level: commit')}${runYaml('run-string-passed', '    passed: "false"\n    level: commit')}${runYaml('run-no-level', '    passed: true')}${runYaml('run-new', '    passed: true\n    level: commit')}
+`;
+      vi.mocked(readNote).mockReturnValue(mockYaml);
+
+      const result = await readHistoryNote('abc123def456');
+
+      expect(result?.runs.map(r => r.id)).toEqual(['run-new']);
+      expect(result?.runs[0].passed).toBe(true);
+      expect(result?.runs[0].level).toBe('commit');
     });
 
     it('should return null when note does not exist', async () => {
@@ -96,6 +130,7 @@ runs:
     timestamp: '2025-10-21T09:00:00Z'
     duration: 5000
     passed: false
+    level: commit
     branch: main
     headCommit: commit123
     uncommittedChanges: false
@@ -108,6 +143,7 @@ runs:
     timestamp: '2025-10-21T10:00:00Z'
     duration: 3000
     passed: true
+    level: commit
     branch: main
     headCommit: commit456
     uncommittedChanges: false
@@ -127,7 +163,7 @@ runs:
       expect(result?.runs[1].id).toBe('run-2');
     });
 
-    it('should silently skip corrupted runs with invalid line/column (legacy 0/0 bug)', async () => {
+    it('keeps the runs after an unreadable one (legacy 0/0 line/column)', async () => {
       // Simulate legacy history from rc.9 with 0/0 line/column errors
       const mockYaml = `
 treeHash: abc123def456
@@ -136,6 +172,7 @@ runs:
     timestamp: '2025-10-21T09:00:00Z'
     duration: 5000
     passed: false
+    level: commit
     branch: main
     headCommit: commit123
     uncommittedChanges: false
@@ -165,6 +202,7 @@ runs:
     timestamp: '2025-10-21T10:00:00Z'
     duration: 3000
     passed: true
+    level: commit
     branch: main
     headCommit: commit456
     uncommittedChanges: false
@@ -179,11 +217,48 @@ runs:
 
       const result = await readHistoryNote('abc123def456');
 
-      // Should only return valid runs, corrupted run silently skipped
-      expect(result?.runs).toHaveLength(1);
-      expect(result?.runs[0].id).toBe('run-valid');
-      // Silent skip - no warnings logged, no user notification needed
-      // After upgrade, users should run 'vv doctor' to check for issues
+      expect(result?.runs.map(r => r.id)).toEqual(['run-valid']);
+    });
+
+    it('a newer unreadable red overturns an older pass: no run survives', async () => {
+      const run = (id: string, passed: boolean, line: number) => `
+  - id: ${id}
+    timestamp: '2025-10-21T09:00:00Z'
+    duration: 5000
+    passed: ${passed}
+    level: full
+    branch: main
+    headCommit: commit123
+    uncommittedChanges: false
+    result:
+      passed: ${passed}
+      timestamp: '2025-10-21T09:00:00Z'
+      treeHash: abc123def456
+      phases:
+        - name: Lint
+          passed: ${passed}
+          durationSecs: 1
+          steps:
+            - name: eslint
+              command: eslint .
+              exitCode: ${passed ? 0 : 1}
+              durationSecs: 1
+              passed: ${passed}
+              extraction:
+                summary: x
+                totalErrors: 1
+                errors:
+                  - file: a.ts
+                    line: ${line}
+                    message: File ignored`;
+      vi.mocked(readNote).mockReturnValue(`
+treeHash: abc123def456
+runs:${run('run-pass', true, 1)}${run('run-red-line-0', false, 0)}
+`);
+
+      const result = await readHistoryNote('abc123def456');
+
+      expect(result?.runs).toEqual([]);
     });
 
     it('should accept results with unknown fields (forward compatibility)', async () => {
@@ -196,6 +271,7 @@ runs:
     timestamp: '2025-10-21T10:00:00Z'
     duration: 5000
     passed: true
+    level: commit
     branch: main
     headCommit: commit123
     uncommittedChanges: false
@@ -238,6 +314,7 @@ runs:
     timestamp: '2025-10-21T10:00:00Z'
     duration: 3000
     passed: true
+    level: commit
     branch: main
     headCommit: commit456
     uncommittedChanges: false
@@ -251,6 +328,7 @@ runs:
     timestamp: '2025-10-20T10:00:00Z'
     duration: 5000
     passed: true
+    level: commit
     branch: main
     headCommit: commit123
     uncommittedChanges: false
@@ -291,6 +369,7 @@ runs:
     timestamp: '2025-10-20T10:00:00Z'
     duration: 5000
     passed: false
+    level: commit
     branch: main
     headCommit: commit123
     uncommittedChanges: false
@@ -306,6 +385,7 @@ runs:
     timestamp: '2025-10-21T10:00:00Z'
     duration: 3000
     passed: true
+    level: commit
     branch: main
     headCommit: commit456
     uncommittedChanges: false
@@ -360,15 +440,16 @@ duration: 5000
         'fedcba987654',
       ]);
 
-      expect(listNoteObjects).toHaveBeenCalledWith('vibe-validate/validate');
+      expect(listNoteObjects).toHaveBeenCalledWith('vibe-validate/leveled-runs');
     });
 
-    it('should use custom notes ref when provided', async () => {
+    it('lists only VALIDATION_NOTES_REF, whatever ref a caller passes', async () => {
       vi.mocked(listNoteObjects).mockReturnValue(['abc123def456' as any]);
 
-      await listHistoryTreeHashes('custom/notes/ref');
+      await (listHistoryTreeHashes as UntypedReader)(OLD_REF);
 
-      expect(listNoteObjects).toHaveBeenCalledWith('custom/notes/ref');
+      expect(listNoteObjects).toHaveBeenCalledWith(VALIDATION_NOTES_REF);
+      expect(listNoteObjects).not.toHaveBeenCalledWith(OLD_REF);
     });
 
     it('should return empty array when no notes exist', async () => {
@@ -422,16 +503,16 @@ duration: 5000
       expect(readNote).toHaveBeenCalledTimes(2);
     });
 
-    it('should use custom notes ref', async () => {
+    it('reads only VALIDATION_NOTES_REF, whatever ref a caller passes', async () => {
       vi.mocked(listNoteObjects).mockReturnValue(['abc123' as any]);
       const mockNote = 'treeHash: abc123\nruns: []';
 
       vi.mocked(readNote).mockReturnValue(mockNote);
 
-      await getAllHistoryNotes('custom/notes/ref');
+      await (getAllHistoryNotes as UntypedReader)(OLD_REF);
 
-      expect(listNoteObjects).toHaveBeenCalledWith('custom/notes/ref');
-      expect(readNote).toHaveBeenCalledWith('custom/notes/ref', 'abc123');
+      expect(listNoteObjects).toHaveBeenCalledWith(VALIDATION_NOTES_REF);
+      expect(readNote).toHaveBeenCalledWith(VALIDATION_NOTES_REF, 'abc123');
     });
 
     it('should return empty array when no tree hashes exist', async () => {
@@ -483,7 +564,7 @@ duration: 5000
 
       expect(result).toBe(true);
       expect(readNote).toHaveBeenCalledWith(
-        'vibe-validate/validate',
+        'vibe-validate/leveled-runs',
         'abc123def456'
       );
     });
@@ -496,16 +577,13 @@ duration: 5000
       expect(result).toBe(false);
     });
 
-    it('should use custom notes ref', async () => {
+    it('reads only VALIDATION_NOTES_REF, whatever ref a caller passes', async () => {
       const mockYaml = 'treeHash: abc123\nruns: []';
       vi.mocked(readNote).mockReturnValue(mockYaml);
 
-      await hasHistoryForTree('abc123def456', 'custom/notes/ref');
+      await (hasHistoryForTree as UntypedReader)('abc123def456', OLD_REF);
 
-      expect(readNote).toHaveBeenCalledWith(
-        'custom/notes/ref',
-        'abc123def456'
-      );
+      expect(readNote).toHaveBeenCalledWith(VALIDATION_NOTES_REF, 'abc123def456');
     });
 
     it('should return false on any error', async () => {

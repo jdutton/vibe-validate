@@ -339,9 +339,9 @@ function handleCustomGitCommand(
 function handleGitForEachRef(args: string[], opts: { validationHistoryRefs?: string[]; runCacheRefs?: string[] }): { success: boolean; stdout: string; stderr: string; exitCode: number } | null {
   if (args[0] !== 'for-each-ref') return null;
 
-  // Legacy validation history check
-  if (args[2] === 'refs/notes/vibe-validate/runs') {
-    const refs = opts.validationHistoryRefs?.join('\n') ?? '';
+  // Legacy validation history checks (exact refname: pre-0.15 "runs", pre-levels "validate")
+  if (args[2] === 'refs/notes/vibe-validate/runs' || args[2] === 'refs/notes/vibe-validate/validate') {
+    const refs = (opts.validationHistoryRefs ?? []).filter(ref => ref === args[2]).join('\n');
     return { success: true, stdout: refs, stderr: '', exitCode: 0 };
   }
 

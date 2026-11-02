@@ -4,19 +4,22 @@
  * Runs validation phases with git tree hash caching and history recording.
  */
 
+import { getDefaultValidateLevel } from '@vibe-validate/config';
 import type { Command } from 'commander';
 
+import { resolveLevelOrExit } from '../utils/level-option.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
-import { withValidationLock } from '../utils/validation-lock-wrapper.js';
+import { loadConfigOrExit, withValidationLock } from '../utils/validation-lock-wrapper.js';
 
 export function validateCommand(program: Command): void {
   program
     .command('validate')
     .description('Run validation with git tree hash caching. Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).')
-    .option('-f, --force', 'Force validation even if already passed')
+    .option('-l, --level <name>', 'Validation level to run (one of validation.levels; default: the last)')
+    .option('-f, --force', 'Re-run even when a pass is already recorded (a failure is never replayed)')
     .option('-v, --verbose', 'Show detailed progress and output')
     .option('-y, --yaml', 'Output validation result as YAML to stdout')
-    .option('-c, --check', 'Check if validation has already passed (do not run)')
+    .option('-c, --check', 'Check if validation has already passed (do not run; exit 0 passed, 1 the run deciding the level failed, 2 nothing recorded or cannot answer: no or invalid config, unknown level)')
     .option('-d, --debug', 'Create output files for all steps (for debugging)')
     .option('--retry-failed', 'Retry only failed steps from previous validation')
     .option('--no-lock', 'Allow concurrent validation runs (disables single-instance mode)')
@@ -39,8 +42,14 @@ export function validateCommand(program: Command): void {
           options.lock = true;
         }
 
-        // Use validation lock wrapper to handle config, context, and locking
+        // --check answers 0/1/2, and 1 means "the run failed": a config or level it cannot use is 2
+        const startupExit = { code: options.check ? 2 : 1, yaml: options.yaml === true } as const;
+        // Load the config once; the lock wrapper and the workflow share it
+        const loaded = await loadConfigOrExit(startupExit);
+        const level = await resolveLevelOrExit(loaded.config, options.level, getDefaultValidateLevel(loaded.config), startupExit);
+
         const result = await withValidationLock(
+          loaded,
           {
             lockEnabled: options.lock,
             waitEnabled: options.wait !== false,
@@ -66,6 +75,7 @@ export function validateCommand(program: Command): void {
                 check: options.check,
                 debug: options.debug,
                 retryFailed: options.retryFailed,
+                level,
                 context,
                 treeHashResult,
               });
@@ -78,15 +88,15 @@ export function validateCommand(program: Command): void {
           }
         );
 
-        // A replayed failure is still a failure. Whether the verdict was just
-        // computed or read back from a note changes how it is *reported*, never
-        // what it means — `vv validate && git push` has to see a non-zero exit
-        // either way, and `pre-commit` already exits 1 on this same result.
-        //
-        // Cached PASSES return normally so Commander exits 0 on its own; that
+        // A failure exits 1, whatever isCachedResult says: the exit code never
+        // rests on the invariant that only passes are served from cache.
+        if (!result.passed) {
+          process.exit(1);
+        }
+        // A cached pass returns normally so Commander exits 0 on its own; that
         // also keeps the happy path free of a process.exit for tests to trap.
-        if (!result.isCachedResult || !result.passed) {
-          process.exit(result.passed ? 0 : 1);
+        if (!result.isCachedResult) {
+          process.exit(0);
         }
       } catch (error) {
         // Re-throw process.exit errors (for testing)
@@ -114,15 +124,20 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 ## How It Works
 
 1. **Calculates git tree hash** of working directory (tracked and untracked files; ignored paths excluded)
-2. **Checks if hash matches cached state** (from previous run)
-3. **If match:** Exits immediately with cached result (sub-second)
-4. **If no match:** Runs validation pipeline (~60-90s depending on your project)
-5. **Caches result** in git notes for next run
+2. **Looks for a recorded PASS** for that tree at the requested level or a later one
+3. **If found:** Exits 0 immediately (sub-second)
+4. **If not:** Runs the steps at that level (~60-90s depending on your project). A recorded failure is never replayed; the steps run again
+5. **Records the run** (with its level) in git notes: a failure always (under the tree hashed before the run), a pass only if the worktree and submodules did not change while it ran
 6. **Records history** for analysis via \`vibe-validate history\`
+
+## Levels
+
+\`validation.levels\` names ordered, nested levels (e.g. \`[commit, full]\`); each step names the level that adds it. A run at a level runs every step at that level and the earlier ones. \`validate\` defaults to the last level, \`pre-commit\` to \`hooks.preCommit.level\` or the first. A pass at a later level answers a request at an earlier one.
 
 ## Options
 
-- \`-f, --force\` - Force validation even if already passed (bypasses cache, re-runs everything)
+- \`-l, --level <name>\` - Validation level to run (one of \`validation.levels\`; default: the last, which runs every step)
+- \`-f, --force\` - Re-run even when a pass is already recorded. A failure is never replayed, so this is only ever needed to re-run a green
 - \`--retry-failed\` - Retry only failed steps from previous validation (preserves passed step cache)
 - \`-v, --verbose\` - Show detailed progress and output
 - \`-y, --yaml\` - Output validation result as YAML to stdout (LLM-friendly)
@@ -131,8 +146,13 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 ## Exit Codes
 
 - \`0\` - Validation passed (or cached pass)
-- \`1\` - Validation failed
-- \`2\` - Configuration error
+- \`1\` - Validation failed (plain \`validate\` never exits 2), the configuration is missing or invalid, or \`--level\` names an undeclared level. With \`--yaml\`, a configuration or level error is a YAML document on stdout: \`exists: false\`, \`error\` (plus \`errors\` or \`levels\`)
+
+With \`--check\` (nothing runs; the answer comes from the recorded runs):
+
+- \`0\` - A recorded pass covers the level (\`validate\` would be a cache hit)
+- \`1\` - The run deciding the level failed (see it with \`state --level <the requested level>\`)
+- \`2\` - Nothing recorded that bears on the level, or it cannot answer (not in a git repository, a missing or invalid configuration, unknown \`--level\`). With \`--yaml\`, a configuration or level error is a YAML document on stdout: \`exists: false\`, \`error\` (plus \`errors\` or \`levels\`)
 
 ## Examples
 
@@ -140,7 +160,10 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 # Standard usage (uses cache if available)
 vibe-validate validate
 
-# Force re-validation (bypass cache, re-runs everything)
+# Run only the commit level
+vibe-validate validate --level commit
+
+# Re-run a recorded pass (everything at the level)
 vibe-validate validate --force
 
 # Retry only failed steps (fast recovery from transient failures)
@@ -158,12 +181,12 @@ vibe-validate validate --verbose --yaml
 
 ## --force vs --retry-failed
 
-Both flags bypass the cached result, but they differ in scope:
+They differ in what they start from:
 
 | Flag | Re-runs | Preserves cache | Use when |
 |------|---------|-----------------|----------|
-| \`--force\` | All steps | No | Config changed, need clean run |
-| \`--retry-failed\` | Failed steps only | Yes (passed steps) | Transient failure, flaky test |
+| \`--force\` | All steps at the level | No | A recorded pass must be re-checked (it is the only thing a cache hit can be) |
+| \`--retry-failed\` | Failed steps only | Yes (passed steps) | The last run at this level failed and you want to skip the steps that passed |
 
 \`--retry-failed\` also detects flakiness: if a step that failed on the previous run now passes without code changes, it warns you about potential non-deterministic behavior.
 
@@ -177,15 +200,20 @@ Both flags bypass the cached result, but they differ in scope:
   developers whose ignored files differ. "Ignored" means by any source —
   \`.gitignore\`, \`.git/info/exclude\`, or your global excludes file
 - Deterministic: same content = same hash
+- Also keyed on **submodule hashes** and the **level**: a pass answers only a
+  request at its level or an earlier one
 
 ### Cache Hit
-- Validation result found for current tree hash
+- A PASS recorded for the current tree hash, at the requested level or a later one
 - Exits in sub-second time
-- Shows: "✓ Validation already passed for tree <hash>"
+- Shows: "✅ Validation passed for this code" and the level it covered
+- A recorded failure is never a cache hit
 
 ### Cache Miss
-- No result found for current tree hash
-- Runs full validation pipeline
+- No pass recorded for the current tree hash that covers the level, or the
+  deciding run (the newest run, skipping passes whose level does not cover the
+  requested one) is a failure, or only an earlier-level pass is recorded
+- Runs only the requested level's steps (that level and the earlier ones)
 - Typical duration: 60-90s
 
 ### Cache Invalidation
@@ -194,10 +222,9 @@ Both flags bypass the cached result, but they differ in scope:
 - Modifying .gitignore
 
 Changing an ignored path does **not** invalidate the cache, since those paths
-are not part of the key. So a step that inspects ignored working-tree
-state can produce a result that cleaning up that state will not invalidate.
-Re-run it explicitly with \`--force\` (everything), or — when the stale result
-was a failure — \`--retry-failed\` (failed steps only).
+are not part of the key. Failures are never replayed, so this can only ever
+leave a stale PASS; re-run it with \`--force\` (or \`VV_FORCE_EXECUTION=1\`,
+which exists for the same reason and nothing else).
 
 ## YAML Output Mode
 
@@ -230,7 +257,7 @@ This design:
 - \`vibe-validate state\` - View cached result
 - \`vibe-validate state --verbose\` - See full error details
 - \`vibe-validate history list\` - View validation timeline
-- \`vibe-validate pre-commit\` - Runs sync-check + validate
+- \`vibe-validate pre-commit\` - Runs the sync and secret checks, then validation at the pre-commit level
 
 ## Common Workflows
 
@@ -263,9 +290,9 @@ vibe-validate validate --force
 # Run validation
 vibe-validate validate --yaml 2>&1 | sed -n '/^---$/,$p' | tail -n +2
 
-# Or use state command
+# Or use state command (its output is always YAML)
 vibe-validate validate
-vibe-validate state --yaml
+vibe-validate state
 \`\`\`
 
 ## Performance
@@ -274,11 +301,11 @@ vibe-validate state --yaml
 |----------|----------|-------|
 | Cache hit | Sub-second | Cached result found |
 | Cache miss | ~60-90s | Full validation run |
-| Force flag | ~60-90s | Cache bypassed |
+| Force flag | ~60-90s | Recorded pass ignored |
 
 ## Files Created/Modified
 
-- \`refs/notes/vibe-validate/validate\` - Validation history (git notes, auto-created)
+- \`refs/notes/vibe-validate/leveled-runs\` - Validation history (git notes, auto-created)
 
 ## Error Recovery
 

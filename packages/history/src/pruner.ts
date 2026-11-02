@@ -1,55 +1,45 @@
 /**
  * History pruning utilities
+ *
+ * Validation history is pruned from VALIDATION_NOTES_REF only; the ref is not a
+ * parameter or a config key.
  */
 
-import { removeNote, removeNotesRefs, type TreeHash, type NotesRef } from '@vibe-validate/git';
+import {
+  listNoteObjects,
+  readNote,
+  removeNote,
+  removeNotesRefs,
+  type TreeHash,
+  type NotesRef,
+} from '@vibe-validate/git';
+import { parse as parseYaml } from 'yaml';
 
 import { getAllHistoryNotes } from './reader.js';
 import { listRunCacheTreeHashes, getAllRunCacheForTree } from './run-cache-reader.js';
-import type { PruneResult, HistoryConfig } from './types.js';
-import { DEFAULT_HISTORY_CONFIG } from './types.js';
+import { VALIDATION_NOTES_REF } from './schemas.js';
+import type { PruneResult } from './types.js';
 
-// Removed: Git operations now use secure @vibe-validate/git functions
-
-/**
- * Merge user config with defaults
- */
-function mergeConfig(config: HistoryConfig = {}): {
-  gitNotes: { ref: string };
-} {
-  const mergedGitNotes = config.gitNotes
-    ? { ...DEFAULT_HISTORY_CONFIG.gitNotes, ...config.gitNotes }
-    : DEFAULT_HISTORY_CONFIG.gitNotes;
-
-  return {
-    ...DEFAULT_HISTORY_CONFIG,
-    ...config,
-    gitNotes: mergedGitNotes,
-  };
-}
+const NOTES_REF = VALIDATION_NOTES_REF as NotesRef;
 
 /**
  * Prune validation history older than specified days
  *
  * @param olderThanDays - Remove notes older than this many days
- * @param config - History configuration
  * @param dryRun - If true, don't actually delete (default: false)
  * @returns Prune result
  */
 export async function pruneHistoryByAge(
   olderThanDays: number,
-  config: HistoryConfig = {},
   dryRun: boolean = false
 ): Promise<PruneResult> {
-  const mergedConfig = mergeConfig(config);
-  const notesRef = mergedConfig.gitNotes.ref;
   const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
 
   let notesPruned = 0;
   let runsPruned = 0;
   const prunedTreeHashes: string[] = [];
 
-  const allNotes = await getAllHistoryNotes(notesRef);
+  const allNotes = await getAllHistoryNotes();
   const notesRemaining = allNotes.length;
 
   for (const note of allNotes) {
@@ -64,12 +54,12 @@ export async function pruneHistoryByAge(
     if (oldestTimestamp < cutoffTime) {
       // All runs in this note are old - delete entire note
       // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- readHistoryNote always sets treeHash
       const treeHash = note.treeHash! as TreeHash;
 
       if (!dryRun) {
         // Use secure removeNote function (no command injection risk)
-        removeNote(notesRef as NotesRef, treeHash);
+        removeNote(NOTES_REF, treeHash);
       }
 
       notesPruned++;
@@ -89,30 +79,23 @@ export async function pruneHistoryByAge(
 /**
  * Prune all validation history
  *
- * @param config - History configuration
  * @param dryRun - If true, don't actually delete (default: false)
  * @returns Prune result
  */
-export async function pruneAllHistory(
-  config: HistoryConfig = {},
-  dryRun: boolean = false
-): Promise<PruneResult> {
-  const mergedConfig = mergeConfig(config);
-  const notesRef = mergedConfig.gitNotes.ref;
-
-  const allNotes = await getAllHistoryNotes(notesRef);
+export async function pruneAllHistory(dryRun: boolean = false): Promise<PruneResult> {
+  const allNotes = await getAllHistoryNotes();
   let notesPruned = 0;
   let runsPruned = 0;
   const prunedTreeHashes: string[] = [];
 
   for (const note of allNotes) {
     // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- readHistoryNote always sets treeHash
     const treeHash = note.treeHash! as TreeHash;
 
     if (!dryRun) {
       // Use secure removeNote function (no command injection risk)
-      removeNote(notesRef as NotesRef, treeHash);
+      removeNote(NOTES_REF, treeHash);
     }
 
     notesPruned++;
@@ -129,6 +112,22 @@ export async function pruneAllHistory(
 }
 
 /**
+ * Count the `runs` entries in a legacy note, whatever shape they have
+ *
+ * Legacy runs predate ValidationRunSchema, so they are counted raw, not parsed.
+ */
+function countLegacyRuns(ref: NotesRef, treeHash: TreeHash): number {
+  try {
+    const parsed = parseYaml(readNote(ref, treeHash) ?? '', { uniqueKeys: false }) as unknown;
+    const runs = (parsed as { runs?: unknown } | null)?.runs;
+    return Array.isArray(runs) ? runs.length : 0;
+  } catch {
+    // Unparseable legacy note: it is still removed, it just has no countable runs
+    return 0;
+  }
+}
+
+/**
  * Clean up legacy git notes from pre-0.15.0 versions
  *
  * Removes notes from the old `refs/notes/vibe-validate/runs` namespace.
@@ -138,27 +137,22 @@ export async function pruneAllHistory(
  * @returns Prune result
  */
 export async function pruneLegacyNotes(dryRun: boolean = false): Promise<PruneResult> {
-  const legacyRef = 'vibe-validate/runs';
+  const legacyRef = 'vibe-validate/runs' as NotesRef;
 
   let notesPruned = 0;
   let runsPruned = 0;
   const prunedTreeHashes: string[] = [];
 
   try {
-    const allNotes = await getAllHistoryNotes(legacyRef);
-
-    for (const note of allNotes) {
-      // Note: treeHash is always populated by readHistoryNote (falls back to ref path)
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const treeHash = note.treeHash! as TreeHash;
+    for (const treeHash of listNoteObjects(legacyRef)) {
+      runsPruned += countLegacyRuns(legacyRef, treeHash);
 
       if (!dryRun) {
         // Use secure removeNote function (no command injection risk)
-        removeNote(legacyRef as NotesRef, treeHash);
+        removeNote(legacyRef, treeHash);
       }
 
       notesPruned++;
-      runsPruned += note.runs?.length ?? 0;
       prunedTreeHashes.push(treeHash);
     }
   } catch {

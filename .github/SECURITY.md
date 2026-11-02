@@ -104,7 +104,7 @@ vibe-validate interacts with git repositories. Security features:
 
 vibe-validate stores validation state in git notes:
 
-- Validation history is stored in git notes under `refs/notes/vibe-validate/runs`
+- Validation history is stored in git notes under `refs/notes/vibe-validate/leveled-runs`
 - No user credentials or secrets should be stored in validation state
 - Git notes may contain error output from validation commands
 - Git notes are not pushed by default (requires explicit `git push origin refs/notes/*`)

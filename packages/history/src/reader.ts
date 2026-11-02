@@ -1,79 +1,86 @@
 /**
  * Git notes reader
+ *
+ * Every function here reads VALIDATION_NOTES_REF and nothing else. The ref is not a
+ * parameter: a caller that could name it could read the pre-levels ref, whose
+ * level-less runs would answer a cache lookup they never covered.
  */
 
-import { safeValidateResult } from '@vibe-validate/core';
 import { listNoteObjects, readNote, type TreeHash, type NotesRef } from '@vibe-validate/git';
 import { parse as parseYaml } from 'yaml';
 
-import type { HistoryNote } from './types.js';
+import { VALIDATION_NOTES_REF, ValidationRunSchema } from './schemas.js';
+import type { HistoryNote, ValidationRun } from './types.js';
 
-// Removed: Git operations now use secure @vibe-validate/git functions
+const NOTES_REF = VALIDATION_NOTES_REF as NotesRef;
 
-const DEFAULT_NOTES_REF = 'vibe-validate/validate';
+/**
+ * Parse note YAML, falling back to a permissive parse for duplicate keys
+ *
+ * Strict parsing comes first so corruption is visible (logged warning) while the
+ * system keeps working.
+ */
+function parseNoteYaml(yaml: string): unknown {
+  try {
+    return parseYaml(yaml);
+  } catch (strictError) {
+    // Strict parsing failed (e.g., duplicate keys from fan-out concatenation bug).
+    const msg = strictError instanceof Error ? strictError.message : String(strictError);
+    console.warn(`[vibe-validate] Note has corrupted YAML (using permissive parse): ${msg.slice(0, 120)}`);
+    return parseYaml(yaml, { uniqueKeys: false });
+  }
+}
+
+/**
+ * Keep the readable runs recorded after the newest unreadable one
+ *
+ * A run that fails ValidationRunSchema is not repaired (`passed: "false"` would
+ * read as truthy, a run with no `level` answers no request), and it is not
+ * simply dropped either: it may be a red, and dropping a newer red would let an
+ * older pass decide the lookup. So an unreadable run is a barrier: every run
+ * before it is hidden too. Runs are appended in order (git-notes.ts
+ * mergeAppendRuns), so array order is time order. The note itself is untouched;
+ * `vv history prune --all` clears it.
+ */
+function runsAfterNewestUnreadable(runs: unknown[]): ValidationRun[] {
+  const readable: ValidationRun[] = [];
+  for (const run of runs) {
+    const parsed = ValidationRunSchema.safeParse(run);
+    if (parsed.success) {
+      readable.push(parsed.data);
+    } else {
+      readable.length = 0;
+    }
+  }
+  return readable;
+}
 
 /**
  * Read validation history note for a tree hash
  *
  * @param treeHash - Git tree hash
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns History note or null if not found
  */
-export async function readHistoryNote(
-  treeHash: string,
-  notesRef: string = DEFAULT_NOTES_REF
-): Promise<HistoryNote | null> {
+export async function readHistoryNote(treeHash: string): Promise<HistoryNote | null> {
   try {
     // Use secure readNote function (no command injection risk)
-    const yaml = readNote(notesRef as NotesRef, treeHash as TreeHash);
+    const yaml = readNote(NOTES_REF, treeHash as TreeHash);
 
     if (!yaml) {
       return null;
     }
 
-    // Try strict parsing first to detect corruption, then fall back to permissive.
-    // This makes corruption visible (logged warning) while keeping the system functional.
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = parseYaml(yaml) as Record<string, unknown>;
-    } catch (strictError) {
-      // Strict parsing failed (e.g., duplicate keys from fan-out concatenation bug).
-      // Log warning so corruption is visible, then parse permissively to continue.
-      const msg = strictError instanceof Error ? strictError.message : String(strictError);
-      console.warn(`[vibe-validate] Note has corrupted YAML (using permissive parse): ${msg.slice(0, 120)}`);
-      parsed = parseYaml(yaml, { uniqueKeys: false }) as Record<string, unknown>;
-    }
+    const parsed = parseNoteYaml(yaml) as Record<string, unknown> | null;
 
-    // Validate as HistoryNote structure (silently ignore old format notes)
-    if (!parsed || typeof parsed !== 'object' || !('runs' in parsed) || !Array.isArray(parsed.runs)) {
+    // Not a HistoryNote (silently ignore old format notes)
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.runs)) {
       return null;
     }
 
-    // Validate each ValidationResult in runs array using safe validation
-    // Silently skip corrupted entries (e.g., legacy 0/0 line/column from rc.9)
-    // After upgrading vibe-validate, run 'vv doctor' to check for issues
-    // Users can optionally cleanup old history with: vv history prune --all
-    const validatedRuns = [];
-    for (const run of parsed.runs) {
-      if (!run.result) {
-        continue;
-      }
-
-      const validationResult = safeValidateResult(run.result);
-      if (!validationResult.success) {
-        continue;
-      }
-
-      validatedRuns.push({
-        ...run,
-        result: validationResult.data,
-      });
-    }
-
     return {
-      treeHash: parsed.treeHash ?? treeHash,
-      runs: validatedRuns,
-    } as HistoryNote;
+      treeHash: typeof parsed.treeHash === 'string' ? parsed.treeHash : treeHash,
+      runs: runsAfterNewestUnreadable(parsed.runs),
+    };
   } catch {
     // Note doesn't exist - this is expected for first-time validation
     return null;
@@ -83,15 +90,12 @@ export async function readHistoryNote(
 /**
  * List all tree hashes with validation history
  *
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns Array of tree hashes with notes
  */
-export async function listHistoryTreeHashes(
-  notesRef: string = DEFAULT_NOTES_REF
-): Promise<string[]> {
+export async function listHistoryTreeHashes(): Promise<string[]> {
   try {
     // Use listNoteObjects for O(1) single-spawn listing (no content reading)
-    return listNoteObjects(notesRef as NotesRef);
+    return listNoteObjects(NOTES_REF);
   } catch {
     // No notes exist yet - expected for new repos
     return [];
@@ -101,17 +105,14 @@ export async function listHistoryTreeHashes(
 /**
  * Get all validation history notes
  *
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns Array of all history notes
  */
-export async function getAllHistoryNotes(
-  notesRef: string = DEFAULT_NOTES_REF
-): Promise<HistoryNote[]> {
-  const treeHashes = await listHistoryTreeHashes(notesRef);
+export async function getAllHistoryNotes(): Promise<HistoryNote[]> {
+  const treeHashes = await listHistoryTreeHashes();
   const notes: HistoryNote[] = [];
 
   for (const treeHash of treeHashes) {
-    const note = await readHistoryNote(treeHash, notesRef);
+    const note = await readHistoryNote(treeHash);
     if (note) {
       notes.push(note);
     }
@@ -124,13 +125,9 @@ export async function getAllHistoryNotes(
  * Check if validation history exists for a tree hash
  *
  * @param treeHash - Git tree hash
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
  * @returns True if history exists
  */
-export async function hasHistoryForTree(
-  treeHash: string,
-  notesRef: string = DEFAULT_NOTES_REF
-): Promise<boolean> {
-  const note = await readHistoryNote(treeHash, notesRef);
+export async function hasHistoryForTree(treeHash: string): Promise<boolean> {
+  const note = await readHistoryNote(treeHash);
   return note !== null;
 }

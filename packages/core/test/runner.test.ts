@@ -20,9 +20,11 @@ import {
   runStepsInParallel,
   runValidation,
   setupSignalHandlers,
-  shouldSkipByRunScope,
 } from '../src/runner.js';
 import type { ValidationConfig } from '../src/runner.js';
+
+/** A run of a config without declared levels: every step runs */
+const RUN_ALL: ValidationConfig['level'] = { name: 'full', levels: ['full'] };
 
 const buildStepEnvBaseArgs = {
   parent: null,
@@ -75,6 +77,7 @@ function mockFailingOutputFiles(errorMessage: string): void {
  */
 function createAsyncErrorConfig(options: { verbose?: boolean; parallel?: boolean } = {}): ValidationConfig {
   return {
+    level: RUN_ALL,
     phases: [
       {
         name: 'Test Phase',
@@ -126,6 +129,7 @@ async function testSignalHandler(signalName: 'SIGTERM' | 'SIGINT'): Promise<void
  */
 async function runEchoContextStep(parallel: boolean, phaseName: string, stepName: string) {
   const config: ValidationConfig = {
+    level: RUN_ALL,
     phases: [{
       name: phaseName,
       parallel,
@@ -224,6 +228,7 @@ function findStepResult(result: Awaited<ReturnType<typeof runValidation>>, name:
 /** Run `command` as a fail-fast phase's only step; it must fail as itself, not be stopped */
 async function runKilledStep(testDir: string, command: string, parallel: boolean) {
   const result = await runValidation({
+    level: RUN_ALL,
     phases: [{ name: 'Checks', parallel, steps: [{ name: 'Killed', command }] }],
     enableFailFast: true,
     logPath: join(testDir, 'log.txt'),
@@ -237,6 +242,7 @@ async function runKilledStep(testDir: string, command: string, parallel: boolean
 /** Run one failing step whose output is exactly `output` */
 function runStepPrinting(name: string, output: string) {
   return runValidation({
+    level: RUN_ALL,
     phases: [
       {
         name: 'Test Phase',
@@ -252,6 +258,7 @@ function runStepPrinting(name: string, output: string) {
 /** Run one parallel step that prints and exits `exitCode` */
 function runOneDebugStep(exitCode: number, debug: boolean) {
   return runValidation({
+    level: RUN_ALL,
     phases: [
       {
         name: 'Test Phase',
@@ -306,6 +313,29 @@ function previousRunOf(runPassed: boolean, phaseName: string, steps: StoredStep[
     },
   };
 }
+const TWO_LEVELS = ['commit', 'full'] as const;
+
+/** Two phases: one mixed, one holding only a full-level step */
+function leveledPhases(): ValidationConfig['phases'] {
+  return [
+    {
+      name: 'Fast',
+      steps: [
+        { name: 'Lint', command: 'node -e "console.log(\'lint\')"', level: 'commit' },
+        { name: 'Unit', command: 'node -e "console.log(\'unit\')"', level: 'full' },
+      ],
+    },
+    {
+      name: 'Slow',
+      steps: [{ name: 'System', command: 'node -e "console.log(\'system\')"', level: 'full' }],
+    },
+  ];
+}
+
+function stepNames(result: Awaited<ReturnType<typeof runValidation>>): string[] {
+  return (result.phases ?? []).flatMap(phase => phase.steps.map(step => step.name));
+}
+
 
 describe('runner', () => {
   let testDir: string;
@@ -574,6 +604,7 @@ describe('runner', () => {
   describe('runValidation', () => {
     it('should run validation phases sequentially', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Phase1',
@@ -599,6 +630,7 @@ describe('runner', () => {
 
     it('should stop on first failed phase', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Pass',
@@ -633,6 +665,7 @@ describe('runner', () => {
       const phaseStartCallback = vi.fn();
 
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test',
@@ -653,6 +686,7 @@ describe('runner', () => {
       const phaseCompleteCallback = vi.fn();
 
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test',
@@ -677,6 +711,7 @@ describe('runner', () => {
 
     it('should include failed step output in result', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Fail',
@@ -700,6 +735,7 @@ describe('runner', () => {
     it('should write log file with all outputs', async () => {
       const logFile = join(testDir, 'log.txt');
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test',
@@ -728,6 +764,7 @@ describe('runner', () => {
       vi.mocked(getGitTreeHash).mockClear();
 
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel,
@@ -747,6 +784,7 @@ describe('runner', () => {
   describe('fail-fast attribution (parallel phases)', { timeout: SPAWN_TEST_TIMEOUT }, () => {
     it('names the step whose own command failed, not the first sibling it stopped', async () => {
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel: true,
@@ -775,6 +813,7 @@ describe('runner', () => {
     it('marks the stopped sibling in the log file, and only the real failure as FAILED', async () => {
       const logFile = join(testDir, 'log.txt');
       await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel: true,
@@ -792,6 +831,7 @@ describe('runner', () => {
 
     it.each([true, false])('names the exit code of a real failure with no output (parallel: %s)', async (parallel) => {
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel,
@@ -815,6 +855,7 @@ describe('runner', () => {
       const graceful = `const fs = require('fs'); process.on('SIGTERM', () => { fs.writeFileSync('${stoppedGracefully}', ''); process.exit(0); }); fs.writeFileSync('${ready}', ''); console.log('watching for changes...'); setInterval(() => {}, 1000)`;
       const failsOnceReady = `const fs = require('fs'); const t = setInterval(() => { if (fs.existsSync('${ready}')) { clearInterval(t); console.error('Error: Typecheck found a real problem in src/index.ts'); process.exit(1); } }, 20)`;
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel: true,
@@ -871,6 +912,7 @@ describe('runner', () => {
     it('runs every parallel step to completion and reports each failure when the phase sets failFast: false', async () => {
       writeMarkerOnceFailed('Fast Failure', join(testDir, 'fast-failed'));
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel: true,
@@ -903,6 +945,7 @@ describe('runner', () => {
 
     it('runs every sequential step when the phase sets failFast: false', async () => {
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Ordered',
           parallel: false,
@@ -919,6 +962,7 @@ describe('runner', () => {
 
     it('keeps fail-fast when the phase leaves failFast unset and the run enables it', async () => {
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel: true,
@@ -933,6 +977,7 @@ describe('runner', () => {
 
     it('lets a phase turn fail-fast on when the run leaves it off', async () => {
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel: true,
@@ -962,6 +1007,7 @@ describe('runner', () => {
       });
 
       const result = await runValidation({
+        level: RUN_ALL,
         phases: validation.phases,
         enableFailFast: false,
         logPath: join(testDir, 'log.txt'),
@@ -997,6 +1043,7 @@ describe('runner', () => {
       it('should NOT include extractionQuality when developerFeedback is false', async () => {
         // TDD: This test should FAIL initially
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'Test Phase',
@@ -1031,6 +1078,7 @@ describe('runner', () => {
         // When developerFeedback is enabled, extractors include metadata
         // Runner no longer adds redundant extractionQuality field
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'Test Phase',
@@ -1068,6 +1116,7 @@ describe('runner', () => {
         // TDD: This test should FAIL initially
         // Rationale: Passing tests have no failures to extract, score would always be 0 (meaningless)
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'Test Phase',
@@ -1264,6 +1313,7 @@ rawOutput: |
   describe('outputFiles creation', () => {
     it('should create output files for failing steps', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test Phase',
@@ -1308,6 +1358,7 @@ rawOutput: |
 
     it('should create output files for all steps when debug mode is enabled', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test Phase',
@@ -1347,6 +1398,7 @@ rawOutput: |
 
     it('should NOT create output files for passing steps without debug mode', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test Phase',
@@ -1376,6 +1428,7 @@ rawOutput: |
 
     it('should create stdout and stderr files when both are present', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test Phase',
@@ -1413,6 +1466,7 @@ rawOutput: |
 
     it('should use step name in output directory path', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test Phase',
@@ -1441,6 +1495,7 @@ rawOutput: |
 
     it('should handle multiple failing steps with separate output files', async () => {
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test Phase',
@@ -1531,6 +1586,7 @@ rawOutput: |
       }));
 
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test',
@@ -1567,6 +1623,7 @@ rawOutput: |
       }));
 
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test',
@@ -1594,6 +1651,7 @@ rawOutput: |
       }));
 
       const config: ValidationConfig = {
+        level: RUN_ALL,
         phases: [
           {
             name: 'Test',
@@ -1637,6 +1695,7 @@ rawOutput: |
 
     it.each([true, false])('records a step whose setup throws before it spawns (parallel: %s)', { timeout: SPAWN_TEST_TIMEOUT }, async (parallel) => {
       const result = await runValidation({
+        level: RUN_ALL,
         phases: [{
           name: 'Checks',
           parallel,
@@ -1943,6 +2002,7 @@ rawOutput: |
         const previousRun = previousRunOf(false, 'Test Phase', [storedStep('Quick Step', 'node -e "console.log(\'cached\')"', 0), storedStep('Failing Step', 'node -e "process.exit(1)"', 1)]);
 
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'Test Phase',
@@ -1983,6 +2043,7 @@ rawOutput: |
         const previousRun = previousRunOf(false, 'Old Phase', [storedStep('Old Step', 'node -e "console.log(\'old\')"', 0)]);
 
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'New Phase',
@@ -2009,6 +2070,7 @@ rawOutput: |
         ]);
 
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'Test Phase',
@@ -2038,6 +2100,7 @@ rawOutput: |
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'Test Phase',
@@ -2071,6 +2134,7 @@ rawOutput: |
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
         const config: ValidationConfig = {
+          level: RUN_ALL,
           phases: [
             {
               name: 'Test Phase',
@@ -2105,34 +2169,10 @@ rawOutput: |
     });
   });
 
-  describe('shouldSkipByRunScope', () => {
-    it('should not skip when runScope is undefined', () => {
-      expect(shouldSkipByRunScope(undefined, false)).toBe(false);
-      expect(shouldSkipByRunScope(undefined, true)).toBe(false);
-    });
-
-    it('should skip ci-only step when not in CI', () => {
-      expect(shouldSkipByRunScope('ci', false)).toBe(true);
-    });
-
-    it('should not skip ci-only step when in CI', () => {
-      expect(shouldSkipByRunScope('ci', true)).toBe(false);
-    });
-
-    it('should skip local-only step when in CI', () => {
-      expect(shouldSkipByRunScope('local', true)).toBe(true);
-    });
-
-    it('should not skip local-only step when not in CI', () => {
-      expect(shouldSkipByRunScope('local', false)).toBe(false);
-    });
-  });
-
-  describe('runScope filtering (integration)', () => {
+  describe('validation levels', () => {
     const originalCI = process.env.CI;
 
     afterEach(() => {
-      // Restore original CI env var
       if (originalCI === undefined) {
         delete process.env.CI;
       } else {
@@ -2140,128 +2180,62 @@ rawOutput: |
       }
     });
 
-    it('should skip ci-only step when CI env is not set', async () => {
-      delete process.env.CI;
 
-      const steps: ValidationStep[] = [
-        { name: 'CI Only', command: 'node -e "console.log(\'ran\')"', runScope: 'ci' },
-        { name: 'Always', command: 'node -e "console.log(\'always\')"' },
-      ];
+    it('a commit run executes only commit steps and omits the phase it empties', async () => {
+      const result = await runValidation({
+        phases: leveledPhases(),
+        level: { name: 'commit', levels: TWO_LEVELS },
+      });
 
-      const result = await runStepsInParallel(steps, 'Test Phase', {});
-
-      expect(result.success).toBe(true);
-      expect(result.stepResults).toHaveLength(2);
-
-      const ciStep = result.stepResults.find(s => s.name === 'CI Only');
-      expect(ciStep).toBeDefined();
-      expect(ciStep!.passed).toBe(true);
-      expect(ciStep!.exitCode).toBe(0);
-      expect(ciStep!.durationSecs).toBe(0);
-
-      // The always step should have actually run (has a command, not synthetic skip)
-      const alwaysStep = result.stepResults.find(s => s.name === 'Always');
-      expect(alwaysStep).toBeDefined();
-      expect(alwaysStep!.passed).toBe(true);
-      // Verify it actually executed (output captured)
-      expect(result.outputs.get('Always')).toContain('always');
+      expect(result.passed).toBe(true);
+      expect(result.level).toBe('commit');
+      expect(stepNames(result)).toEqual(['Lint']);
+      expect(result.phases?.map(phase => phase.name)).toEqual(['Fast']);
     });
 
-    it('should run ci-only step when CI env is set', async () => {
+    it('a full run executes every step and records its level', async () => {
+      const result = await runValidation({
+        phases: leveledPhases(),
+        level: { name: 'full', levels: TWO_LEVELS },
+      });
+
+      expect(result.level).toBe('full');
+      expect(stepNames(result)).toEqual(['Lint', 'Unit', 'System']);
+    });
+
+    it('CI being set selects nothing: a commit run still leaves out full steps', async () => {
       process.env.CI = 'true';
 
-      const steps: ValidationStep[] = [
-        { name: 'CI Only', command: 'node -e "console.log(\'ran\')"', runScope: 'ci' },
-      ];
+      const result = await runValidation({
+        phases: leveledPhases(),
+        level: { name: 'commit', levels: TWO_LEVELS },
+      });
 
-      const result = await runStepsInParallel(steps, 'Test Phase', {});
-
-      expect(result.success).toBe(true);
-      const ciStep = result.stepResults.find(s => s.name === 'CI Only');
-      expect(ciStep).toBeDefined();
-      expect(ciStep!.passed).toBe(true);
-      // Verify it actually executed (output captured)
-      expect(result.outputs.get('CI Only')).toContain('ran');
+      expect(stepNames(result)).toEqual(['Lint']);
     });
 
-    it('should skip local-only step when CI env is set', async () => {
-      process.env.CI = 'true';
+    it('a failed run records the level it ran at', async () => {
+      const result = await runValidation({
+        phases: [{ name: 'Fast', steps: [{ name: 'Bad', command: 'node -e "process.exit(1)"', level: 'commit' }] }],
+        level: { name: 'commit', levels: TWO_LEVELS },
+      });
 
-      const steps: ValidationStep[] = [
-        { name: 'Local Only', command: 'node -e "console.log(\'ran\')"', runScope: 'local' },
-      ];
-
-      const result = await runStepsInParallel(steps, 'Test Phase', {});
-
-      expect(result.success).toBe(true);
-      const localStep = result.stepResults.find(s => s.name === 'Local Only');
-      expect(localStep).toBeDefined();
-      expect(localStep!.passed).toBe(true);
-      expect(localStep!.exitCode).toBe(0);
-      expect(localStep!.durationSecs).toBe(0);
+      expect(result.passed).toBe(false);
+      expect(result.level).toBe('commit');
     });
 
-    it('should run local-only step when CI env is not set', async () => {
-      delete process.env.CI;
-
-      const steps: ValidationStep[] = [
-        { name: 'Local Only', command: 'node -e "console.log(\'ran\')"', runScope: 'local' },
-      ];
-
-      const result = await runStepsInParallel(steps, 'Test Phase', {});
-
-      expect(result.success).toBe(true);
-      const localStep = result.stepResults.find(s => s.name === 'Local Only');
-      expect(localStep).toBeDefined();
-      expect(localStep!.passed).toBe(true);
-      // Verify it actually executed (output captured)
-      expect(result.outputs.get('Local Only')).toContain('ran');
+    it('rejects a level the config does not declare', async () => {
+      await expect(runValidation({
+        phases: leveledPhases(),
+        level: { name: 'push', levels: TWO_LEVELS },
+      })).rejects.toMatchObject({ code: 'UNKNOWN_LEVEL' });
     });
 
-    it('should run step without runScope in both environments', async () => {
-      const steps: ValidationStep[] = [
-        { name: 'Always Run', command: 'node -e "console.log(\'ran\')"' },
-      ];
-
-      // Test without CI
-      delete process.env.CI;
-      const resultLocal = await runStepsInParallel(steps, 'Test Phase', {});
-      expect(resultLocal.success).toBe(true);
-      expect(resultLocal.outputs.get('Always Run')).toContain('ran');
-
-      // Test with CI
-      process.env.CI = 'true';
-      const resultCI = await runStepsInParallel(steps, 'Test Phase', {});
-      expect(resultCI.success).toBe(true);
-      expect(resultCI.outputs.get('Always Run')).toContain('ran');
-    });
-
-    it('should log skip reason for skipped steps', async () => {
-      delete process.env.CI;
-
-      const steps: ValidationStep[] = [
-        { name: 'CI Step', command: 'node -e "console.log(\'ran\')"', runScope: 'ci' },
-      ];
-
-      const consoleSpy = vi.spyOn(console, 'log');
-      await runStepsInParallel(steps, 'Test Phase', {});
-
-      const logOutput = consoleSpy.mock.calls.map(call => String(call[0])).join('\n');
-      expect(logOutput).toContain('skipped (ci-only)');
-    });
-
-    it('should log local-only skip reason when in CI', async () => {
-      process.env.CI = 'true';
-
-      const steps: ValidationStep[] = [
-        { name: 'Local Step', command: 'node -e "console.log(\'ran\')"', runScope: 'local' },
-      ];
-
-      const consoleSpy = vi.spyOn(console, 'log');
-      await runStepsInParallel(steps, 'Test Phase', {});
-
-      const logOutput = consoleSpy.mock.calls.map(call => String(call[0])).join('\n');
-      expect(logOutput).toContain('skipped (local-only)');
+    it('rejects a step with no level instead of guessing one', async () => {
+      await expect(runValidation({
+        phases: [{ name: 'Fast', steps: [{ name: 'Unlevelled', command: 'node -e "process.exit(0)"' }] }],
+        level: { name: 'full', levels: TWO_LEVELS },
+      })).rejects.toMatchObject({ code: 'MISSING_STEP_LEVEL' });
     });
   });
 

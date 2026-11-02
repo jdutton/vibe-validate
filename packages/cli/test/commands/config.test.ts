@@ -104,6 +104,14 @@ function expectLogMessage(expectedText: string): void {
   expect(console.log).toHaveBeenCalledWith(expect.stringContaining(expectedText));
 }
 
+/**
+ * Every line console.log printed
+ * @returns The printed lines
+ */
+function printedLines(): string[] {
+  return vi.mocked(console.log).mock.calls.map(call => String(call[0] ?? ''));
+}
+
 describe('config command', () => {
   let tempEnv: TempDirTestEnv;
   let env: CommanderTestEnv;
@@ -223,6 +231,60 @@ describe('config command', () => {
       expect(exitCode).toBe(0);
       expectLogMessage('validation:');
       expectLogMessage('Vibe-Validate Configuration');
+    });
+  });
+
+  describe('validation levels', () => {
+    const leveled = createTestConfig({
+      validation: {
+        levels: ['commit', 'push', 'full'],
+        phases: [{
+          name: 'Checks',
+          steps: [
+            { name: 'Lint', command: 'lint', level: 'commit' },
+            { name: 'Unit', command: 'unit', level: 'push' },
+            { name: 'System', command: 'system', level: 'full' },
+          ],
+        }],
+      },
+      hooks: { preCommit: { level: 'push' } },
+    });
+
+    it('the YAML view lists the levels in order, the hook level, and what each command runs by default', async () => {
+      mockValidConfig(leveled, join(tempEnv.testDir, 'vibe-validate.config.yaml'));
+      configCommand(env.program);
+
+      expect(await executeCommandAndGetExitCode(env.program, ['config'])).toBe(0);
+
+      const lines = printedLines();
+      expect(lines).toContain('  levels: [commit, push, full]');
+      expect(lines).toContain('hooks:');
+      expect(lines).toContain('  preCommit:');
+      expect(lines).toContain('    level: push');
+      expect(lines).toContain('# vv pre-commit runs level push; vv validate runs level full');
+    });
+
+    it('the verbose view names the levels and each command\'s default level', async () => {
+      mockValidConfig(leveled, join(tempEnv.testDir, 'vibe-validate.config.yaml'));
+      configCommand(env.program);
+
+      expect(await executeCommandAndGetExitCode(env.program, ['config', '--verbose'])).toBe(0);
+
+      expectLogMessage('Levels: commit → push → full');
+      expectLogMessage('vv pre-commit runs: push');
+      expectLogMessage('vv validate runs: full');
+    });
+
+    it('a config without levels shows the one implicit level both commands run', async () => {
+      mockValidConfig(createTestConfig(), join(tempEnv.testDir, 'vibe-validate.config.yaml'));
+      configCommand(env.program);
+
+      expect(await executeCommandAndGetExitCode(env.program, ['config', '--verbose'])).toBe(0);
+
+      const lines = printedLines();
+      expect(lines.some(line => line.includes('levels:'))).toBe(false);
+      expect(lines).toContain('# vv pre-commit runs level full; vv validate runs level full');
+      expectLogMessage('Levels: full (none declared)');
     });
   });
 

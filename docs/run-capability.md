@@ -48,7 +48,9 @@ vv run npm test  # Instant! (dramatically faster)
 vv run npm test  # Executes again
 ```
 
-**Cache key:** Git tree hash of your code (deterministic, content-based)
+**Cache key:** Git tree hash of your code (deterministic, content-based) plus the command
+
+Only a pass is cached, and only if the tree is unchanged after the command. A failure is never cached; it removes the stored pass for that command, so the next run executes again.
 
 **Force re-run:**
 ```bash

@@ -8,6 +8,7 @@ import type { TreeHash } from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 
 import { validateCommand } from '../../src/commands/validate.js';
 import * as configLoader from '../../src/utils/config-loader.js';
@@ -43,15 +44,17 @@ vi.mock('../../src/utils/config-loader.js', async () => {
     loadConfig: vi.fn(),
     loadConfigWithDir: vi.fn(),
     loadConfigWithErrors: vi.fn(),
+    // The mocked loader reads no file; the loaded config is what the file holds
+    configFileHolds: vi.fn(() => true),
   };
 });
 
-// Mock the history module
+// Mock the history module (I/O only: the cache and retry lookups are the real
+// pure functions, driven through readHistoryNote)
 vi.mock('@vibe-validate/history', async () => {
   const actual = await vi.importActual<typeof history>('@vibe-validate/history');
   return {
     ...actual,
-    findCachedValidation: vi.fn(),
     checkWorktreeStability: vi.fn(),
     recordValidationHistory: vi.fn(),
     checkHistoryHealth: vi.fn(),
@@ -113,6 +116,7 @@ function createMockHistoryNote(overrides: {
         timestamp,
         duration,
         passed,
+        level: 'full',
         branch: 'main',
         headCommit: 'abc123',
         uncommittedChanges: false,
@@ -120,6 +124,7 @@ function createMockHistoryNote(overrides: {
           passed,
           timestamp,
           treeHash,
+          level: 'full',
           duration,
           branch: 'main',
           phases,
@@ -257,7 +262,7 @@ function setupWorkingDirectoryMocks(
   });
 
   // Mock no cached result
-  vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+  vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
   // Mock history recording
   vi.mocked(history.checkWorktreeStability).mockResolvedValue({
@@ -354,6 +359,17 @@ async function parseCommandRequiringExit(
  * @param testDir - Test directory path
  * @param config - Config to return (defaults to createMockConfig())
  */
+/** No config loads; loadConfigWithErrors reports `errors` (invalid) or nothing (missing) */
+function setupBrokenConfig(testDir: string, errors: string[] | null): void {
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue(null);
+  // spyOn, as the no-config tests do: their restored spy leaves no vi.fn behind
+  vi.spyOn(configLoader, 'loadConfigWithErrors').mockResolvedValue({
+    config: null,
+    errors,
+    filePath: errors ? join(testDir, 'vibe-validate.config.yaml') : null,
+  });
+}
+
 function setupMockConfig(testDir: string, config: VibeValidateConfig = createMockConfig()): void {
   vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: testDir });
 }
@@ -479,7 +495,6 @@ describe('validate command', () => {
     vi.mocked(configLoader.loadConfig).mockReset();
     vi.mocked(configLoader.loadConfigWithDir).mockReset();
     vi.mocked(git.getGitTreeHash).mockReset();
-    vi.mocked(history.findCachedValidation).mockReset();
     vi.mocked(history.checkWorktreeStability).mockReset();
     vi.mocked(history.recordValidationHistory).mockReset();
     vi.mocked(history.checkHistoryHealth).mockReset();
@@ -718,6 +733,15 @@ describe('validate command', () => {
       expect(core.runValidation).toHaveBeenCalled();
     });
 
+    it('exits 1 for a failed result even when it is flagged as cached', async () => {
+      // Only passes are served from cache, but the exit code must not depend on
+      // that invariant holding: passed=false always exits 1
+      setupFailedValidation({ isCachedResult: true });
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate'], 1);
+    });
+
     it('should display error details on failure', async () => {
       validateCommand(env.program);
 
@@ -823,19 +847,14 @@ describe('validate command', () => {
         hash: 'abc123def456' as any
       });
 
-      // Mock findCachedValidation with passing validation
-      const mockRun = createMockHistoryNote({ timestamp: new Date().toISOString(), duration: 1000 }).runs[0];
-      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
+      // Serve a passing run for this tree
+      vi.mocked(history.readHistoryNote).mockResolvedValue(
+        createMockHistoryNote({ timestamp: new Date().toISOString(), duration: 1000 })
+      );
 
       validateCommand(env.program);
 
-      try {
-        await env.program.parseAsync(['validate', '--check'], { from: 'user' });
-      } catch (error: unknown) {
-        // Commander.js throws on exitOverride - verify it's the expected error
-        expect(error).toBeDefined();
-        // Expected exit from checkValidationStatus
-      }
+      await parseCommandRequiringExit(env, ['validate', '--check'], 0);
 
       // Verify runValidation was NOT called
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -847,14 +866,41 @@ describe('validate command', () => {
         hash: 'abc123def456' as any
       });
 
-      // Mock findCachedValidation with no history
-      vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+      // No note for this tree
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(env, ['validate', '--check'], 2);
+      await parseCommandRequiringExit(env, ['validate', '--check'], 2);
 
-      expectConsoleLog('No validation history for current working tree');
+      expectConsoleLog('No validation at level full for current working tree');
+      expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('should exit with code 1 when the last run at this level failed, without running validation', async () => {
+      vi.mocked(history.readHistoryNote).mockResolvedValue(
+        createMockHistoryNote({ passed: false, failedStep: 'Test Step' })
+      );
+
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check'], 1);
+
+      expectConsoleLog('The newest run bearing on level full failed for this code');
+      expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('should exit with code 2 when only an earlier level passed (--level full over a commit pass)', async () => {
+      setupMockConfig(testDir, { validation: { levels: ['commit', 'full'], phases: [] } });
+      const note = createMockHistoryNote();
+      note.runs[0].level = 'commit';
+      vi.mocked(history.readHistoryNote).mockResolvedValue(note);
+
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check', '--level', 'full'], 2);
+
+      expectConsoleLog('No validation at level full for current working tree');
       expect(core.runValidation).not.toHaveBeenCalled();
     });
 
@@ -864,16 +910,15 @@ describe('validate command', () => {
         hash: 'abc123def456' as any
       });
 
-      // Mock findCachedValidation with passing validation
-      const mockRun = createMockHistoryNote().runs[0];
-      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
+      // Serve a passing run for this tree
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createMockHistoryNote());
 
       // Spy on process.stdout.write to capture YAML output
       vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(env, ['validate', '--check', '--yaml'], 0);
+      await parseCommandRequiringExit(env, ['validate', '--check', '--yaml'], 0);
 
       // Verify runValidation was NOT called (using --check flag)
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -885,6 +930,112 @@ describe('validate command', () => {
 
       // Verify console.log was NOT called (YAML mode should only use stdout)
       expect(console.log).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('--level flag', () => {
+    const twoLevels: VibeValidateConfig = { validation: { levels: ['commit', 'full'], phases: [] } };
+
+    it('runs the last declared level by default', async () => {
+      setupMockConfig(testDir, twoLevels);
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+      setupSuccessfulValidation();
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate'], 0);
+
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({ level: { name: 'full', levels: ['commit', 'full'] } })
+      );
+    });
+
+    it('runs the requested level', async () => {
+      setupMockConfig(testDir, twoLevels);
+      vi.mocked(history.readHistoryNote).mockResolvedValue(null);
+      setupSuccessfulValidation();
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--level', 'commit'], 0);
+
+      expect(core.runValidation).toHaveBeenCalledWith(
+        expect.objectContaining({ level: { name: 'commit', levels: ['commit', 'full'] } })
+      );
+    });
+
+    it('exits 1 without running anything for a level the config does not declare', async () => {
+      setupMockConfig(testDir, twoLevels);
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--level', 'nightly'], 1);
+
+      expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('exits 2 under --check for an unknown level (1 would claim the run failed)', async () => {
+      setupMockConfig(testDir, twoLevels);
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check', '--level', 'nightly'], 2);
+
+      expect(history.readHistoryNote).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('nightly'));
+    });
+
+    it('writes a YAML error document to stdout under --check --yaml for an unknown level', async () => {
+      setupMockConfig(testDir, twoLevels);
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+        writes.push(String(chunk));
+        return true;
+      });
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check', '--yaml', '--level', 'nightly'], 2);
+
+      // outputYamlResult frames the document with leading and closing `---`
+      const body = writes.join('').split(/^---$/m).find(part => part.trim() !== '');
+      const doc = parseYaml(body ?? '');
+      expect(doc).toEqual({
+        exists: false,
+        error: expect.stringContaining('nightly'),
+        levels: ['commit', 'full'],
+      });
+    });
+  });
+
+  describe('a config --check cannot use exits 2 (1 would claim the run failed)', () => {
+    it.each([
+      ['invalid', ['validation.phases: Required']],
+      ['missing', null],
+    ])('%s config: --check exits 2, plain validate exits 1', async (_kind, errors) => {
+      setupBrokenConfig(testDir, errors);
+      validateCommand(env.program);
+      await parseCommandRequiringExit(env, ['validate', '--check'], 2);
+
+      setupBrokenConfig(testDir, errors);
+      const plain = setupCommanderTest();
+      validateCommand(plain.program);
+      await parseCommandRequiringExit(plain, ['validate'], 1);
+      plain.cleanup();
+    });
+
+    it('--check --yaml writes the YAML error document for an invalid config', async () => {
+      setupBrokenConfig(testDir, ['validation.phases: Required']);
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+        writes.push(String(chunk));
+        return true;
+      });
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check', '--yaml'], 2);
+
+      const body = writes.join('').split(/^---$/m).find(part => part.trim() !== '');
+      expect(parseYaml(body ?? '')).toEqual({
+        exists: false,
+        error: 'Configuration is invalid: vibe-validate.config.yaml',
+        errors: ['validation.phases: Required'],
+      });
     });
   });
 
@@ -951,8 +1102,8 @@ describe('validate command', () => {
         hash: 'abc123def456' as any
       });
 
-      // Mock findCachedValidation with passing validation (cached result with phases)
-      const mockRun = createMockHistoryNote({
+      // Serve a passing run (cached result with phases)
+      const mockNote = createMockHistoryNote({
         phases: [
           {
             name: 'Pre-Qualification',
@@ -972,8 +1123,8 @@ describe('validate command', () => {
             ]
           }
         ]
-      }).runs[0];
-      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
+      });
+      vi.mocked(history.readHistoryNote).mockResolvedValue(mockNote);
 
       validateCommand(env.program);
 
@@ -982,7 +1133,7 @@ describe('validate command', () => {
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.findCachedValidation).toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
 
       // Main assertion: runValidation should NOT be called when cache hits
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -1000,9 +1151,12 @@ describe('validate command', () => {
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Phases: 2, Steps: 3 (5.0s)')
       );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Level: full')
+      );
     });
 
-    it('should display cached failure result with tree hash and details in human-readable mode', async () => {
+    it('never replays a stored failure: the steps run again and the fresh result decides', async () => {
       setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
@@ -1012,12 +1166,9 @@ describe('validate command', () => {
           }]
         }
       }));
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456' as any
-      });
 
-      // Mock findCachedValidation with failing validation (cached failure)
-      const mockRun = createMockHistoryNote({
+      // A failure is recorded for this tree
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createMockHistoryNote({
         passed: false,
         failedStep: 'Test Step',
         phases: [
@@ -1030,72 +1181,46 @@ describe('validate command', () => {
             ]
           }
         ]
-      }).runs[0];
-      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
-
-      validateCommand(env.program);
-
-      await parseCommandExpectingExit(env, ['validate']);
-
-      // Verify cache check happened first
-      expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.findCachedValidation).toHaveBeenCalled();
-
-      // runValidation should NOT be called when cache hits (even for failures)
-      expect(core.runValidation).not.toHaveBeenCalled();
-
-      // Verify human-readable output shows cached failure
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Validation failed for this code')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Tree hash: abc123def456')
-      );
-      // A replayed failure must say so - it was not re-run (issue #169)
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Replayed from 2025-10-22T00:00:00.000Z on branch main (not re-run just now)')
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Phases: 1, Steps: 1 (5.0s)')
-      );
-      // ...and must carry the same actionable footer a fresh failure gets
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('View error details'),
-        expect.anything()
-      );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('validate --force')
-      );
-    });
-
-    it('should exit 1 when replaying a cached failure', async () => {
-      // A replayed failure is still a failure. `vv validate && git push` must
-      // not treat a stored failure as success just because it came from a note.
-      setupMockConfig(testDir);
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456' as any
-      });
-      vi.mocked(history.findCachedValidation).mockResolvedValue(
-        createMockHistoryNote({ passed: false, failedStep: 'Test Step' }).runs[0]
-      );
+      }));
+      setupFailedValidation({ timestamp: '2025-10-23T00:00:00.000Z' });
 
       validateCommand(env.program);
 
       await parseCommandRequiringExit(env, ['validate'], 1);
 
-      expect(core.runValidation).not.toHaveBeenCalled();
+      // The steps ran again
+      expect(core.runValidation).toHaveBeenCalledTimes(1);
+      // A fresh failure keeps the actionable footer
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('View error details'),
+        expect.anything()
+      );
+      // ...and none of the deleted replay presentation
+      for (const phrase of ['Replayed from', 'not re-run', 'Validation failed for this code', 'validate --force']) {
+        expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining(phrase));
+        expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining(phrase));
+      }
     });
 
-    it('should not exit non-zero when replaying a cached pass', async () => {
-      // The counterpart direction: a cached pass must stay a success, so the
-      // exit-code fix above cannot be satisfied by simply always exiting 1.
+    it('exits 0 when a stored failure is fixed: the fresh pass is what counts', async () => {
       setupMockConfig(testDir);
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456' as any
-      });
-      vi.mocked(history.findCachedValidation).mockResolvedValue(
-        createMockHistoryNote({ passed: true }).runs[0]
+      vi.mocked(history.readHistoryNote).mockResolvedValue(
+        createMockHistoryNote({ passed: false, failedStep: 'Test Step' })
       );
+      setupSuccessfulValidation();
+
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate'], 0);
+
+      expect(core.runValidation).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not exit non-zero when serving a cached pass', async () => {
+      // A cached pass must stay a success, so the exit-1-on-failure path above
+      // cannot be satisfied by simply always exiting 1.
+      setupMockConfig(testDir);
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createMockHistoryNote({ passed: true }));
 
       validateCommand(env.program);
 
@@ -1103,9 +1228,10 @@ describe('validate command', () => {
       await env.program.parseAsync(['validate'], { from: 'user' });
 
       expect(core.runValidation).not.toHaveBeenCalled();
+      expect(process.exit).not.toHaveBeenCalled();
     });
 
-    it('should display cached validation result', async () => {
+    it('should display cached validation result (newest pass in a flaky note)', async () => {
       setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
@@ -1115,37 +1241,25 @@ describe('validate command', () => {
           }]
         }
       }));
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456' as any
-      });
 
-      // Mock findCachedValidation with passing run
-      const passedRun = createFlakyHistoryNote().runs[2]; // Most recent run (run-3, passed)
-      vi.mocked(history.findCachedValidation).mockResolvedValue(passedRun);
-
-      // Spy on console.log
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      // pass, fail, pass: the newest pass answers
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createFlakyHistoryNote());
 
       validateCommand(env.program);
 
       await env.program.parseAsync(['validate'], { from: 'user' });
 
-      // Should display passed validation
+      expect(core.runValidation).not.toHaveBeenCalled();
       expectConsoleLog('Validation passed for this code');
-
-      logSpy.mockRestore();
+      expectConsoleLog('Validated: 2025-10-22T02:00:00.000Z on branch main');
     });
 
     it('should output YAML to stdout when validation is cached and --yaml flag is set', async () => {
       setupMockConfig(testDir);
       setupStdoutSpy();
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456' as any
-      });
 
-      // Mock findCachedValidation with passing validation (cached result)
-      const mockRun = createMockHistoryNote().runs[0];
-      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
+      // Serve a passing run (cached result)
+      vi.mocked(history.readHistoryNote).mockResolvedValue(createMockHistoryNote());
 
       validateCommand(env.program);
 
@@ -1154,7 +1268,7 @@ describe('validate command', () => {
 
       // Verify cache check happened first
       expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.findCachedValidation).toHaveBeenCalled();
+      expect(history.readHistoryNote).toHaveBeenCalledWith('abc123def456');
 
       // Main assertion: runValidation should NOT be called when cache hits
       expect(core.runValidation).not.toHaveBeenCalled();
@@ -1163,12 +1277,13 @@ describe('validate command', () => {
       expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('treeHash:'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('isCachedResult: true'));
 
       // Verify console.log was NOT called (YAML mode should only use stdout)
       expect(console.log).not.toHaveBeenCalled();
     });
 
-    it('should output YAML to stdout when cached failure and --yaml flag is set', async () => {
+    it('should run again and output the FRESH result as YAML when a failure is stored and --yaml is set', async () => {
       setupMockConfig(testDir, createMockConfig({
         validation: {
           phases: [{
@@ -1179,33 +1294,24 @@ describe('validate command', () => {
         }
       }));
       setupStdoutSpy();
-      vi.mocked(git.getGitTreeHash).mockResolvedValue({
-        hash: 'abc123def456' as any
-      });
 
-      // Mock findCachedValidation with failing validation (cached failure)
-      const mockRun = createMockHistoryNote({
-        passed: false,
-        failedStep: 'Test Step'
-      }).runs[0];
-      vi.mocked(history.findCachedValidation).mockResolvedValue(mockRun);
+      vi.mocked(history.readHistoryNote).mockResolvedValue(
+        createMockHistoryNote({ passed: false, failedStep: 'Test Step' })
+      );
+      setupFailedValidation({ timestamp: '2025-10-23T00:00:00.000Z' });
 
       validateCommand(env.program);
 
-      await parseCommandExpectingExit(env, ['validate', '--yaml']);
+      await parseCommandRequiringExit(env, ['validate', '--yaml'], 1);
 
-      // Verify cache check happened first
-      expect(git.getGitTreeHash).toHaveBeenCalled();
-      expect(history.findCachedValidation).toHaveBeenCalled();
+      // The stored failure was not served: the steps ran again
+      expect(core.runValidation).toHaveBeenCalledTimes(1);
 
-      // runValidation should NOT be called when cache hits
-      expect(core.runValidation).not.toHaveBeenCalled();
-
-      // Verify YAML separator and cached failure were written to stdout
+      // The fresh failure was written to stdout, not the stored one
       expect(process.stdout.write).toHaveBeenCalledWith('---\n');
       expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('passed: false'));
-      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('treeHash:'));
-      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('failedStep:'));
+      expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('2025-10-23T00:00:00.000Z'));
+      expect(process.stdout.write).not.toHaveBeenCalledWith(expect.stringContaining('isCachedResult'));
 
       // Verify console.log was NOT called (YAML mode should only use stdout)
       expect(console.log).not.toHaveBeenCalled();
@@ -1346,6 +1452,35 @@ describe('validate command', () => {
       // Verify validation ran successfully
       expect(core.runValidation).toHaveBeenCalled();
 
+      warnSpy.mockRestore();
+    });
+
+    it('records a failure even when the worktree changed during validation', async () => {
+      // A recorded failure can only cause a re-run, so it is always safe to record;
+      // dropping it would leave an older pass answering
+      const treeHashBefore = 'abc123def456' as TreeHash;
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: treeHashBefore });
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: false,
+        treeHashBefore,
+        treeHashAfter: 'def456abc123',
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: false,
+        timestamp: '2025-10-23T00:00:00.000Z',
+        treeHash: treeHashBefore,
+        phases: [],
+      });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      validateCommand(env.program);
+      await parseCommandExpectingExit(env, ['validate'], 1);
+
+      expect(history.recordValidationHistory).toHaveBeenCalledWith(
+        { hash: treeHashBefore },
+        expect.objectContaining({ passed: false })
+      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('failure recorded'));
       warnSpy.mockRestore();
     });
 
@@ -1505,17 +1640,15 @@ describe('validate command', () => {
           timestamp: '2026-02-12T10:00:00Z',
           duration: 7500,
           passed: false,
+          level: 'full',
           branch: 'main',
           headCommit: 'commit123',
           uncommittedChanges: false,
           result: firstRunResult,
         };
 
-        // First call: cache check returns null
-        // Second call: retry check returns previous failed run
-        vi.mocked(history.findCachedValidation)
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(previousRun);
+        // The failed run is the tree's only record: no cached pass, so retry builds on it
+        vi.mocked(history.readHistoryNote).mockResolvedValue({ treeHash: 'abc123def456' as any, runs: [previousRun] });
 
         // Second run: All steps pass (Failing Step fixed)
         const secondRunResult = {
@@ -1585,6 +1718,7 @@ describe('validate command', () => {
           timestamp: '2026-02-12T10:00:00Z',
           duration: 5000,
           passed: false,
+          level: 'full',
           branch: 'main',
           headCommit: 'commit123',
           uncommittedChanges: false,
@@ -1614,17 +1748,14 @@ describe('validate command', () => {
           runs: [failedRun]
         };
 
-        // Setup mocks
-        vi.mocked(history.findCachedValidation)
-          .mockResolvedValueOnce(null) // Cache check
-          .mockResolvedValueOnce(failedRun); // Retry check
-
+        // One note read serves the cache lookup, the retry lookup and flakiness
         vi.mocked(history.readHistoryNote).mockResolvedValue(historyNote);
 
-        // Validation passes this time
+        // Validation passes this time (the runner records the level it ran)
         vi.mocked(core.runValidation).mockResolvedValue({
           passed: true,
           timestamp: '2026-02-12T10:05:00Z',
+          level: 'full',
           treeHash: 'abc123def456' as any,
           phases: [{
             name: 'Test Phase',
@@ -1666,6 +1797,7 @@ describe('validate command', () => {
           timestamp: '2026-02-12T10:00:00Z',
           duration: 5000,
           passed: false,
+          level: 'full',
           branch: 'main',
           headCommit: 'commit123',
           uncommittedChanges: false,
@@ -1678,9 +1810,7 @@ describe('validate command', () => {
           }
         };
 
-        vi.mocked(history.findCachedValidation)
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(failedRun);
+        vi.mocked(history.readHistoryNote).mockResolvedValue({ treeHash: 'abc123def456' as any, runs: [failedRun] });
 
         // Validation still fails
         vi.mocked(core.runValidation).mockResolvedValue({
@@ -1710,8 +1840,8 @@ describe('validate command', () => {
       it('should show error message and run full validation when no previous validation exists', async () => {
         setupMockConfig(testDir);
 
-        // No cached validation
-        vi.mocked(history.findCachedValidation).mockResolvedValue(null);
+        // No note for this tree
+        vi.mocked(history.readHistoryNote).mockResolvedValue(null);
 
         // Validation runs and passes
         vi.mocked(core.runValidation).mockResolvedValue({
@@ -1730,10 +1860,7 @@ describe('validate command', () => {
 
         // Verify error message about no previous validation
         expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('No failed validation found')
-        );
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('abc123def456')
+          expect.stringContaining('No failed validation at level full to retry for tree abc123def456')
         );
 
         // Verify full validation ran (without previousRun)
@@ -1746,15 +1873,15 @@ describe('validate command', () => {
         errorSpy.mockRestore();
       });
 
-      it('should show error message when previous validation passed', async () => {
+      it('serves a recorded pass from cache under --retry-failed: nothing to retry, nothing runs', async () => {
         setupMockConfig(testDir);
 
-        // Previous validation passed
         const passedRun = {
           id: 'run-1',
           timestamp: '2026-02-12T10:00:00Z',
           duration: 5000,
           passed: true,
+          level: 'full',
           branch: 'main',
           headCommit: 'commit123',
           uncommittedChanges: false,
@@ -1765,17 +1892,7 @@ describe('validate command', () => {
             phases: []
           }
         };
-
-        vi.mocked(history.findCachedValidation)
-          .mockResolvedValueOnce(null) // Cache check
-          .mockResolvedValueOnce(passedRun); // Retry check
-
-        vi.mocked(core.runValidation).mockResolvedValue({
-          passed: true,
-          timestamp: '2026-02-12T10:05:00Z',
-          treeHash: 'abc123def456' as any,
-          phases: []
-        });
+        vi.mocked(history.readHistoryNote).mockResolvedValue({ treeHash: 'abc123def456' as any, runs: [passedRun] });
 
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(noOp);
 
@@ -1783,18 +1900,8 @@ describe('validate command', () => {
         const exitCode = await parseCommand(env, ['validate', '--retry-failed']);
 
         expect(exitCode).toBe(0);
-
-        // Verify message about previous validation passing
-        expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Previous validation passed')
-        );
-
-        // Verify full validation ran
-        expect(core.runValidation).toHaveBeenCalledWith(
-          expect.objectContaining({
-            previousRun: undefined,
-          })
-        );
+        expect(core.runValidation).not.toHaveBeenCalled();
+        expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('No failed validation found'));
 
         errorSpy.mockRestore();
       });
@@ -1810,6 +1917,7 @@ describe('validate command', () => {
           timestamp: '2026-02-12T10:00:00Z',
           duration: 5000,
           passed: false,
+          level: 'full',
           branch: 'main',
           headCommit: 'commit123',
           uncommittedChanges: false,
@@ -1822,7 +1930,7 @@ describe('validate command', () => {
           }
         };
 
-        vi.mocked(history.findCachedValidation).mockResolvedValue(failedRun);
+        vi.mocked(history.readHistoryNote).mockResolvedValue({ treeHash: 'abc123def456' as any, runs: [failedRun] });
 
         vi.mocked(core.runValidation).mockResolvedValue({
           passed: true,
@@ -1836,10 +1944,7 @@ describe('validate command', () => {
 
         expect(exitCode).toBe(0);
 
-        // Verify findCachedValidation was NOT called (--force skips cache entirely)
-        expect(history.findCachedValidation).not.toHaveBeenCalled();
-
-        // Verify validation ran without previousRun
+        // Verify validation ran without previousRun (--force skips the retry lookup)
         expect(core.runValidation).toHaveBeenCalledWith(
           expect.objectContaining({
             previousRun: undefined,

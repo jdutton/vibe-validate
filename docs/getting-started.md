@@ -341,9 +341,10 @@ Cache is NOT invalidated by:
      failFast: true  # Stop at first failure
    ```
 
-3. **Skip expensive checks in pre-commit**:
-   - Run quick checks (lint, typecheck) in pre-commit
-   - Run full suite (tests, build) in CI
+3. **Skip expensive checks in pre-commit** with `validation.levels`:
+   - Declare ordered levels (e.g. `levels: [commit, full]`) and give each step a `level`
+   - Quick checks (lint, typecheck) get `level: commit`, which `vv pre-commit` runs by default (the first level, or `hooks.preCommit.level`)
+   - The full suite (tests, build) gets `level: full`; `vv validate`, locally and in CI, runs the last level, so every step
 
 ## Common Commands
 
@@ -354,7 +355,7 @@ vv init
 # Run validation
 vv validate
 
-# Run validation (force, bypass cache)
+# Re-run even though a pass is recorded (failures are never replayed)
 vv validate --force
 
 # Pre-commit workflow
@@ -388,11 +389,15 @@ vv cleanup
 
 **Problem**: Cache not working, validation runs full every time.
 
+**Common causes**:
+- The tree hash changed (an edit, or a generated file that is not gitignored)
+- The newest run on this tree failed: a failure is never a cache hit, so the steps run again
+- Only an earlier level passed: a `commit` pass (from `vv pre-commit`) never answers `vv validate`, which runs the last level
+
 **Solution**:
-1. Check validation status: `vv validate --check`
-2. Ensure working tree is clean: `git status`
-3. View validation state: `vv state`
-4. Try force re-validation: `vv validate --force`
+1. Check validation status: `vv validate --check` (exit 1 = the deciding run failed, 2 = nothing recorded bears on the level, an unknown level, or a missing or invalid configuration)
+2. Ensure generated files are gitignored: `git status`
+3. View validation state and the level each run covered: `vv state`, `vv history list`
 
 ### Command not found
 
@@ -418,7 +423,7 @@ vv cleanup
 **Problem**: Tests pass locally but fail in CI environment.
 
 **Solution**:
-1. Run `vv validate --force` locally
+1. Run plain `vv validate` locally. With `validation.levels`, `vv pre-commit` runs only the commit level, while CI runs `vv validate`: the last level, every step. A local commit-level pass says nothing about the later-level steps CI runs.
 2. Check for environment-specific issues:
    - Hardcoded paths
    - Missing environment variables
