@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- **86 of the 92 dependency advisories in the lockfile are fixed.** The packages behind them are pinned to patched versions in `pnpm.overrides`, and `osv-scanner.toml` records why each pin exists and when to drop it. Most of them, among them `@modelcontextprotocol/sdk`, `hono`, `@hono/node-server`, `adm-zip`, `undici`, `handlebars` and `basic-ftp`, reach `vibe-validate` through `vibe-agent-toolkit`, which the published package depends on for its plugin postinstall. `glob` moves to 14 and `minimatch` to 11 across the tree, because neither advisory was fixed in an older major.
+- **86 of the 92 dependency advisories in this repository's lockfile are fixed.** The packages behind them are pinned to patched versions in the root `pnpm.overrides`, and `osv-scanner.toml` records why each pin exists and when to drop it. `glob` moves to 14 and `minimatch` to 11 across the tree, because neither advisory was fixed in an older major.
+
+  **This does not protect installs of the published package.** Most of these packages, among them `@modelcontextprotocol/sdk`, `hono`, `@hono/node-server`, `adm-zip`, `undici`, `handlebars` and `basic-ftp`, reach `vibe-validate` through `vibe-agent-toolkit@0.1.42`, which the published package depends on for its plugin postinstall. Root overrides are not published, so `npm i vibe-validate` still resolves `vibe-agent-toolkit@0.1.42`'s own dependency ranges. The fix for installs is `vibe-agent-toolkit` 0.2.0 stable, which also removes `adm-zip`.
 
   The other six are accepted in `osv-scanner.toml`, each with its reachability and the change that will remove it:
   - zod GHSA-mrhx-c7xc-m3w5 is fixed only in zod 4, and `vibe-agent-toolkit` still pins zod 3. vibe-validate's schemas only validate its own config and the results it wrote.

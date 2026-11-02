@@ -32,8 +32,13 @@
 #
 #   From vibe-agent-toolkit@0.1.42 (a RUNTIME dependency of the published
 #   `vibe-validate` package: its postinstall runs `vat claude plugin install`).
-#   Drop all of these when `vibe-agent-toolkit` moves to a stable release whose
-#   own tree resolves each package at or above the pinned version:
+#   FIXED FOR THIS REPO'S LOCKFILE ONLY; PUBLISHED CONSUMERS GET VAT 0.1.42'S
+#   RANGES. Root `pnpm.overrides` are never published: `npm i vibe-validate`
+#   resolves vibe-agent-toolkit@0.1.42's own dependency ranges, so an adopter can
+#   still install the vulnerable versions below. The real fix for consumers is
+#   VAT 0.2.0 stable (it also removes adm-zip). Re-check trigger for every entry
+#   in this group: VAT 0.2.0 stable — bump `vibe-agent-toolkit` to it, then drop
+#   each pin its tree no longer needs:
 #     @modelcontextprotocol/sdk 1.32.2  (6 advisories; via gateway-mcp)
 #     @hono/node-server 2.1.5           (serveStatic double decode; the sdk
 #                                        declares ^1.19.9 || ^2.0.5)
@@ -61,7 +66,9 @@
 #                                       (each minimatch major's own pin)
 #
 #   glob 14.0.3 and minimatch 11.0.3 (GHSA-3g3m-2fjr-6pw4,
-#   GHSA-g3hv-75wg-m249). Neither advisory has a backport to an older major, so
+#   GHSA-g3hv-75wg-m249). VAT's agent-skills also pulls glob, so for the
+#   published package this is likewise fixed for this repo's lockfile only;
+#   published consumers get VAT 0.1.42's ranges. Neither advisory has a backport to an older major, so
 #   every consumer is forced onto the fixed major. glob: test-exclude (coverage),
 #   rimraf and VAT's agent-skills call `glob`, `glob.sync` and `globSync`, all
 #   still exported by 14. minimatch: ESLint and its plugins. ESLint's effective
@@ -84,7 +91,7 @@
 
 [[IgnoredVulns]]
 id = "GHSA-mrhx-c7xc-m3w5"
-reason = """zod 3.25.76: validating an oversized constrained collection can exhaust memory. Fixed only in zod 4.6.6, with no 3.x backport. zod is a runtime dependency of config, core, cli, extractors and history, and of vibe-agent-toolkit 0.1.42, which pins zod 3, so migrating vibe-validate alone would not remove it from the tree; forcing zod 4 into VAT with an override risks breaking VAT's runtime. Reachability: vibe-validate's zod schemas validate the project's own config file and the validation results vibe-validate itself wrote (history notes, cached runs, step output YAML), never network input, so the oversized input has to come from the user's own repository. Re-check when vibe-agent-toolkit ships a stable release on zod 4; then migrate vibe-validate to zod 4 (its JSON-schema exports move off zod-to-json-schema) and delete this entry."""
+reason = """zod 3.25.76: validating an oversized constrained collection can exhaust memory. Fixed only in zod 4.6.6, with no 3.x backport. zod is a runtime dependency of config, core, cli, extractors and history, and of vibe-agent-toolkit 0.1.42, which pins zod 3, so migrating vibe-validate alone would not remove it from the tree; forcing zod 4 into VAT with an override risks breaking VAT's runtime. For the copy VAT brings in, published consumers get VAT 0.1.42's ranges either way. Reachability: vibe-validate's zod schemas validate the project's own config file and the validation results vibe-validate itself wrote (history notes, cached runs, step output YAML), never network input, so the oversized input has to come from the user's own repository. Re-check trigger: VAT 0.2.0 stable (check that it resolves zod 4; if it still pins zod 3, keep this entry until a VAT release does); then migrate vibe-validate to zod 4 (its JSON-schema exports move off zod-to-json-schema) and delete this entry."""
 
 # The vitest 3 toolchain. Every fix is in vitest 4.1.12 / tinypool 2.x, and
 # tinypool 2 is a different API than the 1.x vitest 3 is built against, so no
@@ -92,21 +99,21 @@ reason = """zod 3.25.76: validating an oversized constrained collection can exha
 # the published packages. Moving to vitest 4 also changes how v8 branch coverage
 # is counted (4351 -> 4759 branches on this repo, 86.49% -> 78.13%), which puts
 # the 80% branch threshold out of reach without new tests, so the upgrade is its
-# own change. Re-check trigger for all four: the vitest 4 upgrade; delete them
-# there.
+# own change. Re-check trigger for all four: the vitest 4 migration PR; delete
+# them there.
 
 [[IgnoredVulns]]
 id = "GHSA-82fw-gwwq-j7x9"
-reason = """@vitest/mocker and vitest 3.2.6: a redirect mock registered over the dev server's WebSocket can read files outside the project. Unauthenticated only through the public mockerPlugin/interceptorPlugin exports mounted on a third-party Vite dev server; this repo mounts neither and does not use vitest browser mode, so no dev server or mock-registration socket is ever listening. Dev-only. Delete with the vitest 4 upgrade."""
+reason = """@vitest/mocker and vitest 3.2.6: a redirect mock registered over the dev server's WebSocket can read files outside the project. Unauthenticated only through the public mockerPlugin/interceptorPlugin exports mounted on a third-party Vite dev server; this repo mounts neither and does not use vitest browser mode, so no dev server or mock-registration socket is ever listening. Dev-only. Re-check trigger: the vitest 4 migration PR."""
 
 [[IgnoredVulns]]
 id = "GHSA-qxg6-89mg-rqv8"
-reason = """@vitest/mocker 3.2.6: a manual mock registered over the same unauthenticated dev-server WebSocket can inject JavaScript. Same caller as GHSA-82fw-gwwq-j7x9 (mockerPlugin/interceptorPlugin on a Vite dev server), which this repo never runs. Dev-only. Delete with the vitest 4 upgrade."""
+reason = """@vitest/mocker 3.2.6: a manual mock registered over the same unauthenticated dev-server WebSocket can inject JavaScript. Same caller as GHSA-82fw-gwwq-j7x9 (mockerPlugin/interceptorPlugin on a Vite dev server), which this repo never runs. Dev-only. Re-check trigger: the vitest 4 migration PR."""
 
 [[IgnoredVulns]]
 id = "GHSA-5gmw-xhrv-c9v3"
-reason = """tinypool 1.1.1 (vitest 3's worker pool): worker options read through Object.prototype turn a prototype-pollution primitive elsewhere in the process into code execution in the test workers. Needs a separate prototype-pollution bug inside the test process, where every module is already our own test code and its dev dependencies, which run with the same privileges anyway. Dev-only. Delete with the vitest 4 upgrade (tinypool 2.1.2)."""
+reason = """tinypool 1.1.1 (vitest 3's worker pool): worker options read through Object.prototype turn a prototype-pollution primitive elsewhere in the process into code execution in the test workers. Needs a separate prototype-pollution bug inside the test process, where every module is already our own test code and its dev dependencies, which run with the same privileges anyway. Dev-only. Re-check trigger: the vitest 4 migration PR (tinypool 2.1.2)."""
 
 [[IgnoredVulns]]
 id = "GHSA-85c8-ppgw-ccpr"
-reason = """tinypool 1.1.1: pool.run() options read `filename` through Object.prototype, the same prototype-pollution gadget class as GHSA-5gmw-xhrv-c9v3. Same precondition (a pollution primitive inside the test process) and same dev-only reach. Delete with the vitest 4 upgrade (tinypool 2.1.2)."""
+reason = """tinypool 1.1.1: pool.run() options read `filename` through Object.prototype, the same prototype-pollution gadget class as GHSA-5gmw-xhrv-c9v3. Same precondition (a pollution primitive inside the test process) and same dev-only reach. Re-check trigger: the vitest 4 migration PR (tinypool 2.1.2)."""
