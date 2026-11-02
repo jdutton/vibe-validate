@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **86 of the 92 dependency advisories in the lockfile are fixed.** The packages behind them are pinned to patched versions in `pnpm.overrides`, and `osv-scanner.toml` records why each pin exists and when to drop it. Most of them, among them `@modelcontextprotocol/sdk`, `hono`, `@hono/node-server`, `adm-zip`, `undici`, `handlebars` and `basic-ftp`, reach `vibe-validate` through `vibe-agent-toolkit`, which the published package depends on for its plugin postinstall. `glob` moves to 14 and `minimatch` to 11 across the tree, because neither advisory was fixed in an older major.
+
+  The other six are accepted in `osv-scanner.toml`, each with its reachability and the change that will remove it:
+  - zod GHSA-mrhx-c7xc-m3w5 is fixed only in zod 4, and `vibe-agent-toolkit` still pins zod 3. vibe-validate's schemas only validate its own config and the results it wrote.
+  - Five come from the vitest 3 toolchain (`@vitest/mocker`, `vitest` and `tinypool`). They are development-only, and only vitest 4 fixes them. That upgrade is a separate change because it also changes how branch coverage is counted.
+
 ### Fixed
 
 - **A parallel phase now blames the step that actually failed.** When one step in a `parallel: true` phase failed, fail-fast stopped its still-running siblings — and the result then reported the first *stopped* step in config order as the failure. A long ESLint run listed first would be reported as `ESLint failed` with the extraction "Process stopped (fail-fast)", while the real failure sat further down the list. `failedStep` and `summary` now name the step that failed on its own: its command failed, it could not start, or vibe-validate could not process its result.

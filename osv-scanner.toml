@@ -16,17 +16,64 @@
 #   3. Every entry MUST have a `reason` explaining WHY it is safe to defer.
 #   4. Re-evaluate on every dependency bump; delete entries once a fix lands.
 #
-# Current state: the register is EMPTY. The lockfile scans clean — every
-# advisory that osv-scanner previously reported was resolved by a real fix:
+# Current state: FIVE accepted advisories, below — zod, and four in the
+# vitest 3 toolchain that only vitest 4 fixes. Everything else the lockfile
+# carried is fixed.
 #
-#   * `vibe-agent-toolkit` bumped 0.1.33 -> ^0.1.42. The published 0.1.33 tree
-#     still carried the @xenova/transformers@2 -> onnxruntime-web@1.14 ->
-#     onnx-proto -> protobufjs@6 chain (11 advisories incl. a 9.8) plus the
-#     native sharp@0.32 and adm-zip backends. 0.1.42 replaced that embedding
-#     backend, which removed the whole subtree.
-#   * ~20 transitive packages pinned to patched versions in `pnpm.overrides`.
+# History of real fixes:
+#   * `vibe-agent-toolkit` bumped 0.1.33 -> ^0.1.42 (removed the
+#     @xenova/transformers -> protobufjs@6 subtree, 11 advisories incl. a 9.8).
 #   * `turbo` 2.7.3 -> ^2.10.5 and `vitest` 2.1.9/3.2.4 -> ^3.2.6 in the
 #     declared devDependencies (both had a 9.8 advisory).
+#
+# Overrides ledger — package.json cannot hold comments, so each pin in
+# `pnpm.overrides` is explained here. "Drop when" is the re-check trigger:
+# delete the pin once its parent ships the fixed version by itself.
+#
+#   From vibe-agent-toolkit@0.1.42 (a RUNTIME dependency of the published
+#   `vibe-validate` package: its postinstall runs `vat claude plugin install`).
+#   Drop all of these when `vibe-agent-toolkit` moves to a stable release whose
+#   own tree resolves each package at or above the pinned version:
+#     @modelcontextprotocol/sdk 1.32.2  (6 advisories; via gateway-mcp)
+#     @hono/node-server 2.1.5           (serveStatic double decode; the sdk
+#                                        declares ^1.19.9 || ^2.0.5)
+#     hono 4.13.16, body-parser 2.4.0, proxy-addr 2.0.8, qs 6.17.1
+#                                       (the sdk's HTTP server stack)
+#     adm-zip 0.6.1                     (7 advisories; 0.6.1 is also past the
+#                                        last affected version of
+#                                        GHSA-vwc7-r8mq-g2x9, symlink-follow
+#                                        on extract. VAT 0.2.0 drops adm-zip.)
+#     basic-ftp 6.2.5                   (quadratic list() parse; via get-uri,
+#                                        which declares ^5.3.1. The Client
+#                                        methods get-uri calls — access,
+#                                        close, downloadTo, lastMod, list —
+#                                        have identical signatures in 6.x)
+#     handlebars 4.7.10, undici 7.30.1, ip-address 10.7.5, fast-uri 3.1.9
+#
+#   Dev tooling (ESLint, coverage, vite). Drop each when the parent named
+#   resolves it by itself:
+#     @humanfs/node 0.16.8              (eslint 9.39)
+#     baseline-browser-mapping 2.11.34, browserslist 4.29.5
+#                                       (eslint-plugin-unicorn -> core-js-compat)
+#     source-map-js 1.2.2, vite 7.3.7   (vitest)
+#     js-yaml 4.3.2                     (eslint config loading)
+#     brace-expansion@1/@2/@5 1.1.21 / 2.1.7 / 5.0.12
+#                                       (each minimatch major's own pin)
+#
+#   glob 14.0.3 and minimatch 11.0.3 (GHSA-3g3m-2fjr-6pw4,
+#   GHSA-g3hv-75wg-m249). Neither advisory has a backport to an older major, so
+#   every consumer is forced onto the fixed major. glob: test-exclude (coverage),
+#   rimraf and VAT's agent-skills call `glob`, `glob.sync` and `globSync`, all
+#   still exported by 14. minimatch: ESLint and its plugins. ESLint's effective
+#   config and its full finding set over the repo (561 files, 1244 messages)
+#   are identical under the old pins and 11.0.3. One hazard: minimatch 11 has
+#   no default export, and eslint-plugin-import calls it as a function in
+#   `import/order` pathGroups, `no-extraneous-dependencies` globs,
+#   `no-unassigned-import` allow, `no-namespace` ignore, `no-internal-modules`,
+#   `no-import-module-exports` exceptions and `extensions` pattern options.
+#   None is configured today (`import/order` runs without pathGroups); drop the
+#   minimatch pin before enabling any of them. Drop both when ESLint's plugin
+#   set and VAT admit glob 14 / minimatch 11 by themselves.
 #
 # Keep it empty if you can. An entry here is a debt, not a resolution.
 # ---------------------------------------------------------------------------
@@ -34,3 +81,32 @@
 # [[IgnoredVulns]]
 # id = "GHSA-xxxx-xxxx-xxxx"
 # reason = "Why this is safe to defer, and what would let us delete this entry."
+
+[[IgnoredVulns]]
+id = "GHSA-mrhx-c7xc-m3w5"
+reason = """zod 3.25.76: validating an oversized constrained collection can exhaust memory. Fixed only in zod 4.6.6, with no 3.x backport. zod is a runtime dependency of config, core, cli, extractors and history, and of vibe-agent-toolkit 0.1.42, which pins zod 3, so migrating vibe-validate alone would not remove it from the tree; forcing zod 4 into VAT with an override risks breaking VAT's runtime. Reachability: vibe-validate's zod schemas validate the project's own config file and the validation results vibe-validate itself wrote (history notes, cached runs, step output YAML), never network input, so the oversized input has to come from the user's own repository. Re-check when vibe-agent-toolkit ships a stable release on zod 4; then migrate vibe-validate to zod 4 (its JSON-schema exports move off zod-to-json-schema) and delete this entry."""
+
+# The vitest 3 toolchain. Every fix is in vitest 4.1.12 / tinypool 2.x, and
+# tinypool 2 is a different API than the 1.x vitest 3 is built against, so no
+# override can reach it. vitest is a devDependency only; nothing here ships in
+# the published packages. Moving to vitest 4 also changes how v8 branch coverage
+# is counted (4351 -> 4759 branches on this repo, 86.49% -> 78.13%), which puts
+# the 80% branch threshold out of reach without new tests, so the upgrade is its
+# own change. Re-check trigger for all four: the vitest 4 upgrade; delete them
+# there.
+
+[[IgnoredVulns]]
+id = "GHSA-82fw-gwwq-j7x9"
+reason = """@vitest/mocker and vitest 3.2.6: a redirect mock registered over the dev server's WebSocket can read files outside the project. Unauthenticated only through the public mockerPlugin/interceptorPlugin exports mounted on a third-party Vite dev server; this repo mounts neither and does not use vitest browser mode, so no dev server or mock-registration socket is ever listening. Dev-only. Delete with the vitest 4 upgrade."""
+
+[[IgnoredVulns]]
+id = "GHSA-qxg6-89mg-rqv8"
+reason = """@vitest/mocker 3.2.6: a manual mock registered over the same unauthenticated dev-server WebSocket can inject JavaScript. Same caller as GHSA-82fw-gwwq-j7x9 (mockerPlugin/interceptorPlugin on a Vite dev server), which this repo never runs. Dev-only. Delete with the vitest 4 upgrade."""
+
+[[IgnoredVulns]]
+id = "GHSA-5gmw-xhrv-c9v3"
+reason = """tinypool 1.1.1 (vitest 3's worker pool): worker options read through Object.prototype turn a prototype-pollution primitive elsewhere in the process into code execution in the test workers. Needs a separate prototype-pollution bug inside the test process, where every module is already our own test code and its dev dependencies, which run with the same privileges anyway. Dev-only. Delete with the vitest 4 upgrade (tinypool 2.1.2)."""
+
+[[IgnoredVulns]]
+id = "GHSA-85c8-ppgw-ccpr"
+reason = """tinypool 1.1.1: pool.run() options read `filename` through Object.prototype, the same prototype-pollution gadget class as GHSA-5gmw-xhrv-c9v3. Same precondition (a pollution primitive inside the test process) and same dev-only reach. Delete with the vitest 4 upgrade (tinypool 2.1.2)."""
