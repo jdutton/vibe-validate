@@ -7,6 +7,7 @@ import type { TreeHash, TreeHashResult } from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { recordValidationHistory, checkWorktreeStability } from '../src/recorder.js';
+import { VALIDATION_NOTES_REF } from '../src/schemas.js';
 
 // Mock dependencies
 vi.mock('@vibe-validate/git', () => ({
@@ -75,6 +76,26 @@ describe('recordValidationHistory', () => {
       expect.any(String), // YAML content
       mergeAppendRuns // merge strategy: append runs
     );
+  });
+
+  it('writes only VALIDATION_NOTES_REF, even when a 0.20 config names the old ref', async () => {
+    const treeHash = 'abc123def456' as TreeHash;
+    const result: ValidationResult = {
+      passed: true,
+      level: 'commit',
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash,
+    };
+    // The 0.20 README's config shape; the type no longer has `ref`, so cast past it.
+    const legacyConfig = { gitNotes: { ref: 'vibe-validate/validate' } } as Parameters<
+      typeof recordValidationHistory
+    >[2];
+
+    await recordValidationHistory({ hash: treeHash }, result, legacyConfig);
+
+    const { addNote } = await import('@vibe-validate/git');
+    expect(addNote).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(addNote).mock.calls[0]?.[0]).toBe(VALIDATION_NOTES_REF);
   });
 
   it('records the level the result covered on the run', async () => {

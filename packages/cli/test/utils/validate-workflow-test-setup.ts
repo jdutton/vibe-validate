@@ -21,6 +21,7 @@ vi.mock('@vibe-validate/history', async (importOriginal) => {
   return {
     ...mocked,
     findCachedValidation: actual.findCachedValidation,
+    findDecidingRun: actual.findDecidingRun,
     findRetryRun: actual.findRetryRun,
   };
 });

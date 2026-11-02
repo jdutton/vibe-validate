@@ -6,7 +6,12 @@
 
 import { basename } from 'node:path';
 
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import {
+  getDefaultPreCommitLevel,
+  getDefaultValidateLevel,
+  IMPLICIT_LEVEL,
+  type VibeValidateConfig,
+} from '@vibe-validate/config';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
@@ -118,6 +123,12 @@ function displayVerboseConfig(config: VibeValidateConfig, configPath: string): v
       }
     }
 
+    const levels = config.validation.levels;
+    const levelList = levels?.length ? levels.join(' → ') : IMPLICIT_LEVEL + ' (none declared)';
+    console.log(chalk.gray(`  Levels: ${levelList}`));
+    console.log(chalk.gray(`  vv pre-commit runs: ${getDefaultPreCommitLevel(config)}`));
+    console.log(chalk.gray(`  vv validate runs: ${getDefaultValidateLevel(config)}`));
+
     console.log();
   }
 
@@ -140,6 +151,10 @@ function displayYamlConfig(config: VibeValidateConfig): void {
   // Simple YAML-like output
   console.log('validation:');
 
+  if (config.validation?.levels?.length) {
+    console.log(`  levels: [${config.validation.levels.join(', ')}]`);
+  }
+
   if (config.validation?.phases) {
     console.log('  phases:');
     for (const phase of config.validation.phases) {
@@ -154,6 +169,15 @@ function displayYamlConfig(config: VibeValidateConfig): void {
     console.log(`  mainBranch: ${config.git.mainBranch ?? 'main'}`);
     console.log(`  autoSync: ${config.git.autoSync ?? false}`);
   }
+
+  const hookLevel = config.hooks?.preCommit?.level;
+  if (hookLevel) {
+    console.log('hooks:');
+    console.log('  preCommit:');
+    console.log(`    level: ${hookLevel}`);
+  }
+
+  console.log(`# vv pre-commit runs level ${getDefaultPreCommitLevel(config)}; vv validate runs level ${getDefaultValidateLevel(config)}`);
 
   // Output config removed - state files are always YAML
 }

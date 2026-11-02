@@ -33,8 +33,9 @@ Run validation with git tree hash caching. Spawned steps run with GIT_* env vars
 
 **Exit codes:**
 
-- `0` - Validation passed (or cached pass)
-- `1` - Validation failed, or the configuration is invalid (an unknown --level included)
+- `0` - Validation passed (or cached pass). With --check: a recorded pass covers the level
+- `1` - Validation failed, or the configuration is invalid (an unknown --level included). With --check: the last run bearing on the level failed
+- `2` - With --check only: nothing recorded that bears on the level, or it cannot answer (not in a git repository, unknown --level)
 
 **Creates/modifies:**
 
@@ -46,7 +47,7 @@ Run validation with git tree hash caching. Spawned steps run with GIT_* env vars
 - `-f, --force` - Re-run even when a pass is already recorded (a failure is never replayed)
 - `-v, --verbose` - Show detailed progress and output
 - `-y, --yaml` - Output validation result as YAML to stdout
-- `-c, --check` - Check if validation has already passed (do not run)
+- `-c, --check` - Check if validation has already passed (do not run; exit 0 passed, 1 last run failed, 2 nothing recorded or cannot answer)
 - `-d, --debug` - Create output files for all steps (for debugging)
 - `--retry-failed` - Retry only failed steps from previous validation
 - `--no-lock` - Allow concurrent validation runs (disables single-instance mode)
@@ -169,20 +170,23 @@ Show current validation state from git notes (or run cache if no config)
 
 **What it does:**
 
+Shows the newest run at one level (--level, default: the level validate runs, the last)
 Shows validation pass/fail status
 Shows git tree hash (cache key)
 Shows timestamp of last validation
 Shows error summary (if failed)
+With no run at that level, says so and names the levels that have runs (levelsWithRuns)
 
 **Exit codes:**
 
-- `0` - State file found and read successfully
-- `1` - State file not found or invalid
+- `0` - State read (including "nothing recorded": exists: false)
+- `1` - Unknown --level, invalid configuration, or the state could not be read
 
 **When to use:** Debug why validation is cached/not cached, or see errors without re-running
 
 **Options:**
 
+- `-l, --level <name>` - Show the newest run at this level (one of validation.levels; default: the level validate runs, the last)
 - `-v, --verbose` - Show full error output without truncation
 - `--runs` - Show only run cache (not validation history)
 - `--all` - Show both validation history and run cache
@@ -190,8 +194,9 @@ Shows error summary (if failed)
 **Examples:**
 
 ```bash
-vibe-validate state           # Show current state
-vibe-validate state --verbose # Show full error output
+vibe-validate state                # Show the newest run at the default level
+vibe-validate state --level commit # Show the newest run at the commit level
+vibe-validate state --verbose      # Show full error output
 ```
 
 ---

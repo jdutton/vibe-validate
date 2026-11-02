@@ -306,11 +306,37 @@ describe('detectFlakiness', () => {
   });
 
   describe('levels', () => {
-    it('a pass at one level after a red at another is not flakiness', async () => {
-      const fullRed = createFailedRun('2026-02-12T10:00:00Z', ['Unit Tests']);
-      const commitGreen = { ...createPassedResult('2026-02-12T10:05:00Z', ['Unit Tests']), level: 'commit' };
+    // A level-filtered run executes a subset of the steps. Only steps both runs
+    // executed are compared, so no level filter is needed (or wanted).
+
+    it('a commit green after a full red whose only failed step is full-only is not flakiness', async () => {
+      // Full ran Lint (passed) and E2E (full-only, failed); commit ran only Lint
+      const fullRed = createFailedRun('2026-02-12T10:00:00Z', ['E2E Tests'], ['Lint', 'E2E Tests']);
+      const commitGreen = { ...createPassedResult('2026-02-12T10:05:00Z', ['Lint']), level: 'commit' };
 
       await expectFlakinessDetection([fullRed], commitGreen, false);
+    });
+
+    it('a commit green after a full red on a commit-level step is flakiness', async () => {
+      // Full ran Lint (a commit-level step, failed) and E2E; commit ran Lint, which now passes
+      const fullRed = createFailedRun('2026-02-12T10:00:00Z', ['Lint'], ['Lint', 'E2E Tests']);
+      const commitGreen = { ...createPassedResult('2026-02-12T10:05:00Z', ['Lint']), level: 'commit' };
+
+      const warning = await expectFlakinessDetection([fullRed], commitGreen, true);
+
+      expect(warning).toContain('Lint');
+      expect(warning).not.toContain('E2E Tests');
+    });
+
+    it('finds a flaky step behind a newer red at another level that shares no failed step with this run', async () => {
+      // commit red on Lint, then full red on E2E only, then commit green on Lint
+      const commitRed = { ...createFailedRun('2026-02-12T10:00:00Z', ['Lint']), level: 'commit' };
+      const fullRed = createFailedRun('2026-02-12T10:02:00Z', ['E2E Tests'], ['Lint', 'E2E Tests']);
+      const commitGreen = { ...createPassedResult('2026-02-12T10:05:00Z', ['Lint']), level: 'commit' };
+
+      const warning = await expectFlakinessDetection([commitRed, fullRed], commitGreen, true);
+
+      expect(warning).toContain('Lint (failed 2026-02-12T10:00:00Z');
     });
 
     it('a pass after a red at the same level is', async () => {

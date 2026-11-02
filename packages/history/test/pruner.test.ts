@@ -5,8 +5,9 @@
 import * as git from '@vibe-validate/git';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { pruneHistoryByAge, pruneAllHistory } from '../src/pruner.js';
+import { pruneHistoryByAge, pruneAllHistory, pruneLegacyNotes } from '../src/pruner.js';
 import * as reader from '../src/reader.js';
+import { VALIDATION_NOTES_REF } from '../src/schemas.js';
 import type { HistoryNote } from '../src/types.js';
 
 // Mock dependencies using secure git API
@@ -72,6 +73,65 @@ function createHistoryNote(overrides: Partial<{
 }
 
 /**
+ * Helper: One note whose single run is 100 days old (past the 90-day threshold)
+ */
+function createOldNote(treeHash = 'old-abc123') {
+  const timestamp = createOldDate(100).toISOString();
+  return createHistoryNote({ treeHash, runs: [createRun({ treeHash, timestamp })] });
+}
+
+/**
+ * Helper: One single-run note per tree hash (run-N / commitN), optionally all at one timestamp
+ */
+function createNotes(treeHashes: string[], timestamp?: string) {
+  return treeHashes.map((treeHash, i) =>
+    createHistoryNote({
+      treeHash,
+      runs: [
+        createRun({
+          id: `run-${i + 1}`,
+          treeHash,
+          headCommit: `commit${i + 1}`,
+          ...(timestamp === undefined ? {} : { timestamp }),
+        }),
+      ],
+    })
+  );
+}
+
+/**
+ * Helper: Assert a prune that removed nothing
+ */
+function expectNothingPruned(
+  result: Awaited<ReturnType<typeof pruneAllHistory>>,
+  notesRemaining: number
+) {
+  expect(result.notesPruned).toBe(0);
+  expect(result.runsPruned).toBe(0);
+  expect(result.notesRemaining).toBe(notesRemaining);
+  expect(result.prunedTreeHashes).toEqual([]);
+  expect(git.removeNote).not.toHaveBeenCalled();
+}
+
+/**
+ * Helper: Assert a dry run that would have pruned one note and removed nothing
+ */
+function expectDryRunOfOne(result: Awaited<ReturnType<typeof pruneAllHistory>>) {
+  expect(result.notesPruned).toBe(1);
+  expect(git.removeNote).not.toHaveBeenCalled();
+}
+
+/**
+ * Helper: Mock the given notes, then make the first delete fail and the second succeed
+ */
+function setupFirstRemoveFails(notes: HistoryNote[]) {
+  vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
+  vi.mocked(git.removeNote)
+    .mockRejectedValueOnce(new Error('Git error'))
+    .mockResolvedValueOnce();
+}
+
+/**
  * Helper: Setup pruner test with mocked notes
  */
 function setupPrunerTest(notes: HistoryNote[], removeNoteResolves = true) {
@@ -90,37 +150,20 @@ describe('pruner', () => {
     describe('when no notes exist', () => {
       it('should return zero counts', async () => {
         setupPrunerTest([]);
-        const result = await pruneHistoryByAge(90);
-
-        expect(result.notesPruned).toBe(0);
-        expect(result.runsPruned).toBe(0);
-        expect(result.notesRemaining).toBe(0);
-        expect(result.prunedTreeHashes).toEqual([]);
-        expect(git.removeNote).not.toHaveBeenCalled();
+        expectNothingPruned(await pruneHistoryByAge(90), 0);
       });
     });
 
     describe('when notes exist but none are old enough', () => {
       it('should not prune any notes', async () => {
         setupPrunerTest([createHistoryNote()]);
-        const result = await pruneHistoryByAge(90);
-
-        expect(result.notesPruned).toBe(0);
-        expect(result.runsPruned).toBe(0);
-        expect(result.notesRemaining).toBe(1);
-        expect(result.prunedTreeHashes).toEqual([]);
-        expect(git.removeNote).not.toHaveBeenCalled();
+        expectNothingPruned(await pruneHistoryByAge(90), 1);
       });
     });
 
     describe('when notes exceed age threshold', () => {
       it('should prune old notes', async () => {
-        const oldTimestamp = createOldDate(100).toISOString();
-        const oldNote = createHistoryNote({
-          treeHash: 'old-abc123',
-          runs: [createRun({ treeHash: 'old-abc123', timestamp: oldTimestamp })],
-        });
-        setupPrunerTest([oldNote]);
+        setupPrunerTest([createOldNote()]);
 
         const result = await pruneHistoryByAge(90);
 
@@ -135,18 +178,7 @@ describe('pruner', () => {
       });
 
       it('should prune multiple old notes', async () => {
-        const oldTimestamp = createOldDate(100).toISOString();
-        const oldNotes = [
-          createHistoryNote({
-            treeHash: 'old-1',
-            runs: [createRun({ id: 'run-1', treeHash: 'old-1', timestamp: oldTimestamp, headCommit: 'commit1' })],
-          }),
-          createHistoryNote({
-            treeHash: 'old-2',
-            runs: [createRun({ id: 'run-2', treeHash: 'old-2', timestamp: oldTimestamp, headCommit: 'commit2' })],
-          }),
-        ];
-        setupPrunerTest(oldNotes);
+        setupPrunerTest(createNotes(['old-1', 'old-2'], createOldDate(100).toISOString()));
 
         const result = await pruneHistoryByAge(90);
 
@@ -207,14 +239,9 @@ describe('pruner', () => {
 
     describe('dry-run mode', () => {
       it('should count notes but not delete when dryRun=true', async () => {
-        const oldTimestamp = createOldDate(100).toISOString();
-        const oldNote = createHistoryNote({
-          treeHash: 'old-abc123',
-          runs: [createRun({ treeHash: 'old-abc123', timestamp: oldTimestamp })],
-        });
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue([oldNote]);
+        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue([createOldNote()]);
 
-        const result = await pruneHistoryByAge(90, {}, true);
+        const result = await pruneHistoryByAge(90, true);
 
         // Should report what would be pruned
         expect(result.notesPruned).toBe(1);
@@ -226,48 +253,26 @@ describe('pruner', () => {
       });
     });
 
-    describe('custom configuration', () => {
-      it('should use custom notes ref', async () => {
-        const oldTimestamp = createOldDate(100).toISOString();
-        const oldNote = createHistoryNote({
-          treeHash: 'old-abc123',
-          runs: [createRun({ treeHash: 'old-abc123', timestamp: oldTimestamp })],
-        });
-        setupPrunerTest([oldNote]);
+    describe('notes ref', () => {
+      it('removes from VALIDATION_NOTES_REF and takes no ref-bearing config', async () => {
+        setupPrunerTest([createOldNote()]);
 
-        await pruneHistoryByAge(90, {
-          gitNotes: {
-            ref: 'custom/notes/ref',
-          },
-        });
+        await pruneHistoryByAge(90, false);
 
-        expect(reader.getAllHistoryNotes).toHaveBeenCalledWith('custom/notes/ref');
-        expect(git.removeNote).toHaveBeenCalledWith(
-          'custom/notes/ref',
-          'old-abc123'
-        );
+        expect(reader.getAllHistoryNotes).toHaveBeenCalledWith();
+        expect(git.removeNote).toHaveBeenCalledWith(VALIDATION_NOTES_REF, 'old-abc123');
+      });
+
+      it('treats the second argument as dryRun', async () => {
+        setupPrunerTest([createOldNote()]);
+
+        expectDryRunOfOne(await pruneHistoryByAge(90, true));
       });
     });
 
     describe('error handling', () => {
       it('should ignore git command errors and continue', async () => {
-        const oldTimestamp = createOldDate(100).toISOString();
-        const oldNotes = [
-          createHistoryNote({
-            treeHash: 'old-1',
-            runs: [createRun({ id: 'run-1', treeHash: 'old-1', timestamp: oldTimestamp, headCommit: 'commit1' })],
-          }),
-          createHistoryNote({
-            treeHash: 'old-2',
-            runs: [createRun({ id: 'run-2', treeHash: 'old-2', timestamp: oldTimestamp, headCommit: 'commit2' })],
-          }),
-        ];
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(oldNotes);
-
-        // First delete fails, second succeeds
-        vi.mocked(git.removeNote)
-          .mockRejectedValueOnce(new Error('Git error'))
-          .mockResolvedValueOnce();
+        setupFirstRemoveFails(createNotes(['old-1', 'old-2'], createOldDate(100).toISOString()));
 
         const result = await pruneHistoryByAge(90);
 
@@ -305,30 +310,13 @@ describe('pruner', () => {
     describe('when no notes exist', () => {
       it('should return zero counts', async () => {
         setupPrunerTest([]);
-
-        const result = await pruneAllHistory();
-
-        expect(result.notesPruned).toBe(0);
-        expect(result.runsPruned).toBe(0);
-        expect(result.notesRemaining).toBe(0);
-        expect(result.prunedTreeHashes).toEqual([]);
-        expect(git.removeNote).not.toHaveBeenCalled();
+        expectNothingPruned(await pruneAllHistory(), 0);
       });
     });
 
     describe('when notes exist', () => {
       it('should prune all notes', async () => {
-        const notes = [
-          createHistoryNote({
-            treeHash: 'abc123',
-            runs: [createRun({ id: 'run-1', treeHash: 'abc123', headCommit: 'commit1' })],
-          }),
-          createHistoryNote({
-            treeHash: 'def456',
-            runs: [createRun({ id: 'run-2', treeHash: 'def456', headCommit: 'commit2' })],
-          }),
-        ];
-        setupPrunerTest(notes);
+        setupPrunerTest(createNotes(['abc123', 'def456']));
 
         const result = await pruneAllHistory();
 
@@ -383,7 +371,7 @@ describe('pruner', () => {
         const note = createHistoryNote();
         vi.mocked(reader.getAllHistoryNotes).mockResolvedValue([note]);
 
-        const result = await pruneAllHistory({}, true);
+        const result = await pruneAllHistory(true);
 
         // Should report what would be pruned
         expect(result.notesPruned).toBe(1);
@@ -395,43 +383,26 @@ describe('pruner', () => {
       });
     });
 
-    describe('custom configuration', () => {
-      it('should use custom notes ref', async () => {
-        const note = createHistoryNote();
-        setupPrunerTest([note]);
+    describe('notes ref', () => {
+      it('removes from VALIDATION_NOTES_REF and takes no ref-bearing config', async () => {
+        setupPrunerTest([createHistoryNote()]);
 
-        await pruneAllHistory({
-          gitNotes: {
-            ref: 'custom/notes/ref',
-          },
-        });
+        await pruneAllHistory(false);
 
-        expect(reader.getAllHistoryNotes).toHaveBeenCalledWith('custom/notes/ref');
-        expect(git.removeNote).toHaveBeenCalledWith(
-          'custom/notes/ref',
-          'abc123'
-        );
+        expect(reader.getAllHistoryNotes).toHaveBeenCalledWith();
+        expect(git.removeNote).toHaveBeenCalledWith(VALIDATION_NOTES_REF, 'abc123');
+      });
+
+      it('treats the first argument as dryRun', async () => {
+        setupPrunerTest([createHistoryNote()]);
+
+        expectDryRunOfOne(await pruneAllHistory(true));
       });
     });
 
     describe('error handling', () => {
       it('should ignore git command errors and continue', async () => {
-        const notes = [
-          createHistoryNote({
-            treeHash: 'note-1',
-            runs: [createRun({ id: 'run-1', treeHash: 'note-1', headCommit: 'commit1' })],
-          }),
-          createHistoryNote({
-            treeHash: 'note-2',
-            runs: [createRun({ id: 'run-2', treeHash: 'note-2', headCommit: 'commit2' })],
-          }),
-        ];
-        vi.mocked(reader.getAllHistoryNotes).mockResolvedValue(notes);
-
-        // First delete fails, second succeeds
-        vi.mocked(git.removeNote)
-          .mockRejectedValueOnce(new Error('Git error'))
-          .mockResolvedValueOnce();
+        setupFirstRemoveFails(createNotes(['note-1', 'note-2']));
 
         const result = await pruneAllHistory();
 
@@ -441,5 +412,42 @@ describe('pruner', () => {
         expect(result.prunedTreeHashes).toEqual(['note-1', 'note-2']);
       });
     });
+  });
+});
+
+describe('pruneLegacyNotes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('removes notes from the pre-0.15 runs ref only, counting their raw runs', async () => {
+    vi.mocked(git.listNoteObjects).mockReturnValue(['legacy-1', 'legacy-2'] as git.TreeHash[]);
+    vi.mocked(git.readNote)
+      .mockReturnValueOnce('runs:\n  - a\n  - b\n')
+      .mockReturnValueOnce('not: a history note\n');
+
+    const result = await pruneLegacyNotes();
+
+    expect(git.listNoteObjects).toHaveBeenCalledWith('vibe-validate/runs');
+    expect(git.removeNote).toHaveBeenCalledWith('vibe-validate/runs', 'legacy-1');
+    expect(git.removeNote).toHaveBeenCalledWith('vibe-validate/runs', 'legacy-2');
+    expect(git.removeNote).not.toHaveBeenCalledWith(VALIDATION_NOTES_REF, expect.anything());
+    expect(reader.getAllHistoryNotes).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      notesPruned: 2,
+      runsPruned: 2,
+      notesRemaining: 0,
+      prunedTreeHashes: ['legacy-1', 'legacy-2'],
+    });
+  });
+
+  it('removes nothing in dry-run mode', async () => {
+    vi.mocked(git.listNoteObjects).mockReturnValue(['legacy-1'] as git.TreeHash[]);
+    vi.mocked(git.readNote).mockReturnValue(null);
+
+    const result = await pruneLegacyNotes(true);
+
+    expect(result.notesPruned).toBe(1);
+    expect(git.removeNote).not.toHaveBeenCalled();
   });
 });

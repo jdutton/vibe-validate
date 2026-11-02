@@ -20,7 +20,7 @@ import {
   PARENT_CONTEXT_ENV,
 } from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
-import { getGitTreeHash, encodeRunCacheKey, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
+import { getGitTreeHash, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
 import { normalizePath, toForwardSlash } from '@vibe-validate/utils';
 import chalk from 'chalk';
@@ -30,6 +30,7 @@ import yaml from 'yaml';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import { getCommandName } from '../utils/command-name.js';
 import { logDebug, logWarning } from '../utils/logger.js';
+import { runCacheKeyFor } from '../utils/run-cache-key.js';
 import { parseRunCacheNote } from '../utils/run-cache-note.js';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 
@@ -337,8 +338,8 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
     // Get working directory
     const workdir = getWorkingDirectory(explicitCwd);
 
-    // Encode cache key
-    const cacheKey = encodeRunCacheKey(commandString, workdir);
+    // Encode cache key (it covers the submodule hashes: the parent tree hash does not)
+    const cacheKey = runCacheKeyFor(commandString, workdir, treeHashResult);
 
     // Construct git notes ref path: refs/notes/vibe-validate/run/{treeHash}/{cacheKey}
     const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
@@ -403,8 +404,9 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
     // Get working directory
     const workdir = getWorkingDirectory(explicitCwd);
 
-    // Encode cache key (using commandString since we verified it equals result.command above)
-    const cacheKey = encodeRunCacheKey(commandString, workdir);
+    // Encode cache key (using commandString since we verified it equals result.command above);
+    // the same key the lookup reads, submodule hashes included
+    const cacheKey = runCacheKeyFor(commandString, workdir, treeHashResult);
 
     // Construct git notes ref path
     const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;

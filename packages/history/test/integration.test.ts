@@ -135,7 +135,7 @@ describe('History Integration', () => {
   });
 
   it('should prune old history', async () => {
-    const pruneResult = await pruneHistoryByAge(90, {}, true); // dry run
+    const pruneResult = await pruneHistoryByAge(90, true); // dry run
 
     expect(pruneResult).toHaveProperty('notesPruned');
     expect(pruneResult).toHaveProperty('runsPruned');

@@ -139,7 +139,7 @@ export function selectPhasesForLevel(phases: ValidationPhase[], level: RunLevel)
     throw new UnknownLevelError(level.name, level.levels);
   }
   const runsAtLevel = (step: ValidationStep): boolean => {
-    const stepLevel = getStepLevel(step);
+    const stepLevel = getStepLevel(step, level.levels);
     const stepIndex = level.levels.indexOf(stepLevel);
     if (stepIndex === -1) {
       throw new UnknownLevelError(stepLevel, level.levels);

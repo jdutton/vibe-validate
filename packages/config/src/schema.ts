@@ -8,8 +8,11 @@
 import { z } from 'zod';
 
 import { GIT_DEFAULTS } from './constants.js';
-import { findLevelViolations } from './levels.js';
+import { findHookLevelViolation, findValidationLevelViolations } from './levels.js';
 import { createSafeValidator, createStrictValidator } from './schema-utils.js';
+
+const RUN_SCOPE_CI_REMOVED = 'runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level';
+const RUN_SCOPE_LOCAL_REMOVED = 'runScope: local was removed with no replacement; remove the key (or the step)';
 
 /**
  * Validation Step Schema
@@ -44,12 +47,17 @@ export const ValidationStepSchema = z.object({
    */
   level: z.string().min(1, 'Step level cannot be empty').optional(),
 
-  /** Removed: a strict config would otherwise report only "Unrecognized key" */
+  /**
+   * Removed: a strict config would otherwise report only "Unrecognized key".
+   * `ci` became validation levels; `local` has no replacement.
+   */
   runScope: z.never({
-    errorMap: () => ({
-      message: 'runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level',
+    errorMap: (_issue, ctx) => ({
+      message: ctx.data === 'local' ? RUN_SCOPE_LOCAL_REMOVED : RUN_SCOPE_CI_REMOVED,
     }),
-  }).optional(),
+  }).optional().describe(
+    'Removed. Replace runScope: ci with validation.levels (e.g. [commit, full]) and a level on each step; runScope: local has no replacement, so delete the key.'
+  ),
 }).strict();
 
 export type ValidationStep = z.infer<typeof ValidationStepSchema>;
@@ -98,7 +106,11 @@ export const ValidationConfigSchema = z.object({
 
   /** Optional: Fail fast - stop all validation on first phase failure (default: true) */
   failFast: z.boolean().optional().default(true),
-}).strict();
+}).strict().superRefine((validation, ctx) => {
+  for (const violation of findValidationLevelViolations(validation)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: violation.path, message: violation.message });
+  }
+});
 
 // Use input type (before defaults applied) to maintain optional field semantics
 export type ValidationConfig = z.input<typeof ValidationConfigSchema>;
@@ -482,7 +494,9 @@ export const VibeValidateConfigSchema = z.object({
    */
   developerFeedback: z.boolean().optional().default(false),
 }).strict().superRefine((config, ctx) => {
-  for (const violation of findLevelViolations(config)) {
+  // The step and level rules live on ValidationConfigSchema; only the hook's level needs both sections
+  const violation = findHookLevelViolation(config);
+  if (violation) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: violation.path, message: violation.message });
   }
 });

@@ -46,6 +46,11 @@ function serveRuns(runs: Array<ReturnType<typeof createValidationRunFromNote>> |
   vi.mocked(history.readHistoryNote).mockResolvedValue(runs === null ? null : { treeHash, runs });
 }
 
+/** Every console.log call so far, each call's arguments joined, one line per call */
+function loggedText(): string {
+  return vi.mocked(console.log).mock.calls.map(call => call.join(' ')).join('\n');
+}
+
 const TWO_LEVELS: VibeValidateConfig = { validation: { levels: ['commit', 'full'], phases: [] } };
 
 /**
@@ -149,18 +154,6 @@ describe('checkValidationStatus', () => {
     });
   });
 
-  describe('when git notes cannot be read', () => {
-    it('should exit with code 2 and show error', async () => {
-      mockTreeHash();
-      vi.mocked(history.readHistoryNote).mockRejectedValue(new Error('Git notes error'));
-
-      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(2));
-
-      expectConsoleOutput(consoleLogSpy, ['Failed to read validation history']);
-      expect(processExitSpy).toHaveBeenCalledWith(2);
-    });
-  });
-
   describe('when no validation history exists', () => {
     it('should exit with code 2 when there is no note', async () => {
       mockTreeHash();
@@ -204,13 +197,35 @@ describe('checkValidationStatus', () => {
       expectConsoleOutput(consoleLogSpy, ['Validation passed for this code', 'Level: full (covers commit)']);
     });
 
-    it('exits 2, not 1, when the only failure is at another level', async () => {
+    it('exits 1 when the newest run failed at another level, and points at that level', async () => {
       mockTreeHash();
       serveRuns([createValidationRunFromNote({ passed: false, level: 'full' })]);
 
+      await expect(checkValidationStatus(TWO_LEVELS, 'commit')).rejects.toThrow(expectProcessExit(1));
+
+      const logged = loggedText();
+      for (const expected of ['Last validation at level full failed for this code', 'must run again', 'state --level full', 'validate --level commit']) {
+        expect(logged).toContain(expected);
+      }
+    });
+
+    it('exits 1 when a newer commit-level failure follows a full pass', async () => {
+      mockTreeHash();
+      serveRuns([
+        createValidationRunFromNote({ passed: true, level: 'full', timestamp: '2025-10-21T09:00:00Z' }),
+        createValidationRunFromNote({ passed: false, level: 'commit', timestamp: '2025-10-21T10:00:00Z' }),
+      ]);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'full')).rejects.toThrow(expectProcessExit(1));
+    });
+
+    it('the run-validation hint names a level that is not validate\'s default', async () => {
+      mockTreeHash();
+      serveRuns(null);
+
       await expect(checkValidationStatus(TWO_LEVELS, 'commit')).rejects.toThrow(expectProcessExit(2));
 
-      expectConsoleOutput(consoleLogSpy, ['No validation at level commit for current working tree']);
+      expect(loggedText()).toContain('validate --level commit');
     });
 
     it('YAML: names the requested level when nothing is recorded at it', async () => {
@@ -251,14 +266,14 @@ describe('checkValidationStatus', () => {
       expectNoConsoleOutput(consoleLogSpy, ['Replayed', 'not re-run', '.gitignore', 'validate --force']);
     });
 
-    it('exits 0 when an older pass at the level exists beside a newer failure', async () => {
+    it('exits 1 when a newer failure follows an older pass at the level', async () => {
       mockTreeHash();
       serveRuns([
         createValidationRunFromNote({ passed: true, timestamp: '2025-10-21T09:00:00Z' }),
         createValidationRunFromNote({ passed: false, timestamp: '2025-10-21T10:00:00Z' }),
       ]);
 
-      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(0));
+      await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
     });
 
     it('should show the returned run details', async () => {
@@ -497,22 +512,6 @@ describe('checkValidationStatus', () => {
       expectNoConsoleOutput(consoleLogSpy, ['⚠️']);
     });
 
-    it('should output YAML when failed to read history with --yaml flag', async () => {
-      mockTreeHash();
-      vi.mocked(history.readHistoryNote).mockRejectedValue(new Error('Git notes error'));
-
-      await expect(checkValidationStatus(mockConfig, 'full', true)).rejects.toThrow(expectProcessExit(2));
-
-      // Should output YAML to stdout
-      expectYamlOutput(stdoutWriteSpy, [
-        'exists: false',
-        'treeHash: abc123def456',
-        'error:'
-      ]);
-
-      // Should NOT use console.log for human-readable messages
-      expectNoConsoleOutput(consoleLogSpy, ['⚠️']);
-    });
 
     it('should output YAML when no validation history with --yaml flag', async () => {
       mockTreeHash();

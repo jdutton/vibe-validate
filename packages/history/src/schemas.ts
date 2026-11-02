@@ -138,11 +138,13 @@ export const HistoryConfigSchema = z.object({
   /** Enable history recording */
   enabled: z.boolean().optional(),
 
-  /** Git notes configuration */
+  /**
+   * Git notes configuration
+   *
+   * There is no `ref`: history is always VALIDATION_NOTES_REF, so no config can
+   * steer leveled runs into the pre-levels ref a 0.20.x reader trusts.
+   */
   gitNotes: z.object({
-    /** Git ref namespace */
-    ref: z.string().optional(),
-
     /** Max runs to keep per tree */
     maxRunsPerTree: z.number().positive().optional(),
 
@@ -183,7 +185,6 @@ export type HistoryConfig = z.infer<typeof HistoryConfigSchema>;
 export const DEFAULT_HISTORY_CONFIG = {
   enabled: true,
   gitNotes: {
-    ref: VALIDATION_NOTES_REF,
     maxRunsPerTree: 10,
     maxOutputBytes: 10000,
   },

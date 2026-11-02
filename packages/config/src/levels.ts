@@ -30,17 +30,32 @@ export interface LevelSource {
  * @returns Declared levels, or `[IMPLICIT_LEVEL]` when none are declared
  */
 export function getLevels(config: LevelSource): string[] {
-  return config.validation.levels ?? [IMPLICIT_LEVEL];
+  return declaredLevels(config.validation.levels) ?? [IMPLICIT_LEVEL];
+}
+
+/** The declared levels, or undefined when none are (an empty list declares none) */
+function declaredLevels(levels: string[] | undefined): string[] | undefined {
+  return levels && levels.length > 0 ? levels : undefined;
 }
 
 /**
  * The level a step belongs to
  *
- * @param step - A validated step
- * @returns The step's level (the implicit one when levels are not declared)
+ * @param step - A step
+ * @param levels - The config's levels in order (see {@link getLevels})
+ * @returns The step's level, or the only level when there is just one
+ * @throws MissingStepLevelError when the step names no level and there are several to choose from;
+ *   the schema rejects such a config, so only an unvalidated one reaches this
  */
-export function getStepLevel(step: { level?: string }): string {
-  return step.level ?? IMPLICIT_LEVEL;
+export function getStepLevel(step: { name?: string; level?: string }, levels: readonly string[]): string {
+  if (step.level !== undefined) {
+    return step.level;
+  }
+  const [only] = levels;
+  if (levels.length === 1 && only) {
+    return only;
+  }
+  throw new MissingStepLevelError(step.name ?? '', levels);
 }
 
 /**
@@ -68,8 +83,8 @@ export function getLevelIndex(level: string, config: LevelSource): number {
  * @param config - Loaded config
  * @returns true when the step's level is at or before `runLevel`
  */
-export function stepRunsAtLevel(step: { level?: string }, runLevel: string, config: LevelSource): boolean {
-  return getLevelIndex(getStepLevel(step), config) <= getLevelIndex(runLevel, config);
+export function stepRunsAtLevel(step: { name?: string; level?: string }, runLevel: string, config: LevelSource): boolean {
+  return getLevelIndex(getStepLevel(step, getLevels(config)), config) <= getLevelIndex(runLevel, config);
 }
 
 /**
@@ -107,31 +122,57 @@ export class UnknownLevelError extends Error {
   }
 }
 
+/** A step with no level where the config declares several to choose from */
+export class MissingStepLevelError extends Error {
+  readonly code = 'MISSING_STEP_LEVEL';
+
+  constructor(readonly stepName: string, readonly levels: readonly string[]) {
+    super(missingLevelMessage(stepName, levels));
+    this.name = 'MissingStepLevelError';
+  }
+}
+
+function missingLevelMessage(stepName: string, levels: readonly string[]): string {
+  return `Step "${stepName}" has no level; every step needs one once validation.levels is declared (${levels.join(', ')})`;
+}
+
 /**
- * Collect the level-rule violations in a parsed config
+ * Collect the level-rule violations in a `validation` section
+ *
+ * An empty `levels` list declares no levels: the schema reports it on its own,
+ * so the steps are judged as if no list were given.
+ *
+ * @param validation - A `validation` section that passed the structural schema
+ * @returns One message per violation, each with its path relative to `validation`
+ */
+export function findValidationLevelViolations(validation: LevelSource['validation']): LevelViolation[] {
+  const declared = declaredLevels(validation.levels);
+  const steps = validation.phases.flatMap((phase, phaseIndex) =>
+    phase.steps.map((step, stepIndex) => ({ step: step as { name?: string; level?: string }, phaseIndex, stepIndex }))
+  );
+
+  const stepViolations = steps.flatMap(({ step, phaseIndex, stepIndex }) => {
+    const message = checkStepLevel(step, declared);
+    return message ? [{ path: ['phases', phaseIndex, 'steps', stepIndex, 'level'], message }] : [];
+  });
+  if (!declared) {
+    return stepViolations;
+  }
+
+  // A level looks empty only because a step is missing or misnames its level: report the step alone
+  const emptyLevels = stepViolations.length === 0 ? findEmptyLevels(declared, steps.map(entry => entry.step.level)) : [];
+  return [...findDuplicateLevels(declared), ...emptyLevels, ...stepViolations];
+}
+
+/**
+ * Check `hooks.preCommit.level` against the declared levels
  *
  * @param config - Config that passed the structural schema
- * @returns One message per violation, each with the config path it applies to
+ * @returns The violation, with its path from the config root, or null
  */
-export function findLevelViolations(config: LevelSource): LevelViolation[] {
-  const declared = config.validation.levels;
-  const violations = declared ? findDuplicateLevels(declared) : [];
-
-  for (const [phaseIndex, phase] of config.validation.phases.entries()) {
-    for (const [stepIndex, step] of phase.steps.entries()) {
-      const stepMessage = checkStepLevel(step as { name?: string; level?: string }, declared);
-      if (stepMessage) {
-        violations.push({ path: ['validation', 'phases', phaseIndex, 'steps', stepIndex, 'level'], message: stepMessage });
-      }
-    }
-  }
-
-  const hookMessage = checkHookLevel(config.hooks?.preCommit?.level, declared);
-  if (hookMessage) {
-    violations.push({ path: ['hooks', 'preCommit', 'level'], message: hookMessage });
-  }
-
-  return violations;
+export function findHookLevelViolation(config: LevelSource): LevelViolation | null {
+  const message = checkHookLevel(config.hooks?.preCommit?.level, declaredLevels(config.validation.levels));
+  return message ? { path: ['hooks', 'preCommit', 'level'], message } : null;
 }
 
 /** One level-rule violation and the config path it applies to */
@@ -145,11 +186,21 @@ function findDuplicateLevels(declared: readonly string[]): LevelViolation[] {
   const seen = new Set<string>();
   for (const [index, level] of declared.entries()) {
     if (seen.has(level)) {
-      violations.push({ path: ['validation', 'levels', index], message: `Duplicate level "${level}"` });
+      violations.push({ path: ['levels', index], message: `Duplicate level "${level}"` });
     }
     seen.add(level);
   }
   return violations;
+}
+
+/** A declared level no step names adds nothing: a run at it repeats the level before, or runs nothing at all */
+function findEmptyLevels(declared: readonly string[], stepLevels: ReadonlyArray<string | undefined>): LevelViolation[] {
+  const used = new Set(stepLevels);
+  return declared.flatMap((level, index) =>
+    used.has(level) || declared.indexOf(level) !== index
+      ? []
+      : [{ path: ['levels', index], message: `Level "${level}" has no steps; give it a step or remove it` }]
+  );
 }
 
 function checkHookLevel(hookLevel: string | undefined, declared: readonly string[] | undefined): string | null {
@@ -172,7 +223,7 @@ function checkStepLevel(step: { name?: string; level?: string }, declared: reado
       : `Step "${name}" sets level "${step.level}" but validation.levels is not declared`;
   }
   if (step.level === undefined) {
-    return `Step "${name}" has no level; every step needs one once validation.levels is declared (${declared.join(', ')})`;
+    return missingLevelMessage(name, declared);
   }
   if (!declared.includes(step.level)) {
     return `Step "${name}" names level "${step.level}", which is not declared (${declared.join(', ')})`;

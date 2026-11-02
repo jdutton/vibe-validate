@@ -794,7 +794,7 @@ describe('history command', () => {
 
       await env.program.parseAsync(['history', 'prune'], { from: 'user' });
 
-      expect(history.pruneHistoryByAge).toHaveBeenCalledWith(90, {}, false);
+      expect(history.pruneHistoryByAge).toHaveBeenCalledWith(90, false);
       expect(console.log).toHaveBeenCalled();
     });
 
@@ -811,7 +811,7 @@ describe('history command', () => {
 
       await env.program.parseAsync(['history', 'prune', '--older-than', '30'], { from: 'user' });
 
-      expect(history.pruneHistoryByAge).toHaveBeenCalledWith(30, {}, false);
+      expect(history.pruneHistoryByAge).toHaveBeenCalledWith(30, false);
     });
 
     it('should prune all history when --all flag is provided', async () => {
@@ -827,7 +827,7 @@ describe('history command', () => {
 
       await env.program.parseAsync(['history', 'prune', '--all'], { from: 'user' });
 
-      expect(history.pruneAllHistory).toHaveBeenCalledWith({}, false);
+      expect(history.pruneAllHistory).toHaveBeenCalledWith(false);
       expect(console.log).toHaveBeenCalled();
     });
 
@@ -844,7 +844,7 @@ describe('history command', () => {
 
       await env.program.parseAsync(['history', 'prune', '--dry-run'], { from: 'user' });
 
-      expect(history.pruneHistoryByAge).toHaveBeenCalledWith(90, {}, true);
+      expect(history.pruneHistoryByAge).toHaveBeenCalledWith(90, true);
     });
 
     it('should display message when no history to prune', async () => {

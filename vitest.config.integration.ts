@@ -21,15 +21,9 @@ import { defineConfig } from 'vitest/config';
  *
  * All tests must be cross-platform (Windows + Unix).
  *
- * INCLUDED TESTS (90 total):
- * - packaging.system.test.ts: npm package integrity (14 tests, ALL SKIPPED - see test file for reason)
- * - subdirectory-behavior.system.test.ts: CLI from subdirectories (26 tests)
- * - tree-hash.integration.test.ts: git tree hash with real repos (11 tests)
- * - history-recording.test.ts: git notes history tracking (3 tests)
- * - cache-manager.integration.test.ts: real filesystem cache operations (9 tests)
- * - watch-pr-extraction.integration.test.ts: extractor quality validation (6 tests)
- * - nested-passthrough.integration.test.ts: end-to-end nested vv run pass-through (1 test)
- * - run.integration.test.ts: run command with real extractors (34 tests)
+ * INCLUDED TESTS: exactly the files the unit config (vitest.config.ts) excludes
+ * as integration or system tests, by the same globs. A hand-kept file list here
+ * let suites fall into no tier at all; the globs make that impossible.
  */
 const isWindows = process.platform === 'win32';
 
@@ -39,19 +33,9 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./.github/vitest.setup.ts'], // Load global setup for env var cleanup
     include: [
-      // System tests (end-to-end CLI)
-      'packages/cli/test/packaging.system.test.ts',
-      'packages/cli/test/commands/subdirectory-behavior.system.test.ts',
-
-      // Integration tests (component integration)
-      'packages/git/test/tree-hash.integration.test.ts',
-      'packages/git/test/tree-snapshot.integration.test.ts',
-      'packages/cli/test/integration/history-recording.test.ts',
-      'packages/cli/test/integration/cache-manager.integration.test.ts',
-      'packages/cli/test/integration/watch-pr-extraction.integration.test.ts',
-      'packages/cli/test/integration/nested-passthrough.integration.test.ts',
-      'packages/cli/test/integration/cached-failure-escape.integration.test.ts',
-      'packages/cli/test/commands/run.integration.test.ts',
+      'packages/**/*.system.test.ts',
+      'packages/**/*.integration.test.ts',
+      'packages/**/test/integration/**/*.test.ts',
     ],
     testTimeout: 60000, // 60 seconds per test (increased for Windows CI resource constraints)
     hookTimeout: 90000, // 90 seconds for setup/teardown (increased for Windows)

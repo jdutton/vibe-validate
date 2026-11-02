@@ -4,6 +4,7 @@
  * Display current validation state from git notes cache.
  */
 
+import { getDefaultValidateLevel, type VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
 import {
@@ -18,12 +19,15 @@ import { stringify as stringifyYaml } from 'yaml';
 
 import { getCommandName } from '../utils/command-name.js';
 import { findConfigPath } from '../utils/config-loader.js';
+import { resolveLevelOrExit } from '../utils/level-option.js';
 import { formatTreeHashOutput, cleanRunCacheEntries } from '../utils/tree-hash-output.js';
+import { loadConfigOrExit } from '../utils/validation-lock-wrapper.js';
 
 export function stateCommand(program: Command): void {
   program
     .command('state')
     .description('Show current validation state from git notes (or run cache if no config)')
+    .option('-l, --level <name>', 'Show the newest run at this level (one of validation.levels; default: the level validate runs, the last)')
     .option('-v, --verbose', 'Show full error output without truncation')
     .option('--runs', 'Show only run cache (not validation history)')
     .option('--all', 'Show both validation history and run cache')
@@ -36,10 +40,26 @@ export function stateCommand(program: Command): void {
     });
 }
 
+/** Without a config there is one level, the implicit one */
+const NO_CONFIG: VibeValidateConfig = { validation: { phases: [] } };
+
+/**
+ * The level state reports on: --level, else the level `validate` runs by default
+ *
+ * Exits 1 (as `validate --level` does) for a level the config does not declare.
+ */
+async function resolveStateLevel(hasConfig: boolean, requested: string | undefined): Promise<string> {
+  const config = hasConfig ? (await loadConfigOrExit()).config : NO_CONFIG;
+  return resolveLevelOrExit(config, requested, getDefaultValidateLevel(config));
+}
+
 /**
  * Execute the state command logic
  */
-async function executeStateCommand(options: { verbose?: boolean; runs?: boolean; all?: boolean }): Promise<void> {
+async function executeStateCommand(options: { level?: string; verbose?: boolean; runs?: boolean; all?: boolean }): Promise<void> {
+  const hasConfig = findConfigPath() !== null;
+  const level = await resolveStateLevel(hasConfig, options.level);
+
   const treeHashResult = await getGitTreeHash();
   const treeHash = treeHashResult.hash;
 
@@ -49,18 +69,24 @@ async function executeStateCommand(options: { verbose?: boolean; runs?: boolean;
     process.exit(0);
   }
 
-  const hasConfig = findConfigPath() !== null;
   const showRunsOnly = options.runs === true;
   const showAll = options.all === true;
 
   // Load data
-  const validationHistory = showRunsOnly ? null : await loadValidationHistory(treeHash);
+  const history = showRunsOnly ? null : await loadValidationHistory(treeHash, level);
+  const validationHistory = history?.run ?? null;
   const runCacheEntries = (showRunsOnly || showAll || (!hasConfig && !validationHistory))
     ? await getAllRunCacheForTree(treeHash)
     : [];
 
   // Determine output (passing treeHash for consistent structure)
   const output = determineOutput(treeHash, validationHistory, runCacheEntries, showRunsOnly, showAll);
+
+  // Runs exist on this tree, but none at this level: say so, and where they are
+  if (!output && history && history.levelsWithRuns.length > 0) {
+    displayNoRunAtLevelMessage(treeHash, level, history.levelsWithRuns, options.verbose);
+    process.exit(0);
+  }
 
   // Handle no data case
   if (!output) {
@@ -79,18 +105,24 @@ async function executeStateCommand(options: { verbose?: boolean; runs?: boolean;
 }
 
 /**
- * Load validation history for current tree
+ * The newest run recorded at exactly `level` for the current tree (null when
+ * none), and every level that has a run on it
  */
-async function loadValidationHistory(treeHash: string): Promise<ValidationResult | null> {
+async function loadValidationHistory(
+  treeHash: string,
+  level: string
+): Promise<{ run: ValidationResult | null; levelsWithRuns: string[] } | null> {
   // Call readHistoryNote directly (hasHistoryForTree just calls readHistoryNote internally,
   // so going through it would double the git subprocess cost)
   const historyNote = await readHistoryNote(treeHash);
   if (!historyNote || historyNote.runs.length === 0) return null;
 
-  const mostRecentRun = getMostRecentRun(historyNote.runs);
-  if (!mostRecentRun) return null; // Should never happen due to length check above
+  const levelsWithRuns = [...new Set(historyNote.runs.map(run => run.level))];
+  // Exactly this level: a run at another level executed a different set of steps
+  const mostRecentRun = getMostRecentRun(historyNote.runs.filter(run => run.level === level));
+  if (!mostRecentRun) return { run: null, levelsWithRuns };
 
-  return {
+  return { run: {
     passed: mostRecentRun.result.passed,
     level: mostRecentRun.level,
     timestamp: mostRecentRun.result.timestamp,
@@ -98,7 +130,7 @@ async function loadValidationHistory(treeHash: string): Promise<ValidationResult
     summary: mostRecentRun.result.summary,
     failedStep: mostRecentRun.result.failedStep,
     phases: mostRecentRun.result.phases,
-  };
+  }, levelsWithRuns };
 }
 
 /**
@@ -151,6 +183,20 @@ function displayNoDataMessage(treeHash: string, verbose?: boolean): void {
     console.log(chalk.gray('ℹ️  No validation or run cache found for current worktree'));
     console.log(chalk.gray(`   Run: ${cmd} validate`));
     console.log(chalk.gray(`   Or:  ${cmd} run <command>`));
+  }
+}
+
+/**
+ * Display message when the tree has runs, but none at the requested level
+ */
+function displayNoRunAtLevelMessage(treeHash: string, level: string, levelsWithRuns: string[], verbose?: boolean): void {
+  console.log(stringifyYaml({ exists: false, treeHash, level, levelsWithRuns }));
+
+  if (verbose) {
+    const cmd = getCommandName();
+    console.log(chalk.gray(`ℹ️  No validation at level ${level} for current worktree`));
+    console.log(chalk.gray(`   Runs recorded at: ${levelsWithRuns.join(', ')}`));
+    console.log(chalk.gray(`   Show one: ${cmd} state --level ${levelsWithRuns.at(-1) ?? level}`));
   }
 }
 
@@ -303,13 +349,14 @@ The \`state\` command shows the current validation status without re-running val
 
 ## Options
 
+- \`-l, --level <name>\` - Show the newest run recorded at exactly this level (one of \`validation.levels\`; default: the level \`validate\` runs by default, the last). When the tree has runs only at other levels, the output says so (\`exists: false\`, \`levelsWithRuns\`). An unknown level exits 1, as \`validate --level\` does
 - \`-v, --verbose\` - Show full error output and details
 - \`-y, --yaml\` - Output as YAML (machine-readable)
 
 ## Exit Codes
 
-- \`0\` - State file found and read successfully
-- \`1\` - State file not found or invalid
+- \`0\` - State read (including "nothing recorded", reported as \`exists: false\`)
+- \`1\` - Unknown \`--level\`, invalid configuration, or the state could not be read
 
 ## Examples
 

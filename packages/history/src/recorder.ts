@@ -15,6 +15,7 @@ import {
 } from '@vibe-validate/git';
 import { stringify as stringifyYaml } from 'yaml';
 
+import { VALIDATION_NOTES_REF } from './schemas.js';
 import { truncateValidationOutput } from './truncate.js';
 import type {
   ValidationRun,
@@ -91,7 +92,8 @@ export async function recordValidationHistory(
   };
 
   // Type assertions safe: DEFAULT_HISTORY_CONFIG is Required<HistoryConfig>
-  const notesRef = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as NotesRef;
+  // The ref is not configurable: leveled runs go to VALIDATION_NOTES_REF only.
+  const notesRef = VALIDATION_NOTES_REF as NotesRef;
   const maxOutputBytes = (mergedConfig.gitNotes.maxOutputBytes ?? DEFAULT_HISTORY_CONFIG.gitNotes.maxOutputBytes);
 
   try {

@@ -2230,6 +2230,13 @@ rawOutput: |
         level: { name: 'push', levels: TWO_LEVELS },
       })).rejects.toMatchObject({ code: 'UNKNOWN_LEVEL' });
     });
+
+    it('rejects a step with no level instead of guessing one', async () => {
+      await expect(runValidation({
+        phases: [{ name: 'Fast', steps: [{ name: 'Unlevelled', command: 'node -e "process.exit(0)"' }] }],
+        level: { name: 'full', levels: TWO_LEVELS },
+      })).rejects.toMatchObject({ code: 'MISSING_STEP_LEVEL' });
+    });
   });
 
   describe('ParentContext propagation', () => {

@@ -92,6 +92,8 @@ $schema: https://unpkg.com/@vibe-validate/config/config.schema.json
 Top-level sections, in rough order of importance:
 
 - `validation.phases` — the heart of the config. Ordered list of phases; each phase has `steps`. Phases run **sequentially**; steps within a phase run sequentially by default or in parallel with `parallel: true`.
+- `validation.levels` — optional ordered, nested level names (e.g. `[commit, full]`). Once declared, every step needs a `level` (the level that adds it) and every level needs at least one step of its own; `level` is rejected without `levels`. `vv validate` runs the last level, `vv pre-commit` runs `hooks.preCommit.level` (default: the first). A pass at a later level answers an earlier one, never the reverse.
+- `hooks.preCommit` — `level`, branch-sync and secret-scan behaviour of `vv pre-commit`.
 - `git` — `mainBranch`, `remoteOrigin`, `autoSync`.
 - `ci` — `nodeVersions`, `packageManager`, `dependencyLockCheck`, `disableWorkflowCheck`.
 - `locking` — concurrency scope and wait behavior (see `vibe-validate:caching-and-locking`).
@@ -126,7 +128,7 @@ validation:
 ### `vv config` — show/validate current config
 
 ```bash
-vv config            # print resolved config as YAML
+vv config            # print resolved config as YAML, the levels, and which level pre-commit / validate run
 vv config --check    # validate schema only; exits non-zero on error
 ```
 

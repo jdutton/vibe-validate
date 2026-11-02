@@ -90,7 +90,7 @@ describe('validate-workflow retry-failed', () => {
 
       expect(readHistoryNote).toHaveBeenCalledTimes(1);
       expect(readHistoryNote).toHaveBeenCalledWith(MOCK_TREE_HASH);
-      expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('No failed validation found'));
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('No failed validation at level'));
     });
 
     it('hands the runner the tree hash it already computed, so the worktree is hashed once', async () => {
@@ -114,7 +114,7 @@ describe('validate-workflow retry-failed', () => {
 
       expect(readHistoryNote).toHaveBeenCalledWith(MOCK_TREE_HASH);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`No failed validation found at level full for tree ${MOCK_TREE_HASH}`)
+        expect.stringContaining(`No failed validation at level full to retry for tree ${MOCK_TREE_HASH}`)
       );
     });
 
@@ -127,7 +127,7 @@ describe('validate-workflow retry-failed', () => {
       });
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No failed validation found at level full')
+        expect.stringContaining('No failed validation at level full')
       );
     });
   });
@@ -143,16 +143,17 @@ describe('validate-workflow retry-failed', () => {
         treeHashResult: MOCK_TREE_HASH_RESULT,
       });
 
-      expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('No failed validation found'));
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('No failed validation at level'));
     });
 
-    it('an older pass is still a cache hit even when a newer failure exists', async () => {
-      setupHistoryNote([createMockRun(true, '2026-02-12T09:00:00Z'), createMockRun(false, '2026-02-12T10:00:00Z')]);
+    it('a newer failure overturns an older pass: the retry builds on the failure', async () => {
+      const newerRed = createMockRun(false, '2026-02-12T10:00:00Z');
+      setupHistoryNote([createMockRun(true, '2026-02-12T09:00:00Z'), newerRed]);
 
-      await expectCacheUsed({
+      await expectValidationRun({
         retryFailed: true,
         treeHashResult: MOCK_TREE_HASH_RESULT,
-      });
+      }, newerRed);
     });
   });
 
@@ -188,7 +189,7 @@ describe('validate-workflow retry-failed', () => {
       }, previousRun);
 
       expect(consoleErrorSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('No failed validation found')
+        expect.stringContaining('No failed validation at level')
       );
     });
 
@@ -216,7 +217,7 @@ describe('validate-workflow retry-failed', () => {
       });
 
       // The failed run is never handed to the runner, and no retry message is printed
-      expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('No failed validation found'));
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('No failed validation at level'));
     });
 
     it('re-runs a stored pass when force=true', async () => {

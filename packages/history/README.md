@@ -91,7 +91,7 @@ if (health.shouldWarn) {
 import { pruneHistoryByAge } from '@vibe-validate/history';
 
 // Prune notes older than 90 days (dry run)
-const dryRunResult = await pruneHistoryByAge(90, {}, true);
+const dryRunResult = await pruneHistoryByAge(90, true);
 console.log(`Would prune ${dryRunResult.notesPruned} notes`);
 
 // Actually prune
@@ -109,7 +109,6 @@ const config: HistoryConfig = {
   enabled: true,
 
   gitNotes: {
-    ref: 'vibe-validate/leveled-runs',  // Git notes ref namespace (v0.15.0: changed from 'runs')
     maxRunsPerTree: 10,             // Keep last 10 runs per tree
     maxOutputBytes: 10000,          // 10KB max per step output
   },
@@ -120,6 +119,11 @@ const config: HistoryConfig = {
   },
 };
 ```
+
+The notes ref is not configurable. History is always stored under
+`refs/notes/vibe-validate/leveled-runs` (exported as `VALIDATION_NOTES_REF`), so leveled
+runs never land in `refs/notes/vibe-validate/validate`, where a 0.20.x reader would take a
+commit-level pass for a full one.
 
 ## API Reference
 
@@ -139,14 +143,14 @@ const config: HistoryConfig = {
 - `checkWorktreeStability(treeHashBefore)`: Check if tree changed during validation
 
 #### Reading
-- `readHistoryNote(treeHash, notesRef?)`: Read note for specific tree hash
-- `listHistoryTreeHashes(notesRef?)`: List all tree hashes with notes
-- `getAllHistoryNotes(notesRef?)`: Get all history notes
-- `hasHistoryForTree(treeHash, notesRef?)`: Check if history exists
+- `readHistoryNote(treeHash)`: Read note for specific tree hash
+- `listHistoryTreeHashes()`: List all tree hashes with notes
+- `getAllHistoryNotes()`: Get all history notes
+- `hasHistoryForTree(treeHash)`: Check if history exists
 
 #### Pruning
-- `pruneHistoryByAge(olderThanDays, config?, dryRun?)`: Prune by age
-- `pruneAllHistory(config?, dryRun?)`: Prune all history
+- `pruneHistoryByAge(olderThanDays, dryRun?)`: Prune by age
+- `pruneAllHistory(dryRun?)`: Prune all history
 
 #### Health
 - `checkHistoryHealth(config?)`: Check history health
@@ -172,13 +176,14 @@ Git notes caching (this package):
 ### Note Structure
 
 ```yaml
-# Git note: refs/notes/vibe-validate/runs → tree hash abc123
+# Git note: refs/notes/vibe-validate/leveled-runs → tree hash abc123
 treeHash: "abc123def456..."
 runs:
   - id: "run-1729522215123"
     timestamp: "2025-10-21T14:30:15.123Z"
     duration: 2300
     passed: true
+    level: "commit"
     branch: "feature/foo"
     headCommit: "9abc3c4"
     uncommittedChanges: false

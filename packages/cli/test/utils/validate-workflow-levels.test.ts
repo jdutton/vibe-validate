@@ -67,14 +67,29 @@ describe('validate workflow: levels and the greens-only cache', () => {
     expect(result.isCachedResult).toBe(true);
   });
 
-  it('a pass older than a later failure still answers', async () => {
+  it('a later failure overturns an older pass: a forced re-check that went red sticks', async () => {
     setupConsoleMocks();
     setupHistoryNote([createMockRun(true, '2026-02-12T10:00:00Z'), createMockRun(false, '2026-02-12T11:00:00Z')]);
+    vi.mocked(runValidation).mockResolvedValue(createMockResult(false));
 
     const result = await executeWorkflow();
 
-    expect(runValidation).not.toHaveBeenCalled();
-    expect(result.isCachedResult).toBe(true);
+    expect(runValidation).toHaveBeenCalledTimes(1);
+    expect(result.passed).toBe(false);
+    expect(result.isCachedResult).toBeUndefined();
+  });
+
+  it('a later commit-level failure overturns an older full pass for a commit request', async () => {
+    setupConsoleMocks();
+    setupHistoryNote([
+      createMockRun(true, '2026-02-12T10:00:00Z', 'full'),
+      createMockRun(false, '2026-02-12T11:00:00Z', 'commit'),
+    ]);
+    vi.mocked(runValidation).mockResolvedValue(createMockResult(true, undefined, 'commit'));
+
+    await executeWorkflow({ level: 'commit' }, TWO_LEVEL_CONFIG);
+
+    expect(runValidation).toHaveBeenCalledTimes(1);
   });
 
   it('a commit-level pass does not answer a full request', async () => {
@@ -126,8 +141,22 @@ describe('validate workflow: levels and the greens-only cache', () => {
 
   it('retries the newest failed run at the requested level', async () => {
     const fullRed = createMockRun(false, '2026-02-12T10:00:00Z', 'full');
+    const olderCommitRed = createMockRun(false, '2026-02-12T09:00:00Z', 'commit');
     const commitRed = createMockRun(false, '2026-02-12T11:00:00Z', 'commit');
-    expect(await previousRunHandedToRunner([commitRed, fullRed])).toBe(commitRed);
+    expect(await previousRunHandedToRunner([olderCommitRed, fullRed, commitRed])).toBe(commitRed);
+  });
+
+  it('never retries on top of a pass a newer failure overturned', async () => {
+    setupConsoleMocks();
+    setupHistoryNote([
+      createMockRun(true, '2026-02-12T10:00:00Z', 'commit'),
+      createMockRun(false, '2026-02-12T11:00:00Z', 'full'),
+    ]);
+    vi.mocked(runValidation).mockResolvedValue(createMockResult(true, undefined, 'commit'));
+
+    await executeWorkflow({ level: 'commit', retryFailed: true }, TWO_LEVEL_CONFIG);
+
+    expect(vi.mocked(runValidation).mock.calls[0]?.[0].previousRun).toBeUndefined();
   });
 
   it('names the level it runs', async () => {

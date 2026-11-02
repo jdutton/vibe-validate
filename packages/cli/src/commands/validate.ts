@@ -7,7 +7,7 @@
 import { getDefaultValidateLevel } from '@vibe-validate/config';
 import type { Command } from 'commander';
 
-import { resolveLevelOrExit } from '../utils/level-option.js';
+import { resolveCheckLevelOrExit, resolveLevelOrExit } from '../utils/level-option.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
 import { loadConfigOrExit, withValidationLock } from '../utils/validation-lock-wrapper.js';
 
@@ -19,7 +19,7 @@ export function validateCommand(program: Command): void {
     .option('-f, --force', 'Re-run even when a pass is already recorded (a failure is never replayed)')
     .option('-v, --verbose', 'Show detailed progress and output')
     .option('-y, --yaml', 'Output validation result as YAML to stdout')
-    .option('-c, --check', 'Check if validation has already passed (do not run)')
+    .option('-c, --check', 'Check if validation has already passed (do not run; exit 0 passed, 1 last run failed, 2 nothing recorded or cannot answer)')
     .option('-d, --debug', 'Create output files for all steps (for debugging)')
     .option('--retry-failed', 'Retry only failed steps from previous validation')
     .option('--no-lock', 'Allow concurrent validation runs (disables single-instance mode)')
@@ -44,7 +44,11 @@ export function validateCommand(program: Command): void {
 
         // Load the config once; the lock wrapper and the workflow share it
         const loaded = await loadConfigOrExit();
-        const level = resolveLevelOrExit(loaded.config, options.level, getDefaultValidateLevel(loaded.config));
+        const defaultLevel = getDefaultValidateLevel(loaded.config);
+        // --check answers 0/1/2, and 1 means "the run failed": an unknown level is 2
+        const level = options.check
+          ? await resolveCheckLevelOrExit(loaded.config, options.level, defaultLevel, options.yaml === true)
+          : resolveLevelOrExit(loaded.config, options.level, defaultLevel);
 
         const result = await withValidationLock(
           loaded,
@@ -86,11 +90,15 @@ export function validateCommand(program: Command): void {
           }
         );
 
-        // Only passes are served from cache. A cached pass returns normally so
-        // Commander exits 0 on its own; that also keeps the happy path free of a
-        // process.exit for tests to trap.
+        // A failure exits 1, whatever isCachedResult says: the exit code never
+        // rests on the invariant that only passes are served from cache.
+        if (!result.passed) {
+          process.exit(1);
+        }
+        // A cached pass returns normally so Commander exits 0 on its own; that
+        // also keeps the happy path free of a process.exit for tests to trap.
         if (!result.isCachedResult) {
-          process.exit(result.passed ? 0 : 1);
+          process.exit(0);
         }
       } catch (error) {
         // Re-throw process.exit errors (for testing)
@@ -141,6 +149,12 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 
 - \`0\` - Validation passed (or cached pass)
 - \`1\` - Validation failed, or the configuration is invalid (an unknown \`--level\` included)
+
+With \`--check\` (nothing runs; the answer comes from the recorded runs):
+
+- \`0\` - A recorded pass covers the level (\`validate\` would be a cache hit)
+- \`1\` - The last run bearing on the level failed (see it with \`state --level <that run's level>\`)
+- \`2\` - Nothing recorded that bears on the level, or it cannot answer (not in a git repository, unknown \`--level\`). With \`--yaml\`, an unknown level is a YAML document on stdout: \`exists: false\`, \`error\`, \`levels\`
 
 ## Examples
 
@@ -241,7 +255,7 @@ This design:
 - \`vibe-validate state\` - View cached result
 - \`vibe-validate state --verbose\` - See full error details
 - \`vibe-validate history list\` - View validation timeline
-- \`vibe-validate pre-commit\` - Runs sync-check + validate
+- \`vibe-validate pre-commit\` - Runs the sync and secret checks, then validation at the pre-commit level
 
 ## Common Workflows
 

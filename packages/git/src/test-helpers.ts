@@ -96,12 +96,12 @@ export function getTestTreeHash(repoPath: string): string {
  * Read git note for object
  *
  * @param repoPath - Path to git repository
- * @param notesRef - Notes ref (e.g., 'refs/notes/vibe-validate/validate')
+ * @param notesRef - Notes ref (e.g., 'refs/notes/vibe-validate/leveled-runs')
  * @param object - Object hash to read note for
  * @returns Note content or null if not found
  *
  * @example
- * const note = readTestNote(testDir, 'refs/notes/vibe-validate/validate', treeHash);
+ * const note = readTestNote(testDir, 'refs/notes/vibe-validate/leveled-runs', treeHash);
  */
 export function readTestNote(repoPath: string, notesRef: string, object: string): string | null {
   const result = safeExecResult('git', ['notes', '--ref', notesRef, 'show', object], {

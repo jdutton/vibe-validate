@@ -277,7 +277,7 @@ npx vibe-validate validate
 npx vibe-validate state
 ```
 
-**Force re-run** (bypass cache):
+**Force re-run** (re-runs a recorded pass; a failure always re-runs anyway):
 ```bash
 npx vibe-validate validate --force
 ```

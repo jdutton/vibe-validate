@@ -18,43 +18,76 @@ export interface LevelRequest {
   levels: readonly string[];
 }
 
+/** A run passed only when both the run and its result say so */
+function isPass(run: ValidationRun): boolean {
+  return run.passed && run.result.passed;
+}
+
 /**
- * Find a cached PASS that answers a request at `request.level`
+ * Find the run that decides a request at `request.level`
  *
- * A run qualifies when its submodule state matches the worktree, it passed, and
- * its level is the requested one or a later one (a later level ran every step of
- * the earlier ones). When several qualify, the most recent wins: runs are
- * stored oldest first, so the last qualifying one is returned.
+ * Runs with matching submodule state are read newest first. A pass whose level
+ * does not cover the request (an earlier level skipped steps the request runs)
+ * says nothing about it and is skipped. The first remaining run decides: a pass
+ * covering the request, or a failure at ANY level. A failure always decides,
+ * because a newer red means the tree failed since the last green (a `--force`
+ * re-check that went red must overturn the pass it re-checked), and a red at
+ * another level may be a step the request also runs.
  *
  * @param note - The history note for the worktree's tree hash (null when none)
  * @param treeHashResult - Current worktree state
  * @param request - Requested level and the config's levels
- * @returns The newest qualifying run, or null
+ * @returns The deciding run (pass or failure), or null when nothing is recorded that bears on it
+ */
+export function findDecidingRun(
+  note: HistoryNote | null,
+  treeHashResult: TreeHashResult,
+  request: LevelRequest
+): ValidationRun | null {
+  return findNewestRun(note, treeHashResult, run =>
+    !isPass(run) || levelCovers(run.level, request.level, request.levels)
+  );
+}
+
+/**
+ * Find a cached PASS that answers a request at `request.level`
+ *
+ * The deciding run (see findDecidingRun) answers only when it passed; a deciding
+ * failure is a miss, never a replay.
+ *
+ * @param note - The history note for the worktree's tree hash (null when none)
+ * @param treeHashResult - Current worktree state
+ * @param request - Requested level and the config's levels
+ * @returns The deciding run when it passed, or null
  */
 export function findCachedValidation(
   note: HistoryNote | null,
   treeHashResult: TreeHashResult,
   request: LevelRequest
 ): ValidationRun | null {
-  return findNewestRun(note, treeHashResult, run =>
-    run.passed && typeof run.level === 'string' && levelCovers(run.level, request.level, request.levels)
-  );
+  const run = findDecidingRun(note, treeHashResult, request);
+  return run && isPass(run) ? run : null;
 }
 
 /**
- * Find the run `--retry-failed` builds on: the newest at exactly `level`
+ * Find the run `--retry-failed` builds on
+ *
+ * Only the deciding run (see findDecidingRun) may be built on, and only when it
+ * failed at exactly `request.level`. An older run at the level is never used:
+ * the steps it passed may fail now (a newer red says the tree failed since).
  *
  * @param note - The history note for the worktree's tree hash (null when none)
  * @param treeHashResult - Current worktree state
- * @param level - The level being retried
- * @returns The newest run at that level with matching submodule state, pass or fail, or null
+ * @param request - The level being retried and the config's levels
+ * @returns The deciding failure at that level, or null (retry then runs every step)
  */
 export function findRetryRun(
   note: HistoryNote | null,
   treeHashResult: TreeHashResult,
-  level: string
+  request: LevelRequest
 ): ValidationRun | null {
-  return findNewestRun(note, treeHashResult, run => run.level === level);
+  const run = findDecidingRun(note, treeHashResult, request);
+  return run && !isPass(run) && run.level === request.level ? run : null;
 }
 
 function findNewestRun(

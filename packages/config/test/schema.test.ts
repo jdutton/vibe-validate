@@ -4,11 +4,13 @@
 
 import { describe, it, expect } from 'vitest';
 
+import { generateJsonSchema } from '../src/schema-export.js';
 import {
   validateConfig,
   safeValidateConfig,
   ValidationStepSchema,
   ValidationPhaseSchema,
+  ValidationConfigSchema,
 } from '../src/schema.js';
 
 /**
@@ -1158,7 +1160,27 @@ describe('ValidationStepSchema - removed runScope', () => {
       },
     });
 
-    expectInvalidConfig(config, /runScope was removed/);
+    expectInvalidConfig(config, /runScope: local was removed with no replacement/);
+  });
+
+  it('names levels as the replacement for runScope: ci', () => {
+    const result = ValidationStepSchema.safeParse({ name: TYPESCRIPT_NAME, command: TSC_NO_EMIT, runScope: 'ci' });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([expect.objectContaining({
+      path: ['runScope'],
+      message: 'runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level',
+    })]);
+  });
+
+  it('says runScope: local has no replacement', () => {
+    const result = ValidationStepSchema.safeParse({ name: TYPESCRIPT_NAME, command: TSC_NO_EMIT, runScope: 'local' });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([expect.objectContaining({
+      path: ['runScope'],
+      message: 'runScope: local was removed with no replacement; remove the key (or the step)',
+    })]);
   });
 });
 
@@ -1208,7 +1230,7 @@ describe('validation levels', () => {
   it('accepts hooks.preCommit.level naming a declared level', () => {
     const result = expectValidConfig(levelConfig(
       ['commit', 'full'],
-      [{ name: 'Lint', command: 'npm run lint', level: 'commit' }],
+      [{ name: 'Lint', command: 'npm run lint', level: 'commit' }, { name: 'Test', command: 'npm test', level: 'full' }],
       { preCommit: { level: 'full' } }
     ));
 
@@ -1229,5 +1251,100 @@ describe('validation levels', () => {
       [{ name: 'Lint', command: 'npm run lint' }],
       { preCommit: { level: 'commit' } }
     ), /hooks\.preCommit\.level .*validation\.levels is not declared/);
+  });
+});
+
+/**
+ * The issues ValidationConfigSchema reports for a validation section
+ * @param validation - The `validation` section
+ * @returns Path and message of every issue (empty when valid)
+ */
+function validationIssues(validation: Record<string, unknown>): Array<{ path: Array<string | number>; message: string }> {
+  const result = ValidationConfigSchema.safeParse(validation);
+  return result.success ? [] : result.error.issues.map(issue => ({ path: issue.path, message: issue.message }));
+}
+
+describe('ValidationConfigSchema - level rules', () => {
+  const phase = (steps: Array<Record<string, unknown>>) => [{ name: 'Test', steps }];
+
+  it('requires a level on every step once levels are declared', () => {
+    expect(validationIssues({
+      levels: ['commit', 'full'],
+      phases: phase([{ name: 'Lint', command: 'x', level: 'commit' }, { name: 'Test', command: 'y' }]),
+    })).toEqual([{
+      path: ['phases', 0, 'steps', 1, 'level'],
+      message: 'Step "Test" has no level; every step needs one once validation.levels is declared (commit, full)',
+    }]);
+  });
+
+  it('rejects a step level that is not declared', () => {
+    expect(validationIssues({
+      levels: ['commit', 'full'],
+      phases: phase([{ name: 'Lint', command: 'x', level: 'commit' }, { name: 'Test', command: 'y', level: 'full' }, { name: 'Push', command: 'z', level: 'push' }]),
+    })).toEqual([{
+      path: ['phases', 0, 'steps', 2, 'level'],
+      message: 'Step "Push" names level "push", which is not declared (commit, full)',
+    }]);
+  });
+
+  it('rejects a step level when no levels are declared', () => {
+    expect(validationIssues({ phases: phase([{ name: 'Lint', command: 'x', level: 'commit' }]) })).toEqual([{
+      path: ['phases', 0, 'steps', 0, 'level'],
+      message: 'Step "Lint" sets level "commit" but validation.levels is not declared',
+    }]);
+  });
+
+  it('rejects duplicate levels', () => {
+    expect(validationIssues({
+      levels: ['commit', 'commit'],
+      phases: phase([{ name: 'Lint', command: 'x', level: 'commit' }]),
+    })).toEqual([{ path: ['levels', 1], message: 'Duplicate level "commit"' }]);
+  });
+
+  it('reports an empty levels list once, and nothing about the steps', () => {
+    expect(validationIssues({ levels: [], phases: phase([{ name: 'A', command: 'x' }]) })).toEqual([
+      { path: ['levels'], message: 'validation.levels must list at least one level' },
+    ]);
+  });
+
+  it('rejects a level with no steps', () => {
+    expect(validationIssues({
+      levels: ['quick', 'full'],
+      phases: phase([{ name: 'A', command: 'x', level: 'full' }]),
+    })).toEqual([{ path: ['levels', 0], message: 'Level "quick" has no steps; give it a step or remove it' }]);
+  });
+
+  it('the full config reports a step-level issue at its full path, once', () => {
+    const result = safeValidateConfig(levelConfig(['commit', 'full'], [
+      { name: 'Lint', command: 'x', level: 'commit' },
+      { name: 'Test', command: 'y' },
+    ]));
+
+    expect(result.success).toBe(false);
+    expect(result.success ? [] : result.errors).toEqual([
+      'validation.phases.0.steps.1.level: Step "Test" has no level; every step needs one once validation.levels is declared (commit, full)',
+    ]);
+  });
+});
+
+/**
+ * The JSON schema of `validation`
+ * @returns The `validation` property schema
+ */
+function validationJsonSchema(): Record<string, any> {
+  const schema = generateJsonSchema() as Record<string, any>;
+  return schema.definitions.VibeValidateConfig.properties.validation;
+}
+
+describe('JSON schema export', () => {
+  it('declares levels as unique', () => {
+    expect(validationJsonSchema().properties.levels.uniqueItems).toBe(true);
+  });
+
+  it('describes the removed runScope key with its replacement', () => {
+    const runScope = validationJsonSchema().properties.phases.items.properties.steps.items.properties.runScope;
+
+    expect(runScope.not).toEqual({});
+    expect(runScope.description).toMatch(/Removed.*validation\.levels.*local has no replacement/);
   });
 });

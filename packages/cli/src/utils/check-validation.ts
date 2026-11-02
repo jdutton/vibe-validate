@@ -5,10 +5,10 @@
  * for the current working tree state using git notes.
  */
 
-import { getLevels, type VibeValidateConfig } from '@vibe-validate/config';
+import { getDefaultValidateLevel, getLevels, type VibeValidateConfig } from '@vibe-validate/config';
 import { findFailedStepResult, type ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
-import { findCachedValidation, findRetryRun, readHistoryNote, type HistoryNote } from '@vibe-validate/history';
+import { findDecidingRun, readHistoryNote } from '@vibe-validate/history';
 import chalk from 'chalk';
 
 import { getCommandName } from './command-name.js';
@@ -17,7 +17,12 @@ import { outputYamlResult } from './yaml-output.js';
 
 // Constants (extracted to avoid duplication warnings)
 const RUN_VALIDATION_HINT = '\n💡 Run validation:';
-const VALIDATE_COMMAND = 'npx vibe-validate validate';
+
+/** The command that runs `level`: `--level` is named only when it is not validate's default */
+function validateCommandFor(config: VibeValidateConfig, level: string): string {
+  const levelFlag = level === getDefaultValidateLevel(config) ? '' : ` --level ${level}`;
+  return `${getCommandName()} validate${levelFlag}`;
+}
 
 /**
  * Display information about failed phase and step
@@ -41,10 +46,13 @@ function displayFailedPhaseInfo(result: Pick<ValidationResult, 'failedStep' | 'p
 /**
  * Check validation status for current working tree
  *
+ * The verdict is the run that decides a cache lookup at `level` (findDecidingRun):
+ * the newest run on this tree, skipping passes at earlier levels.
+ *
  * Exit codes:
- *   0 = A pass at `level` or a later level is recorded for this tree (skip validation)
- *   1 = The last run at `level` failed (fix it, then run validation)
- *   2 = Nothing recorded at `level` for this tree, or history unreadable (run validation)
+ *   0 = That run passed (validation at `level` would be a cache hit)
+ *   1 = That run failed, at `level` or another level (fix it, then run validation)
+ *   2 = Nothing recorded that bears on `level` for this tree, or not in a git repository
  *
  * @param config - vibe-validate configuration (supplies the levels in order)
  * @param level - The level to check
@@ -69,65 +77,47 @@ export async function checkValidationStatus(config: VibeValidateConfig, level: s
       // Human mode: Colored output
       console.log(chalk.yellow('⚠️  Not in git repository'));
       console.log(chalk.gray(`   ${errorMessage}`));
-      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
+      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(validateCommandFor(config, level)));
     }
     process.exit(2);
   }
 
-  // Read the tree's history note once; both lookups below share it
-  let note: HistoryNote | null;
-  try {
-    note = await readHistoryNote(treeHashResult.hash);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (yaml) {
-      // YAML mode: Output structured error
-      const errorOutput = {
-        exists: false,
-        treeHash: treeHashResult.hash,
-        error: `Failed to read validation history: ${errorMessage}`,
-      };
-      await outputYamlResult(errorOutput);
-    } else {
-      // Human mode: Colored output
-      console.log(chalk.yellow('⚠️  Failed to read validation history'));
-      console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
-    }
-    process.exit(2);
-  }
+  // readHistoryNote returns null for a missing or unreadable note, never throws
+  const note = await readHistoryNote(treeHashResult.hash);
+  const decidingRun = findDecidingRun(note, treeHashResult, { level, levels: getLevels(config) });
 
-  const cachedRun = findCachedValidation(note, treeHashResult, { level, levels: getLevels(config) });
-  const lastRunAtLevel = cachedRun ? null : findRetryRun(note, treeHashResult, level);
-
-  if (cachedRun) {
+  if (decidingRun?.passed && decidingRun.result.passed) {
     if (yaml) {
-      await outputYamlResult({ ...cachedRun.result, isCachedResult: true });
+      await outputYamlResult({ ...decidingRun.result, isCachedResult: true });
     } else {
-      displayCachedResult(cachedRun, treeHashResult.hash, level);
+      displayCachedResult(decidingRun, treeHashResult.hash, level);
     }
     process.exit(0);
   }
 
-  // The last run at this level failed. --check reports that record; it is not a
-  // cache verdict, and `vv validate` will run the steps again.
-  if (lastRunAtLevel && !lastRunAtLevel.passed) {
+  // The newest run that bears on this level failed. --check reports that record;
+  // it is not a cache verdict, and `vv validate` will run the steps again.
+  if (decidingRun) {
     if (yaml) {
-      await outputYamlResult({ ...lastRunAtLevel.result, isCachedResult: true });
+      await outputYamlResult({ ...decidingRun.result, isCachedResult: true });
     } else {
-      console.log(chalk.red(`❌ Last validation at level ${level} failed for this code`));
+      console.log(chalk.red(`❌ Last validation at level ${decidingRun.level} failed for this code`));
+      if (decidingRun.level !== level) {
+        console.log(chalk.gray(`   A failure at any level is newer than every pass covering level ${level}, so it must run again`));
+      }
       console.log(chalk.gray(`   Tree hash: ${treeHashResult.hash.substring(0, 12)}...`));
-      console.log(chalk.gray(`   Recorded: ${lastRunAtLevel.timestamp} on branch ${lastRunAtLevel.branch}`));
+      console.log(chalk.gray(`   Recorded: ${decidingRun.timestamp} on branch ${decidingRun.branch}`));
 
-      displayFailedPhaseInfo(lastRunAtLevel.result);
+      displayFailedPhaseInfo(decidingRun.result);
 
       const cmd = getCommandName();
-      console.log(chalk.blue('\n📋 View full error details:'), chalk.white(`${cmd} state`));
-      console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white(`${cmd} validate`));
+      console.log(chalk.blue('\n📋 View full error details:'), chalk.white(`${cmd} state --level ${decidingRun.level}`));
+      console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white(validateCommandFor(config, level)));
     }
     process.exit(1);
   }
 
-  // Nothing recorded at this level (a pass at an earlier level answers nothing here)
+  // Nothing recorded that bears on this level (a pass at an earlier level answers nothing here)
   if (yaml) {
     // YAML mode: Output structured no-history response
     const noHistoryOutput = {
@@ -140,7 +130,7 @@ export async function checkValidationStatus(config: VibeValidateConfig, level: s
     // Human mode: Colored output
     console.log(chalk.yellow(`⚠️  No validation at level ${level} for current working tree`));
     console.log(chalk.gray(`   Tree hash: ${treeHashResult.hash.substring(0, 12)}...`));
-    console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(VALIDATE_COMMAND));
+    console.log(chalk.blue(RUN_VALIDATION_HINT), chalk.white(validateCommandFor(config, level)));
   }
   process.exit(2);
 }

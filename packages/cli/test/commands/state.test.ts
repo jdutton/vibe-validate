@@ -27,6 +27,8 @@ vi.mock('@vibe-validate/history', async (importOriginal) => {
 
 vi.mock('../../src/utils/config-loader.js', () => ({
   findConfigPath: vi.fn(),
+  loadConfigWithDir: vi.fn(),
+  loadConfigWithErrors: vi.fn(),
 }));
 
 /**
@@ -60,12 +62,43 @@ function createMockValidationResult(
  */
 function createMockHistoryNote(
   treeHash: string,
-  runs: Array<{ branch: string; timestamp: string; result: ValidationResult }>
+  runs: Array<{ branch: string; timestamp: string; result: ValidationResult; level?: string }>
 ): HistoryNote {
   return {
     treeHash,
-    runs,
+    // Without a config there is one level, the implicit `full`
+    runs: runs.map(run => ({ level: 'full', ...run })),
+  } as HistoryNote;
+}
+
+/** A run recorded at `level` (oldest first in the note, as the recorder appends) */
+function leveledRun(level: string, passed: boolean, timestamp: string, failedStep?: string) {
+  return {
+    branch: 'main',
+    timestamp,
+    level,
+    result: { ...createMockValidationResult(passed, timestamp, 'abc123def456', failedStep), level },
   };
+}
+
+const TWO_LEVEL_CONFIG = { validation: { levels: ['commit', 'full'], phases: [] } };
+
+/** A config declaring `commit` then `full` is found and loads */
+function setupTwoLevelConfig(): void {
+  vi.mocked(configLoader.findConfigPath).mockReturnValue('/repo/vibe-validate.config.yaml');
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+    config: TWO_LEVEL_CONFIG as never,
+    configDir: '/repo',
+  });
+}
+
+/** Two levels declared; history: a full red (older), then a commit green (newer) on the same tree */
+function setupFullRedThenCommitGreen(): void {
+  setupTwoLevelConfig();
+  vi.mocked(readHistoryNote).mockResolvedValue(createMockHistoryNote('abc123def456', [
+    leveledRun('full', false, '2025-10-16T10:00:00.000Z', 'E2E Tests'),
+    leveledRun('commit', true, '2025-10-16T12:00:00.000Z'),
+  ]));
 }
 
 /**
@@ -334,6 +367,59 @@ describe('state command', () => {
 
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('passed: true'));
       expectConsoleLogNotContains('Old failure');
+    });
+  });
+
+  describe('--level', () => {
+    it('registers --level', () => {
+      stateCommand(env.program);
+      const stateCmd = env.program.commands.find(cmd => cmd.name() === 'state');
+
+      expect(stateCmd?.options.some(opt => opt.flags === '-l, --level <name>')).toBe(true);
+    });
+
+    it('defaults to the level validate runs by default (the last), not the newest run at any level', async () => {
+      setupFullRedThenCommitGreen();
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state']);
+
+      expectConsoleLogContains('passed: false', 'level: full', 'E2E Tests');
+      expectConsoleLogNotContains('passed: true');
+    });
+
+    it('shows the newest run recorded at exactly the requested level', async () => {
+      setupFullRedThenCommitGreen();
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state', '--level', 'commit']);
+
+      expectConsoleLogContains('passed: true', 'level: commit');
+      expectConsoleLogNotContains('E2E Tests');
+    });
+
+    it('says when nothing is recorded at the level and names the levels that have runs', async () => {
+      setupTwoLevelConfig();
+      vi.mocked(readHistoryNote).mockResolvedValue(createMockHistoryNote(mockTreeHash, [
+        leveledRun('commit', true, '2025-10-16T12:00:00.000Z'),
+      ]));
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state', '--level', 'full', '--verbose']);
+
+      expectConsoleLogContains('exists: false', 'level: full', 'levelsWithRuns:', '- commit', 'No validation at level full');
+      expectConsoleLogNotContains('passed: true');
+    });
+
+    it('rejects a level the config does not declare, with the same error as validate --level', async () => {
+      setupTwoLevelConfig();
+
+      stateCommand(env.program);
+      const exitCode = await executeCommandAndGetExitCode(env.program, ['state', '--level', 'nightly']);
+
+      expect(exitCode).toBe(1);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Unknown level "nightly". Declared levels: commit, full'));
+      expect(readHistoryNote).not.toHaveBeenCalled();
     });
   });
 });

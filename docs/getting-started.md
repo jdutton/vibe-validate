@@ -354,7 +354,7 @@ vv init
 # Run validation
 vv validate
 
-# Run validation (force, bypass cache)
+# Re-run even though a pass is recorded (failures are never replayed)
 vv validate --force
 
 # Pre-commit workflow

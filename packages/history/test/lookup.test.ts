@@ -1,7 +1,7 @@
 import type { TreeHashResult, TreeHash } from '@vibe-validate/git';
 import { describe, it, expect } from 'vitest';
 
-import { findCachedValidation, findRetryRun, type LevelRequest } from '../src/lookup.js';
+import { findCachedValidation, findDecidingRun, findRetryRun, type LevelRequest } from '../src/lookup.js';
 import type { HistoryNote, ValidationRun } from '../src/types.js';
 
 const LEVELS = ['commit', 'full'] as const;
@@ -32,6 +32,13 @@ function noteWith(runs: ValidationRun[]): HistoryNote {
   return { treeHash: 'abc123', runs };
 }
 
+/** Helper: a commit-level failure followed by a newer full-level failure */
+function commitRedThenFullRed(): { commitRed: ValidationRun; fullRed: ValidationRun; note: HistoryNote } {
+  const commitRed = createMockRun({ id: 'run-1', level: 'commit', passed: false });
+  const fullRed = createMockRun({ id: 'run-2', level: 'full', passed: false });
+  return { commitRed, fullRed, note: noteWith([commitRed, fullRed]) };
+}
+
 describe('findCachedValidation', () => {
   it('returns null when there is no note', () => {
     expect(findCachedValidation(null, TREE, FULL)).toBeNull();
@@ -53,19 +60,50 @@ describe('findCachedValidation', () => {
   });
 
   it('never replays a failure, at its own level or any other', () => {
-    const commitRed = createMockRun({ id: 'run-1', level: 'commit', passed: false });
-    const fullRed = createMockRun({ id: 'run-2', level: 'full', passed: false });
-    const note = noteWith([commitRed, fullRed]);
+    const { note } = commitRedThenFullRed();
 
     expect(findCachedValidation(note, TREE, COMMIT)).toBeNull();
     expect(findCachedValidation(note, TREE, FULL)).toBeNull();
   });
 
-  it('a green older than a red still answers: the red is a record, never a verdict', () => {
+  it('a newer red overturns an older green at the same level', () => {
     const green = createMockRun({ id: 'run-1', timestamp: '2025-01-01T00:00:00Z' });
     const red = createMockRun({ id: 'run-2', timestamp: '2025-01-02T00:00:00Z', passed: false });
 
-    expect(findCachedValidation(noteWith([green, red]), TREE, FULL)).toBe(green);
+    expect(findCachedValidation(noteWith([green, red]), TREE, FULL)).toBeNull();
+    expect(findCachedValidation(noteWith([green, red]), TREE, COMMIT)).toBeNull();
+  });
+
+  it('a newer red at a lower level overturns an older green at a higher one', () => {
+    const fullGreen = createMockRun({ id: 'run-1', level: 'full' });
+    const commitRed = createMockRun({ id: 'run-2', level: 'commit', passed: false });
+    const note = noteWith([fullGreen, commitRed]);
+
+    expect(findCachedValidation(note, TREE, FULL)).toBeNull();
+    expect(findCachedValidation(note, TREE, COMMIT)).toBeNull();
+  });
+
+  it('a newer green that covers the request answers it over an older red', () => {
+    const red = createMockRun({ id: 'run-1', level: 'full', passed: false });
+    const green = createMockRun({ id: 'run-2', level: 'full' });
+
+    expect(findCachedValidation(noteWith([red, green]), TREE, FULL)).toBe(green);
+  });
+
+  it('a newer green below the request neither answers it nor hides an older red', () => {
+    const fullRed = createMockRun({ id: 'run-1', level: 'full', passed: false });
+    const commitGreen = createMockRun({ id: 'run-2', level: 'commit' });
+    const note = noteWith([fullRed, commitGreen]);
+
+    expect(findCachedValidation(note, TREE, COMMIT)).toBe(commitGreen);
+    expect(findCachedValidation(note, TREE, FULL)).toBeNull();
+    expect(findDecidingRun(note, TREE, FULL)).toBe(fullRed);
+  });
+
+  it('a run whose result did not pass is not a pass, whatever the run says', () => {
+    const run = createMockRun({ result: { passed: false, phases: [] } as any });
+    expect(findCachedValidation(noteWith([run]), TREE, FULL)).toBeNull();
+    expect(findDecidingRun(noteWith([run]), TREE, FULL)).toBe(run);
   });
 
   it('the most recent qualifying run wins', () => {
@@ -120,18 +158,31 @@ describe('findCachedValidation', () => {
 });
 
 describe('findRetryRun', () => {
-  it('returns the most recent run at exactly the requested level', () => {
-    const fullRed = createMockRun({ id: 'run-1', level: 'full', passed: false });
-    const commitRed = createMockRun({ id: 'run-2', level: 'commit', passed: false });
-    const note = noteWith([fullRed, commitRed]);
-
-    expect(findRetryRun(note, TREE, 'full')).toBe(fullRed);
-    expect(findRetryRun(note, TREE, 'commit')).toBe(commitRed);
+  it('returns the newest run when it failed at exactly the requested level', () => {
+    const { fullRed, note } = commitRedThenFullRed();
+    expect(findRetryRun(note, TREE, FULL)).toBe(fullRed);
   });
 
-  it('returns null when no run at that level matches the submodule state', () => {
-    const run = createMockRun({ level: 'full', submoduleHashes: { 'libs/auth': 'def456' } });
-    expect(findRetryRun(noteWith([run]), TREE, 'full')).toBeNull();
-    expect(findRetryRun(null, TREE, 'full')).toBeNull();
+  it('returns null when the newest failure is at another level', () => {
+    expect(findRetryRun(commitRedThenFullRed().note, TREE, COMMIT)).toBeNull();
+  });
+
+  it('never builds on an older pass a newer failure overturned', () => {
+    const fullGreen = createMockRun({ id: 'run-1', level: 'full' });
+    const commitRed = createMockRun({ id: 'run-2', level: 'commit', passed: false });
+
+    expect(findRetryRun(noteWith([fullGreen, commitRed]), TREE, FULL)).toBeNull();
+  });
+
+  it('returns the newer of two failures at the same level', () => {
+    const older = createMockRun({ id: 'run-1', level: 'full', passed: false });
+    const newer = createMockRun({ id: 'run-2', level: 'full', passed: false });
+    expect(findRetryRun(noteWith([older, newer]), TREE, FULL)).toBe(newer);
+  });
+
+  it('returns null when no run matches the submodule state', () => {
+    const run = createMockRun({ level: 'full', passed: false, submoduleHashes: { 'libs/auth': 'def456' } });
+    expect(findRetryRun(noteWith([run]), TREE, FULL)).toBeNull();
+    expect(findRetryRun(null, TREE, FULL)).toBeNull();
   });
 });

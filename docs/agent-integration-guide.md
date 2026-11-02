@@ -130,7 +130,7 @@ do {
 // Real-time feedback workflow:
 1. User: "Add login feature"
 2. Agent: Implement feature
-3. Agent: Run `vv validate --force`
+3. Agent: Run `vv validate`
 4. Agent: Read validation state
 5. If errors exist:
    - Fix errors proactively

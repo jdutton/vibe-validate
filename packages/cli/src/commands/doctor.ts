@@ -21,7 +21,7 @@ import {
   isGitRepository,
   verifyRef
 } from '@vibe-validate/git';
-import { checkHistoryHealth as checkValidationHistoryHealth } from '@vibe-validate/history';
+import { checkHistoryHealth as checkValidationHistoryHealth, VALIDATION_NOTES_REF } from '@vibe-validate/history';
 import { getLatestVersion, getToolVersion } from '@vibe-validate/utils';
 import { type Command } from 'commander';
 import * as semver from 'semver';
@@ -73,6 +73,9 @@ const MSG_SKIPPED_NOT_IN_GIT = 'Skipped (not in git repository)';
 const MSG_SKIPPED_NO_CONFIG = 'Skipped (no config)';
 const SUGGESTION_INSTALL_NODE_JS = 'Install Node.js: https://nodejs.org/';
 const GIT_REF_DEPRECATED_RUNS = 'refs/notes/vibe-validate/runs';
+/** Where 0.20.x and earlier kept level-less validation history */
+const GIT_REF_PRE_LEVELS_VALIDATE = 'refs/notes/vibe-validate/validate';
+const GIT_REF_VALIDATION_HISTORY = `refs/notes/${VALIDATION_NOTES_REF}`;
 
 /**
  * Result of a single doctor check
@@ -817,49 +820,84 @@ function checkValidationState(): DoctorCheckResult {
 }
 
 /**
- * Check for old validation history format (pre-v0.15.0)
+ * Does this EXACT ref exist? (for-each-ref with the full name, so "runs" never matches "run/")
+ */
+function refExists(ref: string): boolean {
+  const result = executeGitCommand(
+    ['for-each-ref', '--format=%(refname)', ref],
+    { ignoreErrors: true, suppressStderr: true }
+  );
+  return result.success && result.stdout.trim() === ref;
+}
+
+/** A finding of the migration check: a message and, optionally, what to do about it */
+interface MigrationFinding {
+  message: string;
+  suggestion?: string;
+}
+
+/**
+ * Pre-v0.15.0 history ref: nothing reads or writes it, so remove it automatically
+ */
+function removePre015RunsRef(): MigrationFinding {
+  try {
+    executeGitCommand(['update-ref', '-d', GIT_REF_DEPRECATED_RUNS]);
+    return { message: 'Automatically removed old validation history format (pre-v0.15.0)' };
+  // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Auto-cleanup failure handled with manual suggestion
+  } catch (_error) {
+    return {
+      message: 'Old validation history format detected (pre-v0.15.0)',
+      suggestion: `Manual cleanup:\n   git update-ref -d ${GIT_REF_DEPRECATED_RUNS}\n   ℹ️  This removes the deprecated "runs" namespace`,
+    };
+  }
+}
+
+/**
+ * Pre-levels history ref: never removed automatically, because notes are shared
+ * across worktrees and a 0.20.x worktree or clone may still read and write it.
+ */
+function preLevelsRefAdvisory(): MigrationFinding {
+  return {
+    message: `Old validation history ref ${GIT_REF_PRE_LEVELS_VALIDATE} found; it is no longer read`,
+    suggestion:
+      `Once no 0.20.x worktree or clone still uses it, delete it:\n` +
+      `   git update-ref -d ${GIT_REF_PRE_LEVELS_VALIDATE}\n` +
+      `   ℹ️  If your team pushes or fetches git notes, change the refspec to ${GIT_REF_VALIDATION_HISTORY}`,
+  };
+}
+
+/**
+ * Check for old validation history refs
  *
- * Pre-v0.15.0 used refs under: refs/notes/vibe-validate/runs/*
- * v0.15.0+ uses two systems:
- *   - Validation history: refs/notes/vibe-validate/leveled-runs (current format)
- *   - Run cache: refs/notes/vibe-validate/run/{treeHash}/{commandHash}
- *
- * Only warn if the OLD "runs" namespace exists.
+ * Validation history lives in refs/notes/vibe-validate/leveled-runs; the run cache in
+ * refs/notes/vibe-validate/run/{treeHash}/{commandHash}. Two older refs are reported:
+ *   - refs/notes/vibe-validate/runs (pre-v0.15.0): removed automatically
+ *   - refs/notes/vibe-validate/validate (0.20.x and earlier, before levels): advisory only
  */
 function checkCacheMigration(): DoctorCheckResult {
   try {
-    // Check if the EXACT old validation history ref exists (singular "runs", not "run/")
-    // Using git for-each-ref with exact ref name to avoid matching "run/" subdirectories
-    const result = executeGitCommand(
-      ['for-each-ref', '--format=%(refname)', GIT_REF_DEPRECATED_RUNS],
-      { ignoreErrors: true, suppressStderr: true }
-    );
-
-    if (result.success && result.stdout.trim() === GIT_REF_DEPRECATED_RUNS) {
-      // Old validation history namespace exists - automatically clean it up
-      try {
-        executeGitCommand(['update-ref', '-d', GIT_REF_DEPRECATED_RUNS]);
-        return {
-          name: CHECK_VALIDATION_HISTORY_MIGRATION,
-          passed: true,
-          message: 'Automatically removed old validation history format (pre-v0.15.0)',
-        };
-      // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Auto-cleanup failure handled with manual suggestion
-      } catch (_error) {
-        // Fallback to manual suggestion if auto-cleanup fails
-        return {
-          name: CHECK_VALIDATION_HISTORY_MIGRATION,
-          passed: true, // Not a failure, just informational
-          message: 'Old validation history format detected (pre-v0.15.0)',
-          suggestion: `Manual cleanup:\n   git update-ref -d refs/notes/vibe-validate/runs\n   ℹ️  This removes the deprecated "runs" namespace`,
-        };
-      }
+    const findings: MigrationFinding[] = [];
+    if (refExists(GIT_REF_DEPRECATED_RUNS)) {
+      findings.push(removePre015RunsRef());
+    }
+    if (refExists(GIT_REF_PRE_LEVELS_VALIDATE)) {
+      findings.push(preLevelsRefAdvisory());
     }
 
+    if (findings.length === 0) {
+      return {
+        name: CHECK_VALIDATION_HISTORY_MIGRATION,
+        passed: true,
+        message: 'Using current validation history format',
+      };
+    }
+
+    const suggestions = findings.flatMap(finding => (finding.suggestion ? [finding.suggestion] : []));
     return {
       name: CHECK_VALIDATION_HISTORY_MIGRATION,
-      passed: true,
-      message: 'Using current validation history format',
+      passed: true, // Not a failure, just informational
+      message: findings.map(finding => finding.message).join('; '),
+      ...(suggestions.length > 0 && { suggestion: suggestions.join('\n') }),
     };
   // eslint-disable-next-line sonarjs/no-ignored-exceptions -- Git command failure is non-critical for migration check
   } catch (_error) {

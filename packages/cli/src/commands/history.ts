@@ -616,7 +616,7 @@ async function pruneHistory(options: {
     if (options.all) {
       console.log(dryRun ? 'Pruning all history (DRY RUN)...\n' : 'Pruning all history...\n');
 
-      const result = await pruneAllHistory({}, dryRun);
+      const result = await pruneAllHistory(dryRun);
 
       if (result.notesPruned === 0) {
         console.log('No history to prune');
@@ -644,7 +644,7 @@ async function pruneHistory(options: {
           : `Pruning history older than ${days} days...\n`
       );
 
-      const result = await pruneHistoryByAge(days, {}, dryRun);
+      const result = await pruneHistoryByAge(days, dryRun);
 
       if (result.notesPruned === 0) {
         console.log(`No history older than ${days} days found`);

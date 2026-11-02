@@ -143,12 +143,15 @@ Run: npx vibe-validate doctor
        Check cache behavior:
        vv validate --check
        ↓
-       ├─ Exit 0: Cached (working correctly)
-       └─ Exit 1: Not cached
+       ├─ Exit 0: Cached pass (working correctly)
+       ├─ Exit 1: Last run on this tree failed (never replayed)
+       │    ↓
+       │    vv state  →  fix  →  vv validate
+       └─ Exit 2: Nothing recorded for this tree at this level
             ↓
-            Force refresh: vv validate --force
+            Run: vv validate
             ↓
-            Check if passes
+            Check if passes (suspect a wrong green? vv validate --force)
 ```
 
 ## Decision Tree: When User Lost Work
@@ -270,16 +273,17 @@ vv validate
 ### With Force Refresh
 
 ```bash
-# Suspect stale cache
+# Suspect a recorded pass is wrong (a failure is never replayed, so
+# --force only ever re-runs a green; a red result overturns that green)
 vv validate --force
 
 # Or just check cache state
 vv validate --check
-if [ $? -eq 0 ]; then
-  echo "Cached (validation passed)"
-else
-  echo "Not cached (need to run)"
-fi
+case $? in
+  0) echo "Cached pass" ;;
+  1) echo "Last run on this tree failed (vv validate will re-run it)" ;;
+  *) echo "Nothing recorded for this tree at this level (need to run)" ;;
+esac
 ```
 
 ## Workflow Pattern: PR Validation Monitoring
@@ -309,7 +313,7 @@ vv watch-pr 123
 # - Recovery commands
 
 # Fix locally
-vv validate --force
+vv validate
 
 # Push fix
 git push

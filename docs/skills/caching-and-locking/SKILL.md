@@ -32,6 +32,8 @@ Validation results are stored as **git notes** keyed by that tree hash (`refs/no
 
 **The level is part of the key.** With `validation.levels` (e.g. `[commit, full]`), a pass answers a request at its own level or an earlier one: a `vv validate` pass lets the commit-level hook exit instantly; a hook pass never answers `vv validate`.
 
+**The deciding run.** For a request at level L, the runs recorded for this tree (with matching submodule state) are read newest first. A pass whose level does not cover L is skipped; the first remaining run decides. A pass at L or a later level is a cache hit. A failure at any level is a miss — the steps run again. So a `--force` (or `VV_FORCE_EXECUTION=1`) re-check that goes red overturns the earlier green for every later request until a newer green is recorded. `--retry-failed` builds on the deciding run only when it failed at exactly L; otherwise every step at L runs.
+
 ### Invariants
 
 - Same code → same hash → instant cache hit (sub-second return of the prior result).
@@ -55,7 +57,7 @@ A cache miss means the tree hash changed. Common culprits:
 - **Lockfile updates.** `pnpm-lock.yaml`, `package-lock.json`, `yarn.lock` changing is deliberate invalidation — dependencies changed, validation should re-run.
 - **Line-ending normalization.** CRLF ↔ LF conversions rewrite content and change the hash. Configure `.gitattributes` consistently across the team.
 - **`--force` flag.** `vv validate --force` re-runs a recorded pass. It is the only thing `--force` is for: a failure is never replayed in the first place.
-- **The last run failed.** Failures are never cache hits, so the steps run again.
+- **The last run failed.** Failures are never cache hits, so the steps run again — including a red from a `--force` re-check, which outranks the older green on the same tree.
 - **A lower level passed, a higher one was asked for.** A `commit` pass does not answer `vv validate` (the last level).
 - **Config change.** Editing `vibe-validate.config.yaml` changes the tree hash (it's a tracked file), so validation re-runs.
 
@@ -80,9 +82,11 @@ Use `vv validate --force` as a one-shot diagnostic to confirm the cache is the i
 ## Inspecting the cache
 
 ```bash
-vv state              # Current tree hash + cached result (YAML)
+vv state              # Newest run at the validate level (--level <name> for another)
 vv history list       # Recent validation runs
-vv validate --check   # Exit 0 if cached pass, 1 otherwise; does not execute
+vv validate --check   # Does not execute. 0: deciding run passed; 1: it failed (any level);
+                      # 2: nothing recorded bears on the level, history unreadable,
+                      #    not a git repo, or unknown --level
 ```
 
 Low-level (rarely needed):

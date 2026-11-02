@@ -34,7 +34,7 @@ export {
 } from './reader.js';
 
 // Cache lookup
-export { findCachedValidation, findRetryRun, type LevelRequest } from './lookup.js';
+export { findCachedValidation, findDecidingRun, findRetryRun, type LevelRequest } from './lookup.js';
 
 // Run cache reader
 export {

@@ -8,6 +8,7 @@ import type { TreeHash } from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 
 import { validateCommand } from '../../src/commands/validate.js';
 import * as configLoader from '../../src/utils/config-loader.js';
@@ -719,6 +720,15 @@ describe('validate command', () => {
       expect(core.runValidation).toHaveBeenCalled();
     });
 
+    it('exits 1 for a failed result even when it is flagged as cached', async () => {
+      // Only passes are served from cache, but the exit code must not depend on
+      // that invariant holding: passed=false always exits 1
+      setupFailedValidation({ isCachedResult: true });
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate'], 1);
+    });
+
     it('should display error details on failure', async () => {
       validateCommand(env.program);
 
@@ -946,6 +956,37 @@ describe('validate command', () => {
       await parseCommandRequiringExit(env, ['validate', '--level', 'nightly'], 1);
 
       expect(core.runValidation).not.toHaveBeenCalled();
+    });
+
+    it('exits 2 under --check for an unknown level (1 would claim the run failed)', async () => {
+      setupMockConfig(testDir, twoLevels);
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check', '--level', 'nightly'], 2);
+
+      expect(history.readHistoryNote).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('nightly'));
+    });
+
+    it('writes a YAML error document to stdout under --check --yaml for an unknown level', async () => {
+      setupMockConfig(testDir, twoLevels);
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+        writes.push(String(chunk));
+        return true;
+      });
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check', '--yaml', '--level', 'nightly'], 2);
+
+      // outputYamlResult frames the document with leading and closing `---`
+      const body = writes.join('').split(/^---$/m).find(part => part.trim() !== '');
+      const doc = parseYaml(body ?? '');
+      expect(doc).toEqual({
+        exists: false,
+        error: expect.stringContaining('nightly'),
+        levels: ['commit', 'full'],
+      });
     });
   });
 
@@ -1741,7 +1782,7 @@ describe('validate command', () => {
 
         // Verify error message about no previous validation
         expect(errorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('No failed validation found at level full for tree abc123def456')
+          expect.stringContaining('No failed validation at level full to retry for tree abc123def456')
         );
 
         // Verify full validation ran (without previousRun)

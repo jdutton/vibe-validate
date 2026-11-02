@@ -124,7 +124,7 @@ function attemptMerge(
  * Note: There is a small TOCTOU window between read and force-write.
  * This is acceptable for history/cache data.
  *
- * @param notesRef - The notes reference (e.g., 'vibe-validate/validate')
+ * @param notesRef - The notes reference (e.g., 'vibe-validate/leveled-runs')
  * @param object - The git tree hash to attach the note to (must be from getGitTreeHash())
  * @param content - The note content
  * @param merge - Strategy for merging with existing note (default: mergeReplace)
@@ -136,7 +136,7 @@ function attemptMerge(
  * addNote('vibe-validate/run/abc/key', treeHash, cacheYaml);
  *
  * // Validation history: append runs
- * addNote('vibe-validate/validate', treeHash, historyYaml, mergeAppendRuns);
+ * addNote('vibe-validate/leveled-runs', treeHash, historyYaml, mergeAppendRuns);
  * ```
  */
 export function addNote(
@@ -176,7 +176,7 @@ export function addNote(
  * @example
  * ```typescript
  * const treeHash = await getGitTreeHash();
- * const note = readNote('vibe-validate/validate', treeHash);
+ * const note = readNote('vibe-validate/leveled-runs', treeHash);
  * if (note) {
  *   console.log('Note content:', note);
  * }
@@ -204,7 +204,7 @@ export function readNote(notesRef: NotesRef, object: TreeHash): string | null {
  * @example
  * ```typescript
  * const treeHash = await getGitTreeHash();
- * const removed = removeNote('vibe-validate/validate', treeHash);
+ * const removed = removeNote('vibe-validate/leveled-runs', treeHash);
  * console.log(removed ? 'Removed' : 'Did not exist');
  * ```
  */
@@ -228,7 +228,7 @@ export function removeNote(notesRef: NotesRef, object: TreeHash): boolean {
  *
  * @example
  * ```typescript
- * const hashes = listNoteObjects('vibe-validate/validate');
+ * const hashes = listNoteObjects('vibe-validate/leveled-runs');
  * console.log(`${hashes.length} notes exist`);
  * ```
  */
@@ -283,7 +283,7 @@ export function listNoteObjects(notesRef: NotesRef): TreeHash[] {
  * @example
  * ```typescript
  * const treeHash = await getGitTreeHash();
- * if (hasNote('vibe-validate/validate', treeHash)) {
+ * if (hasNote('vibe-validate/leveled-runs', treeHash)) {
  *   console.log('Note exists');
  * }
  * ```
@@ -390,7 +390,7 @@ export function removeNotesRefs(notesPath: string): number {
  *
  * @example
  * ```typescript
- * if (hasNotesRef('vibe-validate/validate')) {
+ * if (hasNotesRef('vibe-validate/leveled-runs')) {
  *   console.log('Notes ref exists');
  * }
  * ```

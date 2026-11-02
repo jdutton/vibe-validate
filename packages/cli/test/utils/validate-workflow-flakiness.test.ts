@@ -123,27 +123,42 @@ describe('validate-workflow flakiness integration', () => {
       expectNoFlakinessWarning(consoleWarnSpy);
     });
 
-    it('should handle readHistoryNote errors gracefully', async () => {
-      setupWorkflowMocks({
-        validationResult: true,
-      });
-      vi.mocked(readHistoryNote).mockRejectedValue(new Error('Git error'));
-
-      await executeWorkflow();
-
-      // Should not throw or display warning
-      expectNoFlakinessWarning(consoleWarnSpy);
-    });
   });
 
   describe('when the recorded failure is at another level', () => {
-    it('does not warn: a run at another level ran a different set of steps', async () => {
+    it('warns when a step both runs executed failed before and passes now (commit red, full green)', async () => {
+      // The commit run's failed step ("Tests") is part of the full run too
       setupWorkflowMocks({
         validationResult: true,
         historyNote: [createMockRun(false, '2026-02-12T10:00:00Z', 'commit')],
       });
 
       await executeWorkflow({ level: 'full' }, TWO_LEVEL_CONFIG);
+
+      expect(runValidation).toHaveBeenCalledTimes(1);
+      expectFlakinessWarning(consoleWarnSpy);
+    });
+
+    it('does not warn when the earlier red failed only on a step this run did not execute', async () => {
+      // A full red whose only failure is a full-only step, then a commit green
+      const fullRed = createMockRun(false, '2026-02-12T10:00:00Z', 'full');
+      fullRed.result.phases = [{
+        name: 'Test Phase',
+        passed: false,
+        durationSecs: 10,
+        steps: [
+          { name: 'Tests', command: 'npm test', passed: true, exitCode: 0, durationSecs: 5 },
+          { name: 'E2E', command: 'npm run e2e', passed: false, exitCode: 1, durationSecs: 5 },
+        ],
+      }];
+      fullRed.result.failedStep = 'E2E';
+
+      setupWorkflowMocks({
+        validationResult: createMockResult(true, '2026-02-12T10:05:00Z', 'commit'),
+        historyNote: [fullRed],
+      });
+
+      await executeWorkflow({ level: 'commit' }, TWO_LEVEL_CONFIG);
 
       expect(runValidation).toHaveBeenCalledTimes(1);
       expectNoFlakinessWarning(consoleWarnSpy);

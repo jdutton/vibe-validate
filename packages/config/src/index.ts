@@ -68,6 +68,7 @@ export {
   levelCovers,
   getDefaultValidateLevel,
   getDefaultPreCommitLevel,
+  MissingStepLevelError,
   UnknownLevelError,
 } from './levels.js';
 

@@ -9,6 +9,7 @@
 import { listNoteObjects, executeGitCommand } from '@vibe-validate/git';
 import type { NotesRef } from '@vibe-validate/git';
 
+import { VALIDATION_NOTES_REF } from './schemas.js';
 import type { HealthCheckResult, HistoryConfig } from './types.js';
 import { DEFAULT_HISTORY_CONFIG } from './types.js';
 
@@ -37,7 +38,7 @@ export async function checkHistoryHealth(
   const warnAfterDays = (mergedConfig.retention.warnAfterDays ?? DEFAULT_HISTORY_CONFIG.retention.warnAfterDays);
   const warnAfterCount = (mergedConfig.retention.warnAfterCount ?? DEFAULT_HISTORY_CONFIG.retention.warnAfterCount);
 
-  const ref = (mergedConfig.gitNotes.ref ?? DEFAULT_HISTORY_CONFIG.gitNotes.ref) as NotesRef;
+  const ref = VALIDATION_NOTES_REF as NotesRef;
 
   // O(1): single git spawn to list note object hashes (no content reading)
   const noteHashes = listNoteObjects(ref);

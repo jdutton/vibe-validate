@@ -102,12 +102,14 @@ function displayDependencyCheckFailure(error: string | undefined, command: strin
  * Run dependency lock file check before validation
  *
  * @param config - Vibe validate configuration
+ * @param level - The level the run was asked for (named on a failed result)
  * @param verbose - Whether verbose output is enabled
  * @returns Validation result if check failed, null if passed/skipped
  * @internal
  */
 async function runDependencyLockCheck(
   config: VibeValidateConfig,
+  level: string,
   verbose: boolean
 ): Promise<ValidationResult | null> {
   let gitRoot: string;
@@ -140,6 +142,7 @@ async function runDependencyLockCheck(
       failedStep: 'Dependency Lock Check',
       summary: 'Dependency lock check failed',
       phases: [],
+      level,
     };
   }
 
@@ -152,25 +155,6 @@ async function runDependencyLockCheck(
 }
 
 /**
- * Read the tree's history note once; every lookup in a run shares it
- *
- * @returns The note, or null when there is none or it cannot be read (the run
- *   then proceeds uncached: a history problem never blocks validation)
- * @internal
- */
-async function readNoteOnce(treeHash: string, verbose: boolean): Promise<HistoryNote | null> {
-  try {
-    return await readHistoryNote(treeHash);
-  } catch (error) {
-    if (verbose) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.warn(chalk.yellow(`⚠️  Could not read validation history: ${errorMsg}`));
-    }
-    return null;
-  }
-}
-
-/**
  * Find the run --retry-failed builds on, saying why when there is none
  *
  * @internal
@@ -178,13 +162,12 @@ async function readNoteOnce(treeHash: string, verbose: boolean): Promise<History
 function findRunToRetry(
   note: HistoryNote | null,
   treeHashResult: TreeHashResult,
-  level: string
+  request: LevelRequest
 ): ValidationRun | undefined {
   const treeShort = treeHashResult.hash.slice(0, 12);
-  // A pass at this level would have been a cache hit, so the newest run here is a failure or nothing
-  const previousRun = findRetryRun(note, treeHashResult, level);
+  const previousRun = findRetryRun(note, treeHashResult, request);
   if (!previousRun) {
-    console.error(chalk.yellow(`No failed validation found at level ${level} for tree ${treeShort}. Running full validation.`));
+    console.error(chalk.yellow(`No failed validation at level ${request.level} to retry for tree ${treeShort}. Running every step at level ${request.level}.`));
     return undefined;
   }
   return previousRun;
@@ -339,7 +322,9 @@ export async function runValidateWorkflow(
     // Only a PASS is ever a cache hit; a stored failure is a record, never a verdict.
     // --force / VV_FORCE_EXECUTION exist only to re-run a stored pass.
     const forceExecution = (options.force ?? false) || process.env.VV_FORCE_EXECUTION === '1';
-    const note = treeHashBefore ? await readNoteOnce(treeHashBefore, verbose) : null;
+    // Read once; every lookup in the run shares it. readHistoryNote returns null for
+    // a missing or unreadable note, so a history problem never blocks validation.
+    const note = treeHashBefore ? await readHistoryNote(treeHashBefore) : null;
     timer.mark('history note read');
 
     let result: ValidationResult | undefined;
@@ -353,7 +338,7 @@ export async function runValidateWorkflow(
 
     // Load previous validation for --retry-failed functionality
     const previousRunForRetry = options.retryFailed && treeHashResultBefore && !forceExecution && !result
-      ? findRunToRetry(note, treeHashResultBefore, options.level)
+      ? findRunToRetry(note, treeHashResultBefore, levelRequest)
       : undefined;
 
     if (!result) {
@@ -370,7 +355,7 @@ export async function runValidateWorkflow(
       const isPreCommit = options.context.isPreCommit ?? false;
 
       if (shouldRunDependencyCheck(depCheckConfig, isPreCommit)) {
-        const depCheckFailure = await runDependencyLockCheck(config, verbose);
+        const depCheckFailure = await runDependencyLockCheck(config, options.level, verbose);
         // A package-manager install: often the costliest thing before the steps run
         timer.mark('dependency lock check');
         if (depCheckFailure) {

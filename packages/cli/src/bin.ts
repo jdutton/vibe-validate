@@ -211,8 +211,9 @@ function showComprehensiveHelp(program: Command): void {
         '5. Records the run, with its level, for next time'
       ],
       exitCodes: {
-        0: 'Validation passed (or cached pass)',
-        1: 'Validation failed, or the configuration is invalid (an unknown --level included)'
+        0: 'Validation passed (or cached pass). With --check: a recorded pass covers the level',
+        1: 'Validation failed, or the configuration is invalid (an unknown --level included). With --check: the last run bearing on the level failed',
+        2: 'With --check only: nothing recorded that bears on the level, or it cannot answer (not in a git repository, unknown --level)'
       },
       creates: ['Git notes under refs/notes/vibe-validate/leveled-runs'],
       examples: [
@@ -271,19 +272,22 @@ function showComprehensiveHelp(program: Command): void {
     },
     state: {
       whatItDoes: [
+        'Shows the newest run at one level (--level, default: the level validate runs, the last)',
         'Shows validation pass/fail status',
         'Shows git tree hash (cache key)',
         'Shows timestamp of last validation',
-        'Shows error summary (if failed)'
+        'Shows error summary (if failed)',
+        'With no run at that level, says so and names the levels that have runs (levelsWithRuns)'
       ],
       exitCodes: {
-        0: 'State file found and read successfully',
-        1: 'State file not found or invalid'
+        0: 'State read (including "nothing recorded": exists: false)',
+        1: 'Unknown --level, invalid configuration, or the state could not be read'
       },
       whenToUse: 'Debug why validation is cached/not cached, or see errors without re-running',
       examples: [
-        'vibe-validate state           # Show current state',
-        'vibe-validate state --verbose # Show full error output'
+        'vibe-validate state                # Show the newest run at the default level',
+        'vibe-validate state --level commit # Show the newest run at the commit level',
+        'vibe-validate state --verbose      # Show full error output'
       ]
     },
     'sync-check': {

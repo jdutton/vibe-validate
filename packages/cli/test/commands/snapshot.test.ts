@@ -24,10 +24,11 @@ function getLogOutput(): string[] {
 }
 
 // Helper to create mock history note
-function createMockHistory(passed: boolean): HistoryNote {
+function createMockHistory(passed: boolean, level = 'full'): HistoryNote {
   return {
     runs: [
       {
+        level,
         result: {
           passed,
           timestamp: '2025-12-05T10:30:15.000Z',
@@ -67,10 +68,11 @@ async function runSnapshotCommand(env: CommanderTestEnv, args: string[] = ['snap
 async function expectValidationStatus(
   env: CommanderTestEnv,
   passed: boolean,
-  expectedStatusText: string
+  expectedStatusText: string,
+  level = 'full'
 ): Promise<void> {
   vi.mocked(hasHistoryForTree).mockResolvedValue(true);
-  vi.mocked(readHistoryNote).mockResolvedValue(createMockHistory(passed));
+  vi.mocked(readHistoryNote).mockResolvedValue(createMockHistory(passed, level));
 
   snapshotCommand(env.program);
   const exitCode = await runSnapshotCommand(env);
@@ -180,7 +182,17 @@ describe('snapshot command', () => {
       snapshotCommand(env.program);
       const exitCode = await runSnapshotCommand(env);
       expect(exitCode).toBe(0);
-      expect(getLogOutput().some(call => call.includes("'vv state'"))).toBe(true);
+      expect(getLogOutput().some(call => call.includes("'vv state --level full'"))).toBe(true);
+    });
+
+    it('names the level of a pass: a commit-level pass is not a full pass', async () => {
+      await expectValidationStatus(env, true, '✅ Passed (level: commit)', 'commit');
+    });
+
+    it('names the level of a failure, and points state at that level', async () => {
+      await expectValidationStatus(env, false, '❌ Failed (level: commit)', 'commit');
+
+      expect(getLogOutput().some(call => call.includes('state --level commit'))).toBe(true);
     });
   });
 
