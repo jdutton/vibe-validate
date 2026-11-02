@@ -22,7 +22,7 @@ overrides:
   '@humanfs/node': 0.16.8
   ip-address: 10.7.4
   js-yaml: 4.3.2
-  lodash: 4.18.0
+  lodash: 4.18.1
   minimatch: 11.0.3
   '@modelcontextprotocol/sdk': 1.32.0
   nanoid: 3.3.18
@@ -33,7 +33,7 @@ overrides:
   qs: 6.16.1
   rollup: 4.59.0
   source-map-js: 1.2.2
-  tar: 7.5.21
+  tar: 7.5.22
   tinypool: 2.1.2
   undici: 7.30.1
   vite: 7.3.7
@@ -2585,9 +2585,8 @@ packages:
   lodash.truncate@4.4.2:
     resolution: {integrity: sha512-jttmRe7bRse52OsWIMDLaXxWqRAmtIUccAQ3garviCqJjafXOfNMO0yMfNpdD6zbGaTU0P5Nz7e7gAT6cKmJRw==}
 
-  lodash@4.18.0:
-    resolution: {integrity: sha512-l1mfj2atMqndAHI3ls7XqPxEjV2J9ZkcNyHpoZA3r2T1LLwDB69jgkMWh71YKwhBbK0G2f4WSn05ahmQXVxupA==}
-    deprecated: Bad release. Please use lodash@4.17.21 instead.
+  lodash@4.18.1:
+    resolution: {integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==}
 
   long@5.3.2:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
@@ -3523,8 +3522,8 @@ packages:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
     engines: {node: '>=6'}
 
-  tar@7.5.21:
-    resolution: {integrity: sha512-XdhtCvlMywwxpCW8YEq3lOXBJpUPTR2OHHcwLPO3HwsJqOHa2Ok/oJ7ruGzp+JrKoRPVCzJwAdEjqLW/vNRPHA==}
+  tar@7.5.22:
+    resolution: {integrity: sha512-MFO/QzvtAOmJbkhOaCTvbGcFN9L9b+JunIsDwaKljSOdcLMea3NJ1k9Usz/rjdfSXTq4dfzfeS7W4p4YOAAHeA==}
     engines: {node: '>=18'}
 
   terminal-link@4.0.0:
@@ -4444,7 +4443,7 @@ snapshots:
       chalk: 4.1.2
       debug: 4.4.3
       js-yaml: 4.3.2
-      lodash: 4.18.0
+      lodash: 4.18.1
       pluralize: 2.0.0
       string-width: 4.2.3
       strip-ansi: 6.0.1
@@ -4688,7 +4687,7 @@ snapshots:
       commander: 12.1.0
       picomatch: 4.0.4
       semver: 7.8.5
-      tar: 7.5.21
+      tar: 7.5.22
       yaml: 2.8.3
       zod: 3.25.76
     transitivePeerDependencies:
@@ -6359,7 +6358,7 @@ snapshots:
 
   lodash.truncate@4.4.2: {}
 
-  lodash@4.18.0: {}
+  lodash@4.18.1: {}
 
   long@5.3.2: {}
 
@@ -7646,7 +7645,7 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
-  tar@7.5.21:
+  tar@7.5.22:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0

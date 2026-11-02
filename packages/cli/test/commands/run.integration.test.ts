@@ -580,16 +580,20 @@ describe('run command integration', () => {
 
   describe('performance', () => {
     it('should handle nested execution without significant overhead', async () => {
-      const start = Date.now();
+      // Compared against a direct run measured in the same test, so machine
+      // load scales both sides and never decides the result. A nested run
+      // starts the CLI twice, so it costs about two direct runs.
+      const timed = async (args: string[]): Promise<number> => {
+        const start = Date.now();
+        await execCLI(args);
+        return Date.now() - start;
+      };
 
+      const direct = await timed(['run', 'echo fast']);
       const cliPath = getCliPath('vibe-validate');
-      const command = `node ${cliPath} run 'echo fast'`;
-      await execCLI(['run', command]);
+      const nested = await timed(['run', `node ${cliPath} run 'echo fast'`]);
 
-      const duration = Date.now() - start;
-
-      // Should complete in reasonable time (< 5 seconds)
-      expect(duration).toBeLessThan(5000);
+      expect(nested).toBeLessThan(direct * 4);
     });
   });
 

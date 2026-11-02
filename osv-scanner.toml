@@ -24,10 +24,11 @@
 #
 # What is enforced. The audit runs on pushes to main, on pull requests, weekly
 # (Monday 06:00 UTC) and on manual dispatch, so a newly published advisory or
-# an expired `ignoreUntil` turns it red without any push. `ignoreUntil` is the
-# only trigger in this file that anything enforces. Every other re-check
-# trigger below is a note for whoever next bumps a dependency (not enforced):
-# nothing notices when a parent package catches up.
+# an expired `ignoreUntil` turns it red without any push. It scans only this
+# repository's lockfile, so the adopter triggers below stay unenforced.
+# `ignoreUntil` is the only re-check trigger in this file that anything
+# enforces. Every other trigger below is a note for whoever next bumps a
+# dependency (not enforced): nothing notices when a parent package catches up.
 #
 # History of real fixes:
 #   * `vibe-agent-toolkit` bumped 0.1.33 -> ^0.1.42 (removed the
@@ -37,18 +38,26 @@
 #
 # Overrides ledger. package.json cannot hold comments, so EVERY pin in
 # `pnpm.overrides` is listed here with the advisories it clears (GHSA IDs, or
-# a count where the PR that added the pin lists them) and its re-check
-# trigger: delete the pin once its parent resolves the fixed version by itself
-# (not enforced: nothing notices when a parent catches up). A pin that resolves
-# no package in the lockfile is deleted, not kept on standby (not enforced).
-# Each pin is the oldest release that fixes every advisory it clears; a line
-# says why wherever a newer one is pinned.
+# a count where the PR that added the pin lists them). Each pin is a line
+# `#     <key> <version>[, <key> <version>]`, then its note in parentheses.
+# Enforced by packages/dev-tools/test/overrides-ledger.test.ts (unit tier):
+#   * every override is listed here at its version, and every entry here is an
+#     override;
+#   * a pin resolves a package in pnpm-lock.yaml: one that resolves none is
+#     deleted, not kept on standby;
+#   * a pin is not a deprecated release.
+# Each pin is the oldest release that fixes every advisory it clears, is not
+# deprecated, and has no later bug-fix patch on the same line; a line says why
+# wherever a newer one is pinned (not enforced). Delete a pin when the lockfile
+# re-resolved without it (`pnpm update <pkg>`) still scans clean (not
+# enforced: nothing notices when a parent catches up).
 #
 # What pins can and cannot do. Root `pnpm.overrides` are never published:
 # `npm i vibe-validate` resolves each dependency's own ranges. A fresh resolve
 # of vibe-validate 0.20.1 (npm, lockfile-only, 2026-11-02) leaves exactly four
 # advisories on adopters: three through vibe-agent-toolkit 0.1.42, and zod,
-# which VAT and five vibe-validate packages declare directly:
+# which VAT (^3.24.1) and five vibe-validate packages (^3.25.76) declare
+# directly:
 #     basic-ftp 5.3.1   GHSA-c475-qrg2-pj4r  (resources -> markdown-link-check
 #                       -> proxy-agent -> pac-proxy-agent -> get-uri 8.0.1,
 #                       which declares basic-ftp ^5.3.1)
@@ -62,15 +71,19 @@
 # (@vibe-agent-toolkit/utils declares ^0.6.1). Re-check triggers for adopters
 # (not enforced: nothing re-resolves the published package; repeat the fresh
 # resolve above at each VAT bump):
-#   * glob / minimatch: a VAT stable release whose agent-skills declares
-#     glob ^14.0.2 or later (VAT main declares ^14.0.3);
-#   * basic-ftp: needs two releases, or VAT dropping the
+#   * glob / minimatch: vibe-validate releases on a VAT version whose
+#     agent-skills declares glob ^14.0.2 or later (or a VAT 0.1.x release
+#     does, which adopters' ^0.1.42 range picks up). VAT main declares ^14.0.3;
+#   * basic-ftp: needs three releases, or VAT dropping the
 #     markdown-link-check -> proxy-agent path. get-uri 8.0.1 (the latest)
-#     declares basic-ftp ^5.3.1, and pac-proxy-agent 9.1.0 (the latest) pins
-#     get-uri to exactly 8.0.1. So it clears only with a get-uri release that
-#     declares basic-ftp ^6.2.1 or later AND a pac-proxy-agent release that
-#     admits that get-uri;
-#   * zod: a VAT stable release on zod 4.
+#     declares basic-ftp ^5.3.1, pac-proxy-agent 9.1.0 (the latest) pins
+#     get-uri to exactly 8.0.1, and proxy-agent 8.0.2 (the latest) pins
+#     pac-proxy-agent to exactly 9.1.0. So it clears only with a get-uri
+#     release that declares basic-ftp ^6.2.1 or later, a pac-proxy-agent
+#     release that admits that get-uri, AND a proxy-agent release that admits
+#     that pac-proxy-agent (markdown-link-check declares proxy-agent ^8.0.2);
+#   * zod: vibe-validate releases on a VAT version on zod 4 (or a VAT 0.1.x
+#     release moves to zod 4), and vibe-validate's own packages move too.
 #
 #   Via vibe-agent-toolkit 0.1.42 (a runtime dependency of the published
 #   `vibe-validate` package; its postinstall runs `vat claude plugin install`).
@@ -121,8 +134,10 @@
 #                                        -j6r3-76f7-8jcv, -rpw4-54j3-4h4q,
 #                                        -rxp7-6hxx-x8q5; the proxy-agent path
 #                                        and the sdk's express-rate-limit)
-#     tar 7.5.21                        (GHSA-w8wr-v893-vjvp, -8x88-c5mf-7j5w,
-#                                        -23hp-3jrh-7fpw, -r292-9mhp-454m; VAT cli)
+#     tar 7.5.22                        (GHSA-w8wr-v893-vjvp, -8x88-c5mf-7j5w,
+#                                        -23hp-3jrh-7fpw, -r292-9mhp-454m; VAT
+#                                        cli. 7.5.21 is the oldest fix; 7.5.22
+#                                        is its bug-fix patch)
 #     picomatch@2 2.3.2, picomatch@4 4.0.4
 #                                       (GHSA-3v7f-55p6-f55p, -c2c7-rcm5-vvqj;
 #                                        VAT packages, micromatch, fdir)
@@ -134,11 +149,12 @@
 #     fast-uri 3.1.9                    (10 advisories, GHSA-333x-w4r6-6crp
 #                                        through -xhq7-xmqj-769h; ajv 8)
 #
-#   Dev tooling. Drop each when the parent named resolves it by itself:
-#     vitest 3.2.6                      (one version for every workspace
-#                                        package; GHSA-5xrq-8626-4rwp, fixed in
-#                                        3.2.6. Moves to 4.1.12 in the vitest 4
-#                                        migration PR)
+#   Dev tooling:
+#     vitest 3.2.6                      (a direct devDependency, ^3.2.6; the
+#                                        pin holds one version for every
+#                                        workspace package. GHSA-5xrq-8626-4rwp,
+#                                        fixed in 3.2.6. Moves to 4.1.12 in the
+#                                        vitest 4 migration PR)
 #     vite 7.3.7, rollup 4.59.0, postcss 8.5.23, nanoid 3.3.18,
 #     source-map-js 1.2.2               (vitest's vite: GHSA-587h-7wmj-h5pm,
 #                                        -698v-4r3x-3vcv, -9jrq-w75r-8gcw,
@@ -149,8 +165,10 @@
 #                                        GHSA-68fv-2mgg-jv7q source-map-js)
 #     @humanfs/node 0.16.8              (GHSA-p498-v437-472g; eslint 9.39)
 #     flatted 3.4.2                     (GHSA-rf6f-7fwh-wjgh; ESLint flat-cache)
-#     lodash 4.18.0                     (GHSA-f23m-r3pf-42rh, -r5fr-rjxr-66jc;
-#                                        secretlint's textlint formatter)
+#     lodash 4.18.1                     (GHSA-f23m-r3pf-42rh, -r5fr-rjxr-66jc;
+#                                        secretlint's textlint formatter.
+#                                        4.18.0, the oldest fix, is deprecated
+#                                        as a bad release)
 #     baseline-browser-mapping 2.11.0, browserslist 4.28.7
 #                                       (GHSA-w5vr-8v7q-w6rv; GHSA-73wf-gq98-2v4g,
 #                                        -c83g-rgw3-j3cx; eslint-plugin-unicorn
@@ -169,11 +187,12 @@
 #                                        tinypool, so the vitest 4 migration
 #                                        PR deletes this pin)
 #
-#   glob 14.0.3 and minimatch 11.0.3 (GHSA-3g3m-2fjr-6pw4,
-#   GHSA-g3hv-75wg-m249). The oldest fixes are glob 14.0.2 and minimatch
-#   11.0.1; these pins are the versions VAT main uses, so this repo and VAT run
-#   one glob and one minimatch. Neither advisory has a backport to an older
-#   major, so every consumer in this lockfile is forced onto the fixed major. glob:
+#     glob 14.0.3, minimatch 11.0.3     (GHSA-3g3m-2fjr-6pw4,
+#                                        GHSA-g3hv-75wg-m249)
+#   The oldest fixes are glob 14.0.2 and minimatch 11.0.1; these pins match VAT
+#   main's overrides, so this repo and VAT run one glob and one minimatch.
+#   Neither advisory has a backport to an older major, so every consumer in
+#   this lockfile is forced onto the fixed major (as basic-ftp is onto 6). glob:
 #   test-exclude (coverage), rimraf and VAT's agent-skills call `glob`,
 #   `glob.sync` and `globSync`, all still exported by 14. minimatch: ESLint,
 #   its plugins, @typescript-eslint/typescript-estree and test-exclude.
@@ -206,7 +225,7 @@
 [[IgnoredVulns]]
 id = "GHSA-mrhx-c7xc-m3w5"
 ignoreUntil = 2027-01-31T00:00:00Z
-reason = """zod 3.25.76: validating an oversized constrained collection can exhaust memory. Fixed only in zod 4.6.6, with no 3.x backport. zod is a runtime dependency of config, core, cli, extractors and history, and of vibe-agent-toolkit 0.1.42, which pins zod 3, so migrating vibe-validate alone would not remove it from the tree; forcing zod 4 into VAT with an override risks breaking VAT's runtime. Published consumers get zod 3.25.76 either way. Reachability: vibe-validate's zod schemas validate the project's own config file and validation results stored in git notes. Notes are local by default, but `vv history` documents fetching refs/notes/vibe-validate/validate from a shared remote, and reader.ts validates every fetched run with safeValidateResult, so anyone who can push to that notes ref supplies input. The impact stays a local memory denial of service in the process that reads the notes. Re-check trigger: a VAT stable release on zod 4; then migrate vibe-validate to zod 4 (its JSON-schema exports move off zod-to-json-schema) and delete this entry."""
+reason = """zod 3.25.76: validating an oversized constrained collection can exhaust memory. Fixed only in zod 4.6.6, with no 3.x backport. zod is a runtime dependency (declared ^3.25.76) of config, core, cli, extractors and history, and of vibe-agent-toolkit 0.1.42, whose packages declare zod ^3.24.1, so migrating vibe-validate alone would not remove it from the tree; forcing zod 4 into VAT with an override risks breaking VAT's runtime. Published consumers get zod 3.25.76 either way. Reachability: vibe-validate's zod schemas validate the project's own config file and validation results stored in git notes. Notes are local by default, but `vv history` documents fetching refs/notes/vibe-validate/validate from a shared remote, and reader.ts validates every fetched run with safeValidateResult, so anyone who can push to that notes ref supplies input. The impact stays a local memory denial of service in the process that reads the notes. Re-check trigger: a VAT release on zod 4 that vibe-validate can release on (or a VAT 0.1.x release on zod 4); then migrate vibe-validate to zod 4 (its JSON-schema exports move off zod-to-json-schema) and delete this entry."""
 
 # The vitest 3 toolchain. Both fixes are only in vitest 4 (4.1.11 and 4.1.12),
 # with no 3.x backport, and an override cannot move vitest and its mocker to
