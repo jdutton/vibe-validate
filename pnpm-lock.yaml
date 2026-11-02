@@ -12,20 +12,16 @@ overrides:
   baseline-browser-mapping: 2.11.34
   basic-ftp: 6.2.5
   body-parser: 2.4.0
-  brace-expansion@1: 1.1.21
-  brace-expansion@2: 2.1.7
   brace-expansion@5: 5.0.12
   browserslist: 4.29.5
   fast-uri: 3.1.9
   flatted: 3.4.2
-  form-data: 4.0.6
   glob: 14.0.3
   handlebars: 4.7.10
   hono: 4.13.16
   '@hono/node-server': 2.1.5
   '@humanfs/node': 0.16.8
   ip-address: 10.7.5
-  '@isaacs/brace-expansion': 5.0.1
   js-yaml: 4.3.2
   lodash: 4.18.1
   minimatch: 11.0.3
