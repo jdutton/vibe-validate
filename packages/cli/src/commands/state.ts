@@ -14,7 +14,7 @@ import {
   type RunCacheNote,
 } from '@vibe-validate/history';
 import chalk from 'chalk';
-import type { Command } from 'commander';
+import { Option, type Command } from 'commander';
 import { stringify as stringifyYaml } from 'yaml';
 
 import { getCommandName } from '../utils/command-name.js';
@@ -30,7 +30,8 @@ export function stateCommand(program: Command): void {
     .description('Show current validation state from git notes (or run cache if no config)')
     .option('-l, --level <name>', 'Show the run deciding this level, as validate --check reads it (one of validation.levels; default: the level validate runs, the last)')
     .option('-v, --verbose', 'Show full error output without truncation')
-    .option('--runs', 'Show only run cache (not validation history)')
+    // The run cache has no levels, so --level would be silently ignored
+    .addOption(new Option('--runs', 'Show only run cache (not validation history)').conflicts('level'))
     .option('--all', 'Show both validation history and run cache')
     .action(async (options) => {
       try {
@@ -89,7 +90,11 @@ async function executeStateCommand(options: { level?: string; verbose?: boolean;
     : [];
 
   // Determine output (passing treeHash for consistent structure)
-  const output = determineOutput(treeHash, validationHistory, runCacheEntries, showRunsOnly, showAll);
+  let output = determineOutput(treeHash, validationHistory, runCacheEntries, showRunsOnly, showAll);
+  // --all shows the run cache too, so it always has output: say there that no run bears on the level
+  if (showAll && !validationHistory && stateLevel && history && history.levelsWithRuns.length > 0) {
+    output = { ...output, validation: { exists: false, level: stateLevel.level, levelsWithRuns: history.levelsWithRuns } };
+  }
 
   // Runs exist on this tree, but none at this level: say so, and where they are
   if (!output && stateLevel && history && history.levelsWithRuns.length > 0) {
@@ -366,17 +371,19 @@ The \`state\` command shows the current validation status without re-running val
 
 ## How It Works
 
-1. **Reads validation state** from git notes (if exists)
-2. **Shows pass/fail status**
-3. **Shows git tree hash** (cache key)
-4. **Shows timestamp** of last validation
-5. **Shows error summary** (if failed)
+1. **Reads the tree's runs** from git notes (if any)
+2. **Picks the deciding run** for the level (what \`validate --check\` reads): newest first, skipping passes whose level does not cover it
+3. **Shows pass/fail status**, git tree hash (cache key) and timestamp of that run
+4. **Shows error summary** (if failed)
 
 ## Options
 
 - \`-l, --level <name>\` - Show the run deciding this level, as \`validate --check\` and the cache read it (one of \`validation.levels\`; default: the level \`validate\` runs by default, the last). The tree's runs are read newest first; a pass at an earlier level is skipped; the first remaining run decides, so a newer failure at any level is shown over an older pass. When only earlier-level passes are recorded, the output says so (\`exists: false\`, \`levelsWithRuns\`). An unknown level exits 1, as \`validate --level\` does
 - \`-v, --verbose\` - Show full error output and details
-- \`-y, --yaml\` - Output as YAML (machine-readable)
+- \`--runs\` - Show only the run cache (\`vv run\` results); cannot be combined with \`--level\`, since the run cache has no levels
+- \`--all\` - Show both validation history and run cache; when no run decides the level, \`validation\` says \`exists: false\` with \`levelsWithRuns\`
+
+Output is always YAML (there is no \`--yaml\` option).
 
 ## Exit Codes
 
@@ -392,19 +399,11 @@ vibe-validate state
 # See full error details
 vibe-validate state --verbose
 
-# Machine-readable output
-vibe-validate state --yaml
+# The run deciding the commit level
+vibe-validate state --level commit
 \`\`\`
 
 ## Output Formats
-
-### Standard Output
-\`\`\`
-✅ Validation Status: PASSED
-📅 Last validated: 2025-10-23T14:30:00Z
-🔑 Tree hash: 2b62c71a3f
-⏱️  Duration: 62.4s
-\`\`\`
 
 ### Verbose Output
 Includes:
@@ -463,14 +462,14 @@ vibe-validate validate
 # Run validation
 vibe-validate validate --yaml > /dev/null 2>&1
 
-# Get structured result
-vibe-validate state --yaml
+# Get structured result (always YAML)
+vibe-validate state
 \`\`\`
 
 ### Pre-commit check
 \`\`\`bash
 # Check if validation already passed
-if vibe-validate state --yaml | grep -q "passed: true"; then
+if vibe-validate state | grep -q "passed: true"; then
   echo "Validation already passed, skipping"
 else
   vibe-validate validate

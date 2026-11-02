@@ -105,13 +105,16 @@ function displayDependencyCheckFailure(error: string | undefined, command: strin
  * @param config - Vibe validate configuration
  * @param level - The level the run was asked for (named on a failed result)
  * @param verbose - Whether verbose output is enabled
- * @returns Validation result if check failed, null if passed/skipped
+ * @param treeHashResult - The tree the run is keyed on (null outside a git repository)
+ * @returns Validation result if check failed (recorded, like any failure, so an
+ *   older pass on the tree stops answering), null if passed/skipped
  * @internal
  */
 async function runDependencyLockCheck(
   config: VibeValidateConfig,
   level: string,
-  verbose: boolean
+  verbose: boolean,
+  treeHashResult: TreeHashResult | null
 ): Promise<ValidationResult | null> {
   let gitRoot: string;
   try {
@@ -137,7 +140,7 @@ async function runDependencyLockCheck(
   // Handle failure
   if (!depCheckResult.passed && !depCheckResult.skipped) {
     displayDependencyCheckFailure(depCheckResult.error, depCheckResult.command);
-    return {
+    const failure: ValidationResult = {
       passed: false,
       timestamp: new Date().toISOString(),
       failedStep: 'Dependency Lock Check',
@@ -145,6 +148,10 @@ async function runDependencyLockCheck(
       phases: [],
       level,
     };
+    if (treeHashResult) {
+      await recordHistory(treeHashResult, failure, verbose);
+    }
+    return failure;
   }
 
   // Handle skip
@@ -174,7 +181,7 @@ function findRunToRetry(
   // A failure decides but cannot be built on: it ran another level's steps
   const decidingRun = findDecidingRun(note, treeHashResult, request);
   if (decidingRun && !(decidingRun.passed && decidingRun.result.passed)) {
-    console.error(chalk.yellow(`The newest run on tree ${treeShort}, at level ${decidingRun.level}, failed; a retry at level ${request.level} builds only on a failure at that level. ${runAll}`));
+    console.error(chalk.yellow(`The newest run bearing on level ${request.level} (tree ${treeShort}) failed at level ${decidingRun.level}; a retry at level ${request.level} builds only on a failure at that level. ${runAll}`));
   } else {
     console.error(chalk.yellow(`No failed validation at level ${request.level} to retry for tree ${treeShort}. ${runAll}`));
   }
@@ -183,6 +190,10 @@ function findRunToRetry(
 
 /**
  * Record validation history with stability check
+ *
+ * A pass is recorded only if the worktree did not change while it ran. A failure
+ * is always recorded: it can only cause a re-run, and dropping it would leave an
+ * older pass on the tree answering.
  *
  * @param treeHashResultBefore - Tree hash result before validation
  * @param result - Validation result to record
@@ -197,13 +208,22 @@ async function recordHistory(
   const treeHashShort = treeHashResultBefore.hash.slice(0, 12);
   try {
     // Check if worktree changed during validation
-    const stability = await checkWorktreeStability(treeHashResultBefore.hash);
+    const stability = await checkWorktreeStability(treeHashResultBefore);
 
     if (verbose) {
       console.log(chalk.gray(`\n📝 Recording history for tree ${treeHashShort} (stable=${stability.stable})`));
     }
 
-    if (stability.stable) {
+    if (!stability.stable) {
+      console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));
+      console.warn(chalk.yellow(`   Before: ${stability.treeHashBefore.slice(0, 12)}...`));
+      console.warn(chalk.yellow(`   After:  ${stability.treeHashAfter.slice(0, 12)}...`));
+      console.warn(chalk.yellow(result.passed
+        ? '   Results valid but history not recorded (unstable state)'
+        : '   The failure recorded for the tree before the run'));
+    }
+
+    if (stability.stable || !result.passed) {
       // Record to git notes
       const recordResult = await recordValidationHistory(treeHashResultBefore, result);
 
@@ -216,11 +236,6 @@ async function recordHistory(
         console.error(chalk.yellow(`⚠️  History recording failed: ${recordResult.reason ?? 'Unknown reason'}`));
         console.error(chalk.gray(`   Tree hash: ${treeHashShort}`));
       }
-    } else {
-      console.warn(chalk.yellow('\n⚠️  Worktree changed during validation'));
-      console.warn(chalk.yellow(`   Before: ${stability.treeHashBefore.slice(0, 12)}...`));
-      console.warn(chalk.yellow(`   After:  ${stability.treeHashAfter.slice(0, 12)}...`));
-      console.warn(chalk.yellow('   Results valid but history not recorded (unstable state)'));
     }
   } catch (error) {
     // Don't block validation, but always log the error so failures are visible
@@ -363,11 +378,10 @@ export async function runValidateWorkflow(
       const isPreCommit = options.context.isPreCommit ?? false;
 
       if (shouldRunDependencyCheck(depCheckConfig, isPreCommit)) {
-        const depCheckFailure = await runDependencyLockCheck(config, options.level, verbose);
+        const depCheckFailure = await runDependencyLockCheck(config, options.level, verbose, treeHashResultBefore);
         // A package-manager install: often the costliest thing before the steps run
         timer.mark('dependency lock check');
         if (depCheckFailure) {
-          // Dependency check failed - return failure result
           timer.done();
           return depCheckFailure;
         }

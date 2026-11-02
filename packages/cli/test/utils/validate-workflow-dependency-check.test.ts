@@ -14,6 +14,7 @@
 
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import * as core from '@vibe-validate/core';
+import type { TreeHash } from '@vibe-validate/git';
 import * as git from '@vibe-validate/git';
 import * as history from '@vibe-validate/history';
 import type { DependencyCheckResult } from '@vibe-validate/utils';
@@ -300,6 +301,23 @@ describe('runDependencyLockCheck integration', () => {
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('npm ci')
+      );
+    });
+
+    it('records the failure, so an older pass on the tree no longer answers', async () => {
+      vi.mocked(git.getRepositoryRoot).mockReturnValue('/test/repo');
+      vi.mocked(utils.runDependencyCheck).mockResolvedValue(
+        createMockDependencyCheckResult({ passed: false, skipped: false, error: 'Lock file out of sync', command: 'npm ci' })
+      );
+      setupWorkflowMocks();
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: 'abc123' as TreeHash });
+
+      const { runValidateWorkflow } = await import('../../src/utils/validate-workflow.js');
+      await runValidateWorkflow(createTestConfig(), { context: createTestContext(), level: 'full' });
+
+      expect(history.recordValidationHistory).toHaveBeenCalledWith(
+        { hash: 'abc123' },
+        expect.objectContaining({ passed: false, failedStep: 'Dependency Lock Check', level: 'full' })
       );
     });
   });

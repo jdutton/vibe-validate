@@ -328,15 +328,25 @@ describe('detectFlakiness', () => {
       expect(warning).not.toContain('E2E Tests');
     });
 
-    it('finds a flaky step behind a newer red at another level that shares no failed step with this run', async () => {
-      // commit red on Lint, then full red on E2E only, then commit green on Lint
+    it('finds a flaky step behind a newer red at another level that did not run it', async () => {
+      // commit red on Lint, then a full red that ran only E2E, then commit green on Lint
       const commitRed = { ...createFailedRun('2026-02-12T10:00:00Z', ['Lint']), level: 'commit' };
-      const fullRed = createFailedRun('2026-02-12T10:02:00Z', ['E2E Tests'], ['Lint', 'E2E Tests']);
+      const fullRed = createFailedRun('2026-02-12T10:02:00Z', ['E2E Tests'], ['E2E Tests']);
       const commitGreen = { ...createPassedResult('2026-02-12T10:05:00Z', ['Lint']), level: 'commit' };
 
       const warning = await expectFlakinessDetection([commitRed, fullRed], commitGreen, true);
 
       expect(warning).toContain('Lint (failed 2026-02-12T10:00:00Z');
+    });
+
+    it('compares each step with its own newest earlier result, so a flip is reported once', async () => {
+      // Lint failed, then a commit green passed it (reported then); a later full green
+      // passes it again: its newest earlier result is that pass, so nothing flipped
+      const commitRed = { ...createFailedRun('2026-02-12T10:00:00Z', ['Lint']), level: 'commit' };
+      const commitGreen = { ...createValidationRun({ passed: true, timestamp: '2026-02-12T10:02:00Z', level: 'commit' }), result: createPassedResult('2026-02-12T10:02:00Z', ['Lint']) };
+      const fullGreen = createPassedResult('2026-02-12T10:05:00Z', ['Lint', 'E2E Tests']);
+
+      await expectFlakinessDetection([commitRed, commitGreen], fullGreen, false);
     });
 
     it('a pass after a red at the same level is', async () => {

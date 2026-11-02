@@ -465,7 +465,7 @@ vv state | grep treeHash  # Cached tree hash
 ls -la | grep -E "coverage|dist|.tsbuildinfo"
 # Add these to .gitignore
 
-# Same tree hash but still a miss? Either the newest run on the tree
+# Same tree hash but still a miss? Either the deciding run on the tree
 # failed (a failure is never a hit), or only an earlier level passed
 # (a `vv pre-commit` pass never answers `vv validate`):
 vv history list

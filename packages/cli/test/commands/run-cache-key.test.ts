@@ -14,7 +14,7 @@
  * executes (a harmless `echo`); only git is faked.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import * as core from '@vibe-validate/core';
@@ -33,7 +33,7 @@ vi.mock('@vibe-validate/git', async () => {
     getGitTreeHash: vi.fn(),
     readNote: vi.fn(),
     addNote: vi.fn(),
-    removeNote: vi.fn(),
+    removeNotesRefs: vi.fn(),
   };
 });
 
@@ -56,6 +56,9 @@ const CACHE_MISS = 'No cached result found';
 let notes: Map<string, string>;
 /** The worktree's current submodule hashes (undefined: no submodules) */
 let submodules: Record<string, git.TreeHash> | undefined;
+/** A file whose presence changes the tree hash (to TREE_CHANGED), as a generated file would */
+let treeChangingFile: string | undefined;
+const TREE_CHANGED = 'f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5' as git.TreeHash;
 
 function setTree(submoduleHashes?: Record<string, git.TreeHash>): void {
   submodules = submoduleHashes;
@@ -66,16 +69,17 @@ function setTree(submoduleHashes?: Record<string, git.TreeHash>): void {
  * Installed per run: setupCommanderTest's cleanup restores every mock.
  */
 function installFakeGit(): void {
-  vi.mocked(git.getGitTreeHash).mockResolvedValue({
-    hash: TREE,
+  vi.mocked(git.getGitTreeHash).mockImplementation(async () => ({
+    hash: treeChangingFile && existsSync(treeChangingFile) ? TREE_CHANGED : TREE,
     ...(submodules ? { submoduleHashes: submodules } : {}),
-  });
+  }));
   vi.mocked(git.addNote).mockImplementation((ref, _object, content) => {
     notes.set(ref, content);
     return true;
   });
   vi.mocked(git.readNote).mockImplementation((ref) => notes.get(ref) ?? null);
-  vi.mocked(git.removeNote).mockImplementation((ref) => notes.delete(ref));
+  // Deletes the ref itself: `git notes remove` would leave an empty one behind
+  vi.mocked(git.removeNotesRefs).mockImplementation((ref) => (notes.delete(ref) ? 1 : 0));
   // Invoked from the repo root: the cache key's workdir is ''
   vi.mocked(core.getGitRoot).mockReturnValue(process.cwd());
 }
@@ -103,10 +107,41 @@ async function runOnce(): Promise<boolean> {
   return !stdout.includes(CACHE_HIT);
 }
 
+/** Script source that exits 1 while `flag` exists, else 0 */
+function exitWhileFlagged(flag: string): string {
+  return `process.exit(require('node:fs').existsSync(${JSON.stringify(flag)}) ? 1 : 0);`;
+}
+
+/** Run `body` with a scratch dir, a flag path and a script path in it, and the command that runs the script */
+async function withScratchCommand(
+  body: (scratch: { dir: string; flag: string; script: string; command: string }) => Promise<void>
+): Promise<void> {
+  const dir = mkdtempSync(join(normalizedTmpdir(), 'vv-run-'));
+  try {
+    const script = join(dir, 'check.cjs');
+    await body({ dir, flag: join(dir, 'fail'), script, command: `node ${JSON.stringify(script)}` });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** `vv run --force` goes red; then a plain run executes the command instead of replaying a pass */
+async function expectForcedRedThenRerun(command: string, beforeRerun: () => void = () => {}): Promise<void> {
+  expect((await vvRun(['--force', command])).stdout).toContain('exitCode: 1');
+  // --force propagates to nested runs through the environment; the next is a fresh invocation
+  delete process.env.VV_FORCE_EXECUTION;
+  beforeRerun();
+
+  const next = await vvRun([command]);
+  expect(next.stdout).not.toContain(CACHE_HIT);
+  expect(next.stdout).toContain('exitCode: 1');
+}
+
 describe('vv run cache key and lookup', () => {
   beforeEach(() => {
     notes = new Map();
     submodules = undefined;
+    treeChangingFile = undefined;
     delete process.env.VV_PARENT_CONTEXT;
     delete process.env.VV_FORCE_EXECUTION;
   });
@@ -172,27 +207,41 @@ describe('vv run cache key and lookup', () => {
   });
 
   it('a forced red removes the green it re-checked, so the next run executes', async () => {
-    const dir = mkdtempSync(join(normalizedTmpdir(), 'vv-run-red-'));
-    try {
-      const flag = join(dir, 'fail');
-      const script = join(dir, 'check.cjs');
-      writeFileSync(script, `process.exit(require('node:fs').existsSync(${JSON.stringify(flag)}) ? 1 : 0);`);
-      const command = `node ${JSON.stringify(script)}`;
+    await withScratchCommand(async ({ flag, script, command }) => {
+      writeFileSync(script, exitWhileFlagged(flag));
       setTree();
 
       expect((await vvRun([command])).stdout).toContain('exitCode: 0');
       expect((await vvRun([command])).stdout).toContain(CACHE_HIT);
 
       writeFileSync(flag, '');
-      expect((await vvRun(['--force', command])).stdout).toContain('exitCode: 1');
-      // --force propagates to nested runs through the environment; this is a fresh invocation
-      delete process.env.VV_FORCE_EXECUTION;
+      await expectForcedRedThenRerun(command);
+    });
+  });
 
-      const next = await vvRun([command]);
-      expect(next.stdout).not.toContain(CACHE_HIT);
-      expect(next.stdout).toContain('exitCode: 1');
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+  it('keys the store on the tree the command ran on, though the command changed the tree', async () => {
+    await withScratchCommand(async ({ dir, flag, script, command }) => {
+      const generated = join(dir, 'generated');
+      treeChangingFile = generated;
+      // Writes the tree-changing file, then fails while the flag is present
+      const changesTree = `require('node:fs').writeFileSync(${JSON.stringify(generated)}, ''); ${exitWhileFlagged(flag)}`;
+      writeFileSync(script, changesTree);
+      setTree();
+
+      // A pass that changed the tree is stored for neither tree
+      expect((await vvRun([command])).stdout).toContain('exitCode: 0');
+      expect(notes.size).toBe(0);
+
+      // A pass on a tree it left unchanged is stored...
+      rmSync(generated);
+      writeFileSync(script, exitWhileFlagged(flag));
+      expect((await vvRun([command])).stdout).toContain('exitCode: 0');
+      expect(notes.size).toBe(1);
+
+      // ...and a forced red that changes the tree removes it from the tree it ran on
+      writeFileSync(script, changesTree);
+      writeFileSync(flag, '');
+      await expectForcedRedThenRerun(command, () => rmSync(generated));
+    });
   });
 });

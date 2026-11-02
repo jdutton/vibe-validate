@@ -34,8 +34,8 @@ Run validation with git tree hash caching. Spawned steps run with GIT_* env vars
 **Exit codes:**
 
 - `0` - Validation passed (or cached pass). With --check: a recorded pass covers the level
-- `1` - Validation failed, or the configuration is invalid (an unknown --level included). With --check: the last run bearing on the level failed
-- `2` - With --check only: nothing recorded that bears on the level, or it cannot answer (not in a git repository, unknown --level)
+- `1` - Validation failed, or the configuration is invalid (an unknown --level included), or missing. With --check, those configuration and level errors exit 2 instead, and 1 means the run deciding the level failed
+- `2` - With --check only: nothing recorded bears on the level, or it cannot answer (a missing or invalid configuration, an unknown --level, not in a git repository). Plain validate never exits 2
 
 **Creates/modifies:**
 
@@ -47,7 +47,7 @@ Run validation with git tree hash caching. Spawned steps run with GIT_* env vars
 - `-f, --force` - Re-run even when a pass is already recorded (a failure is never replayed)
 - `-v, --verbose` - Show detailed progress and output
 - `-y, --yaml` - Output validation result as YAML to stdout
-- `-c, --check` - Check if validation has already passed (do not run; exit 0 passed, 1 last run failed, 2 nothing recorded or cannot answer: no or invalid config, unknown level)
+- `-c, --check` - Check if validation has already passed (do not run; exit 0 passed, 1 the run deciding the level failed, 2 nothing recorded or cannot answer: no or invalid config, unknown level)
 - `-d, --debug` - Create output files for all steps (for debugging)
 - `--retry-failed` - Retry only failed steps from previous validation
 - `--no-lock` - Allow concurrent validation runs (disables single-instance mode)
@@ -118,12 +118,12 @@ Run branch sync check + validation (recommended before commit). Spawned steps ru
 3. Checks if the branch is behind its remote tracking branch (warns by default)
 4. Checks if the branch is behind the base branch, e.g. origin/main (warns by default)
 5. Runs secret scanning (if enabled in config)
-6. Runs validate (with caching); a cache miss first runs the dependency lock check (a frozen-lockfile install). VV_DEBUG=1 prints how long each step took
+6. Runs validate at hooks.preCommit.level (else the first of validation.levels; --level overrides), with caching; a cache miss first runs the dependency lock check (a frozen-lockfile install). VV_DEBUG=1 prints how long each step took
 
 **Exit codes:**
 
 - `0` - Validation passed (and no sync guard set to `block` was violated)
-- `1` - Validation failed, secrets detected, files partially staged, or a `block` sync guard was violated
+- `1` - Validation failed, secrets detected, files partially staged, a `block` sync guard was violated, the configuration is missing or invalid, or --level names an undeclared level
 
 **When to use:** Run before every commit to ensure code is validated and in sync
 
@@ -584,13 +584,16 @@ vibe-validate validate --force
 |------|---------|
 | `0` | Success |
 | `1` | Failure (validation failed, sync check failed, invalid config) |
-| `2` | Error (git command failed, file system error) |
+| `2` | Command-specific: `validate --check` (nothing recorded bears on the level, or it cannot answer: missing/invalid config, unknown --level, not a git repo), `sync-check` (an error), `watch-pr` (timeout). Plain `validate` never exits 2 |
+
+A missing configuration or an unknown `--level` also exits 1, except under `validate --check` (2).
 
 ## Caching
 
-- **Cache key**: Git tree hash of your tracked + untracked files
-- **Cache hit**: Validation skipped (sub-second)
-- **Cache miss**: Full validation runs (~60-90s)
+- **Cache key**: Git tree hash of your tracked + untracked files, plus submodule hashes, plus the level
+- **Cache hit**: Validation skipped (sub-second) when the run deciding the level is a recorded PASS at that level or a later one. A failure is never replayed
+- **Deciding run**: the tree's runs read newest first, skipping passes whose level does not cover the requested one; the first remaining run decides
+- **Cache miss**: The steps of the requested level run (~60-90s); also when the deciding run failed, or only an earlier-level pass is recorded
 - **Invalidation**: Any change to a file the key covers
 - **Not covered**: ignored paths (.gitignore, .git/info/exclude, or your global
   excludes file) and state outside the repo. Changing those does NOT invalidate

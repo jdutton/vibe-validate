@@ -486,6 +486,11 @@ User-named, ordered, nested validation levels, lowest first. Use them to give th
 
 **Default**: none — every step belongs to the single implicit level `full`, and there is nothing to choose.
 
+**Level names** must match `^[A-Za-z0-9][A-Za-z0-9_-]*$` (start with a letter or digit; then letters, digits, `_` and `-`).
+
+**When the level rules are reported**: the level rules (every step names a declared level, every level has a step, no `level` without `validation.levels`) and duplicate step names are checked only after the config's structure parses. Fix the structural errors first (e.g. a removed `runScope`); the level errors appear on the next run. The JSON schema (`config.schema.json`, used by editors) checks shape only — it does not check the level rules or step-name uniqueness; `vv config --validate` does.
+
+<!-- config:example -->
 ```yaml
 validation:
   levels: [commit, full]
@@ -511,7 +516,7 @@ hooks:
 - `vv pre-commit` runs `hooks.preCommit.level`, else the **first** level; `--level` overrides.
 - CI is nothing special: the generated workflow runs `vv validate`, so it runs the last level. vibe-validate never reads the `CI` environment variable to choose steps.
 
-**Caching**: a run is recorded with its level. For a request at a level, the runs on this tree are read newest first; a pass at an earlier level is skipped, and the first remaining run decides. A PASS at that level or a later one is a hit (a `full` pass answers the `commit` hook; a `commit` pass never answers `full`). A failure at any level is a miss — it is never replayed — so a forced re-check that goes red overturns the older green.
+**Caching**: a run is recorded with its level. For a request at a level, the runs on this tree are read newest first; a pass at an earlier level is skipped, and the first remaining run decides. A PASS at that level or a later one is a hit (a `full` pass answers the `commit` hook; a `commit` pass never answers `full`). A failure at any level is a miss — it is never replayed. A failure is always recorded (even when the worktree changed during the run), so a forced re-check that goes red overturns the older green; a pass is recorded only when the worktree did not change during the run. On a miss, only the requested level's steps run.
 
 **Output**: only the selected steps appear in the result; a phase left with no steps at the level is omitted. Results, `vv state` and `vv history` name the level, and `vv config` prints the levels and which level `vv pre-commit` and `vv validate` run.
 

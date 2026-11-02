@@ -110,6 +110,7 @@ validation:
 - Process killed by timeout
 - Configuration syntax errors
 - Git notes write failures (rare)
+- A fresh CI clone: notes are local by default, so `state` (and `validate --check`, which exits 2) see nothing unless `refs/notes/vibe-validate/*` was fetched
 
 ## Debugging with Verbose Output
 

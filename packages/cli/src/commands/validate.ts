@@ -19,7 +19,7 @@ export function validateCommand(program: Command): void {
     .option('-f, --force', 'Re-run even when a pass is already recorded (a failure is never replayed)')
     .option('-v, --verbose', 'Show detailed progress and output')
     .option('-y, --yaml', 'Output validation result as YAML to stdout')
-    .option('-c, --check', 'Check if validation has already passed (do not run; exit 0 passed, 1 last run failed, 2 nothing recorded or cannot answer: no or invalid config, unknown level)')
+    .option('-c, --check', 'Check if validation has already passed (do not run; exit 0 passed, 1 the run deciding the level failed, 2 nothing recorded or cannot answer: no or invalid config, unknown level)')
     .option('-d, --debug', 'Create output files for all steps (for debugging)')
     .option('--retry-failed', 'Retry only failed steps from previous validation')
     .option('--no-lock', 'Allow concurrent validation runs (disables single-instance mode)')
@@ -127,7 +127,7 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 2. **Looks for a recorded PASS** for that tree at the requested level or a later one
 3. **If found:** Exits 0 immediately (sub-second)
 4. **If not:** Runs the steps at that level (~60-90s depending on your project). A recorded failure is never replayed; the steps run again
-5. **Records the run** (pass or fail, with its level) in git notes
+5. **Records the run** (with its level) in git notes: a failure always (under the tree hashed before the run), a pass only if the worktree and submodules did not change while it ran
 6. **Records history** for analysis via \`vibe-validate history\`
 
 ## Levels
@@ -146,12 +146,12 @@ The \`validate\` command is the core of vibe-validate. It executes your validati
 ## Exit Codes
 
 - \`0\` - Validation passed (or cached pass)
-- \`1\` - Validation failed, the configuration is missing or invalid, or \`--level\` names an undeclared level. With \`--yaml\`, a configuration or level error is a YAML document on stdout: \`exists: false\`, \`error\` (plus \`errors\` or \`levels\`)
+- \`1\` - Validation failed (plain \`validate\` never exits 2), the configuration is missing or invalid, or \`--level\` names an undeclared level. With \`--yaml\`, a configuration or level error is a YAML document on stdout: \`exists: false\`, \`error\` (plus \`errors\` or \`levels\`)
 
 With \`--check\` (nothing runs; the answer comes from the recorded runs):
 
 - \`0\` - A recorded pass covers the level (\`validate\` would be a cache hit)
-- \`1\` - The last run bearing on the level failed (see it with \`state --level <that run's level>\`)
+- \`1\` - The run deciding the level failed (see it with \`state --level <the requested level>\`)
 - \`2\` - Nothing recorded that bears on the level, or it cannot answer (not in a git repository, a missing or invalid configuration, unknown \`--level\`). With \`--yaml\`, a configuration or level error is a YAML document on stdout: \`exists: false\`, \`error\` (plus \`errors\` or \`levels\`)
 
 ## Examples
@@ -200,6 +200,8 @@ They differ in what they start from:
   developers whose ignored files differ. "Ignored" means by any source —
   \`.gitignore\`, \`.git/info/exclude\`, or your global excludes file
 - Deterministic: same content = same hash
+- Also keyed on **submodule hashes** and the **level**: a pass answers only a
+  request at its level or an earlier one
 
 ### Cache Hit
 - A PASS recorded for the current tree hash, at the requested level or a later one
@@ -208,8 +210,10 @@ They differ in what they start from:
 - A recorded failure is never a cache hit
 
 ### Cache Miss
-- No result found for current tree hash
-- Runs full validation pipeline
+- No pass recorded for the current tree hash that covers the level, or the
+  deciding run (the newest run, skipping passes whose level does not cover the
+  requested one) is a failure, or only an earlier-level pass is recorded
+- Runs only the requested level's steps (that level and the earlier ones)
 - Typical duration: 60-90s
 
 ### Cache Invalidation
@@ -286,9 +290,9 @@ vibe-validate validate --force
 # Run validation
 vibe-validate validate --yaml 2>&1 | sed -n '/^---$/,$p' | tail -n +2
 
-# Or use state command
+# Or use state command (its output is always YAML)
 vibe-validate validate
-vibe-validate state --yaml
+vibe-validate state
 \`\`\`
 
 ## Performance

@@ -129,7 +129,7 @@ validation:
 
 ```bash
 vv config            # print resolved config as YAML, the levels, and which level pre-commit / validate run
-vv config --check    # validate schema only; exits non-zero on error
+vv config --validate # validate only; exit 0 if valid, 1 if invalid
 ```
 
 Use `vv config` when:
@@ -241,7 +241,7 @@ Default commands per manager: `npm ci`, `pnpm install --frozen-lockfile`, `yarn 
 
 **"Not in a git repository."** Run `git init` first. vibe-validate uses git tree hashes as cache keys and git notes for validation history — it cannot run outside a repo.
 
-**"Configuration invalid."** Run `vv config --check` for the Zod error message. Most often: a step missing `name` or `command`, a typo in `runOn:` (only `pre-commit`, `validate`, `disabled` are accepted), or a `cwd` with an absolute path or `..` escape.
+**"Configuration invalid."** Run `vv config --validate` for the Zod error message. Most often: a step missing `name` or `command`, a typo in `runOn:` (only `pre-commit`, `validate`, `disabled` are accepted), or a `cwd` with an absolute path or `..` escape.
 
 **"GitHub Actions workflow out of sync."** Two cases. (a) The generator fits your project — regenerate and commit: `vv generate-workflow --output .github/workflows/validate.yml`. (b) The generator doesn't fit (multi-language, custom setup actions) — set `ci.disableWorkflowCheck: true` and hand-maintain the workflow.
 

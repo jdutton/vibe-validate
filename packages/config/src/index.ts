@@ -77,6 +77,7 @@ export {
   CONFIG_FILE_NAME,
   loadConfigFromFile,
   findAndLoadConfig,
+  parseConfigContent,
 } from './loader.js';
 
 // Git configuration constants and helpers

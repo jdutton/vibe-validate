@@ -44,6 +44,8 @@ vi.mock('../../src/utils/config-loader.js', async () => {
     loadConfig: vi.fn(),
     loadConfigWithDir: vi.fn(),
     loadConfigWithErrors: vi.fn(),
+    // The mocked loader reads no file; the loaded config is what the file holds
+    configFileHolds: vi.fn(() => true),
   };
 });
 
@@ -884,7 +886,7 @@ describe('validate command', () => {
 
       await parseCommandRequiringExit(env, ['validate', '--check'], 1);
 
-      expectConsoleLog('Last validation at level full failed for this code');
+      expectConsoleLog('The newest run bearing on level full failed for this code');
       expect(core.runValidation).not.toHaveBeenCalled();
     });
 
@@ -1450,6 +1452,35 @@ describe('validate command', () => {
       // Verify validation ran successfully
       expect(core.runValidation).toHaveBeenCalled();
 
+      warnSpy.mockRestore();
+    });
+
+    it('records a failure even when the worktree changed during validation', async () => {
+      // A recorded failure can only cause a re-run, so it is always safe to record;
+      // dropping it would leave an older pass answering
+      const treeHashBefore = 'abc123def456' as TreeHash;
+      vi.mocked(git.getGitTreeHash).mockResolvedValue({ hash: treeHashBefore });
+      vi.mocked(history.checkWorktreeStability).mockResolvedValue({
+        stable: false,
+        treeHashBefore,
+        treeHashAfter: 'def456abc123',
+      });
+      vi.mocked(core.runValidation).mockResolvedValue({
+        passed: false,
+        timestamp: '2025-10-23T00:00:00.000Z',
+        treeHash: treeHashBefore,
+        phases: [],
+      });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      validateCommand(env.program);
+      await parseCommandExpectingExit(env, ['validate'], 1);
+
+      expect(history.recordValidationHistory).toHaveBeenCalledWith(
+        { hash: treeHashBefore },
+        expect.objectContaining({ passed: false })
+      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('failure recorded'));
       warnSpy.mockRestore();
     });
 

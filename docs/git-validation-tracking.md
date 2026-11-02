@@ -365,17 +365,20 @@ result = run_validation()
 # Check if code changed during validation
 tree_hash_after = calculate_tree_hash()
 
-if tree_hash_before != tree_hash_after:
+# Submodule hashes are compared too: an edit inside a submodule leaves
+# the parent tree hash unchanged
+if result.passed and tree_hash_before != tree_hash_after:
     print("⚠️  Worktree changed during validation")
-    print("   Results valid but not cached (unstable state)")
-    return result  # Don't record to git notes
+    print("   Results valid but history not recorded (unstable state)")
+    return result  # Don't record a pass for a tree it never saw
 
-# Safe to cache
+# A stable pass, or ANY failure: record under the tree hashed before the run.
+# A failure can only cause a re-run; dropping it would let an older pass answer.
 record_git_note(tree_hash_before, result)
 ```
 
 **Why this matters**:
-- Prevents caching results that don't match code state
+- Prevents caching passes that don't match code state
 - User can continue working (validation doesn't block)
 - Clear feedback when results aren't cached
 

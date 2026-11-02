@@ -197,16 +197,34 @@ describe('checkValidationStatus', () => {
       expectConsoleOutput(consoleLogSpy, ['Validation passed for this code', 'Level: full (covers commit)']);
     });
 
-    it('exits 1 when the newest run failed at another level, and points at that level', async () => {
+    it('exits 1 when the newest run failed at another level, and points at the requested level', async () => {
       mockTreeHash();
       serveRuns([createValidationRunFromNote({ passed: false, level: 'full' })]);
 
       await expect(checkValidationStatus(TWO_LEVELS, 'commit')).rejects.toThrow(expectProcessExit(1));
 
       const logged = loggedText();
-      for (const expected of ['Last validation at level full failed for this code', 'must run again', 'state --level full', 'validate --level commit']) {
+      for (const expected of ['The newest run bearing on level commit failed for this code', 'It ran at level full', 'state --level commit', 'validate --level commit']) {
         expect(logged).toContain(expected);
       }
+    });
+
+    it('names the requested level when a newer pass at an earlier level does not decide', async () => {
+      // commit red, then commit green: the green does not cover full, so the red decides full.
+      // `state --level commit` would show the green; `state --level full` shows the red.
+      mockTreeHash();
+      serveRuns([
+        createValidationRunFromNote({ passed: false, level: 'commit', timestamp: '2025-10-21T09:00:00Z' }),
+        createValidationRunFromNote({ passed: true, level: 'commit', timestamp: '2025-10-21T10:00:00Z' }),
+      ]);
+
+      await expect(checkValidationStatus(TWO_LEVELS, 'full')).rejects.toThrow(expectProcessExit(1));
+
+      const logged = loggedText();
+      expect(logged).toContain('The newest run bearing on level full failed for this code');
+      expect(logged).toContain('state --level full');
+      expect(logged).not.toContain('state --level commit');
+      expect(logged).not.toContain('Last validation');
     });
 
     it('exits 1 when a newer commit-level failure follows a full pass', async () => {
@@ -250,7 +268,7 @@ describe('checkValidationStatus', () => {
       await expect(checkValidationStatus(mockConfig, 'full')).rejects.toThrow(expectProcessExit(1));
 
       expectConsoleOutput(consoleLogSpy, [
-        'Last validation at level full failed for this code',
+        'The newest run bearing on level full failed for this code',
         'Tree hash: abc123def456',
         'Recorded: 2025-10-21T10:00:00Z on branch main'
       ]);

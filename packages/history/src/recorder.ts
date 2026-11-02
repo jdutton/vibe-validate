@@ -15,6 +15,7 @@ import {
 } from '@vibe-validate/git';
 import { stringify as stringifyYaml } from 'yaml';
 
+import { submoduleHashesMatch } from './lookup.js';
 import { VALIDATION_NOTES_REF } from './schemas.js';
 import { truncateValidationOutput } from './truncate.js';
 import type {
@@ -153,20 +154,22 @@ export async function recordValidationHistory(
 }
 
 /**
- * Check worktree stability (compare tree hash before and after)
+ * Check worktree stability (compare tree and submodule hashes before and after)
  *
- * @param treeHashBefore - Tree hash before validation
+ * A file edited inside a submodule leaves the parent tree hash as it was, so the
+ * submodule hashes are compared too.
+ *
+ * @param before - Tree hash result before validation
  * @returns Stability check result
  */
 export async function checkWorktreeStability(
-  treeHashBefore: string
+  before: TreeHashResult
 ): Promise<StabilityCheck> {
-  const treeHashResult = await getGitTreeHash();
-  const treeHashAfter = treeHashResult.hash;
+  const after = await getGitTreeHash();
 
   return {
-    stable: treeHashBefore === treeHashAfter,
-    treeHashBefore,
-    treeHashAfter,
+    stable: before.hash === after.hash && submoduleHashesMatch(before.submoduleHashes, after.submoduleHashes),
+    treeHashBefore: before.hash,
+    treeHashAfter: after.hash,
   };
 }

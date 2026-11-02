@@ -45,7 +45,8 @@ export const ValidationStepSchema = z.object({
    * The lowest validation level that runs this step. Required on every step once
    * `validation.levels` is declared, and rejected when it is not.
    */
-  level: z.string().min(1, 'Step level cannot be empty').optional(),
+  level: z.string().min(1, 'Step level cannot be empty').optional()
+    .describe('The lowest validation level that runs this step: one of validation.levels. Required on every step once validation.levels is declared, and rejected when it is not.'),
 
   /**
    * Removed: a strict config would otherwise report only "Unrecognized key".
@@ -97,9 +98,13 @@ export const ValidationConfigSchema = z.object({
    * Each level contains every level before it. `vv pre-commit` runs the first
    * level (or `hooks.preCommit.level`); `vv validate` runs the last.
    */
-  levels: z.array(z.string().min(1, 'Level name cannot be empty'))
+  levels: z.array(z.string().regex(
+    /^[A-Za-z0-9][\w-]*$/,
+    'Level name must start with a letter or digit and hold only letters, digits, "_" and "-"'
+  ))
     .min(1, 'validation.levels must list at least one level')
-    .optional(),
+    .optional()
+    .describe('Ordered validation levels, lowest first (e.g. [commit, full]); each contains every level before it. Once declared, every step needs a level.'),
 
   /** Validation phases to execute */
   phases: z.array(ValidationPhaseSchema).min(1, 'At least one phase required'),

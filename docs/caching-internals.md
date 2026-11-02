@@ -101,10 +101,27 @@ level L, the runs whose submodule state matches are read **newest first**:
    hit. A failure at ANY level is a miss: the steps run again.
 
 A failure decides even at another level, because a newer red means the tree
-failed since the last green, and the red step may be one L also runs. So a
-`--force` (or `VV_FORCE_EXECUTION=1`) re-check that goes red **overturns** the
-earlier green for every later request on that tree until a newer green is
-recorded.
+failed since the last green, and the red step may be one L also runs. A
+failure is always recorded, so a `--force` (or `VV_FORCE_EXECUTION=1`) re-check
+that goes red **overturns** the earlier green for every later request on that
+tree until a newer green is recorded.
+
+### What gets recorded
+
+The tree is hashed once, before the run (after any wait for the lock).
+
+- A **pass** is recorded only if the worktree, submodules included, did not
+  change while the steps ran. A pass from an unstable run is reported but not
+  recorded, so it cannot vouch for a tree it never saw.
+- A **failure** is always recorded, under the tree hashed before the run — even
+  when the worktree changed meanwhile, and including a dependency lock check
+  failure. A recorded failure can only cause a re-run; dropping it would leave
+  an older pass answering.
+- If `vibe-validate.config.yaml` changes between being loaded and the tree being
+  hashed, the command exits (with its startup exit code: `1`, or `2` for
+  `--check`) and asks you to run again.
+- On a miss, only the requested level's steps run (that level and the earlier
+  ones).
 
 `--retry-failed` builds only on the deciding run, and only when it failed at
 exactly L: it re-runs that run's failed steps and keeps its passed ones.
@@ -114,7 +131,7 @@ it passed may fail now.
 
 `vv validate --check [--level L]` reports the same deciding run without
 executing anything: exit `0` when it passed, `1` when it failed (at L or another
-level; the hint names `vv state --level <its level>`), and `2` when nothing
+level; the hint names `vv state --level L`, the requested level, which shows that deciding run), and `2` when nothing
 recorded bears on L, the history cannot answer, the directory is not a git
 repository, `--level` names an unknown level, or the configuration is missing
 or invalid.
@@ -197,6 +214,11 @@ cache_key = hash(tree_hash + "npm test")
 ```
 
 Stored in: `refs/notes/vibe-validate/run/<tree-hash>/<command-hash>`
+
+The tree is hashed once, before the command runs. Only a pass is stored, and
+only if the tree is unchanged after the command. A failure is never stored; it
+deletes the stored pass's notes ref for that command, so a `vv run --force`
+that goes red overturns the old green.
 
 ## Leveraging Caching for Speed
 
@@ -348,7 +370,7 @@ echo $?  # 0 = cached pass, 1 = deciding run failed, 2 = nothing recorded for th
 git status --short
 git diff
 
-# Same tree, still a miss? The newest run failed (never a hit), or only an
+# Same tree, still a miss? The deciding run failed (never a hit), or only an
 # earlier level passed (a commit-level pass never answers the last level)
 vv history list
 ```

@@ -82,7 +82,7 @@ describe('History Integration', () => {
     };
 
     // 3. Check stability
-    const stability = await checkWorktreeStability(treeHashBefore.hash);
+    const stability = await checkWorktreeStability(treeHashBefore);
     expect(stability.stable).toBe(true);
 
     // 4. Record if stable
@@ -119,7 +119,7 @@ describe('History Integration', () => {
     // };
 
     // 3. Check stability (should detect change)
-    const stability = await checkWorktreeStability(before.hash);
+    const stability = await checkWorktreeStability(before);
     expect(stability.stable).toBe(false);
 
     // 4. Should NOT record

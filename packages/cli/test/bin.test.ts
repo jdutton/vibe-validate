@@ -246,8 +246,8 @@ describe('bin.ts - CLI entry point', () => {
         '"When to use" guidance': ['When to use:', 'Run before every commit to ensure code is validated and in sync', 'Debug why validation is cached/not cached', 'Diagnose setup issues or verify environment'],
         'FILES section': ['## Files', 'vibe-validate.config.yaml', 'refs/notes/vibe-validate/leveled-runs', '.github/workflows/validate.yml', '.husky/pre-commit'],
         'COMMON WORKFLOWS section': ['## Common Workflows', '### First-time setup', 'vibe-validate init --template typescript-nodejs --setup-workflow', '### Before every commit (recommended)', 'vibe-validate pre-commit', '### After PR merge', 'vibe-validate cleanup', '### Check validation state', 'vibe-validate state --verbose', '### Force re-validation', 'vibe-validate validate --force'],
-        'EXIT CODES section': ['## Exit Codes', '| `0` | Success |', '| `1` | Failure (validation failed, sync check failed, invalid config) |', '| `2` | Error (git command failed, file system error) |'],
-        'CACHING section': ['## Caching', '**Cache key**: Git tree hash of your tracked + untracked files', '**Cache hit**: Validation skipped (sub-second)', '**Cache miss**: Full validation runs (~60-90s)', '**Invalidation**: Any change to a file the key covers', '**Not covered**: ignored paths'],
+        'EXIT CODES section': ['## Exit Codes', '| `0` | Success |', '| `1` | Failure (validation failed, sync check failed, invalid config) |', '| `2` | Command-specific: `validate --check`'],
+        'CACHING section': ['## Caching', '**Cache key**: Git tree hash of your tracked + untracked files', '**Cache hit**: Validation skipped (sub-second)', '**Cache miss**: The steps of the requested level run (~60-90s)', '**Invalidation**: Any change to a file the key covers', '**Not covered**: ignored paths'],
         'repository link': ['For more details: https://github.com/jdutton/vibe-validate'],
       };
 

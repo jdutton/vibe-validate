@@ -38,15 +38,15 @@ export function detectFlakiness(
     return null;
   }
 
-  // Failed runs at ANY level, newest first. Runs at different levels execute
-  // different step sets, so the comparison is step by step: only a step both
-  // runs executed can be flaky (a full red on a commit-level step followed by a
-  // commit green on it is; a full red on a full-only step says nothing here).
-  const failedRuns = note.runs
-    .filter((run) => !run.passed)
+  // Runs at ANY level, newest first. Runs at different levels execute different
+  // step sets, so the comparison is step by step: a step is flaky when the newest
+  // earlier run that executed it saw it fail on its own (a full red on a
+  // commit-level step followed by a commit green on it is; a full red on a
+  // full-only step says nothing here; a flip already passed once is not again).
+  const runs = [...note.runs]
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  const flakySteps = findFlakySteps(failedRuns, currentResult);
+  const flakySteps = findFlakySteps(runs, currentResult);
 
   // No step that failed before passes now - not flakiness
   if (flakySteps.length === 0) {
@@ -70,21 +70,20 @@ function stepsByName(result: ValidationResult): Map<string, StepResult> {
 
 /**
  * Steps that pass in the current run and failed on their own (not stopped by
- * fail-fast) in a previous run, each paired with the newest run it failed in
+ * fail-fast) the last time an earlier run executed them, each paired with that run
  *
  * A step the current run did not execute is never compared: only steps
  * present in both runs can flip.
  */
-function findFlakySteps(failedRunsNewestFirst: ValidationRun[], currentResult: ValidationResult): FlakyStep[] {
-  const failedRunSteps = failedRunsNewestFirst.map((run) => ({ run, steps: stepsByName(run.result) }));
+function findFlakySteps(runsNewestFirst: ValidationRun[], currentResult: ValidationResult): FlakyStep[] {
+  const runSteps = runsNewestFirst.map((run) => ({ run, steps: stepsByName(run.result) }));
   const flakySteps: FlakyStep[] = [];
 
   for (const [name, step] of stepsByName(currentResult)) {
     if (!step.passed) continue;
-    const failedIn = failedRunSteps.find(({ steps }) => {
-      const previousStep = steps.get(name);
-      return previousStep !== undefined && isOwnStepFailure(previousStep);
-    });
+    const lastRan = runSteps.find(({ steps }) => steps.has(name));
+    const previousStep = lastRan?.steps.get(name);
+    const failedIn = previousStep && isOwnStepFailure(previousStep) ? lastRan : undefined;
     if (failedIn) {
       flakySteps.push({ name, failedTimestamp: failedIn.run.timestamp, passedTimestamp: currentResult.timestamp });
     }

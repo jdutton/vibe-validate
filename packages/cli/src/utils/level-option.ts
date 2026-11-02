@@ -42,8 +42,12 @@ export async function resolveLevelOrExit(
   const level = requested ?? fallback;
   const unknown = checkLevel(config, level);
   if (unknown) {
-    console.error(chalk.red(`❌ ${unknown.message}`));
-    return exitAtStartup(exit, unknown.message, { levels: getLevels(config) });
+    // UnknownLevelError says "Declared levels"; with none declared, say what the one level is
+    const message = config.validation.levels?.length
+      ? unknown.message
+      : `Unknown level "${level}". No validation.levels declared; the only level is ${getLevels(config).join(', ')}`;
+    console.error(chalk.red(`❌ ${message}`));
+    return exitAtStartup(exit, message, { levels: getLevels(config) });
   }
   return level;
 }

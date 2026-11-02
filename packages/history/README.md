@@ -27,25 +27,44 @@ npm install @vibe-validate/history
 import { recordValidationHistory, checkWorktreeStability } from '@vibe-validate/history';
 import { getGitTreeHash } from '@vibe-validate/git';
 
-// Get tree hash before validation
+// Get tree hash (a TreeHashResult, with submodule hashes) before validation
 const treeHashBefore = await getGitTreeHash();
 
-// Run validation
+// Run validation (the result must carry its level)
 const result = await runValidation(config);
 
-// Check stability (did tree change during validation?)
+// Check stability (did the tree or a submodule change during validation?)
 const stability = await checkWorktreeStability(treeHashBefore);
 
-if (!stability.stable) {
-  console.warn('⚠️  Worktree changed during validation - not caching');
-} else {
-  // Record to git notes
+// A pass is recorded only from a stable run; a failure is always recorded,
+// under the tree hashed before the run, so an older pass stops answering
+if (stability.stable || !result.passed) {
   const recordResult = await recordValidationHistory(treeHashBefore, result);
 
   if (recordResult.recorded) {
     console.log('📝 History recorded');
   }
+} else {
+  console.warn('⚠️  Worktree changed during validation - pass not recorded');
 }
+```
+
+### Cache Lookup
+
+```typescript
+import { readHistoryNote, findCachedValidation, findDecidingRun, findRetryRun } from '@vibe-validate/history';
+import { getGitTreeHash } from '@vibe-validate/git';
+
+const treeHashResult = await getGitTreeHash();
+const note = await readHistoryNote(treeHashResult.hash);
+const request = { level: 'commit', levels: ['commit', 'full'] }; // a LevelRequest
+
+// The run that decides the level: newest first, skipping passes whose level does not cover it
+const deciding = findDecidingRun(note, treeHashResult, request);
+// The deciding run when it passed (a cache hit), else null; a failure is never replayed
+const cached = findCachedValidation(note, treeHashResult, request);
+// The deciding run when it failed at exactly this level (what --retry-failed builds on), else null
+const retry = findRetryRun(note, treeHashResult, request);
 ```
 
 ### Read Validation History
@@ -135,12 +154,18 @@ commit-level pass for a full one.
 - **StabilityCheck**: Worktree stability check result
 - **HealthCheckResult**: History health check result
 - **PruneResult**: Result of pruning operation
+- **LevelRequest**: `{ level, levels }` — the level a lookup answers, with the config's levels in order
 
 ### Functions
 
 #### Recording
-- `recordValidationHistory(treeHash, result, config?)`: Record validation to git notes
-- `checkWorktreeStability(treeHashBefore)`: Check if tree changed during validation
+- `recordValidationHistory(treeHashResult, result, config?)`: Record a validation run (the result must carry its level) to git notes
+- `checkWorktreeStability(before)`: Re-hash the worktree and compare it, submodule hashes included, with `before` (the `TreeHashResult` taken before validation)
+
+#### Cache lookup
+- `findDecidingRun(note, treeHashResult, request)`: The run deciding `request.level` — runs with matching submodule state, newest first, skipping passes whose level does not cover the request; the first remaining run (pass or failure), or null
+- `findCachedValidation(note, treeHashResult, request)`: The deciding run when it passed (a cache hit), else null
+- `findRetryRun(note, treeHashResult, request)`: The deciding run when it failed at exactly `request.level`, else null
 
 #### Reading
 - `readHistoryNote(treeHash)`: Read note for specific tree hash
@@ -193,25 +218,25 @@ runs:
 
 ### Worktree Stability
 
-Critical safety feature: Verify tree unchanged during validation.
+Critical safety feature: a pass is recorded only if the tree, submodules included, did not change during validation. A failure is always recorded (it can only cause a re-run).
 
 ```typescript
-// Before validation
+// Before validation (TreeHashResult: hash + submodule hashes)
 const treeHashBefore = await getGitTreeHash();
 
 // Run validation (potentially long-running)
 const result = await runValidation();
 
-// After validation - check stability
+// After validation - check stability (compares submodule hashes too)
 const stability = await checkWorktreeStability(treeHashBefore);
 
-if (!stability.stable) {
-  // Tree changed during validation - don't cache
+if (result.passed && !stability.stable) {
+  // Tree changed during a passing run - the pass vouches for nothing
   console.warn('⚠️  Worktree changed during validation');
   return result; // Skip recording
 }
 
-// Safe to cache
+// Record: a stable pass, or any failure (under the tree before the run)
 await recordValidationHistory(treeHashBefore, result);
 ```
 
@@ -284,7 +309,7 @@ git checkout <tree-hash> -- src/
 
 // But history remembers:
 const notes = await readHistoryNote(currentTreeHash);
-console.log(`Last validation: ${notes.runs[0].timestamp}`);
+console.log(`Last validation: ${notes.runs.at(-1).timestamp}`); // runs are oldest first
 console.log(`Tree hash: ${notes.treeHash}`);
 
 // Recover via git:

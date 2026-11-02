@@ -95,16 +95,16 @@ export async function checkValidationStatus(config: VibeValidateConfig, level: s
     if (yaml) {
       await outputYamlResult(decidingRun.result);
     } else {
-      console.log(chalk.red(`❌ Last validation at level ${decidingRun.level} failed for this code`));
+      console.log(chalk.red(`❌ The newest run bearing on level ${level} failed for this code`));
       if (decidingRun.level !== level) {
-        console.log(chalk.gray(`   A failure at any level is newer than every pass covering level ${level}, so it must run again`));
+        console.log(chalk.gray(`   It ran at level ${decidingRun.level}; a failure at any level overturns every older pass covering level ${level}`));
       }
       console.log(chalk.gray(`   Tree hash: ${treeHashResult.hash.substring(0, 12)}...`));
       console.log(chalk.gray(`   Recorded: ${decidingRun.timestamp} on branch ${decidingRun.branch}`));
 
       displayFailedPhaseInfo(decidingRun.result);
 
-      console.log(chalk.blue('\n📋 View full error details:'), chalk.white(stateCommandFor(decidingRun.level)));
+      console.log(chalk.blue('\n📋 View full error details:'), chalk.white(stateCommandFor(level)));
       console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white(validateCommandFor(config, level)));
     }
     process.exit(1);

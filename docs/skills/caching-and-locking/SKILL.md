@@ -32,11 +32,11 @@ Validation results are stored as **git notes** keyed by that tree hash: one note
 
 **The level is part of the key.** With `validation.levels` (e.g. `[commit, full]`), a pass answers a request at its own level or an earlier one: a `vv validate` pass lets the commit-level hook exit instantly; a hook pass never answers `vv validate`.
 
-**The deciding run.** For a request at level L, the runs recorded for this tree (with matching submodule state) are read newest first. A pass whose level does not cover L is skipped; the first remaining run decides. A pass at L or a later level is a cache hit. A failure at any level is a miss — the steps run again. So a `--force` (or `VV_FORCE_EXECUTION=1`) re-check that goes red overturns the earlier green for every later request until a newer green is recorded. `--retry-failed` builds on the deciding run only when it failed at exactly L; otherwise every step at L runs.
+**The deciding run.** For a request at level L, the runs recorded for this tree (with matching submodule state) are read newest first. A pass whose level does not cover L is skipped; the first remaining run decides. A pass at L or a later level is a cache hit. A failure at any level is a miss — the steps run again. A failure is always recorded (under the tree hashed before the run, even when the worktree changed while it ran), so a `--force` (or `VV_FORCE_EXECUTION=1`) re-check that goes red overturns the earlier green for every later request until a newer green is recorded. A pass is recorded only when the worktree and submodules did not change while it ran. `--retry-failed` builds on the deciding run only when it failed at exactly L; otherwise every step at L runs.
 
 ### Invariants
 
-- Same code → same hash → instant cache hit (sub-second return of the prior result).
+- Same code → same hash → instant cache hit (sub-second return of the prior result) — only when the deciding run is a recorded pass covering the requested level.
 - Changed code → new hash → fresh validation run, stored under the new hash.
 - Switching branches to a tree you've validated before → cache hit, even if that was days ago.
 - Reverting to a prior state → cache hit, again, because tree hashes are content-addressed.
@@ -82,7 +82,7 @@ Use `vv validate --force` as a one-shot diagnostic to confirm the cache is the i
 ## Inspecting the cache
 
 ```bash
-vv state              # Newest run at the validate level (--level <name> for another)
+vv state              # The run deciding the validate level, as --check reads it (--level <name> for another)
 vv history list       # Recent validation runs
 vv validate --check   # Does not execute. 0: deciding run passed; 1: it failed (any level);
                       # 2: nothing recorded bears on the level, history unreadable,

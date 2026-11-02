@@ -116,8 +116,9 @@ function findNewestRun(
  * @param runHashes - Submodule hashes from cached run
  * @param currentHashes - Current worktree submodule hashes
  * @returns true if hashes match
+ * @internal
  */
-function submoduleHashesMatch(
+export function submoduleHashesMatch(
   runHashes: Record<string, string> | undefined,
   currentHashes: Record<string, string> | undefined
 ): boolean {

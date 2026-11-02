@@ -39,8 +39,23 @@ export async function loadConfigFromFile(
     );
   }
 
-   
-  const content = readFileSync(absolutePath, 'utf-8');
+  return await parseConfigContent(readFileSync(absolutePath, 'utf-8'), dirname(absolutePath));
+}
+
+/**
+ * Parse and validate configuration file content
+ *
+ * For a caller that must know which text the configuration came from.
+ *
+ * @param content - The YAML text of a config file
+ * @param basePath - Directory of the config file
+ * @returns Validated configuration
+ * @throws Error if the content is not a valid configuration
+ */
+export async function parseConfigContent(
+  content: string,
+  basePath: string
+): Promise<VibeValidateConfig> {
   const raw = parseYaml(content);
 
   // Remove $schema property if present (used for IDE support only)
@@ -48,7 +63,7 @@ export async function loadConfigFromFile(
     delete (raw as Record<string, unknown>)['$schema'];
   }
 
-  return await resolveConfig(raw, dirname(absolutePath));
+  return await resolveConfig(raw, basePath);
 }
 
 /**

@@ -11,9 +11,10 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "pattern": "^[A-Za-z0-9][\\w-]*$"
               },
               "minItems": 1,
+              "description": "Ordered validation levels, lowest first (e.g. [commit, full]); each contains every level before it. Once declared, every step needs a level.",
               "uniqueItems": true
             },
             "phases": {
@@ -63,7 +64,8 @@
                         },
                         "level": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "description": "The lowest validation level that runs this step: one of validation.levels. Required on every step once validation.levels is declared, and rejected when it is not."
                         },
                         "runScope": {
                           "not": {},

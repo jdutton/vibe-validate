@@ -400,16 +400,19 @@ describe('state command', () => {
       expectConsoleLogNotContains('E2E Tests');
     });
 
-    it('says when nothing is recorded at the level and names the levels that have runs', async () => {
+    it.each([
+      [['--level', 'full', '--verbose'], ['No validation at level full']],
+      [['--all'], []],
+    ])('state %j says when nothing is recorded at the level and names the levels that have runs', async (args, extra) => {
       setupTwoLevelConfig();
       vi.mocked(readHistoryNote).mockResolvedValue(createMockHistoryNote(mockTreeHash, [
         leveledRun('commit', true, '2025-10-16T12:00:00.000Z'),
       ]));
 
       stateCommand(env.program);
-      await executeCommandAndGetExitCode(env.program, ['state', '--level', 'full', '--verbose']);
+      await executeCommandAndGetExitCode(env.program, ['state', ...args]);
 
-      expectConsoleLogContains('exists: false', 'level: full', 'levelsWithRuns:', '- commit', 'No validation at level full');
+      expectConsoleLogContains('exists: false', 'level: full', 'levelsWithRuns:', '- commit', ...extra);
       expectConsoleLogNotContains('passed: true');
     });
 
@@ -470,6 +473,16 @@ describe('state command', () => {
       expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('onfiguration'));
       expect(configLoader.loadConfigWithDir).not.toHaveBeenCalled();
       expect(configLoader.loadConfigWithErrors).not.toHaveBeenCalled();
+    });
+
+    it('refuses --level with --runs: the run cache has no levels', async () => {
+      setupTwoLevelConfig();
+
+      stateCommand(env.program);
+      const exitCode = await executeCommandAndGetExitCode(env.program, ['state', '--runs', '--level', 'nightly']);
+
+      expect(exitCode).toBe(1);
+      expect(getAllRunCacheForTree).not.toHaveBeenCalled();
     });
 
     it('rejects a level the config does not declare, with the same error as validate --level', async () => {

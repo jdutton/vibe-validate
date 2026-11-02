@@ -147,6 +147,22 @@ describe('withValidationLock', () => {
       expect(capturedConfig).toBe(loaded.config);
     });
 
+    it('refuses to run a config the file no longer holds', async () => {
+      // The tree is hashed after loading (after the lock wait, in pre-commit after the
+      // sync and secret checks); a run keyed on that tree must run that tree's config
+      const loaded = await loadConfigOrExit(EXIT_1);
+      writeFileSync(join(fixtureDir, 'vibe-validate.config.yaml'), `${configContent}\n# edited\n`);
+      const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => {
+        throw new Error('process.exit(1)');
+      }) as never);
+      const callback = vi.fn();
+
+      await expect(withValidationLock(loaded, { lockEnabled: false }, callback)).rejects.toThrow('process.exit(1)');
+
+      expect(callback).not.toHaveBeenCalled();
+      mockExit.mockRestore();
+    });
+
     it('should return callback result', async () => {
       const result = await withValidationLock(
         await loadConfigOrExit(EXIT_1),

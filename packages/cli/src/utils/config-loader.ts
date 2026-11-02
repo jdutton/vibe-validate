@@ -4,10 +4,10 @@
  * Loads and validates vibe-validate configuration from project root.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 
-import { findAndLoadConfig } from '@vibe-validate/config';
+import { findAndLoadConfig, parseConfigContent } from '@vibe-validate/config';
 import type { VibeValidateConfig } from '@vibe-validate/config';
 import chalk from 'chalk';
 
@@ -81,39 +81,57 @@ export async function loadConfig(cwd?: string): Promise<VibeValidateConfig | nul
   }
 }
 
+/** The config file a configuration was parsed from, and the exact text parsed */
+export interface ConfigSource {
+  path: string;
+  text: string;
+}
+
 /**
  * Load configuration and return both config and the directory where it was found
  *
- * Useful for features that need to know the project root (like locking).
+ * Useful for features that need to know the project root (like locking). The
+ * configuration is parsed from `source.text`, read once, so a caller can tell
+ * whether the file still holds what it runs (`configFileHolds`).
  *
  * @param cwd Current working directory (defaults to process.cwd())
- * @returns Object with config and configDir, or null if not found
+ * @returns Object with config, configDir and source, or null if not found or invalid
  */
 export async function loadConfigWithDir(cwd?: string): Promise<{
   config: VibeValidateConfig;
   configDir: string;
+  source: ConfigSource;
 } | null> {
   const searchDir = cwd ?? process.cwd();
 
-  try {
-    // Walk up directory tree to find config
-    const configDir = findConfigUp(searchDir);
-    if (!configDir) {
-      return null;
-    }
-
-    // Use the config package's finder to load from the found directory
-    const config = await findAndLoadConfig(configDir);
-    if (!config) {
-      return null;
-    }
-
-    return { config, configDir };
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error(chalk.red(`❌ Failed to load configuration: ${error.message}`));
-    }
+  // Walk up directory tree to find config
+  const configDir = findConfigUp(searchDir);
+  if (!configDir) {
     return null;
+  }
+  const path = join(configDir, CONFIG_FILENAME);
+
+  try {
+    const text = readFileSync(path, 'utf-8');
+    const config = await parseConfigContent(text, configDir);
+    return { config, configDir, source: { path, text } };
+  } catch {
+    // Invalid or unreadable: loadConfigWithErrors reports why
+    return null;
+  }
+}
+
+/**
+ * Whether the config file still holds the text a configuration was parsed from
+ *
+ * @param source - Where the configuration came from (from `loadConfigWithDir`)
+ * @returns false if the file changed or cannot be read
+ */
+export function configFileHolds(source: ConfigSource): boolean {
+  try {
+    return readFileSync(source.path, 'utf-8') === source.text;
+  } catch {
+    return false;
   }
 }
 

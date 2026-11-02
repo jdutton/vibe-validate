@@ -274,7 +274,7 @@ describe('checkWorktreeStability', () => {
 
     vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResult);
 
-    const stability = await checkWorktreeStability(treeHash);
+    const stability = await checkWorktreeStability(treeHashResult);
 
     expect(stability.stable).toBe(true);
     expect(stability.treeHashBefore).toBe(treeHash);
@@ -291,10 +291,21 @@ describe('checkWorktreeStability', () => {
 
     vi.mocked(getGitTreeHash).mockResolvedValue(treeHashResultAfter);
 
-    const stability = await checkWorktreeStability(treeHashBefore);
+    const stability = await checkWorktreeStability({ hash: treeHashBefore });
 
     expect(stability.stable).toBe(false);
     expect(stability.treeHashBefore).toBe(treeHashBefore);
     expect(stability.treeHashAfter).toBe(treeHashAfter);
+  });
+
+  it('should detect a submodule that changed under an unchanged parent tree', async () => {
+    // Editing a file inside a submodule leaves the parent tree hash as it was
+    const { getGitTreeHash } = await import('@vibe-validate/git');
+    const hash = 'abc123def456' as TreeHash;
+    vi.mocked(getGitTreeHash).mockResolvedValue({ hash, submoduleHashes: { 'libs/a': 'bbb' as TreeHash } });
+
+    const stability = await checkWorktreeStability({ hash, submoduleHashes: { 'libs/a': 'aaa' as TreeHash } });
+
+    expect(stability.stable).toBe(false);
   });
 });

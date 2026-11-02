@@ -1221,6 +1221,19 @@ describe('validation levels', () => {
     ]), /Duplicate level "commit"/);
   });
 
+  it.each([' ', 'pre push', '-v', 'a/b'])('rejects the level name %j, which a printed --level command would break on', (name) => {
+    expectInvalidConfig(levelConfig([name], [
+      { name: 'Lint', command: 'npm run lint', level: name },
+    ]), /Level name .* letters, digits/);
+  });
+
+  it('accepts level names of letters, digits, "_" and "-"', () => {
+    expectValidConfig(levelConfig(['pre-commit', 'ci_2'], [
+      { name: 'Lint', command: 'npm run lint', level: 'pre-commit' },
+      { name: 'Test', command: 'npm test', level: 'ci_2' },
+    ]));
+  });
+
   it('rejects an empty levels list', () => {
     expectInvalidConfig(levelConfig([], [
       { name: 'Lint', command: 'npm run lint' },

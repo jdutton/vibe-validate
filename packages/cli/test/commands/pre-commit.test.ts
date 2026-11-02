@@ -71,6 +71,8 @@ vi.mock('../../src/utils/config-loader.js', async () => {
     loadConfig: vi.fn(),
     loadConfigWithDir: vi.fn(),
     loadConfigWithErrors: vi.fn(),
+    // The mocked loader reads no file; the loaded config is what the file holds
+    configFileHolds: vi.fn(() => true),
   };
 });
 

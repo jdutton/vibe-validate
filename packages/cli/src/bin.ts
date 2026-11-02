@@ -213,8 +213,8 @@ function showComprehensiveHelp(program: Command): void {
       ],
       exitCodes: {
         0: 'Validation passed (or cached pass). With --check: a recorded pass covers the level',
-        1: 'Validation failed, or the configuration is invalid (an unknown --level included). With --check: the last run bearing on the level failed',
-        2: 'With --check only: nothing recorded that bears on the level, or it cannot answer (not in a git repository, unknown --level)'
+        1: 'Validation failed, or the configuration is invalid (an unknown --level included), or missing. With --check, those configuration and level errors exit 2 instead, and 1 means the run deciding the level failed',
+        2: 'With --check only: nothing recorded bears on the level, or it cannot answer (a missing or invalid configuration, an unknown --level, not in a git repository). Plain validate never exits 2'
       },
       creates: ['Git notes under refs/notes/vibe-validate/leveled-runs'],
       examples: [
@@ -254,11 +254,11 @@ function showComprehensiveHelp(program: Command): void {
         '3. Checks if the branch is behind its remote tracking branch (warns by default)',
         '4. Checks if the branch is behind the base branch, e.g. origin/main (warns by default)',
         '5. Runs secret scanning (if enabled in config)',
-        '6. Runs validate (with caching); a cache miss first runs the dependency lock check (a frozen-lockfile install). VV_DEBUG=1 prints how long each step took'
+        '6. Runs validate at hooks.preCommit.level (else the first of validation.levels; --level overrides), with caching; a cache miss first runs the dependency lock check (a frozen-lockfile install). VV_DEBUG=1 prints how long each step took'
       ],
       exitCodes: {
         0: 'Validation passed (and no sync guard set to `block` was violated)',
-        1: 'Validation failed, secrets detected, files partially staged, or a `block` sync guard was violated'
+        1: 'Validation failed, secrets detected, files partially staged, a `block` sync guard was violated, the configuration is missing or invalid, or --level names an undeclared level'
       },
       whenToUse: 'Run before every commit to ensure code is validated and in sync',
       errorGuidance: {
@@ -554,12 +554,14 @@ function showComprehensiveHelp(program: Command): void {
   console.log('|------|---------|');
   console.log('| `0` | Success |');
   console.log('| `1` | Failure (validation failed, sync check failed, invalid config) |');
-  console.log('| `2` | Error (git command failed, file system error) |\n');
+  console.log('| `2` | Command-specific: `validate --check` (nothing recorded bears on the level, or it cannot answer: missing/invalid config, unknown --level, not a git repo), `sync-check` (an error), `watch-pr` (timeout). Plain `validate` never exits 2 |');
+  console.log('\nA missing configuration or an unknown `--level` also exits 1, except under `validate --check` (2).\n');
 
   console.log('## Caching\n');
-  console.log('- **Cache key**: Git tree hash of your tracked + untracked files');
-  console.log('- **Cache hit**: Validation skipped (sub-second)');
-  console.log('- **Cache miss**: Full validation runs (~60-90s)');
+  console.log('- **Cache key**: Git tree hash of your tracked + untracked files, plus submodule hashes, plus the level');
+  console.log('- **Cache hit**: Validation skipped (sub-second) when the run deciding the level is a recorded PASS at that level or a later one. A failure is never replayed');
+  console.log('- **Deciding run**: the tree\'s runs read newest first, skipping passes whose level does not cover the requested one; the first remaining run decides');
+  console.log('- **Cache miss**: The steps of the requested level run (~60-90s); also when the deciding run failed, or only an earlier-level pass is recorded');
   console.log('- **Invalidation**: Any change to a file the key covers');
   console.log('- **Not covered**: ignored paths (.gitignore, .git/info/exclude, or your global');
   console.log('  excludes file) and state outside the repo. Changing those does NOT invalidate');
