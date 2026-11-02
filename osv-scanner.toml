@@ -16,10 +16,16 @@
 #   3. Every entry MUST have a `reason` explaining WHY it is safe to defer.
 #   4. Re-evaluate on every dependency bump; delete entries once a fix lands.
 #
-# Current state: 5 accepted advisories (6 package hits), below: zod, and 4
-# from the vitest 3 toolchain that only vitest 4 fixes. Everything else the
-# lockfile carried is fixed. Every entry carries `ignoreUntil`, so the audit
-# goes red again by itself and the entry has to be re-justified or deleted.
+# Current state: 3 accepted advisories (4 package hits; osv-scanner counts an
+# advisory once per affected package version), below: zod, and 2 from the
+# vitest 3 toolchain that only vitest 4 fixes. Everything else the lockfile
+# carried is fixed. Every entry carries `ignoreUntil`, so the audit goes red
+# again by itself and the entry has to be re-justified or deleted.
+#
+# `ignoreUntil` is the only trigger in this file that anything enforces. Every
+# other re-check trigger below is a note for whoever next bumps a dependency
+# (not enforced): no scheduled job re-runs the audit, which runs only on pushes
+# to main and on pull requests.
 #
 # History of real fixes:
 #   * `vibe-agent-toolkit` bumped 0.1.33 -> ^0.1.42 (removed the
@@ -29,8 +35,11 @@
 #
 # Overrides ledger. package.json cannot hold comments, so EVERY pin in
 # `pnpm.overrides` is listed here with the advisory it clears and its re-check
-# trigger: delete the pin once its parent resolves the fixed version by itself.
-# A pin that resolves no package in the lockfile is deleted, not kept on standby.
+# trigger: delete the pin once its parent resolves the fixed version by itself
+# (not enforced: nothing notices when a parent catches up). A pin that resolves
+# no package in the lockfile is deleted, not kept on standby (not enforced).
+# Each pin is the oldest release that fixes every advisory it clears; a line
+# says why wherever a newer one is pinned.
 #
 # What pins can and cannot do. Root `pnpm.overrides` are never published:
 # `npm i vibe-validate` resolves each dependency's own ranges. A fresh resolve
@@ -46,20 +55,26 @@
 # sdk, hono, @hono/node-server, adm-zip, undici, handlebars, ...) to patched
 # versions on a fresh install, so for adopters those pins change nothing.
 # VAT 0.2.0-rc.12 still carries all four, and still carries adm-zip
-# (@vibe-agent-toolkit/utils declares ^0.6.1). Re-check triggers for adopters:
+# (@vibe-agent-toolkit/utils declares ^0.6.1). Re-check triggers for adopters
+# (not enforced: nothing re-resolves the published package; repeat the fresh
+# resolve above at each VAT bump):
 #   * glob / minimatch: a VAT stable release whose agent-skills declares
 #     glob ^14.0.2 or later (VAT main declares ^14.0.3);
-#   * basic-ftp: get-uri resolving basic-ftp 6.2.1 or later by itself, or VAT
-#     dropping the markdown-link-check -> proxy-agent path;
+#   * basic-ftp: needs two releases, or VAT dropping the
+#     markdown-link-check -> proxy-agent path. get-uri 8.0.1 (the latest)
+#     declares basic-ftp ^5.3.1, and pac-proxy-agent 9.1.0 (the latest) pins
+#     get-uri to exactly 8.0.1. So it clears only with a get-uri release that
+#     declares basic-ftp ^6.2.1 or later AND a pac-proxy-agent release that
+#     admits that get-uri;
 #   * zod: a VAT stable release on zod 4.
 #
 #   Via vibe-agent-toolkit 0.1.42 (a runtime dependency of the published
 #   `vibe-validate` package; its postinstall runs `vat claude plugin install`).
 #   These fix this repo's lockfile only. Re-check each at the next VAT bump:
-#     @modelcontextprotocol/sdk 1.32.2  (6 advisories; via gateway-mcp)
-#     @hono/node-server 2.1.5           (serveStatic double decode; the sdk
+#     @modelcontextprotocol/sdk 1.32.0  (6 advisories; via gateway-mcp)
+#     @hono/node-server 2.1.3           (serveStatic double decode; the sdk
 #                                        declares ^1.19.9 || ^2.0.5)
-#     hono 4.13.16, body-parser 2.4.0, proxy-addr 2.0.8, qs 6.17.1
+#     hono 4.13.11, body-parser 2.4.0, proxy-addr 2.0.8, qs 6.16.1
 #                                       (the sdk's HTTP server stack)
 #     adm-zip 0.6.1                     (7 advisories, via agent-skills.
 #                                        GHSA-vwc7-r8mq-g2x9, symlink-follow on
@@ -70,7 +85,7 @@
 #                                        path component and refuses a symlink;
 #                                        extractEntryTo, extractAllTo and
 #                                        extractAllToAsync all call it.)
-#     basic-ftp 6.2.5                   (GHSA-c475-qrg2-pj4r, quadratic list()
+#     basic-ftp 6.2.1                   (GHSA-c475-qrg2-pj4r, quadratic list()
 #                                        parse; via get-uri, which declares
 #                                        ^5.3.1. The Client methods get-uri
 #                                        calls (access, close, downloadTo,
@@ -79,8 +94,8 @@
 #                                        change: `allowSeparateTransferHost` now
 #                                        defaults to false, so a PASV reply
 #                                        naming another host is refused.)
-#     handlebars 4.7.10, undici 7.30.1, ip-address 10.7.5
-#     tar 7.5.22                        (GHSA-w8wr-v893-vjvp, -8x88-c5mf-7j5w,
+#     handlebars 4.7.10, undici 7.30.1, ip-address 10.7.4
+#     tar 7.5.21                        (GHSA-w8wr-v893-vjvp, -8x88-c5mf-7j5w,
 #                                        -23hp-3jrh-7fpw, -r292-9mhp-454m; VAT cli)
 #     picomatch@2 2.3.2, picomatch@4 4.0.4
 #                                       (GHSA-3v7f-55p6-f55p, -c2c7-rcm5-vvqj;
@@ -104,16 +119,26 @@
 #     esbuild@<=0.24.2 >=0.25.0         (GHSA-67mh-4wv8-2f99; tsx, vite)
 #     @humanfs/node 0.16.8              (eslint 9.39)
 #     flatted 3.4.2                     (GHSA-rf6f-7fwh-wjgh; ESLint flat-cache)
-#     lodash 4.18.1                     (GHSA-f23m-r3pf-42rh, -r5fr-rjxr-66jc;
+#     lodash 4.18.0                     (GHSA-f23m-r3pf-42rh, -r5fr-rjxr-66jc;
 #                                        secretlint's textlint formatter)
-#     baseline-browser-mapping 2.11.34, browserslist 4.29.5
+#     baseline-browser-mapping 2.11.0, browserslist 4.28.7
 #                                       (eslint-plugin-unicorn -> core-js-compat)
 #     js-yaml 4.3.2                     (eslint config loading)
 #     brace-expansion@5 5.0.12          (minimatch 11's brace-expansion)
+#     tinypool 2.1.2                    (GHSA-5gmw-xhrv-c9v3, fixed in 2.1.1;
+#                                        GHSA-85c8-ppgw-ccpr, fixed in 2.1.2.
+#                                        vitest 3.2.6's worker pool, which
+#                                        declares ^1.1.1; the full gate, unit
+#                                        coverage included, passes on 2.1.2.
+#                                        vitest 4.1.12 does not depend on
+#                                        tinypool, so the vitest 4 migration
+#                                        PR deletes this pin)
 #
 #   glob 14.0.3 and minimatch 11.0.3 (GHSA-3g3m-2fjr-6pw4,
-#   GHSA-g3hv-75wg-m249). Neither advisory has a backport to an older major, so
-#   every consumer in this lockfile is forced onto the fixed major. glob:
+#   GHSA-g3hv-75wg-m249). The oldest fixes are glob 14.0.2 and minimatch
+#   11.0.1; these pins are the versions VAT main uses, so this repo and VAT run
+#   one glob and one minimatch. Neither advisory has a backport to an older
+#   major, so every consumer in this lockfile is forced onto the fixed major. glob:
 #   test-exclude (coverage), rimraf and VAT's agent-skills call `glob`,
 #   `glob.sync` and `globSync`, all still exported by 14. minimatch: ESLint and
 #   its plugins. ESLint's effective config and its full finding set over the
@@ -124,8 +149,9 @@
 #   `no-namespace` ignore, `no-internal-modules`, `no-import-module-exports`
 #   exceptions and `extensions` pattern options. None is configured today
 #   (`import/order` runs without pathGroups); drop the minimatch pin before
-#   enabling any of them. Drop both when ESLint's plugin set and VAT admit
-#   glob 14 / minimatch 11 by themselves. For adopters see the triggers above.
+#   enabling any of them (not enforced, but it fails loudly: lint throws a
+#   TypeError, minimatch is not a function). Drop both when ESLint's plugin
+#   set and VAT admit glob 14 / minimatch 11 by themselves. For adopters see the triggers above.
 #
 # Keep it empty if you can. An entry here is a debt, not a resolution.
 # ---------------------------------------------------------------------------
@@ -139,15 +165,16 @@ id = "GHSA-mrhx-c7xc-m3w5"
 ignoreUntil = 2027-01-31T00:00:00Z
 reason = """zod 3.25.76: validating an oversized constrained collection can exhaust memory. Fixed only in zod 4.6.6, with no 3.x backport. zod is a runtime dependency of config, core, cli, extractors and history, and of vibe-agent-toolkit 0.1.42, which pins zod 3, so migrating vibe-validate alone would not remove it from the tree; forcing zod 4 into VAT with an override risks breaking VAT's runtime. Published consumers get zod 3.25.76 either way. Reachability: vibe-validate's zod schemas validate the project's own config file and validation results stored in git notes. Notes are local by default, but `vv history` documents fetching refs/notes/vibe-validate/validate from a shared remote, and reader.ts validates every fetched run with safeValidateResult, so anyone who can push to that notes ref supplies input. The impact stays a local memory denial of service in the process that reads the notes. Re-check trigger: a VAT stable release on zod 4; then migrate vibe-validate to zod 4 (its JSON-schema exports move off zod-to-json-schema) and delete this entry."""
 
-# The vitest 3 toolchain. Every fix is in vitest 4.1.12 / tinypool 2.x, and
-# tinypool 2 is a different API than the 1.x vitest 3 is built against, so no
-# override can reach it. vitest is a devDependency only; nothing here ships in
-# the published packages. Moving to vitest 4 also changes how v8 branch coverage
-# is counted (4351 -> 4759 branches on this repo, 86.49% -> 78.13%), which puts
-# the 80% branch threshold out of reach without new tests, so the upgrade is its
-# own change. Re-check trigger for all four (5 package hits with zod: GHSA-82fw
-# is reported against both @vitest/mocker and vitest): the vitest 4 migration
-# PR; delete them there.
+# The vitest 3 toolchain. Both fixes are only in vitest 4 (4.1.11 and 4.1.12),
+# with no 3.x backport, and an override cannot move vitest and its mocker to
+# another major under a vitest 3 install. vitest is a devDependency only;
+# nothing here ships in the published packages. Moving to vitest 4 also changes
+# how v8 branch coverage is counted (4351 -> 4759 branches on this repo,
+# 86.49% -> 78.13%), which puts the 80% branch threshold out of reach without
+# new tests, so the upgrade is its own change. The two advisories are 3 package
+# hits: GHSA-82fw is reported against both @vitest/mocker and vitest, GHSA-qxg6
+# against @vitest/mocker only. Re-check trigger for both: the vitest 4
+# migration PR; delete them there.
 
 [[IgnoredVulns]]
 id = "GHSA-82fw-gwwq-j7x9"
@@ -159,12 +186,3 @@ id = "GHSA-qxg6-89mg-rqv8"
 ignoreUntil = 2027-01-31T00:00:00Z
 reason = """@vitest/mocker 3.2.6: a manual mock registered over the same unauthenticated dev-server WebSocket can inject JavaScript. Same caller as GHSA-82fw-gwwq-j7x9 (mockerPlugin/interceptorPlugin on a Vite dev server), which this repo never runs. Dev-only. Re-check trigger: the vitest 4 migration PR."""
 
-[[IgnoredVulns]]
-id = "GHSA-5gmw-xhrv-c9v3"
-ignoreUntil = 2027-01-31T00:00:00Z
-reason = """tinypool 1.1.1 (vitest 3's worker pool): worker options read through Object.prototype turn a prototype-pollution primitive elsewhere in the process into code execution in the test workers. Needs a separate prototype-pollution bug inside the test process, where every module is already our own test code and its dev dependencies, which run with the same privileges anyway. Dev-only. Re-check trigger: the vitest 4 migration PR (tinypool 2.1.2)."""
-
-[[IgnoredVulns]]
-id = "GHSA-85c8-ppgw-ccpr"
-ignoreUntil = 2027-01-31T00:00:00Z
-reason = """tinypool 1.1.1: pool.run() options read `filename` through Object.prototype, the same prototype-pollution gadget class as GHSA-5gmw-xhrv-c9v3. Same precondition (a pollution primitive inside the test process) and same dev-only reach. Re-check trigger: the vitest 4 migration PR (tinypool 2.1.2)."""
