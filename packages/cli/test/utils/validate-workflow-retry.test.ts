@@ -126,9 +126,12 @@ describe('validate-workflow retry-failed', () => {
         treeHashResult: MOCK_TREE_HASH_RESULT,
       });
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No failed validation at level full')
-      );
+      // A failure exists, so "no failed validation" would be false: name it and why it is not used
+      const printed = consoleErrorSpy.mock.calls.map(call => call.join(' ')).join('\n');
+      expect(printed).toContain('The newest run on tree');
+      expect(printed).toContain('at level commit, failed');
+      expect(printed).toContain('Running every step at level full');
+      expect(printed).not.toContain('No failed validation');
     });
   });
 

@@ -32,21 +32,27 @@ function parseNoteYaml(yaml: string): unknown {
 }
 
 /**
- * Keep the runs that satisfy ValidationRunSchema, drop the rest
+ * Keep the readable runs recorded after the newest unreadable one
  *
- * A run is dropped, not repaired: `passed: "false"` would read as truthy and a run
- * with no `level` answers no request. Corrupted entries (e.g., legacy 0/0
- * line/column from rc.9) go the same way; `vv history prune --all` clears them.
+ * A run that fails ValidationRunSchema is not repaired (`passed: "false"` would
+ * read as truthy, a run with no `level` answers no request), and it is not
+ * simply dropped either: it may be a red, and dropping a newer red would let an
+ * older pass decide the lookup. So an unreadable run is a barrier: every run
+ * before it is hidden too. Runs are appended in order (git-notes.ts
+ * mergeAppendRuns), so array order is time order. The note itself is untouched;
+ * `vv history prune --all` clears it.
  */
-function validRuns(runs: unknown[]): ValidationRun[] {
-  const valid: ValidationRun[] = [];
+function runsAfterNewestUnreadable(runs: unknown[]): ValidationRun[] {
+  const readable: ValidationRun[] = [];
   for (const run of runs) {
     const parsed = ValidationRunSchema.safeParse(run);
     if (parsed.success) {
-      valid.push(parsed.data);
+      readable.push(parsed.data);
+    } else {
+      readable.length = 0;
     }
   }
-  return valid;
+  return readable;
 }
 
 /**
@@ -73,7 +79,7 @@ export async function readHistoryNote(treeHash: string): Promise<HistoryNote | n
 
     return {
       treeHash: typeof parsed.treeHash === 'string' ? parsed.treeHash : treeHash,
-      runs: validRuns(parsed.runs),
+      runs: runsAfterNewestUnreadable(parsed.runs),
     };
   } catch {
     // Note doesn't exist - this is expected for first-time validation

@@ -20,7 +20,7 @@ import {
   PARENT_CONTEXT_ENV,
 } from '@vibe-validate/core';
 import { autoDetectAndExtract } from '@vibe-validate/extractors';
-import { getGitTreeHash, extractYamlWithPreamble, addNote, readNote, type NotesRef } from '@vibe-validate/git';
+import { getGitTreeHash, extractYamlWithPreamble, addNote, readNote, removeNote, type NotesRef } from '@vibe-validate/git';
 import type { RunCacheNote } from '@vibe-validate/history';
 import { normalizePath, toForwardSlash } from '@vibe-validate/utils';
 import chalk from 'chalk';
@@ -367,17 +367,14 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
 }
 
 /**
- * Store result in cache (only successful runs - exitCode === 0)
+ * Store a pass in the cache; a failure removes the pass stored for its key
+ *
+ * A failure is never stored (it may be transient), but it must overturn the
+ * green it re-checked: `vv run --force` going red would otherwise leave the old
+ * green to answer the next run.
  */
 async function storeCacheResult(commandString: string, result: RunResult, explicitCwd?: string): Promise<void> {
   try {
-    // Only cache successful runs (v0.15.0+)
-    // Failed runs may be transient or environment-specific
-    if (result.exitCode !== 0) {
-      logDebug('cache', 'Skipping cache storage: command failed', { exitCode: result.exitCode });
-      return;
-    }
-
     // CRITICAL FIX (Issue #73 expanded): Skip caching if nested vibe-validate command was detected
     // When result.command differs from commandString, it means we detected YAML output from a nested
     // vibe-validate invocation and unwrapped to the actual command. The inner command already cached
@@ -410,6 +407,12 @@ async function storeCacheResult(commandString: string, result: RunResult, explic
 
     // Construct git notes ref path
     const refPath = `vibe-validate/run/${treeHash}/${cacheKey}` as NotesRef;
+
+    if (result.exitCode !== 0) {
+      logDebug('cache', 'Command failed: removing any stored pass', { exitCode: result.exitCode, refPath });
+      removeNote(refPath, treeHash);
+      return;
+    }
 
     logDebug('cache', 'Storing cache result', { treeHash, cacheKey, refPath });
 

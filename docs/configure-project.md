@@ -62,7 +62,7 @@ vv validate
 # Check cached state (no re-run if code unchanged)
 vv validate --check
 
-# Re-run even though a pass is recorded (failures are never cached)
+# Re-run even though a pass is recorded (failures are never replayed)
 vv validate --force
 
 # View current validation state

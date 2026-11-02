@@ -1470,11 +1470,10 @@ export function doctorCommand(program: Command): void {
     .command('doctor')
     .description('Diagnose vibe-validate setup and environment (run after upgrading)')
     .option('--yaml', 'Output YAML only (no human-friendly display)')
-    .action(async (options: { yaml?: boolean; verbose?: boolean }, command: Command) => {
-      // Get verbose from global options (inherited from program)
-      const verbose = command.optsWithGlobals().verbose as boolean | undefined;
+    .option('-v, --verbose', 'Show every check, not only failing ones and ones with a recommendation')
+    .action(async (options: { yaml?: boolean; verbose?: boolean }) => {
       try {
-        const result = await runDoctor({ verbose });
+        const result = await runDoctor({ verbose: options.verbose === true });
 
         if (options.yaml) {
           await outputDoctorYaml(result);
@@ -1513,6 +1512,7 @@ The \`doctor\` command performs comprehensive diagnostics of your vibe-validate 
 ## Options
 
 - \`--yaml\` - Output YAML only (no human-friendly display)
+- \`-v, --verbose\` - Show every check, not only failing ones and ones with a recommendation
 
 ## Exit Codes
 

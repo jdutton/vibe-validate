@@ -5,24 +5,18 @@
  * for the current working tree state using git notes.
  */
 
-import { getDefaultValidateLevel, getLevels, type VibeValidateConfig } from '@vibe-validate/config';
+import { getLevels, type VibeValidateConfig } from '@vibe-validate/config';
 import { findFailedStepResult, type ValidationResult } from '@vibe-validate/core';
 import { getGitTreeHash } from '@vibe-validate/git';
 import { findDecidingRun, readHistoryNote } from '@vibe-validate/history';
 import chalk from 'chalk';
 
-import { getCommandName } from './command-name.js';
 import { displayCachedResult } from './display-cached-result.js';
+import { stateCommandFor, validateCommandFor } from './level-commands.js';
 import { outputYamlResult } from './yaml-output.js';
 
 // Constants (extracted to avoid duplication warnings)
 const RUN_VALIDATION_HINT = '\n💡 Run validation:';
-
-/** The command that runs `level`: `--level` is named only when it is not validate's default */
-function validateCommandFor(config: VibeValidateConfig, level: string): string {
-  const levelFlag = level === getDefaultValidateLevel(config) ? '' : ` --level ${level}`;
-  return `${getCommandName()} validate${levelFlag}`;
-}
 
 /**
  * Display information about failed phase and step
@@ -96,10 +90,10 @@ export async function checkValidationStatus(config: VibeValidateConfig, level: s
   }
 
   // The newest run that bears on this level failed. --check reports that record;
-  // it is not a cache verdict, and `vv validate` will run the steps again.
+  // it is not a cache verdict (no isCachedResult), and `vv validate` will run the steps again.
   if (decidingRun) {
     if (yaml) {
-      await outputYamlResult({ ...decidingRun.result, isCachedResult: true });
+      await outputYamlResult(decidingRun.result);
     } else {
       console.log(chalk.red(`❌ Last validation at level ${decidingRun.level} failed for this code`));
       if (decidingRun.level !== level) {
@@ -110,8 +104,7 @@ export async function checkValidationStatus(config: VibeValidateConfig, level: s
 
       displayFailedPhaseInfo(decidingRun.result);
 
-      const cmd = getCommandName();
-      console.log(chalk.blue('\n📋 View full error details:'), chalk.white(`${cmd} state --level ${decidingRun.level}`));
+      console.log(chalk.blue('\n📋 View full error details:'), chalk.white(stateCommandFor(decidingRun.level)));
       console.log(chalk.blue('💡 Fix errors and run validation:'), chalk.white(validateCommandFor(config, level)));
     }
     process.exit(1);

@@ -467,7 +467,7 @@ vv state
 # Check if validation would pass (without running)
 vv validate --check
 
-# Re-run even though a pass is recorded (failures are never cached)
+# Re-run even though a pass is recorded (failures are never replayed)
 vv validate --force
 ```
 

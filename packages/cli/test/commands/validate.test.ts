@@ -357,6 +357,17 @@ async function parseCommandRequiringExit(
  * @param testDir - Test directory path
  * @param config - Config to return (defaults to createMockConfig())
  */
+/** No config loads; loadConfigWithErrors reports `errors` (invalid) or nothing (missing) */
+function setupBrokenConfig(testDir: string, errors: string[] | null): void {
+  vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue(null);
+  // spyOn, as the no-config tests do: their restored spy leaves no vi.fn behind
+  vi.spyOn(configLoader, 'loadConfigWithErrors').mockResolvedValue({
+    config: null,
+    errors,
+    filePath: errors ? join(testDir, 'vibe-validate.config.yaml') : null,
+  });
+}
+
 function setupMockConfig(testDir: string, config: VibeValidateConfig = createMockConfig()): void {
   vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({ config, configDir: testDir });
 }
@@ -986,6 +997,42 @@ describe('validate command', () => {
         exists: false,
         error: expect.stringContaining('nightly'),
         levels: ['commit', 'full'],
+      });
+    });
+  });
+
+  describe('a config --check cannot use exits 2 (1 would claim the run failed)', () => {
+    it.each([
+      ['invalid', ['validation.phases: Required']],
+      ['missing', null],
+    ])('%s config: --check exits 2, plain validate exits 1', async (_kind, errors) => {
+      setupBrokenConfig(testDir, errors);
+      validateCommand(env.program);
+      await parseCommandRequiringExit(env, ['validate', '--check'], 2);
+
+      setupBrokenConfig(testDir, errors);
+      const plain = setupCommanderTest();
+      validateCommand(plain.program);
+      await parseCommandRequiringExit(plain, ['validate'], 1);
+      plain.cleanup();
+    });
+
+    it('--check --yaml writes the YAML error document for an invalid config', async () => {
+      setupBrokenConfig(testDir, ['validation.phases: Required']);
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+        writes.push(String(chunk));
+        return true;
+      });
+      validateCommand(env.program);
+
+      await parseCommandRequiringExit(env, ['validate', '--check', '--yaml'], 2);
+
+      const body = writes.join('').split(/^---$/m).find(part => part.trim() !== '');
+      expect(parseYaml(body ?? '')).toEqual({
+        exists: false,
+        error: 'Configuration is invalid: vibe-validate.config.yaml',
+        errors: ['validation.phases: Required'],
       });
     });
   });

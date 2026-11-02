@@ -1307,6 +1307,22 @@ describe('ValidationConfigSchema - level rules', () => {
     ]);
   });
 
+  it('reports an empty levels list once when a step sets a level', () => {
+    expect(validationIssues({ levels: [], phases: phase([{ name: 'A', command: 'x', level: 'commit' }]) })).toEqual([
+      { path: ['levels'], message: 'validation.levels must list at least one level' },
+    ]);
+  });
+
+  it('rejects a step name used twice, across phases too', () => {
+    // A step's name is its identity: --retry-failed and flakiness detection match on it
+    expect(validationIssues({
+      phases: [
+        { name: 'A', steps: [{ name: 't', command: 'true' }] },
+        { name: 'B', steps: [{ name: 'u', command: 'true' }, { name: 't', command: 'false' }] },
+      ],
+    })).toEqual([{ path: ['phases', 1, 'steps', 1, 'name'], message: 'Duplicate step name "t"; step names must be unique across all phases' }]);
+  });
+
   it('rejects a level with no steps', () => {
     expect(validationIssues({
       levels: ['quick', 'full'],

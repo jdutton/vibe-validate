@@ -515,7 +515,7 @@ hooks:
 
 **Output**: only the selected steps appear in the result; a phase left with no steps at the level is omitted. Results, `vv state` and `vv history` name the level, and `vv config` prints the levels and which level `vv pre-commit` and `vv validate` run.
 
-**Migrating from `runScope`**: `runScope` was removed, and the config schema rejects it. For `runScope: ci` the message is `runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level`; for `runScope: local` it is `runScope: local was removed with no replacement; remove the key (or the step)`. Replace `runScope: ci` with a later level (e.g. `levels: [commit, full]` and `level: full` on those steps, `level: commit` on the rest). `runScope: local` has no replacement: a step that should not run in CI does not belong in the validation.
+**Migrating from `runScope`**: `runScope` was removed, and the config schema rejects it. For `runScope: ci` the message is `runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level`; for `runScope: local` it is `runScope: local was removed with no replacement; remove the key (or the step)`. Replace `runScope: ci` with a later level (e.g. `levels: [commit, full]` and `level: full` on those steps, `level: commit` on the rest). `runScope: local` has no replacement: a step that should not run in CI does not belong in the validation. Plain `vv validate` now runs every step locally, just as CI does (a `runScope: ci` step used to be skipped outside CI); when a later-level step needs CI-only resources, run `vv validate --level <lower level>` (e.g. `--level commit`) locally.
 
 ### `validation.failFast`
 

@@ -46,8 +46,9 @@ const program = new Command();
 program
   .name('vibe-validate')
   .description('Agent-friendly validation framework with git tree hash caching')
-  .version(version)
-  .option('--verbose', 'Show detailed output (use with --help for comprehensive help)');
+  .version(version);
+// No root --verbose option: Commander would hand it the flag ahead of every
+// subcommand's own --verbose. `--help --verbose` is read from argv (handleVerboseHelp).
 
 // Lazy-load command modules according to the dispatch plan.
 const plan = selectCommandsToLoad(process.argv.slice(2));
@@ -272,7 +273,7 @@ function showComprehensiveHelp(program: Command): void {
     },
     state: {
       whatItDoes: [
-        'Shows the newest run at one level (--level, default: the level validate runs, the last)',
+        'Shows the run deciding one level, as validate --check reads it (--level, default: the level validate runs, the last)',
         'Shows validation pass/fail status',
         'Shows git tree hash (cache key)',
         'Shows timestamp of last validation',
@@ -285,8 +286,8 @@ function showComprehensiveHelp(program: Command): void {
       },
       whenToUse: 'Debug why validation is cached/not cached, or see errors without re-running',
       examples: [
-        'vibe-validate state                # Show the newest run at the default level',
-        'vibe-validate state --level commit # Show the newest run at the commit level',
+        'vibe-validate state                # Show the run deciding the default level',
+        'vibe-validate state --level commit # Show the run deciding the commit level',
         'vibe-validate state --verbose      # Show full error output'
       ]
     },

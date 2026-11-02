@@ -108,6 +108,13 @@ describe('fresh and cached-pass presentation', () => {
     expectNoReplayWording(`${stdout}\n${stderr}`);
   });
 
+  it('the error-details hint names the level the run was asked for', async () => {
+    // state defaults to validate's level; after a commit-level failure that is the wrong one
+    const { stderr } = await render(null, false, { level: 'commit' });
+
+    expect(stderr).toContain('state --level commit');
+  });
+
   it('a fresh pass says nothing about errors', async () => {
     const { stdout, stderr } = await render(null, true);
     const everything = `${stdout}\n${stderr}`;

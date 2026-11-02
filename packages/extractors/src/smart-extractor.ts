@@ -8,7 +8,7 @@
 
 import { EXTRACTOR_REGISTRY } from './extractor-registry.js';
 import genericPlugin from './extractors/generic/index.js';
-import type { ErrorExtractorResult, ExtractorInput } from './types.js';
+import type { ErrorExtractorResult, ExtractorInput, FormattedError } from './types.js';
 import { stripAnsiCodes } from './utils.js';
 
 /**
@@ -79,12 +79,44 @@ export function autoDetectAndExtract(input: string | ExtractorInput, exitCode?: 
 
   // NEW: Multi-extractor fallback when exitCode provided
   // This prevents false positives where detector matches but extractor finds nothing
-  if (exitCode !== undefined) {
-    return autoDetectWithFallback(errorSummary, exitCode);
-  }
-
   // LEGACY: Sequential detection (for backward compatibility when exitCode not provided)
-  return sequentialDetection(errorSummary);
+  const result = exitCode === undefined
+    ? sequentialDetection(errorSummary)
+    : autoDetectWithFallback(errorSummary, exitCode);
+  return dropOutOfRangePositions(result);
+}
+
+/** A line or column is 1-indexed; anything else is not a position */
+function isPosition(value: number | undefined): boolean {
+  return value !== undefined && Number.isInteger(value) && value > 0;
+}
+
+/**
+ * Remove a line or column that is not a 1-indexed position
+ *
+ * Tools print 0 for "no position" (ESLint's 0:0 for a file-level problem).
+ * FormattedErrorSchema requires a positive integer, and a recorded run whose
+ * extraction breaks the schema cannot be read back from history. This is the
+ * one place every extractor's result passes, so the fix lives here.
+ */
+function dropOutOfRangePositions(result: ErrorExtractorResult): ErrorExtractorResult {
+  if (result.errors.every(error => isPositionOrAbsent(error.line) && isPositionOrAbsent(error.column))) {
+    return result;
+  }
+  return { ...result, errors: result.errors.map(dropInvalidFields) };
+}
+
+function isPositionOrAbsent(value: number | undefined): boolean {
+  return value === undefined || isPosition(value);
+}
+
+function dropInvalidFields(error: FormattedError): FormattedError {
+  const { line, column, ...rest } = error;
+  return {
+    ...rest,
+    ...(isPosition(line) ? { line } : {}),
+    ...(isPosition(column) ? { column } : {}),
+  };
 }
 
 /**

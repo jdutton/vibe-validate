@@ -14,6 +14,7 @@ import {
   checkWorktreeStability,
   checkHistoryHealth,
   findCachedValidation,
+  findDecidingRun,
   findRetryRun,
   readHistoryNote,
   type HistoryNote,
@@ -24,11 +25,11 @@ import { runDependencyCheck } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import { stringify as yamlStringify } from 'yaml';
 
-import { getCommandName } from './command-name.js';
 import type { AgentContext } from './context-detector.js';
 import { displayCachedResult } from './display-cached-result.js';
 import { detectFlakiness } from './flakiness-detector.js';
 import { formatWorktreeDisplay } from './format-worktree.js';
+import { stateCommandFor } from './level-commands.js';
 import { createPerfTimer } from './logger.js';
 import { createRunnerConfig } from './runner-adapter.js';
 import { outputYamlResult } from './yaml-output.js';
@@ -166,11 +167,18 @@ function findRunToRetry(
 ): ValidationRun | undefined {
   const treeShort = treeHashResult.hash.slice(0, 12);
   const previousRun = findRetryRun(note, treeHashResult, request);
-  if (!previousRun) {
-    console.error(chalk.yellow(`No failed validation at level ${request.level} to retry for tree ${treeShort}. Running every step at level ${request.level}.`));
-    return undefined;
+  if (previousRun) {
+    return previousRun;
   }
-  return previousRun;
+  const runAll = `Running every step at level ${request.level}.`;
+  // A failure decides but cannot be built on: it ran another level's steps
+  const decidingRun = findDecidingRun(note, treeHashResult, request);
+  if (decidingRun && !(decidingRun.passed && decidingRun.result.passed)) {
+    console.error(chalk.yellow(`The newest run on tree ${treeShort}, at level ${decidingRun.level}, failed; a retry at level ${request.level} builds only on a failure at that level. ${runAll}`));
+  } else {
+    console.error(chalk.yellow(`No failed validation at level ${request.level} to retry for tree ${treeShort}. ${runAll}`));
+  }
+  return undefined;
 }
 
 /**
@@ -226,11 +234,11 @@ async function recordHistory(
  *
  * @param result - Validation result (failed; always freshly computed, failures are never replayed)
  * @param config - Vibe validate configuration
+ * @param level - The level this run was asked for (state's default level may be another)
  * @internal
  */
-function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig): void {
-  const cmd = getCommandName();
-  console.error(chalk.blue('\n📋 View error details:'), chalk.white(`${cmd} state`));
+function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig, level: string): void {
+  console.error(chalk.blue('\n📋 View error details:'), chalk.white(stateCommandFor(level)));
 
   // Find the failed step's command (v0.15.0+: rerunCommand removed, use step.command)
   const failedStep = findFailedStepResult(result, () => true);
@@ -418,7 +426,7 @@ export async function runValidateWorkflow(
       }
 
       if (!result.passed) {
-        displayFailureInfo(result, config);
+        displayFailureInfo(result, config, options.level);
 
         // Auto-output YAML on failure to stderr
         // This ensures agents see error details immediately

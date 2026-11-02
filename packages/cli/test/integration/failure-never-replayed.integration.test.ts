@@ -36,11 +36,19 @@ fs.appendFileSync('${log}', 'ran\n');
 `;
 }
 
-/** Fails while an IGNORED directory exists — the issue #169 shape. */
+/**
+ * Fails while an IGNORED directory exists — the issue #169 shape. It reports in
+ * ESLint's format with a 0:0 position (ESLint prints one for a file-level
+ * problem), which once made the recorded run unreadable and let an older pass
+ * answer past it.
+ */
 const STRAY_JS = String.raw`const fs = require('node:fs');
 fs.appendFileSync('stray-runs.log', 'ran\n');
 if (fs.existsSync('.pytest_cache')) {
-  console.log('ERROR: stray .pytest_cache/ found at repo root');
+  console.log('/repo/.pytest_cache');
+  console.log('  0:0  error  stray .pytest_cache/ found at repo root  no-stray');
+  console.log('');
+  console.log('✖ 1 problem (1 error, 0 warnings)');
   process.exit(1);
 }
 `;
@@ -181,6 +189,27 @@ describe('a recorded failure is never replayed (issue #169)', () => {
     expect(runs('expensive-runs.log')).toBe(expensiveBefore);
     // ...and the one that failed really ran again
     expect(runs('stray-runs.log')).toBe(strayBefore + 1);
+  }, TEST_TIMEOUT_MS);
+
+  it('a --force re-check that goes red overturns the pass it re-checked, everywhere', async () => {
+    // A local change, as there would be before any real commit (pre-commit needs one)
+    writeFileSync(join(testDir, 'README.md'), '# changed\n');
+    expect((await vv(['validate'])).exitCode).toBe(0);
+
+    createIgnoredCause();
+    const forced = await vv(['validate', '--force']);
+    expect(forced.exitCode, 'the forced re-check fails').toBe(1);
+
+    // The forced red decides: no command may answer from the older pass
+    expect((await vv(['validate', '--check'])).exitCode).toBe(1);
+    const strayBefore = runs('stray-runs.log');
+    expect((await vv(['validate'])).exitCode).toBe(1);
+    expect(runs('stray-runs.log')).toBe(strayBefore + 1);
+    expect((await vv(['pre-commit'])).exitCode).toBe(1);
+    expect(runs('stray-runs.log')).toBe(strayBefore + 2);
+
+    removeIgnoredCause();
+    expect((await vv(['validate'])).exitCode).toBe(0);
   }, TEST_TIMEOUT_MS);
 
   it('a recorded pass is a cache hit, and --force re-runs it', async () => {

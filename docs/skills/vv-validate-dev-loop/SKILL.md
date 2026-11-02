@@ -57,7 +57,7 @@ When to reach for each:
 - **`--level <name>`** — a cheaper checkpoint (e.g. the commit level) without the slow steps. A commit-level pass never answers a full request; a full pass answers commit.
 - **`--retry-failed`** — a transient failure (network blip, flaky test, resource contention). It builds on the deciding run only when that run failed at exactly this level, re-running its failed steps and keeping its passed ones; otherwise every step at the level runs. Warns when a step passes on retry with no code change (flaky indicator).
 - **`--force`** (or `VV_FORCE_EXECUTION=1` in a git hook) — the only thing it does is re-run a recorded pass, since a failure already re-runs. Use it when you suspect a green is wrong. If the forced run goes red, that red is now the newest run and overturns the earlier green for every later request until a newer green is recorded.
-- **`--check [--level <name>]`** — scripting: "is this tree known-good at this level?" without executing anything. Exit `0` when the deciding run passed; `1` when it failed (at this level or another — the hint names `vv state --level <its level>`); `2` when nothing recorded bears on the level, the history cannot answer, you are not in a git repo, or `--level` names an unknown level.
+- **`--check [--level <name>]`** — scripting: "is this tree known-good at this level?" without executing anything. Exit `0` when the deciding run passed; `1` when it failed (at this level or another — the hint names `vv state --level <its level>`); `2` when nothing recorded bears on the level, the history cannot answer, you are not in a git repo, `--level` names an unknown level, or the configuration is missing or invalid.
 
 For why validation re-ran (or didn't), see `vibe-validate:caching-and-locking`.
 
@@ -93,7 +93,7 @@ Reads the newest recorded run on the current tree at exactly one level — `--le
 
 ```bash
 vv state                      # compact YAML: pass/fail, failed step, extracted errors
-vv state --level commit       # the newest run at the commit level
+vv state --level commit       # the run deciding the commit level (what --check reads)
 vv state --verbose            # include full failedStepOutput
 ```
 

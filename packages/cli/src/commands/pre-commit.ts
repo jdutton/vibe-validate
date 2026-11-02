@@ -279,9 +279,10 @@ export function preCommitCommand(program: Command): void {
     const timer = createPerfTimer('pre-commit');
       try {
         // Step 1: Load configuration once (git settings, the lock and the workflow share it)
-        const loaded = await loadConfigOrExit();
+        const startupExit = { code: 1, yaml: false } as const;
+        const loaded = await loadConfigOrExit(startupExit);
         const { config } = loaded;
-        const level = resolveLevelOrExit(config, options.level, getDefaultPreCommitLevel(config));
+        const level = await resolveLevelOrExit(config, options.level, getDefaultPreCommitLevel(config), startupExit);
         timer.mark('loadConfig');
 
         // Step 2: Create worktree snapshot BEFORE any git operations (CRITICAL for work protection)
@@ -549,12 +550,13 @@ For hard enforcement, use \`vibe-validate sync-check\` in CI — it still exits 
 ## Options
 
 - \`--skip-sync\` - Skip the base-branch sync check and its network fetch (equivalent to \`baseBranchSync: off\`; does not affect \`trackingBranchSync\`)
+- \`-l, --level <name>\` - Validation level to run (default: \`hooks.preCommit.level\`, else the first of \`validation.levels\`)
 - \`-v, --verbose\` - Show detailed progress and output
 
 ## Exit Codes
 
 - \`0\` - Validation passed (and no sync guard set to \`block\` was violated)
-- \`1\` - Validation failed, secrets detected, files partially staged, or a \`block\` sync guard was violated
+- \`1\` - Validation failed, secrets detected, files partially staged, a \`block\` sync guard was violated, the configuration is missing or invalid, or \`--level\` names an undeclared level
 
 ## Examples
 

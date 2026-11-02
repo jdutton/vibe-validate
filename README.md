@@ -228,7 +228,9 @@ validation:
 
 **Cache not working?** Run `vv doctor` to diagnose issues.
 
-**Validation passes locally but fails in CI?** Run `vv validate --force` locally to reproduce CI environment.
+**Cache never hits?** The newest run on the tree failed (a failure is never a hit), or only an earlier level passed (a `vv pre-commit` pass does not answer `vv validate`). See `vv state`.
+
+**Validation passes locally but fails in CI?** You probably ran only the commit level (`vv pre-commit`). Run plain `vv validate` locally: it runs the last level, every step, as CI does.
 
 **Branch sync issues?** Run `git fetch origin` and verify with `git branch -vv`.
 

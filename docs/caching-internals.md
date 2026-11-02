@@ -116,7 +116,8 @@ it passed may fail now.
 executing anything: exit `0` when it passed, `1` when it failed (at L or another
 level; the hint names `vv state --level <its level>`), and `2` when nothing
 recorded bears on L, the history cannot answer, the directory is not a git
-repository, or `--level` names an unknown level.
+repository, `--level` names an unknown level, or the configuration is missing
+or invalid.
 
 ## How Caching Works: Step by Step
 
@@ -252,7 +253,8 @@ vv validate --check
 # Exit 0: the deciding run passed (cache hit)
 # Exit 1: the deciding run failed, at this level or another (the steps will run)
 # Exit 2: nothing recorded bears on this level, history unreadable,
-#         not a git repository, or an unknown --level
+#         not a git repository, an unknown --level, or a missing or
+#         invalid configuration
 
 # Check if run command is cached
 vv run --check "npm test"
@@ -340,11 +342,15 @@ git write-tree
 
 # Check if validation cached for current tree
 vv validate --check
-echo $?  # 0 = cached pass, 1 = deciding run failed, 2 = nothing recorded for this level
+echo $?  # 0 = cached pass, 1 = deciding run failed, 2 = nothing recorded for this level (or unknown level, missing or invalid config)
 
 # See what's changing
 git status --short
 git diff
+
+# Same tree, still a miss? The newest run failed (never a hit), or only an
+# earlier level passed (a commit-level pass never answers the last level)
+vv history list
 ```
 
 ### Cache seems stale

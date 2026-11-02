@@ -8,7 +8,7 @@
 import { z } from 'zod';
 
 import { GIT_DEFAULTS } from './constants.js';
-import { findHookLevelViolation, findValidationLevelViolations } from './levels.js';
+import { findHookLevelViolation, findValidationLevelViolations, type LevelViolation } from './levels.js';
 import { createSafeValidator, createStrictValidator } from './schema-utils.js';
 
 const RUN_SCOPE_CI_REMOVED = 'runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level';
@@ -107,10 +107,31 @@ export const ValidationConfigSchema = z.object({
   /** Optional: Fail fast - stop all validation on first phase failure (default: true) */
   failFast: z.boolean().optional().default(true),
 }).strict().superRefine((validation, ctx) => {
-  for (const violation of findValidationLevelViolations(validation)) {
+  for (const violation of [...findDuplicateStepNames(validation.phases), ...findValidationLevelViolations(validation)]) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: violation.path, message: violation.message });
   }
 });
+
+/**
+ * Report every step whose name an earlier step already used, in any phase
+ *
+ * A step's name is its identity: `--retry-failed` reuses a previous result by
+ * name and flakiness detection compares steps by name, so two steps sharing one
+ * would let the failing one take the other's pass.
+ */
+function findDuplicateStepNames(phases: ReadonlyArray<{ steps: ReadonlyArray<{ name: string }> }>): LevelViolation[] {
+  const seen = new Set<string>();
+  return phases.flatMap((phase, phaseIndex) => phase.steps.flatMap((step, stepIndex) => {
+    if (!seen.has(step.name)) {
+      seen.add(step.name);
+      return [];
+    }
+    return [{
+      path: ['phases', phaseIndex, 'steps', stepIndex, 'name'],
+      message: `Duplicate step name "${step.name}"; step names must be unique across all phases`,
+    }];
+  }));
+}
 
 // Use input type (before defaults applied) to maintain optional field semantics
 export type ValidationConfig = z.input<typeof ValidationConfigSchema>;

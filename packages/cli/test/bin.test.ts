@@ -565,6 +565,29 @@ describe('bin.ts - CLI entry point', () => {
     });
   });
 
+  describe("a subcommand's --verbose reaches the subcommand", () => {
+    // A root --verbose option took the flag first, so `config --verbose` printed
+    // what plain `config` prints; only `-v` reached the subcommand
+    it.each([['--verbose'], ['-v']])('config %s prints the verbose summary', async (flag) => {
+      const dir = mkdirSyncReal(join(sharedDir, `verbose-${flag.replaceAll('-', '')}`), { recursive: true });
+      writeFileSync(join(dir, 'vibe-validate.config.yaml'), [
+        'validation:',
+        '  levels: [commit, full]',
+        '  phases:',
+        '    - name: Checks',
+        '      steps:',
+        '        - { name: Lint, command: "true", level: commit }',
+        '        - { name: Test, command: "true", level: full }',
+        '',
+      ].join('\n'));
+
+      const result = await executeCLI(binPath, dir, ['config', flag]);
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('Levels: commit → full');
+    });
+  });
+
   // ────────────────────────────────────────────────────────
   // Command options — in-process, 0 spawns
   // ────────────────────────────────────────────────────────

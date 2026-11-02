@@ -5,6 +5,8 @@
  * - The key covers submodule hashes: a change inside a submodule leaves the
  *   parent tree hash unchanged, so a key on the parent alone hits an old green.
  * - A stored failure is refused by the lookup itself, not only by the note parser.
+ * - A red run removes the green stored for its key, so a `--force` re-check that
+ *   goes red is not answered by the green it re-checked.
  *
  * Exit codes are not observable in-process (the command's catch absorbs the
  * mocked process.exit), so these assert what the command printed: a cache hit
@@ -12,8 +14,12 @@
  * executes (a harmless `echo`); only git is faked.
  */
 
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import * as core from '@vibe-validate/core';
 import * as git from '@vibe-validate/git';
+import { normalizedTmpdir } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import yaml from 'yaml';
 
@@ -27,6 +33,7 @@ vi.mock('@vibe-validate/git', async () => {
     getGitTreeHash: vi.fn(),
     readNote: vi.fn(),
     addNote: vi.fn(),
+    removeNote: vi.fn(),
   };
 });
 
@@ -68,6 +75,7 @@ function installFakeGit(): void {
     return true;
   });
   vi.mocked(git.readNote).mockImplementation((ref) => notes.get(ref) ?? null);
+  vi.mocked(git.removeNote).mockImplementation((ref) => notes.delete(ref));
   // Invoked from the repo root: the cache key's workdir is ''
   vi.mocked(core.getGitRoot).mockReturnValue(process.cwd());
 }
@@ -161,5 +169,30 @@ describe('vv run cache key and lookup', () => {
     expect(check.stderr).toContain(CACHE_MISS);
     expect(check.stdout).not.toContain(CACHE_HIT);
     expect(await runOnce()).toBe(true);
+  });
+
+  it('a forced red removes the green it re-checked, so the next run executes', async () => {
+    const dir = mkdtempSync(join(normalizedTmpdir(), 'vv-run-red-'));
+    try {
+      const flag = join(dir, 'fail');
+      const script = join(dir, 'check.cjs');
+      writeFileSync(script, `process.exit(require('node:fs').existsSync(${JSON.stringify(flag)}) ? 1 : 0);`);
+      const command = `node ${JSON.stringify(script)}`;
+      setTree();
+
+      expect((await vvRun([command])).stdout).toContain('exitCode: 0');
+      expect((await vvRun([command])).stdout).toContain(CACHE_HIT);
+
+      writeFileSync(flag, '');
+      expect((await vvRun(['--force', command])).stdout).toContain('exitCode: 1');
+      // --force propagates to nested runs through the environment; this is a fresh invocation
+      delete process.env.VV_FORCE_EXECUTION;
+
+      const next = await vvRun([command]);
+      expect(next.stdout).not.toContain(CACHE_HIT);
+      expect(next.stdout).toContain('exitCode: 1');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -398,23 +398,25 @@ git commit -m "feat: Add vibe-validate for validation orchestration"
 
 ### Issue: Validation passes locally but fails in CI
 
-**Cause**: Environment differences (paths, env vars, dependencies)
+**Cause**: Only the commit level ran locally, or environment differences (paths, env vars, dependencies)
 
 **Solution**:
-1. Run with `--force` locally: `npx vibe-validate validate --force`
+1. Run plain `npx vibe-validate validate` locally: it runs the last level (every step), as CI does. `vibe-validate pre-commit` runs only `hooks.preCommit.level` or the first level, so a local pre-commit pass does not cover the later-level steps
 2. Check CI logs for missing dependencies
 3. Verify Node.js versions match
 4. Check for hardcoded paths
 
 ### Issue: Cache never hits (validation runs full every time)
 
-**Cause**: Working tree not clean or state file issues
+**Cause**: One of:
+- The tree hash changed (an edit, or a generated file that is not gitignored)
+- The newest run on this tree failed: a failure is never a cache hit, so the steps run again
+- Only an earlier level passed: a `commit` pass never answers a request at a later level (plain `validate` runs the last level)
 
 **Solution**:
-1. Check git status: `git status`
-2. Check validation status: `npx vibe-validate validate --check`
-3. View validation state: `npx vibe-validate state`
-4. Try force re-validation: `npx vibe-validate validate --force`
+1. Check git status for untracked generated files: `git status`
+2. Check validation status: `npx vibe-validate validate --check` (1 = the deciding run failed, 2 = nothing recorded bears on the level, an unknown level, or a missing or invalid configuration)
+3. View validation state and run levels: `npx vibe-validate state`, `npx vibe-validate history list`
 
 ---
 

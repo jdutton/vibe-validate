@@ -174,19 +174,20 @@ The structured result enables:
 
 ```bash
 # Store validation result
-git notes --ref=validation/runs add -F result.yaml <tree-hash>
+git notes --ref=vibe-validate/leveled-runs add -F result.yaml <tree-hash>
 
 # Retrieve validation result
-git notes --ref=validation/runs show <tree-hash>
+git notes --ref=vibe-validate/leveled-runs show <tree-hash>
 
 # List all validation results
-git notes --ref=validation/runs list
+git notes --ref=vibe-validate/leveled-runs list
 ```
 
 **Note structure** (YAML example):
 
 ```yaml
-# Git note: refs/notes/validation/runs → tree hash abc123def456...
+# One notes ref (refs/notes/vibe-validate/leveled-runs), one note per tree hash.
+# This is the note attached to tree hash abc123def456...
 
 treeHash: "abc123def456..."
 runs:
@@ -194,6 +195,7 @@ runs:
     timestamp: "2025-10-21T14:30:15.123Z"
     duration: 2300
     passed: true
+    level: "full"   # the validation level the run covered (one of validation.levels)
     branch: "feature/foo"
     headCommit: "9abc3c4"
     uncommittedChanges: false
@@ -436,7 +438,7 @@ def calculate_deterministic_tree_hash():
 def read_git_note(tree_hash):
     try:
         yaml_content = run_command(
-            f"git notes --ref=validation/runs show {tree_hash}"
+            f"git notes --ref=vibe-validate/leveled-runs show {tree_hash}"
         )
         return parse_yaml(yaml_content)
     except CommandError:
@@ -473,7 +475,7 @@ def record_git_note(tree_hash, result):
 
     try:
         run_command(
-            f"git notes --ref=validation/runs add -f -F {temp_file} {tree_hash}"
+            f"git notes --ref=vibe-validate/leveled-runs add -f -F {temp_file} {tree_hash}"
         )
     finally:
         delete_file(temp_file)
@@ -531,12 +533,12 @@ note["runs"] = note["runs"][-10:]  # Keep last 10 runs
 
 ```bash
 # Find notes older than 90 days
-git notes --ref=validation/runs list | while read note_ref tree_hash; do
-    yaml=$(git notes --ref=validation/runs show $tree_hash)
+git notes --ref=vibe-validate/leveled-runs list | while read note_ref tree_hash; do
+    yaml=$(git notes --ref=vibe-validate/leveled-runs show $tree_hash)
     oldest_run=$(echo "$yaml" | extract_oldest_timestamp)
 
     if age_in_days($oldest_run) > 90; then
-        git notes --ref=validation/runs remove $tree_hash
+        git notes --ref=vibe-validate/leveled-runs remove $tree_hash
     fi
 done
 ```
@@ -564,10 +566,10 @@ git push origin main
 
 ```bash
 # Share validation history
-git push origin refs/notes/validation/runs
+git push origin refs/notes/vibe-validate/leveled-runs
 
 # Fetch team's validation history
-git fetch origin refs/notes/validation/runs:refs/notes/validation/runs
+git fetch origin refs/notes/vibe-validate/leveled-runs:refs/notes/vibe-validate/leveled-runs
 ```
 
 ### Privacy Considerations
@@ -810,7 +812,7 @@ tree_hash = "a1b2c3d4e5f6..."
 # (4.1 seconds)
 
 # Store result in git note
-git notes --ref=validation/runs add -F result.yaml a1b2c3d4e5f6
+git notes --ref=vibe-validate/leveled-runs add -F result.yaml a1b2c3d4e5f6
 ```
 
 ### Second Run (Cache Hit)
@@ -828,8 +830,9 @@ $ validate
 # Same tree hash (code unchanged)
 tree_hash = "a1b2c3d4e5f6..."
 
-# Git note exists → cache hit
-git notes --ref=validation/runs show a1b2c3d4e5f6
+# Note holds a pass covering the requested level, and no newer
+# failure → cache hit
+git notes --ref=vibe-validate/leveled-runs show a1b2c3d4e5f6
 # Returns cached result (instant)
 ```
 

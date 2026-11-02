@@ -139,8 +139,8 @@ function missingLevelMessage(stepName: string, levels: readonly string[]): strin
 /**
  * Collect the level-rule violations in a `validation` section
  *
- * An empty `levels` list declares no levels: the schema reports it on its own,
- * so the steps are judged as if no list were given.
+ * An empty `levels` list is reported by the schema on its own, so no step is
+ * judged against it.
  *
  * @param validation - A `validation` section that passed the structural schema
  * @returns One message per violation, each with its path relative to `validation`
@@ -151,6 +151,10 @@ export function findValidationLevelViolations(validation: LevelSource['validatio
     phase.steps.map((step, stepIndex) => ({ step: step as { name?: string; level?: string }, phaseIndex, stepIndex }))
   );
 
+  // An empty list is its own error; judging the steps against it would add a false "not declared"
+  if (validation.levels?.length === 0) {
+    return [];
+  }
   const stepViolations = steps.flatMap(({ step, phaseIndex, stepIndex }) => {
     const message = checkStepLevel(step, declared);
     return message ? [{ path: ['phases', phaseIndex, 'steps', stepIndex, 'level'], message }] : [];

@@ -22,6 +22,7 @@ vi.mock('@vibe-validate/history', async (importOriginal) => {
     readHistoryNote: vi.fn(),
     getAllRunCacheForTree: vi.fn(),
     getMostRecentRun: actual.getMostRecentRun, // Use actual implementation
+    findDecidingRun: actual.findDecidingRun,
   };
 });
 
@@ -67,7 +68,8 @@ function createMockHistoryNote(
   return {
     treeHash,
     // Without a config there is one level, the implicit `full`
-    runs: runs.map(run => ({ level: 'full', ...run })),
+    // A recorded run carries its verdict at run level too (the recorder copies result.passed)
+    runs: runs.map(run => ({ level: 'full', passed: run.result.passed, ...run })),
   } as HistoryNote;
 }
 
@@ -409,6 +411,65 @@ describe('state command', () => {
 
       expectConsoleLogContains('exists: false', 'level: full', 'levelsWithRuns:', '- commit', 'No validation at level full');
       expectConsoleLogNotContains('passed: true');
+    });
+
+    it('shows the deciding run: a newer red at an earlier level overturns an older pass', async () => {
+      setupTwoLevelConfig();
+      vi.mocked(readHistoryNote).mockResolvedValue(createMockHistoryNote(mockTreeHash, [
+        leveledRun('full', true, '2025-10-16T10:00:00.000Z'),
+        leveledRun('commit', false, '2025-10-16T12:00:00.000Z', 'Lint'),
+      ]));
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state', '--verbose']);
+
+      expectConsoleLogContains('passed: false', 'level: commit', 'Lint');
+      expectConsoleLogNotContains('passed: true', 'Safe to commit');
+    });
+
+    it('a failure names the re-run at its level and offers no --force', async () => {
+      setupTwoLevelConfig();
+      vi.mocked(readHistoryNote).mockResolvedValue(createMockHistoryNote(mockTreeHash, [
+        leveledRun('commit', false, '2025-10-16T12:00:00.000Z', 'Lint'),
+      ]));
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state', '--level', 'commit', '--verbose']);
+
+      expectConsoleLogContains('validate --level commit');
+      expectConsoleLogNotContains('--force');
+    });
+
+    it('points to the level of the newest run when none bears on the requested level', async () => {
+      vi.mocked(configLoader.findConfigPath).mockReturnValue('/repo/vibe-validate.config.yaml');
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue({
+        config: { validation: { levels: ['commit', 'push', 'full'], phases: [] } } as never,
+        configDir: '/repo',
+      });
+      vi.mocked(readHistoryNote).mockResolvedValue(createMockHistoryNote(mockTreeHash, [
+        leveledRun('commit', true, '2025-10-16T10:00:00.000Z'),
+        leveledRun('push', true, '2025-10-16T11:00:00.000Z'),
+        leveledRun('commit', true, '2025-10-16T12:00:00.000Z'),
+      ]));
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state', '--verbose']);
+
+      expectConsoleLogContains('exists: false', 'state --level commit');
+      expectConsoleLogNotContains('state --level push');
+    });
+
+    it('--runs reads no config, so an invalid one does not stop it', async () => {
+      vi.mocked(configLoader.findConfigPath).mockReturnValue('/repo/vibe-validate.config.yaml');
+      vi.mocked(configLoader.loadConfigWithDir).mockResolvedValue(null as never);
+
+      stateCommand(env.program);
+      await executeCommandAndGetExitCode(env.program, ['state', '--runs']);
+
+      expectConsoleLogContains('runCache:');
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('onfiguration'));
+      expect(configLoader.loadConfigWithDir).not.toHaveBeenCalled();
+      expect(configLoader.loadConfigWithErrors).not.toHaveBeenCalled();
     });
 
     it('rejects a level the config does not declare, with the same error as validate --level', async () => {

@@ -148,6 +148,7 @@ Run: npx vibe-validate doctor
        │    ↓
        │    vv state  →  fix  →  vv validate
        └─ Exit 2: Nothing recorded for this tree at this level
+                  (or an unknown --level, or a missing or invalid configuration)
             ↓
             Run: vv validate
             ↓
@@ -282,7 +283,7 @@ vv validate --check
 case $? in
   0) echo "Cached pass" ;;
   1) echo "Last run on this tree failed (vv validate will re-run it)" ;;
-  *) echo "Nothing recorded for this tree at this level (need to run)" ;;
+  2) echo "Cannot answer: nothing recorded at this level (need to run), an unknown --level, or a missing or invalid configuration" ;;
 esac
 ```
 
@@ -464,8 +465,10 @@ vv state | grep treeHash  # Cached tree hash
 ls -la | grep -E "coverage|dist|.tsbuildinfo"
 # Add these to .gitignore
 
-# Force refresh
-vv validate --force
+# Same tree hash but still a miss? Either the newest run on the tree
+# failed (a failure is never a hit), or only an earlier level passed
+# (a `vv pre-commit` pass never answers `vv validate`):
+vv history list
 ```
 
 ### "Errors not being extracted"

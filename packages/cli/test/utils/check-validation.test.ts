@@ -352,7 +352,7 @@ describe('checkValidationStatus', () => {
       expect(allLogCalls.some(call => call.includes('Failed step: Fast Failure'))).toBe(false);
     });
 
-    it('should output YAML when --yaml flag is used with cached failure', async () => {
+    it('outputs the recorded failure as YAML, not marked as a cached result (a failure is never replayed)', async () => {
       const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
       const failedRun = createValidationRunFromNote({ passed: false });
@@ -367,8 +367,8 @@ describe('checkValidationStatus', () => {
         'passed: false',
         'treeHash: abc123def456',
         'level: full',
-        'isCachedResult: true'
       ]);
+      expect(stdoutWriteSpy.mock.calls.map(call => String(call[0])).join('')).not.toContain('isCachedResult');
 
       stdoutWriteSpy.mockRestore();
     });

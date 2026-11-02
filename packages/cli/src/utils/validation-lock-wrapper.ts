@@ -25,6 +25,7 @@ import {
   type LockOptions,
 } from './pid-lock.js';
 import { detectProjectId } from './project-id.js';
+import { exitAtStartup, type StartupExit } from './startup-exit.js';
 
 /**
  * Options for validation lock wrapper
@@ -47,12 +48,14 @@ export interface LoadedConfig {
 }
 
 /**
- * Load the configuration, or report why it cannot be loaded and exit 1
+ * Load the configuration, or report why it cannot be loaded and exit
  *
  * A command loads it once and hands the result to everything that needs it,
  * `withValidationLock` included.
+ *
+ * @param exit - The command's startup exit (code, and whether a YAML error document goes to stdout)
  */
-export async function loadConfigOrExit(): Promise<LoadedConfig> {
+export async function loadConfigOrExit(exit: StartupExit): Promise<LoadedConfig> {
   const configResult = await loadConfigWithDir();
   if (configResult) {
     return configResult;
@@ -60,15 +63,13 @@ export async function loadConfigOrExit(): Promise<LoadedConfig> {
   // Distinguish a config with validation errors from a missing one
   const configWithErrors = await loadConfigWithErrors();
   if (configWithErrors.errors && configWithErrors.filePath) {
-    displayConfigErrors({
-      fileName: basename(configWithErrors.filePath),
-      errors: configWithErrors.errors,
-    });
-  } else {
-    console.error(chalk.red('❌ No configuration found'));
-    console.error(chalk.gray(`   Run: ${getCommandName()} init`));
+    const fileName = basename(configWithErrors.filePath);
+    displayConfigErrors({ fileName, errors: configWithErrors.errors });
+    return exitAtStartup(exit, `Configuration is invalid: ${fileName}`, { errors: configWithErrors.errors });
   }
-  process.exit(1);
+  console.error(chalk.red('❌ No configuration found'));
+  console.error(chalk.gray(`   Run: ${getCommandName()} init`));
+  return exitAtStartup(exit, 'No configuration found');
 }
 
 /**

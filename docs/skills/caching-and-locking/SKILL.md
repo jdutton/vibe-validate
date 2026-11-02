@@ -26,7 +26,7 @@ The cache key is a **git tree hash**: a deterministic SHA-1 of the working tree 
 - Excludes `.gitignore`'d files (so secrets and build artifacts don't leak into the key).
 - Computed against a *temporary* git index so it never touches the real index or staging area.
 
-Validation results are stored as **git notes** keyed by that tree hash (`refs/notes/vibe-validate/leveled-runs/<tree-hash>`). Git notes are built into git, survive branch switches, and are content-addressable — perfect for a validation cache.
+Validation results are stored as **git notes** keyed by that tree hash: one notes ref, `refs/notes/vibe-validate/leveled-runs`, holding one note per tree hash (there is no ref per tree hash). Git notes are built into git, survive branch switches, and are content-addressable — perfect for a validation cache.
 
 **Only a PASS is ever a cache hit.** A recorded failure is never replayed — by `vv validate`, the pre-commit hook, or a nested `vv run`, at any level — so the run after a failure always executes the steps. Failures are recorded for `--retry-failed`, flakiness detection and `vv history`.
 
@@ -86,7 +86,8 @@ vv state              # Newest run at the validate level (--level <name> for ano
 vv history list       # Recent validation runs
 vv validate --check   # Does not execute. 0: deciding run passed; 1: it failed (any level);
                       # 2: nothing recorded bears on the level, history unreadable,
-                      #    not a git repo, or unknown --level
+                      #    not a git repo, unknown --level, or a missing or
+                      #    invalid configuration
 ```
 
 Low-level (rarely needed):

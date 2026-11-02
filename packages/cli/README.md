@@ -98,9 +98,13 @@ npx vibe-validate validate --config ./custom-config.yaml
 ```
 
 **Exit Codes:**
-- `0` - Validation passed
-- `1` - Validation failed
-- `2` - Configuration or runtime error
+- `0` - Validation passed (or a recorded pass covers the level)
+- `1` - Validation failed, or the configuration is missing or invalid (an unknown `--level` included). Plain `validate` never exits 2.
+
+With `--check` (nothing runs):
+- `0` - A recorded pass covers the level
+- `1` - The run that decides the level failed
+- `2` - Cannot answer: no run bears on the level, an unknown `--level`, not a git repository, or a missing or invalid configuration
 
 ---
 
