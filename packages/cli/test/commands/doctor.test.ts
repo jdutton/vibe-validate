@@ -1112,11 +1112,11 @@ describe('doctor command', () => {
      *
      * FORMATS:
      * - PRE-v0.15.0 (OLD/DEPRECATED): refs/notes/vibe-validate/runs/* (plural "runs")
-     * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/validate (validation history)
+     * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/leveled-runs (validation history)
      * - v0.15.0+ (CURRENT): refs/notes/vibe-validate/run/{tree}/{key} (run cache)
      *
      * The doctor should ONLY warn if the OLD "runs" namespace exists.
-     * It should NOT warn about the current "validate" or "run" refs.
+     * It should NOT warn about the current "leveled-runs" or "run" refs.
      */
 
     beforeEach(async () => {
@@ -1141,7 +1141,7 @@ describe('doctor command', () => {
       vi.mocked(loadConfig).mockResolvedValue(mockConfig);
     });
 
-    it('should PASS when only current validation history format exists (refs/notes/vibe-validate/validate)', async () => {
+    it('should PASS when only current validation history format exists (refs/notes/vibe-validate/leveled-runs)', async () => {
       // ARRANGE: Mock git commands to show CURRENT format only (no old refs)
       await mockDoctorGit({
         validationHistoryRefs: []  // No old format refs

@@ -102,6 +102,27 @@ const MAVEN_COMPILER = 'maven-compiler';
 const ESLINT_NAME = 'eslint';
 const OLD_PLUGIN = 'old-plugin';
 const DEPRECATED_EXTRACTOR = 'deprecated-extractor';
+/**
+ * Build a config with declared levels and the given steps in one phase
+ * @param levels - Declared levels (omitted when undefined)
+ * @param steps - Steps of the single phase
+ * @param hooks - Optional hooks override
+ * @returns A config object
+ */
+function levelConfig(
+  levels: string[] | undefined,
+  steps: Array<Record<string, unknown>>,
+  hooks?: Record<string, unknown>
+) {
+  return createBaseConfig({
+    validation: {
+      ...(levels ? { levels } : {}),
+      phases: [{ name: 'Test', steps }],
+    },
+    ...(hooks ? { hooks } : {}),
+  });
+}
+
 
 describe('ValidationStepSchema', () => {
   it('should validate valid step', () => {
@@ -1123,67 +1144,90 @@ describe('CIConfigSchema - new fields', () => {
   });
 });
 
-describe('ValidationStepSchema - runScope', () => {
-  it('should accept runScope "ci"', () => {
-    const step = {
-      name: TYPESCRIPT_NAME,
-      command: TSC_NO_EMIT,
-      runScope: 'ci',
-    };
+describe('ValidationStepSchema - removed runScope', () => {
+  it('rejects runScope and names its replacement', () => {
+    const step = { name: TYPESCRIPT_NAME, command: TSC_NO_EMIT, runScope: 'ci' };
 
-    const result = ValidationStepSchema.parse(step);
-    expect(result.runScope).toBe('ci');
+    expect(() => ValidationStepSchema.parse(step)).toThrow(/runScope was removed.*validation\.levels/);
   });
 
-  it('should accept runScope "local"', () => {
-    const step = {
-      name: TYPESCRIPT_NAME,
-      command: TSC_NO_EMIT,
-      runScope: 'local',
-    };
-
-    const result = ValidationStepSchema.parse(step);
-    expect(result.runScope).toBe('local');
-  });
-
-  it('should reject invalid runScope value', () => {
-    const step = {
-      name: TYPESCRIPT_NAME,
-      command: TSC_NO_EMIT,
-      runScope: 'both',
-    };
-
-    expect(() => ValidationStepSchema.parse(step)).toThrow(/Invalid enum/);
-  });
-
-  it('should not require runScope (optional)', () => {
-    const step = {
-      name: TYPESCRIPT_NAME,
-      command: TSC_NO_EMIT,
-    };
-
-    const result = ValidationStepSchema.parse(step);
-    expect(result.runScope).toBeUndefined();
-  });
-
-  it('should accept runScope in full config context', () => {
+  it('rejects runScope inside a full config', () => {
     const config = createBaseConfig({
       validation: {
-        phases: [{
-          name: 'Test',
-          steps: [
-            { name: 'Lint', command: 'npm run lint', runScope: 'ci' },
-            { name: 'Test', command: 'npm test' },
-            { name: 'Coverage', command: 'npm run coverage', runScope: 'local' }
-          ]
-        }]
-      }
+        phases: [{ name: 'Test', steps: [{ name: 'Lint', command: 'npm run lint', runScope: 'local' }] }],
+      },
     });
 
-    const result = expectValidConfig(config);
-    const steps = result.data?.validation?.phases?.[0]?.steps;
-    expect(steps?.[0]?.runScope).toBe('ci');
-    expect(steps?.[1]?.runScope).toBeUndefined();
-    expect(steps?.[2]?.runScope).toBe('local');
+    expectInvalidConfig(config, /runScope was removed/);
+  });
+});
+
+describe('validation levels', () => {
+
+  it('accepts declared levels when every step names one', () => {
+    const result = expectValidConfig(levelConfig(['commit', 'full'], [
+      { name: 'Lint', command: 'npm run lint', level: 'commit' },
+      { name: 'Test', command: 'npm test', level: 'full' },
+    ]));
+
+    expect(result.data?.validation?.levels).toEqual(['commit', 'full']);
+    expect(result.data?.validation?.phases?.[0]?.steps?.[1]?.level).toBe('full');
+  });
+
+  it('requires level on every step once levels are declared', () => {
+    expectInvalidConfig(levelConfig(['commit', 'full'], [
+      { name: 'Lint', command: 'npm run lint', level: 'commit' },
+      { name: 'Test', command: 'npm test' },
+    ]), /Step "Test" has no level/);
+  });
+
+  it('rejects a step level that is not declared', () => {
+    expectInvalidConfig(levelConfig(['commit', 'full'], [
+      { name: 'Lint', command: 'npm run lint', level: 'push' },
+    ]), /Step "Lint" names level "push".*commit, full/);
+  });
+
+  it('rejects a step level when no levels are declared', () => {
+    expectInvalidConfig(levelConfig(undefined, [
+      { name: 'Lint', command: 'npm run lint', level: 'commit' },
+    ]), /Step "Lint" sets level "commit" but validation\.levels is not declared/);
+  });
+
+  it('rejects duplicate level names', () => {
+    expectInvalidConfig(levelConfig(['commit', 'commit'], [
+      { name: 'Lint', command: 'npm run lint', level: 'commit' },
+    ]), /Duplicate level "commit"/);
+  });
+
+  it('rejects an empty levels list', () => {
+    expectInvalidConfig(levelConfig([], [
+      { name: 'Lint', command: 'npm run lint' },
+    ]), /at least one level/);
+  });
+
+  it('accepts hooks.preCommit.level naming a declared level', () => {
+    const result = expectValidConfig(levelConfig(
+      ['commit', 'full'],
+      [{ name: 'Lint', command: 'npm run lint', level: 'commit' }],
+      { preCommit: { level: 'full' } }
+    ));
+
+    expect(result.data?.hooks?.preCommit?.level).toBe('full');
+  });
+
+  it('rejects hooks.preCommit.level naming an undeclared level', () => {
+    expectInvalidConfig(levelConfig(
+      ['commit', 'full'],
+      [{ name: 'Lint', command: 'npm run lint', level: 'commit' }],
+      { preCommit: { level: 'push' } }
+    ), /hooks\.preCommit\.level "push".*commit, full/);
+  });
+
+  it('rejects hooks.preCommit.level when no levels are declared', () => {
+    expectInvalidConfig(levelConfig(
+      undefined,
+      [{ name: 'Lint', command: 'npm run lint' }],
+      { preCommit: { level: 'commit' } }
+    ), /hooks\.preCommit\.level .*validation\.levels is not declared/);
   });
 });

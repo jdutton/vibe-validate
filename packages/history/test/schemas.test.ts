@@ -40,6 +40,7 @@ describe('ValidationRunSchema', () => {
       timestamp: '2025-10-21T14:00:00.000Z',
       duration: 2000,
       passed: true,
+      level: 'full',
       branch: 'main',
       headCommit: '123abc',
       uncommittedChanges: false,
@@ -54,12 +55,28 @@ describe('ValidationRunSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('rejects a run with no level', () => {
+    const run = {
+      id: 'run-123',
+      timestamp: '2025-10-21T14:00:00.000Z',
+      duration: 2000,
+      passed: true,
+      branch: 'main',
+      headCommit: '123abc',
+      uncommittedChanges: false,
+      result: { passed: true, timestamp: '2025-10-21T14:00:00.000Z', treeHash: 'abc123' },
+    };
+
+    expect(ValidationRunSchema.safeParse(run).success).toBe(false);
+  });
+
   it('should accept run with submoduleHashes', () => {
     const run = {
       id: 'run-123',
       timestamp: '2025-10-21T14:00:00.000Z',
       duration: 2000,
       passed: true,
+      level: 'full',
       branch: 'main',
       headCommit: '123abc',
       uncommittedChanges: false,

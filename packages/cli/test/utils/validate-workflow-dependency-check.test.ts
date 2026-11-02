@@ -46,7 +46,6 @@ vi.mock('@vibe-validate/history', async () => {
   const actual = await vi.importActual<typeof history>('@vibe-validate/history');
   return {
     ...actual,
-    findCachedValidation: vi.fn(),
     checkWorktreeStability: vi.fn(),
     recordValidationHistory: vi.fn(),
     checkHistoryHealth: vi.fn(),
@@ -158,6 +157,7 @@ async function runWorkflow(
   return runValidateWorkflow(createTestConfig(), {
     verbose,
     context: createTestContext(),
+    level: 'full',
   });
 }
 
@@ -232,7 +232,6 @@ describe('runDependencyLockCheck integration', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     // Setup default mocks that most tests need
-    vi.mocked(history.findCachedValidation).mockResolvedValue(null);
     vi.mocked(history.checkWorktreeStability).mockResolvedValue({ stable: true, treeHashBefore: 'abc', treeHashAfter: 'abc' });
     vi.mocked(history.recordValidationHistory).mockResolvedValue({ recorded: true, treeHash: 'abc123' });
     vi.mocked(history.checkHistoryHealth).mockResolvedValue({ shouldWarn: false, warningMessage: '', totalNotes: 0, oldNotesCount: 0 });
@@ -257,6 +256,7 @@ describe('runDependencyLockCheck integration', () => {
       await runValidateWorkflow(createTestConfig(), {
         verbose: true,
         context: createTestContext(),
+        level: 'full',
       });
 
       // Verify warning was logged
@@ -285,6 +285,7 @@ describe('runDependencyLockCheck integration', () => {
 
       const result = await runValidateWorkflow(createTestConfig(), {
         context: createTestContext(),
+        level: 'full',
       });
 
       expect(result.passed).toBe(false);

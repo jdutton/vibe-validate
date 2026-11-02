@@ -62,6 +62,7 @@ export type {
 // Export runtime types (from runner.ts - non-serializable)
 export type {
   ValidationConfig,
+  RunLevel,
   StepsOutcome,
 } from './runner.js';
 
@@ -73,7 +74,7 @@ export {
   setupSignalHandlers,
   findPreviousStepResult,
   shouldUseCachedResult,
-  shouldSkipByRunScope,
+  selectPhasesForLevel,
 } from './runner.js';
 
 // Export process utilities

@@ -5,7 +5,7 @@
  * Handles caching, history recording, and output formatting.
  */
 
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import { getLevels, type VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationResult } from '@vibe-validate/core';
 import { findFailedStepResult, isOwnStepFailure, runValidation } from '@vibe-validate/core';
 import { getGitTreeHash, getRepositoryRoot, type TreeHashResult } from '@vibe-validate/git';
@@ -14,7 +14,10 @@ import {
   checkWorktreeStability,
   checkHistoryHealth,
   findCachedValidation,
+  findRetryRun,
   readHistoryNote,
+  type HistoryNote,
+  type LevelRequest,
   type ValidationRun,
 } from '@vibe-validate/history';
 import { runDependencyCheck } from '@vibe-validate/utils';
@@ -23,7 +26,7 @@ import { stringify as yamlStringify } from 'yaml';
 
 import { getCommandName } from './command-name.js';
 import type { AgentContext } from './context-detector.js';
-import { displayCachedFailureHint, displayCachedResult } from './display-cached-result.js';
+import { displayCachedResult } from './display-cached-result.js';
 import { detectFlakiness } from './flakiness-detector.js';
 import { formatWorktreeDisplay } from './format-worktree.js';
 import { createPerfTimer } from './logger.js';
@@ -37,6 +40,8 @@ export interface ValidateWorkflowOptions {
   check?: boolean;
   debug?: boolean;
   retryFailed?: boolean;
+  /** The level to validate at (one of the config's levels; the command resolves the default) */
+  level: string;
   context: AgentContext;
   /** Pre-computed tree hash from lock wrapper (avoids redundant computation) */
   treeHashResult?: TreeHashResult;
@@ -147,37 +152,42 @@ async function runDependencyLockCheck(
 }
 
 /**
- * Check cache for validation run (pass or fail)
+ * Read the tree's history note once; every lookup in a run shares it
  *
- * Returns the most recent validation result for the current tree hash,
- * whether it passed or failed. This enables fast feedback loops without
- * re-running expensive validation steps.
- *
- * Note: This function only returns the cached result without displaying it.
- * Display logic is handled by the caller to avoid duplication.
- *
- * @param treeHash - Git tree hash to check
- * @returns Cached result with metadata if found, null otherwise
+ * @returns The note, or null when there is none or it cannot be read (the run
+ *   then proceeds uncached: a history problem never blocks validation)
  * @internal
  */
-async function checkCache(
-  treeHashResult: TreeHashResult
-): Promise<{ result: ValidationResult; run: ValidationRun } | null> {
+async function readNoteOnce(treeHash: string, verbose: boolean): Promise<HistoryNote | null> {
   try {
-    const cachedRun = await findCachedValidation(treeHashResult);
-
-    if (cachedRun) {
-      // Mark result as from cache (v0.15.0+ schema field)
-      const result = cachedRun.result as ValidationResult;
-      result.isCachedResult = true;
-
-      return { result, run: cachedRun };
+    return await readHistoryNote(treeHash);
+  } catch (error) {
+    if (verbose) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.warn(chalk.yellow(`⚠️  Could not read validation history: ${errorMsg}`));
     }
-  } catch {
-    // Cache check failed - proceed with validation
+    return null;
   }
+}
 
-  return null;
+/**
+ * Find the run --retry-failed builds on, saying why when there is none
+ *
+ * @internal
+ */
+function findRunToRetry(
+  note: HistoryNote | null,
+  treeHashResult: TreeHashResult,
+  level: string
+): ValidationRun | undefined {
+  const treeShort = treeHashResult.hash.slice(0, 12);
+  // A pass at this level would have been a cache hit, so the newest run here is a failure or nothing
+  const previousRun = findRetryRun(note, treeHashResult, level);
+  if (!previousRun) {
+    console.error(chalk.yellow(`No failed validation found at level ${level} for tree ${treeShort}. Running full validation.`));
+    return undefined;
+  }
+  return previousRun;
 }
 
 /**
@@ -231,15 +241,11 @@ async function recordHistory(
 /**
  * Display failure information and extraction quality feedback
  *
- * @param result - Validation result (failed)
+ * @param result - Validation result (failed; always freshly computed, failures are never replayed)
  * @param config - Vibe validate configuration
- * @param isReplay - True when this result was served from cache. Suppresses the
- *   extraction-quality prompt: it asks the user to go report something, and a
- *   replay can be served many times for a single actual run, so repeating the
- *   ask on every commit attempt would nag about work already offered once.
  * @internal
  */
-function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig, isReplay = false): void {
+function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig): void {
   const cmd = getCommandName();
   console.error(chalk.blue('\n📋 View error details:'), chalk.white(`${cmd} state`));
 
@@ -251,7 +257,7 @@ function displayFailureInfo(result: ValidationResult, config: VibeValidateConfig
   }
 
   // Context-aware extraction quality feedback (only when developerFeedback is enabled)
-  if (config.developerFeedback && !isReplay) {
+  if (config.developerFeedback) {
     const poorExtractionSteps = result.phases
       ?.flatMap(phase => phase.steps)
       .filter(step => isOwnStepFailure(step) && step.extraction?.metadata && step.extraction.metadata.confidence < 50);
@@ -296,7 +302,7 @@ export async function runValidateWorkflow(
     if (options.check) {
       const yaml = options.yaml ?? false;
       const { checkValidationStatus } = await import('./check-validation.js');
-      await checkValidationStatus(config, yaml);
+      await checkValidationStatus(config, options.level, yaml);
       throw new Error('checkValidationStatus should have exited');
     }
 
@@ -304,8 +310,11 @@ export async function runValidateWorkflow(
     const yaml = options.yaml ?? false;
     const debug = options.debug ?? false;
 
+    const levelRequest: LevelRequest = { level: options.level, levels: getLevels(config) };
+
     // Create runner config
     const runnerConfig = createRunnerConfig(config, {
+      level: options.level,
       force: options.force,
       verbose,
       yaml,
@@ -327,56 +336,30 @@ export async function runValidateWorkflow(
     }
     timer.markWithThreshold('getGitTreeHash', 2000);
 
-    // Check cache: if validation already passed for this tree hash, skip re-running
-    // Skip cache if --force flag is set OR VV_FORCE_EXECUTION env var is set
+    // Only a PASS is ever a cache hit; a stored failure is a record, never a verdict.
+    // --force / VV_FORCE_EXECUTION exist only to re-run a stored pass.
     const forceExecution = (options.force ?? false) || process.env.VV_FORCE_EXECUTION === '1';
+    const note = treeHashBefore ? await readNoteOnce(treeHashBefore, verbose) : null;
+    timer.mark('history note read');
+
     let result: ValidationResult | undefined;
     let cachedRun: ValidationRun | null = null;
-
     if (treeHashResultBefore && !forceExecution) {
-      const cached = await checkCache(treeHashResultBefore);
-      if (cached) {
-        // When --retry-failed is set, don't use cached failures — let retry logic handle them
-        if (options.retryFailed && !cached.result.passed) {
-          // Skip cache — retry logic below will re-use this failed run as previousRun
-        } else {
-          result = cached.result;
-          cachedRun = cached.run;
-        }
+      cachedRun = findCachedValidation(note, treeHashResultBefore, levelRequest);
+      if (cachedRun) {
+        result = { ...(cachedRun.result as ValidationResult), isCachedResult: true };
       }
     }
-    timer.mark('cache check');
 
     // Load previous validation for --retry-failed functionality
-    let previousRunForRetry: ValidationRun | undefined;
-    if (options.retryFailed && treeHashResultBefore && !forceExecution && !result) {
-      try {
-        const previousRun = await findCachedValidation(treeHashResultBefore);
-
-        if (!previousRun) {
-          // No previous validation found
-          console.error(chalk.yellow(`No failed validation found for tree ${treeHashResultBefore.hash.slice(0, 12)}. Running full validation.`));
-        } else if (previousRun.passed) {
-          // Previous validation passed - can't retry failures if there were none
-          console.error(chalk.yellow(`Previous validation passed for tree ${treeHashResultBefore.hash.slice(0, 12)}. Running full validation.`));
-        } else {
-          // Previous validation failed - use it for retry
-          previousRunForRetry = previousRun;
-        }
-      } catch (error) {
-        // Silent failure - continue with full validation
-        if (verbose) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          console.warn(chalk.yellow(`⚠️  Could not load previous validation: ${errorMsg}`));
-        }
-      }
-    }
-    timer.mark('retry check');
+    const previousRunForRetry = options.retryFailed && treeHashResultBefore && !forceExecution && !result
+      ? findRunToRetry(note, treeHashResultBefore, options.level)
+      : undefined;
 
     if (!result) {
       // Display tree hash before running validation
       if (treeHashResultBefore) {
-        console.error(formatWorktreeDisplay(treeHashResultBefore));
+        console.error(formatWorktreeDisplay(treeHashResultBefore, options.level));
         if (!yaml) {
           console.log(''); // Blank line for readability (human mode only)
         }
@@ -430,18 +413,12 @@ export async function runValidateWorkflow(
       // Silent failure - don't block validation
     }
 
-    // Check for flakiness (only in human-readable mode and when validation passed)
-    if (!yaml && result.passed && treeHashBefore) {
-      try {
-        const note = await readHistoryNote(treeHashBefore);
-        if (note) {
-          const flakinessWarning = detectFlakiness(note, result);
-          if (flakinessWarning) {
-            console.warn(chalk.yellow(flakinessWarning));
-          }
-        }
-      } catch {
-        // Silent failure - don't block validation
+    // Check for flakiness (only in human-readable mode, on a fresh pass, against the
+    // runs recorded before this one)
+    if (!yaml && result.passed && !cachedRun && note) {
+      const flakinessWarning = detectFlakiness(note, result);
+      if (flakinessWarning) {
+        console.warn(chalk.yellow(flakinessWarning));
       }
     }
 
@@ -451,25 +428,14 @@ export async function runValidateWorkflow(
       await outputYamlResult(result);
     } else {
       // Human-readable mode
-      const isReplay = Boolean(cachedRun);
-
       if (cachedRun && treeHashBefore) {
-        // Show cached result message
-        displayCachedResult(cachedRun, treeHashBefore);
+        displayCachedResult(cachedRun, treeHashBefore, options.level);
       }
 
       if (!result.passed) {
-        // Every failure gets the actionable footer. A replayed failure previously
-        // lost it, leaving a stale verdict with no next step (issue #169).
-        displayFailureInfo(result, config, isReplay);
+        displayFailureInfo(result, config);
 
-        // Only a REPLAY can be out of step with the working tree - a fresh failure
-        // was just computed, so re-running it would change nothing.
-        if (isReplay) {
-          displayCachedFailureHint();
-        }
-
-        // Auto-output YAML on failure (cached or fresh) to stderr
+        // Auto-output YAML on failure to stderr
         // This ensures agents see error details immediately
         // Small delay to ensure human-readable message is flushed first
         await new Promise(resolve => setTimeout(resolve, 10));

@@ -53,7 +53,7 @@ runs:
       expect(result?.runs[0].passed).toBe(true);
 
       expect(readNote).toHaveBeenCalledWith(
-        'vibe-validate/validate',
+        'vibe-validate/leveled-runs',
         'abc123def456'
       );
     });
@@ -360,7 +360,7 @@ duration: 5000
         'fedcba987654',
       ]);
 
-      expect(listNoteObjects).toHaveBeenCalledWith('vibe-validate/validate');
+      expect(listNoteObjects).toHaveBeenCalledWith('vibe-validate/leveled-runs');
     });
 
     it('should use custom notes ref when provided', async () => {
@@ -483,7 +483,7 @@ duration: 5000
 
       expect(result).toBe(true);
       expect(readNote).toHaveBeenCalledWith(
-        'vibe-validate/validate',
+        'vibe-validate/leveled-runs',
         'abc123def456'
       );
     });

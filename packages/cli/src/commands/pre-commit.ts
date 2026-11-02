@@ -10,6 +10,7 @@ import {
   getRemoteOrigin,
   getMainBranch,
   DEFAULT_SYNC_GUARD_MODE,
+  getDefaultPreCommitLevel,
   type SyncGuardMode
 } from '@vibe-validate/config';
 import {
@@ -28,8 +29,7 @@ import { isToolAvailable } from '@vibe-validate/utils';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
-import { getCommandName } from '../utils/command-name.js';
-import { loadConfig } from '../utils/config-loader.js';
+import { resolveLevelOrExit } from '../utils/level-option.js';
 import { createPerfTimer } from '../utils/logger.js';
 import {
   selectToolsToRun,
@@ -41,7 +41,7 @@ import {
   type SecretScanningTool,
 } from '../utils/secret-scanning.js';
 import { runValidateWorkflow } from '../utils/validate-workflow.js';
-import { withValidationLock } from '../utils/validation-lock-wrapper.js';
+import { loadConfigOrExit, withValidationLock } from '../utils/validation-lock-wrapper.js';
 
 
 /**
@@ -269,6 +269,7 @@ export function preCommitCommand(program: Command): void {
     .command('pre-commit')
     .description('Run branch sync check + validation (recommended before commit). Spawned steps run with GIT_* env vars stripped to prevent parent-repo corruption when invoked as a git hook (see docs/skills/vibe-validate/git-hook-safety.md).')
     .option('--skip-sync', 'Skip the base-branch sync check and its network fetch (same as hooks.preCommit.baseBranchSync: off)')
+    .option('-l, --level <name>', 'Validation level to run (default: hooks.preCommit.level, else the first of validation.levels)')
     .option('-v, --verbose', 'Show detailed progress and output');
 
   // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 47 acceptable for pre-commit workflow orchestration (coordinates git sync, config loading, validation, and error handling)
@@ -277,15 +278,11 @@ export function preCommitCommand(program: Command): void {
     // Where the hook's own time goes before validation starts (VV_DEBUG=1 prints it)
     const timer = createPerfTimer('pre-commit');
       try {
-        // Step 1: Load configuration (needed for git settings)
-        const config = await loadConfig();
+        // Step 1: Load configuration once (git settings, the lock and the workflow share it)
+        const loaded = await loadConfigOrExit();
+        const { config } = loaded;
+        const level = resolveLevelOrExit(config, options.level, getDefaultPreCommitLevel(config));
         timer.mark('loadConfig');
-        if (!config) {
-          const cmd = getCommandName();
-          console.error(chalk.red('❌ No configuration found'));
-          console.error(chalk.gray(`   Run: ${cmd} init`));
-          process.exit(1);
-        }
 
         // Step 2: Create worktree snapshot BEFORE any git operations (CRITICAL for work protection)
         console.log(chalk.blue('📸 Creating worktree snapshot...'));
@@ -441,6 +438,7 @@ export function preCommitCommand(program: Command): void {
         console.log(chalk.blue('\n🔄 Running validation...'));
 
         const result = await withValidationLock(
+          loaded,
           {
             lockEnabled: true,  // Always enable locking for pre-commit
             waitEnabled: true,  // Always wait for running validation
@@ -463,6 +461,7 @@ export function preCommitCommand(program: Command): void {
                 verbose,
                 yaml: false, // Pre-commit uses human-readable output
                 check: false,
+                level,
                 context: {
                   ...context,
                   isPreCommit: true, // Signal this is pre-commit workflow
@@ -718,22 +717,19 @@ vibe-validate state
 vibe-validate pre-commit
 \`\`\`
 
-### If the same failure repeats after you fixed it
+### Levels
 
-A validation result is cached against a git tree hash covering your tracked and
-untracked files. Ignored paths (.gitignore, .git/info/exclude, your global
-excludes file) and state outside the repo are deliberately excluded, so a fix
-confined to those does not change the key and the stored failure replays. The
-output says \`Replayed from …\` when this happens.
+pre-commit runs \`hooks.preCommit.level\` (default: the first of \`validation.levels\`).
+A pass recorded at that level or a later one answers it; \`--level <name>\` overrides.
+
+### Re-running a recorded pass
+
+A recorded FAILURE is never replayed: every commit attempt after a failure runs
+the steps again. Only a pass is served from the cache, keyed on a git tree hash
+covering your tracked and untracked files (ignored paths and state outside the
+repo are excluded). To re-check a pass whose inputs live outside that key:
 
 \`\`\`bash
-# Re-run just the failed step, keeping the passed steps cached (cheapest)
-vibe-validate validate --retry-failed
-
-# Or re-run everything
-vibe-validate validate --force
-
-# Or bypass the cache for a single commit, without leaving the commit path
 VV_FORCE_EXECUTION=1 git commit -m "your message"
 \`\`\`
 `);

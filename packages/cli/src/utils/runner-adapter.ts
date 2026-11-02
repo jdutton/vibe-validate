@@ -4,7 +4,7 @@
  * Adapts structured VibeValidateConfig to ValidationConfig for the core runner.
  */
 
-import type { VibeValidateConfig } from '@vibe-validate/config';
+import { getLevels, type VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationConfig, ValidationPhase, ValidationStep, PhaseResult, StepResult } from '@vibe-validate/core';
 import { stripGitEnv } from '@vibe-validate/core';
 import chalk from 'chalk';
@@ -12,6 +12,8 @@ import chalk from 'chalk';
 import type { AgentContext } from './context-detector.js';
 
 export interface RunnerOptions {
+  /** The level to run (one of the config's levels) */
+  level: string;
   force?: boolean;
   verbose: boolean;
   yaml?: boolean;
@@ -44,7 +46,8 @@ export function createRunnerConfig(
     : createMinimalCallbacks(options.yaml);
 
   return {
-    phases: (config.validation?.phases ?? []) as ValidationPhase[],
+    phases: config.validation.phases as ValidationPhase[],
+    level: { name: options.level, levels: getLevels(config) },
     enableFailFast: true, // Default to fail-fast (individual phases can override)
     verbose: options.verbose, // Pass verbose flag to runner for output streaming
     yaml: options.yaml, // Pass yaml flag to runner for stdout/stderr routing

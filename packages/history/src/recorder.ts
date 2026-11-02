@@ -53,6 +53,18 @@ async function getHeadCommit(): Promise<string> {
 }
 
 /**
+ * The level a result covered; a result without one cannot be a cache entry
+ *
+ * @throws Error when the runner did not record a level
+ */
+function requireLevel(result: ValidationResult): string {
+  if (typeof result.level !== 'string') {
+    throw new TypeError('Validation result has no level; only runner results can be recorded');
+  }
+  return result.level;
+}
+
+/**
  * Record validation result to git notes
  *
  * @param treeHashResult - Git tree hash result with components
@@ -89,6 +101,7 @@ export async function recordValidationHistory(
       timestamp: new Date().toISOString(),
       duration: 0, // Will be calculated from result if available
       passed: result.passed,
+      level: requireLevel(result),
       branch: await getCurrentBranch(),
       headCommit: await getHeadCommit(),
       uncommittedChanges: await hasWorkingTreeChanges(),

@@ -30,6 +30,7 @@ import yaml from 'yaml';
 import { type RunResult } from '../schemas/run-result-schema.js';
 import { getCommandName } from '../utils/command-name.js';
 import { logDebug, logWarning } from '../utils/logger.js';
+import { parseRunCacheNote } from '../utils/run-cache-note.js';
 import { getRunOutputDir, ensureDir } from '../utils/temp-files.js';
 
 const NOT_IN_GIT_REPO_ERROR = 'Not in a git repository';
@@ -353,26 +354,9 @@ async function tryGetCachedResult(commandString: string, explicitCwd?: string): 
       return null;
     }
 
-    logDebug('cache', 'Cache hit');
-
-    // Parse cached note
-    const cachedNote = yaml.parse(noteContent) as RunCacheNote;
-
-    // Migration: v0.14.x cached notes used 'duration' (ms), v0.15.0+ uses 'durationSecs' (s)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const durationSecs = cachedNote.durationSecs ?? ((cachedNote as any).duration ? (cachedNote as any).duration / 1000 : 0);
-
-    // Convert to RunResult format (mark as cached)
-    const result: RunResult = {
-      command: cachedNote.command, // Use command from cache (may be unwrapped)
-      exitCode: cachedNote.exitCode,
-      durationSecs,
-      timestamp: cachedNote.timestamp,
-      treeHash: cachedNote.treeHash,
-      extraction: cachedNote.extraction,
-      ...(cachedNote.outputFiles ? { outputFiles: cachedNote.outputFiles } : {}),
-      isCachedResult: true, // Mark as cache hit
-    };
+    // Only a pass is a hit; a note holding a failure is refused
+    const result = parseRunCacheNote(noteContent);
+    logDebug('cache', result ? 'Cache hit' : 'Cache miss: the note holds a failure');
 
     return result;
   } catch (error) {

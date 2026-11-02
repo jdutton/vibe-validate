@@ -5,10 +5,11 @@
  * across workflow test files.
  */
 
+import type { VibeValidateConfig } from '@vibe-validate/config';
 import type { ValidationResult } from '@vibe-validate/core';
 import type { TreeHash, TreeHashResult } from '@vibe-validate/git';
 import { getGitTreeHash } from '@vibe-validate/git';
-import type { HistoryNote, ValidationRun } from '@vibe-validate/history';
+import { readHistoryNote, type HistoryNote, type ValidationRun } from '@vibe-validate/history';
 import { vi } from 'vitest';
 
 import type { AgentContext } from '../../src/utils/context-detector.js';
@@ -38,10 +39,11 @@ export const MOCK_AGENT_CONTEXT: AgentContext = {
 /**
  * Create mock validation result
  */
-export function createMockResult(passed: boolean, timestamp = '2026-02-12T10:05:00Z'): ValidationResult {
+export function createMockResult(passed: boolean, timestamp = '2026-02-12T10:05:00Z', level = 'full'): ValidationResult {
   return {
     passed,
     timestamp,
+    level,
     summary: passed ? 'All steps passed' : 'Tests failed',
     ...(passed ? {} : { failedStep: 'Tests' }),
     phases: [
@@ -66,16 +68,17 @@ export function createMockResult(passed: boolean, timestamp = '2026-02-12T10:05:
 /**
  * Create mock validation run
  */
-export function createMockRun(passed: boolean, timestamp = '2026-02-12T10:00:00Z'): ValidationRun {
+export function createMockRun(passed: boolean, timestamp = '2026-02-12T10:00:00Z', level = 'full'): ValidationRun {
   return {
     id: 'run-123',
     timestamp,
     duration: 5000,
     passed,
+    level,
     branch: 'main',
     headCommit: 'commit123',
     uncommittedChanges: false,
-    result: createMockResult(passed, timestamp),
+    result: createMockResult(passed, timestamp, level),
   };
 }
 
@@ -88,6 +91,18 @@ export function createMockNote(runs: ValidationRun[]): HistoryNote {
     runs,
   };
 }
+
+/**
+ * Serve `runs` (oldest first) as the tree's history note, or no note at all
+ */
+export function setupHistoryNote(runs: ValidationRun[] | null): void {
+  vi.mocked(readHistoryNote).mockResolvedValue(runs === null ? null : createMockNote(runs));
+}
+
+/** A config declaring `commit` then `full` (the runner is mocked, so no steps are needed) */
+export const TWO_LEVEL_CONFIG: VibeValidateConfig = {
+  validation: { levels: ['commit', 'full'], phases: [] },
+};
 
 /**
  * Setup standard console mocks for workflow tests
@@ -122,18 +137,13 @@ export function setupGitMock(): void {
  * Execute workflow with default options
  */
 export async function executeWorkflow(
-  overrides: Partial<ValidateWorkflowOptions> = {}
+  overrides: Partial<ValidateWorkflowOptions> = {},
+  config: VibeValidateConfig = { validation: { phases: [] } }
 ): Promise<ValidationResult> {
-  return runValidateWorkflow(
-    {
-      validation: {
-        phases: [],
-      },
-    },
-    {
-      context: MOCK_AGENT_CONTEXT,
-      yaml: false,
-      ...overrides,
-    }
-  );
+  return runValidateWorkflow(config, {
+    context: MOCK_AGENT_CONTEXT,
+    yaml: false,
+    level: 'full',
+    ...overrides,
+  });
 }

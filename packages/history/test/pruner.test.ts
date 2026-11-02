@@ -129,7 +129,7 @@ describe('pruner', () => {
         expect(result.notesRemaining).toBe(0);
         expect(result.prunedTreeHashes).toEqual(['old-abc123']);
         expect(git.removeNote).toHaveBeenCalledWith(
-          'vibe-validate/validate',
+          'vibe-validate/leveled-runs',
           'old-abc123'
         );
       });
@@ -198,7 +198,7 @@ describe('pruner', () => {
 
         // Should only delete old note
         expect(git.removeNote).toHaveBeenCalledWith(
-          'vibe-validate/validate',
+          'vibe-validate/leveled-runs',
           'old-abc123'
         );
         expect(git.removeNote).toHaveBeenCalledTimes(1);
@@ -338,11 +338,11 @@ describe('pruner', () => {
         expect(result.prunedTreeHashes).toEqual(['abc123', 'def456']);
 
         expect(git.removeNote).toHaveBeenCalledWith(
-          'vibe-validate/validate',
+          'vibe-validate/leveled-runs',
           'abc123'
         );
         expect(git.removeNote).toHaveBeenCalledWith(
-          'vibe-validate/validate',
+          'vibe-validate/leveled-runs',
           'def456'
         );
       });

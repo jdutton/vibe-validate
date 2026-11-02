@@ -5,8 +5,7 @@
 import './validate-workflow-test-setup.js';
 
 import { runValidation } from '@vibe-validate/core';
-import { findCachedValidation, readHistoryNote } from '@vibe-validate/history';
-import type { ValidationRun } from '@vibe-validate/history';
+import { readHistoryNote } from '@vibe-validate/history';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
@@ -17,24 +16,22 @@ import {
   setupGitMock,
   executeWorkflow,
   MOCK_TREE_HASH,
+  TWO_LEVEL_CONFIG,
 } from './validate-workflow-test-helpers.js';
 
 /**
- * Setup mocks for workflow execution with optional cached run and history
+ * Setup mocks for workflow execution with optional history (the real cache
+ * lookup reads it: a passing run in it is a cache hit)
  */
 function setupWorkflowMocks(options: {
-  cachedRun?: ValidationRun | null;
   historyNote?: Parameters<typeof createMockNote>[0] | null;
   validationResult?: Parameters<typeof createMockResult>[0];
 }) {
-  const { cachedRun, historyNote, validationResult } = options;
+  const { historyNote, validationResult } = options;
 
   setupGitMock();
-  vi.mocked(findCachedValidation).mockResolvedValue(cachedRun ?? null);
 
-  if (historyNote !== undefined) {
-    vi.mocked(readHistoryNote).mockResolvedValue(historyNote === null ? null : createMockNote(historyNote));
-  }
+  vi.mocked(readHistoryNote).mockResolvedValue(historyNote ? createMockNote(historyNote) : null);
 
   if (validationResult !== undefined) {
     vi.mocked(runValidation).mockResolvedValue(
@@ -71,6 +68,7 @@ describe('validate-workflow flakiness integration', () => {
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     const mocks = setupConsoleMocks();
     consoleWarnSpy = mocks.warnSpy;
   });
@@ -138,23 +136,34 @@ describe('validate-workflow flakiness integration', () => {
     });
   });
 
+  describe('when the recorded failure is at another level', () => {
+    it('does not warn: a run at another level ran a different set of steps', async () => {
+      setupWorkflowMocks({
+        validationResult: true,
+        historyNote: [createMockRun(false, '2026-02-12T10:00:00Z', 'commit')],
+      });
+
+      await executeWorkflow({ level: 'full' }, TWO_LEVEL_CONFIG);
+
+      expect(runValidation).toHaveBeenCalledTimes(1);
+      expectNoFlakinessWarning(consoleWarnSpy);
+    });
+  });
+
   describe('when validation passes (cached run)', () => {
-    it('should check for flakiness and display warning if detected', async () => {
+    it('does not warn: a cache hit is not a fresh pass, so nothing was observed to flip', async () => {
       const failedRun = createMockRun(false, '2026-02-12T10:00:00Z');
       const passedRun = createMockRun(true, '2026-02-12T10:05:00Z');
 
       setupWorkflowMocks({
-        cachedRun: passedRun,
         historyNote: [failedRun, passedRun],
       });
 
-      await executeWorkflow();
+      const result = await executeWorkflow();
 
-      // Should load history note
-      expect(readHistoryNote).toHaveBeenCalledWith(MOCK_TREE_HASH);
-
-      // Should display flakiness warning
-      expectFlakinessWarning(consoleWarnSpy);
+      expect(result.isCachedResult).toBe(true);
+      expect(runValidation).not.toHaveBeenCalled();
+      expectNoFlakinessWarning(consoleWarnSpy);
     });
   });
 
@@ -162,6 +171,7 @@ describe('validate-workflow flakiness integration', () => {
     it('should not check for flakiness', async () => {
       setupWorkflowMocks({
         validationResult: false,
+        historyNote: [createMockRun(false, '2026-02-12T10:00:00Z')],
       });
 
       await executeWorkflow();
@@ -196,12 +206,10 @@ describe('validate-workflow flakiness integration', () => {
         historyNote: [failedRun],
       });
 
-      // Simulate retry logic: second call to findCachedValidation returns failed run
-      vi.mocked(findCachedValidation)
-        .mockResolvedValueOnce(null) // Cache check
-        .mockResolvedValueOnce(failedRun); // Retry check
-
       await executeWorkflow({ retryFailed: true });
+
+      // The failed run was handed to the runner as the retry base
+      expect(runValidation).toHaveBeenCalledWith(expect.objectContaining({ previousRun: failedRun }));
 
       // Should display flakiness warning
       expectFlakinessWarning(consoleWarnSpy);

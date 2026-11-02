@@ -475,13 +475,13 @@ Before committing, ensure:
 ```typescript
 // ❌ VULNERABLE - Command injection attack vector
 const treeHash = 'HEAD; rm -rf /';  // Malicious input
-execSync(`git notes --ref=vibe-validate/validate show ${treeHash}`);
+execSync(`git notes --ref=vibe-validate/leveled-runs show ${treeHash}`);
 // Executes: git notes show HEAD; rm -rf /
 
 // ✅ SECURE - Validated and safe
 import { readNote, validateTreeHash } from '@vibe-validate/git';
 validateTreeHash(treeHash);  // THROWS: "must be hexadecimal"
-readNote('vibe-validate/validate', treeHash);  // Never reaches here
+readNote('vibe-validate/leveled-runs', treeHash);  // Never reaches here
 ```
 
 ### Branded Types for Git Objects
@@ -523,7 +523,7 @@ const treeHash: TreeHash = await getGitTreeHash();
 const commitSha: CommitSha = 'abc123def456...' as CommitSha;
 
 // NotesRef - for git notes references
-const notesRef: NotesRef = 'vibe-validate/validate' as NotesRef;
+const notesRef: NotesRef = 'vibe-validate/leveled-runs' as NotesRef;
 ```
 
 ### Never Swallow Errors Silently

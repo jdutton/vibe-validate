@@ -9,12 +9,11 @@
 import './validate-workflow-test-setup.js';
 
 import { runValidation, type ValidationResult } from '@vibe-validate/core';
-import { findCachedValidation } from '@vibe-validate/history';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { runValidateWorkflow } from '../../src/utils/validate-workflow.js';
 
-import { MOCK_AGENT_CONTEXT, setupConsoleMocks, setupGitMock } from './validate-workflow-test-helpers.js';
+import { MOCK_AGENT_CONTEXT, setupConsoleMocks, setupGitMock, setupHistoryNote } from './validate-workflow-test-helpers.js';
 
 const POOR_EXTRACTION = {
   summary: 'unparsed output',
@@ -25,12 +24,12 @@ const POOR_EXTRACTION = {
 
 /** Run a fresh (uncached) validation that produces `result`; return what went to stderr. */
 async function renderFailure(result: ValidationResult, developerFeedback = false): Promise<string> {
-  vi.mocked(findCachedValidation).mockResolvedValue(null);
+  setupHistoryNote(null);
   vi.mocked(runValidation).mockResolvedValue(result);
   const { errorSpy } = setupConsoleMocks();
   await runValidateWorkflow(
     { validation: { phases: [] }, developerFeedback },
-    { context: MOCK_AGENT_CONTEXT, yaml: false }
+    { context: MOCK_AGENT_CONTEXT, yaml: false, level: 'full' }
   );
   return errorSpy.mock.calls.map(call => call.join(' ')).join('\n');
 }
@@ -51,6 +50,7 @@ describe('failed-run footer', () => {
     const stderr = await renderFailure({
       passed: false,
       timestamp: '2026-11-01T10:00:00Z',
+      level: 'full',
       treeHash: 'abc123def456',
       failedStep: 'build',
       phases: [
@@ -67,6 +67,7 @@ describe('failed-run footer', () => {
     const stderr = await renderFailure({
       passed: false,
       timestamp: '2026-11-01T10:00:00Z',
+      level: 'full',
       treeHash: 'abc123def456',
       failedStep: 'Typecheck',
       phases: [{

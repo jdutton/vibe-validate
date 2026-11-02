@@ -48,6 +48,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
       phases: [
@@ -69,11 +70,41 @@ describe('recordValidationHistory', () => {
     const { addNote } = await import('@vibe-validate/git');
     const { mergeAppendRuns } = await import('@vibe-validate/git');
     expect(addNote).toHaveBeenCalledWith(
-      'vibe-validate/validate',
+      'vibe-validate/leveled-runs',
       treeHash,
       expect.any(String), // YAML content
       mergeAppendRuns // merge strategy: append runs
     );
+  });
+
+  it('records the level the result covered on the run', async () => {
+    const { addNote } = await import('@vibe-validate/git');
+    const treeHash = 'abc123def456' as TreeHash;
+
+    await recordValidationHistory({ hash: treeHash }, {
+      passed: true,
+      level: 'commit',
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash,
+    });
+
+    const yamlContent = String(vi.mocked(addNote).mock.calls[0]?.[2]);
+    expect(yamlContent).toMatch(/^ {4}level: commit$/m);
+  });
+
+  it('refuses a result with no level instead of recording a run that answers nothing', async () => {
+    const { addNote } = await import('@vibe-validate/git');
+    const treeHash = 'abc123def456' as TreeHash;
+
+    const recordResult = await recordValidationHistory({ hash: treeHash }, {
+      passed: true,
+      timestamp: '2025-10-21T14:30:15.123Z',
+      treeHash,
+    });
+
+    expect(recordResult.recorded).toBe(false);
+    expect(recordResult.reason).toContain('no level');
+    expect(addNote).not.toHaveBeenCalled();
   });
 
   it('should append to existing note', async () => {
@@ -106,6 +137,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: false,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
     };
@@ -128,6 +160,7 @@ describe('recordValidationHistory', () => {
       timestamp: `2025-10-21T${String(i).padStart(2, '0')}:00:00.000Z`,
       duration: 2000,
       passed: true,
+      level: 'full',
       branch: 'main',
       headCommit: '123abc',
       uncommittedChanges: false,
@@ -145,6 +178,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
     };
@@ -168,6 +202,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: '2025-10-21T14:30:15.123Z',
       treeHash,
     };
@@ -189,6 +224,7 @@ describe('recordValidationHistory', () => {
 
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: new Date().toISOString(),
       treeHash: treeHashResult.hash,
       summary: 'Test passed',

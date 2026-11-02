@@ -92,6 +92,7 @@ async function loadValidationHistory(treeHash: string): Promise<ValidationResult
 
   return {
     passed: mostRecentRun.result.passed,
+    level: mostRecentRun.level,
     timestamp: mostRecentRun.result.timestamp,
     treeHash: mostRecentRun.result.treeHash,
     summary: mostRecentRun.result.summary,
@@ -202,6 +203,11 @@ function displayVerboseSummary(state: ValidationResult): void {
     console.log(chalk.green('✅ Status: PASSED'));
   } else {
     console.log(chalk.red('❌ Status: FAILED'));
+  }
+
+  // Level (a pass at an earlier level says nothing about the later steps)
+  if (state.level) {
+    console.log(chalk.gray(`🎚️  Level: ${state.level}`));
   }
 
   // Timestamp

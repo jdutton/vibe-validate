@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { mkdirSyncReal } from '@vibe-validate/utils';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { withValidationLock } from '../../src/utils/validation-lock-wrapper.js';
+import { loadConfigOrExit, withValidationLock } from '../../src/utils/validation-lock-wrapper.js';
 
 // Mock os.tmpdir before importing validation-lock-wrapper
 // eslint-disable-next-line local/no-os-tmpdir -- Required for mock setup
@@ -49,12 +49,7 @@ async function expectProcessExitOnConfigError(): Promise<void> {
     throw new Error('process.exit(1)');
   }) as never);
 
-  await expect(
-    withValidationLock(
-      { lockEnabled: false },
-      async () => {}
-    )
-  ).rejects.toThrow('process.exit(1)');
+  await expect(loadConfigOrExit()).rejects.toThrow('process.exit(1)');
 
   expect(mockExit).toHaveBeenCalledWith(1);
   mockExit.mockRestore();
@@ -117,6 +112,7 @@ describe('withValidationLock', () => {
       let capturedContext: unknown = null;
 
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: false },
         async ({ config, configDir, context }) => {
           capturedConfig = config;
@@ -133,8 +129,24 @@ describe('withValidationLock', () => {
       expect(capturedContext).toHaveProperty('isAgent');
     });
 
+    it('passes the caller\'s loaded config through without loading one itself', async () => {
+      const loaded = await loadConfigOrExit();
+      // From a directory with no config, a wrapper that loaded its own would exit
+      const emptyDir = join(testDir, 'no-config-here');
+      mkdirSyncReal(emptyDir, { recursive: true });
+      process.chdir(emptyDir);
+
+      let capturedConfig: unknown = null;
+      await withValidationLock(loaded, { lockEnabled: false }, async ({ config }) => {
+        capturedConfig = config;
+      });
+
+      expect(capturedConfig).toBe(loaded.config);
+    });
+
     it('should return callback result', async () => {
       const result = await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: false },
         async () => ({ success: true, value: 42 })
       );
@@ -145,6 +157,7 @@ describe('withValidationLock', () => {
     it('should propagate callback errors', async () => {
       await expect(
         withValidationLock(
+          await loadConfigOrExit(),
           { lockEnabled: false },
           async () => {
             throw new Error('Callback error');
@@ -154,7 +167,7 @@ describe('withValidationLock', () => {
     });
   });
 
-  describe('config loading errors', () => {
+  describe('loadConfigOrExit errors', () => {
     it('should exit with error when config not found', async () => {
       // Change to directory without config
       const emptyDir = join(testDir, 'empty');
@@ -180,6 +193,7 @@ describe('withValidationLock', () => {
       let lockAcquired = false;
 
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: false },
         async () => {
           lockAcquired = checkLockExists();
@@ -193,6 +207,7 @@ describe('withValidationLock', () => {
       let lockExistsDuringCallback = false;
 
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: true },
         async () => {
           lockExistsDuringCallback = checkLockExists();
@@ -208,6 +223,7 @@ describe('withValidationLock', () => {
     it('should release lock even if callback throws', async () => {
       await expect(
         withValidationLock(
+          await loadConfigOrExit(),
           { lockEnabled: true },
           async () => {
             throw new Error('Callback failed');
@@ -242,6 +258,7 @@ validation:
 
       // Even with lockEnabled: true in options, config should override
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: true },
         async () => {
           lockAcquired = checkLockExists();
@@ -259,6 +276,7 @@ validation:
       let callbackExecuted = false;
 
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: true, waitEnabled: true, waitTimeout: 1 },
         async () => {
           callbackExecuted = true;
@@ -279,6 +297,7 @@ validation:
       try {
         // Should timeout and continue (not throw)
         await withValidationLock(
+          await loadConfigOrExit(),
           { lockEnabled: true, waitEnabled: true, waitTimeout: 1 },
           async () => {}
         );
@@ -296,6 +315,7 @@ validation:
       let callbackExecuted = false;
 
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: true, waitEnabled: false },
         async () => {
           callbackExecuted = true;
@@ -329,6 +349,7 @@ validation:
       let lockFileName: string | null = null;
 
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: true },
         async () => {
           const { readdirSync } = await import('node:fs');
@@ -366,6 +387,7 @@ validation:
 
       await expect(
         withValidationLock(
+          await loadConfigOrExit(),
           { lockEnabled: true },
           async () => {}
         )
@@ -381,6 +403,7 @@ validation:
       const consoleLogSpy = vi.spyOn(console, 'log');
 
       await withValidationLock(
+        await loadConfigOrExit(),
         { lockEnabled: false, yaml: true },
         async () => {}
       );

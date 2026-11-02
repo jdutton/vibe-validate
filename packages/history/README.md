@@ -109,7 +109,7 @@ const config: HistoryConfig = {
   enabled: true,
 
   gitNotes: {
-    ref: 'vibe-validate/validate',  // Git notes ref namespace (v0.15.0: changed from 'runs')
+    ref: 'vibe-validate/leveled-runs',  // Git notes ref namespace (v0.15.0: changed from 'runs')
     maxRunsPerTree: 10,             // Keep last 10 runs per tree
     maxOutputBytes: 10000,          // 10KB max per step output
   },

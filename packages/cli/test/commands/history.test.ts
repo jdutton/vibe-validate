@@ -124,6 +124,7 @@ describe('history command', () => {
               timestamp: '2025-10-22T00:00:00.000Z',
               duration: 5000,
               passed: true,
+              level: 'full',
               branch: 'main',
               headCommit: 'def456',
               uncommittedChanges: false,
@@ -147,7 +148,8 @@ describe('history command', () => {
       await env.program.parseAsync(['history', 'list'], { from: 'user' });
 
       expect(history.getAllHistoryNotes).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalled();
+      // The row names the level the run was recorded at
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('✓ PASSED  full      (5.0s)'));
     });
 
     it('should filter by branch when --branch flag is provided', async () => {
@@ -160,6 +162,7 @@ describe('history command', () => {
               timestamp: '2025-10-22T00:00:00.000Z',
               duration: 5000,
               passed: true,
+              level: 'full',
               branch: 'main',
               headCommit: 'def456',
               uncommittedChanges: false,
@@ -177,6 +180,7 @@ describe('history command', () => {
               timestamp: '2025-10-22T01:00:00.000Z',
               duration: 5000,
               passed: true,
+              level: 'full',
               branch: 'feature/test',
               headCommit: 'ghi789',
               uncommittedChanges: false,
@@ -212,6 +216,7 @@ describe('history command', () => {
             timestamp: `2025-10-22T${String(i).padStart(2, '0')}:00:00.000Z`,
             duration: 5000,
             passed: true,
+            level: 'full',
             branch: 'main',
             headCommit: 'def456',
             uncommittedChanges: false,
@@ -247,6 +252,7 @@ describe('history command', () => {
               timestamp: '2025-10-22T00:00:00.000Z',
               duration: 5000,
               passed: true,
+              level: 'full',
               branch: 'main',
               headCommit: 'def456',
               uncommittedChanges: false,
@@ -295,6 +301,7 @@ describe('history command', () => {
               timestamp: '2025-10-22T00:00:00.000Z',
               duration: 5000,
               passed: true,
+              level: 'full',
               branch: 'main',
               headCommit: 'def456',
               uncommittedChanges: false,
@@ -492,6 +499,7 @@ describe('history command', () => {
             timestamp: '2025-10-22T00:00:00.000Z',
             duration: 5000,
             passed: true,
+            level: 'full',
             branch: 'main',
             headCommit: 'def456',
             uncommittedChanges: false,
@@ -514,7 +522,7 @@ describe('history command', () => {
       await env.program.parseAsync(['history', 'show', 'abc123'], { from: 'user' });
 
       expect(history.readHistoryNote).toHaveBeenCalledWith('abc123');
-      expect(console.log).toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalledWith('  Level: full');
     });
 
     it('should output YAML when --yaml flag is provided', async () => {
@@ -526,6 +534,7 @@ describe('history command', () => {
             timestamp: '2025-10-22T00:00:00.000Z',
             duration: 5000,
             passed: true,
+            level: 'full',
             branch: 'main',
             headCommit: 'def456',
             uncommittedChanges: false,
@@ -585,6 +594,7 @@ describe('history command', () => {
             timestamp: '2025-10-22T00:00:00.000Z',
             duration: 5000,
             passed: true,
+            level: 'full',
             branch: 'main',
             headCommit: 'def456',
             uncommittedChanges: false,
@@ -712,6 +722,7 @@ describe('history command', () => {
             timestamp: '2025-10-22T00:00:00.000Z',
             duration: 5000,
             passed: true,
+            level: 'full',
             branch: 'main',
             headCommit: 'def456',
             uncommittedChanges: false,

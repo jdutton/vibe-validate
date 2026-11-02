@@ -8,6 +8,7 @@
 import { z } from 'zod';
 
 import { GIT_DEFAULTS } from './constants.js';
+import { findLevelViolations } from './levels.js';
 import { createSafeValidator, createStrictValidator } from './schema-utils.js';
 
 /**
@@ -37,8 +38,18 @@ export const ValidationStepSchema = z.object({
   /** Optional: Working directory for this step, relative to git root (default: git root) */
   cwd: z.string().optional(),
 
-  /** Optional: Restrict step to run only in CI or only locally */
-  runScope: z.enum(['ci', 'local']).optional(),
+  /**
+   * The lowest validation level that runs this step. Required on every step once
+   * `validation.levels` is declared, and rejected when it is not.
+   */
+  level: z.string().min(1, 'Step level cannot be empty').optional(),
+
+  /** Removed: a strict config would otherwise report only "Unrecognized key" */
+  runScope: z.never({
+    errorMap: () => ({
+      message: 'runScope was removed: declare validation.levels (e.g. [commit, full]) and give each step a level',
+    }),
+  }).optional(),
 }).strict();
 
 export type ValidationStep = z.infer<typeof ValidationStepSchema>;
@@ -73,6 +84,15 @@ export type ValidationPhase = z.input<typeof ValidationPhaseSchema>;
  * Validation Config Schema
  */
 export const ValidationConfigSchema = z.object({
+  /**
+   * Optional: ordered validation levels, lowest first (e.g. `[commit, full]`).
+   * Each level contains every level before it. `vv pre-commit` runs the first
+   * level (or `hooks.preCommit.level`); `vv validate` runs the last.
+   */
+  levels: z.array(z.string().min(1, 'Level name cannot be empty'))
+    .min(1, 'validation.levels must list at least one level')
+    .optional(),
+
   /** Validation phases to execute */
   phases: z.array(ValidationPhaseSchema).min(1, 'At least one phase required'),
 
@@ -290,6 +310,9 @@ export const HooksConfigSchema = z.object({
 
     /** Secret scanning configuration (optional) */
     secretScanning: SecretScanningSchema.optional(),
+
+    /** Validation level the hook runs (default: the first of validation.levels) */
+    level: z.string().min(1, 'Level name cannot be empty').optional(),
   }).strict().optional().default({
     enabled: true,
     command: DEFAULT_PRE_COMMIT_COMMAND,
@@ -458,7 +481,11 @@ export const VibeValidateConfigSchema = z.object({
    * - Teams wanting to improve validation feedback
    */
   developerFeedback: z.boolean().optional().default(false),
-}).strict();
+}).strict().superRefine((config, ctx) => {
+  for (const violation of findLevelViolations(config)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: violation.path, message: violation.message });
+  }
+});
 
 // Use input type (before defaults applied) to maintain optional field semantics
 export type VibeValidateConfig = z.input<typeof VibeValidateConfigSchema>;

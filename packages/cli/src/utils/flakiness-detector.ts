@@ -38,12 +38,13 @@ export function detectFlakiness(
     return null;
   }
 
-  // Find most recent failed run from previous runs
+  // Find the most recent failed run AT THIS LEVEL: a run at another level ran a
+  // different set of steps, so its red says nothing about this pass
   const sortedRuns = [...note.runs].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
 
-  const recentFailedRun = sortedRuns.find((run) => !run.passed);
+  const recentFailedRun = sortedRuns.find((run) => !run.passed && run.level === currentResult.level);
 
   // No previous failures - not flakiness
   if (!recentFailedRun) {

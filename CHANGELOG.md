@@ -7,11 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Breaking Changes
+
+- **Validation levels replace `runScope`.** `validation.levels` names ordered, nested levels (e.g. `[commit, full]`), and once it is declared every step must name its `level`; `level` is rejected when `levels` is absent. A run at a level runs that level's steps and every earlier level's. `vv validate` runs the last level and `vv pre-commit` runs `hooks.preCommit.level` (default: the first); both take `--level <name>`, and an unknown level exits 1 naming the declared ones. Steps outside the level are absent from the result (a phase left empty is omitted), not recorded as skipped, and results, `vv state`, `vv history` and the cache-hit line name the level. A config without `levels` has one implicit level, `full`, and behaves as before. `runScope` is removed and the config schema rejects it with a message naming the replacement: move `runScope: ci` steps to a later level; `runScope: local` has no replacement.
+
+- **vibe-validate no longer reads `CI` to choose steps.** The runner selects steps only by level. CI runs `vv validate`, so it runs the last level, every step.
+
+- **A failure is never replayed.** Only a PASS is a cache hit — from `vv validate`, the pre-commit hook, `--check` and a nested `vv run` alike, at every level. The run after a failure executes the steps again, so a red caused by a starved machine (a test timing out under load) no longer sticks until the tree changes. Failures are still recorded for `--retry-failed`, flakiness detection and `vv history`. `--force` and `VV_FORCE_EXECUTION=1` now exist only to re-run a recorded pass. `vv run` also refuses a cached note holding a non-zero exit code on read, whichever version wrote it. The stale-failure hint ("Replayed from …", "re-run the failed step(s)") is gone with the behaviour it explained. `vv validate --check` exits 0 for a covering pass, 1 when the last run at that level failed, and 2 when nothing at that level is recorded.
+
+- **The cache key includes the level, and runs move to a new notes ref.** A run records the level it covered; a pass answers its own level and every earlier one (a `vv validate` pass lets the commit hook exit instantly; a hook pass never answers `vv validate`). Runs are written to `refs/notes/vibe-validate/leveled-runs`, not `refs/notes/vibe-validate/validate`: 0.20's reader strips unknown fields, so it would take a commit-level pass in the old ref for a whole-tree pass. Upgrading therefore starts with an empty cache, and notes in the old ref are ignored, not migrated or deleted — another worktree or clone may still run 0.20 against them. Once nothing runs 0.20 or earlier, delete them with `git update-ref -d refs/notes/vibe-validate/validate`. `--retry-failed` builds on the newest run at exactly the requested level.
+
+- **Flakiness compares only runs at the same level.** A commit-level pass after a full-level failure is not reported as flaky.
+
+- **API (`@vibe-validate/*`):**
+  - `findCachedValidation(note, treeHashResult, { level, levels })` is pure and synchronous: it takes the note you read and returns only a passing run whose level covers the request. New `findRetryRun(note, treeHashResult, level)`, `LevelRequest` and `VALIDATION_NOTES_REF` (history).
+  - `ValidationRun.level` is required; `recordValidationHistory` refuses a result without `level`. `ValidationResult.level` is optional (absent only on results written before levels).
+  - `ValidationConfig.level: { name, levels }` is required by `runValidation`; `selectPhasesForLevel` and `RunLevel` replace `shouldSkipByRunScope` (core). The runner throws `UnknownLevelError` (`code: 'UNKNOWN_LEVEL'`) for a level the config does not declare.
+  - New levels API in `@vibe-validate/config`: `getLevels`, `getStepLevel`, `getLevelIndex`, `stepRunsAtLevel`, `levelCovers`, `getDefaultValidateLevel`, `getDefaultPreCommitLevel`, `UnknownLevelError`, `IMPLICIT_LEVEL`.
+  - CLI internals: `withValidationLock(loaded, options, callback)` takes the loaded `{ config, configDir }` as a required first argument (from the new `loadConfigOrExit()`); `checkValidationStatus(config, level, yaml)`; `runValidateWorkflow` requires `level`; `displayCachedFailureHint` is removed.
 
 - **A parallel phase now blames the step that actually failed.** When one step in a `parallel: true` phase failed, fail-fast stopped its still-running siblings — and the result then reported the first *stopped* step in config order as the failure. A long ESLint run listed first would be reported as `ESLint failed` with the extraction "Process stopped (fail-fast)", while the real failure sat further down the list. `failedStep` and `summary` now name the step that failed on its own: its command failed, it could not start, or vibe-validate could not process its result.
 
   Siblings that fail-fast stopped are recorded as stopped, not failed: their step result carries `stoppedByFailFast: true` and the extraction `Stopped by fail-fast after <step> failed`; the console prints `⏹️ STOPPED` for them instead of `❌ FAILED`, and the log file labels them `STOPPED (fail-fast)`. `vv validate --check`, `vv watch-pr`, the "To retry" hint, flakiness warnings and nested `vv validate` output all skip stopped steps when they look for "the failed step". Results written by earlier versions (a CI log from an older `vv`, or a failure cached before upgrading) do not record which steps were stopped, so for those the recorded `failedStep` is shown as it was written and may still name a stopped sibling. A stopped step still has `passed: false` — even when it handled the stop signal and exited 0 — and its `exitCode` is never recorded as 0 (it is 1 when the step exited 0 or a signal ended it, and otherwise the code it exited with), so it is never cached as a pass and `--retry-failed` re-runs it (including with older releases, which reuse a step whose `exitCode` is 0).
+
+- **A phase's `failFast` setting now takes effect.** The config accepted `failFast` on each phase but the runner ignored it, so every phase was fail-fast. A phase with `failFast: false` now runs every step to completion and reports each failure; a phase that leaves it unset follows the run's setting, which the CLI keeps fail-fast. For `runValidation()` callers: a loaded config no longer fills in `failFast: true` on every phase, so the `enableFailFast` you pass applies to phases that don't set it.
+
+### Fixed
 
 - **A step that fails without printing anything is no longer reported as stopped by fail-fast.** Its extraction now reads `Exited with code <n> and produced no output`. Previously any failing step with under 50 characters of output was assumed to have been killed.
 
@@ -21,9 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A step vibe-validate could not start, or whose result it could not process, is still recorded.** If a step could not start (a `cwd` outside the repository) or processing its output threw (a local extractor plugin that throws, for example), a parallel phase failed with no entry for that step and without fail-fast stopping its siblings, and a sequential phase rejected the whole run, leaving no result, phases or history. Both now record the step with `passed: false` and the error in its extraction, apply fail-fast, and print a `FAILED` line for it — after the `PASSED` line when its command itself passed.
 
-- **A phase's `failFast` setting now takes effect.** The config accepted `failFast` on each phase but the runner ignored it, so every phase was fail-fast. A phase with `failFast: false` now runs every step to completion and reports each failure; a phase that leaves it unset follows the run's setting, which the CLI keeps fail-fast. For `runValidation()` callers: a loaded config no longer fills in `failFast: true` on every phase, so the `enableFailFast` you pass applies to phases that don't set it.
-
 ### Changed
+
+- **Hook overhead: the config is loaded once and the history note read once per run.** `pre-commit` loaded the config twice (once itself, once inside the validation lock) and `validate` read the tree's note up to three times (cache lookup, retry lookup, flakiness check).
 
 - **Validation hashes the worktree fewer times.** The runner no longer hashes the worktree itself (once per run, plus once per failing step for its output files): it reuses the hash the validation lock took immediately before the cache lookup. `vv validate` now hashes once before running steps instead of twice; `pre-commit` twice instead of three or more times — its snapshot at hook start is deliberately not reused as the cache key, because the tree can change during the fetch, sync guards and secret scan. The hash taken after validation, which detects files changing mid-run, is unchanged. On a large repository each hash costs from half a second to two seconds on a loaded machine.
 

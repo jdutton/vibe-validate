@@ -205,17 +205,16 @@ function showComprehensiveHelp(program: Command): void {
     validate: {
       whatItDoes: [
         '1. Calculates git tree hash of working directory',
-        '2. Checks if hash matches cached state',
-        '3. If match: exits immediately (sub-second)',
-        '4. If no match: runs validation pipeline (~60-90s)',
-        '5. Caches result for next run'
+        '2. Looks for a recorded PASS at the requested level (--level, default: the last) or a later one',
+        '3. If found: exits 0 immediately (sub-second)',
+        '4. If not: runs the steps at that level (~60-90s); a recorded failure is never replayed',
+        '5. Records the run, with its level, for next time'
       ],
       exitCodes: {
         0: 'Validation passed (or cached pass)',
-        1: 'Validation failed',
-        2: 'Configuration error'
+        1: 'Validation failed, or the configuration is invalid (an unknown --level included)'
       },
-      creates: ['Git notes under refs/notes/vibe-validate/validate'],
+      creates: ['Git notes under refs/notes/vibe-validate/leveled-runs'],
       examples: [
         'vibe-validate validate              # Use cache if available',
         'vibe-validate validate --force      # Always run validation',
@@ -509,7 +508,7 @@ function showComprehensiveHelp(program: Command): void {
   console.log('| File | Purpose |');
   console.log('|------|---------|');
   console.log('| `vibe-validate.config.yaml` | Configuration (required) |');
-  console.log('| `refs/notes/vibe-validate/validate` | Validation state (git notes, auto-created) |');
+  console.log('| `refs/notes/vibe-validate/leveled-runs` | Validation state (git notes, auto-created) |');
   console.log('| `.github/workflows/validate.yml` | CI workflow (optional, generated) |');
   console.log('| `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |\n');
 

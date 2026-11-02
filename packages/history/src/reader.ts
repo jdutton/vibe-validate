@@ -6,17 +6,16 @@ import { safeValidateResult } from '@vibe-validate/core';
 import { listNoteObjects, readNote, type TreeHash, type NotesRef } from '@vibe-validate/git';
 import { parse as parseYaml } from 'yaml';
 
+import { VALIDATION_NOTES_REF } from './schemas.js';
 import type { HistoryNote } from './types.js';
 
-// Removed: Git operations now use secure @vibe-validate/git functions
-
-const DEFAULT_NOTES_REF = 'vibe-validate/validate';
+const DEFAULT_NOTES_REF = VALIDATION_NOTES_REF;
 
 /**
  * Read validation history note for a tree hash
  *
  * @param treeHash - Git tree hash
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
+ * @param notesRef - Git notes ref (default: VALIDATION_NOTES_REF)
  * @returns History note or null if not found
  */
 export async function readHistoryNote(
@@ -83,7 +82,7 @@ export async function readHistoryNote(
 /**
  * List all tree hashes with validation history
  *
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
+ * @param notesRef - Git notes ref (default: VALIDATION_NOTES_REF)
  * @returns Array of tree hashes with notes
  */
 export async function listHistoryTreeHashes(
@@ -101,7 +100,7 @@ export async function listHistoryTreeHashes(
 /**
  * Get all validation history notes
  *
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
+ * @param notesRef - Git notes ref (default: VALIDATION_NOTES_REF)
  * @returns Array of all history notes
  */
 export async function getAllHistoryNotes(
@@ -124,7 +123,7 @@ export async function getAllHistoryNotes(
  * Check if validation history exists for a tree hash
  *
  * @param treeHash - Git tree hash
- * @param notesRef - Git notes ref (default: vibe-validate/validate)
+ * @param notesRef - Git notes ref (default: VALIDATION_NOTES_REF)
  * @returns True if history exists
  */
 export async function hasHistoryForTree(

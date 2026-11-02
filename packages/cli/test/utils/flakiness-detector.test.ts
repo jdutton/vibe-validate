@@ -15,6 +15,7 @@ function createValidationRun(overrides: Partial<ValidationRun> = {}): Validation
     timestamp: '2026-02-12T10:00:00Z',
     duration: 5000,
     passed: false,
+    level: 'full',
     branch: 'main',
     headCommit: 'abc123',
     uncommittedChanges: false,
@@ -34,6 +35,7 @@ function createValidationResult(overrides: Partial<ValidationResult> = {}): Vali
   return {
     passed: true,
     timestamp: '2026-02-12T10:05:00Z',
+    level: 'full',
     phases: [],
     ...overrides,
   };
@@ -301,5 +303,21 @@ describe('detectFlakiness', () => {
     const warning = await expectFlakinessDetection([olderRun, recentRun], currentResult, true);
 
     expect(warning).toContain('failed 2026-02-12T10:00:00Z'); // Recent run timestamp
+  });
+
+  describe('levels', () => {
+    it('a pass at one level after a red at another is not flakiness', async () => {
+      const fullRed = createFailedRun('2026-02-12T10:00:00Z', ['Unit Tests']);
+      const commitGreen = { ...createPassedResult('2026-02-12T10:05:00Z', ['Unit Tests']), level: 'commit' };
+
+      await expectFlakinessDetection([fullRed], commitGreen, false);
+    });
+
+    it('a pass after a red at the same level is', async () => {
+      const commitRed = { ...createFailedRun('2026-02-12T10:00:00Z', ['Unit Tests']), level: 'commit' };
+      const commitGreen = { ...createPassedResult('2026-02-12T10:05:00Z', ['Unit Tests']), level: 'commit' };
+
+      await expectFlakinessDetection([commitRed], commitGreen, true);
+    });
   });
 });

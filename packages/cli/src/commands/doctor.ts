@@ -821,7 +821,7 @@ function checkValidationState(): DoctorCheckResult {
  *
  * Pre-v0.15.0 used refs under: refs/notes/vibe-validate/runs/*
  * v0.15.0+ uses two systems:
- *   - Validation history: refs/notes/vibe-validate/validate (current format)
+ *   - Validation history: refs/notes/vibe-validate/leveled-runs (current format)
  *   - Run cache: refs/notes/vibe-validate/run/{treeHash}/{commandHash}
  *
  * Only warn if the OLD "runs" namespace exists.

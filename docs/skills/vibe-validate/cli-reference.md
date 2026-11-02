@@ -26,24 +26,24 @@ Run validation with git tree hash caching. Spawned steps run with GIT_* env vars
 **What it does:**
 
 1. Calculates git tree hash of working directory
-2. Checks if hash matches cached state
-3. If match: exits immediately (sub-second)
-4. If no match: runs validation pipeline (~60-90s)
-5. Caches result for next run
+2. Looks for a recorded PASS at the requested level (--level, default: the last) or a later one
+3. If found: exits 0 immediately (sub-second)
+4. If not: runs the steps at that level (~60-90s); a recorded failure is never replayed
+5. Records the run, with its level, for next time
 
 **Exit codes:**
 
 - `0` - Validation passed (or cached pass)
-- `1` - Validation failed
-- `2` - Configuration error
+- `1` - Validation failed, or the configuration is invalid (an unknown --level included)
 
 **Creates/modifies:**
 
-- Git notes under refs/notes/vibe-validate/validate
+- Git notes under refs/notes/vibe-validate/leveled-runs
 
 **Options:**
 
-- `-f, --force` - Force validation even if already passed
+- `-l, --level <name>` - Validation level to run (one of validation.levels; default: the last)
+- `-f, --force` - Re-run even when a pass is already recorded (a failure is never replayed)
 - `-v, --verbose` - Show detailed progress and output
 - `-y, --yaml` - Output validation result as YAML to stdout
 - `-c, --check` - Check if validation has already passed (do not run)
@@ -129,6 +129,7 @@ Run branch sync check + validation (recommended before commit). Spawned steps ru
 **Options:**
 
 - `--skip-sync` - Skip the base-branch sync check and its network fetch (same as hooks.preCommit.baseBranchSync: off)
+- `-l, --level <name>` - Validation level to run (default: hooks.preCommit.level, else the first of validation.levels)
 - `-v, --verbose` - Show detailed progress and output
 
 **Error recovery:**
@@ -529,7 +530,7 @@ Create a new extractor plugin from template
 | File | Purpose |
 |------|---------|
 | `vibe-validate.config.yaml` | Configuration (required) |
-| `refs/notes/vibe-validate/validate` | Validation state (git notes, auto-created) |
+| `refs/notes/vibe-validate/leveled-runs` | Validation state (git notes, auto-created) |
 | `.github/workflows/validate.yml` | CI workflow (optional, generated) |
 | `.husky/pre-commit` | Pre-commit hook (optional, setup via init) |
 

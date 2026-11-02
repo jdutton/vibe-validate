@@ -12,6 +12,7 @@ import type { VibeValidateConfig } from '@vibe-validate/config';
 import { getGitTreeHash, type TreeHashResult } from '@vibe-validate/git';
 import chalk from 'chalk';
 
+import { getCommandName } from './command-name.js';
 import { displayConfigErrors } from './config-error-reporter.js';
 import { loadConfigWithErrors, loadConfigWithDir } from './config-loader.js';
 import type { AgentContext } from './context-detector.js';
@@ -37,6 +38,37 @@ export interface ValidationLockOptions {
   waitTimeout?: number;
   /** Whether in YAML output mode (suppresses display output) */
   yaml?: boolean;
+}
+
+/** A loaded configuration and the directory it was found in */
+export interface LoadedConfig {
+  config: VibeValidateConfig;
+  configDir: string;
+}
+
+/**
+ * Load the configuration, or report why it cannot be loaded and exit 1
+ *
+ * A command loads it once and hands the result to everything that needs it,
+ * `withValidationLock` included.
+ */
+export async function loadConfigOrExit(): Promise<LoadedConfig> {
+  const configResult = await loadConfigWithDir();
+  if (configResult) {
+    return configResult;
+  }
+  // Distinguish a config with validation errors from a missing one
+  const configWithErrors = await loadConfigWithErrors();
+  if (configWithErrors.errors && configWithErrors.filePath) {
+    displayConfigErrors({
+      fileName: basename(configWithErrors.filePath),
+      errors: configWithErrors.errors,
+    });
+  } else {
+    console.error(chalk.red('❌ No configuration found'));
+    console.error(chalk.gray(`   Run: ${getCommandName()} init`));
+  }
+  process.exit(1);
 }
 
 /**
@@ -107,14 +139,14 @@ function displayExistingLockInfo(
  * Execute a callback with validation lock management
  *
  * This function handles the complete locking workflow:
- * 1. Load configuration with directory detection
- * 2. Detect agent context
- * 3. Determine lock options from config
- * 4. Wait for existing locks (if enabled)
- * 5. Acquire lock (if enabled)
- * 6. Execute callback with context
- * 7. Release lock in finally block
+ * 1. Detect agent context
+ * 2. Determine lock options from config
+ * 3. Wait for existing locks (if enabled)
+ * 4. Acquire lock (if enabled)
+ * 5. Execute callback with context
+ * 6. Release lock in finally block
  *
+ * @param loaded - The command's loaded configuration (from `loadConfigOrExit`)
  * @param options - Lock options
  * @param callback - Function to execute with lock held
  * @returns Result from callback
@@ -122,6 +154,7 @@ function displayExistingLockInfo(
  * @example
  * ```typescript
  * await withValidationLock(
+ *   await loadConfigOrExit(),
  *   { lockEnabled: true, waitEnabled: true },
  *   async ({ config, configDir, context }) => {
  *     // Run validation workflow
@@ -132,6 +165,7 @@ function displayExistingLockInfo(
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complexity 26 acceptable for validation lock wrapper (orchestrates config, context, locking, wait, and acquire logic)
 export async function withValidationLock<T>(
+  loaded: LoadedConfig,
   options: ValidationLockOptions,
   callback: (_ctx: ValidationLockContext) => Promise<T>
 ): Promise<T> {
@@ -139,30 +173,7 @@ export async function withValidationLock<T>(
   const timer = createPerfTimer('withValidationLock');
 
   try {
-    // Load configuration first (needed for lock config)
-    // Use loadConfigWithDir to get config directory for locking
-    const configResult = await loadConfigWithDir();
-    timer.mark('config loaded');
-    if (!configResult) {
-      // Get detailed error information to distinguish between missing file and validation errors
-      const configWithErrors = await loadConfigWithErrors();
-
-      if (configWithErrors.errors && configWithErrors.filePath) {
-        // Config file exists but has validation errors
-        const fileName = basename(configWithErrors.filePath);
-        displayConfigErrors({
-          fileName,
-          errors: configWithErrors.errors
-        });
-      } else {
-        // Config file doesn't exist
-        console.error(chalk.red('❌ No configuration found'));
-      }
-
-      process.exit(1);
-    }
-
-    const { config, configDir } = configResult;
+    const { config, configDir } = loaded;
 
     // Detect context (Claude Code, CI, etc.)
     const context = detectContext();

@@ -57,6 +57,20 @@ export {
   safeValidateConfig,
 } from './schema.js';
 
+// Validation levels
+export {
+  IMPLICIT_LEVEL,
+  type LevelSource,
+  getLevels,
+  getStepLevel,
+  getLevelIndex,
+  stepRunsAtLevel,
+  levelCovers,
+  getDefaultValidateLevel,
+  getDefaultPreCommitLevel,
+  UnknownLevelError,
+} from './levels.js';
+
 // Config loading
 export {
   CONFIG_FILE_NAME,

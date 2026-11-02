@@ -68,6 +68,7 @@ describe('History Integration', () => {
     // 2. Simulate validation
     const result: ValidationResult = {
       passed: true,
+      level: 'full',
       timestamp: new Date().toISOString(),
       treeHash,
       phases: [

@@ -222,7 +222,7 @@ function outputHistoryTable(
     const status = run.passed ? '✓ PASSED' : '✗ FAILED';
     const duration = (run.duration / 1000).toFixed(1);
 
-    console.log(`${timestamp}  ${hash}  ${run.branch.padEnd(20)}  ${status}  (${duration}s)`);
+    console.log(`${timestamp}  ${hash}  ${run.branch.padEnd(20)}  ${status}  ${run.level.padEnd(8)}  (${duration}s)`);
   }
 
   console.log(`\nTotal validation runs: ${allRunsCount}`);
@@ -546,6 +546,7 @@ async function showHistory(
           console.log(`Run #${i + 1} (${run.id}):`);
           console.log(`  Timestamp: ${timestamp}`);
           console.log(`  Status: ${status}`);
+          console.log(`  Level: ${run.level}`);
           console.log(`  Duration: ${duration}s`);
           console.log(`  Branch: ${run.branch}`);
           console.log(`  Commit: ${run.headCommit}`);
@@ -825,7 +826,7 @@ vibe-validate history health
 ## Storage Details
 
 **Where history lives:**
-- Git notes under \`refs/notes/vibe-validate/validate\`
+- Git notes under \`refs/notes/vibe-validate/leveled-runs\`
 - Keyed by git tree hash (content-based)
 - Stored as YAML with full validation results
 
@@ -877,10 +878,10 @@ History is stored in git notes which are NOT pushed by default. To share validat
 
 \`\`\`bash
 # Push notes (one-time or in CI)
-git push origin refs/notes/vibe-validate/validate
+git push origin refs/notes/vibe-validate/leveled-runs
 
 # Fetch notes (team members)
-git fetch origin refs/notes/vibe-validate/validate:refs/notes/vibe-validate/validate
+git fetch origin refs/notes/vibe-validate/leveled-runs:refs/notes/vibe-validate/leveled-runs
 \`\`\`
 
 **Recommendation:** Keep history local for development, don't push to remote unless team wants shared validation tracking.

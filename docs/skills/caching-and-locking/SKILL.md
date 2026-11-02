@@ -26,7 +26,11 @@ The cache key is a **git tree hash**: a deterministic SHA-1 of the working tree 
 - Excludes `.gitignore`'d files (so secrets and build artifacts don't leak into the key).
 - Computed against a *temporary* git index so it never touches the real index or staging area.
 
-Validation results are stored as **git notes** keyed by that tree hash (`refs/notes/vibe-validate/validate/<tree-hash>`). Git notes are built into git, survive branch switches, and are content-addressable — perfect for a validation cache.
+Validation results are stored as **git notes** keyed by that tree hash (`refs/notes/vibe-validate/leveled-runs/<tree-hash>`). Git notes are built into git, survive branch switches, and are content-addressable — perfect for a validation cache.
+
+**Only a PASS is ever a cache hit.** A recorded failure is never replayed — by `vv validate`, the pre-commit hook, or a nested `vv run`, at any level — so the run after a failure always executes the steps. Failures are recorded for `--retry-failed`, flakiness detection and `vv history`.
+
+**The level is part of the key.** With `validation.levels` (e.g. `[commit, full]`), a pass answers a request at its own level or an earlier one: a `vv validate` pass lets the commit-level hook exit instantly; a hook pass never answers `vv validate`.
 
 ### Invariants
 
@@ -50,7 +54,9 @@ A cache miss means the tree hash changed. Common culprits:
 - **A generated file that isn't gitignored.** `.tsbuildinfo`, `coverage/`, editor temp files, OS detritus (`.DS_Store`), or build outputs can slip into the tree hash. Add them to `.gitignore`.
 - **Lockfile updates.** `pnpm-lock.yaml`, `package-lock.json`, `yarn.lock` changing is deliberate invalidation — dependencies changed, validation should re-run.
 - **Line-ending normalization.** CRLF ↔ LF conversions rewrite content and change the hash. Configure `.gitattributes` consistently across the team.
-- **`--force` flag.** `vv validate --force` bypasses the cache unconditionally.
+- **`--force` flag.** `vv validate --force` re-runs a recorded pass. It is the only thing `--force` is for: a failure is never replayed in the first place.
+- **The last run failed.** Failures are never cache hits, so the steps run again.
+- **A lower level passed, a higher one was asked for.** A `commit` pass does not answer `vv validate` (the last level).
 - **Config change.** Editing `vibe-validate.config.yaml` changes the tree hash (it's a tracked file), so validation re-runs.
 
 Diagnose with:
@@ -83,7 +89,7 @@ Low-level (rarely needed):
 
 ```bash
 git write-tree                                          # Current tree hash
-git notes --ref=refs/notes/vibe-validate/validate list  # All cached entries
+git notes --ref=refs/notes/vibe-validate/leveled-runs list  # All cached entries
 ```
 
 ## Concurrency locking

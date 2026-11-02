@@ -7,6 +7,14 @@
         "validation": {
           "type": "object",
           "properties": {
+            "levels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
             "phases": {
               "type": "array",
               "items": {
@@ -52,12 +60,12 @@
                         "cwd": {
                           "type": "string"
                         },
-                        "runScope": {
+                        "level": {
                           "type": "string",
-                          "enum": [
-                            "ci",
-                            "local"
-                          ]
+                          "minLength": 1
+                        },
+                        "runScope": {
+                          "not": {}
                         }
                       },
                       "required": [
@@ -268,6 +276,10 @@
                     }
                   },
                   "additionalProperties": false
+                },
+                "level": {
+                  "type": "string",
+                  "minLength": 1
                 }
               },
               "additionalProperties": false,
