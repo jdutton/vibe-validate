@@ -619,9 +619,11 @@ describe('run command integration', () => {
         nested.push(await timeNestedRun(`echo perf-nested-${unique}-${pair}`));
       }
 
-      // The floor keeps a very fast direct run from making the ratio a few milliseconds wide
+      // Intent: nesting costs about two direct runs, so 4x catches a real regression. The
+      // 750 ms floor only keeps a very fast direct run (under ~250 ms) from making that
+      // ratio a few milliseconds wide; above that the 4x term governs.
       const directMedian = median(direct);
-      expect(median(nested)).toBeLessThan(Math.max(directMedian * 4, directMedian + 1500));
+      expect(median(nested)).toBeLessThan(Math.max(directMedian * 4, directMedian + 750));
     });
   });
 

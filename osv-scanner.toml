@@ -10,9 +10,11 @@
 #   1. Prefer a real fix first — bump the declared dependency, or pin a patched
 #      version in the root package.json `pnpm.overrides` block. Only fall back
 #      to an IgnoredVulns entry when a fix is genuinely unavailable or unsafe.
-#   2. pnpm overrides accept a per-major selector (`"picomatch@2": "2.3.2"`), so
-#      "multiple majors coexist" is NOT a reason to accept an advisory here —
-#      pin each major separately instead.
+#   2. A per-major selector (`"picomatch@2": "2.3.2"`) pins one major without
+#      touching the others. Where a major has no fixed release, the override
+#      moves every consumer to the fixed major (glob 14, minimatch 11,
+#      basic-ftp 6). Only a consumer that cannot run on it justifies an entry
+#      here.
 #   3. Every entry MUST have a `reason` explaining WHY it is safe to defer.
 #   4. Re-evaluate on every dependency bump; delete entries once a fix lands.
 #
@@ -38,8 +40,8 @@
 #
 # Overrides ledger. package.json cannot hold comments, so EVERY pin in
 # `pnpm.overrides` is listed below, between the BEGIN and END marker lines,
-# with the advisories it clears (GHSA IDs, or a count where the PR that added the
-# pin lists them). Each pin is a line `#     <key> <version>[, <key> <version>]`
+# with the advisories it clears (GHSA IDs; after the first full ID of an entry the
+# rest drop the `GHSA` prefix). Each pin is a line `#     <key> <version>[, <key> <version>]`
 # (five spaces after the `#`), then its note in parentheses; a note may continue
 # on lines indented six or more spaces, and prose lines inside the markers are
 # indented three. Enforced by packages/dev-tools/test/overrides-ledger.test.ts
@@ -60,27 +62,27 @@
 # How a pin's version was chosen. This is the one statement of the rule; the
 # CHANGELOG and the PR description refer here. A pin is the oldest release that
 # fixes every advisory listed for it (checked against osv.dev and the npm
-# registry on 2026-11-13: every pin below is that release except the three
+# registry on 2026-11-13: every pin below is that release except the two
 # cases that follow). A newer release is pinned only where the pin matches the
 # overrides on vibe-agent-toolkit's main (glob 14.0.2 -> 14.0.3, minimatch
-# 11.0.1 -> 11.0.3), where another package requires it (vitest 3.2.6 ->
-# 3.2.7: @vitest/coverage-v8 3.2.7 peers exactly vitest 3.2.7), or where the
-# entry says so (tar 7.5.21 -> 7.5.22). No pin is held back by a deprecated
+# 11.0.1 -> 11.0.3), or where the entry says so (tar 7.5.21 -> 7.5.22). No pin is held back by a deprecated
 # release today: the deprecation check exists so that one never is. The rule
 # does not keep a pin current: a release after the pin can fix advisories
 # published later (hono, @hono/node-server and basic-ftp each had some by
 # 2026-11-13, which is why their pins sit above their first fixed release),
-# which the weekly audit reports and the pin then moves for. Delete a pin when the lockfile re-resolved
-# without it (`pnpm update <pkg>`) still scans clean (not enforced: nothing
-# notices when a parent catches up).
+# which the weekly audit reports and the pin then moves for. Delete a pin when
+# the lockfile re-resolved without it (`pnpm update <pkg>`) still scans clean
+# (not enforced: nothing notices when a parent catches up).
 #
 # What pins can and cannot do. Root `pnpm.overrides` are never published:
 # `npm i vibe-validate` resolves each dependency's own ranges. A fresh resolve
-# of vibe-validate 0.20.1 (npm, lockfile-only, 2026-11-02) leaves exactly four
-# advisories on adopters: three through vibe-agent-toolkit 0.1.42, and zod,
+# of vibe-validate 0.20.1 (npm, lockfile-only, 2026-11-13) leaves exactly six
+# advisories on four packages: five through vibe-agent-toolkit 0.1.42, and zod,
 # which VAT (^3.24.1) and five vibe-validate packages (^3.25.76) declare
 # directly:
-#     basic-ftp 5.3.1   GHSA-c475-qrg2-pj4r  (resources -> markdown-link-check
+#     basic-ftp 5.3.1   GHSA-c475-qrg2-pj4r, GHSA-5pm8-86m8-9m6r,
+#                       GHSA-r4jh-29pc-gfqr (the last two published
+#                       2026-11-12; resources -> markdown-link-check
 #                       -> proxy-agent -> pac-proxy-agent -> get-uri 8.0.1,
 #                       which declares basic-ftp ^5.3.1)
 #     glob 10.5.0       GHSA-3g3m-2fjr-6pw4  (agent-skills declares glob ^10.3.10)
@@ -89,13 +91,11 @@
 # VAT 0.1.42's caret ranges already float everything else it brings (the MCP
 # sdk, hono, @hono/node-server, adm-zip, undici, handlebars, ...) to patched
 # versions on a fresh install, so for adopters those pins change nothing.
-# VAT 0.2.0-rc.12 still carries all four, and still carries adm-zip
-# (@vibe-agent-toolkit/utils declares ^0.6.1). Re-check triggers for adopters
-# (not enforced: nothing re-resolves the published package; repeat the fresh
-# resolve above at each VAT bump):
-#   * glob / minimatch: vibe-validate releases on a VAT version whose
-#     agent-skills declares glob ^14.0.2 or later (or a VAT 0.1.x release
-#     does, which adopters' ^0.1.42 range picks up). VAT main declares ^14.0.3;
+# VAT 0.2.0-rc.15 (`next`) already declares glob ^14.0.3. glob/minimatch clear
+# when vibe-validate releases on VAT 0.2.0, or on a 0.1.x release that does the
+# same. Re-check triggers for adopters (not enforced: nothing re-resolves the
+# published package; repeat the fresh resolve above at each VAT bump):
+#   * glob / minimatch: as above (agent-skills 0.1.42 declares glob ^10.3.10);
 #   * basic-ftp: needs three releases, or VAT dropping the
 #     markdown-link-check -> proxy-agent path. get-uri 8.0.1 (the latest)
 #     declares basic-ftp ^5.3.1, pac-proxy-agent 9.1.0 (the latest) pins
@@ -145,9 +145,10 @@
 #                                        extractAllToAsync all call it.)
 #     basic-ftp 6.2.4                   (GHSA-c475-qrg2-pj4r, quadratic list()
 #                                        parse, -5pm8-86m8-9m6r (fixed in
-#                                        6.2.4), -r4jh-29pc-gfqr (6.2.3); via get-uri, which declares
-#                                        ^5.3.1. The Client methods get-uri
-#                                        calls (access, close, downloadTo,
+#                                        6.2.4), -r4jh-29pc-gfqr (6.2.3); via
+#                                        get-uri, which declares ^5.3.1.
+#                                        The Client methods get-uri calls
+#                                        (access, close, downloadTo,
 #                                        lastMod, list) have identical
 #                                        signatures in 6.x. 6.0.0's one breaking
 #                                        change: `allowSeparateTransferHost` now
@@ -155,8 +156,15 @@
 #                                        naming another host is refused.)
 #     handlebars 4.7.10                 (GHSA-8r5x-fm3f-whwj, -p8wg-vrv2-v86f,
 #                                        -xw65-4hp5-5hc7; VAT utils templates)
-#     undici 7.30.1                     (18 advisories, GHSA-2gqq-gqf2-x968
-#                                        through -xjj6-f33q-929c;
+#     undici 7.30.1                     (GHSA-2gqq-gqf2-x968, -2jfj-6hjv-fm6j,
+#                                        -2m5v-pch6-74hx, -3wwx-pv8p-q78v,
+#                                        -3xpg-4rpp-hhhm, -4qv8-2p9j-2685,
+#                                        -4w7w-5xrc-9h26, -55wc-3pg8-jfw6,
+#                                        -8436-99hf-9mmv, -9fm3-97px-rjf6,
+#                                        -f72v-6w45-q472, -pmjh-fq2x-6v4x,
+#                                        -qrxm-fqhp-jwvm, -r53p-7pc4-xj5r,
+#                                        -rfgv-xxqx-mfg5, -rx4f-c7p8-82vq,
+#                                        -w293-vg96-wgc3, -xjj6-f33q-929c;
 #                                        markdown-link-check, cheerio)
 #     ip-address 10.7.4                 (GHSA-2vr4-cq9g-pvrc, -h3mg-xc3c-68pw,
 #                                        -j6r3-76f7-8jcv, -rpw4-54j3-4h4q,
@@ -172,24 +180,36 @@
 #     ajv@6 6.14.0, ajv@8 8.18.0        (GHSA-2g4f-4pwh-qvx6; ESLint, the MCP
 #                                        sdk, secretlint, VAT resources,
 #                                        packages/extractors)
-#     fast-uri 3.1.9                    (10 advisories, GHSA-333x-w4r6-6crp
-#                                        through -xhq7-xmqj-769h; ajv 8)
+#     fast-uri 3.1.9                    (GHSA-333x-w4r6-6crp, -5jgf-p345-68v8,
+#                                        -f65p-4m7j-42xc, -fph4-wmhf-6fwf,
+#                                        -hrr3-gc8f-f4qj, -jqff-g426-hqxp,
+#                                        -qw65-cvwx-89v3, -w74x-v6f9-j3xg,
+#                                        -wjr9-j795-jxcr, -xhq7-xmqj-769h;
+#                                        ajv 8)
 #
 #   Declared by the published packages too:
 #     yaml 2.8.3                        (GHSA-48c2-rrv3-qjmp, fixed in 2.8.3.
-#                                        cli, config, core, extractors, git and
-#                                        history declare ^2.8.3, so adopters
-#                                        resolve the fix; the pin also covers
+#                                        cli, config, core, git and history
+#                                        declare ^2.8.3 as a dependency, so
+#                                        installs and existing lockfiles
+#                                        dedupe onto the fix (a fresh install
+#                                        under ^2.8.2 already took 2.9.1);
+#                                        extractors declares it as a
+#                                        devDependency. The pin also covers
 #                                        VAT packages and vite)
 #
 #   Dev tooling:
-#     vitest 3.2.7                      (a direct devDependency, ^3.2.6; the
+#     vitest 3.2.6                      (a direct devDependency, ^3.2.6; the
 #                                        pin holds one version for every
-#                                        workspace package, and
-#                                        @vitest/coverage-v8 3.2.7 peers exactly
-#                                        vitest 3.2.7. GHSA-5xrq-8626-4rwp,
-#                                        fixed in 3.2.6. Moves to 4.1.12 in the
-#                                        vitest 4 migration PR)
+#                                        workspace package, and the root
+#                                        devDependency @vitest/coverage-v8 is
+#                                        pinned to 3.2.6 so its exact peer
+#                                        matches. GHSA-5xrq-8626-4rwp, fixed in
+#                                        3.2.6. 3.2.7 is not used: it brings
+#                                        @vitest/mocker 3.2.7, a newly
+#                                        introduced vulnerable version that
+#                                        GitHub dependency review flags. Moves
+#                                        to 4.1.12 in the vitest 4 migration PR)
 #     vite 7.3.7, rollup 4.59.0, postcss 8.5.23, nanoid 3.3.18,
 #     source-map-js 1.2.2               (vitest's vite: GHSA-587h-7wmj-h5pm,
 #                                        -698v-4r3x-3vcv, -9jrq-w75r-8gcw,
@@ -214,7 +234,7 @@
 #                                        loading)
 #     tinypool 2.1.2                    (GHSA-5gmw-xhrv-c9v3, fixed in 2.1.1;
 #                                        GHSA-85c8-ppgw-ccpr, fixed in 2.1.2.
-#                                        vitest 3.2.7's worker pool, which
+#                                        vitest 3.2.6's worker pool, which
 #                                        declares ^1.1.1; the full gate, unit
 #                                        coverage included, passes on 2.1.2.
 #                                        vitest 4.1.12 does not depend on
@@ -279,10 +299,10 @@ reason = """zod 3.25.76: validating an oversized constrained collection can exha
 [[IgnoredVulns]]
 id = "GHSA-82fw-gwwq-j7x9"
 ignoreUntil = 2027-01-31T00:00:00Z
-reason = """@vitest/mocker and vitest 3.2.7: a redirect mock registered over the dev server's WebSocket can read files outside the project. Unauthenticated only through the public mockerPlugin/interceptorPlugin exports mounted on a third-party Vite dev server; this repo mounts neither and does not use vitest browser mode, so no dev server or mock-registration socket is ever listening. Dev-only. Re-check trigger: the vitest 4 migration PR."""
+reason = """@vitest/mocker and vitest 3.2.6: a redirect mock registered over the dev server's WebSocket can read files outside the project. Unauthenticated only through the public mockerPlugin/interceptorPlugin exports mounted on a third-party Vite dev server; this repo mounts neither and does not use vitest browser mode, so no dev server or mock-registration socket is ever listening. Dev-only. Re-check trigger: the vitest 4 migration PR."""
 
 [[IgnoredVulns]]
 id = "GHSA-qxg6-89mg-rqv8"
 ignoreUntil = 2027-01-31T00:00:00Z
-reason = """@vitest/mocker 3.2.7: a manual mock registered over the same unauthenticated dev-server WebSocket can inject JavaScript. Same caller as GHSA-82fw-gwwq-j7x9 (mockerPlugin/interceptorPlugin on a Vite dev server), which this repo never runs. Dev-only. Re-check trigger: the vitest 4 migration PR."""
+reason = """@vitest/mocker 3.2.6: a manual mock registered over the same unauthenticated dev-server WebSocket can inject JavaScript. Same caller as GHSA-82fw-gwwq-j7x9 (mockerPlugin/interceptorPlugin on a Vite dev server), which this repo never runs. Dev-only. Re-check trigger: the vitest 4 migration PR."""
 

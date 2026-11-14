@@ -14,7 +14,9 @@ import semver from 'semver';
  *     a parenthesised note;
  *   - a continuation (`#` and six or more spaces) of the previous entry's note;
  *   - prose: `#` and three spaces, or a bare `#`.
- * Anything else, and a key listed twice, is reported.
+ * Anything else, and a key listed twice, is reported. An entry indented six or more
+ * spaces is read as a continuation, so its pins are reported as missing from the ledger.
+ * A key selector must be a bare major (`picomatch@2`); a range (`@>=2`, `@^2`) is reported.
  *
  *     #     hono 4.13.11, body-parser 2.4.0
  *     #     tar 7.5.22                        (GHSA-...)
@@ -29,6 +31,8 @@ const ENTRY_PREFIX_LENGTH = 6;
 /** An override key: `name`, `@scope/name` or `name@major` */
 const OVERRIDE_KEY = /^@?[\w./@-]+$/;
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
+/** The only selector the check supports: `picomatch@2`, not `picomatch@>=2`, `@^2` or `@~2.8` */
+const BARE_MAJOR = /^\d+$/;
 
 export interface LockPackage {
   deprecated: boolean;
@@ -145,7 +149,12 @@ function checkOverride(
   packages: Map<string, LockPackage>,
   ledger: Map<string, string>
 ): string[] {
-  if (key.includes('>')) return [`override ${key}: parent>child keys are not supported by the ledger check`];
+  const name = packageName(key);
+  if (name.includes('>')) return [`override ${key}: parent>child keys are not supported by the ledger check`];
+  const selected = selector(key);
+  if (selected !== undefined && !BARE_MAJOR.test(selected)) {
+    return [`override ${key}: only a bare-major selector (name@2) is supported, not a range`];
+  }
   if (!EXACT_VERSION.test(version)) return [`override ${key}: "${version}" is not an exact version`];
   const problems: string[] = [];
   const range = selector(key);

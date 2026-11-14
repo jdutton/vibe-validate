@@ -42,7 +42,7 @@ const HONO_LINE = '#     @hono/node-server 2.1.3           (GHSA-rmxm-3fg6-px4f)
 /** A toml whose ledger holds `body` between the markers, with an adopter note outside them */
 function tomlWith(body: string): string {
   return `# Overrides ledger.
-#     basic-ftp 5.3.1   GHSA-c475-qrg2-pj4r  (an adopter note, not a pin)
+#     basic-ftp 5.3.1                   (a valid entry line outside the markers)
 # BEGIN overrides ledger
 #   Prose about the pins sits at three spaces.
 #
@@ -158,10 +158,38 @@ describe('overrides ledger', () => {
     ]);
   });
 
-  it('ignores entry-shaped lines outside the markers', () => {
-    const { entries } = parseLedger(TOML);
+  it('ignores a valid entry outside the markers', () => {
+    const { entries, problems } = parseLedger(TOML);
     expect(entries.has('basic-ftp')).toBe(false);
+    expect(problems).toEqual([]);
+    expect(checkOverridesLedger(OVERRIDES, LOCK, TOML)).toEqual([]);
   });
+
+  it('(E2) reports END before BEGIN', () => {
+    const toml = TOML.replace('# BEGIN overrides ledger\n', '@@\n')
+      .replace('# END overrides ledger\n', '# BEGIN overrides ledger\n')
+      .replace('@@\n', '# END overrides ledger\n');
+    expect(parseLedger(toml).problems).toEqual([
+      'osv-scanner.toml has "# END overrides ledger" before "# BEGIN overrides ledger"',
+    ]);
+  });
+
+  it('(E2) reads an entry indented six or more spaces as a continuation, so its pins are missing', () => {
+    const toml = tomlWith(`${HONO_LINE}#      ajv@8 8.18.0, lodash 4.18.1\n`);
+    expect(checkOverridesLedger(OVERRIDES, LOCK, toml)).toEqual([
+      'override ajv@8 8.18.0 is missing from the osv-scanner.toml ledger',
+      'override lodash 4.18.1 is missing from the osv-scanner.toml ledger',
+    ]);
+  });
+
+  it.each(['yaml@>=2', 'yaml@^2', 'yaml@~2.8', 'yaml@2.8'])(
+    'reports the range selector %s as unsupported, bare major only',
+    key => {
+      expect(checkOverridesLedger({ ...OVERRIDES, [key]: '2.8.3' }, LOCK, TOML)).toEqual([
+        `override ${key}: only a bare-major selector (name@2) is supported, not a range`,
+      ]);
+    }
+  );
 
   it('(E3) reports a parent>child override key as unsupported', () => {
     expect(checkOverridesLedger({ ...OVERRIDES, 'vite>rollup': '4.59.0' }, LOCK, TOML)).toEqual([
