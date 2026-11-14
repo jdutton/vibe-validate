@@ -37,14 +37,24 @@ snapshots:
     dependencies: {}
 `;
 
-const TOML = `# Overrides ledger.
+const HONO_LINE = '#     @hono/node-server 2.1.3           (GHSA-rmxm-3fg6-px4f)\n';
+
+/** A toml whose ledger holds `body` between the markers, with an adopter note outside them */
+function tomlWith(body: string): string {
+  return `# Overrides ledger.
 #     basic-ftp 5.3.1   GHSA-c475-qrg2-pj4r  (an adopter note, not a pin)
-#     @hono/node-server 2.1.3           (GHSA-rmxm-3fg6-px4f)
-#     ajv@8 8.18.0, lodash 4.18.1,
-#                                       (a continuation line)
+# BEGIN overrides ledger
+#   Prose about the pins sits at three spaces.
+#
+${body}# END overrides ledger
 [[IgnoredVulns]]
 id = "GHSA-mrhx-c7xc-m3w5"
 `;
+}
+
+const TOML = tomlWith(`${HONO_LINE}#     ajv@8 8.18.0, lodash 4.18.1,
+#                                       (a continuation line)
+`);
 
 const OVERRIDES = { '@hono/node-server': '2.1.3', 'ajv@8': '8.18.0', lodash: '4.18.1' };
 
@@ -62,7 +72,9 @@ describe('overrides ledger', () => {
   });
 
   it('reads ledger entries and skips adopter notes and continuation lines', () => {
-    expect(Object.fromEntries(parseLedger(TOML))).toEqual(OVERRIDES);
+    const { entries, problems } = parseLedger(TOML);
+    expect(Object.fromEntries(entries)).toEqual(OVERRIDES);
+    expect(problems).toEqual([]);
   });
 
   it('passes when every pin resolves, is listed and is not deprecated', () => {
@@ -70,13 +82,13 @@ describe('overrides ledger', () => {
   });
 
   it('(a) fails on an override that resolves no package', () => {
-    expect(checkOverridesLedger({ ...OVERRIDES, 'ajv@6': '6.14.0' }, LOCK, `${TOML}#     ajv@6 6.14.0\n`)).toEqual([
+    expect(checkOverridesLedger({ ...OVERRIDES, 'ajv@6': '6.14.0' }, LOCK, tomlWith(`${HONO_LINE}#     ajv@6 6.14.0, ajv@8 8.18.0, lodash 4.18.1\n`))).toEqual([
       'override ajv@6 6.14.0 resolves no package in pnpm-lock.yaml',
     ]);
   });
 
   it('(b) fails on an override missing from the ledger', () => {
-    const toml = TOML.replace('#     @hono/node-server 2.1.3           (GHSA-rmxm-3fg6-px4f)\n', '');
+    const toml = TOML.replace(HONO_LINE, '');
     expect(checkOverridesLedger(OVERRIDES, LOCK, toml)).toEqual([
       'override @hono/node-server 2.1.3 is missing from the osv-scanner.toml ledger',
     ]);
@@ -102,6 +114,58 @@ describe('overrides ledger', () => {
   it('fails on an override that is not an exact version', () => {
     expect(checkOverridesLedger({ ...OVERRIDES, 'ajv@8': '>=8.18.0' }, LOCK, TOML)).toEqual([
       'override ajv@8: ">=8.18.0" is not an exact version',
+    ]);
+  });
+
+  it('(E1) fails when the pinned version does not satisfy the key selector', () => {
+    const toml = tomlWith(`${HONO_LINE}#     ajv@6 8.18.0, ajv@8 8.18.0, lodash 4.18.1\n`);
+    expect(checkOverridesLedger({ ...OVERRIDES, 'ajv@6': '8.18.0' }, LOCK, toml)).toEqual([
+      'override ajv@6 pins 8.18.0, which does not satisfy its selector "6"',
+    ]);
+  });
+
+  it('(E2) reports a malformed line between the markers', () => {
+    const toml = tomlWith(`${HONO_LINE}#     ajv@8 8.18.0, lodash 4.18.1x\n`);
+    expect(checkOverridesLedger(OVERRIDES, LOCK, toml)).toEqual([
+      'osv-scanner.toml line 7: not a ledger entry or continuation: "#     ajv@8 8.18.0, lodash 4.18.1x"',
+      'override ajv@8 8.18.0 is missing from the osv-scanner.toml ledger',
+      'override lodash 4.18.1 is missing from the osv-scanner.toml ledger',
+    ]);
+  });
+
+  it('(E2) reports a line indented one space short of an entry', () => {
+    const toml = tomlWith(`${HONO_LINE}#    ajv@8 8.18.0, lodash 4.18.1\n`);
+    expect(checkOverridesLedger(OVERRIDES, LOCK, toml)).toEqual([
+      'osv-scanner.toml line 7: not a ledger entry or continuation: "#    ajv@8 8.18.0, lodash 4.18.1"',
+      'override ajv@8 8.18.0 is missing from the osv-scanner.toml ledger',
+      'override lodash 4.18.1 is missing from the osv-scanner.toml ledger',
+    ]);
+  });
+
+  it('(E2) reports a duplicate ledger key', () => {
+    const toml = tomlWith(`${HONO_LINE}#     ajv@8 8.18.0, lodash 4.18.1, lodash 4.18.0\n`);
+    expect(checkOverridesLedger(OVERRIDES, LOCK, toml)).toEqual(['ledger key lodash is listed more than once']);
+  });
+
+  it('(E2) reports missing markers', () => {
+    const toml = TOML.replace('# BEGIN overrides ledger\n', '').replace('# END overrides ledger\n', '');
+    expect(checkOverridesLedger(OVERRIDES, LOCK, toml)).toEqual([
+      'osv-scanner.toml has no "# BEGIN overrides ledger" line',
+      'osv-scanner.toml has no "# END overrides ledger" line',
+      'override @hono/node-server 2.1.3 is missing from the osv-scanner.toml ledger',
+      'override ajv@8 8.18.0 is missing from the osv-scanner.toml ledger',
+      'override lodash 4.18.1 is missing from the osv-scanner.toml ledger',
+    ]);
+  });
+
+  it('ignores entry-shaped lines outside the markers', () => {
+    const { entries } = parseLedger(TOML);
+    expect(entries.has('basic-ftp')).toBe(false);
+  });
+
+  it('(E3) reports a parent>child override key as unsupported', () => {
+    expect(checkOverridesLedger({ ...OVERRIDES, 'vite>rollup': '4.59.0' }, LOCK, TOML)).toEqual([
+      'override vite>rollup: parent>child keys are not supported by the ledger check',
     ]);
   });
 

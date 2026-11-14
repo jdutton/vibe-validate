@@ -85,6 +85,31 @@ async function executeNestedCommand(testCommand: string): Promise<{ parsed: any;
   return { parsed: nestedParsed, output: nestedRun };
 }
 
+/** Median of an odd-length sample */
+function median(values: number[]): number {
+  return [...values].sort((x, y) => x - y)[Math.floor(values.length / 2)];
+}
+
+/** Time one direct `vv run` that must execute (not hit the cache) and succeed */
+async function timeDirectRun(command: string): Promise<number> {
+  const start = Date.now();
+  const parsed = parseRunYamlOutput(await execCLI(['run', command]));
+  const elapsed = Date.now() - start;
+  expect(parsed.exitCode).toBe(0);
+  expect(parsed.command).toBe(command);
+  expect(parsed.isCachedResult).not.toBe(true);
+  return elapsed;
+}
+
+/** Time one nested `vv run "node cli run ..."` that must execute (not hit the cache) and succeed */
+async function timeNestedRun(command: string): Promise<number> {
+  const start = Date.now();
+  const { parsed } = await executeNestedCommand(command);
+  const elapsed = Date.now() - start;
+  expect(parsed.isCachedResult).not.toBe(true);
+  return elapsed;
+}
+
 /**
  * Helper to parse YAML front matter from stdout
  * Reduces duplication in display flag tests
@@ -580,20 +605,23 @@ describe('run command integration', () => {
 
   describe('performance', () => {
     it('should handle nested execution without significant overhead', async () => {
-      // Compared against a direct run measured in the same test, so machine
-      // load scales both sides and never decides the result. A nested run
-      // starts the CLI twice, so it costs about two direct runs.
-      const timed = async (args: string[]): Promise<number> => {
-        const start = Date.now();
-        await execCLI(args);
-        return Date.now() - start;
-      };
+      // Compared against direct runs measured in the same test, so machine load
+      // scales both sides. A nested run starts the CLI twice, so it costs about
+      // two direct runs. Each run gets its own command text, so none of them
+      // can hit the run cache another run wrote: every run executes.
+      const unique = Date.now();
 
-      const direct = await timed(['run', 'echo fast']);
-      const cliPath = getCliPath('vibe-validate');
-      const nested = await timed(['run', `node ${cliPath} run 'echo fast'`]);
+      // Alternate direct and nested so a load spike hits both
+      const direct: number[] = [];
+      const nested: number[] = [];
+      for (let pair = 0; pair < 3; pair++) {
+        direct.push(await timeDirectRun(`echo perf-direct-${unique}-${pair}`));
+        nested.push(await timeNestedRun(`echo perf-nested-${unique}-${pair}`));
+      }
 
-      expect(nested).toBeLessThan(direct * 4);
+      // The floor keeps a very fast direct run from making the ratio a few milliseconds wide
+      const directMedian = median(direct);
+      expect(median(nested)).toBeLessThan(Math.max(directMedian * 4, directMedian + 1500));
     });
   });
 

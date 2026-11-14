@@ -140,8 +140,6 @@
     "deny": [
     ],
     "ask": [
-      "Bash(gh run list *)",
-      "Bash(gh run view *)",
       "Bash(*jscpd-update-baseline*)"
     ]
   },

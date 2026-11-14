@@ -5,9 +5,11 @@
 # register at ./osv-scanner.toml: a green run means "zero un-triaged
 # vulnerabilities". To accept a new advisory, add a documented `[[IgnoredVulns]]`
 # entry to that file; to fix one, bump the dependency or pin a patched version
-# in the root package.json `pnpm.overrides` block (pnpm supports a per-major
-# selector such as `"picomatch@2": "2.3.2"`, so coexisting majors are still
-# fixable without an ignore entry).
+# in the root package.json `pnpm.overrides` block. A per-major selector such as
+# `"picomatch@2": "2.3.2"` pins one major without touching the others, but only
+# helps when that major has a fixed release; where it has none, the override
+# has to move every consumer to the fixed major (as glob 14 and minimatch 11
+# do here), and a consumer that cannot run on it needs an ignore entry.
 #
 # osv-scanner is installed by downloading the pinned release binary and checking
 # it against a SHA256 recorded here in git, rather than via a marketplace action
