@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **The published packages now declare `yaml` `^2.8.3`** (GHSA-48c2-rrv3-qjmp; the history reader parses YAML from git notes). A fresh install under the old `^2.8.2` range already resolved a patched `yaml`; the new floor keeps existing lockfiles that hold 2.8.2 from staying on it once they update.
+
+- **Installs of the published package keep six advisories on four packages.** Root overrides are not published, so `npm i vibe-validate` resolves `vibe-agent-toolkit@0.1.42`'s own ranges. A fresh resolve already floats most of that tree to patched versions, but leaves `basic-ftp` 5.3.1 (GHSA-c475-qrg2-pj4r, GHSA-5pm8-86m8-9m6r, GHSA-r4jh-29pc-gfqr), `glob` 10.5.0 (GHSA-3g3m-2fjr-6pw4), `minimatch` 9.0.9 (GHSA-g3hv-75wg-m249) and `zod` 3.25.76 (GHSA-mrhx-c7xc-m3w5). VAT 0.2.0-rc.15 (`next`) already declares glob ^14.0.3. glob and minimatch clear when vibe-validate releases on VAT 0.2.0, or on a 0.1.x release that does the same. basic-ftp clears when 6.2.4 or later becomes reachable, which takes three releases: a `get-uri` that declares it, a `pac-proxy-agent` that admits that `get-uri` (9.1.0 pins `get-uri` to exactly 8.0.1), and a `proxy-agent` that admits that `pac-proxy-agent` (8.0.2 pins it to exactly 9.1.0); or that path is dropped. zod clears when vibe-validate and the VAT version it releases on both move to zod 4. The repository's own lockfile work is recorded in `osv-scanner.toml`.
+
 ### Fixed
 
 - **A parallel phase now blames the step that actually failed.** When one step in a `parallel: true` phase failed, fail-fast stopped its still-running siblings — and the result then reported the first *stopped* step in config order as the failure. A long ESLint run listed first would be reported as `ESLint failed` with the extraction "Process stopped (fail-fast)", while the real failure sat further down the list. `failedStep` and `summary` now name the step that failed on its own: its command failed, it could not start, or vibe-validate could not process its result.

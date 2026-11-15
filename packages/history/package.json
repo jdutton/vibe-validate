@@ -44,7 +44,7 @@
   "dependencies": {
     "@vibe-validate/core": "workspace:*",
     "@vibe-validate/git": "workspace:*",
-    "yaml": "^2.8.2",
+    "yaml": "^2.8.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {

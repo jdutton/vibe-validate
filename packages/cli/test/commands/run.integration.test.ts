@@ -85,6 +85,31 @@ async function executeNestedCommand(testCommand: string): Promise<{ parsed: any;
   return { parsed: nestedParsed, output: nestedRun };
 }
 
+/** Median of an odd-length sample */
+function median(values: number[]): number {
+  return [...values].sort((x, y) => x - y)[Math.floor(values.length / 2)];
+}
+
+/** Time one direct `vv run` that must execute (not hit the cache) and succeed */
+async function timeDirectRun(command: string): Promise<number> {
+  const start = Date.now();
+  const parsed = parseRunYamlOutput(await execCLI(['run', command]));
+  const elapsed = Date.now() - start;
+  expect(parsed.exitCode).toBe(0);
+  expect(parsed.command).toBe(command);
+  expect(parsed.isCachedResult).not.toBe(true);
+  return elapsed;
+}
+
+/** Time one nested `vv run "node cli run ..."` that must execute (not hit the cache) and succeed */
+async function timeNestedRun(command: string): Promise<number> {
+  const start = Date.now();
+  const { parsed } = await executeNestedCommand(command);
+  const elapsed = Date.now() - start;
+  expect(parsed.isCachedResult).not.toBe(true);
+  return elapsed;
+}
+
 /**
  * Helper to parse YAML front matter from stdout
  * Reduces duplication in display flag tests
@@ -580,16 +605,25 @@ describe('run command integration', () => {
 
   describe('performance', () => {
     it('should handle nested execution without significant overhead', async () => {
-      const start = Date.now();
+      // Compared against direct runs measured in the same test, so machine load
+      // scales both sides. A nested run starts the CLI twice, so it costs about
+      // two direct runs. Each run gets its own command text, so none of them
+      // can hit the run cache another run wrote: every run executes.
+      const unique = Date.now();
 
-      const cliPath = getCliPath('vibe-validate');
-      const command = `node ${cliPath} run 'echo fast'`;
-      await execCLI(['run', command]);
+      // Alternate direct and nested so a load spike hits both
+      const direct: number[] = [];
+      const nested: number[] = [];
+      for (let pair = 0; pair < 3; pair++) {
+        direct.push(await timeDirectRun(`echo perf-direct-${unique}-${pair}`));
+        nested.push(await timeNestedRun(`echo perf-nested-${unique}-${pair}`));
+      }
 
-      const duration = Date.now() - start;
-
-      // Should complete in reasonable time (< 5 seconds)
-      expect(duration).toBeLessThan(5000);
+      // Intent: nesting costs about two direct runs, so 4x catches a real regression. The
+      // 750 ms floor only keeps a very fast direct run (under ~250 ms) from making that
+      // ratio a few milliseconds wide; above that the 4x term governs.
+      const directMedian = median(direct);
+      expect(median(nested)).toBeLessThan(Math.max(directMedian * 4, directMedian + 750));
     });
   });
 
