@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.2] - 2026-11-25
+
 ### Security
 
 - **The published packages now declare `yaml` `^2.8.3`** (GHSA-48c2-rrv3-qjmp; the history reader parses YAML from git notes). A fresh install under the old `^2.8.2` range already resolved a patched `yaml`; the new floor keeps existing lockfiles that hold 2.8.2 from staying on it once they update.
