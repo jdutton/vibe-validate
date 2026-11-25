@@ -36,9 +36,10 @@ export interface GitExecutionOptions {
   encoding?: BufferEncoding;
 
   /**
-   * Standard input to pass to command
+   * Standard input to pass to command. A `Buffer` passes bytes through
+   * unchanged, which raw (possibly non-UTF-8) paths need.
    */
-  stdin?: string;
+  stdin?: string | Buffer;
 
   /**
    * Whether to ignore errors (return empty string instead of throwing)

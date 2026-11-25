@@ -20,9 +20,15 @@ A **tree hash** is git's way of creating a deterministic fingerprint of your wor
 ```bash
 # Behind the scenes on every validation, against a COPY of the index
 # (your real .git/index is never touched):
-cp .git/index "$GIT_DIR/vibe-validate-temp-index-$$"
+# -p keeps the index's modification time: git compares each file's mtime with
+# it to decide which files to re-read, and a fresh mtime would hide a
+# same-second, same-size edit.
+cp -p .git/index "$GIT_DIR/vibe-validate-temp-index-$$"
 export GIT_INDEX_FILE="$GIT_DIR/vibe-validate-temp-index-$$"
-git add --all                     # Stage tracked edits + untracked files
+# vibe-validate also clears assume-unchanged, and skip-worktree on files that
+# exist on disk, in this copy, so git reads those files too.
+git add --all --sparse            # Stage tracked edits + untracked files
+                                  # (--sparse: git 2.34+; omit it on older git)
 git write-tree                    # Generate tree hash
 # Returns: abc123def456... (40-character SHA-1)
 ```
@@ -354,19 +360,29 @@ vv doctor
 ### Tree hash calculation
 
 ```typescript
-// Simplified implementation - see packages/git/src/tree-hash.ts
+// Simplified implementation - see packages/git/src/temp-index.ts
 function getTreeHash(): string {
   // Work against a COPY of the index, so the real one is never modified
   // and there is nothing to undo afterwards.
   const tempIndex = join(gitDir, `vibe-validate-temp-index-${process.pid}`);
+  const realIndex = statSync(join(gitDir, 'index'));
   copyFileSync(join(gitDir, 'index'), tempIndex);
+  // Keep the real index's mtime (floored to the second). Git compares each
+  // file's mtime with it to decide which files to re-read; the copy's fresh
+  // mtime would hide a same-second, same-size edit. (The real code also
+  // clears assume-unchanged, and skip-worktree on files present on disk, in
+  // the copy, and stamps through a descriptor opened without following links.)
+  const seconds = Math.floor(realIndex.mtimeMs / 1000);
+  utimesSync(tempIndex, seconds, seconds);
   const env = { ...process.env, GIT_INDEX_FILE: tempIndex };
 
   try {
     // `--all`, NOT `--intent-to-add`: intent-to-add records an empty
     // placeholder that `git write-tree` skips, which would drop unstaged
-    // modifications out of the key entirely.
-    safeExecSync('git', ['add', '--all'], { cwd: repoRoot, env });
+    // modifications out of the key entirely. `--sparse` stages files outside
+    // a sparse-checkout cone; git older than 2.34 lacks it, and the real code
+    // retries without it there.
+    safeExecSync('git', ['add', '--all', '--sparse'], { cwd: repoRoot, env });
 
     return safeExecSync('git', ['write-tree'], { cwd: repoRoot, env }).trim();
   } finally {

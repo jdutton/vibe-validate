@@ -73,7 +73,16 @@ export interface GitTreeEntry {
    * - Under a clean filter (git-lfs and friends) the OID names the POINTER
    *   blob, so `cat-file` returns pointer text rather than file content.
    * - In a sparse checkout, entries are returned for paths that are not
-   *   materialized on disk at all — a well-formed entry whose file is ENOENT.
+   *   materialized on disk at all — a well-formed entry whose file is ENOENT,
+   *   carrying the object ID the index records for it (the committed one,
+   *   unless the user staged something else).
+   * - Index flags that tell git to trust the index instead of the file —
+   *   assume-unchanged, and skip-worktree on a file that IS on disk — are
+   *   cleared in the throwaway index before staging, so such a file still names
+   *   its on-disk bytes. The real index keeps its flags. One exception remains:
+   *   with a sparse index (`index.sparse`), a file on disk inside a directory
+   *   the index holds as a single collapsed entry is not expanded, and keeps
+   *   the ID the index records.
    *
    * A consumer asking "have these bytes changed since I last read them?" is
    * well served. A consumer treating this as a content hash of the file it will

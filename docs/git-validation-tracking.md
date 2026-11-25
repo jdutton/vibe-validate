@@ -48,14 +48,19 @@ Code State → Git Tree Hash → Git Note → Validation Results
 GIT_DIR=$(git rev-parse --git-dir)
 TEMP_INDEX="$GIT_DIR/temp-validation-index"
 
-# Step 2: Copy current index
-cp "$GIT_DIR/index" "$TEMP_INDEX"
+# Step 2: Copy current index, KEEPING its modification time (-p). Git compares
+# each file's mtime with the index's to decide which files to re-read; a fresh
+# mtime on the copy hides an edit made in the same second as the last index
+# write, at the same size, and the hash keeps the old content.
+cp -p "$GIT_DIR/index" "$TEMP_INDEX"
 
 # Step 3: Stage all changes in temp index (doesn't affect real index)
 # CRITICAL: Use `git add --all` WITHOUT --intent-to-add or --force
 # --intent-to-add only adds empty placeholders (git write-tree skips them)
 # --force includes .gitignore'd files (secrets, non-deterministic hashing)
-GIT_INDEX_FILE="$TEMP_INDEX" git add --all
+# --sparse stages files outside a sparse-checkout cone (git 2.34+; omit it on
+# older git, which has no such restriction)
+GIT_INDEX_FILE="$TEMP_INDEX" git add --all --sparse
 
 # Step 4: Calculate tree hash (deterministic, content-based only)
 TREE_HASH=$(GIT_INDEX_FILE="$TEMP_INDEX" git write-tree)
@@ -416,14 +421,17 @@ def calculate_deterministic_tree_hash():
     temp_index = f"{git_dir}/temp-validation-index"
 
     try:
-        # Copy current index
-        run_command(f"cp {git_dir}/index {temp_index}")
+        # Copy current index, keeping its mtime (-p) so git still re-reads
+        # files edited in the same second as the last index write
+        run_command(f"cp -p {git_dir}/index {temp_index}")
 
         # Stage all changes (in temp index only)
         # CRITICAL: Do NOT use --intent-to-add (only adds empty placeholders)
         # CRITICAL: Do NOT use --force (includes .gitignore'd secrets)
+        # --sparse: stage files outside a sparse-checkout cone (git 2.34+;
+        # omit it on older git)
         env = {"GIT_INDEX_FILE": temp_index}
-        run_command("git add --all", env=env)
+        run_command("git add --all --sparse", env=env)
 
         # Calculate tree hash
         tree_hash = run_command("git write-tree", env=env).strip()
@@ -696,7 +704,7 @@ The process described above (Step 3 in "Core Components") creates git objects fo
 
 ```bash
 # Step 3: Stage all changes in temp index
-GIT_INDEX_FILE="$TEMP_INDEX" git add --all
+GIT_INDEX_FILE="$TEMP_INDEX" git add --all --sparse
 
 # Step 4: Calculate tree hash (CREATES GIT OBJECTS!)
 TREE_HASH=$(GIT_INDEX_FILE="$TEMP_INDEX" git write-tree)

@@ -6,12 +6,16 @@
  */
 
 import {
+  closeSync,
+  constants as fsConstants,
   copyFileSync,
   existsSync,
+  futimesSync,
+  openSync,
+  readFileSync,
   unlinkSync,
   readdirSync,
   statSync,
-  utimesSync,
   type BigIntStats,
   type Stats,
   writeFileSync,
@@ -51,16 +55,18 @@ vi.mock('fs', async (importOriginal) => {
     unlinkSync: typeof unlinkSync;
     readdirSync: typeof readdirSync;
     statSync: typeof statSync;
-    utimesSync: typeof utimesSync;
   }>();
   return {
     ...actual,
+    closeSync: vi.fn(),
     copyFileSync: vi.fn(),
     existsSync: vi.fn(),
+    futimesSync: vi.fn(),
+    openSync: vi.fn(),
+    readFileSync: vi.fn(),
     unlinkSync: vi.fn(),
     readdirSync: vi.fn(),
     statSync: vi.fn(),
-    utimesSync: vi.fn(),
   };
 });
 
@@ -78,7 +84,10 @@ const mockExistsSync = existsSync as ReturnType<typeof vi.fn>;
 const mockUnlinkSync = unlinkSync as ReturnType<typeof vi.fn>;
 const mockReaddirSync = readdirSync as ReturnType<typeof vi.fn>;
 const mockStatSync = statSync as ReturnType<typeof vi.fn>;
-const mockUtimesSync = utimesSync as ReturnType<typeof vi.fn>;
+const mockOpenSync = openSync as ReturnType<typeof vi.fn>;
+const mockFutimesSync = futimesSync as ReturnType<typeof vi.fn>;
+const mockCloseSync = closeSync as ReturnType<typeof vi.fn>;
+const mockReadFileSync = readFileSync as ReturnType<typeof vi.fn>;
 const mockIsProcessRunning = utils.isProcessRunning as ReturnType<typeof vi.fn>;
 
 /**
@@ -119,6 +128,63 @@ const INDEX_MTIME_SECONDS = 1_700_000_000;
 /** The current process's temp index path. */
 const TEMP_INDEX_PATH = /vibe-validate-temp-index-\d+$/;
 
+/** The descriptor the mocked `openSync` hands back for the temp index. */
+const TEMP_INDEX_FD = 42;
+
+/** How the temp index must be opened for stamping: writable, never through a symlink. */
+const STAMP_OPEN_FLAGS = fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
+
+/** One entry for {@link buildIndexV2}. */
+interface FakeIndexEntry {
+  path: string;
+  oid: string;
+  assumeUnchanged?: boolean;
+}
+
+/**
+ * Build a version-2 SHA-1 index file, laid out as git's index format documents.
+ *
+ * Hand-built rather than produced by git because these unit tests mock the
+ * filesystem; the parser itself is tested against real git output in
+ * `index-flags.test.ts`.
+ *
+ * @param entries - Entries in path order
+ * @returns The index file bytes
+ */
+function buildIndexV2(entries: FakeIndexEntry[]): Buffer {
+  const header = Buffer.alloc(12);
+  header.write('DIRC', 0, 'latin1');
+  header.writeUInt32BE(2, 4);
+  header.writeUInt32BE(entries.length, 8);
+  const parts = [header];
+  for (const entry of entries) {
+    const name = Buffer.from(entry.path, 'utf8');
+    const size = (62 + name.length + 8) & ~7;
+    const bytes = Buffer.alloc(size);
+    bytes.writeUInt32BE(0o100644, 24);
+    Buffer.from(entry.oid, 'hex').copy(bytes, 40);
+    bytes.writeUInt16BE((entry.assumeUnchanged ? 0x8000 : 0) | Math.min(name.length, 0xfff), 60);
+    name.copy(bytes, 62);
+    parts.push(bytes);
+  }
+  parts.push(Buffer.alloc(20));
+  return Buffer.concat(parts);
+}
+
+const actualFsModule = await vi.importActual<{ readFileSync: typeof readFileSync }>('node:fs');
+
+/**
+ * Serve `index` as the temp copy's bytes; every other path reads for real.
+ *
+ * @param index - What the parser should find in the temp index
+ */
+function mockTempIndexBytes(index: Buffer): void {
+  mockReadFileSync.mockImplementation((path: unknown, ...rest: unknown[]) => {
+    if (typeof path === 'string' && TEMP_INDEX_PATH.test(path)) return index;
+    return (actualFsModule.readFileSync as (...args: unknown[]) => unknown)(path, ...rest);
+  });
+}
+
 /**
  * Answer `statSync` the way each real call site asks it.
  *
@@ -153,7 +219,11 @@ describe('getGitTreeHash', () => {
     // Default: the real index stats normally; there are no reaper candidates
     mockFileStats();
     // clearAllMocks keeps implementations, so a test's throwing stamp would leak
-    mockUtimesSync.mockReset();
+    mockOpenSync.mockReset().mockReturnValue(TEMP_INDEX_FD);
+    mockFutimesSync.mockReset();
+    mockCloseSync.mockReset();
+    // Default: the temp copy is a valid index with no trust flags
+    mockTempIndexBytes(buildIndexV2([]));
   });
 
   afterEach(() => {
@@ -168,12 +238,25 @@ describe('getGitTreeHash', () => {
 
       // Floored, never rounded: a copy even nanoseconds LATER than the real
       // index turns racy entries back into trusted ones.
-      expect(mockUtimesSync).toHaveBeenCalledTimes(1);
-      expect(mockUtimesSync).toHaveBeenCalledWith(
-        expect.stringMatching(TEMP_INDEX_PATH),
+      expect(mockFutimesSync).toHaveBeenCalledTimes(1);
+      expect(mockFutimesSync).toHaveBeenCalledWith(
+        TEMP_INDEX_FD,
         INDEX_ATIME_SECONDS,
         INDEX_MTIME_SECONDS,
       );
+      expect(mockCloseSync).toHaveBeenCalledWith(TEMP_INDEX_FD);
+    });
+
+    it('stamps through a descriptor opened without following symlinks', async () => {
+      mockStandardGitCommands();
+
+      await getGitTreeHash();
+
+      // A path-based stamp after the copy would retime whatever a symlink
+      // swapped in between points at. The descriptor pins the file that was
+      // opened, and O_NOFOLLOW refuses to open a link at all.
+      expect(mockOpenSync).toHaveBeenCalledTimes(1);
+      expect(mockOpenSync).toHaveBeenCalledWith(expect.stringMatching(TEMP_INDEX_PATH), STAMP_OPEN_FLAGS);
     });
 
     it('reads the real index times before copying and stamps after', async () => {
@@ -185,7 +268,7 @@ describe('getGitTreeHash', () => {
       // stamp written BEFORE the copy is overwritten by it.
       const statOrder = mockStatSync.mock.invocationCallOrder[0] ?? Infinity;
       const copyOrder = mockCopyFileSync.mock.invocationCallOrder[0] ?? -Infinity;
-      const stampOrder = mockUtimesSync.mock.invocationCallOrder[0] ?? -Infinity;
+      const stampOrder = mockFutimesSync.mock.invocationCallOrder[0] ?? -Infinity;
       expect(mockStatSync).toHaveBeenCalledWith('.git/index', { bigint: true });
       expect(statOrder).toBeLessThan(copyOrder);
       expect(copyOrder).toBeLessThan(stampOrder);
@@ -203,20 +286,80 @@ describe('getGitTreeHash', () => {
       // ...nor a stale one: one second past the epoch is older than every file,
       // so git re-hashes them all. Not 0, which git reads as "unknown" and then
       // trusts every cached stat.
-      expect(mockUtimesSync).toHaveBeenCalledWith(expect.stringMatching(TEMP_INDEX_PATH), 1, 1);
+      expect(mockFutimesSync).toHaveBeenCalledWith(TEMP_INDEX_FD, 1, 1);
     });
 
     it('fails rather than staging into a copy left with a fresh mtime', async () => {
       mockInitialGitCommands();
-      mockUtimesSync.mockImplementation(() => {
+      mockFutimesSync.mockImplementation(() => {
         throw new Error('EPERM: operation not permitted');
       });
 
       await expect(getGitTreeHash()).rejects.toThrow(/EPERM/);
 
-      // Nothing was staged against the unstamped copy, and it was still removed.
+      // Nothing was staged against the unstamped copy; the descriptor was
+      // closed and the copy still removed.
       expect(vi.mocked(gitExecutor.executeGitCommand)).toHaveBeenCalledTimes(1);
+      expect(mockCloseSync).toHaveBeenCalledWith(TEMP_INDEX_FD);
       expect(mockUnlinkSync).toHaveBeenCalledWith(expect.stringMatching(TEMP_INDEX_PATH));
+    });
+
+    it('fails when the copy turns out to be a symlink at stamping time', async () => {
+      mockInitialGitCommands();
+      mockOpenSync.mockImplementation(() => {
+        throw Object.assign(new Error('ELOOP: too many symbolic links encountered'), { code: 'ELOOP' });
+      });
+
+      await expect(getGitTreeHash()).rejects.toThrow(/ELOOP/);
+      expect(mockFutimesSync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('trust flags in the temp index', () => {
+    const FLAGGED_OID = 'a'.repeat(40);
+
+    it('spawns nothing extra when no entry carries a trust flag', async () => {
+      mockStandardGitCommands();
+      mockTempIndexBytes(buildIndexV2([{ path: 'plain.md', oid: FLAGGED_OID }]));
+
+      await getGitTreeHash();
+
+      const commands = vi.mocked(gitExecutor.executeGitCommand).mock.calls.map(call => call[0][0]);
+      expect(commands).not.toContain('update-index');
+      expect(commands).not.toContain('ls-files');
+    });
+
+    it('re-adds flagged entries in ONE update-index spawn, before staging', async () => {
+      mockTempIndexBytes(buildIndexV2([
+        { path: 'flagged.md', oid: FLAGGED_OID, assumeUnchanged: true },
+        { path: 'plain.md', oid: FLAGGED_OID },
+      ]));
+      vi.mocked(gitExecutor.executeGitCommand).mockImplementation((args) => {
+        if (args[0] === 'rev-parse') return { success: true, stdout: DISCOVERY_STDOUT, stderr: '', exitCode: 0 };
+        if (args[0] === 'write-tree') return { success: true, stdout: 'abc123\n', stderr: '', exitCode: 0 };
+        return { success: true, stdout: '', stderr: '', exitCode: 0 };
+      });
+
+      await getGitTreeHash();
+
+      const calls = vi.mocked(gitExecutor.executeGitCommand).mock.calls;
+      const updates = calls.filter(call => call[0][0] === 'update-index');
+      expect(updates).toHaveLength(1);
+      expect(updates[0]?.[0]).toEqual(['update-index', '-z', '--index-info']);
+      // Only the flagged entry, re-added with its mode and object ID: a fresh
+      // entry carries no flags and zeroed stat data, so `git add` re-reads it.
+      expect(String(updates[0]?.[1]?.stdin)).toBe(`100644 ${FLAGGED_OID}\tflagged.md\0`);
+      expect(updates[0]?.[1]?.env).toEqual(
+        expect.objectContaining({ GIT_INDEX_FILE: expect.stringMatching(TEMP_INDEX_PATH) }),
+      );
+
+      const updateOrder = calls.findIndex(call => call[0][0] === 'update-index');
+      const addOrder = calls.findIndex(call => call[0][0] === 'add');
+      expect(updateOrder).toBeLessThan(addOrder);
+      // The re-add rewrote the copy, so the stamp must come after it.
+      const stampOrder = mockFutimesSync.mock.invocationCallOrder[0] ?? -Infinity;
+      const updateCallOrder = vi.mocked(gitExecutor.executeGitCommand).mock.invocationCallOrder[updateOrder] ?? Infinity;
+      expect(updateCallOrder).toBeLessThan(stampOrder);
     });
   });
 
@@ -827,7 +970,10 @@ describe('getGitTreeHash with submodules (integration)', () => {
     mockCopyFileSync.mockImplementation(actualFs.copyFileSync);
     mockUnlinkSync.mockImplementation(actualFs.unlinkSync);
     mockStatSync.mockImplementation(actualFs.statSync as any);
-    mockUtimesSync.mockImplementation(actualFs.utimesSync as any);
+    mockOpenSync.mockImplementation(actualFs.openSync as any);
+    mockFutimesSync.mockImplementation(actualFs.futimesSync as any);
+    mockCloseSync.mockImplementation(actualFs.closeSync as any);
+    mockReadFileSync.mockImplementation(actualFs.readFileSync as any);
 
     // Import real modules
     const fs = await import('node:fs');

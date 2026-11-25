@@ -298,8 +298,8 @@ $ npx vibe-validate validate
 ```
 
 **Cache key calculation** (all against a temporary copy of the index):
-1. Copy `.git/index` to a temp index and point `GIT_INDEX_FILE` at it
-2. `git add --all` - Stage tracked edits and untracked files into the temp index
+1. Copy `.git/index` to a temp index, keeping its modification time so git still re-reads files edited in the same second, and point `GIT_INDEX_FILE` at it
+2. `git add --all --sparse` - Stage tracked edits and untracked files into the temp index (`--sparse` covers files outside a sparse-checkout cone; on git older than 2.34 it is omitted)
 3. `git write-tree` - Generate content-based hash
 4. Delete the temp index
 
