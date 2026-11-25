@@ -9,7 +9,16 @@
  * assumptions back to it.
  */
 
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
@@ -132,6 +141,44 @@ function detectSymlinkSupport(): boolean {
 }
 
 const SYMLINKS_AVAILABLE = detectSymlinkSupport();
+
+/**
+ * Run `probe` with a `git` on PATH that rejects `--sparse` the way git older
+ * than 2.34 does, and forwards everything else to the real binary.
+ *
+ * POSIX-only: the stand-in is a shell script, which Windows cannot exec.
+ *
+ * @param probe - Runs while the stand-in shadows the real git
+ * @returns Whatever `probe` returned
+ */
+function withGitRejectingSparse<T>(probe: () => T): T {
+  const realGit = join(gitOut(['--exec-path'], process.cwd()).trim(), 'git');
+  const binDir = mkdtempSync(join(normalizedTmpdir(), 'vv-old-git-'));
+  const shim = join(binDir, 'git');
+  writeFileSync(
+    shim,
+    [
+      '#!/bin/sh',
+      'for arg in "$@"; do',
+      '  if [ "$arg" = "--sparse" ]; then',
+      "    echo \"error: unknown option \\`sparse'\" >&2",
+      '    exit 129',
+      '  fi',
+      'done',
+      `exec "${realGit}" "$@"`,
+      '',
+    ].join('\n'),
+  );
+  chmodSync(shim, 0o755);
+  const savedPath = process.env.PATH;
+  process.env.PATH = `${binDir}:${savedPath ?? ''}`;
+  try {
+    return probe();
+  } finally {
+    process.env.PATH = savedPath;
+    rmSync(binDir, { recursive: true, force: true });
+  }
+}
 
 /**
  * The entry for one root-relative path, or undefined.
@@ -430,6 +477,78 @@ describe('getGitTreeSnapshot - integration tests', () => {
       /\s$/,
     );
   });
+
+  it('sees a same-size edit the real index can only catch as racy-clean', () => {
+    // Git trusts a cached stat (mtime, size, inode) to mean "unchanged" UNLESS
+    // the entry's mtime is not older than the index file's own mtime -- then the
+    // entry is "racy" and git compares content instead. The temp index is a COPY
+    // of the real one, so if the copy gets a fresh mtime every racy entry turns
+    // trusted, and an edit made in the same second as the last index write
+    // (same size, so the stat still matches) keeps its OLD object ID.
+    //
+    // Timing luck is replaced by explicit timestamps: the file and the index
+    // share one whole-second mtime, which is exactly the racy condition.
+    // `core.trustctime=false` takes the ctime the rewrite bumps out of the stat
+    // comparison, so only the mtime rule decides.
+    executeGitCommand(['config', 'core.trustctime', 'false'], { cwd: root });
+    const file = join(root, DOC);
+    const racySecond = Math.floor(Date.now() / 1000) - 1000;
+
+    writeFileSync(file, 'cccc\n');
+    utimesSync(file, racySecond, racySecond);
+    stageTestFiles(root, [DOC]);
+
+    writeFileSync(file, 'bbbb\n');
+    utimesSync(file, racySecond, racySecond);
+    utimesSync(join(root, '.git', 'index'), racySecond, racySecond);
+
+    // The control: git itself, reading the REAL index, sees the edit -- so the
+    // fixture is racy rather than a forged stat git could never detect.
+    // `diff-files` is plumbing and does not rewrite the index.
+    expect(gitOut(['diff-files', '--name-only'], root)).toBe(DOC);
+
+    const oid = entryFor(getGitTreeSnapshot({ cwd: root }), DOC)?.oid;
+    expect(oid).toBe(gitOut(['hash-object', file], root));
+  });
+
+  it('snapshots a sparse checkout that has files outside its cone', () => {
+    mkdirSyncReal(join(root, 'in'), { recursive: true });
+    mkdirSyncReal(join(root, 'out'), { recursive: true });
+    writeFileSync(join(root, 'in', 'a.md'), 'in cone\n');
+    writeFileSync(join(root, 'out', 'b.md'), 'out of cone\n');
+    commitAll(root, 'two directories');
+
+    executeGitCommand(['sparse-checkout', 'set', '--cone', 'in'], { cwd: root });
+    // A file on disk outside the cone is what makes a plain `git add --all`
+    // refuse ("paths ... exist outside of your sparse-checkout definition").
+    mkdirSyncReal(join(root, 'out'), { recursive: true });
+    writeFileSync(join(root, 'out', 'new.md'), 'untracked, outside the cone\n');
+
+    const snapshot = getGitTreeSnapshot({ cwd: root });
+
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.hash).toMatch(/^[0-9a-f]{40,64}$/);
+    const paths = pathsOf(snapshot);
+    expect(paths).toContain('in/a.md');
+    expect(paths).toContain('out/new.md');
+    // The skip-worktree entry is absent from disk by design; it must stay in
+    // the snapshot rather than read as a deletion.
+    expect(paths).toContain('out/b.md');
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'still snapshots with a git too old to know `add --sparse`',
+    () => {
+      writeFileSync(join(root, DOC), 'committed\n');
+      commitAll(root, 'add doc');
+      writeFileSync(join(root, DOC), 'edited on disk\n');
+
+      const snapshot = withGitRejectingSparse(() => getGitTreeSnapshot({ cwd: root }));
+
+      expect(snapshot).not.toBeNull();
+      expect(entryFor(snapshot, DOC)?.oid).toBe(gitOut(['hash-object', join(root, DOC)], root));
+    },
+  );
 
   it.skipIf(!SYMLINKS_AVAILABLE)(
     'reports a symlink under mode 120000, whose blob is the TARGET STRING',

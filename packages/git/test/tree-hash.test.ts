@@ -5,7 +5,18 @@
  * to ensure validation state caching works correctly across runs.
  */
 
-import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync, type Stats, writeFileSync, rmSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  unlinkSync,
+  readdirSync,
+  statSync,
+  utimesSync,
+  type BigIntStats,
+  type Stats,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 
 import * as utils from '@vibe-validate/utils';
@@ -40,6 +51,7 @@ vi.mock('fs', async (importOriginal) => {
     unlinkSync: typeof unlinkSync;
     readdirSync: typeof readdirSync;
     statSync: typeof statSync;
+    utimesSync: typeof utimesSync;
   }>();
   return {
     ...actual,
@@ -48,6 +60,7 @@ vi.mock('fs', async (importOriginal) => {
     unlinkSync: vi.fn(),
     readdirSync: vi.fn(),
     statSync: vi.fn(),
+    utimesSync: vi.fn(),
   };
 });
 
@@ -65,6 +78,7 @@ const mockExistsSync = existsSync as ReturnType<typeof vi.fn>;
 const mockUnlinkSync = unlinkSync as ReturnType<typeof vi.fn>;
 const mockReaddirSync = readdirSync as ReturnType<typeof vi.fn>;
 const mockStatSync = statSync as ReturnType<typeof vi.fn>;
+const mockUtimesSync = utimesSync as ReturnType<typeof vi.fn>;
 const mockIsProcessRunning = utils.isProcessRunning as ReturnType<typeof vi.fn>;
 
 /**
@@ -95,12 +109,38 @@ function mockStandardGitCommands(writeTreeOutput = 'abc123\n') {
     .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status (no submodules)
 }
 
+/** The real index's times, as `statSync(path, { bigint: true })` reports them. */
+const INDEX_ATIME_NS = 1_699_999_990_250_000_000n;
+const INDEX_MTIME_NS = 1_700_000_000_999_999_999n;
+/** The same times floored to whole seconds -- what the copy must be stamped with. */
+const INDEX_ATIME_SECONDS = 1_699_999_990;
+const INDEX_MTIME_SECONDS = 1_700_000_000;
+
+/** The current process's temp index path. */
+const TEMP_INDEX_PATH = /vibe-validate-temp-index-\d+$/;
+
 /**
- * Helper to create mock file stats
- * Used for testing stale temp index cleanup
+ * Answer `statSync` the way each real call site asks it.
+ *
+ * The two callers ask different questions: the temp index reads the REAL index
+ * with `{ bigint: true }` for its nanosecond times, while the stale-index reaper
+ * stats each candidate without options and reads `mtimeMs`. A single canned
+ * return value cannot model both, and handing one caller's shape to the other
+ * is how a bigint-vs-number mix would hide.
+ *
+ * @param staleCandidateMtimeMs - `mtimeMs` for reaper candidates; omitted means
+ *   such a stat fails as if the file had vanished
  */
-function createMockStats(mtimeMs: number): Partial<Stats> {
-  return { mtimeMs };
+function mockFileStats(staleCandidateMtimeMs?: number): void {
+  mockStatSync.mockImplementation((_path: string, options?: { bigint?: boolean }) => {
+    if (options?.bigint) {
+      return { atimeNs: INDEX_ATIME_NS, mtimeNs: INDEX_MTIME_NS } as Partial<BigIntStats>;
+    }
+    if (staleCandidateMtimeMs === undefined) {
+      throw new Error('ENOENT: no such file or directory');
+    }
+    return { mtimeMs: staleCandidateMtimeMs } as Partial<Stats>;
+  });
 }
 
 describe('getGitTreeHash', () => {
@@ -110,10 +150,74 @@ describe('getGitTreeHash', () => {
     mockExistsSync.mockReturnValue(true);
     // Default: no stale temp index files to clean up
     mockReaddirSync.mockReturnValue([]);
+    // Default: the real index stats normally; there are no reaper candidates
+    mockFileStats();
+    // clearAllMocks keeps implementations, so a test's throwing stamp would leak
+    mockUtimesSync.mockReset();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('temp index timestamp (racy-clean detection)', () => {
+    it('stamps the copy with the real index times, floored to whole seconds', async () => {
+      mockStandardGitCommands();
+
+      await getGitTreeHash();
+
+      // Floored, never rounded: a copy even nanoseconds LATER than the real
+      // index turns racy entries back into trusted ones.
+      expect(mockUtimesSync).toHaveBeenCalledTimes(1);
+      expect(mockUtimesSync).toHaveBeenCalledWith(
+        expect.stringMatching(TEMP_INDEX_PATH),
+        INDEX_ATIME_SECONDS,
+        INDEX_MTIME_SECONDS,
+      );
+    });
+
+    it('reads the real index times before copying and stamps after', async () => {
+      mockStandardGitCommands();
+
+      await getGitTreeHash();
+
+      // After the copy, the real index's own stat would still be right, but a
+      // stamp written BEFORE the copy is overwritten by it.
+      const statOrder = mockStatSync.mock.invocationCallOrder[0] ?? Infinity;
+      const copyOrder = mockCopyFileSync.mock.invocationCallOrder[0] ?? -Infinity;
+      const stampOrder = mockUtimesSync.mock.invocationCallOrder[0] ?? -Infinity;
+      expect(mockStatSync).toHaveBeenCalledWith('.git/index', { bigint: true });
+      expect(statOrder).toBeLessThan(copyOrder);
+      expect(copyOrder).toBeLessThan(stampOrder);
+    });
+
+    it('makes every entry racy when the real index times cannot be read', async () => {
+      mockStandardGitCommands();
+      mockStatSync.mockImplementation(() => {
+        throw new Error('EIO: i/o error');
+      });
+
+      // A missing optimisation must not become a missing answer...
+      await expect(getGitTreeHash()).resolves.toMatchObject({ hash: 'abc123' });
+
+      // ...nor a stale one: one second past the epoch is older than every file,
+      // so git re-hashes them all. Not 0, which git reads as "unknown" and then
+      // trusts every cached stat.
+      expect(mockUtimesSync).toHaveBeenCalledWith(expect.stringMatching(TEMP_INDEX_PATH), 1, 1);
+    });
+
+    it('fails rather than staging into a copy left with a fresh mtime', async () => {
+      mockInitialGitCommands();
+      mockUtimesSync.mockImplementation(() => {
+        throw new Error('EPERM: operation not permitted');
+      });
+
+      await expect(getGitTreeHash()).rejects.toThrow(/EPERM/);
+
+      // Nothing was staged against the unstamped copy, and it was still removed.
+      expect(vi.mocked(gitExecutor.executeGitCommand)).toHaveBeenCalledTimes(1);
+      expect(mockUnlinkSync).toHaveBeenCalledWith(expect.stringMatching(TEMP_INDEX_PATH));
+    });
   });
 
   it('should calculate tree hash using git write-tree', async () => {
@@ -182,7 +286,7 @@ describe('getGitTreeHash', () => {
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       2,
-      ['add', '--all'],
+      ['add', '--all', '--sparse'],
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_INDEX_FILE: expect.stringContaining('vibe-validate-temp-index')
@@ -430,7 +534,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-12345',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as Stats);
+      mockFileStats(fourMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -445,7 +549,7 @@ describe('getGitTreeHash', () => {
     it('should skip temp index files from running processes', async () => {
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(true); // Process still running
 
       await getGitTreeHash();
@@ -463,7 +567,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-12345',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false); // Process not running
 
       await getGitTreeHash();
@@ -479,7 +583,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-99999']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -497,7 +601,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
 
       await getGitTreeHash();
 
@@ -513,7 +617,7 @@ describe('getGitTreeHash', () => {
     it('should skip recent legacy temp index', async () => {
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
-      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as Stats);
+      mockFileStats(fourMinutesAgo);
 
       await getGitTreeHash();
 
@@ -530,7 +634,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       // Mock unlinkSync to fail for stale file but succeed for current process
@@ -619,7 +723,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-33333',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -651,7 +755,9 @@ describe('getGitTreeHash', () => {
 
       // Should only clean up current process temp index (not other files)
       expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
-      expect(mockStatSync).not.toHaveBeenCalled();
+      // The reaper stats no candidate; the only stat is the real index's own,
+      // read for the temp copy's timestamp.
+      expect(mockStatSync.mock.calls.map(call => call[0])).toEqual(['.git/index']);
     });
   });
 });
@@ -721,6 +827,7 @@ describe('getGitTreeHash with submodules (integration)', () => {
     mockCopyFileSync.mockImplementation(actualFs.copyFileSync);
     mockUnlinkSync.mockImplementation(actualFs.unlinkSync);
     mockStatSync.mockImplementation(actualFs.statSync as any);
+    mockUtimesSync.mockImplementation(actualFs.utimesSync as any);
 
     // Import real modules
     const fs = await import('node:fs');

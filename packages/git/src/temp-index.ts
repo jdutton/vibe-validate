@@ -22,7 +22,15 @@
  * @packageDocumentation
  */
 
-import { copyFileSync, existsSync, lstatSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  unlinkSync,
+  readdirSync,
+  statSync,
+  utimesSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
 import { isProcessRunning } from '@vibe-validate/utils';
@@ -67,6 +75,80 @@ function refuseSymlinkDestination(filePath: string): void {
       throw error;
     }
   }
+}
+
+/**
+ * The index timestamp that makes git re-check every entry by content.
+ *
+ * Not 0: git reads an index mtime of 0 as "unknown" and then treats NO entry as
+ * racy, which is the stale-OID bug in its purest form. One second past the epoch
+ * is older than any real file, so every entry compares as racy.
+ */
+const ALL_ENTRIES_RACY_SECONDS = 1;
+
+/** Access and modification times, in whole seconds, for `utimesSync`. */
+interface IndexTimestamp {
+  atime: number;
+  mtime: number;
+}
+
+/**
+ * Read the real index's times, rounded DOWN to the whole second, BEFORE it is
+ * copied (the copy's own mtime is the thing being replaced). Reading first also
+ * gets a concurrent rewrite the right way round: git replaces the index by
+ * rename, so content newer than the time read here only makes the copy look
+ * OLDER, which is the safe direction (see {@link keepRacyTimestamp}).
+ *
+ * Never throws. If the times cannot be read, the answer is
+ * {@link ALL_ENTRIES_RACY_SECONDS}: every file is re-hashed, which costs time
+ * but cannot report a stale object ID. Failing the snapshot instead would turn
+ * a missing optimisation into a missing answer.
+ *
+ * @param indexPath - The real index
+ * @returns Times to stamp onto the copy
+ */
+function readIndexTimestamp(indexPath: string): IndexTimestamp {
+  try {
+    const source = statSync(indexPath, { bigint: true });
+    const wholeSeconds = (ns: bigint): number =>
+      Math.max(ALL_ENTRIES_RACY_SECONDS, Number(ns / 1_000_000_000n));
+    return { atime: wholeSeconds(source.atimeNs), mtime: wholeSeconds(source.mtimeNs) };
+  } catch {
+    return { atime: ALL_ENTRIES_RACY_SECONDS, mtime: ALL_ENTRIES_RACY_SECONDS };
+  }
+}
+
+/**
+ * Give the temp index the real index's mtime, rounded DOWN to the whole second.
+ *
+ * Git trusts an entry's cached stat to mean "unchanged" unless the entry is
+ * *racy*: its mtime is not older than the index file's own mtime. A racy entry
+ * is compared by content instead. `copyFileSync` stamps the copy with "now", so
+ * every entry that was racy against the real index turns trusted in the copy,
+ * and a file rewritten in the same second as the last index write, at the same
+ * size, keeps its OLD object ID in the snapshot.
+ *
+ * Why the whole second rather than the exact time: Node's `utimesSync` takes
+ * seconds as a double (or a millisecond `Date`), so a nanosecond mtime cannot be
+ * written back exactly, and the rounding can land a few hundred nanoseconds
+ * LATER than the source. Later is the unsafe direction, because git built with
+ * `USE_NSEC` compares sub-second mtimes and an entry inside that gap would turn
+ * trusted again. An integer second is exact in a double and never later than
+ * the source, so every entry that was racy stays racy. The cost is that files
+ * written in the index's final second are re-hashed, which is git's own
+ * behaviour without `USE_NSEC`.
+ *
+ * **Throws if the stamp cannot be written**, and that is deliberate: a copy left
+ * with its fresh mtime is exactly the stale-OID bug, and the only other fix
+ * would need the same `utimesSync` that just failed. A failed snapshot reaches
+ * callers as the documented `null` / "unknown"; a stale one reaches them as a
+ * cache hit on changed code.
+ *
+ * @param tempIndexFile - The freshly copied index
+ * @param timestamp - From {@link readIndexTimestamp}, taken before the copy
+ */
+function keepRacyTimestamp(tempIndexFile: string, timestamp: IndexTimestamp): void {
+  utimesSync(tempIndexFile, timestamp.atime, timestamp.mtime);
 }
 
 /**
@@ -319,6 +401,36 @@ function discoverRepository(
   };
 }
 
+/** How git older than 2.34 rejects `git add --sparse`. */
+const SPARSE_UNSUPPORTED = /unknown option [`']sparse'/;
+
+/**
+ * `git add --all --sparse`, falling back to plain `--all` on git that predates
+ * `--sparse` (added in git 2.34; vibe-validate documents git 2.0 as its floor).
+ *
+ * In a sparse checkout, plain `git add --all` refuses whenever a file exists on
+ * disk outside the cone (an untracked file, or one materialised by hand), so the
+ * snapshot failed outright. `--sparse` lets it stage those paths. It does not
+ * turn the cone's skip-worktree entries, which are absent from disk by design,
+ * into deletions; and outside a sparse checkout it changes nothing.
+ *
+ * The fallback keys on git's own option-parser message, and is safe even if a
+ * path happened to echo it: the retry's result is checked exactly as strictly as
+ * the first attempt's. The refusal and the option arrived in the same release
+ * (git 2.34), so a git that rejects `--sparse` never refuses for this reason and
+ * the retry loses nothing.
+ *
+ * @param runGit - Runs git against the throwaway index
+ * @returns The result of the attempt that git accepted the options of
+ */
+function stageAll(runGit: StagedIndexContext['runGit']): GitExecutionResult {
+  const sparse = runGit(['add', '--all', '--sparse'], { ignoreErrors: true });
+  if (sparse.success || !SPARSE_UNSUPPORTED.test(sparse.stderr)) {
+    return sparse;
+  }
+  return runGit(['add', '--all'], { ignoreErrors: true });
+}
+
 /**
  * Stage the whole working tree into a throwaway index, then run `fn` against it.
  *
@@ -386,7 +498,9 @@ export function withStagedTempIndex<T>(
       // than clear it: this path has no legitimate reason to encounter one, and
       // a tool that quietly repairs a planted file teaches nobody anything.
       refuseSymlinkDestination(tempIndexFile);
+      const indexTimestamp = readIndexTimestamp(currentIndex);
       copyFileSync(currentIndex, tempIndexFile);
+      keepRacyTimestamp(tempIndexFile, indexTimestamp);
     }
 
     const runGit: StagedIndexContext['runGit'] = (args, runOptions) =>
@@ -413,7 +527,7 @@ export function withStagedTempIndex<T>(
     //   - Security risk: checksums API keys, passwords, credentials
     //   - Non-deterministic: different devs have different ignored files
     //   - Breaks cache sharing: same code produces different hashes
-    const addResult = runGit(['add', '--all'], { ignoreErrors: true });
+    const addResult = stageAll(runGit);
 
     // A failed `add` must throw, because the alternative is the exact wrong
     // answer this module exists to prevent: an empty temp index still yields a
