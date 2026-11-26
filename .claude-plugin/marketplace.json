@@ -9,7 +9,7 @@
       "name": "vibe-validate",
       "description": "LLM-optimized validation orchestration for vibe coding",
       "source": "./plugins/vibe-validate",
-      "version": "0.20.1",
+      "version": "0.20.2",
       "author": {
         "name": "vibe-validate"
       }
