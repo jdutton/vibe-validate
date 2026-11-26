@@ -146,7 +146,9 @@ which files to re-read, so a copy with a fresh mtime hides an edit made in the
 same second as the last index write, at the same size. `--sparse` stages files
 outside a sparse-checkout cone; omit it on git older than 2.34. The library
 also clears assume-unchanged, and skip-worktree on files that exist on disk, in
-the copy, so those files are read too.
+the copy, so those files are read too. One exception: with a sparse index
+(`index.sparse`), a file on disk inside a directory the index holds as a single
+collapsed entry is not read, and keeps the ID the index records.
 
 `--all` is deliberate: `--intent-to-add` records empty placeholders that
 `git write-tree` skips, which would drop unstaged modifications from the hash.

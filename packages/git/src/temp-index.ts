@@ -185,14 +185,16 @@ const LS_FILES_RECORD = /^(\S) (\d{6}) ([0-9a-f]+) (\d)\t([\s\S]*)$/;
  * Ask git for the flagged entries, for an index {@link findTrustFlaggedEntries}
  * declined to read (a split index, or a layout it does not know). One spawn.
  *
- * Paths come back through a UTF-8 decode, so a non-UTF-8 path in this rare
- * branch may not match its file on disk; such an entry is left as it was.
+ * The listing is decoded as latin1, which maps every byte to one character and
+ * back, so each path returns to its exact bytes -- a non-UTF-8 name included. (A
+ * UTF-8 decode would turn such a name into a different, nonexistent path, which
+ * the re-add would stage as a deletion while the real entry kept its flag.)
  *
  * @param runGit - Runs git against the throwaway index
  * @returns The flagged stage-0 entries
  */
 function listTrustFlaggedEntriesViaGit(runGit: StagedIndexContext['runGit']): TrustFlaggedEntry[] {
-  const listing = runGit(['ls-files', '-s', '-v', '-z'], { maxBuffer: 1024 * 1024 * 1024 });
+  const listing = runGit(['ls-files', '-s', '-v', '-z'], { maxBuffer: 1024 * 1024 * 1024, encoding: 'latin1' });
   const flagged: TrustFlaggedEntry[] = [];
   for (const record of listing.stdout.split('\0')) {
     const match = LS_FILES_RECORD.exec(record);
@@ -201,22 +203,37 @@ function listTrustFlaggedEntriesViaGit(runGit: StagedIndexContext['runGit']): Tr
     const assumeUnchanged = tag !== tag.toUpperCase();
     const skipWorktree = tag.toUpperCase() === 'S';
     if ((assumeUnchanged || skipWorktree) && stage === '0') {
-      flagged.push({ path: Buffer.from(path, 'utf8'), mode: Number.parseInt(mode, 8), oid, assumeUnchanged, skipWorktree });
+      flagged.push({ path: Buffer.from(path, 'latin1'), mode: Number.parseInt(mode, 8), oid, assumeUnchanged, skipWorktree });
     }
   }
   return flagged;
 }
 
+/** lstat errors that mean nothing is at the path. */
+const ABSENT_CODES = new Set(['ENOENT', 'ENOTDIR']);
+
 /**
  * Whether a root-relative path exists on disk (as anything, links included).
  *
+ * ENOTDIR -- a parent directory was replaced by a file -- is absent, like
+ * ENOENT: plain `git add` stages that file in the entry's place. Any other
+ * error (EACCES, ELOOP, ...) counts as PRESENT, deliberately: clearing the flag
+ * makes `git add` read the path itself, so it either stages what is there or
+ * fails loudly, and a failed snapshot is safe where a stale object ID is not.
+ * Treating it as absent would keep the flag and so the committed ID.
+ *
  * @param repoRoot - Working tree top level
  * @param path - Raw path bytes from the index
- * @returns true when something is there
+ * @returns true when something is there, or when that cannot be ruled out
  */
 function existsInWorkTree(repoRoot: string, path: Buffer): boolean {
   const full = Buffer.concat([Buffer.from(`${repoRoot}/`, 'utf8'), path]);
-  return lstatSync(full, { throwIfNoEntry: false }) !== undefined;
+  try {
+    lstatSync(full);
+    return true;
+  } catch (error) {
+    return !ABSENT_CODES.has((error as NodeJS.ErrnoException).code ?? '');
+  }
 }
 
 /**
@@ -237,6 +254,10 @@ function existsInWorkTree(repoRoot: string, path: Buffer): boolean {
  *
  * Only the throwaway copy changes; the real index keeps the user's flags.
  *
+ * The re-add runs with `core.ignoreStat=false`: under `core.ignoreStat=true`
+ * git marks every entry it writes assume-unchanged, the re-added ones included,
+ * which would put back the very flag this removes.
+ *
  * Cost: the flags are found by reading the copy's bytes (see `index-flags.ts`),
  * so an index with none -- the common case -- spawns nothing, and one with some
  * spawns one `update-index`. An index the parser declines adds one `ls-files`.
@@ -249,7 +270,9 @@ function clearTrustFlags(tempIndexFile: string, repoRoot: string, runGit: Staged
   const flagged = findTrustFlaggedEntries(readFileSync(tempIndexFile)) ?? listTrustFlaggedEntriesViaGit(runGit);
   const reAdd = flagged.filter(entry => !entry.skipWorktree || existsInWorkTree(repoRoot, entry.path));
   if (reAdd.length === 0) return;
-  runGit(['update-index', '-z', '--index-info'], { stdin: Buffer.concat(reAdd.map(indexInfoRecord)) });
+  runGit(['-c', 'core.ignoreStat=false', 'update-index', '-z', '--index-info'], {
+    stdin: Buffer.concat(reAdd.map(indexInfoRecord)),
+  });
 }
 
 /**
@@ -392,12 +415,13 @@ export interface StagedIndexContext {
    * @param args - Git arguments after the binary
    * @param options - `ignoreErrors` returns a failed result instead of throwing;
    *   `maxBuffer` raises the output cap for commands that enumerate; `stdin`
-   *   feeds commands that read records from standard input
+   *   feeds commands that read records from standard input; `encoding` decodes
+   *   the output (`latin1` keeps raw path bytes recoverable)
    * @returns The command result
    */
   runGit(
     args: string[],
-    options?: { ignoreErrors?: boolean; maxBuffer?: number; stdin?: string | Buffer },
+    options?: { ignoreErrors?: boolean; maxBuffer?: number; stdin?: string | Buffer; encoding?: BufferEncoding },
   ): GitExecutionResult;
 }
 
@@ -506,16 +530,36 @@ function discoverRepository(
 /**
  * Git's exit status for a usage error, which is how an unknown option ends.
  *
- * The status, not the message, is the signal: git translates its option-parser
- * errors (git 2.33 de.po: "Unbekannte Option: `%s'"), so English text matches
- * only for users in an English locale. Forcing `LC_ALL=C` on the call would fix
- * the text but also reach clean filters run by `git add`, whose output -- and
- * so the object IDs -- could then differ from the user's own `git add`.
+ * Git translates its option-parser errors (git 2.33 de.po: "Unbekannte Option:
+ * `%s'"), so English text alone matches only for users in an English locale.
+ * Forcing `LC_ALL=C` on the call would fix the text but also reach clean
+ * filters run by `git add`, whose output -- and so the object IDs -- could then
+ * differ from the user's own `git add`.
  */
 const GIT_USAGE_ERROR_EXIT = 129;
 
+/**
+ * The option name, which translations leave untranslated, as a word of its own:
+ * not `--sparse` or `sparse-checkout`, both of which a modern git's usage
+ * text for `git add` contains.
+ */
+const SPARSE_OPTION_NAMED = /(?<![-\w])sparse(?![-\w])/;
+
 /** How git older than 2.34 rejects `git add --sparse`, in English. */
 const SPARSE_UNSUPPORTED = /unknown option [`']sparse'/;
+
+/**
+ * Whether a failed `git add --sparse` failed because git does not know the option.
+ *
+ * @param result - The failed attempt
+ * @returns true for a usage error naming the option, or the English message
+ */
+function rejectedSparseOption(result: GitExecutionResult): boolean {
+  return (
+    (result.exitCode === GIT_USAGE_ERROR_EXIT && SPARSE_OPTION_NAMED.test(result.stderr)) ||
+    SPARSE_UNSUPPORTED.test(result.stderr)
+  );
+}
 
 /**
  * `git add --all --sparse`, falling back to plain `--all` on git that predates
@@ -527,21 +571,22 @@ const SPARSE_UNSUPPORTED = /unknown option [`']sparse'/;
  * turn the cone's skip-worktree entries, which are absent from disk by design,
  * into deletions; and outside a sparse checkout it changes nothing.
  *
- * The fallback keys on git's usage-error exit status (129, in any locale), or on
- * the English message for a wrapper that changes the status. Either is safe even
- * if wrong: the retry's result is checked exactly as strictly as the first
- * attempt's. The refusal and the option arrived in the same release
- * (git 2.34), so a git that rejects `--sparse` never refuses for this reason and
- * the retry loses nothing.
+ * The fallback runs only when git rejected the option itself: a usage error
+ * (exit 129) whose message names `sparse` as a bare word -- the untranslated
+ * option name, so this works in any locale -- or the English message, for a
+ * wrapper that changes the status. Exit 129 alone is not enough. A git that
+ * knows `--sparse` can still exit 129 for another reason, and a plain
+ * `git add --all` retried there could succeed while keeping committed object
+ * IDs for files outside the cone: a stale snapshot instead of a failed one. The
+ * refusal and the option arrived in the same release (git 2.34), so a git that
+ * rejects `--sparse` never refuses for this reason and the retry loses nothing.
  *
  * @param runGit - Runs git against the throwaway index
  * @returns The result of the attempt that git accepted the options of
  */
 function stageAll(runGit: StagedIndexContext['runGit']): GitExecutionResult {
   const sparse = runGit(['add', '--all', '--sparse'], { ignoreErrors: true });
-  const optionRejected =
-    sparse.exitCode === GIT_USAGE_ERROR_EXIT || SPARSE_UNSUPPORTED.test(sparse.stderr);
-  if (sparse.success || !optionRejected) {
+  if (sparse.success || !rejectedSparseOption(sparse)) {
     return sparse;
   }
   return runGit(['add', '--all'], { ignoreErrors: true });

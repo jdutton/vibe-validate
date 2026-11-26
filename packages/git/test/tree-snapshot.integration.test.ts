@@ -159,23 +159,31 @@ const LOCALE_KEYS = ['LC_ALL', 'LC_MESSAGES', 'LANG', 'LANGUAGE'] as const;
  * POSIX-only: the stand-in is a shell script, which Windows cannot exec.
  *
  * @param probe - Runs while the stand-in shadows the real git
+ * @param fixedMessage - Print exactly this (still exiting 129) instead of the
+ *   locale-dependent unknown-option error, to model a usage error that is NOT
+ *   about `--sparse`
  * @returns Whatever `probe` returned
  */
-function withGitRejectingSparse<T>(probe: () => T): T {
+function withGitRejectingSparse<T>(probe: () => T, fixedMessage?: string): T {
   const realGit = join(gitOut(['--exec-path'], process.cwd()).trim(), 'git');
   const binDir = mkdtempSync(join(normalizedTmpdir(), 'vv-old-git-'));
   const shim = join(binDir, 'git');
+  const rejection = fixedMessage === undefined
+    ? [
+      '    if [ "$LC_ALL" = "C" ] || [ "$LANGUAGE" = "C" ]; then',
+      "      echo \"error: unknown option \\`sparse'\" >&2",
+      '    else',
+      "      echo \"Fehler: Unbekannte Option: \\`sparse'\" >&2",
+      '    fi',
+    ]
+    : [String.raw`    printf '%s\n' '${fixedMessage}' >&2`];
   writeFileSync(
     shim,
     [
       '#!/bin/sh',
       'for arg in "$@"; do',
       '  if [ "$arg" = "--sparse" ]; then',
-      '    if [ "$LC_ALL" = "C" ] || [ "$LANGUAGE" = "C" ]; then',
-      "      echo \"error: unknown option \\`sparse'\" >&2",
-      '    else',
-      "      echo \"Fehler: Unbekannte Option: \\`sparse'\" >&2",
-      '    fi',
+      ...rejection,
       '    exit 129',
       '  fi',
       'done',
@@ -624,6 +632,33 @@ describe('getGitTreeSnapshot - integration tests', () => {
     expect(gitOut(['ls-files', '-v', 'out/b.md'], root)).toBe('h out/b.md');
   });
 
+  it('names the disk bytes of an edited file under core.ignoreStat', () => {
+    // `core.ignoreStat` makes git set assume-unchanged on every entry it
+    // writes -- including the unflagged re-add meant to clear it.
+    executeGitCommand(['config', 'core.ignoreStat', 'true'], { cwd: root });
+    const file = commitThenEditOutsideFile(root);
+    writeFileSync(file, 'edited under core.ignoreStat\n');
+
+    expectSnapshotNamesDiskBytes(root, file);
+  });
+
+  it('treats a skip-worktree path whose parent became a file as absent, not as an error', () => {
+    // lstat on `a/b` when `a` is now a regular file fails with ENOTDIR, not
+    // ENOENT. Plain `git add --all --sparse` copes (the file `a` replaces the
+    // entry); the flag check must not turn that into a failed snapshot.
+    mkdirSyncReal(join(root, 'a'), { recursive: true });
+    writeFileSync(join(root, 'a', 'b'), 'inside a directory\n');
+    commitAll(root, 'a directory');
+    executeGitCommand(['update-index', '--skip-worktree', 'a/b'], { cwd: root });
+    rmSync(join(root, 'a'), { recursive: true, force: true });
+    writeFileSync(join(root, 'a'), 'now a file\n');
+
+    const snapshot = getGitTreeSnapshot({ cwd: root });
+
+    expect(snapshot).not.toBeNull();
+    expect(entryFor(snapshot, 'a')?.oid).toBe(gitOut(['hash-object', join(root, 'a')], root));
+  });
+
   it('names the disk bytes of an edited assume-unchanged file in a split index', () => {
     // A split index keeps entries in a shared file the index parser cannot
     // see, so the flags are found by asking git instead.
@@ -646,6 +681,26 @@ describe('getGitTreeSnapshot - integration tests', () => {
 
       expect(snapshot).not.toBeNull();
       expect(entryFor(snapshot, DOC)?.oid).toBe(gitOut(['hash-object', join(root, DOC)], root));
+    },
+  );
+
+  it.skipIf(process.platform === 'win32')(
+    'does not retry without --sparse on a usage error that is not about --sparse',
+    () => {
+      // A modern git that knows --sparse can still exit 129, and its usage text
+      // mentions `--sparse` and `sparse-checkout`. Plain `add --all` would then
+      // "succeed" while keeping committed IDs for out-of-cone files, so the
+      // retry must be reserved for the unknown-option error itself.
+      writeFileSync(join(root, DOC), 'committed\n');
+      commitAll(root, 'add doc');
+      writeFileSync(join(root, DOC), 'edited on disk\n');
+
+      const usage =
+        'usage: git add [<options>] [--] <pathspec>...\n' +
+        '    --sparse              allow updating entries outside of the sparse-checkout cone';
+      const snapshot = withGitRejectingSparse(() => getGitTreeSnapshot({ cwd: root }), usage);
+
+      expect(snapshot).toBeNull();
     },
   );
 

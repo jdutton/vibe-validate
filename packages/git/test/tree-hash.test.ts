@@ -324,7 +324,8 @@ describe('getGitTreeHash', () => {
 
       await getGitTreeHash();
 
-      const commands = vi.mocked(gitExecutor.executeGitCommand).mock.calls.map(call => call[0][0]);
+      // Every argument, not just the first: a `-c` override would hide the subcommand.
+      const commands = vi.mocked(gitExecutor.executeGitCommand).mock.calls.flatMap(call => call[0]);
       expect(commands).not.toContain('update-index');
       expect(commands).not.toContain('ls-files');
     });
@@ -343,9 +344,11 @@ describe('getGitTreeHash', () => {
       await getGitTreeHash();
 
       const calls = vi.mocked(gitExecutor.executeGitCommand).mock.calls;
-      const updates = calls.filter(call => call[0][0] === 'update-index');
+      const updates = calls.filter(call => call[0].includes('update-index'));
       expect(updates).toHaveLength(1);
-      expect(updates[0]?.[0]).toEqual(['update-index', '-z', '--index-info']);
+      // Under core.ignoreStat git would set assume-unchanged on the re-added
+      // entry itself, so the override is load-bearing.
+      expect(updates[0]?.[0]).toEqual(['-c', 'core.ignoreStat=false', 'update-index', '-z', '--index-info']);
       // Only the flagged entry, re-added with its mode and object ID: a fresh
       // entry carries no flags and zeroed stat data, so `git add` re-reads it.
       expect(String(updates[0]?.[1]?.stdin)).toBe(`100644 ${FLAGGED_OID}\tflagged.md\0`);
@@ -353,7 +356,7 @@ describe('getGitTreeHash', () => {
         expect.objectContaining({ GIT_INDEX_FILE: expect.stringMatching(TEMP_INDEX_PATH) }),
       );
 
-      const updateOrder = calls.findIndex(call => call[0][0] === 'update-index');
+      const updateOrder = calls.findIndex(call => call[0].includes('update-index'));
       const addOrder = calls.findIndex(call => call[0][0] === 'add');
       expect(updateOrder).toBeLessThan(addOrder);
       // The re-add rewrote the copy, so the stamp must come after it.

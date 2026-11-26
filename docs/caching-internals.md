@@ -26,7 +26,8 @@ A **tree hash** is git's way of creating a deterministic fingerprint of your wor
 cp -p .git/index "$GIT_DIR/vibe-validate-temp-index-$$"
 export GIT_INDEX_FILE="$GIT_DIR/vibe-validate-temp-index-$$"
 # vibe-validate also clears assume-unchanged, and skip-worktree on files that
-# exist on disk, in this copy, so git reads those files too.
+# exist on disk, in this copy, so git reads those files too (except inside a
+# directory a sparse index, `index.sparse`, holds as one collapsed entry).
 git add --all --sparse            # Stage tracked edits + untracked files
                                   # (--sparse: git 2.34+; omit it on older git)
 git write-tree                    # Generate tree hash
