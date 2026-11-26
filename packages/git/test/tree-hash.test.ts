@@ -11,6 +11,7 @@ import {
   copyFileSync,
   existsSync,
   futimesSync,
+  lstatSync,
   openSync,
   readFileSync,
   unlinkSync,
@@ -52,6 +53,7 @@ vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<{
     copyFileSync: typeof copyFileSync;
     existsSync: typeof existsSync;
+    lstatSync: typeof lstatSync;
     unlinkSync: typeof unlinkSync;
     readdirSync: typeof readdirSync;
     statSync: typeof statSync;
@@ -62,6 +64,7 @@ vi.mock('fs', async (importOriginal) => {
     copyFileSync: vi.fn(),
     existsSync: vi.fn(),
     futimesSync: vi.fn(),
+    lstatSync: vi.fn(actual.lstatSync),
     openSync: vi.fn(),
     readFileSync: vi.fn(),
     unlinkSync: vi.fn(),
@@ -88,6 +91,7 @@ const mockOpenSync = openSync as ReturnType<typeof vi.fn>;
 const mockFutimesSync = futimesSync as ReturnType<typeof vi.fn>;
 const mockCloseSync = closeSync as ReturnType<typeof vi.fn>;
 const mockReadFileSync = readFileSync as ReturnType<typeof vi.fn>;
+const mockLstatSync = lstatSync as ReturnType<typeof vi.fn>;
 const mockIsProcessRunning = utils.isProcessRunning as ReturnType<typeof vi.fn>;
 
 /**
@@ -171,7 +175,89 @@ function buildIndexV2(entries: FakeIndexEntry[]): Buffer {
   return Buffer.concat(parts);
 }
 
-const actualFsModule = await vi.importActual<{ readFileSync: typeof readFileSync }>('node:fs');
+const actualFsModule = await vi.importActual<{ readFileSync: typeof readFileSync; lstatSync: typeof lstatSync }>('node:fs');
+
+/** The repository root {@link DISCOVERY_STDOUT} reports. */
+const REPO_ROOT = '/repo/root';
+
+/** A successful git result with this stdout. */
+function gitOk(stdout = ''): gitExecutor.GitExecutionResult {
+  return { success: true, stdout, stderr: '', exitCode: 0 };
+}
+
+/**
+ * Answer git by subcommand: discovery, `write-tree`, and `ls-files` canned;
+ * `git add` attempts answered in order from `addResults` (then success).
+ *
+ * @param options - `lsFiles` is the listing stdout; `addResults` the add outcomes
+ */
+function mockGitBySubcommand(options: { lsFiles?: string; addResults?: gitExecutor.GitExecutionResult[] } = {}): void {
+  const addResults = [...(options.addResults ?? [])];
+  vi.mocked(gitExecutor.executeGitCommand).mockImplementation((args) => {
+    if (args[0] === 'rev-parse') return gitOk(DISCOVERY_STDOUT);
+    if (args[0] === 'write-tree') return gitOk('abc123\n');
+    if (args[0] === 'ls-files') return gitOk(options.lsFiles ?? '');
+    if (args[0] === 'add') return addResults.shift() ?? gitOk();
+    return gitOk();
+  });
+}
+
+/** The arguments of every `git add` attempt, in order. */
+function addAttempts(): string[][] {
+  return vi.mocked(gitExecutor.executeGitCommand).mock.calls
+    .map(call => call[0])
+    .filter(args => args[0] === 'add');
+}
+
+/** The stdin of the single `update-index --index-info` call, or undefined if none ran. */
+function reAddedRecords(): Buffer | undefined {
+  const update = vi.mocked(gitExecutor.executeGitCommand).mock.calls.find(call => call[0].includes('update-index'));
+  return update?.[1]?.stdin as Buffer | undefined;
+}
+
+/**
+ * One `git ls-files -s -v -z` record, as latin1 text (how the fallback reads it).
+ *
+ * @param tag - The `-v` tag (`H` plain, `h` assume-unchanged, `S` skip-worktree)
+ * @param path - Raw path bytes
+ * @param stage - Merge stage
+ */
+function lsFilesRecord(tag: string, path: Buffer, stage = 0): string {
+  return `${tag} 100644 ${'b'.repeat(40)} ${stage}\t${path.toString('latin1')}\0`;
+}
+
+/** The `--index-info` record the re-add must send for `path`. */
+function indexInfoFor(path: Buffer): Buffer {
+  return Buffer.concat([Buffer.from(`100644 ${'b'.repeat(40)}\t`, 'latin1'), path, Buffer.from([0])]);
+}
+
+/**
+ * Make `lstat` under {@link REPO_ROOT} fail with `code` for paths ending in
+ * `failing`, and succeed for every other path there.
+ *
+ * @param failing - Path suffix whose lstat throws
+ * @param code - The errno code it throws
+ */
+function mockWorkTreeLstat(failing: string, code: string): void {
+  mockLstatSync.mockImplementation((path: unknown) => {
+    const text = Buffer.isBuffer(path) ? path.toString('latin1') : String(path);
+    if (!text.startsWith(`${REPO_ROOT}/`)) return actualFsModule.lstatSync(path as string);
+    if (text.endsWith(failing)) throw Object.assign(new Error(`${code}: ${text}`), { code });
+    return {} as Stats;
+  });
+}
+
+/** A failed `git add --sparse` attempt. */
+function addFailure(exitCode: number, stderr: string): gitExecutor.GitExecutionResult {
+  return { success: false, stdout: '', stderr, exitCode };
+}
+
+const ADD_SPARSE = ['add', '--all', '--sparse'];
+const ADD_PLAIN = ['add', '--all'];
+/** Modern git's usage text for `git add`, which mentions --sparse and sparse-checkout. */
+const MODERN_ADD_USAGE =
+  'usage: git add [<options>] [--] <pathspec>...\n' +
+  '    --sparse              allow updating entries outside of the sparse-checkout cone';
 
 /**
  * Serve `index` as the temp copy's bytes; every other path reads for real.
@@ -222,6 +308,7 @@ describe('getGitTreeHash', () => {
     mockOpenSync.mockReset().mockReturnValue(TEMP_INDEX_FD);
     mockFutimesSync.mockReset();
     mockCloseSync.mockReset();
+    mockLstatSync.mockReset().mockImplementation(actualFsModule.lstatSync);
     // Default: the temp copy is a valid index with no trust flags
     mockTempIndexBytes(buildIndexV2([]));
   });
@@ -363,6 +450,106 @@ describe('getGitTreeHash', () => {
       const stampOrder = mockFutimesSync.mock.invocationCallOrder[0] ?? -Infinity;
       const updateCallOrder = vi.mocked(gitExecutor.executeGitCommand).mock.invocationCallOrder[updateOrder] ?? Infinity;
       expect(updateCallOrder).toBeLessThan(stampOrder);
+    });
+
+    it('asks git for the flags when the index cannot be parsed, keeping raw path bytes', async () => {
+      mockTempIndexBytes(Buffer.from('not an index the parser can walk'));
+      const assumed = Buffer.from('assumed.md');
+      const nonUtf8 = Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x2e, 0x6d, 0x64]); // "caf\xe9.md", latin1
+      mockGitBySubcommand({
+        lsFiles: [
+          lsFilesRecord('H', Buffer.from('plain.md')),
+          lsFilesRecord('h', assumed),
+          lsFilesRecord('h', Buffer.from('conflicted.md'), 2),
+          lsFilesRecord('h', nonUtf8),
+        ].join(''),
+      });
+
+      await getGitTreeHash();
+
+      const listing = vi.mocked(gitExecutor.executeGitCommand).mock.calls.find(call => call[0][0] === 'ls-files');
+      expect(listing?.[0]).toEqual(['ls-files', '-s', '-v', '-z']);
+      // latin1 maps each byte to one character and back; utf8 would replace 0xe9.
+      expect(listing?.[1]).toEqual(expect.objectContaining({ encoding: 'latin1' }));
+      // Only flagged stage-0 entries, with the non-UTF-8 name byte for byte.
+      expect(reAddedRecords()).toEqual(Buffer.concat([indexInfoFor(assumed), indexInfoFor(nonUtf8)]));
+    });
+
+    it.each([
+      ['ENOENT', false],
+      ['ENOTDIR', false],
+      ['EACCES', true],
+      ['ELOOP', true],
+    ])('a skip-worktree path whose lstat fails with %s counts as present: %s', async (code, present) => {
+      mockTempIndexBytes(Buffer.from('not an index the parser can walk'));
+      const onDisk = Buffer.from('on-disk.md');
+      mockGitBySubcommand({
+        lsFiles: lsFilesRecord('S', onDisk) + lsFilesRecord('S', Buffer.from('probed.md')),
+      });
+      mockWorkTreeLstat('probed.md', code);
+
+      await getGitTreeHash();
+
+      // Absent keeps the flag (a sparse checkout's off-disk entry stays an
+      // entry). Any other error clears it, so git reads the path and fails
+      // loudly rather than the hash keeping a stale committed ID.
+      const expected = present ? [onDisk, Buffer.from('probed.md')] : [onDisk];
+      expect(reAddedRecords()).toEqual(Buffer.concat(expected.map(indexInfoFor)));
+    });
+
+    it('spawns no update-index when every flagged entry is a skip-worktree file absent from disk', async () => {
+      mockTempIndexBytes(Buffer.from('not an index the parser can walk'));
+      mockGitBySubcommand({ lsFiles: lsFilesRecord('S', Buffer.from('out-of-cone.md')) });
+      mockWorkTreeLstat('out-of-cone.md', 'ENOENT');
+
+      await getGitTreeHash();
+
+      expect(reAddedRecords()).toBeUndefined();
+    });
+  });
+
+  describe('staging retry without --sparse', () => {
+    it('stages once when git accepts --sparse', async () => {
+      mockGitBySubcommand();
+
+      await getGitTreeHash();
+
+      expect(addAttempts()).toEqual([ADD_SPARSE]);
+    });
+
+    it.each([
+      ['English, exit 129', addFailure(129, "error: unknown option `sparse'")],
+      ['German, exit 129', addFailure(129, "Fehler: Unbekannte Option: `sparse'")],
+      ['English, status changed by a wrapper', addFailure(1, "error: unknown option `sparse'")],
+    ])('retries plain --all when git rejects the option itself (%s)', async (_label, rejection) => {
+      mockGitBySubcommand({ addResults: [rejection] });
+
+      await expect(getGitTreeHash()).resolves.toMatchObject({ hash: 'abc123' });
+
+      expect(addAttempts()).toEqual([ADD_SPARSE, ADD_PLAIN]);
+    });
+
+    it.each([
+      ['a usage error about something else', addFailure(129, MODERN_ADD_USAGE)],
+      ['another unknown option', addFailure(129, "error: unknown option `bogus'")],
+      ['an ordinary failure', addFailure(128, 'fatal: unable to index file sparse.md')],
+    ])('fails without retrying on %s', async (_label, failure) => {
+      mockGitBySubcommand({ addResults: [failure] });
+
+      // A plain add here could succeed while keeping committed IDs for files
+      // outside the cone; no answer is safe, a stale one is not.
+      await expect(getGitTreeHash()).rejects.toThrow(/git add failed/);
+
+      expect(addAttempts()).toEqual([ADD_SPARSE]);
+    });
+
+    it('fails when the plain retry fails too', async () => {
+      mockGitBySubcommand({
+        addResults: [addFailure(129, "error: unknown option `sparse'"), addFailure(128, 'fatal: unable to index file x')],
+      });
+
+      await expect(getGitTreeHash()).rejects.toThrow(/unable to index file x/);
+      expect(addAttempts()).toEqual([ADD_SPARSE, ADD_PLAIN]);
     });
   });
 

@@ -74,11 +74,11 @@ export interface TrustFlaggedEntry {
 function readVarint(bytes: Buffer, start: number): { value: number; next: number } | null {
   let cursor = start;
   if (cursor >= bytes.length) return null;
-  let byte = bytes[cursor++] ?? 0;
+  let byte = bytes.readUInt8(cursor++);
   let value = byte & 0x7f;
   while (byte & 0x80) {
     if (cursor >= bytes.length) return null;
-    byte = bytes[cursor++] ?? 0;
+    byte = bytes.readUInt8(cursor++);
     value = ((value + 1) * 128) + (byte & 0x7f);
   }
   return { value, next: cursor };
