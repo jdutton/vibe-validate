@@ -9,7 +9,16 @@
  * assumptions back to it.
  */
 
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
 import { mkdirSyncReal, normalizedTmpdir } from '@vibe-validate/utils';
@@ -132,6 +141,104 @@ function detectSymlinkSupport(): boolean {
 }
 
 const SYMLINKS_AVAILABLE = detectSymlinkSupport();
+
+/** Locale variables that decide which language git prints its errors in. */
+const LOCALE_KEYS = ['LC_ALL', 'LC_MESSAGES', 'LANG', 'LANGUAGE'] as const;
+
+/**
+ * Run `probe` with a `git` on PATH that rejects `--sparse` the way git older
+ * than 2.34 does, and forwards everything else to the real binary.
+ *
+ * The rejection is printed in GERMAN unless a C locale reaches the stand-in,
+ * because git translates its option-parser errors (git 2.33 de.po:
+ * "Unbekannte Option: `%s'") and a fallback keyed on the English text would
+ * never fire for a user whose locale is not English. The inherited locale is
+ * cleared for the probe so that only what the subject itself sets can reach
+ * the stand-in.
+ *
+ * POSIX-only: the stand-in is a shell script, which Windows cannot exec.
+ *
+ * @param probe - Runs while the stand-in shadows the real git
+ * @param fixedMessage - Print exactly this (still exiting 129) instead of the
+ *   locale-dependent unknown-option error, to model a usage error that is NOT
+ *   about `--sparse`
+ * @returns Whatever `probe` returned
+ */
+function withGitRejectingSparse<T>(probe: () => T, fixedMessage?: string): T {
+  const realGit = join(gitOut(['--exec-path'], process.cwd()).trim(), 'git');
+  const binDir = mkdtempSync(join(normalizedTmpdir(), 'vv-old-git-'));
+  const shim = join(binDir, 'git');
+  const rejection = fixedMessage === undefined
+    ? [
+      '    if [ "$LC_ALL" = "C" ] || [ "$LANGUAGE" = "C" ]; then',
+      "      echo \"error: unknown option \\`sparse'\" >&2",
+      '    else',
+      "      echo \"Fehler: Unbekannte Option: \\`sparse'\" >&2",
+      '    fi',
+    ]
+    : [String.raw`    printf '%s\n' '${fixedMessage}' >&2`];
+  writeFileSync(
+    shim,
+    [
+      '#!/bin/sh',
+      'for arg in "$@"; do',
+      '  if [ "$arg" = "--sparse" ]; then',
+      ...rejection,
+      '    exit 129',
+      '  fi',
+      'done',
+      `exec "${realGit}" "$@"`,
+      '',
+    ].join('\n'),
+  );
+  chmodSync(shim, 0o755);
+  const savedPath = process.env.PATH;
+  const savedLocale = LOCALE_KEYS.map(key => [key, process.env[key]] as const);
+  process.env.PATH = `${binDir}:${savedPath ?? ''}`;
+  for (const key of LOCALE_KEYS) delete process.env[key];
+  try {
+    return probe();
+  } finally {
+    process.env.PATH = savedPath;
+    for (const [key, value] of savedLocale) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(binDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Commit `out/b.md`, then edit it on disk WITHOUT staging, so its committed and
+ * on-disk object IDs differ. The caller then flags it so `git add` trusts the
+ * index and skips the file.
+ *
+ * @param root - Fixture repository
+ * @returns The path to the edited file
+ */
+function commitThenEditOutsideFile(root: string): string {
+  mkdirSyncReal(join(root, 'in'), { recursive: true });
+  mkdirSyncReal(join(root, 'out'), { recursive: true });
+  writeFileSync(join(root, 'in', 'a.md'), 'in\n');
+  writeFileSync(join(root, 'out', 'b.md'), 'committed\n');
+  commitAll(root, 'two directories');
+  return join(root, 'out', 'b.md');
+}
+
+/**
+ * Assert the snapshot names the ON-DISK bytes of `file`, not the committed ones.
+ *
+ * @param root - Fixture repository
+ * @param file - Absolute path to the edited file
+ */
+function expectSnapshotNamesDiskBytes(root: string, file: string): void {
+  const relative = 'out/b.md';
+  const committed = gitOut(['rev-parse', `HEAD:${relative}`], root);
+  const onDisk = gitOut(['hash-object', file], root);
+  // The fixture is only meaningful if the two differ.
+  expect(onDisk).not.toBe(committed);
+  expect(entryFor(getGitTreeSnapshot({ cwd: root }), relative)?.oid).toBe(onDisk);
+}
 
 /**
  * The entry for one root-relative path, or undefined.
@@ -430,6 +537,172 @@ describe('getGitTreeSnapshot - integration tests', () => {
       /\s$/,
     );
   });
+
+  it('sees a same-size edit the real index can only catch as racy-clean', () => {
+    // Git trusts a cached stat (mtime, size, inode) to mean "unchanged" UNLESS
+    // the entry's mtime is not older than the index file's own mtime -- then the
+    // entry is "racy" and git compares content instead. The temp index is a COPY
+    // of the real one, so if the copy gets a fresh mtime every racy entry turns
+    // trusted, and an edit made in the same second as the last index write
+    // (same size, so the stat still matches) keeps its OLD object ID.
+    //
+    // Timing luck is replaced by explicit timestamps: the file and the index
+    // share one whole-second mtime, which is exactly the racy condition.
+    // `core.trustctime=false` takes the ctime the rewrite bumps out of the stat
+    // comparison, so only the mtime rule decides.
+    executeGitCommand(['config', 'core.trustctime', 'false'], { cwd: root });
+    const file = join(root, DOC);
+    const racySecond = Math.floor(Date.now() / 1000) - 1000;
+
+    writeFileSync(file, 'cccc\n');
+    utimesSync(file, racySecond, racySecond);
+    stageTestFiles(root, [DOC]);
+
+    writeFileSync(file, 'bbbb\n');
+    utimesSync(file, racySecond, racySecond);
+    utimesSync(join(root, '.git', 'index'), racySecond, racySecond);
+
+    // The control: git itself, reading the REAL index, sees the edit -- so the
+    // fixture is racy rather than a forged stat git could never detect.
+    // `diff-files` is plumbing and does not rewrite the index.
+    expect(gitOut(['diff-files', '--name-only'], root)).toBe(DOC);
+
+    const oid = entryFor(getGitTreeSnapshot({ cwd: root }), DOC)?.oid;
+    expect(oid).toBe(gitOut(['hash-object', file], root));
+  });
+
+  it('snapshots a sparse checkout that has files outside its cone', () => {
+    mkdirSyncReal(join(root, 'in'), { recursive: true });
+    mkdirSyncReal(join(root, 'out'), { recursive: true });
+    writeFileSync(join(root, 'in', 'a.md'), 'in cone\n');
+    writeFileSync(join(root, 'out', 'b.md'), 'out of cone\n');
+    commitAll(root, 'two directories');
+
+    executeGitCommand(['sparse-checkout', 'set', '--cone', 'in'], { cwd: root });
+    // A file on disk outside the cone is what makes a plain `git add --all`
+    // refuse ("paths ... exist outside of your sparse-checkout definition").
+    mkdirSyncReal(join(root, 'out'), { recursive: true });
+    writeFileSync(join(root, 'out', 'new.md'), 'untracked, outside the cone\n');
+
+    const snapshot = getGitTreeSnapshot({ cwd: root });
+
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.hash).toMatch(/^[0-9a-f]{40,64}$/);
+    const paths = pathsOf(snapshot);
+    expect(paths).toContain('in/a.md');
+    expect(paths).toContain('out/new.md');
+    // The skip-worktree entry is absent from disk by design; it must stay in
+    // the snapshot rather than read as a deletion -- with its committed ID.
+    expect(paths).toContain('out/b.md');
+    expect(entryFor(snapshot, 'out/b.md')?.oid).toBe(gitOut(['rev-parse', 'HEAD:out/b.md'], root));
+    // And the untracked file outside the cone names its on-disk bytes.
+    expect(entryFor(snapshot, 'out/new.md')?.oid).toBe(
+      gitOut(['hash-object', join(root, 'out', 'new.md')], root),
+    );
+  });
+
+  it('names the disk bytes of an edited file outside the cone when git expects such files', () => {
+    // `sparse.expectFilesOutsideOfPatterns=true` tells git to KEEP skip-worktree
+    // on files that exist outside the cone, and `git add` trusts that flag. A
+    // file put back on disk and edited would otherwise keep its committed ID.
+    const file = commitThenEditOutsideFile(root);
+    executeGitCommand(['sparse-checkout', 'set', '--cone', 'in'], { cwd: root });
+    executeGitCommand(['config', 'sparse.expectFilesOutsideOfPatterns', 'true'], { cwd: root });
+    mkdirSyncReal(join(root, 'out'), { recursive: true });
+    writeFileSync(file, 'edited outside the cone\n');
+
+    expectSnapshotNamesDiskBytes(root, file);
+  });
+
+  it('names the disk bytes of an edited skip-worktree file in a non-sparse repository', () => {
+    const file = commitThenEditOutsideFile(root);
+    executeGitCommand(['update-index', '--skip-worktree', 'out/b.md'], { cwd: root });
+    writeFileSync(file, 'edited under skip-worktree\n');
+
+    expectSnapshotNamesDiskBytes(root, file);
+  });
+
+  it('names the disk bytes of an edited assume-unchanged file', () => {
+    const file = commitThenEditOutsideFile(root);
+    executeGitCommand(['update-index', '--assume-unchanged', 'out/b.md'], { cwd: root });
+    writeFileSync(file, 'edited under assume-unchanged\n');
+
+    expectSnapshotNamesDiskBytes(root, file);
+    // The REAL index keeps the user's flag: only the throwaway copy is cleared.
+    expect(gitOut(['ls-files', '-v', 'out/b.md'], root)).toBe('h out/b.md');
+  });
+
+  it('names the disk bytes of an edited file under core.ignoreStat', () => {
+    // `core.ignoreStat` makes git set assume-unchanged on every entry it
+    // writes -- including the unflagged re-add meant to clear it.
+    executeGitCommand(['config', 'core.ignoreStat', 'true'], { cwd: root });
+    const file = commitThenEditOutsideFile(root);
+    writeFileSync(file, 'edited under core.ignoreStat\n');
+
+    expectSnapshotNamesDiskBytes(root, file);
+  });
+
+  it('treats a skip-worktree path whose parent became a file as absent, not as an error', () => {
+    // lstat on `a/b` when `a` is now a regular file fails with ENOTDIR, not
+    // ENOENT. Plain `git add --all --sparse` copes (the file `a` replaces the
+    // entry); the flag check must not turn that into a failed snapshot.
+    mkdirSyncReal(join(root, 'a'), { recursive: true });
+    writeFileSync(join(root, 'a', 'b'), 'inside a directory\n');
+    commitAll(root, 'a directory');
+    executeGitCommand(['update-index', '--skip-worktree', 'a/b'], { cwd: root });
+    rmSync(join(root, 'a'), { recursive: true, force: true });
+    writeFileSync(join(root, 'a'), 'now a file\n');
+
+    const snapshot = getGitTreeSnapshot({ cwd: root });
+
+    expect(snapshot).not.toBeNull();
+    expect(entryFor(snapshot, 'a')?.oid).toBe(gitOut(['hash-object', join(root, 'a')], root));
+  });
+
+  it('names the disk bytes of an edited assume-unchanged file in a split index', () => {
+    // A split index keeps entries in a shared file the index parser cannot
+    // see, so the flags are found by asking git instead.
+    const file = commitThenEditOutsideFile(root);
+    executeGitCommand(['update-index', '--split-index'], { cwd: root });
+    executeGitCommand(['update-index', '--assume-unchanged', 'out/b.md'], { cwd: root });
+    writeFileSync(file, 'edited under assume-unchanged, split index\n');
+
+    expectSnapshotNamesDiskBytes(root, file);
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'still snapshots with a git too old to know `add --sparse`, in a non-English locale',
+    () => {
+      writeFileSync(join(root, DOC), 'committed\n');
+      commitAll(root, 'add doc');
+      writeFileSync(join(root, DOC), 'edited on disk\n');
+
+      const snapshot = withGitRejectingSparse(() => getGitTreeSnapshot({ cwd: root }));
+
+      expect(snapshot).not.toBeNull();
+      expect(entryFor(snapshot, DOC)?.oid).toBe(gitOut(['hash-object', join(root, DOC)], root));
+    },
+  );
+
+  it.skipIf(process.platform === 'win32')(
+    'does not retry without --sparse on a usage error that is not about --sparse',
+    () => {
+      // A modern git that knows --sparse can still exit 129, and its usage text
+      // mentions `--sparse` and `sparse-checkout`. Plain `add --all` would then
+      // "succeed" while keeping committed IDs for out-of-cone files, so the
+      // retry must be reserved for the unknown-option error itself.
+      writeFileSync(join(root, DOC), 'committed\n');
+      commitAll(root, 'add doc');
+      writeFileSync(join(root, DOC), 'edited on disk\n');
+
+      const usage =
+        'usage: git add [<options>] [--] <pathspec>...\n' +
+        '    --sparse              allow updating entries outside of the sparse-checkout cone';
+      const snapshot = withGitRejectingSparse(() => getGitTreeSnapshot({ cwd: root }), usage);
+
+      expect(snapshot).toBeNull();
+    },
+  );
 
   it.skipIf(!SYMLINKS_AVAILABLE)(
     'reports a symlink under mode 120000, whose blob is the TARGET STRING',

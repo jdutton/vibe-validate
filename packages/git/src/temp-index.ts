@@ -22,12 +22,25 @@
  * @packageDocumentation
  */
 
-import { copyFileSync, existsSync, lstatSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import {
+  closeSync,
+  constants as fsConstants,
+  copyFileSync,
+  existsSync,
+  futimesSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
 import { isProcessRunning } from '@vibe-validate/utils';
 
 import { executeGitCommand, type GitExecutionResult } from './git-executor.js';
+import { findTrustFlaggedEntries, type TrustFlaggedEntry } from './index-flags.js';
 
 const GIT_TIMEOUT = 30000; // 30 seconds timeout for git operations
 
@@ -67,6 +80,199 @@ function refuseSymlinkDestination(filePath: string): void {
       throw error;
     }
   }
+}
+
+/**
+ * The index timestamp that makes git re-check every entry by content.
+ *
+ * Not 0: git reads an index mtime of 0 as "unknown" and then treats NO entry as
+ * racy, which is the stale-OID bug in its purest form. One second past the epoch
+ * is older than any real file, so every entry compares as racy.
+ */
+const ALL_ENTRIES_RACY_SECONDS = 1;
+
+/** Access and modification times, in whole seconds, for `futimesSync`. */
+interface IndexTimestamp {
+  atime: number;
+  mtime: number;
+}
+
+/**
+ * Read the real index's times, rounded DOWN to the whole second, BEFORE it is
+ * copied (the copy's own mtime is the thing being replaced). Reading first also
+ * gets a concurrent rewrite the right way round: git replaces the index by
+ * rename, so content newer than the time read here only makes the copy look
+ * OLDER, which is the safe direction (see {@link keepRacyTimestamp}).
+ *
+ * Never throws. If the times cannot be read, the answer is
+ * {@link ALL_ENTRIES_RACY_SECONDS}: every file is re-hashed, which costs time
+ * but cannot report a stale object ID. Failing the snapshot instead would turn
+ * a missing optimisation into a missing answer.
+ *
+ * @param indexPath - The real index
+ * @returns Times to stamp onto the copy
+ */
+function readIndexTimestamp(indexPath: string): IndexTimestamp {
+  try {
+    const source = statSync(indexPath, { bigint: true });
+    const wholeSeconds = (ns: bigint): number =>
+      Math.max(ALL_ENTRIES_RACY_SECONDS, Number(ns / 1_000_000_000n));
+    return { atime: wholeSeconds(source.atimeNs), mtime: wholeSeconds(source.mtimeNs) };
+  } catch {
+    return { atime: ALL_ENTRIES_RACY_SECONDS, mtime: ALL_ENTRIES_RACY_SECONDS };
+  }
+}
+
+/**
+ * Give the temp index the real index's mtime, rounded DOWN to the whole second.
+ *
+ * Git trusts an entry's cached stat to mean "unchanged" unless the entry is
+ * *racy*: its mtime is not older than the index file's own mtime. A racy entry
+ * is compared by content instead. `copyFileSync` stamps the copy with "now", so
+ * every entry that was racy against the real index turns trusted in the copy,
+ * and a file rewritten in the same second as the last index write, at the same
+ * size, keeps its OLD object ID in the snapshot.
+ *
+ * Why the whole second rather than the exact time: Node's `futimesSync` takes
+ * seconds as a double (or a millisecond `Date`), so a nanosecond mtime cannot be
+ * written back exactly, and the rounding can land a few hundred nanoseconds
+ * LATER than the source. Later is the unsafe direction, because git built with
+ * `USE_NSEC` compares sub-second mtimes and an entry inside that gap would turn
+ * trusted again. An integer second is exact in a double and never later than
+ * the source, so every entry that was racy stays racy. The cost is that files
+ * written in the index's final second are re-hashed, which is git's own
+ * behaviour without `USE_NSEC`.
+ *
+ * **Stamped through a descriptor, never a path.** A path-based `utimes` after
+ * the copy follows a symlink swapped in at the temp name in between, and
+ * retimes its target. The descriptor pins the file that was opened, and
+ * `O_NOFOLLOW` (where the platform has it) refuses to open a link at all; the
+ * symlink refusal before the copy still stands.
+ *
+ * **Throws if the stamp cannot be written**, and that is deliberate: a copy left
+ * with its fresh mtime is exactly the stale-OID bug, and the only other fix
+ * would need the same write that just failed. The error propagates out of
+ * {@link withStagedTempIndex}: `getGitTreeSnapshot` turns it into its
+ * documented `null`, while `getGitTreeHash` rethrows it as "Failed to calculate
+ * git tree hash: ...". Either way the caller learns there is no answer; a stale
+ * copy would instead hand it a cache hit on changed code.
+ *
+ * On Windows, an antivirus scanner or indexer holding the fresh copy open makes
+ * the open fail, so the snapshot fails with it -- by design, for the same reason.
+ *
+ * @param tempIndexFile - The freshly copied index
+ * @param timestamp - From {@link readIndexTimestamp}, taken before the copy
+ */
+function keepRacyTimestamp(tempIndexFile: string, timestamp: IndexTimestamp): void {
+  const fd = openSync(tempIndexFile, fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0));
+  try {
+    futimesSync(fd, timestamp.atime, timestamp.mtime);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** The stdin record `git update-index -z --index-info` reads for one entry. */
+function indexInfoRecord(entry: TrustFlaggedEntry): Buffer {
+  const mode = entry.mode.toString(8).padStart(6, '0');
+  return Buffer.concat([Buffer.from(`${mode} ${entry.oid}\t`, 'latin1'), entry.path, Buffer.from([0])]);
+}
+
+/** A tag from `git ls-files -v`: lowercase means assume-unchanged, `S`/`s` skip-worktree. */
+const LS_FILES_RECORD = /^(\S) (\d{6}) ([0-9a-f]+) (\d)\t([\s\S]*)$/;
+
+/**
+ * Ask git for the flagged entries, for an index {@link findTrustFlaggedEntries}
+ * declined to read (a split index, or a layout it does not know). One spawn.
+ *
+ * The listing is decoded as latin1, which maps every byte to one character and
+ * back, so each path returns to its exact bytes -- a non-UTF-8 name included. (A
+ * UTF-8 decode would turn such a name into a different, nonexistent path, which
+ * the re-add would stage as a deletion while the real entry kept its flag.)
+ *
+ * @param runGit - Runs git against the throwaway index
+ * @returns The flagged stage-0 entries
+ */
+function listTrustFlaggedEntriesViaGit(runGit: StagedIndexContext['runGit']): TrustFlaggedEntry[] {
+  const listing = runGit(['ls-files', '-s', '-v', '-z'], { maxBuffer: 1024 * 1024 * 1024, encoding: 'latin1' });
+  const flagged: TrustFlaggedEntry[] = [];
+  for (const record of listing.stdout.split('\0')) {
+    const match = LS_FILES_RECORD.exec(record);
+    if (!match) continue;
+    const [, tag = '', mode = '', oid = '', stage = '', path = ''] = match;
+    const assumeUnchanged = tag !== tag.toUpperCase();
+    const skipWorktree = tag.toUpperCase() === 'S';
+    if ((assumeUnchanged || skipWorktree) && stage === '0') {
+      flagged.push({ path: Buffer.from(path, 'latin1'), mode: Number.parseInt(mode, 8), oid, assumeUnchanged, skipWorktree });
+    }
+  }
+  return flagged;
+}
+
+/** lstat errors that mean nothing is at the path. */
+const ABSENT_CODES = new Set(['ENOENT', 'ENOTDIR']);
+
+/**
+ * Whether a root-relative path exists on disk (as anything, links included).
+ *
+ * ENOTDIR -- a parent directory was replaced by a file -- is absent, like
+ * ENOENT: plain `git add` stages that file in the entry's place. Any other
+ * error (EACCES, ELOOP, ...) counts as PRESENT, deliberately: clearing the flag
+ * makes `git add` read the path itself, so it either stages what is there or
+ * fails loudly, and a failed snapshot is safe where a stale object ID is not.
+ * Treating it as absent would keep the flag and so the committed ID.
+ *
+ * @param repoRoot - Working tree top level
+ * @param path - Raw path bytes from the index
+ * @returns true when something is there, or when that cannot be ruled out
+ */
+function existsInWorkTree(repoRoot: string, path: Buffer): boolean {
+  const full = Buffer.concat([Buffer.from(`${repoRoot}/`, 'utf8'), path]);
+  try {
+    lstatSync(full);
+    return true;
+  } catch (error) {
+    return !ABSENT_CODES.has((error as NodeJS.ErrnoException).code ?? '');
+  }
+}
+
+/**
+ * Re-add, unflagged, every temp-index entry `git add` would otherwise trust
+ * instead of reading the file.
+ *
+ * `git add --all` skips an assume-unchanged or skip-worktree entry outright, so
+ * an edited file keeps its COMMITTED object ID: a stale ID, the same failure the
+ * racy-timestamp fix addresses. Re-adding the entry through
+ * `update-index --index-info` writes a fresh one with no flags and zeroed stat
+ * data, so the staging that follows reads the file.
+ *
+ * - **assume-unchanged** is cleared on every entry. A file that is gone then
+ *   stages as a deletion, which is what is on disk.
+ * - **skip-worktree** is cleared only where the file exists. An entry a sparse
+ *   checkout keeps off disk must stay an entry -- re-adding it would turn the
+ *   whole out-of-cone tree into deletions.
+ *
+ * Only the throwaway copy changes; the real index keeps the user's flags.
+ *
+ * The re-add runs with `core.ignoreStat=false`: under `core.ignoreStat=true`
+ * git marks every entry it writes assume-unchanged, the re-added ones included,
+ * which would put back the very flag this removes.
+ *
+ * Cost: the flags are found by reading the copy's bytes (see `index-flags.ts`),
+ * so an index with none -- the common case -- spawns nothing, and one with some
+ * spawns one `update-index`. An index the parser declines adds one `ls-files`.
+ *
+ * @param tempIndexFile - The throwaway index
+ * @param repoRoot - Working tree top level
+ * @param runGit - Runs git against the throwaway index
+ */
+function clearTrustFlags(tempIndexFile: string, repoRoot: string, runGit: StagedIndexContext['runGit']): void {
+  const flagged = findTrustFlaggedEntries(readFileSync(tempIndexFile)) ?? listTrustFlaggedEntriesViaGit(runGit);
+  const reAdd = flagged.filter(entry => !entry.skipWorktree || existsInWorkTree(repoRoot, entry.path));
+  if (reAdd.length === 0) return;
+  runGit(['-c', 'core.ignoreStat=false', 'update-index', '-z', '--index-info'], {
+    stdin: Buffer.concat(reAdd.map(indexInfoRecord)),
+  });
 }
 
 /**
@@ -208,12 +414,14 @@ export interface StagedIndexContext {
    *
    * @param args - Git arguments after the binary
    * @param options - `ignoreErrors` returns a failed result instead of throwing;
-   *   `maxBuffer` raises the output cap for commands that enumerate
+   *   `maxBuffer` raises the output cap for commands that enumerate; `stdin`
+   *   feeds commands that read records from standard input; `encoding` decodes
+   *   the output (`latin1` keeps raw path bytes recoverable)
    * @returns The command result
    */
   runGit(
     args: string[],
-    options?: { ignoreErrors?: boolean; maxBuffer?: number },
+    options?: { ignoreErrors?: boolean; maxBuffer?: number; stdin?: string | Buffer; encoding?: BufferEncoding },
   ): GitExecutionResult;
 }
 
@@ -320,6 +528,71 @@ function discoverRepository(
 }
 
 /**
+ * Git's exit status for a usage error, which is how an unknown option ends.
+ *
+ * Git translates its option-parser errors (git 2.33 de.po: "Unbekannte Option:
+ * `%s'"), so English text alone matches only for users in an English locale.
+ * Forcing `LC_ALL=C` on the call would fix the text but also reach clean
+ * filters run by `git add`, whose output -- and so the object IDs -- could then
+ * differ from the user's own `git add`.
+ */
+const GIT_USAGE_ERROR_EXIT = 129;
+
+/**
+ * The option name, which translations leave untranslated, as a word of its own:
+ * not `--sparse` or `sparse-checkout`, both of which a modern git's usage
+ * text for `git add` contains.
+ */
+const SPARSE_OPTION_NAMED = /(?<![-\w])sparse(?![-\w])/;
+
+/** How git older than 2.34 rejects `git add --sparse`, in English. */
+const SPARSE_UNSUPPORTED = /unknown option [`']sparse'/;
+
+/**
+ * Whether a failed `git add --sparse` failed because git does not know the option.
+ *
+ * @param result - The failed attempt
+ * @returns true for a usage error naming the option, or the English message
+ */
+function rejectedSparseOption(result: GitExecutionResult): boolean {
+  return (
+    (result.exitCode === GIT_USAGE_ERROR_EXIT && SPARSE_OPTION_NAMED.test(result.stderr)) ||
+    SPARSE_UNSUPPORTED.test(result.stderr)
+  );
+}
+
+/**
+ * `git add --all --sparse`, falling back to plain `--all` on git that predates
+ * `--sparse` (added in git 2.34; vibe-validate documents git 2.0 as its floor).
+ *
+ * In a sparse checkout, plain `git add --all` refuses whenever a file exists on
+ * disk outside the cone (an untracked file, or one materialised by hand), so the
+ * snapshot failed outright. `--sparse` lets it stage those paths. It does not
+ * turn the cone's skip-worktree entries, which are absent from disk by design,
+ * into deletions; and outside a sparse checkout it changes nothing.
+ *
+ * The fallback runs only when git rejected the option itself: a usage error
+ * (exit 129) whose message names `sparse` as a bare word -- the untranslated
+ * option name, so this works in any locale -- or the English message, for a
+ * wrapper that changes the status. Exit 129 alone is not enough. A git that
+ * knows `--sparse` can still exit 129 for another reason, and a plain
+ * `git add --all` retried there could succeed while keeping committed object
+ * IDs for files outside the cone: a stale snapshot instead of a failed one. The
+ * refusal and the option arrived in the same release (git 2.34), so a git that
+ * rejects `--sparse` never refuses for this reason and the retry loses nothing.
+ *
+ * @param runGit - Runs git against the throwaway index
+ * @returns The result of the attempt that git accepted the options of
+ */
+function stageAll(runGit: StagedIndexContext['runGit']): GitExecutionResult {
+  const sparse = runGit(['add', '--all', '--sparse'], { ignoreErrors: true });
+  if (sparse.success || !rejectedSparseOption(sparse)) {
+    return sparse;
+  }
+  return runGit(['add', '--all'], { ignoreErrors: true });
+}
+
+/**
  * Stage the whole working tree into a throwaway index, then run `fn` against it.
  *
  * The index is created under the repository's own git directory, named with this
@@ -375,6 +648,17 @@ export function withStagedTempIndex<T>(
     // repository whose empty snapshot is a correct answer.
     const hadRealIndex = existsSync(currentIndex);
 
+    const runGit: StagedIndexContext['runGit'] = (args, runOptions) =>
+      executeGitCommand(args, {
+        timeout: GIT_TIMEOUT,
+        // Set AFTER the scrub, not before: an inherited GIT_INDEX_FILE from an
+        // outer hook is precisely the index we are trying not to touch.
+        env: { GIT_INDEX_FILE: tempIndexFile },
+        cwd: repoRoot,
+        scrubGitEnv,
+        ...runOptions,
+      });
+
     if (hadRealIndex) {
       // SECURITY: Use Node.js fs.copyFileSync instead of shell cp command
       // Prevents potential command injection if gitDir contains malicious characters
@@ -386,19 +670,13 @@ export function withStagedTempIndex<T>(
       // than clear it: this path has no legitimate reason to encounter one, and
       // a tool that quietly repairs a planted file teaches nobody anything.
       refuseSymlinkDestination(tempIndexFile);
+      const indexTimestamp = readIndexTimestamp(currentIndex);
       copyFileSync(currentIndex, tempIndexFile);
+      // Before the stamp: re-adding flagged entries rewrites the copy, and a
+      // rewrite gives it a fresh mtime again.
+      clearTrustFlags(tempIndexFile, repoRoot, runGit);
+      keepRacyTimestamp(tempIndexFile, indexTimestamp);
     }
-
-    const runGit: StagedIndexContext['runGit'] = (args, runOptions) =>
-      executeGitCommand(args, {
-        timeout: GIT_TIMEOUT,
-        // Set AFTER the scrub, not before: an inherited GIT_INDEX_FILE from an
-        // outer hook is precisely the index we are trying not to touch.
-        env: { GIT_INDEX_FILE: tempIndexFile },
-        cwd: repoRoot,
-        scrubGitEnv,
-        ...runOptions,
-      });
 
     // Step 2: Stage all changes (tracked + untracked) in temp index
     // CRITICAL: Must use `git add --all` (NOT `--intent-to-add` or `--force`)
@@ -413,7 +691,7 @@ export function withStagedTempIndex<T>(
     //   - Security risk: checksums API keys, passwords, credentials
     //   - Non-deterministic: different devs have different ignored files
     //   - Breaks cache sharing: same code produces different hashes
-    const addResult = runGit(['add', '--all'], { ignoreErrors: true });
+    const addResult = stageAll(runGit);
 
     // A failed `add` must throw, because the alternative is the exact wrong
     // answer this module exists to prevent: an empty temp index still yields a

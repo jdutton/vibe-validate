@@ -5,7 +5,23 @@
  * to ensure validation state caching works correctly across runs.
  */
 
-import { copyFileSync, existsSync, unlinkSync, readdirSync, statSync, type Stats, writeFileSync, rmSync } from 'node:fs';
+import {
+  closeSync,
+  constants as fsConstants,
+  copyFileSync,
+  existsSync,
+  futimesSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  readdirSync,
+  statSync,
+  type BigIntStats,
+  type Stats,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 
 import * as utils from '@vibe-validate/utils';
@@ -37,14 +53,20 @@ vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<{
     copyFileSync: typeof copyFileSync;
     existsSync: typeof existsSync;
+    lstatSync: typeof lstatSync;
     unlinkSync: typeof unlinkSync;
     readdirSync: typeof readdirSync;
     statSync: typeof statSync;
   }>();
   return {
     ...actual,
+    closeSync: vi.fn(),
     copyFileSync: vi.fn(),
     existsSync: vi.fn(),
+    futimesSync: vi.fn(),
+    lstatSync: vi.fn(actual.lstatSync),
+    openSync: vi.fn(),
+    readFileSync: vi.fn(),
     unlinkSync: vi.fn(),
     readdirSync: vi.fn(),
     statSync: vi.fn(),
@@ -65,6 +87,11 @@ const mockExistsSync = existsSync as ReturnType<typeof vi.fn>;
 const mockUnlinkSync = unlinkSync as ReturnType<typeof vi.fn>;
 const mockReaddirSync = readdirSync as ReturnType<typeof vi.fn>;
 const mockStatSync = statSync as ReturnType<typeof vi.fn>;
+const mockOpenSync = openSync as ReturnType<typeof vi.fn>;
+const mockFutimesSync = futimesSync as ReturnType<typeof vi.fn>;
+const mockCloseSync = closeSync as ReturnType<typeof vi.fn>;
+const mockReadFileSync = readFileSync as ReturnType<typeof vi.fn>;
+const mockLstatSync = lstatSync as ReturnType<typeof vi.fn>;
 const mockIsProcessRunning = utils.isProcessRunning as ReturnType<typeof vi.fn>;
 
 /**
@@ -95,12 +122,177 @@ function mockStandardGitCommands(writeTreeOutput = 'abc123\n') {
     .mockReturnValueOnce({ success: false, stdout: '', stderr: '', exitCode: 0 });  // git submodule status (no submodules)
 }
 
+/** The real index's times, as `statSync(path, { bigint: true })` reports them. */
+const INDEX_ATIME_NS = 1_699_999_990_250_000_000n;
+const INDEX_MTIME_NS = 1_700_000_000_999_999_999n;
+/** The same times floored to whole seconds -- what the copy must be stamped with. */
+const INDEX_ATIME_SECONDS = 1_699_999_990;
+const INDEX_MTIME_SECONDS = 1_700_000_000;
+
+/** The current process's temp index path. */
+const TEMP_INDEX_PATH = /vibe-validate-temp-index-\d+$/;
+
+/** The descriptor the mocked `openSync` hands back for the temp index. */
+const TEMP_INDEX_FD = 42;
+
+/** How the temp index must be opened for stamping: writable, never through a symlink. */
+const STAMP_OPEN_FLAGS = fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
+
+/** One entry for {@link buildIndexV2}. */
+interface FakeIndexEntry {
+  path: string;
+  oid: string;
+  assumeUnchanged?: boolean;
+}
+
 /**
- * Helper to create mock file stats
- * Used for testing stale temp index cleanup
+ * Build a version-2 SHA-1 index file, laid out as git's index format documents.
+ *
+ * Hand-built rather than produced by git because these unit tests mock the
+ * filesystem; the parser itself is tested against real git output in
+ * `index-flags.test.ts`.
+ *
+ * @param entries - Entries in path order
+ * @returns The index file bytes
  */
-function createMockStats(mtimeMs: number): Partial<Stats> {
-  return { mtimeMs };
+function buildIndexV2(entries: FakeIndexEntry[]): Buffer {
+  const header = Buffer.alloc(12);
+  header.write('DIRC', 0, 'latin1');
+  header.writeUInt32BE(2, 4);
+  header.writeUInt32BE(entries.length, 8);
+  const parts = [header];
+  for (const entry of entries) {
+    const name = Buffer.from(entry.path, 'utf8');
+    const size = (62 + name.length + 8) & ~7;
+    const bytes = Buffer.alloc(size);
+    bytes.writeUInt32BE(0o100644, 24);
+    Buffer.from(entry.oid, 'hex').copy(bytes, 40);
+    bytes.writeUInt16BE((entry.assumeUnchanged ? 0x8000 : 0) | Math.min(name.length, 0xfff), 60);
+    name.copy(bytes, 62);
+    parts.push(bytes);
+  }
+  parts.push(Buffer.alloc(20));
+  return Buffer.concat(parts);
+}
+
+const actualFsModule = await vi.importActual<{ readFileSync: typeof readFileSync; lstatSync: typeof lstatSync }>('node:fs');
+
+/** The repository root {@link DISCOVERY_STDOUT} reports. */
+const REPO_ROOT = '/repo/root';
+
+/** A successful git result with this stdout. */
+function gitOk(stdout = ''): gitExecutor.GitExecutionResult {
+  return { success: true, stdout, stderr: '', exitCode: 0 };
+}
+
+/**
+ * Answer git by subcommand: discovery, `write-tree`, and `ls-files` canned;
+ * `git add` attempts answered in order from `addResults` (then success).
+ *
+ * @param options - `lsFiles` is the listing stdout; `addResults` the add outcomes
+ */
+function mockGitBySubcommand(options: { lsFiles?: string; addResults?: gitExecutor.GitExecutionResult[] } = {}): void {
+  const addResults = [...(options.addResults ?? [])];
+  vi.mocked(gitExecutor.executeGitCommand).mockImplementation((args) => {
+    if (args[0] === 'rev-parse') return gitOk(DISCOVERY_STDOUT);
+    if (args[0] === 'write-tree') return gitOk('abc123\n');
+    if (args[0] === 'ls-files') return gitOk(options.lsFiles ?? '');
+    if (args[0] === 'add') return addResults.shift() ?? gitOk();
+    return gitOk();
+  });
+}
+
+/** The arguments of every `git add` attempt, in order. */
+function addAttempts(): string[][] {
+  return vi.mocked(gitExecutor.executeGitCommand).mock.calls
+    .map(call => call[0])
+    .filter(args => args[0] === 'add');
+}
+
+/** The stdin of the single `update-index --index-info` call, or undefined if none ran. */
+function reAddedRecords(): Buffer | undefined {
+  const update = vi.mocked(gitExecutor.executeGitCommand).mock.calls.find(call => call[0].includes('update-index'));
+  return update?.[1]?.stdin as Buffer | undefined;
+}
+
+/**
+ * One `git ls-files -s -v -z` record, as latin1 text (how the fallback reads it).
+ *
+ * @param tag - The `-v` tag (`H` plain, `h` assume-unchanged, `S` skip-worktree)
+ * @param path - Raw path bytes
+ * @param stage - Merge stage
+ */
+function lsFilesRecord(tag: string, path: Buffer, stage = 0): string {
+  return `${tag} 100644 ${'b'.repeat(40)} ${stage}\t${path.toString('latin1')}\0`;
+}
+
+/** The `--index-info` record the re-add must send for `path`. */
+function indexInfoFor(path: Buffer): Buffer {
+  return Buffer.concat([Buffer.from(`100644 ${'b'.repeat(40)}\t`, 'latin1'), path, Buffer.from([0])]);
+}
+
+/**
+ * Make `lstat` under {@link REPO_ROOT} fail with `code` for paths ending in
+ * `failing`, and succeed for every other path there.
+ *
+ * @param failing - Path suffix whose lstat throws
+ * @param code - The errno code it throws
+ */
+function mockWorkTreeLstat(failing: string, code: string): void {
+  mockLstatSync.mockImplementation((path: unknown) => {
+    const text = Buffer.isBuffer(path) ? path.toString('latin1') : String(path);
+    if (!text.startsWith(`${REPO_ROOT}/`)) return actualFsModule.lstatSync(path as string);
+    if (text.endsWith(failing)) throw Object.assign(new Error(`${code}: ${text}`), { code });
+    return {} as Stats;
+  });
+}
+
+/** A failed `git add --sparse` attempt. */
+function addFailure(exitCode: number, stderr: string): gitExecutor.GitExecutionResult {
+  return { success: false, stdout: '', stderr, exitCode };
+}
+
+const ADD_SPARSE = ['add', '--all', '--sparse'];
+const ADD_PLAIN = ['add', '--all'];
+/** Modern git's usage text for `git add`, which mentions --sparse and sparse-checkout. */
+const MODERN_ADD_USAGE =
+  'usage: git add [<options>] [--] <pathspec>...\n' +
+  '    --sparse              allow updating entries outside of the sparse-checkout cone';
+
+/**
+ * Serve `index` as the temp copy's bytes; every other path reads for real.
+ *
+ * @param index - What the parser should find in the temp index
+ */
+function mockTempIndexBytes(index: Buffer): void {
+  mockReadFileSync.mockImplementation((path: unknown, ...rest: unknown[]) => {
+    if (typeof path === 'string' && TEMP_INDEX_PATH.test(path)) return index;
+    return (actualFsModule.readFileSync as (...args: unknown[]) => unknown)(path, ...rest);
+  });
+}
+
+/**
+ * Answer `statSync` the way each real call site asks it.
+ *
+ * The two callers ask different questions: the temp index reads the REAL index
+ * with `{ bigint: true }` for its nanosecond times, while the stale-index reaper
+ * stats each candidate without options and reads `mtimeMs`. A single canned
+ * return value cannot model both, and handing one caller's shape to the other
+ * is how a bigint-vs-number mix would hide.
+ *
+ * @param staleCandidateMtimeMs - `mtimeMs` for reaper candidates; omitted means
+ *   such a stat fails as if the file had vanished
+ */
+function mockFileStats(staleCandidateMtimeMs?: number): void {
+  mockStatSync.mockImplementation((_path: string, options?: { bigint?: boolean }) => {
+    if (options?.bigint) {
+      return { atimeNs: INDEX_ATIME_NS, mtimeNs: INDEX_MTIME_NS } as Partial<BigIntStats>;
+    }
+    if (staleCandidateMtimeMs === undefined) {
+      throw new Error('ENOENT: no such file or directory');
+    }
+    return { mtimeMs: staleCandidateMtimeMs } as Partial<Stats>;
+  });
 }
 
 describe('getGitTreeHash', () => {
@@ -110,10 +302,255 @@ describe('getGitTreeHash', () => {
     mockExistsSync.mockReturnValue(true);
     // Default: no stale temp index files to clean up
     mockReaddirSync.mockReturnValue([]);
+    // Default: the real index stats normally; there are no reaper candidates
+    mockFileStats();
+    // clearAllMocks keeps implementations, so a test's throwing stamp would leak
+    mockOpenSync.mockReset().mockReturnValue(TEMP_INDEX_FD);
+    mockFutimesSync.mockReset();
+    mockCloseSync.mockReset();
+    mockLstatSync.mockReset().mockImplementation(actualFsModule.lstatSync);
+    // Default: the temp copy is a valid index with no trust flags
+    mockTempIndexBytes(buildIndexV2([]));
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('temp index timestamp (racy-clean detection)', () => {
+    it('stamps the copy with the real index times, floored to whole seconds', async () => {
+      mockStandardGitCommands();
+
+      await getGitTreeHash();
+
+      // Floored, never rounded: a copy even nanoseconds LATER than the real
+      // index turns racy entries back into trusted ones.
+      expect(mockFutimesSync).toHaveBeenCalledTimes(1);
+      expect(mockFutimesSync).toHaveBeenCalledWith(
+        TEMP_INDEX_FD,
+        INDEX_ATIME_SECONDS,
+        INDEX_MTIME_SECONDS,
+      );
+      expect(mockCloseSync).toHaveBeenCalledWith(TEMP_INDEX_FD);
+    });
+
+    it('stamps through a descriptor opened without following symlinks', async () => {
+      mockStandardGitCommands();
+
+      await getGitTreeHash();
+
+      // A path-based stamp after the copy would retime whatever a symlink
+      // swapped in between points at. The descriptor pins the file that was
+      // opened, and O_NOFOLLOW refuses to open a link at all.
+      expect(mockOpenSync).toHaveBeenCalledTimes(1);
+      expect(mockOpenSync).toHaveBeenCalledWith(expect.stringMatching(TEMP_INDEX_PATH), STAMP_OPEN_FLAGS);
+    });
+
+    it('reads the real index times before copying and stamps after', async () => {
+      mockStandardGitCommands();
+
+      await getGitTreeHash();
+
+      // After the copy, the real index's own stat would still be right, but a
+      // stamp written BEFORE the copy is overwritten by it.
+      const statOrder = mockStatSync.mock.invocationCallOrder[0] ?? Infinity;
+      const copyOrder = mockCopyFileSync.mock.invocationCallOrder[0] ?? -Infinity;
+      const stampOrder = mockFutimesSync.mock.invocationCallOrder[0] ?? -Infinity;
+      expect(mockStatSync).toHaveBeenCalledWith('.git/index', { bigint: true });
+      expect(statOrder).toBeLessThan(copyOrder);
+      expect(copyOrder).toBeLessThan(stampOrder);
+    });
+
+    it('makes every entry racy when the real index times cannot be read', async () => {
+      mockStandardGitCommands();
+      mockStatSync.mockImplementation(() => {
+        throw new Error('EIO: i/o error');
+      });
+
+      // A missing optimisation must not become a missing answer...
+      await expect(getGitTreeHash()).resolves.toMatchObject({ hash: 'abc123' });
+
+      // ...nor a stale one: one second past the epoch is older than every file,
+      // so git re-hashes them all. Not 0, which git reads as "unknown" and then
+      // trusts every cached stat.
+      expect(mockFutimesSync).toHaveBeenCalledWith(TEMP_INDEX_FD, 1, 1);
+    });
+
+    it('fails rather than staging into a copy left with a fresh mtime', async () => {
+      mockInitialGitCommands();
+      mockFutimesSync.mockImplementation(() => {
+        throw new Error('EPERM: operation not permitted');
+      });
+
+      await expect(getGitTreeHash()).rejects.toThrow(/EPERM/);
+
+      // Nothing was staged against the unstamped copy; the descriptor was
+      // closed and the copy still removed.
+      expect(vi.mocked(gitExecutor.executeGitCommand)).toHaveBeenCalledTimes(1);
+      expect(mockCloseSync).toHaveBeenCalledWith(TEMP_INDEX_FD);
+      expect(mockUnlinkSync).toHaveBeenCalledWith(expect.stringMatching(TEMP_INDEX_PATH));
+    });
+
+    it('fails when the copy turns out to be a symlink at stamping time', async () => {
+      mockInitialGitCommands();
+      mockOpenSync.mockImplementation(() => {
+        throw Object.assign(new Error('ELOOP: too many symbolic links encountered'), { code: 'ELOOP' });
+      });
+
+      await expect(getGitTreeHash()).rejects.toThrow(/ELOOP/);
+      expect(mockFutimesSync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('trust flags in the temp index', () => {
+    const FLAGGED_OID = 'a'.repeat(40);
+
+    it('spawns nothing extra when no entry carries a trust flag', async () => {
+      mockStandardGitCommands();
+      mockTempIndexBytes(buildIndexV2([{ path: 'plain.md', oid: FLAGGED_OID }]));
+
+      await getGitTreeHash();
+
+      // Every argument, not just the first: a `-c` override would hide the subcommand.
+      const commands = vi.mocked(gitExecutor.executeGitCommand).mock.calls.flatMap(call => call[0]);
+      expect(commands).not.toContain('update-index');
+      expect(commands).not.toContain('ls-files');
+    });
+
+    it('re-adds flagged entries in ONE update-index spawn, before staging', async () => {
+      mockTempIndexBytes(buildIndexV2([
+        { path: 'flagged.md', oid: FLAGGED_OID, assumeUnchanged: true },
+        { path: 'plain.md', oid: FLAGGED_OID },
+      ]));
+      vi.mocked(gitExecutor.executeGitCommand).mockImplementation((args) => {
+        if (args[0] === 'rev-parse') return { success: true, stdout: DISCOVERY_STDOUT, stderr: '', exitCode: 0 };
+        if (args[0] === 'write-tree') return { success: true, stdout: 'abc123\n', stderr: '', exitCode: 0 };
+        return { success: true, stdout: '', stderr: '', exitCode: 0 };
+      });
+
+      await getGitTreeHash();
+
+      const calls = vi.mocked(gitExecutor.executeGitCommand).mock.calls;
+      const updates = calls.filter(call => call[0].includes('update-index'));
+      expect(updates).toHaveLength(1);
+      // Under core.ignoreStat git would set assume-unchanged on the re-added
+      // entry itself, so the override is load-bearing.
+      expect(updates[0]?.[0]).toEqual(['-c', 'core.ignoreStat=false', 'update-index', '-z', '--index-info']);
+      // Only the flagged entry, re-added with its mode and object ID: a fresh
+      // entry carries no flags and zeroed stat data, so `git add` re-reads it.
+      expect(String(updates[0]?.[1]?.stdin)).toBe(`100644 ${FLAGGED_OID}\tflagged.md\0`);
+      expect(updates[0]?.[1]?.env).toEqual(
+        expect.objectContaining({ GIT_INDEX_FILE: expect.stringMatching(TEMP_INDEX_PATH) }),
+      );
+
+      const updateOrder = calls.findIndex(call => call[0].includes('update-index'));
+      const addOrder = calls.findIndex(call => call[0][0] === 'add');
+      expect(updateOrder).toBeLessThan(addOrder);
+      // The re-add rewrote the copy, so the stamp must come after it.
+      const stampOrder = mockFutimesSync.mock.invocationCallOrder[0] ?? -Infinity;
+      const updateCallOrder = vi.mocked(gitExecutor.executeGitCommand).mock.invocationCallOrder[updateOrder] ?? Infinity;
+      expect(updateCallOrder).toBeLessThan(stampOrder);
+    });
+
+    it('asks git for the flags when the index cannot be parsed, keeping raw path bytes', async () => {
+      mockTempIndexBytes(Buffer.from('not an index the parser can walk'));
+      const assumed = Buffer.from('assumed.md');
+      const nonUtf8 = Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x2e, 0x6d, 0x64]); // "caf\xe9.md", latin1
+      mockGitBySubcommand({
+        lsFiles: [
+          lsFilesRecord('H', Buffer.from('plain.md')),
+          lsFilesRecord('h', assumed),
+          lsFilesRecord('h', Buffer.from('conflicted.md'), 2),
+          lsFilesRecord('h', nonUtf8),
+        ].join(''),
+      });
+
+      await getGitTreeHash();
+
+      const listing = vi.mocked(gitExecutor.executeGitCommand).mock.calls.find(call => call[0][0] === 'ls-files');
+      expect(listing?.[0]).toEqual(['ls-files', '-s', '-v', '-z']);
+      // latin1 maps each byte to one character and back; utf8 would replace 0xe9.
+      expect(listing?.[1]).toEqual(expect.objectContaining({ encoding: 'latin1' }));
+      // Only flagged stage-0 entries, with the non-UTF-8 name byte for byte.
+      expect(reAddedRecords()).toEqual(Buffer.concat([indexInfoFor(assumed), indexInfoFor(nonUtf8)]));
+    });
+
+    it.each([
+      ['ENOENT', false],
+      ['ENOTDIR', false],
+      ['EACCES', true],
+      ['ELOOP', true],
+    ])('a skip-worktree path whose lstat fails with %s counts as present: %s', async (code, present) => {
+      mockTempIndexBytes(Buffer.from('not an index the parser can walk'));
+      const onDisk = Buffer.from('on-disk.md');
+      mockGitBySubcommand({
+        lsFiles: lsFilesRecord('S', onDisk) + lsFilesRecord('S', Buffer.from('probed.md')),
+      });
+      mockWorkTreeLstat('probed.md', code);
+
+      await getGitTreeHash();
+
+      // Absent keeps the flag (a sparse checkout's off-disk entry stays an
+      // entry). Any other error clears it, so git reads the path and fails
+      // loudly rather than the hash keeping a stale committed ID.
+      const expected = present ? [onDisk, Buffer.from('probed.md')] : [onDisk];
+      expect(reAddedRecords()).toEqual(Buffer.concat(expected.map(indexInfoFor)));
+    });
+
+    it('spawns no update-index when every flagged entry is a skip-worktree file absent from disk', async () => {
+      mockTempIndexBytes(Buffer.from('not an index the parser can walk'));
+      mockGitBySubcommand({ lsFiles: lsFilesRecord('S', Buffer.from('out-of-cone.md')) });
+      mockWorkTreeLstat('out-of-cone.md', 'ENOENT');
+
+      await getGitTreeHash();
+
+      expect(reAddedRecords()).toBeUndefined();
+    });
+  });
+
+  describe('staging retry without --sparse', () => {
+    it('stages once when git accepts --sparse', async () => {
+      mockGitBySubcommand();
+
+      await getGitTreeHash();
+
+      expect(addAttempts()).toEqual([ADD_SPARSE]);
+    });
+
+    it.each([
+      ['English, exit 129', addFailure(129, "error: unknown option `sparse'")],
+      ['German, exit 129', addFailure(129, "Fehler: Unbekannte Option: `sparse'")],
+      ['English, status changed by a wrapper', addFailure(1, "error: unknown option `sparse'")],
+    ])('retries plain --all when git rejects the option itself (%s)', async (_label, rejection) => {
+      mockGitBySubcommand({ addResults: [rejection] });
+
+      await expect(getGitTreeHash()).resolves.toMatchObject({ hash: 'abc123' });
+
+      expect(addAttempts()).toEqual([ADD_SPARSE, ADD_PLAIN]);
+    });
+
+    it.each([
+      ['a usage error about something else', addFailure(129, MODERN_ADD_USAGE)],
+      ['another unknown option', addFailure(129, "error: unknown option `bogus'")],
+      ['an ordinary failure', addFailure(128, 'fatal: unable to index file sparse.md')],
+    ])('fails without retrying on %s', async (_label, failure) => {
+      mockGitBySubcommand({ addResults: [failure] });
+
+      // A plain add here could succeed while keeping committed IDs for files
+      // outside the cone; no answer is safe, a stale one is not.
+      await expect(getGitTreeHash()).rejects.toThrow(/git add failed/);
+
+      expect(addAttempts()).toEqual([ADD_SPARSE]);
+    });
+
+    it('fails when the plain retry fails too', async () => {
+      mockGitBySubcommand({
+        addResults: [addFailure(129, "error: unknown option `sparse'"), addFailure(128, 'fatal: unable to index file x')],
+      });
+
+      await expect(getGitTreeHash()).rejects.toThrow(/unable to index file x/);
+      expect(addAttempts()).toEqual([ADD_SPARSE, ADD_PLAIN]);
+    });
   });
 
   it('should calculate tree hash using git write-tree', async () => {
@@ -182,7 +619,7 @@ describe('getGitTreeHash', () => {
     );
     expect(gitExecutor.executeGitCommand).toHaveBeenNthCalledWith(
       2,
-      ['add', '--all'],
+      ['add', '--all', '--sparse'],
       expect.objectContaining({
         env: expect.objectContaining({
           GIT_INDEX_FILE: expect.stringContaining('vibe-validate-temp-index')
@@ -430,7 +867,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-12345',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as Stats);
+      mockFileStats(fourMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -445,7 +882,7 @@ describe('getGitTreeHash', () => {
     it('should skip temp index files from running processes', async () => {
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(true); // Process still running
 
       await getGitTreeHash();
@@ -463,7 +900,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-12345',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false); // Process not running
 
       await getGitTreeHash();
@@ -479,7 +916,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-99999']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -497,7 +934,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
 
       await getGitTreeHash();
 
@@ -513,7 +950,7 @@ describe('getGitTreeHash', () => {
     it('should skip recent legacy temp index', async () => {
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index']);
-      mockStatSync.mockReturnValue(createMockStats(fourMinutesAgo) as Stats);
+      mockFileStats(fourMinutesAgo);
 
       await getGitTreeHash();
 
@@ -530,7 +967,7 @@ describe('getGitTreeHash', () => {
       const warnSpy = vi.spyOn(console, 'warn');
       mockStandardGitCommands();
       mockReaddirSync.mockReturnValue(['vibe-validate-temp-index-12345']);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       // Mock unlinkSync to fail for stale file but succeed for current process
@@ -619,7 +1056,7 @@ describe('getGitTreeHash', () => {
         'vibe-validate-temp-index-33333',
         'other-file.txt'
       ]);
-      mockStatSync.mockReturnValue(createMockStats(fiveMinutesAgo) as Stats);
+      mockFileStats(fiveMinutesAgo);
       mockIsProcessRunning.mockReturnValue(false);
 
       await getGitTreeHash();
@@ -651,7 +1088,9 @@ describe('getGitTreeHash', () => {
 
       // Should only clean up current process temp index (not other files)
       expect(mockUnlinkSync).toHaveBeenCalledTimes(1);
-      expect(mockStatSync).not.toHaveBeenCalled();
+      // The reaper stats no candidate; the only stat is the real index's own,
+      // read for the temp copy's timestamp.
+      expect(mockStatSync.mock.calls.map(call => call[0])).toEqual(['.git/index']);
     });
   });
 });
@@ -721,6 +1160,10 @@ describe('getGitTreeHash with submodules (integration)', () => {
     mockCopyFileSync.mockImplementation(actualFs.copyFileSync);
     mockUnlinkSync.mockImplementation(actualFs.unlinkSync);
     mockStatSync.mockImplementation(actualFs.statSync as any);
+    mockOpenSync.mockImplementation(actualFs.openSync as any);
+    mockFutimesSync.mockImplementation(actualFs.futimesSync as any);
+    mockCloseSync.mockImplementation(actualFs.closeSync as any);
+    mockReadFileSync.mockImplementation(actualFs.readFileSync as any);
 
     // Import real modules
     const fs = await import('node:fs');

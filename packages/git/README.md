@@ -135,11 +135,20 @@ Class for post-merge cleanup operations.
 git stash create            # Different hash on each run even with same content
 
 # New approach (deterministic - content-based only)
-cp .git/index "$GIT_DIR/vibe-validate-temp-index-$$"
+cp -p .git/index "$GIT_DIR/vibe-validate-temp-index-$$"   # -p: keep the index mtime
 export GIT_INDEX_FILE="$GIT_DIR/vibe-validate-temp-index-$$"
-git add --all               # Tracked edits + untracked files
+git add --all --sparse      # Tracked edits + untracked files (--sparse: git 2.34+)
 git write-tree              # Content-based hash (no timestamps)
 ```
+
+`cp -p` matters: git compares each file's mtime with the index's own to decide
+which files to re-read, so a copy with a fresh mtime hides an edit made in the
+same second as the last index write, at the same size. `--sparse` stages files
+outside a sparse-checkout cone; omit it on git older than 2.34. The library
+also clears assume-unchanged, and skip-worktree on files that exist on disk, in
+the copy, so those files are read too. One exception: with a sparse index
+(`index.sparse`), a file on disk inside a directory the index holds as a single
+collapsed entry is not read, and keeps the ID the index records.
 
 `--all` is deliberate: `--intent-to-add` records empty placeholders that
 `git write-tree` skips, which would drop unstaged modifications from the hash.
@@ -176,8 +185,10 @@ A valuable side benefit of the deterministic tree hash calculation is automatic 
 
 When `getGitTreeHash()` runs, it:
 1. Creates temporary index: `.git/vibe-validate-temp-index-<pid>`
-2. Copies current index to temp index
-3. Runs `git add --all` in temp index (stages everything)
+2. Copies current index to temp index, keeping its modification time and
+   clearing assume-unchanged / on-disk skip-worktree flags in the copy
+3. Runs `git add --all --sparse` in temp index (stages everything; plain
+   `--all` on git older than 2.34)
 4. Runs `git write-tree` (creates git objects for all files)
 5. Deletes temp index (your real index remains untouched)
 

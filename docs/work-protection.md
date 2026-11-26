@@ -22,11 +22,13 @@ When vibe-validate calculates the git tree hash for caching, it uses a temporary
 # 1. Create temporary index
 TEMP_INDEX=".git/vibe-validate-temp-index"
 
-# 2. Copy current index to temp index
-cp .git/index "$TEMP_INDEX"
+# 2. Copy current index to temp index, keeping its modification time (-p) so
+#    git still re-reads files edited in the same second as the last index write
+cp -p .git/index "$TEMP_INDEX"
 
-# 3. Stage ALL files in temp index (respecting .gitignore)
-GIT_INDEX_FILE="$TEMP_INDEX" git add --all
+# 3. Stage ALL files in temp index (respecting .gitignore; --sparse covers
+#    files outside a sparse-checkout cone, git 2.34+ -- omit it on older git)
+GIT_INDEX_FILE="$TEMP_INDEX" git add --all --sparse
 
 # 4. Calculate tree hash (CREATES GIT OBJECTS!)
 TREE_HASH=$(GIT_INDEX_FILE="$TEMP_INDEX" git write-tree)
@@ -814,7 +816,8 @@ All these objects go in `.git/objects/` and are permanent.
 **Solution**: Use temporary index:
 
 ```bash
-GIT_INDEX_FILE=".git/temp-index" git add --all
+cp -p .git/index .git/temp-index      # start from a copy; -p keeps its mtime
+GIT_INDEX_FILE=".git/temp-index" git add --all --sparse
 GIT_INDEX_FILE=".git/temp-index" git write-tree
 ```
 
