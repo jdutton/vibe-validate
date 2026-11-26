@@ -191,8 +191,11 @@ describe('findTrustFlaggedEntries', () => {
   });
 
   it('decodes a version-4 strip count too large for one varint byte', () => {
-    // Stripping 128+ bytes of the previous path takes a two-byte varint.
-    const longPath = `a/${'x'.repeat(200)}.md`;
+    // Stripping 128+ bytes of the previous path takes a two-byte varint. 145
+    // bytes is enough, and stays under Windows' 260-character MAX_PATH once
+    // the temp directory is prepended (200 did not).
+    const longPath = `a/${'x'.repeat(140)}.md`;
+    expect(longPath.length).toBeGreaterThanOrEqual(128);
     createRepoWith(repo, { [longPath]: 'long\n', 'b.md': 'b\n' });
     git(repo, ['update-index', '--index-version', '4']);
     git(repo, ['update-index', '--assume-unchanged', 'b.md', longPath]);
